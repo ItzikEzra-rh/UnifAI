@@ -1,2 +1,2 @@
 # AI-TC-s-Generator
-The purpose of this project is to create a wrapper, comprising both a graphical user interface (GUI) and backend (BE) application, encapsulated within containers for generation of TC's with  pre-tuned LLM. 
+The purpose of this project is to create a wrapper, comprising both a graphical user interface (GUI) and backend (BE) application, encapsulated within containers. This wrapper will facilitate an application that utilizes a pre-tuned Large Language Model (LLM) to generate test cases (TCs) for specific projects. The goal is to reduce the development time for automation teams by at least 70%. Users will input the content of TCs, and the LLM will generate relevant TCs adhering to the conventions of the user's project.
