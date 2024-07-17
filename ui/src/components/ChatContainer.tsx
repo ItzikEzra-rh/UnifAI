@@ -37,15 +37,12 @@ const ChatComponent: React.FC = () => {
   const getPosition = (index: number, sender: string): 'normal' | 'first' | 'last' | 'single' => {
     const previousMessage = messages[index - 1];
     const nextMessage = messages[index + 1];
-
-    if (previousMessage?.sender !== sender && nextMessage?.sender !== sender) {
-      return 'single';
-    } else if (previousMessage?.sender !== sender) {
-      return 'first';
-    } else if (nextMessage?.sender !== sender) {
-      return 'last';
-    } else {
-      return 'normal';
+  
+    switch (true) {
+      case previousMessage?.sender !== sender && nextMessage?.sender !== sender: return 'single';
+      case previousMessage?.sender !== sender: return 'first';
+      case nextMessage?.sender !== sender: return 'last'; 
+      default: return 'normal';
     }
   };
 
