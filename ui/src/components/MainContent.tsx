@@ -2,6 +2,8 @@ import React from 'react';
 import '../styles.css';
 import ChatComponent from './ChatContainer'
 import AIPicture from '../assets/AIPicture.png';
+import ProjectForm from './ProjectForm'
+import FormTable from './FormTable';
 
 interface MainContentProps {
   content: string;
@@ -37,7 +39,9 @@ const MainContent: React.FC<MainContentProps> = ({ content }) => {
     const getContentElement = (content: string) =>  {
         switch(content) {
             case 'Welcome Content': return <WelcomeContent/>;
-            case 'LLM Content': return <ChatComponent/>;
+            case 'Form Content': return <ProjectForm/>;
+            case 'Form Table': return <FormTable/>;
+            case 'Chatbot Prompt': return <ChatComponent/>;
             default: return content;
         }
     }
