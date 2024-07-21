@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
@@ -9,6 +9,7 @@ import { Box, Tabs, Tab, Button } from '@mui/material';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
 import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import GitForm from './GitTree';
 import '../styles.css';
 
 SyntaxHighlighter.registerLanguage('python', python);
@@ -31,8 +32,8 @@ const schema = yup.object().shape({
 
 const ProjectForm: React.FC = () => {
     const [activeTab, setActiveTab] = useState(0);
-    const [isSecondFormVisible, setIsSecondFormVisible] = useState(false);
     const [uploadedCode, setUploadedCode] = useState<string | null>(null);
+    const [triggerGitFormOpen, setTriggerGitFormOpen] = useState(false);
 
     const { control, handleSubmit, formState: { errors }, watch} = useForm<FormData>({
         resolver: yupResolver(schema),
@@ -54,14 +55,13 @@ const ProjectForm: React.FC = () => {
       };
 
     const handleNextClick = () => {
-        setIsSecondFormVisible(true);
-        setActiveTab(1);
+        if (activeTab === 0) {
+          setTriggerGitFormOpen(true)
+        }
+        setActiveTab(activeTab + 1);
     };
     
     const handleTabChange = (event: React.ChangeEvent<{}>, newValue: number) => {
-        if (newValue === 1 && !isSecondFormVisible) {
-          return;
-        }
         setActiveTab(newValue);
     };
 
@@ -80,7 +80,8 @@ const ProjectForm: React.FC = () => {
         <Box className="form-container">
             <Tabs value={activeTab} onChange={handleTabChange} aria-label="form tabs" className="form-tabs">
                 <Tab label="Project Form" />
-                <Tab label="Training Form" className={isSecondFormVisible ? '' : 'disabled-tab'} />
+                <Tab label="Git Form" className={activeTab == 1 || activeTab == 2 ? '' : 'disabled-tab'} />
+                <Tab label="Training Form" className={activeTab == 2 ? '' : 'disabled-tab'} />
             </Tabs>
             <TabPanel value={activeTab} index={0}>
                 <form className="form-section">
@@ -97,6 +98,12 @@ const ProjectForm: React.FC = () => {
                 </form>
             </TabPanel>
             <TabPanel value={activeTab} index={1}>
+              <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} triggerOpen={triggerGitFormOpen}/>
+              <Button type="button" variant="contained" color="primary" onClick={handleNextClick} style={{ float: 'right', marginTop: '10px' }}>
+                    Next
+              </Button>
+            </TabPanel>
+            <TabPanel value={activeTab} index={2}>
                 <form onSubmit={handleSubmit(onSubmit)} className="form-section">
                 <FormField name="numberOfTests" label="Number of Tests" type="number" control={control} errors={errors} />
                 <FormDropdown name="expandDatasetTo" label="Expand Dataset To" control={control} errors={errors} options={['5x', '10x', '25x', '50x', '100x']} />
