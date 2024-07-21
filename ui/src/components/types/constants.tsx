@@ -1,6 +1,7 @@
 export interface FormData {
     projectName: string;
     trainingName: string;
+    gitUrl: string;
     gitPath: string;
     gitCredentialKey: string;
     baseModelName: 'Mistarl' | 'Lama';

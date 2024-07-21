@@ -74,8 +74,8 @@ const FormsTable: React.FC = () => {
 
   const TableToolTip = () => 
     <div className="tooltip-container">
-      <h3>Status Explanation</h3>
-      <ul>
+      <h3 className="tooltip-header">Status Explanation</h3>
+      <ul className="tooltip-list">
         <li><FaPlay style={{ color: 'grey' }} /> <strong style={{ color: 'grey' }}>Initial:</strong> Creating a dedicated project-specific parser to create a dataset to train the LLM with.</li>
         <li><FaSpinner style={{ color: 'orange' }} /> <strong style={{ color: 'orange' }}>Progress:</strong> Training the LLM with the new dataset.</li>
         <li><FaCheck style={{ color: 'green' }} /> <strong style={{ color: 'green' }}>Finished:</strong> LLM fine-tuned model is ready to use.</li>

@@ -16,8 +16,9 @@ SyntaxHighlighter.registerLanguage('python', python);
 const schema = yup.object().shape({
     projectName: yup.string().required('Project Name is required'),
     trainingName: yup.string().required('Training Name is required'),
-    gitPath: yup.string().required('Git Path to Expand From is required'),
+    gitUrl: yup.string().required('Git Repo Url is required'),
     gitCredentialKey: yup.string().required('Git Credential Key is required'),
+    gitPath: yup.string().required('Git Path to Expand From is required'),
     baseModelName: yup.string().oneOf(['Mistarl', 'Lama']).required('Base Model Name is required'),
     testsCodeLanguage: yup.string().oneOf(['Python', 'Robot', 'Go', 'Jmeter']).required('Tests Code Language is required'),
     numberOfTests: yup.number().required('Number of Tests is required').positive().integer(),
@@ -78,16 +79,17 @@ const ProjectForm: React.FC = () => {
     return (
         <Box className="form-container">
             <Tabs value={activeTab} onChange={handleTabChange} aria-label="form tabs" className="form-tabs">
-                <Tab label="Initial Form" />
+                <Tab label="Project Form" />
                 <Tab label="Training Form" className={isSecondFormVisible ? '' : 'disabled-tab'} />
             </Tabs>
             <TabPanel value={activeTab} index={0}>
                 <form className="form-section">
                 <FormField name="projectName" label="Project Name" control={control} errors={errors} />
                 <FormField name="trainingName" label="Training Name" control={control} errors={errors} />
-                <FormField name="gitPath" label="Git Path to Fetch From" control={control} errors={errors} />
+                <FormField name="gitUrl" label="Git Repository Url" control={control} errors={errors} />
                 <FormField name="gitCredentialKey" label="Git Credential Key" control={control} errors={errors} />
-                <FormDropdown name="baseModelName" label="Base Model Name" control={control} errors={errors} options={['Mistarl', 'Lama']} />
+                <FormField name="gitPath" label="Git Path To Fetch From" control={control} errors={errors} />
+                <FormDropdown name="baseModelName" label="Foundational Model Name" control={control} errors={errors} options={['Mistarl', 'Lama']} />
                 <FormDropdown name="testsCodeLanguage" label="Tests Code Language" control={control} errors={errors} options={['Python', 'Robot', 'Go', 'Jmeter']} />
                 <Button type="button" variant="contained" color="primary" onClick={handleNextClick} style={{ float: 'right', marginTop: '10px' }}>
                     Next
@@ -98,7 +100,7 @@ const ProjectForm: React.FC = () => {
                 <form onSubmit={handleSubmit(onSubmit)} className="form-section">
                 <FormField name="numberOfTests" label="Number of Tests" type="number" control={control} errors={errors} />
                 <FormDropdown name="expandDatasetTo" label="Expand Dataset To" control={control} errors={errors} options={['5x', '10x', '25x', '50x', '100x']} />
-                <FormCheckbox name="datasetGradingUpgrade" label="Dataset Grading Upgrade" control={control} errors={errors} />
+                <FormCheckbox name="datasetGradingUpgrade" label="Dataset Quality Upgrade" control={control} errors={errors} />
                 <FormFileUpload name="parserFile" label="Upload Parser File" control={control} errors={errors} onFileUpload={handleFileUpload} />
                 {uploadedCode && (
                     <div className="code-visualizer">
