@@ -37,6 +37,7 @@ const ProjectForm: React.FC = () => {
     const [triggerGitFormOpen, setTriggerGitFormOpen] = useState(false);
     const [isFirstTabValid, setIsFirstTabValid] = useState(false);
     const [isSecondTabValid, setIsSecondTabValid] = useState(false);
+    const [isThirdTabValid, setIsThirdTabValid] = useState(false);
 
     // Existing state for checked items
     const [checked, setChecked] = useState<string[]>([]);
@@ -53,11 +54,23 @@ const ProjectForm: React.FC = () => {
       );
     };
 
+    const checkThirdTabValidity = (data: Array<string | null>) => {
+      const [expandDatasetTo, parserFile] = data;
+      return (
+        expandDatasetTo && parserFile
+      );
+    };
+
     const watchedFields = watch(['projectName', 'trainingName', 'gitUrl', 'gitCredentialKey', 'gitBranchName', 'baseModelName', 'testsCodeFramework']);
+    const watchedFieldsThirdTab = watch(['expandDatasetTo', 'parserFile']);
 
     useEffect(() => {
       setIsFirstTabValid(checkFirstTabValidity(watchedFields as FormData));
     }, [watchedFields]);
+
+    useEffect(() => {
+      setIsThirdTabValid(checkThirdTabValidity(watchedFieldsThirdTab as FormData));
+    }, [watchedFieldsThirdTab]);
 
     // Update the validity of the second tab when the checked items change
     useEffect(() => {
@@ -66,13 +79,11 @@ const ProjectForm: React.FC = () => {
 
     const onSubmit: SubmitHandler<FormData> = async (data) => {
         try {
-          const formData = new FormData();
-          Object.keys(data).forEach((key) => {
-            formData.append(key, (data as any)[key]);
-          });
-          await axios.post('/api/forms', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
+          const {projectName, trainingName, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, baseModelName, testsCodeFramework,
+                 numberOfTests, expandDatasetTo, datasetGradingUpgrade, parserFile} = data;
+
+          await axios.post('/api/backend/forms', {projectName, trainingName, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, baseModelName, testsCodeFramework,
+            numberOfTests, expandDatasetTo, datasetGradingUpgrade});
           console.log('Form submitted successfully:', data);
         } catch (error) {
           console.error('Error submitting form:', error);
@@ -96,6 +107,7 @@ const ProjectForm: React.FC = () => {
     };
 
     const handleFileUpload = (files: FileList | null) => {
+        setValue('parserFile', files);
         if (files && files[0]) {
           const reader = new FileReader();
           reader.onload = (e) => {
@@ -148,7 +160,7 @@ const ProjectForm: React.FC = () => {
                         </SyntaxHighlighter>
                     </div>
                 )}
-                <Button type="submit" variant="contained" color="primary" style={{ float: 'right', marginTop: '10px' }}>
+                <Button type="submit" variant="contained" color="primary" disabled={!isThirdTabValid} style={{ float: 'right', marginTop: '10px' }}>
                     Start Training
                 </Button>
                 </form>
