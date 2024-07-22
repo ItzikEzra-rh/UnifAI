@@ -2,11 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button, CircularProgress } from '@mui/material';
 import axios from '../http/axiosConfig';
 import CheckboxTree from 'react-checkbox-tree';
-import 'react-checkbox-tree/lib/react-checkbox-tree.css';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import CollapseIcon from '@mui/icons-material/Remove'; // Replace with appropriate icon
 import ExpandIcon from '@mui/icons-material/Add'; // Replace with appropriate icon
-import '../styles.css';
+import "./GitTree.css";
 
 interface PropTypes {
   gitUrl: string;
@@ -103,8 +102,13 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, triggerOpen })
 
   const getTestsTree = useCallback(() => {
     setLoading(true);
-    axios.post('/api/getTree', { gitUrl, gitCredentialKey })
-      .then(response => buildTreeWrapper(response.data.result))
+    axios.get('/api/backend/files', {
+      params: {
+        gitUrl,
+        gitCredentialKey,
+        gitFolderPath: '22.0',
+      },
+    }).then(response => buildTreeWrapper(response.data.result))
       .catch(() => setLoading(false));
   }, [gitUrl, gitCredentialKey]);
 
@@ -179,12 +183,11 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, triggerOpen })
         <CircularProgress /> :
         <>
             <TreeButtons collapse={() => setExpanded([])} expand={() => setExpanded(nodes.map((item) => item.value))} />
-            <CheckboxTree
-            nodes={nodes}
-            checked={checked}
-            expanded={expanded}
-            onCheck={(checkedItems) => setChecked(checkedItems)}
-            onExpand={(expandedItems) => setExpanded(expandedItems)}
+            <CheckboxTree nodes={nodes}
+                          checked={checked}
+                          expanded={expanded}
+                          onCheck={(checkedItems) => setChecked(checkedItems)}
+                          onExpand={(expandedItems) => setExpanded(expandedItems)}
             />
             <div className="tests-selected">{checked.length} Tests Selected</div>
         </>}
