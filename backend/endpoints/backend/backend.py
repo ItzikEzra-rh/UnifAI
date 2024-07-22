@@ -34,21 +34,24 @@ def get_test_list_from_gitlab(repo_url, repo_auth_key, repo_folder_path, branch)
 
 @backend_bp.route("/forms", methods=["POST"])
 @from_body({
-    "project_name": fields.Str(required=True, data_key="projectName"),
-    "training_name": fields.Str(required=True, data_key="trainingName"),
-    "git_url": fields.Str(required=True, data_key="gitUrl"),
-    "git_credential_key": fields.Str(required=True, data_key="gitCredentialKey"),
-    "git_folder_path": fields.Str(required=True, data_key="gitFolderPath"),
-    "git_branch_name": fields.Str(required=True, data_key="gitBranchName"),
-    "base_model_name": fields.Str(required=True, data_key="baseModelName"),
-    "tests_code_framework": fields.Str(required=True, data_key="testsCodeFramework"),
-    "number_of_tests": fields.Int(missing=None, data_key="numberOfTests"),
-    "expand_dataset_to": fields.Str(missing=None, data_key="expandDatasetTo"),
+    "project_name":            fields.Str(required=True, data_key="projectName"),
+    "training_name":           fields.Str(required=True, data_key="trainingName"),
+    "git_url":                 fields.Str(required=True, data_key="gitUrl"),
+    "git_credential_key":      fields.Str(required=True, data_key="gitCredentialKey"),
+    "git_folder_path":         fields.Str(required=True, data_key="gitFolderPath"),
+    "git_branch_name":         fields.Str(required=True, data_key="gitBranchName"),
+    "base_model_name":         fields.Str(required=True, data_key="baseModelName"),
+    "tests_code_framework":    fields.Str(required=True, data_key="testsCodeFramework"),
+    "number_of_tests":         fields.Int(missing=None, data_key="numberOfTests"),
+    "expand_dataset_to":       fields.Str(missing=None, data_key="expandDatasetTo"),
     "dataset_grading_upgrade": fields.Bool(missing=False, data_key="datasetGradingUpgrade"),
 })
 def insert_form(project_name, training_name, git_url, git_credential_key, git_folder_path, git_branch_name, base_model_name,
                 tests_code_framework, number_of_tests, expand_dataset_to, dataset_grading_upgrade):
     try:
+        # Insert form data into MongoDB collection
+        # result = forms_collection.insert_one(form_data)
+
         # Return success response with inserted id
         return jsonify({"status": "success", "inserted_id": str(result.inserted_id)}), 201
 
