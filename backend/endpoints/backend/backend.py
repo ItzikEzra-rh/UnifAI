@@ -5,7 +5,7 @@ from flask import jsonify, Response
 from webargs import fields
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
-from providers.backend import list_of_files_from_gitlab
+from providers.backend import list_of_files_from_gitlab, insert_new_form
 
 backend_bp = Blueprint("backend", __name__)
 
@@ -50,7 +50,8 @@ def insert_form(project_name, training_name, git_url, git_credential_key, git_fo
                 tests_code_framework, number_of_tests, expand_dataset_to, dataset_grading_upgrade):
     try:
         # Insert form data into MongoDB collection
-        # result = forms_collection.insert_one(form_data)
+        result = insert_new_form(project_name, training_name, git_url, git_credential_key, git_folder_path, git_branch_name, base_model_name,
+                                 tests_code_framework, number_of_tests, expand_dataset_to, dataset_grading_upgrade)
 
         # Return success response with inserted id
         return jsonify({"status": "success", "inserted_id": str(result.inserted_id)}), 201
