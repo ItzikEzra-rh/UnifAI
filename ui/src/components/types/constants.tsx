@@ -2,8 +2,9 @@ export interface FormData {
     projectName: string;
     trainingName: string;
     gitUrl: string;
-    gitPath: string;
     gitCredentialKey: string;
+    gitFolderPath: string;
+    gitBranchName: string;
     baseModelName: 'Mistarl' | 'Lama';
     testsCodeFramework: 'Python' | 'Robot' | 'Go' | 'Jmeter';
     numberOfTests: number;
@@ -15,7 +16,7 @@ export interface FormData {
 export interface TableFormData {
     projectName: string;
     trainingName: string;
-    gitPath: string;
+    gitFolderPath: string;
     gitCredentialKey: string;
     baseModelName: 'Mistarl' | 'Lama';
     testsCodeLanguage: 'Python' | 'Robot' | 'Go' | 'Jmeter';

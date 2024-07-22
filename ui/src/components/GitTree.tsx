@@ -10,7 +10,11 @@ import "./GitTree.css";
 interface PropTypes {
   gitUrl: string;
   gitCredentialKey: string;
+  gitBranchName: string;
+  gitFolderPath: string;
   triggerOpen: boolean;
+  checked: string[];
+  setChecked: (checked: string[]) => void;
 }
 
 interface TreeItem {
@@ -90,11 +94,10 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ c
     </ButtonGroup>
 );
 
-const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, triggerOpen }) => {
+const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [checked, setChecked] = useState<string[]>([]);
   const [checkedDB, setCheckedDB] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [nodes, setNodes] = useState<TreeItem[]>([]);
@@ -106,7 +109,8 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, triggerOpen })
       params: {
         gitUrl,
         gitCredentialKey,
-        gitFolderPath: '22.0',
+        gitFolderPath,
+        gitBranchName
       },
     }).then(response => buildTreeWrapper(response.data.result))
       .catch(() => setLoading(false));
