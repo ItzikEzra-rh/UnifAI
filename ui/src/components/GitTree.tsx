@@ -186,7 +186,7 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
         {loading ?
         <CircularProgress /> :
         <>
-            <TreeButtons collapse={() => setExpanded([])} expand={() => setExpanded(nodes.map((item) => item.value))} />
+            <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
             <CheckboxTree nodes={nodes}
                           checked={checked}
                           expanded={expanded}
