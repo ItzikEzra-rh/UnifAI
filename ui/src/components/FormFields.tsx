@@ -13,6 +13,7 @@ interface FormFieldProps {
     control: any;
     errors: any;
     type?: string;
+    disabled?: boolean;
 }
 
 interface FormDropdownProps {
@@ -38,13 +39,13 @@ interface FormFileUploadProps {
     onFileUpload: (files: FileList | null) => void;
 }
 
-export const FormField: React.FC<FormFieldProps> = ({ name, label, control, errors, type = 'text' }) => (
+export const FormField: React.FC<FormFieldProps> = ({ name, label, control, errors, type = 'text', disabled = false }) => (
     <div className="form-group">
         <label>{label}</label>
         <Controller
             name={name}
             control={control}
-            render={({ field }) => <TextField {...field} type={type} fullWidth error={!!errors[name]} helperText={errors[name]?.message} />}
+            render={({ field }) => <TextField {...field} type={type} fullWidth error={!!errors[name]} helperText={errors[name]?.message} disabled={disabled} />}
         />
     </div>
 );

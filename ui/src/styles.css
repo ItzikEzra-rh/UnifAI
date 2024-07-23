@@ -1,0 +1,336 @@
+body, html, #root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  font-family: Arial, sans-serif;
+}
+
+.app {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.top-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+  background-color: #fff; /* or whatever your background color is */
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+}
+
+.logo-image {
+  height: 40px; /* Adjust the size as needed */
+}
+
+.toolbar-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+/* Increase specificity by using a more specific selector */
+.top-toolbar .toolbar-buttons .custom-button {
+  border: 2px solid #fff !important; /* Thick white border */
+  color: #fff !important; /* Button text color */
+  font-weight: bold; /* Bold text */
+  padding: 5px 15px; /* Adjust padding as needed */
+}
+
+/* Apply hover effect */
+.top-toolbar .toolbar-buttons .custom-button:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important; /* Add a subtle hover effect */
+}
+
+.main-section-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+}
+
+.main-section {
+  display: flex;
+  width: 80%; /* 60% of the page */
+}
+
+.main-toolbar {
+  width: 20%; /* Adjust this based on the width of MainToolbar */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding: 20px;
+  border-right: 1px solid #ccc;
+  font-family: 'sans-serif';
+}
+
+.dropdown {
+  width: 100%;
+}
+
+.dropdown-title {
+  cursor: pointer;
+  padding: 10px 0;
+  font-weight: normal; /* Less bold */
+  display: flex;
+  align-items: center;
+}
+
+.dropdown-title .arrow {
+  width: 0; 
+  height: 0; 
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 5px solid black;
+  margin-right: 5px;
+}
+
+.dropdown-title .arrow.open {
+  border-left: none;
+  border-top: 5px solid black;
+  border-right: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+}
+
+.dropdown-title:hover {
+  color: #555;
+}
+
+.dropdown-content {
+  margin-left: 20px;
+}
+
+.dropdown-item {
+  padding: 10px 10px 10px 15px; /* Adjust padding to align text and highlight */
+  cursor: pointer;
+  position: relative;
+  left: -15px; /* Align the highlight with the parent dropdown */
+}
+
+.dropdown-item:hover {
+  color: #555;
+  text-decoration: underline; /* Underscore on hover */
+  background-color: #f1f1f1;
+}
+
+.dropdown-item.selected {
+  background-color: #e0e0e0;
+  border-left: 3px solid red;
+  padding-left: 12px; /* Adjust padding to compensate for border */
+}
+
+.main-content {
+  flex: 1;
+  padding: 20px;
+  border-left: 1px solid #ccc;
+  background-color: #f9f9f9;
+}
+
+.bottom-right-image {
+  /* position: absolute; */
+  bottom: 0;
+  right: 0;
+  /* max-width: 150px; /* Adjust size as needed */
+  /* max-height: 150px; /* Adjust size as needed */
+}
+
+.form-container {
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  background-color: #f9f9f9;
+  border-radius: 5px;
+  width: 60%;
+  margin: 0 auto;
+}
+
+.form-tabs {
+  margin-bottom: 20px;
+  background-color: #ffffff;
+  border-radius: 5px;
+}
+
+.form-tabs .MuiTab-root {
+  font-weight: bold;
+  text-transform: none;
+}
+
+.form-tabs .MuiTab-textColorPrimary.Mui-selected {
+  color: #2e78c7;
+}
+
+.form-tabs .MuiTabs-indicator {
+  background-color: #2e78c7;
+}
+
+.form-section {
+  background-color: white;
+  padding: 20px;
+  margin-top: 20px;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  transition: opacity 0.3s ease;
+}
+
+.form-section.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: bold;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+}
+
+.button-container {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.disabled-tab {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.error {
+  color: red;
+  font-size: 0.9em;
+}
+
+.button-group {
+  text-align: right;
+}
+
+.submit-button {
+  background-color: #4CAF50;
+  color: white;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.submit-button:hover {
+  background-color: #45a049;
+}
+
+/* Forms Table Styles */
+.table-container {
+  margin: 20px;
+}
+
+.forms-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.forms-table th,
+.forms-table td {
+  padding: 10px;
+  border: 1px solid #ddd;
+  text-align: left;
+}
+
+.forms-table th {
+  background-color: #e0e0e0;
+  cursor: pointer;
+}
+
+.forms-table th:hover {
+  background-color: #e0e0e0;
+}
+
+.forms-table tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.forms-table tr:hover {
+  background-color: #f1f1f1;
+}
+
+.table-cell {
+  position: relative;
+}
+
+.tooltip-container {
+  margin-top: 20px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  font-family: 'Arial', sans-serif;
+  position: relative;
+}
+
+.tooltip-container h3 {
+  margin-top: 0;
+}
+
+.tooltip-container ul {
+  list-style-type: none;
+  padding-left: 0;
+}
+
+.tooltip-container li {
+  margin-bottom: 5px;
+  display: flex;
+  align-items: center;
+}
+
+.tooltip-container li svg {
+  margin-right: 5px;
+}
+
+.tooltip-header {
+  font-size: 14px;
+  font-weight: bold;
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+.tooltip-list {
+  list-style-type: none;
+  padding: 0;
+  margin-top: 0;
+  font-size: 12px;
+}
+
+.tooltip-list li {
+  margin: 5px 0;
+}
+
+.code-visualizer {
+  display: grid;
+  width: 100%;
+  overflow-x: auto;
+  background-color: #f5f5f5; /* You can change this to match your design */
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+.project-name {
+  font-weight: bold;
+}
+
+.project-name.NCS {
+  color: lightcoral; /* Example color for project name 'X' */
+}
+
+.project-name.CBIS {
+  color: lightblue; /* Example color for project name 'X' */
+}

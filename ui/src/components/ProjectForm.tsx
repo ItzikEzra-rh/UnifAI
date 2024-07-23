@@ -19,9 +19,10 @@ const schema = yup.object().shape({
     trainingName: yup.string().required('Training Name is required'),
     gitUrl: yup.string().required('Git Repo Url is required'),
     gitCredentialKey: yup.string().required('Git Credential Key is required'),
-    gitPath: yup.string().required('Git Path to Expand From is required'),
+    gitBranchName: yup.string().required('Git Branch Name is required'),
+    gitFolderPath: yup.string().required('Git Path to Expand From is required'),
     baseModelName: yup.string().oneOf(['Mistarl', 'Lama']).required('Base Model Name is required'),
-    testsCodeLanguage: yup.string().oneOf(['Python', 'Robot', 'Go', 'Jmeter']).required('Tests Code Language is required'),
+    testsCodeFramework: yup.string().oneOf(['Python', 'Robot', 'Go', 'Jmeter']).required('Tests Code Language is required'),
     numberOfTests: yup.number().required('Number of Tests is required').positive().integer(),
     expandDatasetTo: yup.string().oneOf(['5x', '10x', '25x', '50x', '100x']).required('Expand Dataset To is required'),
     datasetGradingUpgrade: yup.boolean(),
@@ -34,20 +35,55 @@ const ProjectForm: React.FC = () => {
     const [activeTab, setActiveTab] = useState(0);
     const [uploadedCode, setUploadedCode] = useState<string | null>(null);
     const [triggerGitFormOpen, setTriggerGitFormOpen] = useState(false);
+    const [isFirstTabValid, setIsFirstTabValid] = useState(false);
+    const [isSecondTabValid, setIsSecondTabValid] = useState(false);
+    const [isThirdTabValid, setIsThirdTabValid] = useState(false);
 
-    const { control, handleSubmit, formState: { errors }, watch} = useForm<FormData>({
+    // Existing state for checked items
+    const [checked, setChecked] = useState<string[]>([]);
+
+    const { control, handleSubmit, formState: { errors }, watch, setValue} = useForm<FormData>({
         resolver: yupResolver(schema),
+        mode: 'onChange' // This will validate the form on every change,
     });
+
+    const checkFirstTabValidity = (data: Array<string | null>) => {
+      const [projectName, trainingName, gitUrl, gitCredentialKey, gitBranchName, baseModelName, testsCodeFramework] = data;
+      return (
+        projectName && trainingName && gitUrl && gitCredentialKey && gitBranchName && baseModelName && testsCodeFramework
+      );
+    };
+
+    const checkThirdTabValidity = (data: Array<string | null>) => {
+      const [expandDatasetTo, parserFile] = data;
+      return (
+        expandDatasetTo && parserFile
+      );
+    };
+
+    const watchedFields = watch(['projectName', 'trainingName', 'gitUrl', 'gitCredentialKey', 'gitBranchName', 'baseModelName', 'testsCodeFramework']);
+    const watchedFieldsThirdTab = watch(['expandDatasetTo', 'parserFile']);
+
+    useEffect(() => {
+      setIsFirstTabValid(checkFirstTabValidity(watchedFields as FormData));
+    }, [watchedFields]);
+
+    useEffect(() => {
+      setIsThirdTabValid(checkThirdTabValidity(watchedFieldsThirdTab as FormData));
+    }, [watchedFieldsThirdTab]);
+
+    // Update the validity of the second tab when the checked items change
+    useEffect(() => {
+      setIsSecondTabValid(checked.length > 0);
+    }, [checked]);
 
     const onSubmit: SubmitHandler<FormData> = async (data) => {
         try {
-          const formData = new FormData();
-          Object.keys(data).forEach((key) => {
-            formData.append(key, (data as any)[key]);
-          });
-          await axios.post('/api/forms', formData, {
-            headers: { 'Content-Type': 'multipart/form-data' },
-          });
+          const {projectName, trainingName, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, baseModelName, testsCodeFramework,
+                 numberOfTests, expandDatasetTo, datasetGradingUpgrade, parserFile} = data;
+
+          await axios.post('/api/backend/forms', {projectName, trainingName, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, baseModelName, testsCodeFramework,
+            numberOfTests, expandDatasetTo, datasetGradingUpgrade});
           console.log('Form submitted successfully:', data);
         } catch (error) {
           console.error('Error submitting form:', error);
@@ -58,6 +94,11 @@ const ProjectForm: React.FC = () => {
         if (activeTab === 0) {
           setTriggerGitFormOpen(true)
         }
+
+        if (activeTab === 1) {
+          setValue('numberOfTests', checked.length);
+        }
+        
         setActiveTab(activeTab + 1);
     };
     
@@ -66,6 +107,7 @@ const ProjectForm: React.FC = () => {
     };
 
     const handleFileUpload = (files: FileList | null) => {
+        setValue('parserFile', files);
         if (files && files[0]) {
           const reader = new FileReader();
           reader.onload = (e) => {
@@ -89,23 +131,25 @@ const ProjectForm: React.FC = () => {
                 <FormField name="trainingName" label="Training Name" control={control} errors={errors} />
                 <FormField name="gitUrl" label="Git Repository Url" control={control} errors={errors} />
                 <FormField name="gitCredentialKey" label="Git Credential Key" control={control} errors={errors} />
-                <FormField name="gitPath" label="Git Path To Fetch From" control={control} errors={errors} />
+                <FormField name="gitBranchName" label="Git Branch Name" control={control} errors={errors} />
+                <FormField name="gitFolderPath" label="Git Path To Fetch From" control={control} errors={errors} />
                 <FormDropdown name="baseModelName" label="Foundational Model Name" control={control} errors={errors} options={['Mistarl', 'Lama']} />
-                <FormDropdown name="testsCodeLanguage" label="Tests Code Language" control={control} errors={errors} options={['Python', 'Robot', 'Go', 'Jmeter']} />
-                <Button type="button" variant="contained" color="primary" onClick={handleNextClick} style={{ float: 'right', marginTop: '10px' }}>
+                <FormDropdown name="testsCodeFramework" label="Tests Code Framework" control={control} errors={errors} options={['Python', 'Robot', 'Go', 'Jmeter']} />
+                <Button type="button" variant="contained" color="primary" onClick={handleNextClick} disabled={!isFirstTabValid} style={{ float: 'right', marginTop: '10px' }}>
                     Next
                 </Button>
                 </form>
             </TabPanel>
             <TabPanel value={activeTab} index={1}>
-              <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} triggerOpen={triggerGitFormOpen}/>
-              <Button type="button" variant="contained" color="primary" onClick={handleNextClick} style={{ float: 'right', marginTop: '10px' }}>
+              <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath')} 
+                      triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked}/>
+              <Button type="button" variant="contained" color="primary" onClick={handleNextClick} disabled={!isSecondTabValid} style={{ float: 'right', marginTop: '10px' }}>
                     Next
               </Button>
             </TabPanel>
             <TabPanel value={activeTab} index={2}>
                 <form onSubmit={handleSubmit(onSubmit)} className="form-section">
-                <FormField name="numberOfTests" label="Number of Tests" type="number" control={control} errors={errors} />
+                <FormField name="numberOfTests" label="Number of Tests" type="number" control={control} errors={errors} disabled={true} />
                 <FormDropdown name="expandDatasetTo" label="Expand Dataset To" control={control} errors={errors} options={['5x', '10x', '25x', '50x', '100x']} />
                 <FormCheckbox name="datasetGradingUpgrade" label="Dataset Quality Upgrade" control={control} errors={errors} />
                 <FormFileUpload name="parserFile" label="Upload Parser File" control={control} errors={errors} onFileUpload={handleFileUpload} />
@@ -116,7 +160,7 @@ const ProjectForm: React.FC = () => {
                         </SyntaxHighlighter>
                     </div>
                 )}
-                <Button type="submit" variant="contained" color="primary" style={{ float: 'right', marginTop: '10px' }}>
+                <Button type="submit" variant="contained" color="primary" disabled={!isThirdTabValid} style={{ float: 'right', marginTop: '10px' }}>
                     Start Training
                 </Button>
                 </form>
