@@ -1,9 +1,12 @@
+import json
 import os
 import subprocess
 from flask import Flask, request, jsonify
 from abc import ABC, abstractmethod
 from unsloth import FastLanguageModel
 from transformers import TextStreamer
+from pathlib import Path
+from be_utils.utils import find_latest_checkpoint
 
 app = Flask(__name__)
 
@@ -11,15 +14,32 @@ app = Flask(__name__)
 model_loader = None
 
 
+class ModelLoaderFactory:
+    @staticmethod
+    def create_model_loader(model_id, model_type, model_name, context_length, project):
+        if model_type == 'foundational':
+            return FoundationalModelLoader(model_id=model_id, model_name=model_name, max_seq_length=context_length,
+                                           project=project)
+        elif model_type == 'checkpoint':
+            return CheckpointModelLoader(model_id=model_id, model_name=model_name, max_seq_length=context_length,
+                                         project=project)
+        elif model_type == 'finetuned':
+            return FineTunedModelLoader(model_id=model_id, model_name=model_name, max_seq_length=context_length,
+                                        project=project)
+        else:
+            raise ValueError("Invalid model type")
+
+
 class BaseModelLoader(ABC):
-    def __init__(self, model_name=None, checkpoint_dir=None, max_seq_length=8192, dtype=None, load_in_4bit=True):
+    def __init__(self, model_id, model_name=None, max_seq_length=8192, dtype=None, load_in_4bit=True, project=''):
         self.model_name = model_name
-        self.checkpoint_dir = checkpoint_dir
         self.max_seq_length = max_seq_length
         self.dtype = dtype
         self.load_in_4bit = load_in_4bit
         self.model = None
         self.tokenizer = None
+        self.model_id = model_id
+        self.project = project
 
     @abstractmethod
     def load_model(self):
@@ -28,12 +48,15 @@ class BaseModelLoader(ABC):
     def infer(self, prompt, max_new_tokens=8192):
         if self.model is None or self.tokenizer is None:
             raise ValueError("Model and tokenizer must be loaded before inference.")
-        # EOS_TOKEN = self.tokenizer.eos_token
         FastLanguageModel.for_inference(self.model)
         inputs = self.tokenizer([prompt], return_tensors="pt").to("cuda")
         text_streamer = TextStreamer(self.tokenizer)
-        output = self.model.generate(**inputs, streamer=text_streamer, max_new_tokens=max_new_tokens)
-        return output
+
+        def generate_stream():
+            for output in self.model.generate(**inputs, streamer=text_streamer, max_new_tokens=max_new_tokens):
+                yield output
+
+        return generate_stream()
 
     def clean_model(self):
         if self.model is not None:
@@ -43,6 +66,19 @@ class BaseModelLoader(ABC):
             self.tokenizer = None
             subprocess.run(["sudo", "fuser", "-v", "/dev/nvidia*"], check=True)
             subprocess.run(["sudo", "pkill", "-9", "python"], check=True)
+
+    def info(self):
+        return json.dumps({
+            'model_name': self.model_name,
+            'max_seq_length': self.max_seq_length,
+            'dtype': self.dtype,
+            'load_in_4bit': self.load_in_4bit,
+            'model_id': self.model_id,
+            'project': self.project
+        })
+
+    def __str__(self):
+        return str(self.info())
 
 
 class FoundationalModelLoader(BaseModelLoader):
@@ -60,19 +96,35 @@ class FoundationalModelLoader(BaseModelLoader):
 
 class CheckpointModelLoader(BaseModelLoader):
     def load_model(self):
-        if not os.path.exists(self.checkpoint_dir):
-            raise ValueError(f"Checkpoint directory {self.checkpoint_dir} does not exist")
+        model_dir = Path('/opt') / self.model.model_id
+        if not os.path.exists(model_dir):
+            raise ValueError(f"model directory {model_dir} does not exist")
+        checkpoint_dir = find_latest_checkpoint(model_dir)
+        if not checkpoint_dir:
+            raise ValueError(f"Checkpoint directory does not exist in {model_dir}")
         try:
-            self.model, self.tokenizer = FastLanguageModel.from_pretrained(self.checkpoint_dir)
+            self.model, self.tokenizer = FastLanguageModel.from_pretrained(str(checkpoint_dir))
         except Exception as e:
             raise RuntimeError(f"Failed to load model from checkpoint: {e}")
 
 
 class FineTunedModelLoader(BaseModelLoader):
     def load_model(self):
+        model_dir = Path('/opt') / self.model.model_id
+        if not os.path.exists(model_dir):
+            raise ValueError(f"model directory {model_dir} does not exist")
+        model_output_dir = None
+        if model_dir.exists() and model_dir.is_dir():
+            # List the directories inside the base path
+            subdirs = [d for d in model_dir.iterdir() if d.is_dir()]
+            # If there is only one directory, retrieve its path
+            if len(subdirs) == 1:
+                model_output_dir = subdirs[0]
+        if not model_output_dir:
+            raise ValueError(f"there is no output dir for this model")
         try:
             self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-                model_name=self.model_name,
+                model_name=str(model_output_dir),
                 max_seq_length=self.max_seq_length,
                 dtype=self.dtype,
                 load_in_4bit=self.load_in_4bit,

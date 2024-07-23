@@ -547,3 +547,18 @@ def is_subpath(child_path, parent_path):
     parent_components = abs_parent_path.split(os.sep)
     # Check if the child path components start with the parent path components
     return child_components[:len(parent_components)] == parent_components
+
+
+def find_latest_checkpoint(output_dir):
+    # List all checkpoint directories
+    checkpoints = [d for d in os.listdir(output_dir) if d.startswith('checkpoint-')]
+
+    # If there are no checkpoints, return None
+    if not checkpoints:
+        return ""
+
+    # Sort checkpoints by their number (assumes the format 'checkpoint-<number>')
+    checkpoints = sorted(checkpoints, key=lambda x: int(x.split('-')[1]), reverse=True)
+
+    # Return the path to the latest checkpoint
+    return os.path.join(output_dir, checkpoints[0])

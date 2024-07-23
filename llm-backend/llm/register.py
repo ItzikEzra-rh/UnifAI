@@ -10,7 +10,7 @@ class RegisterModel:
         if model_type not in ['finetuned', 'checkpoint', 'foundational']:
             raise ValueError("Invalid model type. Must be 'finetuned', 'checkpoint', or 'foundational'.")
 
-        if self.model_exists(model_name, project):
+        if self.model_exists(model_name, project, context_length, model_type):
             return f"Model '{model_name}' for project '{project}' already exists."
 
         model_data = {
@@ -40,5 +40,6 @@ class RegisterModel:
         models = [{**model, '_id': str(model['_id'])} for model in models]
         return models
 
-    def model_exists(self, model_name, project):
-        return self.collection.find_one({"model_name": model_name, "project": project}) is not None
+    def model_exists(self, model_name, project, context_length, model_type):
+        return self.collection.find_one({"model_name": model_name, "project": project, "context_length": context_length,
+                                         "model_type": model_type}) is not None
