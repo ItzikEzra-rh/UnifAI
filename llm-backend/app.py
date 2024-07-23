@@ -9,8 +9,8 @@ import os
 # Init FLASK
 app = Flask(__name__)
 init_flask_logger('access.log')
-app.config['result_backend'] = config_params.MONGODB_URL
-app.config['MONGO_URI'] = os.path.join(config_params.MONGODB_URL, config_params.MONGODB_BACKEND_COLLECTION)
+# app.config['result_backend'] = config_params.MONGODB_URL
+# app.config['MONGO_URI'] = os.path.join(config_params.MONGODB_URL, config_params.MONGODB_BACKEND_COLLECTION)
 
 app.db = register_mongo(app)
 

@@ -39,3 +39,4 @@ def register_mongo(app):
 
 def as_object_id(doc_id):
     return doc_id if isinstance(doc_id, ObjectId) else ObjectId(doc_id)
+
