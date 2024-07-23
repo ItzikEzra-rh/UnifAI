@@ -31,7 +31,16 @@ const MainContent: React.FC<MainContentProps> = ({ content }) => {
             Our goal with the proof of concept (POC) is to enable users with basic knowledge of robot to request the generation of new test cases (TCs)
             from the language model (LLM) and receive high quality results. The generated tests will adhere to the same conventions as the existing tests in the project.
           </p>
-          <img src={AIPicture} alt="AILogo" className="bottom-right-image" />
+          <div style={{ margin: '50px auto', width: '80%' }}>
+            <iframe
+              src="https://docs.google.com/presentation/d/e/2PACX-1vSk0sFE-y0og_QYcTgLP4jjPl51H07UGQb170mFjvKb32A0FMBOUctGykFEFM8RZuNORQpxFv5FK4e-/embed?start=false&loop=false&delayms=3000"
+              frameBorder="0"
+              width="100%"
+              height="480"
+              allowFullScreen
+              title="TAG Presentation"
+            ></iframe>
+          </div>
         </div>
       );
     } 
