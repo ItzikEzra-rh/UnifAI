@@ -18,8 +18,8 @@ interface PropTypes {
 }
 
 interface TreeItem {
-  children: TreeItem[] | null;
-  disabled: boolean | null;
+  children: TreeItem[];
+  disabled: boolean;
   label: string;
   path: string;
   value: string;
@@ -43,7 +43,7 @@ export function stringContainsSpace(item: string) {
  * @param dbList
  */
 export function buildTree (paths: string[][], previousPath: string[] | string, dbList: {[key: string]: boolean}) {
-    const items = [];
+    const items: any[] = [];
     paths.forEach(path => {
         const name = path[0];
         const value = path[0];

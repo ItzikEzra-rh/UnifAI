@@ -8,7 +8,7 @@ interface TabPanelProps {
 }
 
 interface FormFieldProps {
-    name: keyof FormData;
+    name: string;
     label: string;
     control: any;
     errors: any;
@@ -17,7 +17,7 @@ interface FormFieldProps {
 }
 
 interface FormDropdownProps {
-    name: keyof FormData;
+    name: string;
     label: string;
     control: any;
     errors: any;
@@ -25,14 +25,14 @@ interface FormDropdownProps {
 }
 
 interface FormCheckboxProps {
-    name: keyof FormData;
+    name: string;
     label: string;
     control: any;
     errors: any;
 }    
 
 interface FormFileUploadProps {
-    name: keyof FormData;
+    name: string;
     label: string;
     control: any;
     errors: any;
