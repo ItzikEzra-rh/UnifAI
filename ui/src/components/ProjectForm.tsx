@@ -10,6 +10,7 @@ import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
 import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import GitForm from './GitTree';
+import SuccessMessage from './SuccessMessage'
 import '../styles.css';
 
 SyntaxHighlighter.registerLanguage('python', python);
@@ -38,6 +39,7 @@ const ProjectForm: React.FC = () => {
     const [isFirstTabValid, setIsFirstTabValid] = useState(false);
     const [isSecondTabValid, setIsSecondTabValid] = useState(false);
     const [isThirdTabValid, setIsThirdTabValid] = useState(false);
+    const [formSubmitted, setFormSubmitted] = useState(false);
 
     // Existing state for checked items
     const [checked, setChecked] = useState<string[]>([]);
@@ -84,6 +86,7 @@ const ProjectForm: React.FC = () => {
 
           await axios.post('/api/backend/forms', {projectName, trainingName, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, baseModelName, testsCodeFramework,
             numberOfTests, expandDatasetTo, datasetGradingUpgrade});
+          setFormSubmitted(true); // Set the state to true upon successful form submission
           console.log('Form submitted successfully:', data);
         } catch (error) {
           console.error('Error submitting form:', error);
@@ -120,51 +123,54 @@ const ProjectForm: React.FC = () => {
 
     return (
         <Box className="form-container">
-            <Tabs value={activeTab} onChange={handleTabChange} aria-label="form tabs" className="form-tabs">
-                <Tab label="Project Form" />
-                <Tab label="Git Form" className={activeTab == 1 || activeTab == 2 ? '' : 'disabled-tab'} />
-                <Tab label="Training Form" className={activeTab == 2 ? '' : 'disabled-tab'} />
-            </Tabs>
-            <TabPanel value={activeTab} index={0}>
-                <form className="form-section">
-                <FormField name="projectName" label="Project Name" control={control} errors={errors} />
-                <FormField name="trainingName" label="Training Name" control={control} errors={errors} />
-                <FormField name="gitUrl" label="Git Repository Url" control={control} errors={errors} />
-                <FormField name="gitCredentialKey" label="Git Credential Key" control={control} errors={errors} />
-                <FormField name="gitBranchName" label="Git Branch Name" control={control} errors={errors} />
-                <FormField name="gitFolderPath" label="Git Path To Fetch From" control={control} errors={errors} />
-                <FormDropdown name="baseModelName" label="Foundational Model Name" control={control} errors={errors} options={['Mistarl', 'Lama']} />
-                <FormDropdown name="testsCodeFramework" label="Tests Code Framework" control={control} errors={errors} options={['Python', 'Robot', 'Go', 'Jmeter']} />
-                <Button type="button" variant="contained" color="primary" onClick={handleNextClick} disabled={!isFirstTabValid} style={{ float: 'right', marginTop: '10px' }}>
-                    Next
-                </Button>
-                </form>
-            </TabPanel>
-            <TabPanel value={activeTab} index={1}>
-              <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath')} 
-                      triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked}/>
-              <Button type="button" variant="contained" color="primary" onClick={handleNextClick} disabled={!isSecondTabValid} style={{ float: 'right', marginTop: '10px' }}>
-                    Next
-              </Button>
-            </TabPanel>
-            <TabPanel value={activeTab} index={2}>
-                <form onSubmit={handleSubmit(onSubmit)} className="form-section">
-                <FormField name="numberOfTests" label="Number of Tests" type="number" control={control} errors={errors} disabled={true} />
-                <FormDropdown name="expandDatasetTo" label="Expand Dataset To" control={control} errors={errors} options={['5x', '10x', '25x', '50x', '100x']} />
-                <FormCheckbox name="datasetGradingUpgrade" label="Dataset Quality Upgrade" control={control} errors={errors} />
-                <FormFileUpload name="parserFile" label="Upload Parser File" control={control} errors={errors} onFileUpload={handleFileUpload} />
-                {uploadedCode && (
-                    <div className="code-visualizer">
-                        <SyntaxHighlighter language="python" style={github}>
-                            {uploadedCode}
-                        </SyntaxHighlighter>
-                    </div>
-                )}
-                <Button type="submit" variant="contained" color="primary" disabled={!isThirdTabValid} style={{ float: 'right', marginTop: '10px' }}>
-                    Start Training
-                </Button>
-                </form>
-            </TabPanel>
+          {formSubmitted ? (<SuccessMessage />) : (
+            <>
+                <Tabs value={activeTab} onChange={handleTabChange} aria-label="form tabs" className="form-tabs">
+                    <Tab label="Project Form" />
+                    <Tab label="Git Form" className={activeTab == 1 || activeTab == 2 ? '' : 'disabled-tab'} />
+                    <Tab label="Training Form" className={activeTab == 2 ? '' : 'disabled-tab'} />
+                </Tabs>
+                <TabPanel value={activeTab} index={0}>
+                    <form className="form-section">
+                    <FormField name="projectName" label="Project Name" control={control} errors={errors} />
+                    <FormField name="trainingName" label="Training Name" control={control} errors={errors} />
+                    <FormField name="gitUrl" label="Git Repository Url" control={control} errors={errors} />
+                    <FormField name="gitCredentialKey" label="Git Credential Key" control={control} errors={errors} />
+                    <FormField name="gitBranchName" label="Git Branch Name" control={control} errors={errors} />
+                    <FormField name="gitFolderPath" label="Git Path To Fetch From" control={control} errors={errors} />
+                    <FormDropdown name="baseModelName" label="Foundational Model Name" control={control} errors={errors} options={['Mistarl', 'Lama']} />
+                    <FormDropdown name="testsCodeFramework" label="Tests Code Framework" control={control} errors={errors} options={['Python', 'Robot', 'Go', 'Jmeter']} />
+                    <Button type="button" variant="contained" color="primary" onClick={handleNextClick} disabled={!isFirstTabValid} style={{ float: 'right', marginTop: '10px' }}>
+                        Next
+                    </Button>
+                    </form>
+                </TabPanel>
+                <TabPanel value={activeTab} index={1}>
+                  <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath')} 
+                          triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked}/>
+                  <Button type="button" variant="contained" color="primary" onClick={handleNextClick} disabled={!isSecondTabValid} style={{ float: 'right', marginTop: '10px' }}>
+                        Next
+                  </Button>
+                </TabPanel>
+                <TabPanel value={activeTab} index={2}>
+                    <form onSubmit={handleSubmit(onSubmit)} className="form-section">
+                    <FormField name="numberOfTests" label="Number of Tests" type="number" control={control} errors={errors} disabled={true} />
+                    <FormDropdown name="expandDatasetTo" label="Expand Dataset To" control={control} errors={errors} options={['5x', '10x', '25x', '50x', '100x']} />
+                    <FormCheckbox name="datasetGradingUpgrade" label="Dataset Quality Upgrade" control={control} errors={errors} />
+                    <FormFileUpload name="parserFile" label="Upload Parser File" control={control} errors={errors} onFileUpload={handleFileUpload} />
+                    {uploadedCode && (
+                        <div className="code-visualizer">
+                            <SyntaxHighlighter language="python" style={github}>
+                                {uploadedCode}
+                            </SyntaxHighlighter>
+                        </div>
+                    )}
+                    <Button type="submit" variant="contained" color="primary" disabled={!isThirdTabValid} style={{ float: 'right', marginTop: '10px' }}>
+                        Start Training
+                    </Button>
+                    </form>
+                </TabPanel>
+            </>)}
         </Box>
       );
 };
