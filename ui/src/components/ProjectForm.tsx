@@ -21,15 +21,22 @@ const schema = yup.object().shape({
     gitUrl: yup.string().required('Git Repo Url is required'),
     gitCredentialKey: yup.string().required('Git Credential Key is required'),
     gitBranchName: yup.string().required('Git Branch Name is required'),
-    gitFolderPath: yup.string().required('Git Path to Expand From is required'),
+    gitFolderPath: yup.string(),
+    // gitFolderPath: yup.string().required('Git Path to Expand From is required'),
     baseModelName: yup.string().oneOf(['Mistarl', 'Lama']).required('Base Model Name is required'),
     testsCodeFramework: yup.string().oneOf(['Python', 'Robot', 'Go', 'Jmeter']).required('Tests Code Language is required'),
     numberOfTests: yup.number().required('Number of Tests is required').positive().integer(),
     expandDatasetTo: yup.string().oneOf(['5x', '10x', '25x', '50x', '100x']).required('Expand Dataset To is required'),
     datasetGradingUpgrade: yup.boolean(),
-    parserFile: yup.mixed().test('fileType', 'Only .py files are accepted', (value) => {
-        return value && value[0] && value[0].name.endsWith('.py');
-      }).required('Parser File is required'),
+    // datasetGradingUpgrade: yup.boolean().required('Dataset Grading Upgrade is required'),
+    parserFile: yup.mixed<FileList>().test('fileType', 'Only .py files are accepted', (value: FileList  | undefined) => {
+      // Check if value is not null and is an instance of File
+      if (value && value.length > 0) {
+        // Check if the first file ends with .py
+        return value[0].name.endsWith('.py');
+      }
+      return false;
+    }).required('Parser File is required'),
 });
 
 const ProjectForm: React.FC = () => {
@@ -49,17 +56,17 @@ const ProjectForm: React.FC = () => {
         mode: 'onChange' // This will validate the form on every change,
     });
 
-    const checkFirstTabValidity = (data: Array<string | null>) => {
+    const checkFirstTabValidity = (data: Array<string | null>): boolean => {
       const [projectName, trainingName, gitUrl, gitCredentialKey, gitBranchName, baseModelName, testsCodeFramework] = data;
       return (
-        projectName && trainingName && gitUrl && gitCredentialKey && gitBranchName && baseModelName && testsCodeFramework
+        !!projectName && !!trainingName && !!gitUrl && !!gitCredentialKey && !!gitBranchName && !!baseModelName && !!testsCodeFramework
       );
     };
 
-    const checkThirdTabValidity = (data: Array<string | null>) => {
+    const checkThirdTabValidity = (data: Array<string | FileList | null>): boolean => {
       const [expandDatasetTo, parserFile] = data;
       return (
-        expandDatasetTo && parserFile
+        !!expandDatasetTo && !!parserFile
       );
     };
 
@@ -67,11 +74,13 @@ const ProjectForm: React.FC = () => {
     const watchedFieldsThirdTab = watch(['expandDatasetTo', 'parserFile']);
 
     useEffect(() => {
-      setIsFirstTabValid(checkFirstTabValidity(watchedFields as FormData));
+      const [projectName, trainingName, gitUrl, gitCredentialKey, gitBranchName, baseModelName, testsCodeFramework] = watchedFields;
+      setIsFirstTabValid(checkFirstTabValidity([projectName, trainingName, gitUrl, gitCredentialKey, gitBranchName, baseModelName, testsCodeFramework]));
     }, [watchedFields]);
 
     useEffect(() => {
-      setIsThirdTabValid(checkThirdTabValidity(watchedFieldsThirdTab as FormData));
+      const [expandDatasetTo, parserFile] = watchedFieldsThirdTab;
+      setIsThirdTabValid(checkThirdTabValidity([expandDatasetTo, parserFile]));
     }, [watchedFieldsThirdTab]);
 
     // Update the validity of the second tab when the checked items change
@@ -110,6 +119,7 @@ const ProjectForm: React.FC = () => {
     };
 
     const handleFileUpload = (files: FileList | null) => {
+      if (files && files.length > 0) {
         setValue('parserFile', files);
         if (files && files[0]) {
           const reader = new FileReader();
@@ -119,6 +129,7 @@ const ProjectForm: React.FC = () => {
           };
           reader.readAsText(files[0]);
         }
+      }
     };
 
     return (
@@ -146,7 +157,7 @@ const ProjectForm: React.FC = () => {
                     </form>
                 </TabPanel>
                 <TabPanel value={activeTab} index={1}>
-                  <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath')} 
+                  <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath') || ''} 
                           triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked}/>
                   <Button type="button" variant="contained" color="primary" onClick={handleNextClick} disabled={!isSecondTabValid} style={{ float: 'right', marginTop: '10px' }}>
                         Next

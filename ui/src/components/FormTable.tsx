@@ -10,11 +10,11 @@ const FormsTable: React.FC = () => {
 
   useEffect(() => {
     const fetchData = async () => {
-      const initalData = [
-        {projectName: 'NCS', trainingName: 'NCS-24', gitPath: 'https://gitlab.ncs', gitCredentialKey: 'UNKNOWN', baseModelName: 'Lama', testsCodeFramework: 'Robot', status: 'Initial', progress: '0%'},
-        {projectName: 'CBIS', trainingName: 'CBIS-24', gitPath: 'https://gitlab.cbis', gitCredentialKey: 'UNKNOWN', baseModelName: 'Mistarl', testsCodeFramework: 'Robot', status: 'Progress', progress: '50%'},
-        {projectName: 'NCS', trainingName: 'NCS-24-1', gitPath: 'https://gitlab.ncs', gitCredentialKey: 'UNKNOWN', baseModelName: 'Lama', testsCodeFramework: 'Robot', status: 'Progress', progress: '75%'},
-        {projectName: 'NCS', trainingName: 'NCS-24-2', gitPath: 'https://gitlab.ncs', gitCredentialKey: 'UNKNOWN', baseModelName: 'Lama', testsCodeFramework: 'Robot', status: 'Finished', progress: '100%'}
+      const initalData : TableFormData[] = [
+        {projectName: 'NCS', trainingName: 'NCS-24', gitUrl: 'https://gitlab.ncs', gitCredentialKey: 'UNKNOWN', baseModelName: 'Lama', testsCodeFramework: 'Robot', status: 'Initial', progress: '0%'},
+        {projectName: 'CBIS', trainingName: 'CBIS-24', gitUrl: 'https://gitlab.cbis', gitCredentialKey: 'UNKNOWN', baseModelName: 'Mistarl', testsCodeFramework: 'Robot', status: 'Progress', progress: '50%'},
+        {projectName: 'NCS', trainingName: 'NCS-24-1', gitUrl: 'https://gitlab.ncs', gitCredentialKey: 'UNKNOWN', baseModelName: 'Lama', testsCodeFramework: 'Robot', status: 'Progress', progress: '75%'},
+        {projectName: 'NCS', trainingName: 'NCS-24-2', gitUrl: 'https://gitlab.ncs', gitCredentialKey: 'UNKNOWN', baseModelName: 'Lama', testsCodeFramework: 'Robot', status: 'Finished', progress: '100%'}
       ]
       setData(initalData)
       // try {
@@ -46,7 +46,7 @@ const FormsTable: React.FC = () => {
     }
   };
 
-  const columns: Column<FormData>[] = React.useMemo(
+  const columns: Column<TableFormData>[] = React.useMemo(
     () => [
       { Header: 'Project Name', accessor: 'projectName', Cell: ({ row }: any) => (
           <span className={`project-name ${row.values.projectName}`}>
@@ -55,7 +55,7 @@ const FormsTable: React.FC = () => {
         )
       },
       { Header: 'Training Name', accessor: 'trainingName' },
-      { Header: 'Git Path to Expand From', accessor: 'gitPath' },
+      { Header: 'Git Repository Url', accessor: 'gitUrl' },
       { Header: 'Git Credential Key', accessor: 'gitCredentialKey' },
       { Header: 'Base Model Name', accessor: 'baseModelName' },
       { Header: 'Tests Code Framework', accessor: 'testsCodeFramework' },
@@ -69,8 +69,6 @@ const FormsTable: React.FC = () => {
     ],
     []
   );
-
-  const tableInstance = useTable({ columns, data }, useSortBy);
 
   const TableToolTip = () => 
     <div className="tooltip-container">
@@ -89,7 +87,7 @@ const FormsTable: React.FC = () => {
     headerGroups,
     rows,
     prepareRow,
-  } = tableInstance;
+  } = useTable({ columns, data }, useSortBy);
 
   return (
     <div className="table-container">
@@ -97,7 +95,7 @@ const FormsTable: React.FC = () => {
         <thead>
           {headerGroups.map(headerGroup => (
             <tr {...headerGroup.getHeaderGroupProps()}>
-              {headerGroup.headers.map(column => (
+              {headerGroup.headers.map((column: any) => (
                 <th {...column.getHeaderProps(column.getSortByToggleProps())}>
                   {column.render('Header')}
                   <span>

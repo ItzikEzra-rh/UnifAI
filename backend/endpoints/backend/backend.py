@@ -38,7 +38,7 @@ def get_test_list_from_gitlab(repo_url, repo_auth_key, repo_folder_path, branch)
     "training_name":           fields.Str(required=True, data_key="trainingName"),
     "git_url":                 fields.Str(required=True, data_key="gitUrl"),
     "git_credential_key":      fields.Str(required=True, data_key="gitCredentialKey"),
-    "git_folder_path":         fields.Str(required=True, data_key="gitFolderPath"),
+    "git_folder_path":         fields.Str(missing='', data_key="gitFolderPath"),
     "git_branch_name":         fields.Str(required=True, data_key="gitBranchName"),
     "base_model_name":         fields.Str(required=True, data_key="baseModelName"),
     "tests_code_framework":    fields.Str(required=True, data_key="testsCodeFramework"),

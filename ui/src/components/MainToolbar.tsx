@@ -9,8 +9,8 @@ interface MainToolbarProps {
 
 const dropdownItems = [
   { title: 'About',items: [{ label: 'Welcome', content: 'Welcome Content' }]},
-  { title: 'Form', items: [{ label: 'Fill Form', content: 'Form Content' }, { label: 'Loaded Forms', content: 'Form Table' }]},
-  { title: 'Chat', items: [{ label: 'Chat With The Prompt', content: 'Chatbot Prompt' }]},
+  { title: 'Training', items: [{ label: 'Fill Form', content: 'Form Content' }, { label: 'Loaded Forms', content: 'Form Table' }]},
+  { title: 'Chat', items: [{ label: 'Chat With Loaded Model', content: 'Chatbot Prompt' }]},
 ];
 
 

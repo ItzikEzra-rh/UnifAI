@@ -18,8 +18,8 @@ interface PropTypes {
 }
 
 interface TreeItem {
-  children: TreeItem[] | null;
-  disabled: boolean | null;
+  children: TreeItem[];
+  disabled: boolean;
   label: string;
   path: string;
   value: string;
@@ -43,7 +43,7 @@ export function stringContainsSpace(item: string) {
  * @param dbList
  */
 export function buildTree (paths: string[][], previousPath: string[] | string, dbList: {[key: string]: boolean}) {
-    const items = [];
+    const items: any[] = [];
     paths.forEach(path => {
         const name = path[0];
         const value = path[0];
@@ -186,7 +186,7 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
         {loading ?
         <CircularProgress /> :
         <>
-            <TreeButtons collapse={() => setExpanded([])} expand={() => setExpanded(nodes.map((item) => item.value))} />
+            <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
             <CheckboxTree nodes={nodes}
                           checked={checked}
                           expanded={expanded}
