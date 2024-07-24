@@ -4,9 +4,10 @@ import subprocess
 from flask import Flask, request, jsonify
 from abc import ABC, abstractmethod
 from unsloth import FastLanguageModel
-from transformers import TextStreamer
+from transformers import TextStreamer, TextIteratorStreamer
 from pathlib import Path
 from be_utils.utils import find_latest_checkpoint
+from threading import Thread, Event
 
 app = Flask(__name__)
 
@@ -33,33 +34,40 @@ class ModelLoaderFactory:
 class BaseModelLoader(ABC):
     def __init__(self, model_id, model_name=None, max_seq_length=8192, dtype=None, load_in_4bit=True, project=''):
         self.model_name = model_name
-        self.max_seq_length = max_seq_length
+        self.max_seq_length = int(max_seq_length)
         self.dtype = dtype
         self.load_in_4bit = load_in_4bit
         self.model = None
         self.tokenizer = None
         self.model_id = model_id
         self.project = project
+        self.streamer = None
 
     @abstractmethod
     def load_model(self):
         pass
+
+    def stop_infer(self):
+        if self.streamer:
+            self.streamer.end()
+            self.streamer = None
+            return True
+        return False
 
     def infer(self, prompt, max_new_tokens=8192):
         if self.model is None or self.tokenizer is None:
             raise ValueError("Model and tokenizer must be loaded before inference.")
         FastLanguageModel.for_inference(self.model)
         inputs = self.tokenizer([prompt], return_tensors="pt").to("cuda")
-        text_streamer = TextStreamer(self.tokenizer)
-
-        def generate_stream():
-            for output in self.model.generate(**inputs, streamer=text_streamer, max_new_tokens=max_new_tokens):
-                yield output
-
-        return generate_stream()
+        self.streamer = TextIteratorStreamer(self.tokenizer)
+        generation_kwargs = dict(inputs, streamer=self.streamer, max_new_tokens=max_new_tokens)
+        thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
+        thread.start()
+        return self.streamer
 
     def clean_model(self):
         if self.model is not None:
+            print("cleaning current model..")
             del self.model
             del self.tokenizer
             self.model = None
@@ -90,13 +98,14 @@ class FoundationalModelLoader(BaseModelLoader):
                 dtype=self.dtype,
                 load_in_4bit=self.load_in_4bit,
             )
+            return True
         except Exception as e:
             raise RuntimeError(f"Failed to load foundational model: {e}")
 
 
 class CheckpointModelLoader(BaseModelLoader):
     def load_model(self):
-        model_dir = Path('/opt') / self.model.model_id
+        model_dir = Path('/opt') / self.model_id
         if not os.path.exists(model_dir):
             raise ValueError(f"model directory {model_dir} does not exist")
         checkpoint_dir = find_latest_checkpoint(model_dir)
@@ -104,13 +113,14 @@ class CheckpointModelLoader(BaseModelLoader):
             raise ValueError(f"Checkpoint directory does not exist in {model_dir}")
         try:
             self.model, self.tokenizer = FastLanguageModel.from_pretrained(str(checkpoint_dir))
+            return True
         except Exception as e:
             raise RuntimeError(f"Failed to load model from checkpoint: {e}")
 
 
 class FineTunedModelLoader(BaseModelLoader):
     def load_model(self):
-        model_dir = Path('/opt') / self.model.model_id
+        model_dir = Path('/opt') / self.model_id
         if not os.path.exists(model_dir):
             raise ValueError(f"model directory {model_dir} does not exist")
         model_output_dir = None
@@ -130,5 +140,6 @@ class FineTunedModelLoader(BaseModelLoader):
                 load_in_4bit=self.load_in_4bit,
             )
             FastLanguageModel.for_inference(self.model)
+            return True
         except Exception as e:
             raise RuntimeError(f"Failed to load fine-tuned model: {e}")

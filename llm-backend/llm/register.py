@@ -4,7 +4,7 @@ from be_utils.db.flaks_db import *
 class RegisterModel:
     def __init__(self, collection_name='RegisteredModels'):
         self.db = db()
-        self.collection = self.db.Collections.by_name(collection_name)
+        self.collection = Collections.by_name(collection_name)
 
     def register_model(self, model_name, project, context_length, model_type):
         if model_type not in ['finetuned', 'checkpoint', 'foundational']:

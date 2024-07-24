@@ -1,7 +1,7 @@
 import logging
 import os
 from flask import Blueprint
-from flask import jsonify, Response
+from flask import jsonify, Response, stream_with_context
 from webargs import fields
 from be_utils.flask.api_args import from_body, from_query, abort
 import provider.backend.backend as llm_provider
@@ -18,19 +18,19 @@ def sanity_check():
 @from_body({
     "model_name": fields.Str(data_key="modelName", required=True),
     "project": fields.Str(data_key="project", required=True),
-    "context_length": fields.Int(data_key="context_length", required=True),
+    "context_length": fields.Int(data_key="contextLength", required=True),
     "model_type": fields.Str(data_key="type", required=True),
 })
 def register_trained_model(model_name, project, context_length, model_type):
-    llm_provider.register_trained_model(model_name, project, context_length, model_type)
+    return llm_provider.register_trained_model(model_name, project, context_length, model_type)
 
 
-@backend_bp.route("/registerTrainedModel", methods=["POST"])
+@backend_bp.route("/loadModel", methods=["POST"])
 @from_body({
     "model_id": fields.Str(data_key="modelId", required=True)
 })
 def load_model(model_id):
-    llm_provider.load_model(model_id)
+    return jsonify(llm_provider.load_model(model_id))
 
 
 @backend_bp.route("/inference", methods=["GET"])
@@ -43,4 +43,4 @@ def inference(prompt):
 
 @backend_bp.route("/stopInference", methods=["GET"])
 def stop_inference():
-    llm_provider.stop_inference()
+    return jsonify(llm_provider.stop_inference())
