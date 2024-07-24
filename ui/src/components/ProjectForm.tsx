@@ -21,12 +21,14 @@ const schema = yup.object().shape({
     gitUrl: yup.string().required('Git Repo Url is required'),
     gitCredentialKey: yup.string().required('Git Credential Key is required'),
     gitBranchName: yup.string().required('Git Branch Name is required'),
-    gitFolderPath: yup.string().required('Git Path to Expand From is required'),
+    gitFolderPath: yup.string(),
+    // gitFolderPath: yup.string().required('Git Path to Expand From is required'),
     baseModelName: yup.string().oneOf(['Mistarl', 'Lama']).required('Base Model Name is required'),
     testsCodeFramework: yup.string().oneOf(['Python', 'Robot', 'Go', 'Jmeter']).required('Tests Code Language is required'),
     numberOfTests: yup.number().required('Number of Tests is required').positive().integer(),
     expandDatasetTo: yup.string().oneOf(['5x', '10x', '25x', '50x', '100x']).required('Expand Dataset To is required'),
-    datasetGradingUpgrade: yup.boolean().required('Dataset Grading Upgrade is required'),
+    datasetGradingUpgrade: yup.boolean(),
+    // datasetGradingUpgrade: yup.boolean().required('Dataset Grading Upgrade is required'),
     parserFile: yup.mixed<FileList>().test('fileType', 'Only .py files are accepted', (value: FileList  | undefined) => {
       // Check if value is not null and is an instance of File
       if (value && value.length > 0) {
@@ -155,7 +157,7 @@ const ProjectForm: React.FC = () => {
                     </form>
                 </TabPanel>
                 <TabPanel value={activeTab} index={1}>
-                  <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath')} 
+                  <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath') || ''} 
                           triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked}/>
                   <Button type="button" variant="contained" color="primary" onClick={handleNextClick} disabled={!isSecondTabValid} style={{ float: 'right', marginTop: '10px' }}>
                         Next
