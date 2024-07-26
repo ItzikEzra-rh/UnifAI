@@ -18,8 +18,12 @@ def load_model(model_id):
     context_length = model_info['context_length']
 
     # Clean the current model if one is already loaded
-    if llm_model.model_loader:
+    if llm_model.model_loader and llm_model.model_loader.model_id == model_id:
+        return "model already loaded"
+    elif llm_model.model_loader:
         llm_model.model_loader.clean_model()
+    else:
+        print(f"loading model with id {model_id}")
 
     llm_model.model_loader = ModelLoaderFactory.create_model_loader(model_id, model_type, model_name, context_length,
                                                                     project)

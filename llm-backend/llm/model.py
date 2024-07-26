@@ -8,11 +8,17 @@ from transformers import TextStreamer, TextIteratorStreamer
 from pathlib import Path
 from be_utils.utils import find_latest_checkpoint
 from threading import Thread, Event
+import torch
 
 app = Flask(__name__)
 
 # Global variable to hold the model and tokenizer
 model_loader = None
+
+
+class TextIteratorStreamerModified(TextIteratorStreamer):
+    def stop(self):
+        raise StopIteration()
 
 
 class ModelLoaderFactory:
@@ -49,7 +55,8 @@ class BaseModelLoader(ABC):
 
     def stop_infer(self):
         if self.streamer:
-            self.streamer.end()
+            self.streamer.text_queue.put(self.streamer.stop_signal, timeout=self.streamer.timeout)
+            # self.streamer.end()
             self.streamer = None
             return True
         return False
@@ -59,7 +66,7 @@ class BaseModelLoader(ABC):
             raise ValueError("Model and tokenizer must be loaded before inference.")
         FastLanguageModel.for_inference(self.model)
         inputs = self.tokenizer([prompt], return_tensors="pt").to("cuda")
-        self.streamer = TextIteratorStreamer(self.tokenizer)
+        self.streamer = TextIteratorStreamerModified(self.tokenizer)
         generation_kwargs = dict(inputs, streamer=self.streamer, max_new_tokens=150)
         thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
@@ -72,8 +79,7 @@ class BaseModelLoader(ABC):
             del self.tokenizer
             self.model = None
             self.tokenizer = None
-            subprocess.run(["sudo", "fuser", "-v", "/dev/nvidia*"], check=True)
-            subprocess.run(["sudo", "pkill", "-9", "python"], check=True)
+            torch.cuda.empty_cache()
 
     def info(self):
         return json.dumps({
