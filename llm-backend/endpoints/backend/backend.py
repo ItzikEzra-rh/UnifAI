@@ -25,8 +25,8 @@ def register_trained_model(model_name, project, context_length, model_type):
     return llm_provider.register_trained_model(model_name, project, context_length, model_type)
 
 
-@backend_bp.route("/loadModel", methods=["POST"])
-@from_body({
+@backend_bp.route("/loadModel", methods=["GET"])
+@from_query({
     "model_id": fields.Str(data_key="modelId", required=True)
 })
 def load_model(model_id):
@@ -34,7 +34,7 @@ def load_model(model_id):
 
 
 @backend_bp.route("/inference", methods=["GET"])
-@from_body({
+@from_query({
     "prompt": fields.Str(data_key="prompt", required=True),
 })
 def inference(prompt):
@@ -44,3 +44,8 @@ def inference(prompt):
 @backend_bp.route("/stopInference", methods=["GET"])
 def stop_inference():
     return jsonify(llm_provider.stop_inference())
+
+
+@backend_bp.route("/getModels", methods=["GET"])
+def get_models():
+    return jsonify(llm_provider.get_models())

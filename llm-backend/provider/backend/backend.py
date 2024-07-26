@@ -37,3 +37,7 @@ def stop_inference():
     if llm_model.model_loader is not None:
         return llm_model.model_loader.stop_infer()
     return False
+
+
+def get_models():
+    return RegisterModel().get_models()

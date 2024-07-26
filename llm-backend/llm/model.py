@@ -60,7 +60,7 @@ class BaseModelLoader(ABC):
         FastLanguageModel.for_inference(self.model)
         inputs = self.tokenizer([prompt], return_tensors="pt").to("cuda")
         self.streamer = TextIteratorStreamer(self.tokenizer)
-        generation_kwargs = dict(inputs, streamer=self.streamer, max_new_tokens=max_new_tokens)
+        generation_kwargs = dict(inputs, streamer=self.streamer, max_new_tokens=150)
         thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
         return self.streamer

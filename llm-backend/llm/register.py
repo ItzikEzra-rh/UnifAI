@@ -43,3 +43,8 @@ class RegisterModel:
     def model_exists(self, model_name, project, context_length, model_type):
         return self.collection.find_one({"model_name": model_name, "project": project, "context_length": context_length,
                                          "model_type": model_type}) is not None
+
+    def get_models(self):
+        models = self.collection.find()
+        models = [{**model, '_id': str(model['_id'])} for model in models]
+        return models

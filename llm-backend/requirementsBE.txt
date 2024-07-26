@@ -1,4 +1,5 @@
-flask 
+flask
+flask-cors
 websocket-client
 websockets 
 scapy
