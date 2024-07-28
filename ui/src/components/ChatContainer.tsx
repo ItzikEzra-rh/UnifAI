@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from '@chatscope/chat-ui-kit-react';
 import { useForm, Controller } from 'react-hook-form';
-import { Button } from '@mui/material'; 
+import { Button, IconButton, Tooltip  } from '@mui/material'; 
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import StopIcon from '@mui/icons-material/Stop';
+import AutorenewIcon from '@mui/icons-material/Replay';
 import { FormDropdown } from './FormFields'; // Adjust the import path as needed
 import { useTable, useSortBy, Column } from 'react-table';
 import {ModelData} from './types/constants'
@@ -62,9 +65,13 @@ const ChatComponent: React.FC = () => {
     const fetchModels = async () => {
       try {
         const response = await axios.get<ModelData[]>('/api/backend/getModels');
-        setModels(response.data);
+        const transformedData: ModelData[] = response.data.map((item: any) => ({
+          modelId: item._id,
+          modelName: item.model_name,
+          modelMaxSeqLen: item.context_length,
+        }));
+        setModels(transformedData);
       } catch (error) {
-        setModels([{'modelId': 'a2414', 'modelName': 'Nir Model', 'modelMaxSeqLen': 8192}]);
         console.error('Error fetching model data:', error);
       }
     };
@@ -77,13 +84,19 @@ const ChatComponent: React.FC = () => {
     };
   }, []);
 
+  const unloadModel = () => {
+    setSelectedModel(null);
+    setMessages([]);
+  };
+  
+
   const handleModelSelect = async (selectedModel: ModelData) => {
     if (selectedModel) {
       setSelectedModel(selectedModel);
       setLoadingModel(true);
 
       try {
-        await axios.post('/api/backend/loadModel', { modelId: selectedModel.modelId });
+        await axios.get('/api/backend/loadModel', {params: { modelId: selectedModel.modelId }});
       } catch (error) {
         console.error('Error loading model:', error);
       } finally {
@@ -92,17 +105,7 @@ const ChatComponent: React.FC = () => {
     }
   };
 
-  const handleSend = async (text: string) => {
-    if (!selectedModel) return;
-    const userMessage: ChatMessage = {
-      id: new Date().toISOString(),
-      text,
-      sender: 'user',
-    };
-
-    setMessages([...messages, userMessage]);
-    setIsStreaming(true);
-
+  const sendQuestion = async (text: string) => {
     try {
       const queryParams = new URLSearchParams({ prompt: text }).toString();
       const response = await fetch(`http://instructlab.mhsb7.sandbox2006.opentlc.com:443/api/backend/inference?${queryParams}`, {
@@ -150,6 +153,46 @@ const ChatComponent: React.FC = () => {
     } finally {
       setIsStreaming(false);
     }
+  }
+
+  const handleSend = async (text: string) => {
+    if (!selectedModel) return;
+    const userMessage: ChatMessage = {
+      id: new Date().toISOString(),
+      text,
+      sender: 'user',
+    };
+
+    setMessages([...messages, userMessage]);
+    setIsStreaming(true);
+
+    sendQuestion(text)
+  };
+
+  const regenerateResponse = async () => {
+    const lastUserMessage = messages.slice().reverse().find(msg => msg.sender === 'user');
+    if (!lastUserMessage) return;
+
+    setIsStreaming(true);
+    setMessages(prevMessages => [
+      ...prevMessages,
+      { ...lastUserMessage, id: new Date().toISOString() }, // Re-add the user's message
+    ]);
+
+    sendQuestion(lastUserMessage.text)
+  };
+
+  const handleStop = async () => {
+    try {
+      await axios.get('/api/backend/stopInference');
+      setIsStreaming(false);
+    } catch (error) {
+      console.error('Error stopping inference:', error);
+    }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
   };
 
   const getPosition = (index: number, sender: string): 'normal' | 'first' | 'last' | 'single' => {
@@ -229,25 +272,57 @@ const ChatComponent: React.FC = () => {
           <>
             {/* Custom section for displaying model information */}
             <ChatToolTip/>
-            <MainContainer style={{height: '90%', padding: '10px', marginTop: '20px'}}>
-              <ChatContainer>
+            <div style={{ position: 'relative', height: '90%' }}>
+              <MainContainer style={{height: '95%', padding: '10px', marginTop: '20px'}}>
+                <ChatContainer>
                 <MessageList>
                   {messages.map((message, index) => (
-                    <Message
-                      key={message.id}
-                      model={{
-                        message: message.text,
-                        sentTime: 'just now',
-                        sender: message.sender === 'user' ? 'You' : 'Bot',
-                        direction: message.sender === 'user' ? 'outgoing' : 'incoming',
-                        position: getPosition(index, message.sender),
-                      }}
-                    />
+                    <div key={message.id} style={{ position: 'relative', paddingBottom: '40px' }}>
+                      <Message
+                        model={{
+                          message: message.text, // Ensure message is a string
+                          sentTime: 'just now',
+                          sender: message.sender === 'user' ? 'You' : 'Bot',
+                          direction: message.sender === 'user' ? 'outgoing' : 'incoming',
+                          position: getPosition(index, message.sender),
+                        }}
+                      />
+                      {message.sender === 'bot' && (
+                        <div style={{ position: 'absolute', bottom: '5px', left: '5px', display: 'flex', gap: '5px' }}>
+                          <Tooltip title="Copy">
+                            <IconButton onClick={() => copyToClipboard(message.text)} size="small">
+                              <ContentCopyIcon />
+                            </IconButton>
+                          </Tooltip>
+                          {isStreaming && (
+                            <Tooltip title="Stop">
+                              <IconButton onClick={handleStop} size="small">
+                                <StopIcon />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                          {!isStreaming && (
+                            <Tooltip title="Regenerate">
+                              <IconButton
+                                onClick={regenerateResponse}
+                                size="small"
+                              >
+                                <AutorenewIcon />
+                              </IconButton>
+                            </Tooltip>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   ))}
                 </MessageList>
                 <MessageInput placeholder="Type your message here..." onSend={handleSend} disabled={loadingModel || isStreaming} />
-              </ChatContainer>
-            </MainContainer>
+                </ChatContainer>
+              </MainContainer>
+              <Button variant="contained" color="primary" onClick={unloadModel} style={{ position: 'absolute', bottom: '10px', right: '5px' }}>
+                Unload Model
+              </Button>
+            </div>           
           </>): (<ModelSelection models={models} onSelectModel={handleModelSelect} />)
         }
     </div>
