@@ -8,6 +8,7 @@ const TopToolbar: React.FC = () => {
     <div className="top-toolbar">
       <div className="logo">
         <img src={RedHatLogo} alt="Logo" className="logo-image" />
+        <span className="logo-text">TAG (Test Automation Generator)</span>
       </div>
       <div className="toolbar-buttons">
         <Button variant="outlined" className="custom-button">Log In</Button>

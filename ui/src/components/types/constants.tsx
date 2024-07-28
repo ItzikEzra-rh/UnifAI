@@ -16,12 +16,11 @@ export interface FormData {
 export interface TableFormData {
     projectName: string;
     trainingName: string;
-    gitUrl: string;
-    gitCredentialKey: string;
     baseModelName: 'Mistarl' | 'Lama';
     testsCodeFramework: 'Python' | 'Robot' | 'Go' | 'Jmeter';
     status: 'Initial' | 'Progress' | 'Finished';
     progress: string; // Represented by percentage (e.g., "50%")
+    modelType: 'finetuned' | 'foundational' | 'checkpoint'
 }
 
 export interface ModelData {

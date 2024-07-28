@@ -28,6 +28,14 @@ body, html, #root {
   height: 40px; /* Adjust the size as needed */
 }
 
+.logo-text {
+  color: white;
+  font-family: 'Arial', sans-serif; /* Or any professional-looking font you prefer */
+  font-size: 18px; /* Adjust size as needed */
+  margin-left: 10px; /* Space between logo and text */
+  font-weight: bold;
+}
+
 .toolbar-buttons {
   display: flex;
   gap: 10px;
@@ -230,7 +238,7 @@ body, html, #root {
 
 /* Forms Table Styles */
 .table-container {
-  margin: 20px;
+  margin: 50px 20px;
 }
 
 .forms-table {
@@ -327,7 +335,7 @@ body, html, #root {
   font-weight: bold;
 }
 
-.project-name.NCS {
+.project-name.NCS24 {
   color: lightcoral; /* Example color for project name 'X' */
 }
 

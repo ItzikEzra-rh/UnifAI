@@ -31,8 +31,6 @@ const StatisticsGraphs: React.FC = () => {
                  {"id": "66a1f262ee5bcab7d174efb5", "contextLength": 4096, "modelName": "unsloth/mistral", "modelType": "finetuned", "project": "CBIS24"},
                  {"id": "66a1f262ee5bcab7d174efb5", "contextLength": 6148, "modelName": "unsloth/mistral", "modelType": "finetuned", "project": "CBIS24"}])
       } catch (error) {
-        setData([{"id": "66a1f262ee5bcab7d174efb5", "contextLength": 8192, "modelName": "unsloth/llama-3-8b-Instruct-bnb-4bit", "modelType": "finetuned", "project": "NCS24"},
-                 {"id": "66a1f262ee5bcab7d174efb5", "contextLength": 4096, "modelName": "unsloth/mistral", "modelType": "finetuned", "project": "CBIS24"}])
         console.error('Error fetching model data:', error);
       }
     };
