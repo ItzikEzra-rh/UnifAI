@@ -111,14 +111,13 @@ class FoundationalModelLoader(BaseModelLoader):
 
 class CheckpointModelLoader(BaseModelLoader):
     def load_model(self):
-        model_dir = Path('/opt') / self.model_id
+        model_dir = Path('/home/instruct') / self.model_id
         if not os.path.exists(model_dir):
             raise ValueError(f"model directory {model_dir} does not exist")
-        checkpoint_dir = find_latest_checkpoint(model_dir)
-        if not checkpoint_dir:
+        if not model_dir:
             raise ValueError(f"Checkpoint directory does not exist in {model_dir}")
         try:
-            self.model, self.tokenizer = FastLanguageModel.from_pretrained(str(checkpoint_dir))
+            self.model, self.tokenizer = FastLanguageModel.from_pretrained(str(model_dir))
             return True
         except Exception as e:
             raise RuntimeError(f"Failed to load model from checkpoint: {e}")
@@ -126,7 +125,7 @@ class CheckpointModelLoader(BaseModelLoader):
 
 class FineTunedModelLoader(BaseModelLoader):
     def load_model(self):
-        model_dir = Path('/opt') / self.model_id
+        model_dir = Path('/home/instruct') / self.model_id
         if not os.path.exists(model_dir):
             raise ValueError(f"model directory {model_dir} does not exist")
         model_output_dir = None

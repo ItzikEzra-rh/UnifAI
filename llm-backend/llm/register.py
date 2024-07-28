@@ -1,4 +1,5 @@
 from be_utils.db.flaks_db import *
+from be_utils.utils import mkdir
 
 
 class RegisterModel:
@@ -20,7 +21,9 @@ class RegisterModel:
             "model_type": model_type
         }
         result = self.collection.insert_one(model_data)
-        return str(result.inserted_id)
+        model_id = str(result.inserted_id)
+        mkdir(f'/home/instruct/{model_id}')
+        return model_id
 
     def update_model(self, model_id, **kwargs):
         model_id = as_object_id(model_id)
