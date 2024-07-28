@@ -62,9 +62,13 @@ const ChatComponent: React.FC = () => {
     const fetchModels = async () => {
       try {
         const response = await axios.get<ModelData[]>('/api/backend/getModels');
-        setModels(response.data);
+        const transformedData: ModelData[] = response.data.map((item: any) => ({
+          modelId: item._id,
+          modelName: item.model_name,
+          modelMaxSeqLen: item.context_length,
+        }));
+        setModels(transformedData);
       } catch (error) {
-        setModels([{'modelId': 'a2414', 'modelName': 'Nir Model', 'modelMaxSeqLen': 8192}]);
         console.error('Error fetching model data:', error);
       }
     };
@@ -83,7 +87,7 @@ const ChatComponent: React.FC = () => {
       setLoadingModel(true);
 
       try {
-        await axios.post('/api/backend/loadModel', { modelId: selectedModel.modelId });
+        await axios.get('/api/backend/loadModel', {params: { modelId: selectedModel.modelId }});
       } catch (error) {
         console.error('Error loading model:', error);
       } finally {

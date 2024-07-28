@@ -1,9 +1,10 @@
 import React from 'react';
-import '../styles.css';
 import ChatComponent from './ChatContainer'
 import AIPicture from '../assets/AIPicture.png';
 import ProjectForm from './ProjectForm'
 import FormTable from './FormTable';
+import Statistics from './Statistics'
+import '../styles.css';
 
 interface MainContentProps {
   content: string;
@@ -51,6 +52,7 @@ const MainContent: React.FC<MainContentProps> = ({ content }) => {
             case 'Form Content': return <ProjectForm/>;
             case 'Form Table': return <FormTable/>;
             case 'Chatbot Prompt': return <ChatComponent/>;
+            case 'Advanced Statistics': return <Statistics/>;
             default: return content;
         }
     }

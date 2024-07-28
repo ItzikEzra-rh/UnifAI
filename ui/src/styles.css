@@ -348,3 +348,28 @@ body, html, #root {
   align-items: center;
   z-index: 1000; /* Ensure it covers all other content */
 }
+
+.statistics-graphs {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px; /* Existing gap between graph rows */
+  padding: 20px;
+}
+
+.graph-row {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  width: 100%;
+}
+
+.graph-container {
+  width: 45%; /* Adjusted to make charts smaller */
+  max-width: 400px;
+  margin: auto;
+}
+
+.graph-container + .graph-container {
+  margin-top: 40px; /* Added margin for space between top graphs and Line Chart */
+}

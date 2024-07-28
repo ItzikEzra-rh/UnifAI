@@ -11,6 +11,7 @@ const dropdownItems = [
   { title: 'About',items: [{ label: 'Welcome', content: 'Welcome Content' }]},
   { title: 'Training', items: [{ label: 'Fill Form', content: 'Form Content' }, { label: 'Loaded Forms', content: 'Form Table' }]},
   { title: 'Chat', items: [{ label: 'Chat With Selected Model', content: 'Chatbot Prompt' }]},
+  { title: 'Statistics', items: [{ label: 'Graphs', content: 'Advanced Statistics' }]},
 ];
 
 
