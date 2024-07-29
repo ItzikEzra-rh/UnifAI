@@ -7,18 +7,21 @@ class RegisterModel:
         self.db = db()
         self.collection = Collections.by_name(collection_name)
 
-    def register_model(self, model_name, project, context_length, model_type):
+    def register_model(self, model_name, project, context_length, model_type, num_tests, dataset_size, checkpoint=""):
         if model_type not in ['finetuned', 'checkpoint', 'foundational']:
             raise ValueError("Invalid model type. Must be 'finetuned', 'checkpoint', or 'foundational'.")
 
-        if self.model_exists(model_name, project, context_length, model_type):
+        if self.model_exists(model_name, project, context_length, model_type, num_tests, dataset_size, checkpoint):
             return f"Model '{model_name}' for project '{project}' already exists."
-
+        training_name = f"{project}-{model_name}-{context_length}-{model_type}-tests{num_tests}-dataset{dataset_size}{f'-{checkpoint}' if checkpoint else ''}"
         model_data = {
             "model_name": model_name,
             "project": project,
             "context_length": context_length,
-            "model_type": model_type
+            "model_type": model_type,
+            "num_tests": num_tests,
+            "dataset_size": dataset_size,
+            "training_name": training_name,
         }
         result = self.collection.insert_one(model_data)
         model_id = str(result.inserted_id)
@@ -43,9 +46,10 @@ class RegisterModel:
         models = [{**model, '_id': str(model['_id'])} for model in models]
         return models
 
-    def model_exists(self, model_name, project, context_length, model_type):
+    def model_exists(self, model_name, project, context_length, model_type, num_tests, dataset_size, checkpoint):
         return self.collection.find_one({"model_name": model_name, "project": project, "context_length": context_length,
-                                         "model_type": model_type}) is not None
+                                         "model_type": model_type, 'num_tests': num_tests, 'dataset_size': dataset_size,
+                                         'checkpoint': checkpoint}) is not None
 
     def get_models(self):
         models = self.collection.find()

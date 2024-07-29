@@ -20,9 +20,13 @@ def sanity_check():
     "project": fields.Str(data_key="project", required=True),
     "context_length": fields.Int(data_key="contextLength", required=True),
     "model_type": fields.Str(data_key="type", required=True),
+    "num_tests": fields.Str(data_key="numTests", required=True),
+    "dataset_size": fields.Str(data_key="datasetSize", required=True),
+    "checkpoint": fields.Str(data_key="checkpoint", required=False, default=""),
 })
-def register_trained_model(model_name, project, context_length, model_type):
-    return llm_provider.register_trained_model(model_name, project, context_length, model_type)
+def register_trained_model(model_name, project, context_length, model_type, num_tests, dataset_size, checkpoint):
+    return llm_provider.register_trained_model(model_name, project, context_length, model_type, num_tests, dataset_size,
+                                               checkpoint)
 
 
 @backend_bp.route("/loadModel", methods=["GET"])

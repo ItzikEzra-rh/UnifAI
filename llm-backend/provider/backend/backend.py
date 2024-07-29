@@ -3,8 +3,9 @@ from llm.model import ModelLoaderFactory
 import llm.model as llm_model
 
 
-def register_trained_model(model_name, project, context_length, model_type):
-    return RegisterModel().register_model(model_name, project, context_length, model_type)
+def register_trained_model(model_name, project, context_length, model_type, num_tests, dataset_size, checkpoint):
+    return RegisterModel().register_model(model_name, project, context_length, model_type, num_tests, dataset_size,
+                                          checkpoint)
 
 
 def load_model(model_id):
