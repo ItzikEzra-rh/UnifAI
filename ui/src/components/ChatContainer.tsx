@@ -33,7 +33,7 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
   const selectedModel = watch('model'); // Watch the form field for changes
 
   const handleModelSubmit = (data: FormData) => {
-    const selectedModel = models.find((model) => model.modelName === data.model);
+    const selectedModel = models.find((model) => model.trainingName === data.model);
     if (selectedModel) {
       onSelectModel(selectedModel);
     }
@@ -46,7 +46,7 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
         label="Choose Model"
         control={control}
         errors={{}} // Pass any validation errors here if needed
-        options={models.map((model) => model.modelName)}
+        options={models.map((model) => model.trainingName)}
       />
       <Button type="submit" variant="contained" color="primary" disabled={!selectedModel} style={{ float: 'right', marginTop: '10px' }}> Load Model</Button>
     </form>
@@ -68,6 +68,7 @@ const ChatComponent: React.FC = () => {
         const transformedData: ModelData[] = response.data.map((item: any) => ({
           modelId: item._id,
           modelName: item.model_name,
+          trainingName: item.training_name,
           modelMaxSeqLen: item.context_length,
         }));
         setModels(transformedData);
@@ -108,7 +109,7 @@ const ChatComponent: React.FC = () => {
   const sendQuestion = async (text: string) => {
     try {
       const queryParams = new URLSearchParams({ prompt: text }).toString();
-      const response = await fetch(`http://instructlab.mhsb7.sandbox2006.opentlc.com:443/api/backend/inference?${queryParams}`, {
+      const response = await fetch(`http://instructlab.zqwrx.sandbox2350.opentlc.com:443/api/backend/inference?${queryParams}`, {
         method: 'GET',
       });
   
@@ -129,7 +130,10 @@ const ChatComponent: React.FC = () => {
       while (!done) {
         const { value, done: doneReading } = await reader.read();
         done = doneReading;
-        const chunkValue = decoder.decode(value, { stream: !doneReading });
+        let chunkValue = decoder.decode(value, { stream: !doneReading });
+
+        // Remove <s> tags from the chunkValue
+        chunkValue = chunkValue.replace(/<s>/g, '');
   
         setMessages((prevMessages) => {
           const updatedMessages = [...prevMessages];
@@ -210,6 +214,7 @@ const ChatComponent: React.FC = () => {
   const columns: Column<ModelData>[] = React.useMemo(
     () => [
       { Header: 'Model Name', accessor: 'modelName' },
+      { Header: 'Training Name', accessor: 'trainingName' },
       { Header: 'Model Max Seq Len', accessor: 'modelMaxSeqLen' },
     ],
     []
