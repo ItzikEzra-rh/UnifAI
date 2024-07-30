@@ -86,6 +86,7 @@ const ChatComponent: React.FC = () => {
   }, []);
 
   const unloadModel = () => {
+    handleStop();
     setSelectedModel(null);
     setMessages([]);
   };
@@ -109,7 +110,9 @@ const ChatComponent: React.FC = () => {
   const sendQuestion = async (text: string) => {
     try {
       // Replace <br> tags with \n in the input text
-      const formattedText = text.replace(/<br>/g, '\n');
+      let formattedText = text.replace(/<br>/g, '\n');
+      formattedText = formattedText.replace(/<div>/g, '');
+      formattedText = formattedText.replace(/<\/div>/g, '\n');
 
       const queryParams = new URLSearchParams({ prompt: formattedText }).toString();
       const response = await fetch(`http://instructlab.zqwrx.sandbox2350.opentlc.com:443/api/backend/inference?${queryParams}`, {
