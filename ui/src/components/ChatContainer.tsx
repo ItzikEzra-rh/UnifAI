@@ -33,7 +33,7 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
   const selectedModel = watch('model'); // Watch the form field for changes
 
   const handleModelSubmit = (data: FormData) => {
-    const selectedModel = models.find((model) => model.modelName === data.model);
+    const selectedModel = models.find((model) => model.trainingName === data.model);
     if (selectedModel) {
       onSelectModel(selectedModel);
     }
@@ -46,7 +46,7 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
         label="Choose Model"
         control={control}
         errors={{}} // Pass any validation errors here if needed
-        options={models.map((model) => model.modelName)}
+        options={models.map((model) => model.trainingName)}
       />
       <Button type="submit" variant="contained" color="primary" disabled={!selectedModel} style={{ float: 'right', marginTop: '10px' }}> Load Model</Button>
     </form>
@@ -68,6 +68,7 @@ const ChatComponent: React.FC = () => {
         const transformedData: ModelData[] = response.data.map((item: any) => ({
           modelId: item._id,
           modelName: item.model_name,
+          trainingName: item.training_name,
           modelMaxSeqLen: item.context_length,
         }));
         setModels(transformedData);
@@ -85,6 +86,7 @@ const ChatComponent: React.FC = () => {
   }, []);
 
   const unloadModel = () => {
+    handleStop();
     setSelectedModel(null);
     setMessages([]);
   };
@@ -107,8 +109,13 @@ const ChatComponent: React.FC = () => {
 
   const sendQuestion = async (text: string) => {
     try {
-      const queryParams = new URLSearchParams({ prompt: text }).toString();
-      const response = await fetch(`http://instructlab.mhsb7.sandbox2006.opentlc.com:443/api/backend/inference?${queryParams}`, {
+      // Replace <br> tags with \n in the input text
+      let formattedText = text.replace(/<br>/g, '\n');
+      formattedText = formattedText.replace(/<div>/g, '');
+      formattedText = formattedText.replace(/<\/div>/g, '\n');
+
+      const queryParams = new URLSearchParams({ prompt: formattedText }).toString();
+      const response = await fetch(`http://instructlab.zqwrx.sandbox2350.opentlc.com:443/api/backend/inference?${queryParams}`, {
         method: 'GET',
       });
   
@@ -125,17 +132,19 @@ const ChatComponent: React.FC = () => {
   
       setMessages((prevMessages) => [...prevMessages, botMessage]);
   
-      let done = false;
-      while (!done) {
+      let accumulatedText = '';
+      while (true) {
         const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        const chunkValue = decoder.decode(value, { stream: !doneReading });
+        if (doneReading) break;
+        let chunkValue = decoder.decode(value, { stream: true });
+        chunkValue = chunkValue.replace(/<s>/g, '');
+        accumulatedText += chunkValue;
   
         setMessages((prevMessages) => {
           const updatedMessages = [...prevMessages];
           const lastMessage = updatedMessages[updatedMessages.length - 1];
           if (lastMessage && lastMessage.sender === 'bot') {
-            lastMessage.text += chunkValue;
+            lastMessage.text = accumulatedText;
           }
           return updatedMessages;
         });
@@ -157,16 +166,23 @@ const ChatComponent: React.FC = () => {
 
   const handleSend = async (text: string) => {
     if (!selectedModel) return;
+
+    // Define the default text pattern
+    const defaultStartText = 'Write a Robot Test Framework. with the following test cases:\n\n';
+    const defaultEndText = '\n\n*** Settings ***:'
+
+    // Prepend the default text to the user's message
+    const userMessageText: string = `${defaultStartText}${text}${defaultEndText}`;
     const userMessage: ChatMessage = {
       id: new Date().toISOString(),
-      text,
+      text: userMessageText,
       sender: 'user',
     };
 
     setMessages([...messages, userMessage]);
     setIsStreaming(true);
 
-    sendQuestion(text)
+    sendQuestion(userMessageText)
   };
 
   const regenerateResponse = async () => {
@@ -210,6 +226,7 @@ const ChatComponent: React.FC = () => {
   const columns: Column<ModelData>[] = React.useMemo(
     () => [
       { Header: 'Model Name', accessor: 'modelName' },
+      { Header: 'Training Name', accessor: 'trainingName' },
       { Header: 'Model Max Seq Len', accessor: 'modelMaxSeqLen' },
     ],
     []

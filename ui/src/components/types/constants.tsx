@@ -26,5 +26,6 @@ export interface TableFormData {
 export interface ModelData {
     modelId: string;
     modelName: string;
+    trainingName: string;
     modelMaxSeqLen: number;
 }
