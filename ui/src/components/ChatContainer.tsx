@@ -163,9 +163,16 @@ const ChatComponent: React.FC = () => {
 
   const handleSend = async (text: string) => {
     if (!selectedModel) return;
+
+    // Define the default text pattern
+    const defaultStartText = 'Write a Robot Test Framework. with the following test cases:\n\n';
+    const defaultEndText = '\n\n*** Settings ***:'
+
+    // Prepend the default text to the user's message
+    const userMessageText: string = `${defaultStartText}${text}${defaultEndText}`;
     const userMessage: ChatMessage = {
       id: new Date().toISOString(),
-      text,
+      text: userMessageText,
       sender: 'user',
     };
 
