@@ -108,7 +108,10 @@ const ChatComponent: React.FC = () => {
 
   const sendQuestion = async (text: string) => {
     try {
-      const queryParams = new URLSearchParams({ prompt: text }).toString();
+      // Replace <br> tags with \n in the input text
+      const formattedText = text.replace(/<br>/g, '\n');
+
+      const queryParams = new URLSearchParams({ prompt: formattedText }).toString();
       const response = await fetch(`http://instructlab.zqwrx.sandbox2350.opentlc.com:443/api/backend/inference?${queryParams}`, {
         method: 'GET',
       });
