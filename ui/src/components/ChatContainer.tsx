@@ -113,6 +113,7 @@ const ChatComponent: React.FC = () => {
       let formattedText = text.replace(/<br>/g, '\n');
       formattedText = formattedText.replace(/<div>/g, '');
       formattedText = formattedText.replace(/<\/div>/g, '\n');
+      formattedText = formattedText.replace(/&nbsp;/g, '');
 
       const queryParams = new URLSearchParams({ prompt: formattedText }).toString();
       const response = await fetch(`http://instructlab.zqwrx.sandbox2350.opentlc.com:443/api/backend/inference?${queryParams}`, {
