@@ -179,7 +179,7 @@ const ChatComponent: React.FC = () => {
     setMessages([...messages, userMessage]);
     setIsStreaming(true);
 
-    sendQuestion(text)
+    sendQuestion(userMessageText)
   };
 
   const regenerateResponse = async () => {
