@@ -129,20 +129,19 @@ const ChatComponent: React.FC = () => {
   
       setMessages((prevMessages) => [...prevMessages, botMessage]);
   
-      let done = false;
-      while (!done) {
+      let accumulatedText = '';
+      while (true) {
         const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        let chunkValue = decoder.decode(value, { stream: !doneReading });
-
-        // Remove <s> tags from the chunkValue
+        if (doneReading) break;
+        let chunkValue = decoder.decode(value, { stream: true });
         chunkValue = chunkValue.replace(/<s>/g, '');
+        accumulatedText += chunkValue;
   
         setMessages((prevMessages) => {
           const updatedMessages = [...prevMessages];
           const lastMessage = updatedMessages[updatedMessages.length - 1];
           if (lastMessage && lastMessage.sender === 'bot') {
-            lastMessage.text += chunkValue;
+            lastMessage.text = accumulatedText;
           }
           return updatedMessages;
         });
