@@ -14,6 +14,19 @@ app = Flask(__name__)
 
 # Global variable to hold the model and tokenizer
 model_loader = None
+from transformers import AutoModelForCausalLM, AutoTokenizer, StoppingCriteriaList
+from transformers import StoppingCriteria
+
+
+class CustomStoppingCriteria(StoppingCriteria):
+    def __init__(self, stop_event):
+        self.stop_event = stop_event
+
+    def __call__(self, input_ids, scores):
+        # Check if the stop event is set
+        if self.stop_event.is_set():
+            return True
+        return False
 
 
 class TextIteratorStreamerModified(TextIteratorStreamer):
@@ -48,6 +61,7 @@ class BaseModelLoader(ABC):
         self.model_id = model_id
         self.project = project
         self.streamer = None
+        self.stop_event = None
 
     @abstractmethod
     def load_model(self):
@@ -56,7 +70,7 @@ class BaseModelLoader(ABC):
     def stop_infer(self):
         if self.streamer:
             self.streamer.text_queue.put(self.streamer.stop_signal, timeout=self.streamer.timeout)
-            # self.streamer.end()
+            self.stop_event.set()
             self.streamer = None
             return True
         return False
@@ -66,8 +80,12 @@ class BaseModelLoader(ABC):
             raise ValueError("Model and tokenizer must be loaded before inference.")
         FastLanguageModel.for_inference(self.model)
         inputs = self.tokenizer([prompt], return_tensors="pt").to("cuda")
+        self.stop_event = Event()
+        stopping_criteria = CustomStoppingCriteria(self.stop_event)
+        stopping_criteria_list = StoppingCriteriaList([stopping_criteria])
         self.streamer = TextIteratorStreamerModified(self.tokenizer)
-        generation_kwargs = dict(inputs, streamer=self.streamer, max_new_tokens=150)
+        generation_kwargs = dict(inputs, streamer=self.streamer, max_new_tokens=max_new_tokens,
+                                 stopping_criteria=stopping_criteria_list)
         thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
         return self.streamer
@@ -128,18 +146,10 @@ class FineTunedModelLoader(BaseModelLoader):
         model_dir = Path('/home/instruct') / self.model_id
         if not os.path.exists(model_dir):
             raise ValueError(f"model directory {model_dir} does not exist")
-        model_output_dir = None
-        if model_dir.exists() and model_dir.is_dir():
-            # List the directories inside the base path
-            subdirs = [d for d in model_dir.iterdir() if d.is_dir()]
-            # If there is only one directory, retrieve its path
-            if len(subdirs) == 1:
-                model_output_dir = subdirs[0]
-        if not model_output_dir:
-            raise ValueError(f"there is no output dir for this model")
+
         try:
             self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-                model_name=str(model_output_dir),
+                model_name=str(model_dir),
                 max_seq_length=self.max_seq_length,
                 dtype=self.dtype,
                 load_in_4bit=self.load_in_4bit,
