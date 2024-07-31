@@ -143,9 +143,8 @@ const FormsTable: React.FC = () => {
     fetchData();
   }, []);
 
-  const fineTunedModels = data.filter(model => model.modelType === 'finetuned');
+  const fineTunedModels = data.filter(model => model.modelType === 'finetuned' || model.modelType === 'checkpoint');
   const foundationalModels = data.filter(model => model.modelType === 'foundational');
-  const checkpointModels = data.filter(model => model.modelType === 'checkpoint');
 
   const TableToolTip = () => 
     <div className="tooltip-container">
@@ -161,7 +160,6 @@ const FormsTable: React.FC = () => {
     <div className="table-container">
       <ModelsTable data={fineTunedModels} title="Fine Tuned Models" />
       <ModelsTable data={foundationalModels} title="Foundational Models" />
-      <ModelsTable data={checkpointModels} title="In The Middle Of Training Models" />
       <TableToolTip/>
     </div>
   );
