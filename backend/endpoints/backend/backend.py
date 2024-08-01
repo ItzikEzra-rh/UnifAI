@@ -5,7 +5,7 @@ from flask import jsonify, Response
 from webargs import fields
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
-from providers.backend import list_of_files_from_gitlab, insert_new_form
+from providers.backend import list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_saved_prompts, insert_prompt_comment
 
 backend_bp = Blueprint("backend", __name__)
 
@@ -59,4 +59,55 @@ def insert_form(project_name, training_name, git_url, git_credential_key, git_fo
     except Exception as e:
         # Log the error and return error response
         logging.error(f"Error saving form data: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@backend_bp.route("/savePrompt", methods=["POST"])
+@from_body({
+    "model_id":        fields.Str(required=True, data_key="modelId"),
+    "training_name":   fields.Str(required=True, data_key="trainingName"),
+    "prompt_text":     fields.Str(required=True, data_key="promptText"),
+})
+def save_prompt(model_id, training_name, prompt_text):
+    try:
+        # Insert LLM prompt into MongoDB collection
+        result = insert_new_prompt(model_id, training_name, prompt_text)
+
+        # Return success response with inserted id
+        return jsonify({"status": "success", "inserted_id": str(result.inserted_id)}), 201
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error saving new prompt: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@backend_bp.route("/retrievePrompt", methods=["GET"])
+def retrieve_prompt():
+    try:
+        # Insert LLM prompt into MongoDB collection
+        result = get_saved_prompts()
+
+        # Return success response with inserted id
+        return json_response({"result": result})
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error saving new prompt: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@backend_bp.route("/savePromptComment", methods=["POST"])
+@from_body({
+    "model_id":        fields.Str(required=True, data_key="modelId"),
+    "comment":         fields.Str(required=True, data_key="comment"),
+})
+def save_prompt_comment(model_id, comment):
+    try:
+        # Insert LLM prompt into MongoDB collection
+        result = insert_prompt_comment(model_id, comment)
+
+        # Return success response
+        return jsonify({"status": "success"}), 201
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error saving new prompt: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500

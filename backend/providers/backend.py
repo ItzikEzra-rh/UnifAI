@@ -54,3 +54,39 @@ def insert_new_form(project_name, training_name, git_url, git_credential_key, gi
                                                       'expandDatasetTo': expand_dataset_to,
                                                       'datasetGradingUpgrade': dataset_grading_upgrade})
     return result
+
+@mongo
+def insert_new_prompt(model_id, training_name, prompt_text):
+    """inserting new llm prompt response to the database
+
+    :param str model_id:
+    :param str training_name:
+    :param str prompt_text: 
+    :return:
+    """
+    result = Collections.by_name('prompts').insert_one({'modelId': model_id,
+                                                        'trainingName': training_name,
+                                                        'promptText': prompt_text,
+                                                        'comment': ''})
+    return result
+
+@mongo
+def get_saved_prompts():
+    """ getting all the saved prompts from our prompts collection
+    
+    :return: list of saved prompts
+    """
+    result = Collections.by_name('prompts').find()
+    return result
+
+@mongo
+def insert_prompt_comment(model_id, comment):
+    """updating existing llm prompt comment in the database
+
+    :param str model_id:
+    :param str comment: 
+    :return:
+    """
+    result = Collections.by_name('prompts').update_one({'modelId': model_id}, {"$set": {"comment": comment}})
+    return result
+

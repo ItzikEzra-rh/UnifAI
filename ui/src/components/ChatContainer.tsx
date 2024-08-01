@@ -3,14 +3,16 @@ import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from
 import { useForm, Controller } from 'react-hook-form';
 import { Button, IconButton, Tooltip  } from '@mui/material'; 
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
 import AutorenewIcon from '@mui/icons-material/Replay';
-import { FormDropdown } from './FormFields'; // Adjust the import path as needed
+import { FormDropdown } from './FormFields';
 import { useTable, useSortBy, Column } from 'react-table';
 import {ModelData} from './types/constants'
-import ReactLoading from 'react-loading'; // Add this import if using react-loading
+import ReactLoading from 'react-loading';
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
-import axios from '../http/axiosLLMConfig';
+import axiosLLM from '../http/axiosLLMConfig';
+import axiosBE from '../http/axiosConfig'
 import '../styles.css';
 
 interface FormData {
@@ -64,7 +66,7 @@ const ChatComponent: React.FC = () => {
     // Fetch available models on component mount
     const fetchModels = async () => {
       try {
-        const response = await axios.get<ModelData[]>('/api/backend/getModels');
+        const response = await axiosLLM.get<ModelData[]>('/api/backend/getModels');
         const transformedData: ModelData[] = response.data.map((item: any) => ({
           modelId: item._id,
           modelName: item.model_name,
@@ -81,7 +83,7 @@ const ChatComponent: React.FC = () => {
 
     return () => {
       // Stop inference on component unmount
-      axios.get('/api/backend/stopInference').catch((error) => console.error('Error stopping inference:', error));
+      axiosLLM.get('/api/backend/stopInference').catch((error) => console.error('Error stopping inference:', error));
     };
   }, []);
 
@@ -98,7 +100,7 @@ const ChatComponent: React.FC = () => {
       setLoadingModel(true);
 
       try {
-        await axios.get('/api/backend/loadModel', {params: { modelId: selectedModel.modelId }});
+        await axiosLLM.get('/api/backend/loadModel', {params: { modelId: selectedModel.modelId }});
       } catch (error) {
         console.error('Error loading model:', error);
       } finally {
@@ -186,6 +188,22 @@ const ChatComponent: React.FC = () => {
     sendQuestion(userMessageText)
   };
 
+  const savePrompt = async (messageText: string) => {
+    if (!selectedModel) return;
+
+    try {
+      const payload = {
+        modelId: selectedModel.modelId,
+        trainingName: selectedModel.trainingName,
+        promptText: messageText,
+      };
+      await axiosBE.post('/api/backend/savePrompt', payload);
+      console.log('Prompt saved successfully');
+    } catch (error) {
+      console.error('Error saving prompt:', error);
+    }
+  };
+
   const regenerateResponse = async () => {
     const lastUserMessage = messages.slice().reverse().find(msg => msg.sender === 'user');
     if (!lastUserMessage) return;
@@ -201,7 +219,7 @@ const ChatComponent: React.FC = () => {
 
   const handleStop = async () => {
     try {
-      await axios.get('/api/backend/stopInference');
+      await axiosLLM.get('/api/backend/stopInference');
       setIsStreaming(false);
     } catch (error) {
       console.error('Error stopping inference:', error);
@@ -329,6 +347,11 @@ const ChatComponent: React.FC = () => {
                               </IconButton>
                             </Tooltip>
                           )}
+                          <Tooltip title="Save">
+                            <IconButton onClick={() => savePrompt(message.text)} size="small">
+                              <SaveIcon />
+                            </IconButton>
+                          </Tooltip>
                         </div>
                       )}
                     </div>
