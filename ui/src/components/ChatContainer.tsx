@@ -32,12 +32,20 @@ interface ChatMessage {
 
 const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }) => {
   const { control, handleSubmit, watch } = useForm<FormData>();
+  const [selectedDropDownMenu, setSelectedDropDownMenu] = useState<ModelData | null>(null);
   const selectedModel = watch('model'); // Watch the form field for changes
 
   const handleModelSubmit = (data: FormData) => {
     const selectedModel = models.find((model) => model.trainingName === data.model);
     if (selectedModel) {
       onSelectModel(selectedModel);
+    }
+  };
+
+  const handleDropDownSelection = (selectedItem: string) => {
+    const foundItem = models.find((model) => model.trainingName === selectedItem);
+    if (foundItem) {
+      setSelectedDropDownMenu(foundItem);
     }
   };
 
@@ -49,7 +57,20 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
         control={control}
         errors={{}} // Pass any validation errors here if needed
         options={models.map((model) => model.trainingName)}
+        onSelect={handleDropDownSelection} // Adjust this if your dropdown uses a different prop
       />
+      {selectedDropDownMenu && (
+        <div className="model-details" style={{ marginTop: '20px' }}>
+          <h4>Selected Model Details</h4>
+          {selectedDropDownMenu.project && <p>Project: {selectedDropDownMenu.project}</p>}
+          {selectedDropDownMenu.modelMaxSeqLen && <p>Context Length: {selectedDropDownMenu.modelMaxSeqLen}</p>}
+          {selectedDropDownMenu.dataSize && <p>Dataset Size: {selectedDropDownMenu.dataSize}</p>}
+          {selectedDropDownMenu.modelName && <p>Model Name: {selectedDropDownMenu.modelName}</p>}
+          {selectedDropDownMenu.modelType && <p>Model Type: {selectedDropDownMenu.modelType}</p>}
+          {selectedDropDownMenu.checkpoint && <p>Checkpoint: {selectedDropDownMenu.checkpoint}</p>}
+          {selectedDropDownMenu.numTests && <p>Number of Tests: {selectedDropDownMenu.numTests}</p>}
+        </div>
+      )}
       <Button type="submit" variant="contained" color="primary" disabled={!selectedModel} style={{ float: 'right', marginTop: '10px' }}> Load Model</Button>
     </form>
   );
@@ -72,6 +93,11 @@ const ChatComponent: React.FC = () => {
           modelName: item.model_name,
           trainingName: item.training_name,
           modelMaxSeqLen: item.context_length,
+          dataSize: item.dataset_size,
+          modelType: item.model_type,
+          numTests: item.num_tests,
+          project: item.project,
+          checkpoint: item?.checkpoint,
         }));
         setModels(transformedData);
       } catch (error) {
@@ -298,7 +324,7 @@ const ChatComponent: React.FC = () => {
   const {getTableProps, getTableBodyProps, headerGroups, rows, prepareRow} = useTable({ columns, data }, useSortBy);
 
   return (
-    <div style={{ height: '100%', border: '1px solid #ccc', padding: '10px' }}>
+    <div style={{ height: '100%', border: '1px solid #ccc', padding: '10px', position: 'relative' }}>
       {loadingModel ? (
         <div className="loading-overlay">
           {/* You can use a library like react-loading for the spinner */}
@@ -308,8 +334,11 @@ const ChatComponent: React.FC = () => {
           <>
             {/* Custom section for displaying model information */}
             <ChatToolTip/>
-            <div style={{ position: 'relative', height: '90%' }}>
-              <MainContainer style={{height: '95%', padding: '10px', marginTop: '20px'}}>
+            <Button variant="contained" color="primary" onClick={unloadModel} style={{ position: 'absolute', top: '10px', right: '10px' }}>
+                Unload Model
+            </Button>
+            <div style={{ position: 'relative', height: '80vh' }}>
+              <MainContainer style={{padding: '10px', marginTop: '20px'}}>
                 <ChatContainer>
                 <MessageList>
                   {messages.map((message, index) => (
@@ -360,9 +389,6 @@ const ChatComponent: React.FC = () => {
                 <MessageInput placeholder="Type your message here..." onSend={handleSend} disabled={loadingModel || isStreaming} />
                 </ChatContainer>
               </MainContainer>
-              <Button variant="contained" color="primary" onClick={unloadModel} style={{ position: 'absolute', bottom: '10px', right: '5px' }}>
-                Unload Model
-              </Button>
             </div>           
           </>): (<ModelSelection models={models} onSelectModel={handleModelSelect} />)
         }

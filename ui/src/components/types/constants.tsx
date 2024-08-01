@@ -18,9 +18,10 @@ export interface TableFormData {
     trainingName: string;
     baseModelName: 'Mistarl' | 'Lama';
     testsCodeFramework: 'Python' | 'Robot' | 'Go' | 'Jmeter';
-    status: 'Initial' | 'Progress' | 'Finished';
+    status: 'Initial' | 'In progress' | 'Finished';
     progress: string; // Represented by percentage (e.g., "50%")
-    modelType: 'finetuned' | 'foundational' | 'checkpoint'
+    modelType: 'finetuned' | 'foundational' | 'checkpoint';
+    checkpoint?: string;
 }
 
 export interface ModelData {
@@ -28,4 +29,9 @@ export interface ModelData {
     modelName: string;
     trainingName: string;
     modelMaxSeqLen: number;
+    dataSize: string,
+    modelType: string,
+    numTests: string,
+    project: string,
+    checkpoint?: string,
 }

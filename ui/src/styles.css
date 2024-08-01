@@ -244,6 +244,7 @@ body, html, #root {
 .forms-table {
   width: 100%;
   border-collapse: collapse;
+  margin-top: 50px;
 }
 
 .forms-table th,
@@ -339,7 +340,7 @@ body, html, #root {
   color: lightcoral; /* Example color for project name 'X' */
 }
 
-.project-name.CBIS {
+.project-name.ALL {
   color: lightblue; /* Example color for project name 'X' */
 }
 
