@@ -20,11 +20,11 @@ def sanity_check():
     "project": fields.Str(data_key="project", required=True),
     "context_length": fields.Int(data_key="contextLength", required=True),
     "model_type": fields.Str(data_key="type", required=True),
-    "num_tests": fields.Str(data_key="numTests", required=True),
-    "dataset_size": fields.Str(data_key="datasetSize", required=True),
+    "num_tests": fields.Str(data_key="numTests", required=False, default=""),
+    "dataset_size": fields.Str(data_key="datasetSize", required=False, default=""),
     "checkpoint": fields.Str(data_key="checkpoint", required=False, default=""),
 })
-def register_trained_model(model_name, project, context_length, model_type, num_tests, dataset_size, checkpoint):
+def register_trained_model(model_name, project, context_length, model_type, num_tests="", dataset_size="", checkpoint=""):
     return llm_provider.register_trained_model(model_name, project, context_length, model_type, num_tests, dataset_size,
                                                checkpoint)
 
@@ -37,12 +37,20 @@ def load_model(model_id):
     return jsonify(llm_provider.load_model(model_id))
 
 
-@backend_bp.route("/inference", methods=["GET"])
-@from_query({
+# @backend_bp.route("/inference", methods=["GET"])
+# @from_query({
+#     "prompt": fields.Str(data_key="prompt", required=True),
+# })
+# def inference(prompt):
+#     return Response(llm_provider.inference(prompt), content_type='text/plain')
+
+@backend_bp.route("/inference", methods=["POST"])
+@from_body({
     "prompt": fields.Str(data_key="prompt", required=True),
+    "context_length": fields.Str(data_key="contextLength", required=True),
 })
-def inference(prompt):
-    return Response(llm_provider.inference(prompt), content_type='text/plain')
+def inference(prompt, context_length):
+    return Response(llm_provider.inference(prompt, max_new_tokens=int(context_length)), content_type='text/plain')
 
 
 @backend_bp.route("/stopInference", methods=["GET"])
