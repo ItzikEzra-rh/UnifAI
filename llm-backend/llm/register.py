@@ -71,6 +71,7 @@ class RegisterModel:
                 "project": card_data.get('project', 'Unknown'),
                 "context_length": card_data.get('context_length', 0),
                 "model_type": card_data.get('model_type', 'Unknown'),
+                "finetune_steps": card_data.get('finetune_steps', []),
                 "checkpoint": card_data.get('checkpoint', ""),
                 "huggingface_url": f"https://huggingface.co/{repo_id}",
                 "hf_repo_id": repo_id
