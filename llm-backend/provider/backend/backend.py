@@ -1,11 +1,11 @@
 from llm.register import RegisterModel
-from llm.model import ModelLoaderFactory
+from llm.model import ModelLoader
 import llm.model as llm_model
+from llm.hf_token_manager import HFTokenManager
 
 
-def register_trained_model(model_name, project, context_length, model_type, num_tests, dataset_size, checkpoint):
-    return RegisterModel().register_model(model_name, project, context_length, model_type, num_tests, dataset_size,
-                                          checkpoint)
+def register_trained_model(hf_url):
+    return RegisterModel().register_model(hf_url)
 
 
 def load_model(model_id):
@@ -13,10 +13,13 @@ def load_model(model_id):
     if not model_info:
         raise ValueError(f"Model with ID {model_id} not found")
 
-    model_type = model_info['model_type']
-    model_name = model_info['model_name']
-    project = model_info['project']
-    context_length = model_info['context_length']
+    base_model = model_info.get('base_model', 'Unknown')
+    project = model_info.get('project', 'Unknown')
+    context_length = model_info.get('context_length', 0)
+    model_type = model_info.get('model_type', 'Unknown')
+    checkpoint = model_info.get('checkpoint', "")
+    huggingface_url = model_info.get('huggingface_url', 'Unknown')
+    hf_repo_id = model_info.get('hf_repo_id', "")
 
     # Clean the current model if one is already loaded
     if llm_model.model_loader and llm_model.model_loader.model_id == model_id:
@@ -26,8 +29,8 @@ def load_model(model_id):
     else:
         print(f"loading model with id {model_id}")
 
-    llm_model.model_loader = ModelLoaderFactory.create_model_loader(model_id, model_type, model_name, context_length,
-                                                                    project)
+    llm_model.model_loader = ModelLoader(model_id, base_model, project, context_length,
+                                         model_type, checkpoint, huggingface_url, hf_repo_id)
     return llm_model.model_loader.load_model()
 
 
@@ -46,3 +49,7 @@ def stop_inference():
 
 def get_models():
     return RegisterModel().get_models()
+
+
+def save_hf_token(token):
+    HFTokenManager().save_token(token)

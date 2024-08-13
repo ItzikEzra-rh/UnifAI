@@ -9,12 +9,13 @@ from pathlib import Path
 from be_utils.utils import find_latest_checkpoint
 from threading import Thread, Event
 import torch
+from llm.hf_token_manager import HFTokenManager
 
 app = Flask(__name__)
 
 # Global variable to hold the model and tokenizer
 model_loader = None
-from transformers import AutoModelForCausalLM, AutoTokenizer, StoppingCriteriaList
+from transformers import StoppingCriteriaList
 from transformers import StoppingCriteria
 
 
@@ -34,38 +35,34 @@ class TextIteratorStreamerModified(TextIteratorStreamer):
         raise StopIteration()
 
 
-class ModelLoaderFactory:
-    @staticmethod
-    def create_model_loader(model_id, model_type, model_name, context_length, project):
-        if model_type == 'foundational':
-            return FoundationalModelLoader(model_id=model_id, model_name=model_name, max_seq_length=context_length,
-                                           project=project)
-        elif model_type == 'checkpoint':
-            return CheckpointModelLoader(model_id=model_id, model_name=model_name, max_seq_length=context_length,
-                                         project=project)
-        elif model_type == 'finetuned':
-            return FineTunedModelLoader(model_id=model_id, model_name=model_name, max_seq_length=context_length,
-                                        project=project)
-        else:
-            raise ValueError("Invalid model type")
-
-
-class BaseModelLoader(ABC):
-    def __init__(self, model_id, model_name=None, max_seq_length=8192, dtype=None, load_in_4bit=True, project=''):
-        self.model_name = model_name
-        self.max_seq_length = int(max_seq_length)
-        self.dtype = dtype
-        self.load_in_4bit = load_in_4bit
+class ModelLoader:
+    def __init__(self, model_id, base_model, project, context_length=8192, model_type="", checkpoint="",
+                 huggingface_url='', hf_repo_id=""):
+        self.model_id = model_id
+        self.base_model = base_model
+        self.project = project
+        self.context_length = int(context_length)
+        self.model_type = model_type
+        self.checkpoint = checkpoint
+        self.huggingface_url = huggingface_url
+        self.hf_repo_id = hf_repo_id
         self.model = None
         self.tokenizer = None
-        self.model_id = model_id
-        self.project = project
         self.streamer = None
         self.stop_event = None
 
-    @abstractmethod
     def load_model(self):
-        pass
+        try:
+            self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+                model_name=self.hf_repo_id,
+                max_seq_length=self.context_length,
+                dtype=None,
+                load_in_4bit=True,
+                use_auth_token=HFTokenManager().retrieve_token()
+            )
+            return True
+        except Exception as e:
+            raise RuntimeError(f"Failed to load foundational model: {e}")
 
     def stop_infer(self):
         if self.streamer:
@@ -101,60 +98,15 @@ class BaseModelLoader(ABC):
 
     def info(self):
         return json.dumps({
-            'model_name': self.model_name,
-            'max_seq_length': self.max_seq_length,
-            'dtype': self.dtype,
-            'load_in_4bit': self.load_in_4bit,
             'model_id': self.model_id,
-            'project': self.project
+            'base_model': self.base_model,
+            'project': self.project,
+            'context_length': self.context_length,
+            'model_type': self.model_type,
+            'checkpoint': self.checkpoint,
+            'huggingface_url': self.huggingface_url,
+            'hf_repo_id': self.hf_repo_id,
         })
 
     def __str__(self):
         return str(self.info())
-
-
-class FoundationalModelLoader(BaseModelLoader):
-    def load_model(self):
-        try:
-            self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-                model_name=self.model_name,
-                max_seq_length=self.max_seq_length,
-                dtype=self.dtype,
-                load_in_4bit=self.load_in_4bit,
-            )
-            return True
-        except Exception as e:
-            raise RuntimeError(f"Failed to load foundational model: {e}")
-
-
-class CheckpointModelLoader(BaseModelLoader):
-    def load_model(self):
-        model_dir = Path('/home/instruct') / self.model_id
-        if not os.path.exists(model_dir):
-            raise ValueError(f"model directory {model_dir} does not exist")
-        if not model_dir:
-            raise ValueError(f"Checkpoint directory does not exist in {model_dir}")
-        try:
-            self.model, self.tokenizer = FastLanguageModel.from_pretrained(str(model_dir))
-            return True
-        except Exception as e:
-            raise RuntimeError(f"Failed to load model from checkpoint: {e}")
-
-
-class FineTunedModelLoader(BaseModelLoader):
-    def load_model(self):
-        model_dir = Path('/home/instruct') / self.model_id
-        if not os.path.exists(model_dir):
-            raise ValueError(f"model directory {model_dir} does not exist")
-
-        try:
-            self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-                model_name=str(model_dir),
-                max_seq_length=self.max_seq_length,
-                dtype=self.dtype,
-                load_in_4bit=self.load_in_4bit,
-            )
-            FastLanguageModel.for_inference(self.model)
-            return True
-        except Exception as e:
-            raise RuntimeError(f"Failed to load fine-tuned model: {e}")
