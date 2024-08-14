@@ -1,8 +1,9 @@
 import re
+import os
 from .tree_sitter_parser import TreeSitterParser
 
 ROBOT_LANGUAGE_PATH = '/home/cloud-user/Projects/playGround/tree-sitter-playground/robot.so'
-ROBOT_FILE_PATH = '/home/cloud-user/Projects/Robot-POC-InstructLab/6003_Scale_in_out_worker_node_after_failed_scale_out.robot'
+ROBOT_FILE_PATH = '/home/cloud-user/Projects/Robot-POC-InstructLab/fullTests/6003_Scale_in_out_worker_node_after_failed_scale_out.robot'
 
 class RobotParser(TreeSitterParser):
     def __init__(self, language_path=ROBOT_LANGUAGE_PATH, language_name='robot', file_path=ROBOT_FILE_PATH):
@@ -359,3 +360,57 @@ class RobotParser(TreeSitterParser):
         extract_test_cases(root_node, keyword_definitions, variable_definitions, settings_definitions)
 
         return self.test_cases
+
+    def get_test_cases_name_list(self):
+        def extract_filename_without_extension():
+            # Get the basename (the part after the last '/')
+            filename = os.path.basename(self.file_path)
+            # Split the filename on the last '.' and return the part before it
+            return os.path.splitext(filename)[0]
+
+        def get_test_cases_section_node(root_node):
+            for child in root_node.children:
+                for body_child in child.children:
+                    if body_child.type == 'test_cases_section':
+                        return body_child
+
+        def extract_test_cases(root_node):
+            test_cases = []
+
+            for child in root_node.children:
+                if child.type == "test_case_definition":
+                    test_case_name = ""
+                    documentation = ""
+
+                    # Extract test case name
+                    for name_child in child.children:
+                        if name_child.type == "name":
+                            test_case_name = name_child.text.decode("utf-8").strip()
+
+                    # Extract documentation if it starts with [Documentation]
+                    for body_child in child.children:
+                        if body_child.type == "body":
+                            for setting in body_child.children:
+                                if setting.type == "test_case_setting":
+                                    setting_text = setting.text.decode("utf-8").strip()
+                                    if re.match(r'\[Documentation\]', setting_text):
+                                        for argument in setting.children:
+                                            if argument.type == "arguments":
+                                                documentation = argument.text.decode("utf-8").strip()
+
+                    # Add the test case information to the list
+                    test_cases.append({
+                        "name": test_case_name,
+                        "documentation": documentation
+                    })
+
+            return test_cases
+
+        root_node, content = self.get_root_node()
+        test_cases_node = get_test_cases_section_node(root_node)
+
+        test_cases_list = {
+            extract_filename_without_extension(): extract_test_cases(test_cases_node)
+        }
+
+        return test_cases_list
