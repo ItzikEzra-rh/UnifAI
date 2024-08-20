@@ -11,5 +11,4 @@ model, tokenizer = FastLanguageModel.from_pretrained(
 )
 FastLanguageModel.for_inference(model) # Enable native 2x faster inferenc
 
-
-model.push_to_hub_merged("oodeh/llama-3-8b-Instruct-bnb-4bit-ncs-robot-tests-data150k-finetuned-412test2prompts-12epochs", tokenizer, save_method = "merged_4bit_forced", token="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")
+model.push_to_hub_merged("oodeh/llama-3-8b-Instruct-bnb-4bit-ncs-robot-tests-data150k-finetuned-412test2prompts-12epochs", tokenizer, save_method ="merged_4bit_forced", token="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")

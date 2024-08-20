@@ -48,6 +48,7 @@ class RegisterModel:
 
     def model_exists(self, model_data):
         return self.collection.find_one({
+            "name":  model_data['name'],
             "base_model": model_data['base_model'],
             "project": model_data['project'],
             "context_length": model_data['context_length'],
@@ -66,7 +67,7 @@ class RegisterModel:
                 card_data = json.load(f)
 
             model_data = {
-                "name": f"{card_data.get('model_type', 'Unknown')} {card_data.get('project', 'Unknown')} {repo_id}",
+                "name": card_data.get('name', 'Unknown'),
                 "base_model": card_data.get('base_model', 'Unknown'),
                 "project": card_data.get('project', 'Unknown'),
                 "context_length": card_data.get('context_length', 0),
