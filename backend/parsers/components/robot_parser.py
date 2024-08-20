@@ -1,8 +1,11 @@
 import re
+import os
 from .tree_sitter_parser import TreeSitterParser
 
 ROBOT_LANGUAGE_PATH = '/home/cloud-user/Projects/playGround/tree-sitter-playground/robot.so'
-ROBOT_FILE_PATH = '/home/cloud-user/Projects/Robot-POC-InstructLab/6003_Scale_in_out_worker_node_after_failed_scale_out.robot'
+# ROBOT_FILE_PATH = '/home/cloud-user/Projects/Robot-POC-InstructLab/fullTests/6003_Scale_in_out_worker_node_after_failed_scale_out.robot'
+# ROBOT_FILE_PATH =  '/home/cloud-user/Projects/Robot-POC-InstructLab/24.0/4022_Add_Rsyslog_rule_and_Delete_Rsyslog_rule.robot'
+ROBOT_FILE_PATH =  '/home/cloud-user/Projects/Robot-POC-InstructLab/24.0/8103_Zabbix_server_is_running_in_all_manage_nodes.robot'
 
 class RobotParser(TreeSitterParser):
     def __init__(self, language_path=ROBOT_LANGUAGE_PATH, language_name='robot', file_path=ROBOT_FILE_PATH):
@@ -31,7 +34,7 @@ class RobotParser(TreeSitterParser):
 
         return sections
 
-    def test_cases_parser(self):
+    def test_cases_parser(self, specific_test_case_name=None):
         def map_internal_use(keyword_body_node, child_type, grandchild_type, target_type, target_child_type, nested_target_type=None, attribute_type=None):
             """
             Maps internal uses of keywords, variables, or settings within a keyword body node.
@@ -307,6 +310,10 @@ class RobotParser(TreeSitterParser):
 
         def extract_test_cases(node, keyword_definitions, variable_definitions, settings_definitions):
             if node.type == 'test_case_definition':
+                test_case_name = content[node.start_byte:node.end_byte].strip().split('\n')[0]
+                if specific_test_case_name and test_case_name != specific_test_case_name:
+                    return  # Skip this test case if it does not match the specific name
+                    
                 setting_text = "*** Settings ***"
                 variable_text = "\n\n*** Variables ***"
                 
@@ -359,3 +366,125 @@ class RobotParser(TreeSitterParser):
         extract_test_cases(root_node, keyword_definitions, variable_definitions, settings_definitions)
 
         return self.test_cases
+
+    def combine_robot_tests(self, content1, content2):
+        def extract_sections(content):
+            section_mapping = {
+                'settings': 'settings',
+                'variables': 'variables',
+                'test cases': 'test_cases',
+                'keywords': 'keywords'
+            }
+
+            sections = {key: [] for key in section_mapping.values()}
+            current_section = None
+
+            lines = content.splitlines()
+
+            for line in lines:
+                stripped_line = line.strip()
+                if stripped_line.startswith('***'):
+                    section_name = stripped_line.replace('*', '').strip().lower()
+                    current_section = section_mapping.get(section_name)
+                elif current_section:
+                    sections[current_section].append(line)  # Preserve original line (with indentation)
+
+            return sections
+
+        def combine_sections(sections1, sections2):
+            combined_sections = {}
+
+            for section_name, lines in sections1.items():
+                combined_sections[section_name] = lines.copy()
+                if section_name in sections2:
+                    for line in sections2[section_name]:
+                        if line not in combined_sections[section_name]:
+                            combined_sections[section_name].append(line)
+                        # Duplicate code can appear under the following sections: keywords/test cases 
+                        # elif section_name == 'test_cases':
+                        #     combined_sections[section_name].append(line)
+
+            for section_name, lines in sections2.items():
+                if section_name not in combined_sections:
+                    combined_sections[section_name] = lines
+
+            return combined_sections
+
+        def generate_combined_test(combined_sections):
+            combined_test = []
+
+            for section_name, lines in combined_sections.items():
+                combined_test.append(f'*** {section_name.replace("_", " ").capitalize()} ***')
+
+                if section_name in ['test_cases', 'keywords']:
+                    combined_test.extend(lines)
+                    combined_test.append('')  # Add a blank line between different lines for these sections
+                else:
+                    combined_test.extend(line for line in lines if line.strip())  # No empty lines between different lines
+
+                if section_name not in ['test_cases', 'keywords']:
+                    combined_test.append('')  # Add a blank line between sections
+
+            return '\n'.join(combined_test)
+
+        sections1 = extract_sections(content1)
+        sections2 = extract_sections(content2)
+
+        combined_sections = combine_sections(sections1, sections2)
+        combined_test = generate_combined_test(combined_sections)
+
+        return combined_test
+
+    def get_test_cases_name_list(self):
+        def extract_filename_without_extension():
+            # Get the basename (the part after the last '/')
+            filename = os.path.basename(self.file_path)
+            # Split the filename on the last '.' and return the part before it
+            return os.path.splitext(filename)[0]
+
+        def get_test_cases_section_node(root_node):
+            for child in root_node.children:
+                for body_child in child.children:
+                    if body_child.type == 'test_cases_section':
+                        return body_child
+
+        def extract_test_cases(root_node):
+            test_cases = []
+
+            for child in root_node.children:
+                if child.type == "test_case_definition":
+                    test_case_name = ""
+                    documentation = ""
+
+                    # Extract test case name
+                    for name_child in child.children:
+                        if name_child.type == "name":
+                            test_case_name = name_child.text.decode("utf-8").strip()
+
+                    # Extract documentation if it starts with [Documentation]
+                    for body_child in child.children:
+                        if body_child.type == "body":
+                            for setting in body_child.children:
+                                if setting.type == "test_case_setting":
+                                    setting_text = setting.text.decode("utf-8").strip()
+                                    if re.match(r'\[Documentation\]', setting_text):
+                                        for argument in setting.children:
+                                            if argument.type == "arguments":
+                                                documentation = argument.text.decode("utf-8").strip()
+
+                    # Add the test case information to the list
+                    test_cases.append({
+                        "name": test_case_name,
+                        "documentation": documentation
+                    })
+
+            return test_cases
+
+        root_node, content = self.get_root_node()
+        test_cases_node = get_test_cases_section_node(root_node)
+
+        test_cases_list = {
+            extract_filename_without_extension(): extract_test_cases(test_cases_node)
+        }
+
+        return test_cases_list
