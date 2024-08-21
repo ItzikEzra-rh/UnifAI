@@ -3,6 +3,43 @@ import os
 import requests
 
 
+def robot_test_template(test_name, code):
+    """
+    Send a request to the LLM API to generate prompts based on the provided documentation and code
+    using the updated instruction set for prompt creation.
+    """
+    request_template = f"""
+    I have a code snippet for a Go test that is part of the Cluster Node Tuning Operator project. 
+    I need to generate two distinct prompts to train a language model. 
+    The prompts should clearly and instructively describe the functionality of the code and the general purpose of the test, 
+    enabling the model to generate the code snippet as output. Each prompt should be unique 
+    to add diversity and versatility to the dataset.
+    
+    Here is an example of a dataset element:
+    
+    Test name: {test_name}
+    
+    Code: "{code}"
+    
+    Please transform the Code into two distinct prompts that a language model can use to generate the corresponding code. 
+    The prompts should be detailed enough to guide the model in generating the correct code and to explain the overall purpose of the test. 
+    Ensure that the prompts cover different aspects or perspectives of the task described by the Code and how it reflects the test's objectives.
+    
+    **Important:**
+    - Each prompt must explicitly mention that the code is for a Go test and is part of the Cluster Node Tuning Operator project.
+    - Prompt 1 should present the instructions in a step-by-step format using a numbered list. The list should include both detailed instructions and an explanation of the test's purpose.
+    - Prompt 2 should be in a continuous free-text narrative, without using any numbered lists or explicit step indicators. 
+    Focus on describing the code and the test's purpose in a flowing, narrative manner that reads like a paragraph, explaining the logic, purpose, and context without breaking it down into steps.
+    
+    Format the output as follows, and return only the output. The two prompts should be distinct and do not know about each other:
+    
+    Prompt 1: <First prompt here>
+    Prompt 2: <Second prompt here>
+    """
+
+    return request_template
+
+
 def full_test_template(documentation, code):
     """
     Send a request to the LLM API to generate prompts based on the provided documentation and code
@@ -80,14 +117,14 @@ def test_case_template(documentation, code):
     return request_template.format(documentation, code)
 
 
-def send_request_to_llm(documentation, code):
+def send_request_to_llm(test_name, code):
     """
     Send a request to the LLM API to generate prompts based on the provided documentation and code.
     """
     # Template for the request
     # prompt = test_case_template(documentation, code)
-    prompt = full_test_template(documentation, code)
-
+    prompt = robot_test_template(test_name, code)
+    print(prompt)
     # Send the request to the LLM API
     try:
         response = requests.post(
@@ -145,10 +182,9 @@ def extract_prompts(response_text):
     return prompt_1, prompt_2
 
 
-
 # File paths
-input_file = '/home/instruct/ncs_412_full_tests.json'
-output_file = 'ncs_412_full_tests_documentation_prompts_v2.json'
+input_file = '/home/instruct/GO_tests_mapping.json'
+output_file = 'go_tests_2_prompts.json'
 
 # Load the input dataset
 with open(input_file, 'r') as infile:
@@ -162,17 +198,16 @@ else:
     processed_data = []
 
 # Determine starting point
-processed_ids = {item['documentation'] for item in processed_data}
-start_index = next((i for i, item in enumerate(data) if item['documentation'] not in processed_ids), len(data))
+processed_ids = {item['test_name'] for item in processed_data}
+start_index = next((i for i, test_name in enumerate(data.keys()) if test_name not in processed_ids), len(data))
 
 # Process each element in the dataset
-for i, element in enumerate(data[start_index:], start=start_index):
-    documentation = element['documentation']
-    code = element['test']
+for i, test_name in enumerate(list(data.keys())[start_index:], start=start_index):
+    code = data[test_name]
     try:
         # Generate prompts using the LLM API
         # response_text = send_request_to_llm(documentation, code)
-        response_text = send_request_to_llm(documentation, code)
+        response_text = send_request_to_llm(test_name, code)
 
         if response_text:
             # Extract prompts from the response
@@ -180,7 +215,7 @@ for i, element in enumerate(data[start_index:], start=start_index):
 
             # Create a new element with prompts
             new_element = {
-                "documentation": documentation,
+                "test_name": test_name,
                 "code": code,
                 "prompt_1": prompt_1,
                 "prompt_2": prompt_2
@@ -197,7 +232,7 @@ for i, element in enumerate(data[start_index:], start=start_index):
             with open(output_file, 'w') as outfile:
                 json.dump(processed_data, outfile, indent=4)
 
-            print(f"Processed element {i + 1}/{len(data)}")
+            print(f"Processed element {i + 1}/{len(list(data.keys()))}")
         else:
             print(f"Failed to generate prompts for element {i + 1}.")
             break  # Exit loop on failure to address the issue manually
