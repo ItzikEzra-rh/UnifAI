@@ -22,7 +22,7 @@ const StatisticsGraphs: React.FC = () => {
         const transformedData = response.data.map((item: any) => ({
           id: item._id,
           contextLength: item.context_length,
-          modelName: item.model_name,
+          modelName: item.base_model,
           modelType: item.model_type,
           project: item.project,
         }));
