@@ -29,9 +29,10 @@ export interface ModelData {
     modelName: string;
     trainingName: string;
     modelMaxSeqLen: number;
-    dataSize: string,
     modelType: string,
-    numTests: string,
     project: string,
     checkpoint?: string,
+    finetuneSteps?: any[], 
+    // numTests: string,
+    // dataSize: string,
 }

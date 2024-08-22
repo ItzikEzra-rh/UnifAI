@@ -138,9 +138,9 @@ const FormsTable: React.FC = () => {
           const { status, progress } = getStatusAndProgress(item.model_type, item?.checkpoint);
           return {
             projectName: item.project,
-            trainingName: item.training_name.substring(0, 40),
+            trainingName: item.name.substring(0, 40),
             contextLength: item.context_length,
-            baseModelName: item.model_name,
+            baseModelName: item.base_model,
             modelType: item.model_type,
             testsCodeFramework: 'Robot',
             status,

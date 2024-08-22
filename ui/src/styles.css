@@ -382,3 +382,39 @@ body, html, #root {
 .graph-container + .graph-container {
   margin-top: 40px; /* Added margin for space between top graphs and Line Chart */
 }
+
+.step-details-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 20px;
+}
+
+.step-details-list {
+  list-style-type: none;
+  padding: 10px;
+  margin: 0;
+  background-color: #f5f5f5; /* Gentle background color */
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+  max-width: 400px;
+  text-align: left;
+}
+
+.step-details-list li {
+  display: flex;
+  align-items: baseline;
+  margin: 8px 0;
+  font-size: 14px;
+  font-family: 'Verdana, Geneva, Tahoma, sans-serif';
+  color: #333; /* Gentle text color */
+}
+
+.step-details-list li strong {
+  min-width: 100px; /* Adjust this value based on your longest key */
+  margin-right: 10px; /* Space between the key and the value */
+  color: #007bff; /* Gentle accent color */
+}
+
+.step-details-list li span {
+  flex-grow: 1; /* Allow the value to take up the remaining space */
+}

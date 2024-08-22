@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from '@chatscope/chat-ui-kit-react';
 import { useForm, Controller } from 'react-hook-form';
-import { Button, IconButton, Tooltip  } from '@mui/material'; 
+import { Button, IconButton, Tooltip, Stepper, Step, StepButton } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
@@ -32,8 +32,14 @@ interface ChatMessage {
 
 const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }) => {
   const { control, handleSubmit, watch } = useForm<FormData>();
+  const [activeStep, setActiveStep] = useState<number>(0);
+  const [steps, setSteps] = useState<any[]>([]);
   const [selectedDropDownMenu, setSelectedDropDownMenu] = useState<ModelData | null>(null);
   const selectedModel = watch('model'); // Watch the form field for changes
+
+  const handleStepClick = (index: number) => {
+    setActiveStep(index);
+  };
 
   const handleModelSubmit = (data: FormData) => {
     const selectedModel = models.find((model) => model.trainingName === data.model);
@@ -45,7 +51,17 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
   const handleDropDownSelection = (selectedItem: string) => {
     const foundItem = models.find((model) => model.trainingName === selectedItem);
     if (foundItem) {
+      setActiveStep(0)
+      setSteps([])
       setSelectedDropDownMenu(foundItem);
+
+      if (foundItem.finetuneSteps && foundItem.finetuneSteps.length > 0) {
+        setSteps([{ label: foundItem.finetuneSteps[0].base_model },
+                    ...foundItem.finetuneSteps.map((step) => ({
+                      label: `${step?.base_model}`,
+                      details: step,
+                    }))]);
+      }
     }
   };
 
@@ -55,20 +71,48 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
         name="model"
         label="Choose Model"
         control={control}
-        errors={{}} // Pass any validation errors here if needed
+        errors={{}}
         options={models.map((model) => model.trainingName)}
-        onSelect={handleDropDownSelection} // Adjust this if your dropdown uses a different prop
+        onSelect={handleDropDownSelection}
       />
       {selectedDropDownMenu && (
         <div className="model-details" style={{ marginTop: '20px' }}>
           <h4>Selected Model Details</h4>
           {selectedDropDownMenu.project && <p>Project: {selectedDropDownMenu.project}</p>}
           {selectedDropDownMenu.modelMaxSeqLen && <p>Context Length: {selectedDropDownMenu.modelMaxSeqLen}</p>}
-          {selectedDropDownMenu.dataSize && <p>Dataset Size: {selectedDropDownMenu.dataSize}</p>}
           {selectedDropDownMenu.modelName && <p>Model Name: {selectedDropDownMenu.modelName}</p>}
           {selectedDropDownMenu.modelType && <p>Model Type: {selectedDropDownMenu.modelType}</p>}
           {selectedDropDownMenu.checkpoint && <p>Checkpoint: {selectedDropDownMenu.checkpoint}</p>}
-          {selectedDropDownMenu.numTests && <p>Number of Tests: {selectedDropDownMenu.numTests}</p>}
+          <br/><br/>
+          {steps.length > 0 && (
+            <div className="finetune-steps">
+              <h4>Finetune Evolution</h4>
+              <div>
+                <Stepper activeStep={activeStep} alternativeLabel nonLinear>
+                  {steps.map((step, index) => (
+                    <Step key={index}>
+                      <StepButton onClick={() => handleStepClick(index)}>
+                        {step.label}
+                      </StepButton>
+                    </Step>
+                  ))}
+                </Stepper>
+
+                {activeStep !== null && steps[activeStep].details && (
+                  <div className="step-details-container">
+                    {/* <pre>{JSON.stringify(steps[activeStep].details, null, 2)}</pre> */}
+                    <ul className="step-details-list">
+                      {Object.entries(steps[activeStep].details).map(([key, value]) => (
+                        <li key={key}>
+                          <strong>{key}:</strong> {String(value)}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       )}
       <Button type="submit" variant="contained" color="primary" disabled={!selectedModel} style={{ float: 'right', marginTop: '10px' }}> Load Model</Button>
@@ -90,14 +134,13 @@ const ChatComponent: React.FC = () => {
         const response = await axiosLLM.get<ModelData[]>('/api/backend/getModels');
         const transformedData: ModelData[] = response.data.map((item: any) => ({
           modelId: item._id,
-          modelName: item.model_name,
-          trainingName: item.training_name,
+          modelName: item.name,
+          trainingName: item.name,
           modelMaxSeqLen: item.context_length,
-          dataSize: item.dataset_size,
           modelType: item.model_type,
-          numTests: item.num_tests,
           project: item.project,
           checkpoint: item?.checkpoint,
+          finetuneSteps: item?.finetune_steps,
         }));
         setModels(transformedData);
       } catch (error) {
