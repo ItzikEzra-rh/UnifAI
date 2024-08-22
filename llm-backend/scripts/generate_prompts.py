@@ -3,41 +3,34 @@ import os
 import requests
 
 
-def robot_test_template(test_name, code):
+def go_test_template(test_name, code):
     """
     Send a request to the LLM API to generate prompts based on the provided documentation and code
     using the updated instruction set for prompt creation.
     """
-    request_template = f"""
-    I have a code snippet for a Go test that is part of the Cluster Node Tuning Operator project. 
-    I need to generate two distinct prompts to train a language model. 
-    The prompts should clearly and instructively describe the functionality of the code and the general purpose of the test, 
-    enabling the model to generate the code snippet as output. Each prompt should be unique 
-    to add diversity and versatility to the dataset.
-    
-    Here is an example of a dataset element:
-    
-    Test name: {test_name}
-    
-    Code: "{code}"
-    
-    Please transform the Code into two distinct prompts that a language model can use to generate the corresponding code. 
-    The prompts should be detailed enough to guide the model in generating the correct code and to explain the overall purpose of the test. 
-    Ensure that the prompts cover different aspects or perspectives of the task described by the Code and how it reflects the test's objectives.
-    
-    **Important:**
-    - Each prompt must explicitly mention that the code is for a Go test and is part of the Cluster Node Tuning Operator project.
-    - Prompt 1 should present the instructions in a step-by-step format using a numbered list. The list should include both detailed instructions and an explanation of the test's purpose.
-    - Prompt 2 should be in a continuous free-text narrative, without using any numbered lists or explicit step indicators. 
-    Focus on describing the code and the test's purpose in a flowing, narrative manner that reads like a paragraph, explaining the logic, purpose, and context without breaking it down into steps.
-    
-    Format the output as follows, and return only the output. The two prompts should be distinct and do not know about each other:
-    
-    Prompt 1: <First prompt here>
-    Prompt 2: <Second prompt here>
-    """
+    request_template = (
+        "I have a code snippet for a Go test that is part of the Cluster Node Tuning Operator project. "
+        "I need to generate two distinct prompts to train a language model. "
+        "The prompts should clearly and instructively describe the functionality of the code and the general purpose of the test, "
+        "enabling the model to generate the code snippet as output. Each prompt should be unique "
+        "to add diversity and versatility to the dataset.\n\n"
+        "Here is an example of a dataset element:\n\n"
+        "Test name: {}\n\n"
+        "Code: \"{}\"\n\n"
+        "Please transform the Code into two distinct prompts that a language model can use to generate the corresponding code. "
+        "The prompts should be detailed enough to guide the model in generating the correct code and to explain the overall purpose of the test. "
+        "Ensure that the prompts cover different aspects or perspectives of the task described by the Code and how it reflects the test's objectives.\n\n"
+        "**Important:**\n"
+        "- Each prompt must explicitly mention that the code is for a Go test and is part of the Cluster Node Tuning Operator project.\n"
+        "- Prompt 1 should present the instructions in a step-by-step format using a numbered list. The list should include both detailed instructions and an explanation of the test's purpose.\n"
+        "- Prompt 2 should be in a continuous free-text narrative, without using any numbered lists or explicit step indicators. "
+        "Focus on describing the code and the test's purpose in a flowing, narrative manner that reads like a paragraph, explaining the logic, purpose, and context without breaking it down into steps.\n\n"
+        "Format the output as follows, and return only the output. The two prompts should be distinct and do not know about each other:\n\n"
+        "Prompt 1: <First prompt here>\n"
+        "Prompt 2: <Second prompt here>"
+    )
 
-    return request_template
+    return request_template.format(test_name, code)
 
 
 def full_test_template(documentation, code):
@@ -123,15 +116,16 @@ def send_request_to_llm(test_name, code):
     """
     # Template for the request
     # prompt = test_case_template(documentation, code)
-    prompt = robot_test_template(test_name, code)
-    print(prompt)
+    prompt = go_test_template(test_name, code)
+    # print(prompt)
     # Send the request to the LLM API
     try:
         response = requests.post(
             "http://127.0.0.1:443/api/backend/inference",
             # Make sure to use 'http://' for local testing unless using HTTPS
             json={"prompt": prompt,
-                  "contextLength": "32768"}
+                  "contextLength": "32768"},
+            headers={"Content-Type": "application/json"}
         )
         # Raise an error if the request failed
         response.raise_for_status()

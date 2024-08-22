@@ -73,7 +73,7 @@ def get_data_set(tokenizer, dataset_name=""):
 
         texts = []
         for prompt, code in zip(prompt_list, code_list):
-            text = f"""{prompt} <prompt-end> {code}""" + EOS_TOKEN
+            text = f"""<user>{prompt}<assistant>{code}""" + EOS_TOKEN
             texts.append(text)
         return {"text": texts, }
 
@@ -81,7 +81,7 @@ def get_data_set(tokenizer, dataset_name=""):
 
     from datasets import load_dataset
 
-    dataset = load_dataset("oodeh/NcsRobotTestFramework",
+    dataset = load_dataset("oodeh/GoTests",
                            data_files=dataset_name,
                            split="train")
 
@@ -149,7 +149,7 @@ def run(DATASET_NAME, MAX_SEQ_LEN, EPOCHS_NUMBER, BATCH_SIZE, MODEL_NAME):
     print(f"Peak reserved memory % of max memory = {used_percentage} %.")
     print(f"Peak reserved memory for training % of max memory = {lora_percentage} %.")
 
-    model.save_pretrained("lora_model_21k")  # Local saving
+    model.save_pretrained("go_tests_622")  # Local saving
 
 
 def main():
