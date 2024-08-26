@@ -146,7 +146,7 @@ const ProjectForm: React.FC = () => {
                     <FormField name="projectName" label="Project Name" control={control} errors={errors} />
                     <FormField name="trainingName" label="Training Name" control={control} errors={errors} />
                     <FormField name="gitUrl" label="Git Repository Url" control={control} errors={errors} />
-                    <FormField name="gitCredentialKey" label="Git Credential Key" control={control} errors={errors} />
+                    <FormField name="gitCredentialKey" label="Git Credential Key" control={control} errors={errors} secret={true} />
                     <FormField name="gitBranchName" label="Git Branch Name" control={control} errors={errors} />
                     <FormField name="gitFolderPath" label="Git Path To Fetch From" control={control} errors={errors} />
                     <FormDropdown name="baseModelName" label="Foundational Model Name" control={control} errors={errors} options={['Mistarl', 'Lama']} />

@@ -14,6 +14,7 @@ interface FormFieldProps {
     errors: any;
     type?: string;
     disabled?: boolean;
+    secret?: boolean;
 }
 
 interface FormDropdownProps {
@@ -40,13 +41,13 @@ interface FormFileUploadProps {
     onFileUpload: (files: FileList | null) => void;
 }
 
-export const FormField: React.FC<FormFieldProps> = ({ name, label, control, errors, type = 'text', disabled = false }) => (
+export const FormField: React.FC<FormFieldProps> = ({ name, label, control, errors, type = 'text', disabled = false, secret = false }) => (
     <div className="form-group">
         <label>{label}</label>
         <Controller
             name={name}
             control={control}
-            render={({ field }) => <TextField {...field} type={type} fullWidth error={!!errors[name]} helperText={errors[name]?.message} disabled={disabled} />}
+            render={({ field }) => <TextField {...field} type={secret ? 'password' : type} fullWidth error={!!errors[name]} helperText={errors[name]?.message} disabled={disabled} />}
         />
     </div>
 );

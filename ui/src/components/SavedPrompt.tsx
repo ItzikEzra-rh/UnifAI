@@ -155,6 +155,10 @@ const SavedPrompts: React.FC = () => {
             bgcolor: 'background.paper',
             border: '2px solid #000',
             boxShadow: 24,
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            maxWidth: '80%',
+            maxHeight: '80%',
             p: 4,
             }}
         >
