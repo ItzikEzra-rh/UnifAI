@@ -91,7 +91,7 @@ class RegisterModel:
             model_data = {
                 "name": f"{config_data.get('model_type', 'Unknown')} {repo_id}",
                 "base_model": config_data.get('_name_or_path', 'Unknown'),
-                "project": 'Unknown',
+                "project": 'ALL',
                 "context_length": config_data.get('max_position_embeddings', 0),
                 "model_type": 'foundational',
                 "checkpoint": "",
