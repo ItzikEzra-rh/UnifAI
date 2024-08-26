@@ -14,6 +14,8 @@ services:
       - llm
     ports:
       - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
 
   llm:
     image: localhost/llm-be:latest
@@ -21,7 +23,6 @@ services:
     ports:
       - "443:443"
     container_name: llm-backend
-    
     environment:
       - HUGGING_FACE_HUB_TOKEN=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
     deploy:
@@ -33,3 +34,6 @@ services:
               capabilities: [gpu] 
     networks:
       - llm
+
+volumes:
+  mongo_data:
