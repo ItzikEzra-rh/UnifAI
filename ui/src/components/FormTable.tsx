@@ -5,8 +5,11 @@ import '../styles.css';
 import {TableFormData} from './types/constants'
 import { FaPlay, FaSpinner, FaCheck } from 'react-icons/fa';
 
+const ALL_COLUMNS = 'FULL'
+const MANDATORY_COLUMNS = 'BASIC'
+
 // Reusable table component
-const ModelsTable: React.FC<{ data: TableFormData[], title: string }> = ({ data, title }) => {
+const ModelsTable: React.FC<{ columnsType: typeof ALL_COLUMNS | typeof MANDATORY_COLUMNS, data: TableFormData[], title: string }> = ({ columnsType, data, title }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'Initial': return 'grey';
@@ -25,14 +28,8 @@ const ModelsTable: React.FC<{ data: TableFormData[], title: string }> = ({ data,
     }
   };
 
-  const columns: Column<TableFormData>[] = React.useMemo(
+  const basicColumns : Column<TableFormData>[] = React.useMemo(
     () => [
-      { Header: 'Project Name', accessor: 'projectName', Cell: ({ row }: any) => (
-          <span className={`project-name ${row.values.projectName}`}>
-            {row.values.projectName}
-          </span>
-        )
-      },
       { Header: 'Training Name', accessor: 'trainingName' },
       { Header: 'Base Model Name', accessor: 'baseModelName' },
       { Header: 'Tests Code Framework', accessor: 'testsCodeFramework' },
@@ -42,11 +39,25 @@ const ModelsTable: React.FC<{ data: TableFormData[], title: string }> = ({ data,
           </span>
         ),
       },
+    ],
+    []
+  );
+
+  const fullColumns: Column<TableFormData>[] = React.useMemo(
+    () => [
+      { Header: 'Project Name', accessor: 'projectName', Cell: ({ row }: any) => (
+          <span className={`project-name ${row.values.projectName}`}>
+            {row.values.projectName}
+          </span>
+        )
+      },
+      ...basicColumns,
       { Header: 'In progress', accessor: 'progress' },
     ],
     []
   );
 
+  const columns = columnsType == ALL_COLUMNS ? fullColumns: basicColumns
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
 
   return (
@@ -124,7 +135,7 @@ const FormsTable: React.FC = () => {
 
     switch (modelType) {
       case 'finetuned': return { status: 'Finished', progress: '100%' };
-      case 'foundational': return { status: '-', progress: '-' };
+      case 'foundational': return { status: 'Available' };
       case 'checkpoint': return { status: 'In progress', progress: percentageString };
       default: return { status: 'Initial', progress: '0%' };
     }
@@ -172,9 +183,9 @@ const FormsTable: React.FC = () => {
 
   return (
     <div className="table-container">
-      <ModelsTable data={fineTunedModels} title="Fine Tuned Models" />
-      <ModelsTable data={foundationalModels} title="Foundational Models" />
+      <ModelsTable columnsType={ALL_COLUMNS} data={fineTunedModels} title="Fine Tuned Models" />
       <TableToolTip/>
+      <ModelsTable columnsType={MANDATORY_COLUMNS} data={foundationalModels} title="Foundational Models" />
     </div>
   );
 };

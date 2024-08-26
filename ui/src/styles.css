@@ -330,6 +330,7 @@ body, html, #root {
   padding: 10px;
   border-radius: 4px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  height: 50vh;
 }
 
 .project-name {

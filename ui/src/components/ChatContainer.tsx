@@ -57,8 +57,8 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
 
       if (foundItem.finetuneSteps && foundItem.finetuneSteps.length > 0) {
         setSteps([{ label: foundItem.finetuneSteps[0].base_model },
-                    ...foundItem.finetuneSteps.map((step) => ({
-                      label: `${step?.base_model}`,
+                    ...foundItem.finetuneSteps.map((step, idx) => ({
+                      label: foundItem.finetuneSteps && foundItem.finetuneSteps[idx+1]? `${foundItem.finetuneSteps[idx+1]?.base_model}` : `${foundItem.modelName}`,
                       details: step,
                     }))]);
       }
