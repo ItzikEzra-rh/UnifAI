@@ -9,7 +9,7 @@ Install the nvidia repo
 Install the NVIDIA Container Toolkit packages:
 `sudo yum install -y nvidia-container-toolkit`
 ## generate the cdi (Container Device Interface specifications) spec
-sudo nvidia-ctk cdi generate --output=/etc/cdi/nv^Cia.yaml
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
 ## build the container image
 cd llm-backend
 podman build . -f Dockerfile.cuda --tag llm-be  .
