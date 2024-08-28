@@ -10,7 +10,7 @@ interface MainToolbarProps {
 const dropdownItems = [
   { title: 'About',items: [{ label: 'Welcome', content: 'Welcome Content' }]},
   { title: 'Training', items: [{ label: 'Train New Model', content: 'Form Content' }, { label: 'Avaliable Trained Models', content: 'Form Table' }]},
-  { title: 'Prompt', items: [{ label: 'Generate Automatic Test', content: 'Chatbot Prompt' }, { label: 'Saved Prompts', content: 'Saved Prompts' }]},
+  { title: 'Inference', items: [{ label: 'Generate Automatic Test', content: 'Chatbot Prompt' }, { label: 'Saved Prompts', content: 'Saved Prompts' }]},
   { title: 'Statistics', items: [{ label: 'Graphs', content: 'Advanced Statistics' }]},
 ];
 

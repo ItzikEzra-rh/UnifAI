@@ -30,9 +30,7 @@ const ModelsTable: React.FC<{ columnsType: typeof ALL_COLUMNS | typeof MANDATORY
 
   const basicColumns : Column<TableFormData>[] = React.useMemo(
     () => [
-      { Header: 'Training Name', accessor: 'trainingName' },
       { Header: 'Base Model Name', accessor: 'baseModelName' },
-      { Header: 'Tests Code Framework', accessor: 'testsCodeFramework' },
       { Header: 'Status', accessor: 'status', Cell: ({ value }) => (
           <span style={{ color: getStatusColor(value) }}>
             {getStatusIcon(value)} {value}
@@ -51,7 +49,9 @@ const ModelsTable: React.FC<{ columnsType: typeof ALL_COLUMNS | typeof MANDATORY
           </span>
         )
       },
+      { Header: 'Training Name', accessor: 'trainingName' },
       ...basicColumns,
+      { Header: 'Tests Code Framework', accessor: 'testsCodeFramework' },
       { Header: 'In progress', accessor: 'progress' },
     ],
     []
