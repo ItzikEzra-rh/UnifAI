@@ -139,7 +139,7 @@ const ProjectForm: React.FC = () => {
                 <Tabs value={activeTab} onChange={handleTabChange} aria-label="form tabs" className="form-tabs">
                     <Tab label="Project Form" />
                     <Tab label="Git Form" className={activeTab == 1 || activeTab == 2 ? '' : 'disabled-tab'} />
-                    <Tab label="Training Form" className={activeTab == 2 ? '' : 'disabled-tab'} />
+                    <Tab label="Dataset Form" className={activeTab == 2 ? '' : 'disabled-tab'} />
                 </Tabs>
                 <TabPanel value={activeTab} index={0}>
                     <form className="form-section">
@@ -177,7 +177,7 @@ const ProjectForm: React.FC = () => {
                         </div>
                     )}
                     <Button type="submit" variant="contained" color="primary" disabled={!isThirdTabValid} style={{ float: 'right', marginTop: '10px' }}>
-                        Start Training
+                        Create Dataset
                     </Button>
                     </form>
                 </TabPanel>

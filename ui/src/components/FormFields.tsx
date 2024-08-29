@@ -24,6 +24,7 @@ interface FormDropdownProps {
     errors: any;
     options: string[];
     onSelect?: (value: string) => void; // Optional onSelect prop
+    disabled?: boolean;
 }
 
 interface FormCheckboxProps {
@@ -69,7 +70,7 @@ export const TabPanel: React.FC<TabPanelProps> = ({ children, value, index, ...o
 );
 
 
-export const FormDropdown: React.FC<FormDropdownProps> = ({ name, label, control, errors, options, onSelect }) => (
+export const FormDropdown: React.FC<FormDropdownProps> = ({ name, label, control, errors, options, onSelect, disabled = false }) => (
     <div className="form-group">
         <label>{label}</label>
         <Controller
@@ -82,6 +83,7 @@ export const FormDropdown: React.FC<FormDropdownProps> = ({ name, label, control
                 fullWidth
                 error={!!errors[name]}
                 helperText={errors[name]?.message}
+                disabled={disabled}
                 onChange={(e) => {
                     field.onChange(e); // Update react-hook-form field
                     if (onSelect) {

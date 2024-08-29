@@ -16,6 +16,7 @@ import axiosBE from '../http/axiosConfig'
 import '../styles.css';
 
 interface FormData {
+  project: string;
   model: string;
 }
 
@@ -31,10 +32,13 @@ interface ChatMessage {
 }
 
 const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }) => {
-  const { control, handleSubmit, watch } = useForm<FormData>();
+  const { control, handleSubmit, watch, setValue } = useForm<FormData>();
   const [activeStep, setActiveStep] = useState<number>(0);
   const [steps, setSteps] = useState<any[]>([]);
+  const [filteredModels, setFilteredModels] = useState<ModelData[]>(models);
   const [selectedDropDownMenu, setSelectedDropDownMenu] = useState<ModelData | null>(null);
+  
+  const selectedProject = watch('project');
   const selectedModel = watch('model'); // Watch the form field for changes
 
   const handleStepClick = (index: number) => {
@@ -48,7 +52,14 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
     }
   };
 
-  const handleDropDownSelection = (selectedItem: string) => {
+  const handleProjectSelection = (selectedProject: string) => {
+    setValue('model', ''); // Reset the model selection when project changes
+    const filtered = models.filter((model) => model.project === selectedProject);
+    setFilteredModels(filtered);
+    setSelectedDropDownMenu(null); // Reset model selection when project changes
+  };
+
+  const handleModelSelection = (selectedItem: string) => {
     const foundItem = models.find((model) => model.trainingName === selectedItem);
     if (foundItem) {
       setActiveStep(0)
@@ -68,12 +79,20 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
   return (
     <form onSubmit={handleSubmit(handleModelSubmit)} className="form-section">
       <FormDropdown
+        name="project"
+        label="Choose Project"
+        control={control}
+        errors={{}}
+        options={Array.from(new Set(models.map((model) => model.project)))}
+        onSelect={handleProjectSelection}
+      />
+      <FormDropdown
         name="model"
         label="Choose Model"
         control={control}
         errors={{}}
-        options={models.map((model) => model.trainingName)}
-        onSelect={handleDropDownSelection}
+        options={filteredModels.map((model) => model.trainingName)}
+        onSelect={handleModelSelection}
       />
       {selectedDropDownMenu && (
         <div className="model-details" style={{ marginTop: '20px' }}>
@@ -115,7 +134,7 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
           )}
         </div>
       )}
-      <Button type="submit" variant="contained" color="primary" disabled={!selectedModel} style={{ float: 'right', marginTop: '10px' }}> Load Model</Button>
+      <Button type="submit" variant="contained" color="primary" disabled={!selectedModel || !selectedProject} style={{ float: 'right', marginTop: '10px' }}> Load Model</Button>
     </form>
   );
 };

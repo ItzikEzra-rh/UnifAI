@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTable, useSortBy, Column } from 'react-table';
-import { IconButton, Modal, Box } from '@mui/material';
+import { IconButton, Modal, Box, Typography } from '@mui/material';
 import { FaFileAlt, FaEdit } from 'react-icons/fa';
 import axios from '../http/axiosConfig';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -20,12 +20,30 @@ interface SavedPromptData {
   comment: string;
 }
 
+interface CodeSectionProps {
+  title: string;
+  content: string;
+}
+
+const CodeSection: React.FC<CodeSectionProps> = ({ title, content }) => (
+  <div>
+    <Typography variant="h6" style={{fontFamily: "ui-monospace"}} gutterBottom>
+      {title}
+    </Typography>
+    <SyntaxHighlighter language="python" style={github}>
+      {content || ''}
+    </SyntaxHighlighter>
+  </div>
+);
+
 const SavedPrompts: React.FC = () => {
   const [data, setData] = useState<SavedPromptData[]>([]);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [commentData, setCommentData] = useState<{ modelId: string, comment: string } | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
+  const [questionPart, setQuestionPart] = useState<string>(''); // Include the '*** Settings ***:' in the question part
+  const [answerPart, setAnswerPart] = useState<string>(''); // Start after '*** Settings ***:' for the answer part
 
   const columns: Column<SavedPromptData>[] = React.useMemo(
     () => [
@@ -69,6 +87,9 @@ const SavedPrompts: React.FC = () => {
 
   const handleOpen = (promptText: string) => {
     setSelectedPrompt(promptText);
+    const settingsIndex = promptText.indexOf('*** Settings ***:');
+    setQuestionPart(promptText.substring(0, settingsIndex + 17))
+    setAnswerPart(promptText.substring(settingsIndex + 17))
     setOpen(true);
   };
 
@@ -163,9 +184,8 @@ const SavedPrompts: React.FC = () => {
             }}
         >
             <div className="code-visualizer">
-            <SyntaxHighlighter language="python" style={github}>
-                {selectedPrompt || ''}
-            </SyntaxHighlighter>
+              <CodeSection title="User Question" content={questionPart} />
+              <CodeSection title="LLM Answer" content={answerPart} />
             </div>
         </Box>
       </Modal>
