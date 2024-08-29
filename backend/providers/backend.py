@@ -71,6 +71,15 @@ def insert_new_prompt(model_id, training_name, prompt_text):
     return result
 
 @mongo
+def get_forms():
+    """ getting all the existing forms from our forms collection
+    
+    :return: list of forms
+    """
+    result = Collections.by_name('forms').find()
+    return result
+
+@mongo
 def get_saved_prompts():
     """ getting all the saved prompts from our prompts collection
     

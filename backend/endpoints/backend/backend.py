@@ -5,7 +5,7 @@ from flask import jsonify, Response
 from webargs import fields
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
-from providers.backend import list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_saved_prompts, insert_prompt_comment
+from providers.backend import list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, insert_prompt_comment
 
 backend_bp = Blueprint("backend", __name__)
 
@@ -79,6 +79,22 @@ def save_prompt(model_id, training_name, prompt_text):
         # Log the error and return error response
         logging.error(f"Error saving new prompt: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+
+
+@backend_bp.route("/retrieveForms", methods=["GET"])
+def retrieve_forms():
+    try:
+        # Insert LLM prompt into MongoDB collection
+        result = get_forms()
+
+        # Return success response with inserted id
+        return json_response({"result": result})
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error retrieving existing forms: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 @backend_bp.route("/retrievePrompt", methods=["GET"])
 def retrieve_prompt():

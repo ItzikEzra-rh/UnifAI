@@ -5,6 +5,8 @@ import ProjectForm from './ProjectForm'
 import FormTable from './FormTable';
 import Statistics from './Statistics'
 import SavedPrompt from './SavedPrompt'
+import DataSetTable from './DataSetTable'
+import TrainingForm from './TrainingForm'
 import '../styles.css';
 
 interface MainContentProps {
@@ -51,7 +53,9 @@ const MainContent: React.FC<MainContentProps> = ({ content }) => {
         switch(content) {
             case 'Welcome Content': return <WelcomeContent/>;
             case 'Form Content': return <ProjectForm/>;
+            case 'Train Form': return <TrainingForm/>;
             case 'Form Table': return <FormTable/>;
+            case 'Dataset Table': return <DataSetTable/>
             case 'Chatbot Prompt': return <ChatComponent/>;
             case 'Saved Prompts': return <SavedPrompt/>;
             case 'Advanced Statistics': return <Statistics/>;

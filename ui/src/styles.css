@@ -41,6 +41,11 @@ body, html, #root {
   gap: 10px;
 }
 
+.role-selection {
+  margin-right: 20px;
+  min-width: 150px !important;
+}
+
 /* Increase specificity by using a more specific selector */
 .top-toolbar .toolbar-buttons .custom-button {
   border: 2px solid #fff !important; /* Thick white border */

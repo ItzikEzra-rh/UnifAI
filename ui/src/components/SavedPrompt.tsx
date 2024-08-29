@@ -42,8 +42,6 @@ const SavedPrompts: React.FC = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [commentData, setCommentData] = useState<{ modelId: string, comment: string } | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
-  
-  const settingsIndex = promptText.indexOf('*** Settings ***:');
   const [questionPart, setQuestionPart] = useState<string>(''); // Include the '*** Settings ***:' in the question part
   const [answerPart, setAnswerPart] = useState<string>(''); // Start after '*** Settings ***:' for the answer part
 
@@ -89,6 +87,7 @@ const SavedPrompts: React.FC = () => {
 
   const handleOpen = (promptText: string) => {
     setSelectedPrompt(promptText);
+    const settingsIndex = promptText.indexOf('*** Settings ***:');
     setQuestionPart(promptText.substring(0, settingsIndex + 17))
     setAnswerPart(promptText.substring(settingsIndex + 17))
     setOpen(true);
