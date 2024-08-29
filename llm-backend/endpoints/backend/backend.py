@@ -63,3 +63,12 @@ def get_models():
 })
 def save_token(token):
     return jsonify(llm_provider.save_hf_token(token))
+
+
+@backend_bp.route("/getHfRepoFiles", methods=["GET"])
+@from_query({
+    "repo_id": fields.Str(data_key="repoId", required=True),
+    "repo_type": fields.Str(data_key="repoType", required=True),
+})
+def get_hf_repo_files(repo_id, repo_type):
+    return jsonify(llm_provider.get_hf_repo_files(repo_id, repo_type))

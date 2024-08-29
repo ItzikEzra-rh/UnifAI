@@ -1,5 +1,27 @@
 from datetime import datetime
 from be_utils.db.flaks_db import *
+from huggingface_hub import HfApi
+
+
+class HuggingFaceAPI:
+    def __init__(self):
+        # Initialize the Hugging Face API client
+        self.api = HfApi()
+
+    def list_repo_files(self, repo_id, repo_type="model"):
+        """
+        List all files in a specified Hugging Face repository.
+
+        :param repo_id: The repository ID (e.g., 'username/repo_name').
+        :return: A list of file paths in the repository.
+        """
+        try:
+            files = self.api.list_repo_files(repo_id=repo_id, repo_type=repo_type)
+            files = [file for file in files if not file.startswith('.')]
+            return files
+        except Exception as e:
+            print(f"An error occurred while fetching files: {e}")
+            return []
 
 
 class HFTokenManager:

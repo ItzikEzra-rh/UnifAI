@@ -1,7 +1,7 @@
 from llm.register import RegisterModel
 from llm.model import ModelLoader
 import llm.model as llm_model
-from llm.hf_token_manager import HFTokenManager
+from llm.hugging_face import HFTokenManager, HuggingFaceAPI
 
 
 def register_trained_model(hf_url):
@@ -53,3 +53,7 @@ def get_models():
 
 def save_hf_token(token):
     HFTokenManager().save_token(token)
+
+
+def get_hf_repo_files(repo_id, repo_type):
+    return HuggingFaceAPI().list_repo_files(repo_id, repo_type)
