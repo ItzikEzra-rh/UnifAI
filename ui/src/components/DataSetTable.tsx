@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useTable, useSortBy, Column } from 'react-table';
 import axios from '../http/axiosLLMConfig';
-import { FaDownload } from 'react-icons/fa';
+import { FaEye } from 'react-icons/fa';
 import '../styles.css';
 
 interface RepoFileData {
@@ -10,6 +10,7 @@ interface RepoFileData {
 
 const DataSetTable: React.FC = () => {
   const [data, setData] = useState<RepoFileData[]>([]);
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -34,14 +35,14 @@ const DataSetTable: React.FC = () => {
         id: 'fileName',  // Assign a unique id to this column
       },
       {
-        Header: 'Download',
+        Header: 'View',
         accessor: 'name',
-        id: 'download',  // Assign a unique id to this column
+        id: 'view',  // Assign a unique id to this column
         Cell: ({ value }) => (
-          <a href={`/download/${value}`} download>
-            <FaDownload />
-          </a>
-        ),
+          <span onClick={() => setSelectedFile(value)} style={{ cursor: 'pointer' }}>
+            <FaEye />
+          </span>
+        ),        
       },
     ],
     []
@@ -89,6 +90,17 @@ const DataSetTable: React.FC = () => {
           })}
         </tbody>
       </table>
+      
+      {selectedFile && (
+        <div className="iframe-container">
+          <iframe
+            src={`https://huggingface.co/datasets/oodeh/NcsRobotTestFramework/embed/viewer?file=${encodeURIComponent(selectedFile)}`}
+            frameBorder="0"
+            width="100%"
+            height="560px"
+          ></iframe>
+        </div>
+      )}
     </div>
   );
 };
