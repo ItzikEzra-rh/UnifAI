@@ -99,6 +99,82 @@ class BaseAnalyzer(ABC):
                 used_components.append(attribute_name)
         return used_components
 
+    def _extract_function_info(self, node, class_name=None):
+        """
+        Extract function or method information from a node, including decorators.
+        Handles both decorated and non-decorated functions/methods.
+        """
+        # Check if it's a decorated definition
+        if node.type == 'decorated_definition':
+            decorators = self._extract_decorators_from_decorated_definition(node)
+            # Find the inner function_definition within the decorated_definition
+            function_node = next((child for child in node.children if child.type == 'function_definition'), None)
+
+            # Extract the full text of the decorated definition (including decorators and the function)
+            full_code = self._get_node_text(node)
+        else:
+            # No decorators, so the node is directly a function_definition
+            function_node = node
+            decorators = []
+            full_code = self._get_node_text(node)  # Get the function code
+
+        if function_node:
+            function_name = self._get_node_text(function_node.child_by_field_name('name'))
+
+            return {
+                "function_name": function_name,
+                "code": full_code,  # Include both function and decorator code
+                "class_name": class_name,  # Optional, for methods in classes
+                "file_location": self.file_location,
+                "decorators": decorators,
+                "calls": self._extract_function_calls(function_node),
+                "used_components": self._extract_used_components(function_node),
+                "dependencies": {
+                    "imports": self._extract_used_imports(function_node)  # Function/method-level imports
+                }
+            }
+        return None
+
+    def _extract_decorators_from_decorated_definition(self, node):
+        """
+        Extract decorators from the decorated_definition node, handling both
+        identifier-based and call-based decorators.
+        """
+        decorators = []
+
+        for child in node.children:
+            if child.type == 'decorator':  # Decorators are of type 'decorator'
+                # Handle identifier-based decorators (e.g., @staticmethod, @mongo)
+                identifier_node = next((gc for gc in child.children if gc.type == 'identifier'), None)
+                if identifier_node:
+                    decorator_name = self._get_node_text(identifier_node)
+                    decorators.append({
+                        "decorator_function": decorator_name,
+                        "arguments": None  # No arguments for identifier-based decorators
+                    })
+
+                # Handle call-based decorators (e.g., @route(...))
+                for grandchild in child.children:
+                    if grandchild.type == 'call':  # The call node represents the decorator function
+                        # Extract the function node (which is an attribute)
+                        function_node = grandchild.child_by_field_name('function')
+                        if function_node is None:
+                            # In some cases, function can be an attribute
+                            function_node = next((gc for gc in grandchild.children if gc.type == 'attribute'), None)
+                        function_name = self._get_node_text(function_node) if function_node else None
+
+                        # Extract arguments to the decorator function
+                        arguments_node = next((gc for gc in grandchild.children if gc.type == 'argument_list'), None)
+                        arguments_text = self._get_node_text(arguments_node) if arguments_node else None
+
+                        # Store the decorator with its function name and arguments
+                        decorators.append({
+                            "decorator_function": function_name,
+                            "arguments": arguments_text
+                        })
+
+        return decorators
+
 
 # Analyzer for class definitions
 class ClassAnalyzer(BaseAnalyzer):
@@ -138,20 +214,11 @@ class MethodAnalyzer(BaseAnalyzer):
         methods = []
 
         for node in block_node.children:
-            if node.type == 'function_definition':
-                method_name = self._get_node_text(node.child_by_field_name('name'))
-                method_code = self._get_node_text(node)
-                methods.append({
-                    "method_name": method_name,
-                    "code": method_code,
-                    "class_name": class_name,  # Name of the class containing this method
-                    "file_location": self.file_location,  # Full file location
-                    "calls": self._extract_function_calls(node),
-                    "used_components": self._extract_used_components(node),
-                    "dependencies": {
-                        "imports": self._extract_used_imports(node)  # Method-level imports
-                    }
-                })
+            if node.type in ['decorated_definition', 'function_definition']:
+                method_info = self._extract_function_info(node, class_name=class_name)
+                if method_info:
+                    methods.append(method_info)
+
         return methods
 
 
@@ -161,18 +228,11 @@ class FunctionAnalyzer(BaseAnalyzer):
         functions = []
 
         for node in root_node.children:
-            if node.type == 'function_definition':
-                function_name = self._get_node_text(node.child_by_field_name('name'))
-                function_code = self._get_node_text(node)
-                functions.append({
-                    "function_name": function_name,
-                    "code": function_code,
-                    "file_location": self.file_location,  # Full file location for the function
-                    "calls": self._extract_function_calls(node),
-                    "dependencies": {
-                        "imports": self._extract_used_imports(node)  # Function-level imports
-                    }
-                })
+            if node.type in ['decorated_definition', 'function_definition']:
+                function_info = self._extract_function_info(node)
+                if function_info:
+                    functions.append(function_info)
+
         return functions
 
 
@@ -223,10 +283,12 @@ class ProjectFileAnalyzer:
 
 # Example Usage:
 source_dir = '/home/instruct/testgenie/llm-backend/parser'
-file_path = '/home/instruct/testgenie/llm-backend/parser/test_python_code/start_sample.py'
+file_path = '/home/instruct/testgenie/llm-backend/parser/test_python_code/endpoints.py'
 
 analyzer = ProjectFileAnalyzer(file_path, source_dir)
 data = analyzer.analyze_file()
 analyzer.output_to_json(data, 'output_file.json')
 
 print(f"Analysis Complete. Data saved in 'output_file.json'.")
+
+# TODO the calls should be set
