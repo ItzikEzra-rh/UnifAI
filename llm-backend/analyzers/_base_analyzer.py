@@ -4,6 +4,11 @@ from abc import ABC, abstractmethod
 import tree_sitter_python as tspython
 from tree_sitter import Language, Parser
 
+# Initialize Tree Sitter for Python
+PY_LANGUAGE = Language(tspython.language())
+
+parser = Parser(PY_LANGUAGE)
+
 
 # Base class for analyzers
 class BaseAnalyzer(ABC):
@@ -120,10 +125,10 @@ class BaseAnalyzer(ABC):
                 "function_name": function_name,
                 "code": full_code,  # Include both function and decorator code
                 "class_name": class_name,  # Optional, for methods in classes
-                "file_location": self.file_path,
+                "file_location": self.file_location,
                 "decorators": decorators,
                 "calls": self._extract_function_calls(function_node),
-                # "used_components": self._extract_used_components(function_node),
+                "used_components": self._extract_used_components(function_node),
                 "dependencies": {
                     "imports": self._extract_used_imports(function_node)  # Function/method-level imports
                 }
@@ -171,35 +176,36 @@ class BaseAnalyzer(ABC):
         return decorators
 
 
+# Analyzer for class definitions
 class ClassAnalyzer(BaseAnalyzer):
     def analyze(self, root_node):
         class_definitions = []
-        method_count = 0  # Track number of methods in this file
 
         for node in root_node.children:
             if node.type == 'class_definition':
                 class_name = self._get_node_text(node.child_by_field_name('name'))
-                block_node = node.child_by_field_name('body')
                 class_methods = []
 
+                block_node = node.child_by_field_name('body')
+
                 if block_node:
+                    # Use MethodAnalyzer to analyze methods inside the class
                     method_analyzer = MethodAnalyzer(self.file_path, self.source_dir, self.file_imports,
                                                      self.file_content)
-                    class_methods = method_analyzer.analyze(block_node, class_name)
-                    method_count += len(class_methods)  # Add method count for this class
+                    class_methods = method_analyzer.analyze(block_node, class_name)  # Pass class name for methods
 
                 class_data = {
                     "class_name": class_name,
                     "code": self._get_node_text(node),
-                    "file_location": self.file_path,
+                    "file_location": self.file_location,  # Full file location
                     "methods": class_methods,
                     "dependencies": {
-                        "imports": self._extract_used_imports(node)
+                        "imports": self._extract_used_imports(node)  # Class-level imports
                     }
                 }
                 class_definitions.append(class_data)
 
-        return class_definitions, method_count
+        return class_definitions
 
 
 # Analyzer for method definitions (inside classes)
@@ -232,94 +238,57 @@ class FunctionAnalyzer(BaseAnalyzer):
 
 # Main analyzer that uses different analyzers
 class ProjectFileAnalyzer:
-    PY_LANGUAGE = Language(tspython.language())
-
-    def __init__(self, source_dir):
+    def __init__(self, file_path, source_dir):
+        self.file_path = file_path
         self.source_dir = source_dir
-        self.parser = Parser(self.PY_LANGUAGE)
+        self.file_location = os.path.abspath(os.path.join(self.source_dir, self.file_path))
+        self.file_content = None
+        self.file_imports = []
 
-    def _extract_file_imports(self, root_node, file_content):
+    def _extract_file_imports(self, root_node):
         """Extract file-level imports once, then pass them to analyzers."""
         imports = []
         for node in root_node.children:
             if node.type == 'import_statement' or node.type == 'import_from_statement':
-                import_statement = file_content[node.start_byte:node.end_byte]
+                import_statement = self.file_content[node.start_byte:node.end_byte]
                 imports.append(import_statement)
         return imports
 
-    def analyze_file(self, file_path):
-        relative_file_path = os.path.relpath(file_path, self.source_dir)
-
-        with open(file_path, 'r') as file:
-            file_content = file.read()
-            tree = self.parser.parse(bytes(file_content, "utf8"))
+    def analyze_file(self):
+        # Open and parse the file using Tree Sitter, and store the file content
+        with open(self.file_path, 'r') as file:
+            self.file_content = file.read()
+            tree = parser.parse(bytes(self.file_content, "utf8"))
             root_node = tree.root_node
 
-        file_imports = self._extract_file_imports(root_node, file_content)
-        class_analyzer = ClassAnalyzer(relative_file_path, self.source_dir, file_imports, file_content)
-        function_analyzer = FunctionAnalyzer(relative_file_path, self.source_dir, file_imports, file_content)
+        # Extract file-level imports
+        self.file_imports = self._extract_file_imports(root_node)
 
-        classes_data, method_count = class_analyzer.analyze(root_node)
+        # Use different analyzers for classes, methods, and functions
+        class_analyzer = ClassAnalyzer(self.file_path, self.source_dir, self.file_imports, self.file_content)
+        function_analyzer = FunctionAnalyzer(self.file_path, self.source_dir, self.file_imports, self.file_content)
+
+        classes_data = class_analyzer.analyze(root_node)
         functions_data = function_analyzer.analyze(root_node)
 
         return {
-            "file_path": relative_file_path,
             "classes": classes_data,
-            "functions": functions_data,
-            "methods": method_count  # Keep track of method counts
+            "functions": functions_data
         }
-
-    def analyze_project(self):
-        """
-        Analyze all .py files in the given directory and its subdirectories.
-        """
-        all_data = {
-            "classes": [],
-            "functions": [],
-            "methods_count": 0  # Initialize method count
-        }
-
-        # Walk through all .py files in the directory
-        for root, _, files in os.walk(self.source_dir):
-            for file_name in files:
-                if file_name.endswith(".py"):
-                    file_path = os.path.join(root, file_name)
-                    file_data = self.analyze_file(file_path)
-
-                    # Accumulate class and function data
-                    all_data["classes"].extend(file_data["classes"])
-                    all_data["functions"].extend(file_data["functions"])
-                    all_data["methods_count"] += file_data["methods"]
-
-        return all_data
 
     def output_to_json(self, data, output_file):
         with open(output_file, 'w') as json_file:
             json.dump(data, json_file, indent=4)
 
-    def count_elements(self, data):
-        """Print the count of classes, functions, and methods."""
-        num_classes = len(data["classes"])
-        num_functions = len(data["functions"])
-        num_methods = data["methods_count"]
 
-        print(f"Number of classes: {num_classes}")
-        print(f"Number of methods: {num_methods}")
-        print(f"Number of functions: {num_functions}")
-        print(f"Total elements: {num_classes + num_methods + num_functions}")
+# Example Usage:
+source_dir = '/home/instruct/testgenie/llm-backend/parser'
+file_path = '/home/instruct/testgenie/llm-backend/parser/test_python_code/endpoints.py'
 
+analyzer = ProjectFileAnalyzer(file_path, source_dir)
+data = analyzer.analyze_file()
+analyzer.output_to_json(data, 'output_file.json')
 
-if __name__ == "__main__":
-    source_dir = '/home/instruct/lucid-asc/'
-    output_file = 'output_project_analysis.json'
+print(f"Analysis Complete. Data saved in 'output_file.json'.")
 
-    analyzer = ProjectFileAnalyzer(source_dir)
-    project_data = analyzer.analyze_project()
-
-    # Save the aggregated data to a JSON file
-    analyzer.output_to_json(project_data, output_file)
-
-    # Print the total number of elements (classes/methods/functions)
-    analyzer.count_elements(project_data)
-
-    print(f"Analysis Complete. Data saved in '{output_file}'.")
+# TODO the calls should be set
