@@ -9,7 +9,7 @@ from pathlib import Path
 from be_utils.utils import find_latest_checkpoint
 from threading import Thread, Event
 import torch
-from llm.hf_token_manager import HFTokenManager
+from llm.hugging_face import HFTokenManager
 
 app = Flask(__name__)
 
