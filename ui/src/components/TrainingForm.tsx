@@ -3,20 +3,27 @@ import { useForm, SubmitHandler } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import axios from '../http/axiosConfig';
+import axiosLLM from '../http/axiosLLMConfig'
 import { Box, Tabs, Tab, Button } from '@mui/material';
 import { FormField, FormDropdown } from './FormFields';
 
 type FormData = {
   projectName: string;
   trainingName: string;
+  datasetName: string;
   epochNumber: number;
   saveSteps: number;
   warmupSteps: number;
 };
 
+interface RepoFileData {
+  name: string;
+}
+
 const schema = yup.object().shape({
   projectName: yup.string().required('Project Name is required'),
   trainingName: yup.string().required('Training Name is required'),
+  datasetName: yup.string().required('Dataset Name is required'),
   epochNumber: yup.number().required('Epoch Number is required').positive().integer(),
   saveSteps: yup.number().required('Save Steps is required').positive().integer(),
   warmupSteps: yup.number().required('Warmup Steps is required').positive().integer(),
@@ -25,6 +32,7 @@ const schema = yup.object().shape({
 const TrainingForm: React.FC = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [forms, setForms] = useState<any[]>([]);
+  const [data, setData] = useState<RepoFileData[]>([]);
   const [projects, setProjects] = useState<Set<string>>(new Set());
   const [trainingOptions, setTrainingOptions] = useState<string[]>([]);
   const { control, handleSubmit, watch, setValue, formState: { errors } } = useForm<FormData>({
@@ -50,6 +58,18 @@ const TrainingForm: React.FC = () => {
       }
     };
     fetchForms();
+
+    const fetchData = async () => {
+      try {
+        const response = await axiosLLM.get('/api/backend/getHfRepoFiles?repoId=oodeh/NcsRobotTestFramework&repoType=dataset');
+        // Convert the array of file names to an array of objects with a 'name' property
+        const transformedData = response.data.map((fileName: string) => ({ name: fileName }));
+        setData(transformedData);
+      } catch (error) {
+        console.error('Error fetching repository files:', error);
+      }
+    };
+    fetchData();
   }, []);
 
   useEffect(() => {
@@ -69,7 +89,7 @@ const TrainingForm: React.FC = () => {
     setActiveTab(activeTab + 1);
   };
 
-  const isTab1Valid = !!watch('projectName') && !!watch('trainingName');
+  const isTab1Valid = !!watch('projectName') && !!watch('trainingName') && !!watch('datasetName');
   const isTab2Valid = !!watch('epochNumber') && !!watch('saveSteps') && !!watch('warmupSteps');
 
   return (
@@ -94,6 +114,14 @@ const TrainingForm: React.FC = () => {
             control={control}
             errors={errors}
             options={trainingOptions}
+            disabled={!watch('projectName')}
+          />
+          <FormDropdown
+            name="datasetName"
+            label="Choose Dataset"
+            control={control}
+            errors={errors}
+            options={data.map(dataset => dataset.name)}
             disabled={!watch('projectName')}
           />
           <Button

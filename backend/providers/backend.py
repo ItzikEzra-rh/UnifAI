@@ -1,5 +1,6 @@
 from be_utils.gitlab import GitlabAPI
 from be_utils.db.db import mongo, Collections, db
+import uuid
 
 def get_directory_list(file_list_gitlab, file_list_db):
     """build a list of files from gitlab and add atrribute if each file is already in the database
@@ -64,7 +65,11 @@ def insert_new_prompt(model_id, training_name, prompt_text):
     :param str prompt_text: 
     :return:
     """
+    # Generate a unique identifier
+    unique_id = str(uuid.uuid4())
+
     result = Collections.by_name('prompts').insert_one({'modelId': model_id,
+                                                        'uniqueId': unique_id,
                                                         'trainingName': training_name,
                                                         'promptText': prompt_text,
                                                         'comment': ''})
@@ -89,13 +94,25 @@ def get_saved_prompts():
     return result
 
 @mongo
-def insert_prompt_comment(model_id, comment):
+def insert_prompt_comment(model_id, unique_id, comment):
     """updating existing llm prompt comment in the database
 
     :param str model_id:
+    :param str unique_id:
     :param str comment: 
     :return:
     """
-    result = Collections.by_name('prompts').update_one({'modelId': model_id}, {"$set": {"comment": comment}})
+    result = Collections.by_name('prompts').update_one({'modelId': model_id, 'uniqueId': unique_id}, {"$set": {"comment": comment}})
     return result
 
+@mongo
+def insert_prompt_is_complete(model_id, unique_id, completed):
+    """updating existing llm prompt completed value in the database
+
+    :param str  model_id:
+    :param str  unique_id:
+    :param bool completed: 
+    :return:
+    """
+    result = Collections.by_name('prompts').update_one({'modelId': model_id, 'uniqueId': unique_id}, {"$set": {"completed": completed}})
+    return result

@@ -15,9 +15,11 @@ SyntaxHighlighter.registerLanguage('python', python);
 
 interface SavedPromptData {
   modelId: string;
+  uniqueId: string;
   trainingName: string;
   promptText: string;
   comment: string;
+  completed: boolean;
 }
 
 interface CodeSectionProps {
@@ -40,7 +42,7 @@ const SavedPrompts: React.FC = () => {
   const [data, setData] = useState<SavedPromptData[]>([]);
   const [open, setOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
-  const [commentData, setCommentData] = useState<{ modelId: string, comment: string } | null>(null);
+  const [commentData, setCommentData] = useState<{ modelId: string, uniqueId: String, comment: string } | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
   const [questionPart, setQuestionPart] = useState<string>(''); // Include the '*** Settings ***:' in the question part
   const [answerPart, setAnswerPart] = useState<string>(''); // Start after '*** Settings ***:' for the answer part
@@ -66,6 +68,17 @@ const SavedPrompts: React.FC = () => {
               <FaEdit />
             </IconButton>
           </>
+        ),
+      },
+      {
+        Header: 'Completed',
+        accessor: 'completed', 
+        Cell: ({ row }: any) => (
+          <input
+            type="checkbox"
+            checked={row.original.completed || false} // Assuming `completed` is a boolean in your data
+            onChange={(e) => handleCompletedChange(row.original.modelId, row.original.uniqueId, e.target.checked)}
+          />
         ),
       },
     ],
@@ -99,7 +112,7 @@ const SavedPrompts: React.FC = () => {
   };
 
   const handleEditOpen = (row: SavedPromptData) => {
-    setCommentData({ modelId: row.modelId, comment: row.comment });
+    setCommentData({ modelId: row.modelId, uniqueId: row.uniqueId, comment: row.comment });
     setEditOpen(true);
   };
   
@@ -111,10 +124,10 @@ const SavedPrompts: React.FC = () => {
   const handleSaveComment = async () => {
     if (commentData) {
       try {
-        await axios.post('/api/backend/savePromptComment', { modelId: commentData.modelId, comment: commentData.comment });
+        await axios.post('/api/backend/savePromptComment', { modelId: commentData.modelId, uniqueId: commentData.uniqueId, comment: commentData.comment });
         // Update the data state with the new comment
         setData(prevData =>
-          prevData.map(item => item.modelId === commentData.modelId ? { ...item, comment: commentData.comment } : item)
+          prevData.map(item => item.modelId === commentData.modelId && item.uniqueId === commentData.uniqueId ? { ...item, comment: commentData.comment } : item)
         );
         handleEditClose();
       } catch (error) {
@@ -123,6 +136,23 @@ const SavedPrompts: React.FC = () => {
     }
   };
 
+  const handleCompletedChange = async (modelId: string, uniqueId: string, completed: boolean) => {
+    try {
+      await axios.post('/api/backend/markPromptAsComplete', {
+        modelId,
+        uniqueId,
+        completed
+      });
+  
+      // Update the state after successful API call
+      setData(prevData =>
+        prevData.map(item => item.modelId === modelId && item.uniqueId === uniqueId ? { ...item, completed } : item)
+      );
+    } catch (error) {
+      console.error('Error marking prompt as complete:', error);
+    }
+  };
+  
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable(
     { columns, data },
     useSortBy
@@ -203,7 +233,7 @@ const SavedPrompts: React.FC = () => {
             p: 4,
           }}
         >
-          <ReactQuill value={commentData?.comment || ''} onChange={(value: string) => setCommentData({ ...commentData, comment: value, modelId: commentData?.modelId || '' })} />
+          <ReactQuill value={commentData?.comment || ''} onChange={(value: string) => setCommentData({ ...commentData, comment: value, modelId: commentData?.modelId || '', uniqueId: commentData?.uniqueId || '' })} />
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
             <button onClick={handleEditClose}>Cancel</button>
             <button onClick={handleSaveComment} style={{ marginLeft: 8 }}>Save</button>

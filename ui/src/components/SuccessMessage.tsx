@@ -24,7 +24,7 @@ const SuccessMessage: React.FC = () => {
           margin: '20px',
         }}
       >
-        Form has been submitted, training will start soon
+        Form has been submitted, dataset generation will start soon
       </Typography>
     </Box>
   );
