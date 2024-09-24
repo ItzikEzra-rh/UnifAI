@@ -18,6 +18,7 @@ interface SavedPromptData {
   uniqueId: string;
   trainingName: string;
   promptText: string;
+  promptName?: string;
   comment: string;
   completed: boolean;
 }
@@ -49,7 +50,10 @@ const SavedPrompts: React.FC = () => {
 
   const columns: Column<SavedPromptData>[] = React.useMemo(
     () => [
-      { Header: 'Training Name', accessor: 'trainingName' },
+      {
+        Header: 'Prompt Name',
+        accessor: (row: SavedPromptData) => row.promptName || row.trainingName // Use promptName if it exists, otherwise trainingName
+      },
       {
         Header: 'Prompt Text',
         accessor: 'promptText',

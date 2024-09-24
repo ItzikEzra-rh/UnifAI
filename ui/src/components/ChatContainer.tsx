@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from '@chatscope/chat-ui-kit-react';
 import { useForm, Controller } from 'react-hook-form';
-import { Button, IconButton, Tooltip, Stepper, Step, StepButton } from '@mui/material';
+import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
@@ -145,6 +145,9 @@ const ChatComponent: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState<ModelData | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [loadingModel, setLoadingModel] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
+  const [promptName, setPromptName] = useState<string>('');
+  const [messageToSave, setMessageToSave] = useState<string>('');
 
   useEffect(() => {
     // Fetch available models on component mount
@@ -206,7 +209,7 @@ const ChatComponent: React.FC = () => {
       formattedText = formattedText.replace(/&nbsp;/g, '');
 
       const queryParams = new URLSearchParams({ prompt: formattedText }).toString();
-      const response = await fetch(`http://instructlab.zqwrx.sandbox2350.opentlc.com:443/api/backend/inference?${queryParams}`, {
+      const response = await fetch(`http://instructlab.sdn5r.sandbox429.opentlc.com:443/api/backend/inference?${queryParams}`, {
         method: 'GET',
       });
   
@@ -276,17 +279,34 @@ const ChatComponent: React.FC = () => {
     sendQuestion(userMessageText)
   };
 
-  const savePrompt = async (messageText: string) => {
-    if (!selectedModel) return;
+  const handleSaveClick = (messageText: string) => {
+    setMessageToSave(messageText); 
+    setIsModalOpen(true);
+  };
 
+  const handleModalClose = () => {
+    setIsModalOpen(false);
+    setPromptName('');
+  };
+
+  const handlePromptNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setPromptName(event.target.value); // Update prompt name as user types
+  };
+
+  const handleSavePrompt = async () => {
+    if (!promptName) return; // Do nothing if no prompt name is provided
+    if (!selectedModel) return;
+  
     try {
       const payload = {
         modelId: selectedModel.modelId,
         trainingName: selectedModel.trainingName,
-        promptText: messageText,
+        promptText: messageToSave, // Message stored in state
+        promptName: promptName,   // Name entered by the user
       };
       await axiosBE.post('/api/backend/savePrompt', payload);
       console.log('Prompt saved successfully');
+      handleModalClose(); // Close the modal after saving
     } catch (error) {
       console.error('Error saving prompt:', error);
     }
@@ -439,7 +459,7 @@ const ChatComponent: React.FC = () => {
                             </Tooltip>
                           )}
                           <Tooltip title="Save">
-                            <IconButton onClick={() => savePrompt(message.text)} size="small">
+                            <IconButton onClick={() => handleSaveClick(message.text)} size="small">
                               <SaveIcon />
                             </IconButton>
                           </Tooltip>
@@ -451,6 +471,20 @@ const ChatComponent: React.FC = () => {
                 <MessageInput placeholder="Type your message here..." onSend={handleSend} disabled={loadingModel || isStreaming} />
                 </ChatContainer>
               </MainContainer>
+              <Dialog open={isModalOpen}
+                      onClose={handleModalClose}
+                      PaperProps={{
+                        style: { width: '50%', margin: '0 auto' }, // Custom width set to 50% and centered horizontally
+                      }}>
+                  <DialogTitle>Save Prompt</DialogTitle>
+                  <DialogContent>
+                    <TextField autoFocus margin="dense" label="Prompt Name" type="text" fullWidth variant="standard" value={promptName} onChange={handlePromptNameChange}/>
+                  </DialogContent>
+                  <DialogActions>
+                    <Button onClick={handleModalClose} color="secondary">Cancel</Button>
+                    <Button onClick={handleSavePrompt} color="primary">Save</Button>
+                  </DialogActions>
+                </Dialog>
             </div>           
           </>): (<ModelSelection models={models} onSelectModel={handleModelSelect} />)
         }

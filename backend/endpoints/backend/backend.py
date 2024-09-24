@@ -66,11 +66,12 @@ def insert_form(project_name, training_name, git_url, git_credential_key, git_fo
     "model_id":        fields.Str(required=True, data_key="modelId"),
     "training_name":   fields.Str(required=True, data_key="trainingName"),
     "prompt_text":     fields.Str(required=True, data_key="promptText"),
+    "prompt_name":     fields.Str(required=True, data_key="promptName"),
 })
-def save_prompt(model_id, training_name, prompt_text):
+def save_prompt(model_id, training_name, prompt_text, prompt_name):
     try:
         # Insert LLM prompt into MongoDB collection
-        result = insert_new_prompt(model_id, training_name, prompt_text)
+        result = insert_new_prompt(model_id, training_name, prompt_text, prompt_name)
 
         # Return success response with inserted id
         return jsonify({"status": "success", "inserted_id": str(result.inserted_id)}), 201
