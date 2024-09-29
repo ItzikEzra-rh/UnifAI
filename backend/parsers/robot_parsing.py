@@ -262,11 +262,11 @@ combined_result = {}
 #         print(f"  - {item}")
 
 # TODO: ["tc_zabbix_server_status", "8103_Zabbix_server_is_running_in_all_manage_nodes"] single parsing isn't include (Resource ../../resource/zabix.robot) as expected
-test_cases = robot_parser.test_cases_parser()
-print("\nTest Cases:\n")
-for test_case in test_cases:
-    print(f"{test_case}\n")
-    print('------------------------------------------------------------------------------------------')
+# test_cases = robot_parser.test_cases_parser()
+# print("\nTest Cases:\n")
+# for test_case in test_cases:
+#     print(f"{test_case}\n")
+#     print('------------------------------------------------------------------------------------------')
 
 # robot_parser.parse_and_print()
 
@@ -298,3 +298,80 @@ for test_case in test_cases:
 # print("\nRobot Files // Test Cases Mapping List:\n")
 # print(robot_file_test_cases_mapping)
 # write_to_file(json.dumps(robot_file_test_cases_mapping))
+
+#########################################################################################################
+
+def get_robot_file_paths(folder_path):
+    robot_file_paths = []
+    suffixes = [".resource"]  # List of suffixes to search for
+
+    # Walk through the directory
+    for root, dirs, files in os.walk(folder_path):
+        for file in files:
+            # Check if the file matches the pattern 'STRING_TXT.robot/STRING_TXT.resource'
+            if any(file.endswith(suffix) for suffix in suffixes):
+                # Construct the full file path
+                full_path = os.path.join(root, file)
+                robot_file_paths.append(full_path)
+
+    return robot_file_paths
+
+def add_to_dict(file_name, objects_list, target_dict):
+    """
+    Adds objects to the target_dict where the key is the 'name' from the object.
+    The value is a dictionary with two keys:
+      - 'file_names': a list of file names
+      - 'documentation': a list of documentation strings.
+    
+    If the 'name' already exists, append the file_name and documentation to the respective lists.
+    """
+    for obj in objects_list:
+        name = obj['name']
+        documentation = obj['documentation']
+
+        if name not in target_dict:
+            # Add a new entry with 'file_names' and 'documentation' lists
+            target_dict[name] = {
+                'file_names': [file_name],
+                'documentation': [documentation]
+            }
+        else:
+            # Append to existing lists
+            target_dict[name]['file_names'].append(file_name)
+            target_dict[name]['documentation'].append(documentation)
+
+def count_objects_with_multiple_files(target_dict):
+    """
+    Counts the number of objects in the dictionary that have more than one element in 'file_names'.
+    """
+    count = 0
+    for key, value in target_dict.items():
+        if len(value['file_names']) > 1:
+            count += 1
+    return count
+
+def print_objects(target_dict):
+    """
+    Prints each object from the dictionary with its 'name', 'file_names', and 'documentation'.
+    """
+    for key, value in target_dict.items():
+        print(f"Name: {key}")
+        print(f"File Names: {value['file_names']}")
+        print(f"Documentation: {value['documentation']}")
+        print("-" * 40)
+
+robot_folder = '/home/cloud-user/Projects/ods-ci'
+robot_files = get_robot_file_paths(robot_folder)
+robot_file_keywords_mapping = {}
+
+for path in robot_files:
+    robot_parser = RobotParser(file_path=path)
+    file_name, keywords_name_list = robot_parser.get_keywords_name_list()
+    add_to_dict(file_name, keywords_name_list, robot_file_keywords_mapping)
+
+multiple_files_count = count_objects_with_multiple_files(robot_file_keywords_mapping)
+print(f"Number of objects with more than 1 file: {multiple_files_count}")
+
+print("\nRobot Files // Keywords Mapping List:\n")
+print_objects(robot_file_keywords_mapping)
+write_to_file(json.dumps(robot_file_keywords_mapping), filename="RHOAI_Keyword's_mapping_list.txt")

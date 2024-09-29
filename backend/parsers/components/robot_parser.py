@@ -488,3 +488,148 @@ class RobotParser(TreeSitterParser):
         }
 
         return test_cases_list
+
+    def setting_parser(self):
+        def extract_definitions(node, section_type, item_type, name_type, body_type=None, extract_func=None, skip_list=None):
+            """
+            Extracts definitions from a parsed tree-sitter node.
+
+            Args:
+                node (Node): The root node or current node to parse.
+                section_type (str): The type of the section node to extract from.
+                item_type (str): The type of the item node to extract.
+                name_type (str): The type of the name node within the item node.
+                body_type (str): The type of the body node within the item node (optional).
+                extract_func (func): Additional function to extract specific data (optional).
+                skip_list (list): List of strings to skip (optional).
+
+            Returns:
+                dict: A dictionary of extracted definitions.
+            """
+            definitions = {}
+
+            if node.type == section_type:
+                for child in node.children:
+                    if child.type == item_type:
+                        name_node = None
+                        body_node = None
+                        additional_data = {}
+
+                        for item_child in child.children:
+                            if item_child.type == name_type:
+                                name_node = item_child
+                            if body_type and item_child.type == body_type:
+                                body_node = item_child
+                            if extract_func:
+                                additional_data.update(extract_func(item_child, skip_list, content[child.start_byte:child.end_byte].strip()))
+
+                        if name_node or 'name' in additional_data:
+                            name = additional_data.pop('name') if 'name' in additional_data else name_node.text.decode('utf-8').strip() 
+                            text = content[child.start_byte:child.end_byte].strip()
+
+                            definitions[name] = {
+                                'node': body_node,
+                                'text': text,
+                                **additional_data
+                            }
+
+            for child in node.children:
+                definitions.update(extract_definitions(child, section_type, item_type, name_type, body_type, extract_func, skip_list))
+
+            return definitions
+
+        def extract_settings_additional(item_child, skip_list, text):
+            settings_data = {}
+            setting_value_node = None
+
+            def extract_setting_value(setting_value):
+                match = re.search(r'([^/]+)\.robot$', setting_value)
+                return match.group(1) if match else setting_value 
+
+            if item_child.type == 'arguments' and skip_list:
+                if all(setting not in text for setting in skip_list):
+                    for arg_child in item_child.children:
+                        if arg_child.type == 'argument':
+                            setting_value_node = arg_child
+                            break
+
+                if setting_value_node:
+                    setting_value = setting_value_node.text.decode('utf-8').strip()
+                    settings_data = {
+                        'name': extract_setting_value(setting_value),
+                        'value': setting_value
+                    }
+
+            return settings_data
+
+        def extract_settings_definitions(node):
+            return extract_definitions(
+                node,
+                section_type='settings_section',
+                item_type='setting_statement',
+                name_type='arguments',
+                extract_func=extract_settings_additional,
+                skip_list=['Documentation', 'Force Tags', 'Test Timeout', 'Test Tags']
+            )
+
+        root_node, content = self.get_root_node()
+        settings_definitions = extract_settings_definitions(root_node)
+        settings_text = ""
+
+        for setting_header, setting_item in settings_definitions.items():
+            # Adding only setting with "value" attr, stands for settings which are not part of 'skip_list'
+            if setting_item.get("value"):
+                settings_text+= setting_item.get('text', '') + "\n"
+
+        return settings_text
+
+    def get_keywords_name_list(self):
+        def extract_filename_without_extension():
+            # Get the basename (the part after the last '/')
+            filename = os.path.basename(self.file_path)
+            # Split the filename on the last '.' and return the part before it
+            return os.path.splitext(filename)[0]
+
+        def get_keywords_section_node(root_node):
+            for child in root_node.children:
+                for body_child in child.children:
+                    if body_child.type == 'keywords_section':
+                        return body_child
+
+        def extract_keywords(root_node):
+            keywords = []
+            for child in root_node.children:
+                if child.type == "keyword_definition":
+                    keyword_name = ""
+                    documentation = ""
+
+                    # Extract keyword name
+                    for name_child in child.children:
+                        if name_child.type == "name":
+                            keyword_name = name_child.text.decode("utf-8").strip()
+
+                    # Extract documentation if it starts with [Documentation]
+                    for body_child in child.children:
+                        if body_child.type == "body":
+                            for setting in body_child.children:
+                                if setting.type == "keyword_setting":
+                                    setting_text = setting.text.decode("utf-8").strip()
+                                    if re.match(r'\[Documentation\]', setting_text):
+                                        for argument in setting.children:
+                                            if argument.type == "arguments":
+                                                documentation = argument.text.decode("utf-8").strip()
+
+                    # Add the keyword information to the list
+                    keywords.append({
+                        "name": keyword_name,
+                        "documentation": documentation
+                    })
+
+            return keywords
+
+        root_node, content = self.get_root_node()
+        keywords_node = get_keywords_section_node(root_node)
+        if keywords_node:
+            return extract_filename_without_extension(), extract_keywords(keywords_node)
+
+        return extract_filename_without_extension(), []
