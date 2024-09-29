@@ -49,7 +49,7 @@ def get_model(max_seq_length=8192, model_name="llama-3-8b-Instruct-bnb-4bit"):
     # Initialize the LoRA model
     model = FastLanguageModel.get_peft_model(
         model,
-        r=16,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+        r=64,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                         "gate_proj", "up_proj", "down_proj", ],
         lora_alpha=16,
@@ -68,21 +68,21 @@ def get_data_set(tokenizer, dataset_name=""):
     EOS_TOKEN = tokenizer.eos_token  # do not forget this part!
 
     def formatting_prompts_func(examples):
-        code_list = examples["code"]
-        prompt_list = examples["prompt"]
+        _input = examples["input"]
+        output = examples["output"]
 
         texts = []
-        for prompt, code in zip(prompt_list, code_list):
-            text = f"""<user>{prompt}<assistant>{code}""" + EOS_TOKEN
+        for _input, output in zip(_input, output):
+            text = f"""[INST]{_input}[/INST]{output}""" + EOS_TOKEN
             texts.append(text)
+
         return {"text": texts, }
 
     pass
 
     from datasets import load_dataset
 
-    dataset = load_dataset("oodeh/GoTests",
-                           data_files=dataset_name,
+    dataset = load_dataset(dataset_name,
                            split="train")
 
     dataset = dataset.map(formatting_prompts_func, batched=True, )
@@ -92,7 +92,7 @@ def get_data_set(tokenizer, dataset_name=""):
 def get_trainer(model, tokenizer, dataset, batch_size=8, max_seq_length=8192, epoch=1, dataset_name=""):
     training_args = TrainingArguments(
         run_name=f"robot-framework-test-{dataset_name}",
-        report_to="wandb",
+        # report_to="wandb",
         per_device_train_batch_size=int(int(batch_size) / 4),
         gradient_accumulation_steps=4,
         warmup_steps=5,
@@ -105,9 +105,9 @@ def get_trainer(model, tokenizer, dataset, batch_size=8, max_seq_length=8192, ep
         weight_decay=0.01,
         lr_scheduler_type="linear",
         seed=3407,
-        output_dir="outputs",
-        save_steps=50,  # Save checkpoint every 500 steps
-        save_total_limit=1,  # Only keep the last checkpoint
+        output_dir="/home/instruct/outputs",
+        save_steps=525,  # Save checkpoint every 500 steps
+        save_total_limit=int(epoch),  # Only keep the last checkpoint
         load_best_model_at_end=False,  # Optional: only if you want to load the best model
     )
 

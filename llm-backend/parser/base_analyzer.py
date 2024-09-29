@@ -310,8 +310,8 @@ class ProjectFileAnalyzer:
 
 
 if __name__ == "__main__":
-    source_dir = '/home/instruct/lucid-asc/'
-    output_file = 'output_project_analysis.json'
+    source_dir = '/home/instruct/nova/'
+    output_file = 'nova_output_project_analysis.json'
 
     analyzer = ProjectFileAnalyzer(source_dir)
     project_data = analyzer.analyze_project()

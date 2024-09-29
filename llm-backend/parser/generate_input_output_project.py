@@ -120,6 +120,13 @@ Non-Intrusiveness:
 The tool is designed to have a minimal footprint and does not interfere with user workloads.
 Data collection is performed in a way that does not impact the performance of VNFs or CNFs.
 
+
+In AIM, agents are containerized components that reside on infrastructure nodes such as workers and edge nodes in Kubernetes (NCS), or on compute and controller nodes in OpenStack (CBIS).
+These agents maintain a bidirectional connection with the backend, allowing real-time communication for data collection and analysis.
+The AIM backend, through its Application Stats Collector (ASC) and other monitoring features, interacts with the agents to gather metrics like CPU, memory, and network usage.
+This enables continuous monitoring and allows the backend to send commands or requests to the agents while receiving live updates from the nodes or servers they monitor.
+  
+  
 Location: `{file_location}`.
 
 {class_code}
@@ -186,7 +193,7 @@ def generate_random_input(template_options, decorators, **kwargs):
         kwargs["decorators_text"] = ""
 
     if kwargs["element_type"] == "method":
-        kwargs["class_text"] = f" and exist in class `{kwargs['class_name']}`" if kwargs['class_name'] else ""
+        kwargs["class_text"] = f" exist in class `{kwargs['class_name']}`" if kwargs['class_name'] else ""
         kwargs["class_code"] = f" Class Code: `{kwargs['method_class_code']}`" if kwargs['method_class_code'] else ""
     else:
         kwargs["class_text"] = ""
@@ -424,8 +431,8 @@ def process_json(json_data, output_file, progress_file):
 
 
 # File paths
-json_file_path = r"/home/instruct/testgenie/llm-backend/parser/output_project_analysis.json"
-output_file = r"/home/instruct/testgenie/llm-backend/parser/processed_dataset.json"
+json_file_path = r"/home/instruct/testgenie/llm-backend/parser/agent_project_analysis.json"
+output_file = r"/home/instruct/testgenie/llm-backend/parser/agent_processed_dataset.json"
 progress_file = r"/home/instruct/testgenie/llm-backend/parser/progress.json"
 
 # Load JSON data

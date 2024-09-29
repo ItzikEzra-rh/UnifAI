@@ -30,21 +30,21 @@ def load_model(model_id):
     return jsonify(llm_provider.load_model(model_id))
 
 
-# @backend_bp.route("/inference", methods=["GET"])
-# @from_query({
-#     "prompt": fields.Str(data_key="prompt", required=True),
-# })
-# def inference(prompt):
-#     return Response(llm_provider.inference(prompt), content_type='text/plain')
-
-
-@backend_bp.route("/inference", methods=["POST"])
-@from_body({
+@backend_bp.route("/inference", methods=["GET"])
+@from_query({
     "prompt": fields.Str(data_key="prompt", required=True),
-    "context_length": fields.Str(data_key="contextLength", required=True),
 })
-def inference(prompt, context_length):
-    return Response(llm_provider.inference(prompt, max_new_tokens=int(context_length)), content_type='text/plain')
+def inference(prompt):
+    return Response(llm_provider.inference(prompt), content_type='text/plain')
+
+
+# @backend_bp.route("/inference", methods=["POST"])
+# @from_body({
+#     "prompt": fields.Str(data_key="prompt", required=True),
+#     "context_length": fields.Str(data_key="contextLength", required=True),
+# })
+# def inference(prompt, context_length):
+#     return Response(llm_provider.inference(prompt, max_new_tokens=int(context_length)), content_type='text/plain')
 
 
 @backend_bp.route("/stopInference", methods=["GET"])
