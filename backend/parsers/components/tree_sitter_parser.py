@@ -1,11 +1,12 @@
 from tree_sitter import Language, Parser
 
 class TreeSitterParser:
-    def __init__(self, language_path, language_name, file_path):
+    def __init__(self, language_path, language_name, file_path, realtive_path):
         self.language = Language(language_path, language_name)
         self.parser = Parser()
         self.parser.set_language(self.language)
         self.file_path = file_path
+        self.realtive_path = realtive_path
 
     def print_node(self, node, source_code, indent_level=0):
         indent = "  " * indent_level
@@ -41,6 +42,27 @@ class TreeSitterParser:
         tree = self.parser.parse(bytes(content, 'utf-8'))
         root_node = tree.root_node
         return root_node, content
+
+    def is_error_node(self, node):
+        """
+        Checks if the given node or any child node is of type 'ERROR'.
+
+        Args:
+            node: The root node or any node in the tree.
+
+        Returns:
+            True if the node or any of its descendants has the type 'ERROR', otherwise False.
+        """
+        # Check if the current node is of type 'ERROR'
+        if node.type == "ERROR":
+            return True
+        
+        # Recursively check the child nodes
+        for child in node.children:
+            if self.is_error_node(child):
+                return True
+        
+        return False
 
     def expand_internal_function_calls(self, node_dict):
         """Expands the 'internal_nodes' and 'variable_names' for each node in the dictionary to include all nested sub-dependencies.

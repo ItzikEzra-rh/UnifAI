@@ -301,9 +301,8 @@ combined_result = {}
 
 #########################################################################################################
 
-def get_robot_file_paths(folder_path):
+def get_robot_file_paths_with_suffixes(folder_path, suffixes):
     robot_file_paths = []
-    suffixes = [".resource"]  # List of suffixes to search for
 
     # Walk through the directory
     for root, dirs, files in os.walk(folder_path):
@@ -347,6 +346,7 @@ def count_objects_with_multiple_files(target_dict):
     count = 0
     for key, value in target_dict.items():
         if len(value['file_names']) > 1:
+            # print(f"{key}: {value}")
             count += 1
     return count
 
@@ -361,17 +361,115 @@ def print_objects(target_dict):
         print("-" * 40)
 
 robot_folder = '/home/cloud-user/Projects/ods-ci'
-robot_files = get_robot_file_paths(robot_folder)
+suffixes = [".resource", ".robot"]  # List of suffixes to search for
+robot_files = get_robot_file_paths_with_suffixes(robot_folder, suffixes)
 robot_file_keywords_mapping = {}
+robot_file_libraries_mapping = {}
+robot_file_names_mapping = {}
 
 for path in robot_files:
     robot_parser = RobotParser(file_path=path)
     file_name, keywords_name_list = robot_parser.get_keywords_name_list()
-    add_to_dict(file_name, keywords_name_list, robot_file_keywords_mapping)
+    realtive_file_name = path.replace("/home/cloud-user/Projects/ods-ci/", "", 1)
+    last_string_in_file_name = realtive_file_name.split('/')[-1]
+
+    # if (last_string_in_file_name in robot_file_names_mapping):
+    #     print(f'Same suffix file name, already exist: {last_string_in_file_name}')
+    
+    robot_file_names_mapping.update({
+        f'{last_string_in_file_name}': realtive_file_name
+    })
+    add_to_dict(realtive_file_name, keywords_name_list, robot_file_keywords_mapping)
+
+    # Get the current library dictionary
+    current_libraries = robot_parser.get_libraries_name_list()
+
+    # Merge current_libraries into robot_file_libraries_mapping
+    robot_file_libraries_mapping.update(current_libraries)
 
 multiple_files_count = count_objects_with_multiple_files(robot_file_keywords_mapping)
 print(f"Number of objects with more than 1 file: {multiple_files_count}")
 
-print("\nRobot Files // Keywords Mapping List:\n")
-print_objects(robot_file_keywords_mapping)
-write_to_file(json.dumps(robot_file_keywords_mapping), filename="RHOAI_Keyword's_mapping_list.txt")
+# print("\nRobot Files // Keywords Mapping List:\n")
+# print_objects(robot_file_keywords_mapping)
+# write_to_file(json.dumps(robot_file_keywords_mapping), filename="RHOAI_Keyword's_mapping_list.txt")
+
+#########################################################################################################
+# The following is an example of the JSON STRUCTURE we want to have within the usage of our parser
+"""
+{
+    "code": "TEST_CASE_CODE",
+    "dependencies": {settings: "setting the test uses",
+                    varaibles: "vars its uses"},
+    "imports_file_locations": {../../fsdfs/fsdf.recource:  ocdi/fsdfs/fsdf.recource}
+    "calls": [KEYWORD_NAMES],
+    "file_location": "Relative path",
+    "type": "TestCase"
+}
+
+Another optional types:
+    "type": "Resource" (most not contain test cases)
+    "type: "Test" (most contain test cases)
+
+KEYWORD_NAMES --> list of objects, each object is:
+    {keyword: {"file_location": "Relative path", "documentation": KEYWORD_documentation}}
+"""
+
+robot_folder = '/home/cloud-user/Projects/ods-ci'
+# robot_folder = '/home/cloud-user/Projects/Robot-POC-InstructLab/24.0'
+suffixes = [".robot"]  # List of suffixes to search for
+robot_files = get_robot_file_paths_with_suffixes(robot_folder, suffixes)
+
+# robot_file_internal_functions_mapping = {}
+# for path in robot_files:
+#     robot_parser = RobotParser(file_path=path)
+#     robot_file_internal_functions_mapping = robot_parser.get_full_internal_calls_list(robot_file_keywords_mapping, robot_file_libraries_mapping)
+
+#     test_cases_list = robot_parser.extract_test_cases()
+#     realtive_file_name = path.replace("/home/cloud-user/Projects/ods-ci/", "", 1)
+#     add_to_dict(realtive_file_name, test_cases_list, robot_file_internal_functions_mapping)
+
+# Initialize a counter and a list for paths
+error_count = 0
+error_paths = []
+
+# Loop through the robot files
+for path in robot_files:
+    robot_parser = RobotParser(file_path=path)
+    node, _ = robot_parser.get_root_node()
+    
+    # Check if the node contains an error
+    if robot_parser.is_error_node(node):
+        error_count += 1
+        error_paths.append(path)
+
+# Print the total count and the paths with errors
+print(f"Total number of files with errors: {error_count}")
+# print("Paths with errors:")
+# for error_path in error_paths:
+#     print(error_path)
+
+full_file_path = "/home/cloud-user/Projects/ods-ci/ods_ci/tests/Tests/0100__platform/0101__deploy/0101__installation/0101__post_install.robot"
+# full_file_path = "/home/cloud-user/Projects/ods-ci/ods_ci/tests/Tests/0100__platform/0101__deploy/0101__installation/0104__prometheus.robot"
+# full_file_path = "/home/cloud-user/Projects/ods-ci/ods_ci/tasks/Resources/RHODS_OLM/install/oc_install.robot"
+
+realtive_file_path = full_file_path.replace("/home/cloud-user/Projects/ods-ci/", "", 1)
+robot_parser = RobotParser(file_path=full_file_path, realtive_path=realtive_file_path)
+# robot_file_internal_functions_mapping = robot_parser.get_full_internal_calls_list(robot_file_keywords_mapping, robot_file_libraries_mapping)
+# json_formatted_str = json.dumps(robot_file_internal_functions_mapping, indent=2)
+
+robot_files_internal_functions_mapping = []
+
+for path in robot_files:
+    realtive_file_path = path.replace("/home/cloud-user/Projects/ods-ci/", "", 1)
+    robot_parser = RobotParser(file_path=path, realtive_path=realtive_file_path)
+    robot_entire_file_mapping = robot_parser.enitre_file_parsing(robot_file_names_mapping)    
+    robot_file_internal_functions_mapping = robot_parser.get_full_internal_calls_list(robot_file_keywords_mapping, robot_file_libraries_mapping)
+    robot_file_mapping = robot_entire_file_mapping + robot_file_internal_functions_mapping
+    try:
+        robot_files_internal_functions_mapping.append(robot_file_mapping)
+    except (TypeError, ValueError) as e:
+        print(f"Failed to update with: {e}")
+
+json_formatted_str = json.dumps(robot_files_internal_functions_mapping, indent=2)
+write_to_file(json_formatted_str, filename='RHOAI_Files_Mapping.txt')

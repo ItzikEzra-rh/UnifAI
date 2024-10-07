@@ -2,15 +2,27 @@ import re
 import os
 from .tree_sitter_parser import TreeSitterParser
 
-ROBOT_LANGUAGE_PATH = '/home/cloud-user/Projects/playGround/tree-sitter-playground/robot.so'
+ROBOT_LANGUAGE_PATH = '/home/cloud-user/Projects/playGround/tree-sitter-playground/robot-odai.so'
 # ROBOT_FILE_PATH = '/home/cloud-user/Projects/Robot-POC-InstructLab/fullTests/6003_Scale_in_out_worker_node_after_failed_scale_out.robot'
 # ROBOT_FILE_PATH =  '/home/cloud-user/Projects/Robot-POC-InstructLab/24.0/4022_Add_Rsyslog_rule_and_Delete_Rsyslog_rule.robot'
 ROBOT_FILE_PATH =  '/home/cloud-user/Projects/Robot-POC-InstructLab/24.0/8103_Zabbix_server_is_running_in_all_manage_nodes.robot'
 
 class RobotParser(TreeSitterParser):
-    def __init__(self, language_path=ROBOT_LANGUAGE_PATH, language_name='robot', file_path=ROBOT_FILE_PATH):
-        super().__init__(language_path, language_name, file_path)
+    def __init__(self, language_path=ROBOT_LANGUAGE_PATH, language_name='robot', file_path=ROBOT_FILE_PATH, realtive_path=ROBOT_FILE_PATH):
+        super().__init__(language_path, language_name, file_path, realtive_path)
         self.test_cases = []
+
+    def get_main_section_node(self, root_node, section_name):
+        for child in root_node.children:
+            for body_child in child.children:
+                if body_child.type == section_name:
+                    return body_child
+
+    def extract_filename_without_extension(self):
+        # Get the basename (the part after the last '/')
+        filename = os.path.basename(self.file_path)
+        # Split the filename on the last '.' and return the part before it
+        return os.path.splitext(filename)[0]
 
     def robot_sections_parser(self):
         root_node = self.get_root_node()
@@ -436,18 +448,6 @@ class RobotParser(TreeSitterParser):
         return combined_test
 
     def get_test_cases_name_list(self):
-        def extract_filename_without_extension():
-            # Get the basename (the part after the last '/')
-            filename = os.path.basename(self.file_path)
-            # Split the filename on the last '.' and return the part before it
-            return os.path.splitext(filename)[0]
-
-        def get_test_cases_section_node(root_node):
-            for child in root_node.children:
-                for body_child in child.children:
-                    if body_child.type == 'test_cases_section':
-                        return body_child
-
         def extract_test_cases(root_node):
             test_cases = []
 
@@ -481,15 +481,15 @@ class RobotParser(TreeSitterParser):
             return test_cases
 
         root_node, content = self.get_root_node()
-        test_cases_node = get_test_cases_section_node(root_node)
+        test_cases_node = self.get_main_section_node(root_node, 'test_cases_section')
 
         test_cases_list = {
-            extract_filename_without_extension(): extract_test_cases(test_cases_node)
+            self.extract_filename_without_extension(): extract_test_cases(test_cases_node)
         }
 
         return test_cases_list
 
-    def setting_parser(self):
+    def section_parser(self, section_name):
         def extract_definitions(node, section_type, item_type, name_type, body_type=None, extract_func=None, skip_list=None):
             """
             Extracts definitions from a parsed tree-sitter node.
@@ -528,7 +528,6 @@ class RobotParser(TreeSitterParser):
                             text = content[child.start_byte:child.end_byte].strip()
 
                             definitions[name] = {
-                                'node': body_node,
                                 'text': text,
                                 **additional_data
                             }
@@ -562,6 +561,22 @@ class RobotParser(TreeSitterParser):
 
             return settings_data
 
+        def extract_variable_additional(item_child, _, __):
+            variable_data = {}
+            variable_value_node = None
+
+            if item_child.type == 'arguments':
+                for arg_child in item_child.children:
+                    if arg_child.type == 'argument':
+                        variable_value_node = arg_child
+                        break
+
+            if variable_value_node:
+                variable_value = variable_value_node.text.decode('utf-8').strip()
+                variable_data = {'value': variable_value}
+
+            return variable_data
+
         def extract_settings_definitions(node):
             return extract_definitions(
                 node,
@@ -572,30 +587,42 @@ class RobotParser(TreeSitterParser):
                 skip_list=['Documentation', 'Force Tags', 'Test Timeout', 'Test Tags']
             )
 
+        def extract_variable_definitions(node):
+            return extract_definitions(
+                node,
+                section_type='variables_section',
+                item_type='variable_definition',
+                name_type='variable_name',
+                extract_func=extract_variable_additional
+            )
+
         root_node, content = self.get_root_node()
-        settings_definitions = extract_settings_definitions(root_node)
-        settings_text = ""
 
-        for setting_header, setting_item in settings_definitions.items():
-            # Adding only setting with "value" attr, stands for settings which are not part of 'skip_list'
-            if setting_item.get("value"):
-                settings_text+= setting_item.get('text', '') + "\n"
+        if section_name == "settings":
+            settings_definitions = extract_settings_definitions(root_node)
+            settings_text = ""
 
-        return settings_text
+            for setting_header, setting_item in settings_definitions.items():
+                # Adding only setting with "value" attr, stands for settings which are not part of 'skip_list'
+                if setting_item.get("value"):
+                    settings_text+= setting_item.get('text', '') + "\n"
+
+            return settings_text, settings_definitions
+
+        if section_name == "variables":
+            variables_definitions = extract_variable_definitions(root_node)
+            variables_text = ""
+
+            for variable_header, variable_item in variables_definitions.items():
+                # Adding only variable with "value" attr, stands for variables which are not part of 'skip_list'
+                if variable_item.get("value"):
+                    variables_text+= variable_item.get('text', '') + "\n"
+
+            return variables_text, variables_definitions
+
+            return "", {}
 
     def get_keywords_name_list(self):
-        def extract_filename_without_extension():
-            # Get the basename (the part after the last '/')
-            filename = os.path.basename(self.file_path)
-            # Split the filename on the last '.' and return the part before it
-            return os.path.splitext(filename)[0]
-
-        def get_keywords_section_node(root_node):
-            for child in root_node.children:
-                for body_child in child.children:
-                    if body_child.type == 'keywords_section':
-                        return body_child
-
         def extract_keywords(root_node):
             keywords = []
             for child in root_node.children:
@@ -628,8 +655,343 @@ class RobotParser(TreeSitterParser):
             return keywords
 
         root_node, content = self.get_root_node()
-        keywords_node = get_keywords_section_node(root_node)
+        keywords_node = self.get_main_section_node(root_node, 'keywords_section')
         if keywords_node:
-            return extract_filename_without_extension(), extract_keywords(keywords_node)
+            return self.extract_filename_without_extension(), extract_keywords(keywords_node)
 
-        return extract_filename_without_extension(), []
+        return self.extract_filename_without_extension(), []
+
+    def get_libraries_name_list(self):
+        def extract_libraries(root_node):
+            """
+            Extracts libraries from the Robot Framework file settings section.
+            Maps 'Library' arguments to 'library_name' and 'library_text'.
+            """
+            libraries = {}
+
+            # Iterate through children of the root node
+            for child in root_node.children:
+                if child.type == "setting_statement":
+                    library_name = ""
+                    library_text = ""
+
+                    # Check if the setting_statement contains arguments
+                    child_text = child.text.decode("utf-8").strip() 
+                    for arguments_node in child.children:
+                        if arguments_node.type == "arguments":
+                            # Check if the argumens starts with 'Library'
+                            if child_text.startswith("Library"):
+                                # Extract the library text (e.g., "String", "OperatingSystem", "OpenShiftLibrary", or file paths)
+                                library_text = child_text
+
+                                # Iterate through argument nodes
+                                for argument_node in arguments_node.children:
+                                    # The actual library name is the part after 'Library'
+                                    for text_chunk_node in argument_node.children:
+                                        if text_chunk_node.type == "text_chunk":
+                                            library_name = text_chunk_node.text.decode("utf-8").strip()
+
+                                # Add library information to the dictionary
+                                libraries[library_name] = library_text
+
+            return libraries
+
+        root_node, content = self.get_root_node()
+        settings_node = self.get_main_section_node(root_node, 'settings_section')
+        if settings_node:
+            return extract_libraries(settings_node)
+
+        return {}
+
+    def get_full_internal_calls_list(self, keywords_mapping, libraries_mapping):
+        def extract_internal_calls(root_node, settings_mapping, variables_mapping):
+            """
+            Extracts test cases and keyword definitions, and maps keyword invocations based on the general mapping.
+            """
+
+            def map_library(type_mapping):
+                """Helper function to map each library under 'calls' section which being used."""
+                setting_mapping = {}
+                
+                # Iterate over the calls
+                for call, call_data in type_mapping.items():
+                    # Library mapping
+                    if type_mapping[call] and 'text' in call_data:
+                        setting_mapping.update({f'{call}': call_data})
+
+                return setting_mapping
+
+            def map_variable(variable_list):
+                """
+                Maps each variable from the variable_list to its corresponding entry in variables_mapping.
+
+                Args:
+                    variable_list: List of variable names to be mapped.
+                    variables_mapping: Dictionary mapping variable names to their metadata (text and value).
+
+                Returns:
+                    A dictionary where each variable is mapped to its 'text' field.
+                """
+                variable_mapping = {}
+
+                # Iterate over the variables in the list
+                for variable in variable_list:
+                    # Check if the variable exists in the variables_mapping
+                    if variable in variables_mapping and 'text' in variables_mapping[variable]:
+                        # Map the variable to its corresponding 'text' value
+                        variable_mapping.update({
+                            f'{variable}': {
+                                'text': variables_mapping[variable]['text']
+                            }
+                        })
+
+                return variable_mapping
+
+            def internal_variables_mapping(node):
+                """
+                Recursively extracts all 'variable_name' nodes (can be located under 'statement' nodes)
+                in the given tree structure.
+                
+                Args:
+                    node: The root node to start traversal from.
+                
+                Returns:
+                    A list of variable names extracted from 'variable_name' nodes.
+                """
+                variable_names = []
+
+                # Recursive helper function to traverse the tree
+                def traverse_tree(current_node):
+                    # If the node is a 'variable_name', extract its text value
+                    if current_node.type == "variable_name":
+                        variable_name = current_node.text.decode("utf-8").strip()
+                        variable_names.append(variable_name)
+                    
+                    # Continue traversal for child nodes
+                    for child in current_node.children:
+                        traverse_tree(child)
+                
+                # Start traversal from the root node
+                traverse_tree(node)
+
+                return variable_names
+
+            def map_imports_file_locations(type_mapping):
+                """Helper function to map file locations from 'calls' to 'imports_file_locations' using 'settings_mapping'."""
+                imports_file_locations = {}
+                
+                # Iterate over the calls and their file locations
+                for call, call_data in type_mapping.items():
+                    file_location =  call_data['file_location'][0] if call_data.get("file_location", []) else ""
+                    
+                    # Check if any setting text in settings_mapping matches the file location
+                    for setting_key, setting_value in settings_mapping.items():
+                        setting_file_name = setting_value.get('value', '').split('/')[-1]
+                        if setting_file_name and (setting_file_name in file_location):
+                            # Map the setting path (with ../../) to the actual file location
+                            imports_file_locations[setting_value['value']] = file_location
+
+                return imports_file_locations
+
+            def extract_definitions(node, type):
+                """Helper function to extract definitions for both test cases and keywords."""
+                name = ""
+                documentation = ""
+                type_mapping = {}
+
+                def type_mapping_insertion(keyword_text):
+                    if keyword_text in keywords_mapping:
+                        keyword_info = keywords_mapping[keyword_text]
+                        type_mapping[keyword_text] = {
+                            "file_location": keyword_info["file_names"],
+                            "documentation": keyword_info["documentation"]
+                        }
+                    
+                    # Following code snippet maps all the Library internal functions calls 
+                    keyword_text = keyword_text.split('.')[0]
+                    if keyword_text in libraries_mapping:
+                        library_info = libraries_mapping[keyword_text]
+                        type_mapping[keyword_text] = {
+                            "text": library_info
+                        }
+
+                # Extract the name (test case name or keyword name)
+                for name_child in node.children:
+                    if name_child.type == "name":
+                        name = name_child.text.decode("utf-8").strip()
+
+                # Extract documentation if it starts with [Documentation]
+                for body_child in node.children:
+                    if body_child.type == "body":
+                        # code = body_child.text.decode("utf-8").strip()
+                        code = node.text.decode("utf-8").strip()
+                        for setting in body_child.children:
+                            # Use appropriate setting type based on whether it's a test case or keyword
+                            setting_type = "test_case_setting" if type == "Test_Case" else "keyword_setting"
+                            if setting.type == setting_type:
+                                setting_text = setting.text.decode("utf-8").strip()
+                                if re.match(r'\[Documentation\]', setting_text):
+                                    for argument in setting.children:
+                                        if argument.type == "arguments":
+                                            documentation = argument.text.decode("utf-8").strip()
+
+                # Look for keyword invocations
+                for statement in body_child.children:
+                    if statement.type == "statement":
+                        for invocation in statement.children:
+                            # if invocation.type == "keyword_invocation":
+                            keyword_text = ""
+                            # Extract the keyword name
+                            for keyword_child in invocation.children:
+                                if keyword_child.type == "arguments":
+                                    for arguments_child in keyword_child.children:
+                                        if arguments_child.type == "argument":
+                                            keyword_text = arguments_child.text.decode("utf-8").strip()
+                                        type_mapping_insertion(keyword_text)
+
+                                if keyword_child.type == "keyword":
+                                    keyword_text = keyword_child.text.decode("utf-8").strip()
+                                    type_mapping_insertion(keyword_text)
+
+                # Map 'imports_file_locations' for resource mapping from settings
+                imports_file_locations = map_imports_file_locations(type_mapping)
+                internal_variables_code_mapping = internal_variables_mapping(node)
+                library_mapping = map_library(type_mapping)
+                variables_mapping = map_variable(internal_variables_code_mapping)
+
+                return {
+                    "code": code,
+                    "dependencies": {
+                        "settings": library_mapping,
+                        "variables": variables_mapping,
+                    },
+                    "additional_data": {
+                        "name": name,
+                        "documentation": documentation,
+                    },
+                    "calls": type_mapping,  # The new keyword mappings per definition
+                    "imports_file_locations": imports_file_locations,  # Mapped resource imports
+                    "file_location": self.realtive_path,
+                    "type": type,  # Either 'Test_Case' or 'Keyword'
+                }
+
+            definitions = []
+            test_cases_node = self.get_main_section_node(root_node, 'test_cases_section')
+            keywords_node = self.get_main_section_node(root_node, 'keywords_section')
+
+            if test_cases_node:
+                for child in test_cases_node.children:
+                    if child.type == "test_case_definition":
+                        # Test case definition
+                        definitions.append(extract_definitions(child, "Test_Case"))
+
+            if keywords_node:
+                for child in keywords_node.children:
+                    if child.type == "keyword_definition":
+                        # Keyword definition
+                        definitions.append(extract_definitions(child, "Keyword"))
+
+            return definitions
+
+        root_node, content = self.get_root_node()
+        _, settings_mapping  = self.section_parser(section_name="settings")
+        _, variables_mapping = self.section_parser(section_name="variables")
+        return extract_internal_calls(root_node, settings_mapping, variables_mapping)
+
+        # TODO: OLD VERSION THAT WORKED FOR TEST CASES MAPPING ONLY
+        # def extract_test_cases(root_node):
+        #     test_cases = []
+
+        #     for child in root_node.children:
+        #         if child.type == "test_case_definition":
+        #             test_case_name = ""
+        #             documentation = ""
+        #             keyword_mapping = {}
+
+        #             # Extract test case name
+        #             for name_child in child.children:
+        #                 if name_child.type == "name":
+        #                     test_case_name = name_child.text.decode("utf-8").strip()
+
+        #             # Extract documentation if it starts with [Documentation]
+        #             for body_child in child.children:
+        #                 if body_child.type == "body":
+        #                     test_case_code = body_child.text.decode("utf-8").strip() 
+        #                     for setting in body_child.children:
+        #                         if setting.type == "test_case_setting":
+        #                             setting_text = setting.text.decode("utf-8").strip()
+        #                             if re.match(r'\[Documentation\]', setting_text):
+        #                                 for argument in setting.children:
+        #                                     if argument.type == "arguments":
+        #                                         documentation = argument.text.decode("utf-8").strip()
+
+        #             # Look for keyword invocations
+        #             for statement in body_child.children:
+        #                 if statement.type == "statement":
+        #                     for invocation in statement.children:
+        #                         if invocation.type == "keyword_invocation":
+        #                             keyword_text = ""
+        #                             # Extract the keyword name
+        #                             for keyword_child in invocation.children:
+        #                                 if keyword_child.type == "keyword":
+        #                                     keyword_text = keyword_child.text.decode("utf-8").strip()
+
+        #                             # Check if the keyword exists in the general mapping
+        #                             if keyword_text in keywords_mapping:
+        #                                 keyword_info = keywords_mapping[keyword_text]
+        #                                 keyword_mapping[keyword_text] = {
+        #                                     "file_location": keyword_info["file_names"],
+        #                                     "documentation": keyword_info["documentation"]
+        #                                 }
+
+        #             # Add the test case information to the list
+        #             test_cases.append({
+        #                 "code": test_case_code,
+        #                 "dependencies": {
+        #                     "settings": "",
+        #                     "varaibles": "",
+        #                 },
+        #                 "additional_data": {
+        #                     "name": test_case_name,
+        #                     "documentation": documentation,
+        #                 },
+        #                 "calls": keyword_mapping,  # The new keyword mappings per test case
+        #                 "file_location": self.realtive_path,
+        #                 "type": "Test_Case",
+        #             })
+
+        #     return test_cases
+
+        # test_cases_node = self.get_main_section_node(root_node, 'test_cases_section')
+        # if test_cases_node:
+            # return extract_internal_calls(root_node)
+
+        # return []
+
+    def enitre_file_parsing(self, robot_file_names_mapping):
+        def map_imports_file_locations():
+                """Helper function to map imported files located in settings section to 'imports_file_locations' using 'settings_mapping'."""
+                imports_file_locations = {}
+                _, settings_mapping  = self.section_parser(section_name="settings")
+                    
+                # Check if any setting text in settings_mapping matches the file location
+                for setting_key, setting_value in settings_mapping.items():
+                    setting_file_name = setting_value.get('value', '').split('/')[-1]
+                    if setting_file_name and (setting_file_name in robot_file_names_mapping):
+                        # Map the setting path (with ../../) to the actual file location
+                        imports_file_locations[setting_value['value']] = robot_file_names_mapping[setting_file_name]
+
+                return imports_file_locations
+
+        def extract_entire_code(node, content, file_type):
+            """Helper function to extract entire robot code."""
+            return [{
+                "code": content,
+                "imports_file_locations": map_imports_file_locations(),  # Mapped resource imports
+                "file_location": self.realtive_path,
+                "type": file_type,  # Either 'Test' or 'Resource'
+            }]
+
+        root_node, content = self.get_root_node()
+        file_type = "Test" if self.get_main_section_node(root_node, 'test_cases_section') else "Resource"
+        return extract_entire_code(root_node, content, file_type)
