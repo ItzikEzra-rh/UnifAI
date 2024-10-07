@@ -25,7 +25,7 @@ def find_files_with_suffixes(directory, suffixes):
                     file_content = f.read()
 
                 robot_parser = RobotParser(file_path=file_path)
-                files_settings = robot_parser.setting_parser()
+                files_settings, _ = robot_parser.setting_parser()
 
                 # Store the relative path and content in the dictionary
                 files_content[relative_path] = {
