@@ -108,18 +108,17 @@ full_test_workflow_options = 'full_test_workflow_options', [
 
 # Full Test Structural Options
 full_test_structural_options = 'full_test_structural_options', [
-    "Describe the structure and purpose of the robot test `{name}`, located at `{file_location}` in ODS-CI. How are test cases and keywords organized, and how do they relate to each other? Provide code snippets to illustrate.",
-    "Explain the organization and structure of the robot test `{name}`, found at `{file_location}`. How do test cases integrate with keywords, and include relevant code examples.",
-    "Analyze the structure of the robot test `{name}`, located at `{file_location}`. How do test cases utilize keywords for setup, execution, and teardown? Provide code snippets for clarity.",
-    "What is the structure of the robot test `{name}`, located at `{file_location}`? How are test cases and keywords arranged to manage the sequence of actions? Include code examples to demonstrate this.",
-    "Describe the key structural components and code of the robot test `{name}`, located at `{file_location}`. How do test cases and keywords interact to ensure logical flow? Provide snippets for illustration.",
-    "Explain how the robot test `{name}`, located at `{file_location}`, organizes test cases and keywords for executing various scenarios. Include code examples to show these interactions.",
-    "How does the robot test `{name}`, located at `{file_location}`, manage the structure of test cases and keywords? How are they connected, and what does the code look like? Provide code snippets.",
-    "Analyze the structural flow and key code elements of `{name}`, located at `{file_location}`. How do test cases use keywords to organize steps and validations? Show relevant code snippets.",
-    "How does the robot test `{name}`, located at `{file_location}`, organize test cases and keywords to ensure clarity and readability? Provide examples from the code.",
-    "What is the overall structure of `{name}`, located at `{file_location}`? How do test cases and keywords work together to validate the scenarios? Include code examples to demonstrate this."
+    "Describe the structure and purpose of the robot test `{name}`, located at `{file_location}` in ODS-CI. How are test cases and keywords organized, and how do they relate to each other? Provide code snippets, using ```robot before the code.",
+    "Explain the organization and structure of the robot test `{name}`, found at `{file_location}`. How do test cases integrate with keywords? Include relevant code examples, using ```robot before the code.",
+    "Analyze the structure of the robot test `{name}`, located at `{file_location}`. How do test cases utilize keywords for setup, execution, and teardown? Provide code snippets for clarity, using ```robot before the code.",
+    "What is the structure of the robot test `{name}`, located at `{file_location}`? How are test cases and keywords arranged to manage the sequence of actions? Include code examples, using ```robot before the code.",
+    "Describe the key structural components and code of the robot test `{name}`, located at `{file_location}`. How do test cases and keywords interact to ensure logical flow? Provide snippets for illustration, using ```robot before the code.",
+    "Explain how the robot test `{name}`, located at `{file_location}`, organizes test cases and keywords for executing various scenarios. Include code examples to show these interactions, using ```robot before the code.",
+    "How does the robot test `{name}`, located at `{file_location}`, manage the structure of test cases and keywords? How are they connected, and what does the code look like? Provide code snippets, using ```robot before the code.",
+    "Analyze the structural flow and key code elements of `{name}`, located at `{file_location}`. How do test cases use keywords to organize steps and validations? Show relevant code snippets, using ```robot before the code.",
+    "How does the robot test `{name}`, located at `{file_location}`, organize test cases and keywords to ensure clarity and readability? Provide examples from the code, using ```robot before the code.",
+    "What is the overall structure of `{name}`, located at `{file_location}`? How do test cases and keywords work together to validate the scenarios? Include code examples, using ```robot before the code."
 ]
-
 
 # Resource file:
 
@@ -153,18 +152,17 @@ full_resource_structural_options = 'full_resource_structural_options', [
 
 # Full Resource Integration Options
 full_resource_integration_options = 'full_resource_integration_options', [
-    "Describe the purpose and main keywords in the resource file `{name}`, located at `{file_location}`. Provide code examples to illustrate its key components.",
-    "Explain the role and functionality of the resource file `{name}`, located at `{file_location}`. How are its keywords structured? Include relevant code snippets.",
-    "Analyze the primary keywords and their uses within the resource file `{name}`, found at `{file_location}`. Provide code examples to show how they function.",
-    "What are the main components of the resource file `{name}`, located at `{file_location}`? Describe its keywords and provide code snippets to demonstrate their usage.",
-    "Describe how `{name}`, located at `{file_location}`, is organized. Focus on the structure and purpose of its keywords, including relevant examples from the code.",
-    "Explain the main keywords within `{name}`, located at `{file_location}`. How are they defined and used? Include code snippets for a clearer understanding.",
-    "How does `{name}`, located at `{file_location}`, utilize keywords to support testing workflows? Provide examples from the code to illustrate.",
-    "Analyze the structure and content of `{name}`, located at `{file_location}`. Describe its keywords and include code snippets to show how they are employed.",
-    "What are the primary keywords in the resource file `{name}`, located at `{file_location}`? Provide code examples to demonstrate their setup and use.",
-    "Describe the overall structure of `{name}`, located at `{file_location}`. How do its keywords support test cases? Include relevant code snippets."
+    "Describe the purpose and main keywords in the resource file `{name}`, located at `{file_location}`. Provide code examples to illustrate its key components, using ```robot before the code.",
+    "Explain the role and functionality of the resource file `{name}`, located at `{file_location}`. How are its keywords structured? Include relevant code snippets, using ```robot before the code.",
+    "Analyze the primary keywords and their uses within the resource file `{name}`, found at `{file_location}`. Provide code examples to show how they function, using ```robot before the code.",
+    "What are the main components of the resource file `{name}`, located at `{file_location}`? Describe its keywords and provide code snippets to demonstrate their usage, using ```robot before the code.",
+    "Describe how `{name}`, located at `{file_location}`, is organized. Focus on the structure and purpose of its keywords, including relevant examples from the code, using ```robot before the code.",
+    "Explain the main keywords within `{name}`, located at `{file_location}`. How are they defined and used? Include code snippets for a clearer understanding, using ```robot before the code.",
+    "How does `{name}`, located at `{file_location}`, utilize keywords to support testing workflows? Provide examples from the code to illustrate, using ```robot before the code.",
+    "Analyze the structure and content of `{name}`, located at `{file_location}`. Describe its keywords and include code snippets to show how they are employed, using ```robot before the code.",
+    "What are the primary keywords in the resource file `{name}`, located at `{file_location}`? Provide code examples to demonstrate their setup and use, using ```robot before the code.",
+    "Describe the overall structure of `{name}`, located at `{file_location}`. How do its keywords support test cases? Include relevant code snippets, using ```robot before the code."
 ]
-
 
 # keyword / test case
 # ---------------------
@@ -196,16 +194,16 @@ human_input_options = 'human_input_options', [
 ]
 
 code_snippet_input_options = 'code_snippet_input_options', [
-    "For `{element_type}` `{name}`, located at `{file_location}`, provide both a description and example code. Explain how it helps automate specific tasks in the test suite:\n\n{code}",
-    "Summarize the purpose of `{element_type}` `{name}`, located at `{file_location}`. Provide the code and explain how it contributes to validating specific test scenarios:\n\n{code}",
-    "In the ODS-CI project, `{element_type}` `{name}` is located at `{file_location}`. Combine an overview with code snippets to explain its purpose in automating test processes:\n\n{code}",
-    "Describe the role of `{element_type}` `{name}`, located at `{file_location}`, in the ODS-CI project. Provide the code and explain how it executes validation or setup steps:\n\n{code}",
-    "How does `{element_type}` `{name}`, located at `{file_location}`, function in the project? Provide the code and explain how it automates testing tasks:\n\n{code}",
-    "In the ODS-CI project, `{element_type}` `{name}` is crucial for running specific test cases. Provide a code example and explain how it works:\n\n{code}",
-    "Describe the design of `{element_type}` `{name}`, located at `{file_location}`. Provide code snippets and explain its role in automating tasks:\n\n{code}",
-    "Show an example of `{element_type}` `{name}`, located at `{file_location}`, in the ODS-CI project. Provide the code and describe how it integrates into the suite:\n\n{code}",
-    "Provide an overview of `{element_type}` `{name}`, located at `{file_location}`, in the ODS-CI project. Include the code and explain its role:\n\n{code}",
-    "Explain the functionality of `{element_type}` `{name}`, located at `{file_location}`. Provide a code example and describe its purpose:\n\n{code}"
+    "For `{element_type}` `{name}`, located at `{file_location}`, provide both a description and example code. Explain how it helps automate specific tasks in the test suite. Use ```robot before the code:\n\n{code}",
+    "Summarize the purpose of `{element_type}` `{name}`, located at `{file_location}`. Provide the code and explain how it contributes to validating specific test scenarios. Use ```robot before the code:\n\n{code}",
+    "In the ODS-CI project, `{element_type}` `{name}` is located at `{file_location}`. Combine an overview with code snippets to explain its purpose in automating test processes. Use ```robot before the code:\n\n{code}",
+    "Describe the role of `{element_type}` `{name}`, located at `{file_location}`, in the ODS-CI project. Provide the code and explain how it executes validation or setup steps. Use ```robot before the code:\n\n{code}",
+    "How does `{element_type}` `{name}`, located at `{file_location}`, function in the project? Provide the code and explain how it automates testing tasks. Use ```robot before the code:\n\n{code}",
+    "In the ODS-CI project, `{element_type}` `{name}` is crucial for running specific test cases. Provide a code example and explain how it works. Use ```robot before the code:\n\n{code}",
+    "Describe the design of `{element_type}` `{name}`, located at `{file_location}`. Provide code snippets and explain its role in automating tasks. Use ```robot before the code:\n\n{code}",
+    "Show an example of `{element_type}` `{name}`, located at `{file_location}`, in the ODS-CI project. Provide the code and describe how it integrates into the suite. Use ```robot before the code:\n\n{code}",
+    "Provide an overview of `{element_type}` `{name}`, located at `{file_location}`, in the ODS-CI project. Include the code and explain its role. Use ```robot before the code:\n\n{code}",
+    "Explain the functionality of `{element_type}` `{name}`, located at `{file_location}`. Provide a code example and describe its purpose. Use ```robot before the code:\n\n{code}"
 ]
 
 structural_prompt = 'structural_prompt', [
