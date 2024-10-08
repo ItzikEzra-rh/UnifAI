@@ -217,7 +217,7 @@ prompts = [structural_prompt, free_text_prompt, free_text_prompt_creative]
 test_input_options = [full_test_functional_options,
                       full_test_workflow_options,
                       full_test_structural_options]
-test_input_options.extend(prompts)
+# test_input_options.extend(prompts)
 resource_input_options = [full_resource_functional_options,
                           full_resource_structural_options,
                           full_resource_integration_options]
@@ -252,7 +252,10 @@ def generate_random_input(template_options, **kwargs):
     if kwargs["calls"]:
         keywords = ""
         for keyword, details in kwargs["calls"].items():
-            keywords += f'- Keyword: "{keyword}"\n  Found in resource file: {details["file_location"]}\n\n'
+            if 'file_location' in details:
+                keywords += f'- Keyword: "{keyword}"\n  Found in resource file: {details["file_location"]}\n\n'
+            else:
+                print('file location do not exist in calls')
         kwargs["calls"] = f'The {kwargs["element_type"]} "{kwargs["name"]}" uses the following keywords:\n\n{keywords}'
     else:
         kwargs["calls"] = ""
@@ -290,7 +293,7 @@ def ask_llm(prompt):
     """Send a request to the LLM API to generate prompts based on the provided documentation and code."""
     response = requests.post(
         "http://127.0.0.1:443/api/backend/inference",
-        json={"prompt": prompt, "contextLength": "8192"},
+        json={"prompt": prompt, "contextLength": "2048"},
         headers={"Content-Type": "application/json"}
     )
     response.raise_for_status()
@@ -311,7 +314,7 @@ def is_more_than_ctx(elem):
 
     # Filter elements based on the token count
     print(f"Number of tokens: {num_tokens}")
-    if num_tokens > 8192:
+    if num_tokens > 32768:
         print(f"input number of tokens is bigger than 32768, skipping")
         return True
     return False
