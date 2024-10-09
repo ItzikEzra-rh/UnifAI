@@ -13,10 +13,13 @@ class RobotParser(TreeSitterParser):
         self.test_cases = []
 
     def get_main_section_node(self, root_node, section_name):
-        for child in root_node.children:
-            for body_child in child.children:
-                if body_child.type == section_name:
-                    return body_child
+        try:
+            for child in root_node.children:
+                for body_child in child.children:
+                    if body_child.type == section_name:
+                        return body_child
+        except:
+            return None
 
     def extract_filename_without_extension(self):
         # Get the basename (the part after the last '/')
