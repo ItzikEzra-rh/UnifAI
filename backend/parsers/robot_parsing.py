@@ -9,8 +9,27 @@ For parsing purposes we are using library called tree-sitter that parsing ROBOT 
 Under tree-sitter official webpage currently there is no support for robot framework.
 There is a library called tree-sitter-robot which add robot parsing capabilities to tree-sitter.
 Currently the grammar which written as part of the tree-sitter-robot is not fully synched with the latest robot official version,
-therefore there are some adjustments that need to be added to the grammar section for proper support for robot.
+therefore there are some adjustments that need to be added to the grammar section for proper support for robot framwork.
 E.G. https://robotframework.org/robotframework/latest/RobotFrameworkUserGuide.html#if-else-syntax 'Inline IF' need to be supported.
+
+Please follow the following steps to intergate with tree-sitter on your working environment:
+    - pip install -U tree-sitter==0.21.3
+    - nvm use 16
+    - tree-sitter init-config
+        {
+        "parser-directories": ["{WORKING_DIR}/{TREE_SITTER_FOLDER}"] (robot.so file should be placed here)
+        }
+
+    tree-sitter parse <robot_file_path>
+
+Please follow the following steps to intergate with tree-sitter-playground on your working environment:
+    - git clone https://github.com/Hubro/tree-sitter-robot.git
+    - cd {WORKING_DIR}/tree-sitter-robot
+    - nvm use 16
+    - tree-sitter generate
+    - tree-sitter build --wasm (required only for the tree-sitter playground CLI commands)
+    - cd {WORKING_DIR}/{TREE_SITTER_FOLDER}
+    - tree-sitter playground --grammar-path tree-sitter-robot/
 """
 
 import os
@@ -257,9 +276,13 @@ robot_files = get_robot_file_paths_with_suffixes(robot_folder, suffixes)
 error_count = 0
 error_paths = []
 
+# robot_files=["/home/cloud-user/Projects/ods-ci/ods_ci/tasks/Resources/RHODS_OLM/uninstall/uninstall.robot"]
+# robot_files = ["/home/cloud-user/Projects/ods-ci/ods_ci/tasks/Tasks/provision_self_managed_cluster.robot"]
+# robot_files = ["/home/cloud-user/Projects/ods-ci/ods_ci/tasks/Resources/Provisioning/Hive/provision.robot"]
 # Loop through the robot files
 for path in robot_files:
     robot_parser = RobotParser(file_path=path)
+    # robot_parser.add_end_to_if_statements(robot_parser.file_path)    
     node, _ = robot_parser.get_root_node()
     
     # Check if the node contains an error
