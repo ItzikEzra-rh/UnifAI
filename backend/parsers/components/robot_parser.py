@@ -13,10 +13,115 @@ class RobotParser(TreeSitterParser):
         self.test_cases = []
 
     def get_main_section_node(self, root_node, section_name):
-        for child in root_node.children:
-            for body_child in child.children:
-                if body_child.type == section_name:
-                    return body_child
+        try:
+            for child in root_node.children:
+                for body_child in child.children:
+                    if body_child.type == section_name:
+                        return body_child
+        except:
+            return None
+        
+    def add_end_to_if_statements(self, robot_file_path):
+        def split_text_sections(lines):
+            sections = []
+            current_section = []
+            
+            for line in lines:
+                if line.strip() and not line[0].isspace():  # Check if line starts at indentation 0
+                    if current_section:
+                        sections.append(current_section)
+                        current_section = []
+                current_section.append(line.rstrip('\n'))  # Remove trailing newline
+            
+            # Add the last section if it exists
+            if current_section:
+                sections.append(current_section)
+            
+            return sections
+        
+        # Step 1: Read the file content
+        with open(robot_file_path, 'r') as file:
+            code_lines_text = file.readlines()
+
+        sections_lines = split_text_sections(code_lines_text)
+        modified_lines = []
+        
+        for lines in sections_lines:
+            in_if_statement = False
+            found_continuation = False
+            last_continuation_line = None  # To track the last continuation line
+            indent_level = None
+
+            i = 0  # Index for looping through lines
+            while i < len(lines):
+                line = lines[i]
+                stripped_line = line.strip()
+
+                # Step 2: Detect IF statement (match an IF statement not already inside a block)
+                if re.match(r'^\s*IF\s+.*$', stripped_line) and not in_if_statement:
+                    modified_lines.append(line)
+                    indent_level = len(line) - len(line.lstrip())
+                    in_if_statement = True
+                    i += 1
+                    continue
+
+                # Step 3: Detect continuation lines ('...')
+                if in_if_statement:
+                    if re.match(r'^\s*\.\.\.\s*.*$', stripped_line):  # Match continuation without indentation
+                        last_continuation_line = len(modified_lines)  # Track the last continuation line
+                        modified_lines.append(line)
+                        found_continuation = True
+                        i += 1
+                        continue
+
+                    # After the continuation, check for END/ELSE in the same indent_level
+                    if found_continuation:
+                        end_or_else_found = False
+
+                        # Check upcoming lines for END, ELSE
+                        for j in range(i, len(lines)):
+                            upcoming_line = lines[j]
+                            upcoming_line_indent_level = len(upcoming_line) - len(upcoming_line.lstrip())
+
+                            if indent_level == upcoming_line_indent_level:
+                                # If END or ELSE is found in the same indent_level, skip adding END
+                                if re.match(r'^\s*(END|ELSE)\s*$', upcoming_line):
+                                    end_or_else_found = True
+                                    break
+
+                        # TODO: Can be added to the IF statement below: current_indent == indent_level (where "current_indent = len(line) - len(line.lstrip())")
+                        # If no END/ELSE found, we add END right after the last continuation line
+                        if not end_or_else_found and last_continuation_line is not None:
+                            # Insert END after the last continuation line if no END or ELSE is found
+                            modified_lines.insert(last_continuation_line + 1, ' ' * indent_level + 'END\n')
+                            
+                        # Reset after handling this IF block
+                        in_if_statement = False
+                        found_continuation = False
+                        last_continuation_line = None
+
+                        # Edge Case | Scenario where we are currently under IF statement that came right after a line we added with END statement
+                        if re.match(r'^\s*IF\s+.*$', stripped_line):
+                            in_if_statement = True
+
+                    if not found_continuation:
+                        # If END statement noticed where there is not any indication for continuation statement, change the state of 'if in_if_statment'
+                        if re.match(r'^\s*(END)\s*$', stripped_line):
+                            in_if_statement = False
+
+                    # Add the current line to the modified lines
+                    modified_lines.append(line)
+                    i += 1
+                    continue
+
+                # Add lines outside of IF handling
+                modified_lines.append(line)
+                i += 1
+
+        # Step 5: Write the modified lines back to the file
+        with open(robot_file_path, 'w') as file:
+            for line in modified_lines:
+                file.write(line.rstrip('\n') + '\n')
 
     def extract_filename_without_extension(self):
         # Get the basename (the part after the last '/')

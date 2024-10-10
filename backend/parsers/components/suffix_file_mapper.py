@@ -24,14 +24,30 @@ def find_files_with_suffixes(directory, suffixes):
                 with open(file_path, 'r', encoding='utf-8') as f:
                     file_content = f.read()
 
+                ############################################################################################################
+
                 robot_parser = RobotParser(file_path=file_path)
-                files_settings, _ = robot_parser.setting_parser()
+                root_node, _ = robot_parser.get_root_node()
+                test_cases_node = robot_parser.get_main_section_node(root_node, 'test_cases_section') 
+                tasks_node = robot_parser.get_main_section_node(root_node, 'tasks_section') 
+                
+                if tasks_node:
+                    print('Tasks node has been supported!')
+
+                if test_cases_node:
+                    files_content[relative_path] = file_content
+
+                ############################################################################################################
+
+                # files_settings, _ = robot_parser.setting_parser()
 
                 # Store the relative path and content in the dictionary
-                files_content[relative_path] = {
-                    "settings": files_settings, 
-                    "content": file_content,
-                }
+                # files_content[relative_path] = {
+                #     "settings": files_settings, 
+                #     "content": file_content,
+                # }
+                # files_content[relative_path] = file_content
+                
 
     return files_content
 
@@ -43,17 +59,17 @@ def write_to_file(my_list, filename="default.txt"):
 def main():
     # Define the directory to search
     directory_to_search = "/home/cloud-user/Projects/ods-ci"  # Replace with your directory path
-    suffixes = [".robot", ".resource"]  # List of suffixes to search for
+    suffixes = [".robot"]  # List of suffixes to search for
     project_name = "RHOAI"
 
    # Get the dictionary of files that end with any of the specified suffixes and their contents
     files = find_files_with_suffixes(directory_to_search, suffixes)
 
     # Output the result
-    for file_name, file_attr in files.items():
-        file_settings = file_attr.get("settings")
-        file_content = file_attr.get("content")
-        print(f"File Name: {file_name}\nSettings:\n{file_settings}\nContent:\n{file_content}\n{'-'*40}")
+    # for file_name, file_attr in files.items():
+    #     file_settings = file_attr.get("settings")
+    #     file_content = file_attr.get("content")
+    #     print(f"File Name: {file_name}\nSettings:\n{file_settings}\nContent:\n{file_content}\n{'-'*40}")
 
     write_to_file(json.dumps(files), filename=f'{project_name}_tests_mapping.txt')
 
