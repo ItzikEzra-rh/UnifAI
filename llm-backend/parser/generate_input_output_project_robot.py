@@ -314,7 +314,7 @@ def is_more_than_ctx(elem):
 
     # Filter elements based on the token count
     print(f"Number of tokens: {num_tokens}")
-    if num_tokens > 32768:
+    if num_tokens > 32000:
         print(f"input number of tokens is bigger than 32768, skipping")
         return True
     return False

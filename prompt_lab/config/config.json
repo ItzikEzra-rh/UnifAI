@@ -1,0 +1,13 @@
+{
+  "input_storage_type": "file",
+  "output_storage_type": "file",
+  "mongo_collection": "dataset_collection",
+  "input_file_path": "data/input.json",
+  "output_file_path": "data/output.json",
+  "tokenizer_path": "unsloth/mistral-7b-instruct-v0.3-bnb-4bit",
+  "api_url": "http://127.0.0.1:443/api/backend/inference",
+  "max_context_length": 2048,
+  "mongo_input_collection": "",
+  "mongo_output_collection": "",
+  "mongo_progress_collection": ""
+}

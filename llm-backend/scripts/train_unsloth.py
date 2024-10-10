@@ -26,7 +26,7 @@ def find_latest_checkpoint(output_dir):
 
 def get_model(max_seq_length=8192, model_name="llama-3-8b-Instruct-bnb-4bit"):
     # Set the output directory where checkpoints are saved
-    output_dir = "/home/instruct/outputs"
+    output_dir = "/home/instruct/RHOAI-MODEL-checkpoints"
 
     # Find the latest checkpoint
     latest_checkpoint = find_latest_checkpoint(output_dir) if os.path.exists(output_dir) else ""
@@ -105,8 +105,8 @@ def get_trainer(model, tokenizer, dataset, batch_size=8, max_seq_length=8192, ep
         weight_decay=0.01,
         lr_scheduler_type="linear",
         seed=3407,
-        output_dir="/home/instruct/outputs",
-        save_steps=525,  # Save checkpoint every 500 steps
+        output_dir="/home/instruct/RHOAI-MODEL-checkpoints",
+        save_steps=744,  # Save checkpoint every 744 steps
         save_total_limit=int(epoch),  # Only keep the last checkpoint
         load_best_model_at_end=False,  # Optional: only if you want to load the best model
     )
@@ -149,7 +149,7 @@ def run(DATASET_NAME, MAX_SEQ_LEN, EPOCHS_NUMBER, BATCH_SIZE, MODEL_NAME):
     print(f"Peak reserved memory % of max memory = {used_percentage} %.")
     print(f"Peak reserved memory for training % of max memory = {lora_percentage} %.")
 
-    model.save_pretrained("go_tests_622")  # Local saving
+    model.save_pretrained("RHOAI-MODEL")  # Local saving
 
 
 def main():
