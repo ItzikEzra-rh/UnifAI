@@ -19,15 +19,16 @@ class LLMRequester:
 
     @staticmethod
     def prompt_format(context, input_text):
-        return f"<context>{context}</context><user>{input_text}</user><assistant>"
+        return f"<|start_header_id|>context<|end_header_id|>{context}<|eot_id|><|start_header_id|>user<|end_header_id|>{input_text}<|start_header_id|>assistant<|end_header_id|>"
 
     @staticmethod
     def extract_assistant_text(text):
-        # Try to extract text between <assistant> and </assistant>
-        matches = re.findall(r'<assistant>(.*?)</assistant>', text, re.DOTALL)
+        # Try to extract text between <|start_header_id|>assistant<|end_header_id|> and <|eot_id|>
+        matches = re.findall(r'<\|start_header_id\|>assistant<\|end_header_id\|>(.*?)<\|eot_id\|>', text, re.DOTALL)
 
-        # If no match, fall back to extracting between <assistant> and </s>
+        # If no match, fall back to extracting between <|start_header_id|>assistant<|end_header_id|> and <|end_of_text|>
         if not matches:
-            matches = re.findall(r'<assistant>(.*?)</s>', text, re.DOTALL)
+            matches = re.findall(r'<\|start_header_id\|>assistant<\|end_header_id\|>(.*?)<\|end_of_text\|>', text,
+                                 re.DOTALL)
 
         return ' '.join(matches).strip()

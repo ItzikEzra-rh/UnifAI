@@ -57,21 +57,11 @@ Test Suite and Virtual Environment Management: The framework supports the creati
 Red Hat OpenShift AI, combined with ODS-CI, provides a comprehensive, enterprise-grade solution for developing, deploying, and testing AI/ML projects. OpenShift AI offers robust capabilities for handling large-scale machine learning workflows, while ODS-CI ensures that these workflows, models, and integrations are thoroughly validated through automated testing. This combination results in a reliable, scalable, and production-ready AI/ML environment that meets the demands of data scientists, AI developers, and infrastructure teams.
 
 The following metadata and code are from the ODS-CI project:  
-  
-file Location: `{file_location}`.
 
 {file_code}
 
 Here is the code for the {element_type}:\n\n{code}
 
-{settings}
-
-{imports_file_locations}
-
-{variables}
-
-{calls}
- 
 Please use this context to help with the answer.
 """
 ]
