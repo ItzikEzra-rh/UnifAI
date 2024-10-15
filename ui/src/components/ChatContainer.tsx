@@ -163,6 +163,7 @@ const ChatComponent: React.FC = () => {
           project: item.project,
           checkpoint: item?.checkpoint,
           finetuneSteps: item?.finetune_steps,
+          promptTemplate: item?.prompt_template,
         }));
         setModels(transformedData);
       } catch (error) {
@@ -261,12 +262,13 @@ const ChatComponent: React.FC = () => {
   const handleSend = async (text: string) => {
     if (!selectedModel) return;
 
-    // Define the default text pattern
-    const defaultStartText = 'Write a Robot Test Framework. with the following test cases:\n\n';
-    const defaultEndText = '\n\n*** Settings ***:'
+    // Use the prompt template from the selected model
+    const startTag = selectedModel.promptTemplate?.user_tag || '';
+    const endTag = selectedModel.promptTemplate?.end_tag || '';
+    const assistantTag = selectedModel.promptTemplate?.assistant_tag || '';
 
-    // Prepend the default text to the user's message
-    const userMessageText: string = `${defaultStartText}${text}${defaultEndText}`;
+    // Construct the message using the dynamic prompt template
+    const userMessageText = `${startTag}${text}${endTag} ${assistantTag}`;
     const userMessage: ChatMessage = {
       id: new Date().toISOString(),
       text: userMessageText,

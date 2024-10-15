@@ -34,10 +34,12 @@ Please follow the following steps to intergate with tree-sitter-playground on yo
 
 import os
 import json
-from components.robot_parser import RobotParser
-from robot_parsing_appendix import robot_test_example, robot_test_second_example
+import sys
 
-robot_parser = RobotParser()
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from components.robot_parser import RobotParser
+from components.tree_sitter_parser import TreeSitterParser
+from robot_parsing_appendix import robot_test_example, robot_test_second_example
 
 def write_to_file(my_list, filename="TC's_mapping_list.txt"):
     # Write each item of the list to a new line in the file
@@ -281,8 +283,8 @@ error_paths = []
 # robot_files = ["/home/cloud-user/Projects/ods-ci/ods_ci/tasks/Resources/Provisioning/Hive/provision.robot"]
 # Loop through the robot files
 for path in robot_files:
-    robot_parser = RobotParser(file_path=path)
-    # robot_parser.add_end_to_if_statements(robot_parser.file_path)    
+    robot_parser = TreeSitterParser.create_parser(file_path=path)
+    robot_parser.add_end_to_if_statements(robot_parser.file_path)    
     node, _ = robot_parser.get_root_node()
     
     # Check if the node contains an error

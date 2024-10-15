@@ -33,6 +33,11 @@ export interface ModelData {
     project: string,
     checkpoint?: string,
     finetuneSteps?: any[], 
+    promptTemplate?: {
+        assistant_tag: string;
+        end_tag: string;
+        user_tag: string;
+    };
     // numTests: string,
     // dataSize: string,
 }
