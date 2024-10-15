@@ -74,6 +74,7 @@ class RegisterModel:
                 "model_type": card_data.get('model_type', 'Unknown'),
                 "finetune_steps": card_data.get('finetune_steps', []),
                 "checkpoint": card_data.get('checkpoint', ""),
+                "prompt_template": card_data.get('prompt_template', {}),
                 "huggingface_url": f"https://huggingface.co/{repo_id}",
                 "hf_repo_id": repo_id
             }
@@ -81,7 +82,8 @@ class RegisterModel:
             if model_data['model_type'] not in ['finetuned', 'checkpoint']:
                 raise ValueError("Invalid model type. Must be 'finetuned' or 'checkpoint'.")
 
-        except Exception:
+        except Exception as e:
+            print(e)
             if card_path and os.path.exists(card_path):
                 os.remove(card_path)
             config_path = hf_hub_download(repo_id=repo_id, filename="config.json", use_auth_token=self.auth_token)

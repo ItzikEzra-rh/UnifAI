@@ -34,10 +34,10 @@ def load_model(model_id):
     return llm_model.model_loader.load_model()
 
 
-def inference(prompt, max_new_tokens=8192):
+def inference(prompt, temperature, max_new_tokens=8192):
     if not llm_model.model_loader:
         raise ValueError("No model loaded. Please load a model first.")
-    return llm_model.model_loader.infer(prompt, max_new_tokens=max_new_tokens)
+    return llm_model.model_loader.infer(prompt, temperature, max_new_tokens=max_new_tokens)
 
 
 def stop_inference():

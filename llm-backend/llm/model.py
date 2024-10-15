@@ -72,7 +72,7 @@ class ModelLoader:
             return True
         return False
 
-    def infer(self, prompt, max_new_tokens=8192):
+    def infer(self, prompt, temperature, max_new_tokens=8192):
         if self.model is None or self.tokenizer is None:
             raise ValueError("Model and tokenizer must be loaded before inference.")
         FastLanguageModel.for_inference(self.model)
@@ -83,6 +83,9 @@ class ModelLoader:
         self.streamer = TextIteratorStreamerModified(self.tokenizer)
         generation_kwargs = dict(inputs, streamer=self.streamer, max_new_tokens=max_new_tokens,
                                  stopping_criteria=stopping_criteria_list)
+        if temperature:
+            generation_kwargs.update({'temperature': float(temperature), 'do_sample': True})
+
         thread = Thread(target=self.model.generate, kwargs=generation_kwargs)
         thread.start()
         return self.streamer
