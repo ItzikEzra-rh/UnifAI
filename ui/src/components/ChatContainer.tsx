@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from '@chatscope/chat-ui-kit-react';
 import { useForm, Controller } from 'react-hook-form';
-import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from '@mui/material';
+import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
@@ -148,6 +148,14 @@ const ChatComponent: React.FC = () => {
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [promptName, setPromptName] = useState<string>('');
   const [messageToSave, setMessageToSave] = useState<string>('');
+  const [temperature, setTemperature] = useState<number>(0.5);
+
+  const temperatureTooltip = `In LLM inference, temperature controls response randomness \n\n.
+  
+  Low temperature (e.g., 0.1): Yields more focused, predictable outputs by favoring the most likely tokens, ideal for accuracy\n.
+  High temperature (e.g., 1.0+): Promotes diversity and creativity by allowing less common tokens, good for generating varied content. However, very high values may lead to incoherence\n.
+  Temperature 1.0: Provides balanced responses based on token probabilities without added randomness\n.
+  In short, lower temperatures yield precise outputs, while higher temperatures add creativity and variation.`;
 
   useEffect(() => {
     // Fetch available models on component mount
@@ -185,6 +193,9 @@ const ChatComponent: React.FC = () => {
     setMessages([]);
   };
   
+  const handleTemperatureChange = (event: Event, newValue: number | number[]) => {
+    setTemperature(newValue as number);
+  };
 
   const handleModelSelect = async (selectedModel: ModelData) => {
     if (selectedModel) {
@@ -209,8 +220,8 @@ const ChatComponent: React.FC = () => {
       formattedText = formattedText.replace(/<\/div>/g, '\n');
       formattedText = formattedText.replace(/&nbsp;/g, '');
 
-      const queryParams = new URLSearchParams({ prompt: formattedText }).toString();
-      const response = await fetch(`http://instructlab.sdn5r.sandbox429.opentlc.com:443/api/backend/inference?${queryParams}`, {
+      const queryParams = new URLSearchParams({ prompt: formattedText, temperature: temperature.toString() }).toString();
+      const response = await fetch(`http://instructlab.t79zz.sandbox1904.opentlc.com:443/api/backend/inference?${queryParams}`, {
         method: 'GET',
       });
   
@@ -239,7 +250,19 @@ const ChatComponent: React.FC = () => {
           const updatedMessages = [...prevMessages];
           const lastMessage = updatedMessages[updatedMessages.length - 1];
           if (lastMessage && lastMessage.sender === 'bot') {
-            lastMessage.text = accumulatedText;
+            const assistantTag = selectedModel?.promptTemplate?.assistant_tag || '';
+            const endTag = selectedModel?.promptTemplate?.end_tag || '';
+            
+            let outputText = '';
+            if (assistantTag && accumulatedText.includes(assistantTag)) {
+              outputText = accumulatedText.split(assistantTag)[1];
+            } else if (endTag && accumulatedText.includes(endTag)) {
+              outputText = accumulatedText.split(endTag)[1];
+            } else {
+              outputText = accumulatedText;
+            }
+            
+            lastMessage.text = outputText.trim();
           }
           return updatedMessages;
         });
@@ -418,6 +441,26 @@ const ChatComponent: React.FC = () => {
           <>
             {/* Custom section for displaying model information */}
             <ChatToolTip/>
+            <div style={{ position: 'absolute', top: '10px', right: '175px', display: 'flex', alignItems: 'center', gap: '10px', margin: "0px 10px" }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '150px' }}>
+                <Tooltip title={temperatureTooltip} arrow placement="top">
+                  <Typography id="temperature-slider" variant="caption" gutterBottom style={{ cursor: 'help' }}>
+                    Temperature: {temperature.toFixed(1)}
+                  </Typography>
+                </Tooltip>
+                <Slider
+                  value={temperature}
+                  onChange={handleTemperatureChange}
+                  aria-labelledby="temperature-slider"
+                  valueLabelDisplay="auto"
+                  step={0.1}
+                  marks
+                  min={0}
+                  max={2}
+                  size="small"
+                />
+              </div>
+            </div>
             <Button variant="contained" color="primary" onClick={unloadModel} style={{ position: 'absolute', top: '10px', right: '10px' }}>
                 Unload Model
             </Button>
