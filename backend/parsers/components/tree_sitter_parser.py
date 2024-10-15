@@ -8,6 +8,19 @@ class TreeSitterParser:
         self.file_path = file_path
         self.realtive_path = realtive_path
 
+    @staticmethod
+    def create_parser(file_path, realtive_path=None):
+        from .robot_parser import RobotParser
+        from .go_parser import GoParser
+        
+        if file_path.endswith('.robot'):
+            return RobotParser(file_path=file_path, realtive_path=realtive_path)
+        elif file_path.endswith('.go'):
+            print("BUG")
+            return GoParser(file_path=file_path, realtive_path=realtive_path)
+        else:
+            raise ValueError(f"Unsupported file extension for: {file_path}")
+
     def print_node(self, node, source_code, indent_level=0):
         indent = "  " * indent_level
         node_type = node.type
