@@ -8,21 +8,12 @@ Prompt Lab is a customizable prompt generation tool designed for projects requir
 The project is organized into the following main components:
 
 - **config/**: Contains configuration files necessary for setting up project-specific settings.
-  - `config.json`: General configuration for the application.
-  - `project_config.json`: Specific configurations related to the project templates and prompts.
 
 - **processing/**: Houses the core processing modules for generating and managing prompts.
-  - `data_processor.py`: Manages the processing logic, orchestrating prompt generation and handling.
-  - `llm_requester.py`: Interacts with an LLM to send requests and retrieve responses.
 
 - **storage/**: Implements the storage mechanisms for prompts and responses.
-  - `data_repository.py`: Abstract class defining the interface for data storage.
-  - `file_data_repository.py`: Handles file-based storage of prompt data.
-  - `mongo_data_repository.py`: Manages MongoDB storage for prompt data.
-
+  
 - **utils/**: Utility modules supporting various tasks within the project.
-  - `mongo_handler.py`: Provides MongoDB connectivity and handling functions.
-  - `tokenizer.py`: Includes tokenization utilities for processing text data.
 
 - **main.py**: The entry point for running the application.
 
