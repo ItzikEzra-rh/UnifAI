@@ -32,3 +32,5 @@ class LLMRequester:
                                  re.DOTALL)
 
         return ' '.join(matches).strip()
+
+    # TODO need to take tags from project config
