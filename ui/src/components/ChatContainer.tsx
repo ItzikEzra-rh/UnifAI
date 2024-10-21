@@ -11,7 +11,7 @@ import { useTable, useSortBy, Column } from 'react-table';
 import {ModelData} from './types/constants'
 import ReactLoading from 'react-loading';
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
-import axiosLLM from '../http/axiosLLMConfig';
+import axiosLLM, { AXIOS_LLM_IP } from '../http/axiosLLMConfig';
 import axiosBE from '../http/axiosConfig'
 import '../styles.css';
 
@@ -159,10 +159,11 @@ const ChatComponent: React.FC = () => {
 
   useEffect(() => {
     // Fetch available models on component mount
-    const fetchModels = async () => {
+    const fetchModelsAndCheckLoadedModel = async () => {
       try {
-        const response = await axiosLLM.get<ModelData[]>('/api/backend/getModels');
-        const transformedData: ModelData[] = response.data.map((item: any) => ({
+        // Fetch available models
+        const modelsResponse = await axiosLLM.get<ModelData[]>('/api/backend/getModels');
+        const transformedData: ModelData[] = modelsResponse.data.map((item: any) => ({
           modelId: item._id,
           modelName: item.name,
           trainingName: item.name,
@@ -174,12 +175,24 @@ const ChatComponent: React.FC = () => {
           promptTemplate: item?.prompt_template,
         }));
         setModels(transformedData);
+
+        // Check for loaded model
+        const loadedModelResponse = await axiosLLM.get<string | null>('/api/backend/getLoadedModel');
+        const loadedModelId = loadedModelResponse.data;
+
+        if (loadedModelId) {
+          const loadedModel = transformedData.find(model => model.modelId === loadedModelId);
+          if (loadedModel) {
+            setSelectedModel(loadedModel);
+            setLoadingModel(false); // Ensure loading state is false as the model is already loaded
+          }
+        }
       } catch (error) {
         console.error('Error fetching model data:', error);
       }
     };
 
-    fetchModels();
+    fetchModelsAndCheckLoadedModel();
 
     return () => {
       // Stop inference on component unmount
@@ -221,7 +234,7 @@ const ChatComponent: React.FC = () => {
       formattedText = formattedText.replace(/&nbsp;/g, '');
 
       const queryParams = new URLSearchParams({ prompt: formattedText, temperature: temperature.toString() }).toString();
-      const response = await fetch(`http://instructlab.t79zz.sandbox1904.opentlc.com:443/api/backend/inference?${queryParams}`, {
+      const response = await fetch(`${AXIOS_LLM_IP}/api/backend/inference?${queryParams}`, {
         method: 'GET',
       });
   
@@ -359,8 +372,20 @@ const ChatComponent: React.FC = () => {
     }
   };
 
+  // Some browsers or environments (e.g., older browsers, certain versions of Safari, or if running in a non-HTTPS environment) may not
+  // support the clipboard API or parts of it. The writeText method may be unavailable, leading to this error.
+  // The Clipboard API (navigator.clipboard) requires the page to be served over HTTPS (except for localhost).
+  // If you're running the app on a non-secure origin (e.g., http instead of https), the API won't be available.
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        console.log('Text copied to clipboard');
+      }).catch(err => {
+        console.error('Failed to copy text to clipboard', err);
+      });
+    } else {
+      console.warn('Clipboard API not supported');
+    }
   };
 
   const getPosition = (index: number, sender: string): 'normal' | 'first' | 'last' | 'single' => {
@@ -482,7 +507,7 @@ const ChatComponent: React.FC = () => {
                       {message.sender === 'bot' && (
                         <div style={{ position: 'absolute', bottom: '5px', left: '5px', display: 'flex', gap: '5px' }}>
                           <Tooltip title="Copy">
-                            <IconButton onClick={() => copyToClipboard(message.text)} size="small">
+                            <IconButton onClick={() => copyToClipboard(message.text)} size="small" disabled>
                               <ContentCopyIcon />
                             </IconButton>
                           </Tooltip>
@@ -504,7 +529,7 @@ const ChatComponent: React.FC = () => {
                             </Tooltip>
                           )}
                           <Tooltip title="Save">
-                            <IconButton onClick={() => handleSaveClick(message.text)} size="small">
+                            <IconButton onClick={() => handleSaveClick(messages[index-1].text + message.text)} size="small">
                               <SaveIcon />
                             </IconButton>
                           </Tooltip>

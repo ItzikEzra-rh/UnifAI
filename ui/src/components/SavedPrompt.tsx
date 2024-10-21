@@ -104,9 +104,29 @@ const SavedPrompts: React.FC = () => {
 
   const handleOpen = (promptText: string) => {
     setSelectedPrompt(promptText);
-    const settingsIndex = promptText.indexOf('*** Settings ***:');
-    setQuestionPart(promptText.substring(0, settingsIndex + 17))
-    setAnswerPart(promptText.substring(settingsIndex + 17))
+
+    // Find the index of either '[/INST]' or '<|eot_id|>'
+    const endIndexInst = promptText.indexOf('[/INST]');
+    const endIndexEot = promptText.indexOf('<|start_header_id|>assistant<|end_header_id|>');
+
+    // Determine which marker is present
+    const endIndex = endIndexInst !== -1 ? endIndexInst : endIndexEot;
+
+    // If a marker is found, split the promptText
+    if (endIndex !== -1) {
+      const markerLength = endIndexInst !== -1 ? '[/INST]'.length : '<|start_header_id|>assistant<|end_header_id|>'.length;
+      // Include the marker in the question part
+      setQuestionPart(promptText.substring(0, endIndex + markerLength));
+      // Answer part starts after the marker
+      setAnswerPart(promptText.substring(endIndex + markerLength));
+    } else {
+      // Handle case where neither marker is found
+      setQuestionPart(promptText);  // Use the whole text as the question
+      setAnswerPart('');            // No answer part if no marker is found
+    }    
+    // const settingsIndex = promptText.indexOf('*** Settings ***:');
+    // setQuestionPart(promptText.substring(0, settingsIndex + 17))
+    // setAnswerPart(promptText.substring(settingsIndex + 17))
     setOpen(true);
   };
 
