@@ -202,6 +202,7 @@ const ChatComponent: React.FC = () => {
 
   const unloadModel = () => {
     handleStop();
+    handleUnLoad()
     setSelectedModel(null);
     setMessages([]);
   };
@@ -367,6 +368,14 @@ const ChatComponent: React.FC = () => {
     try {
       await axiosLLM.get('/api/backend/stopInference');
       setIsStreaming(false);
+    } catch (error) {
+      console.error('Error stopping inference:', error);
+    }
+  };
+
+  const handleUnLoad = async () => {
+    try {
+      await axiosLLM.get('/api/backend/unloadModel');
     } catch (error) {
       console.error('Error stopping inference:', error);
     }
