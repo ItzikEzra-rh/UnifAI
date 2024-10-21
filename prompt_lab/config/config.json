@@ -2,7 +2,7 @@
   "input_storage_type": "file",
   "output_storage_type": "file",
   "mongo_collection": "dataset_collection",
-  "input_file_path": "/home/instruct/AI-TC-s-Generator/llm-backend/parser/RHOAI_Files_Mapping_one_list.json",
+  "input_file_path": "/home/instruct/RHOAI_Files_Mapping_one_list.json",
   "output_file_path": "data/output.json",
   "tokenizer_path": "unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit",
   "api_url": "http://127.0.0.1:443/api/backend/inference",

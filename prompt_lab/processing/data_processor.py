@@ -20,8 +20,12 @@ class DataProcessor:
             for category, templates in options.items():
                 context, input_text = self.generate_random_input(templates, **element_data)
                 formatted_input = self.llm_requester.prompt_format(context, input_text)
-                if self.tokenizer.is_within_limit(formatted_input):
-                    response = self.llm_requester.send_request(formatted_input)
+                self.tokenizer.tokenize(formatted_input)
+                max_generated_tokens = self.tokenizer.calculate_max_tokens()
+                print(f"max generating tokens are: {max_generated_tokens}")
+
+                if self.tokenizer.is_within_limit():
+                    response = self.llm_requester.send_request(formatted_input, max_tokens=max_generated_tokens)
                     output = self.llm_requester.extract_assistant_text(response.text)
                     self.processed_data.append({
                         "input": input_text,

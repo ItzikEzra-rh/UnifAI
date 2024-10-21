@@ -45,7 +45,8 @@ def inference(prompt, temperature=None):
 #     "context_length": fields.Str(data_key="contextLength", required=True),
 # })
 # def inference(prompt, context_length):
-#     return Response(llm_provider.inference(prompt, max_new_tokens=int(context_length)), content_type='text/plain')
+#     return Response(llm_provider.inference(prompt, temperature=None, max_new_tokens=int(context_length)),
+#                     content_type='text/plain')
 
 
 @backend_bp.route("/stopInference", methods=["GET"])

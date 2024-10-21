@@ -7,11 +7,11 @@ class LLMRequester:
         self.api_url = api_url
         self.max_context_length = max_context_length  # max tokens the llm can generate
 
-    def send_request(self, prompt):
+    def send_request(self, prompt, max_tokens=None):
         response = requests.post(
             self.api_url,
             json={"prompt": prompt,
-                  "contextLength": f"{self.max_context_length}"},
+                  "contextLength": f"{max_tokens if max_tokens else self.max_context_length}"},
             headers={"Content-Type": "application/json"}
         )
         response.raise_for_status()
