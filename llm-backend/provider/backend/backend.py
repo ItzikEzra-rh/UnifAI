@@ -41,7 +41,6 @@ def inference(prompt, temperature, max_new_tokens=8192):
 
 
 def stop_inference():
-    global model_loader
     if llm_model.model_loader is not None:
         return llm_model.model_loader.stop_infer()
     return False
@@ -57,3 +56,18 @@ def save_hf_token(token):
 
 def get_hf_repo_files(repo_id, repo_type):
     return HuggingFaceAPI().list_repo_files(repo_id, repo_type)
+
+
+def get_loaded_model():
+    if llm_model.model_loader:
+        return llm_model.model_loader.model_id
+    return None
+
+
+def unload_model():
+    if llm_model.model_loader:
+        llm_model.model_loader.clean_model()
+        del llm_model.model_loader
+        llm_model.model_loader = None
+        return True
+    return False

@@ -73,3 +73,13 @@ def save_token(token):
 })
 def get_hf_repo_files(repo_id, repo_type):
     return jsonify(llm_provider.get_hf_repo_files(repo_id, repo_type))
+
+
+@backend_bp.route("/getLoadedModel", methods=["GET"])
+def get_loaded_model():
+    return jsonify(llm_provider.get_loaded_model())
+
+
+@backend_bp.route("/unloadModel", methods=["GET"])
+def unload_model():
+    return jsonify(llm_provider.unload_model())
