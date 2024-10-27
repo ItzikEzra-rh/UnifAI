@@ -1,31 +1,37 @@
-import json
-import os
 from storage.data_repository import DataRepository
+from storage.data_repository import FileHandler
+from pathlib import Path
+import os
 
 
 class FileDataRepository(DataRepository):
-    def __init__(self, file_path, progress_file=None):
-        super().__init__()
-        self.file_path = file_path
-        self.progress_file = progress_file or file_path.replace('.json', '_progress.json')
-        self.processed_file = file_path.replace('.json', '_processed.json')
+    def __init__(self, input_file_path, output_directory):
+        self.input_file = FileHandler(input_file_path)
+
+        # Derive other file names from the input file name
+        base_name = Path(input_file_path).stem
+        self.processed_file = FileHandler(os.path.join(output_directory, f"{base_name}_processed.json"))
+        self.skipped_file = FileHandler(os.path.join(output_directory, f"{base_name}_skipped.json"))
+        self.progress_file = FileHandler(os.path.join(output_directory, f"{base_name}_progress.json"))
 
     def load_data(self):
-        with open(self.file_path, 'r') as file:
-            return json.load(file)
+        return self.input_file.load_json()
 
     def save_processed_data(self, data):
-        with open(self.processed_file, 'w') as file:
-            json.dump(data, file, indent=4)
+        self.processed_file.save_json(data, indent=4)
 
     def save_progress(self, current_index):
-        progress_data = {"current_index": current_index}
-        with open(self.progress_file, 'w') as file:
-            json.dump(progress_data, file)
+        self.progress_file.save_json({"current_index": current_index})
+
+    def save_skipped_data(self, data):
+        self.skipped_file.save_json(data, indent=4)
 
     def load_progress(self):
-        if os.path.exists(self.progress_file):
-            with open(self.progress_file, 'r') as file:
-                progress_data = json.load(file)
-                return progress_data.get('current_index', 0)
-        return 0
+        progress_data = self.progress_file.load_json(default_value={"current_index": 0})
+        return progress_data.get('current_index', 0)
+
+    def load_processed_data(self):
+        return self.processed_file.load_json()
+
+    def load_skipped_data(self):
+        return self.skipped_file.load_json()

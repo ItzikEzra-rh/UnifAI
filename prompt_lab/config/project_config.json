@@ -1,5 +1,6 @@
 {
   "project_id": "ODS-CI",
+  "system_message": "You are a Robot Framework expert and engineer, skilled in creating efficient, modular tests, providing clear explanations, and delivering high-quality, precise guidance.",
   "context_template": "Red Hat OpenShift AI is a platform for developing, training, deploying, and serving AI/ML models. It handles all stages of the AI/ML lifecycle, from data preparation to inference, with features like distributed workloads, data science pipelines, IDE integration, S3-compatible storage, and model serving (single and multi-model). OpenShift AI also supports accelerators (GPUs/TPUs), resource management, and user management.\n\nODS-CI is an open-source test automation framework for validating OpenShift AI deployments. Built on Robot Framework, it supports test automation for all platform components and integrates with CI/CD pipelines for automated testing. ODS-CI allows multi-environment support, Selenium integration for UI testing, and customizable configurations for various test scenarios.\n\nBelow is metadata and code from the ODS-CI project:\n\nIn the file located at {file_location}:\n\n{file_code}\n\nHere is the code for the {element_type}:\n\n{code}\n\nPlease use this context and code to help answering the user question.",
   "element_templates": {
     "Keyword": {
