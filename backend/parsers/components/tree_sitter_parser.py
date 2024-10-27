@@ -16,7 +16,6 @@ class TreeSitterParser:
         if file_path.endswith('.robot'):
             return RobotParser(file_path=file_path, realtive_path=realtive_path)
         elif file_path.endswith('.go'):
-            print("BUG")
             return GoParser(file_path=file_path, realtive_path=realtive_path)
         else:
             raise ValueError(f"Unsupported file extension for: {file_path}")
