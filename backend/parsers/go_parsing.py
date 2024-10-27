@@ -57,7 +57,7 @@ counter = 0
 
 for path in go_files:
     print(f"Current path:{path}")
-    realtive_file_path = path.replace("//home/cloud-user/Projects/openshift-tests-private/", "", 1)
+    realtive_file_path = path.replace("/home/cloud-user/Projects/openshift-tests-private/", "", 1)
     tree_sitter_parser = TreeSitterParser.create_parser(file_path=path, realtive_path=realtive_file_path)
     project_entire_file_mapping = [tree_sitter_parser.enitre_file_parsing(project_file_names_mapping)]
     project_file_functions_mapping = tree_sitter_parser.functions_parsing()
@@ -66,10 +66,11 @@ for path in go_files:
     project_entire_file_mapping.extend(project_file_tests_mapping)
     counter+= 1
     try:
-        project_files_mapping.append(project_entire_file_mapping)
+        project_files_mapping.extend(project_entire_file_mapping)
     except (TypeError, ValueError) as e:
         print(f"Failed to update with: {e}")
 
 json_formatted_str = json.dumps(project_files_mapping, indent=2)
-write_to_file(json_formatted_str, filename='Cluster_Infra_Mapping.txt')
+write_to_file(json_formatted_str, filename='Cluster_Infra_Mapping.json')
 # print(counter)
+# print(json_formatted_str)
