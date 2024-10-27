@@ -35,11 +35,14 @@ class GoParser(TreeSitterParser):
         def extract_entire_code(node, content, file_type):
             """Helper function to extract entire robot code."""
             return {
-                "code": content,
-                "imports": get_import_node_code(node),  # Mapped resource imports
-                "file_location": self.realtive_path,
                 "type": file_type,
-                "package": get_file_package(node),
+                "name": os.path.basename(self.realtive_path),
+                "imports": f"Imports Used: {get_import_node_code(node)}",  # Mapped resource imports
+                "file_location": f"File Location: {self.realtive_path}",
+                "code": content,
+                "global_vars": "",
+                "package": f"Package Name: {get_file_package(node)}",
+                "tags": ""
             }
 
         root_node, content = self.get_root_node()
@@ -118,11 +121,13 @@ class GoParser(TreeSitterParser):
                 function = {
                     "type": "function",
                     "name": func_name,
-                    "imports": get_relevant_imports(func_code, all_imports),
-                    "file_location": self.file_path,
+                    "imports": f"Imports Used: {get_relevant_imports(func_code, all_imports)}",
+                    "file_location": f"File Location: {self.realtive_path}",
                     "code": func_code,
-                    "global_vars": get_used_global_vars(func_code, global_vars),
-                    "package": package_name
+                    # "file_code": content,
+                    "global_vars": f"Global Variables: {get_used_global_vars(func_code, global_vars)}",
+                    "package": f"Package Name: {package_name}",
+                    "tags": ""
                 }
                 functions.append(function)
         
@@ -253,12 +258,13 @@ class GoParser(TreeSitterParser):
             test = {
                 "type": "test",
                 "name": test_name,
-                "imports": get_relevant_imports(test_code, all_imports),
-                "file_location": self.file_path,
+                "imports": f"Imports Used: {get_relevant_imports(test_code, all_imports)}",
+                "file_location": f"File Location: {self.realtive_path}",
                 "code": test_code,
-                "global_vars": get_used_global_vars(test_code, global_vars),
-                "package": package_name,
-                "tags": extract_tags(describe_block)
+                # "file_code": content,
+                "global_vars": f"Global Variables: {get_used_global_vars(test_code, global_vars)}",
+                "package": f"Package Name: {package_name}",
+                "tags": f"Tags: {extract_tags(describe_block)}"
             }
             
             tests.append(test)
@@ -279,11 +285,14 @@ class GoParser(TreeSitterParser):
             test_case = {
                 "type": "test case",
                 "name": test_case_name,
-                "imports": get_relevant_imports(test_case_code, all_imports),
-                "file_location": self.file_path,
-                "code": test_case_code
-            }
-            
+                "imports": f"Imports Used: {get_relevant_imports(test_case_code, all_imports)}" ,
+                "file_location": f"File Location: {self.realtive_path}",
+                "code": test_case_code,
+                # "file_code": content,
+                "global_vars": "",
+                "package": "",
+                "tags": ""
+            } 
             test_cases.append(test_case)
         
         tests.extend(test_cases)
