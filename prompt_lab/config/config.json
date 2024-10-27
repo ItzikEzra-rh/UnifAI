@@ -1,7 +1,7 @@
 {
   "storage_type": "file",
   "input": {
-    "file_path": "/home/instruct/RHOAI_Files_Mapping_one_list.json"
+    "file_path": "/home/instruct/Cluster_Infra_Mapping_one_list.json"
   },
   "output": {
     "directory": "data/"
