@@ -21,14 +21,14 @@ class FileDataRepository(DataRepository):
         self.processed_file.save_json(data, indent=4)
 
     def save_progress(self, current_index):
-        self.progress_file.save_json({"current_index": current_index})
+        self.progress_file.save_json({"prompt_index": current_index})
 
     def save_skipped_data(self, data):
         self.skipped_file.save_json(data, indent=4)
 
     def load_progress(self):
-        progress_data = self.progress_file.load_json(default_value={"current_index": 0})
-        return progress_data.get('current_index', 0)
+        progress_data = self.progress_file.load_json(default_value={"prompt_index": 0})
+        return progress_data.get('prompt_index', 0)
 
     def load_processed_data(self):
         return self.processed_file.load_json()

@@ -17,17 +17,17 @@ class VLLMClient(LLMClient):
             "model": self.model_name,
             "prompt": prompts,
             "max_tokens": max_tokens,
-            "temperature": 0.0
+            "temperature": 0.2
         }
         # Send request
         response = requests.post(self.api_url, json=data, headers={"Content-Type": "application/json"})
         response.raise_for_status()
 
         # Extract responses in order
-        return self.extract_assistant_text(response.json())
+        return self.sort_choices(response.json())
 
     @staticmethod
-    def extract_assistant_text(response):
+    def sort_choices(response):
         """Extracts the assistant’s response text in the order of the 'index' key from a structured API response."""
         choices = sorted(response.get("choices", []), key=lambda choice: choice.get("index", 0))
-        return [choice["text"] for choice in choices]
+        return choices

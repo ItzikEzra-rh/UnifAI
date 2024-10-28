@@ -1,124 +1,133 @@
-import random
 from llm_client.vllm import VLLMClient
 from utils.tokenizer import TokenizerUtils
+from processing.prompt_generator import PromptGenerator
+from processing.batch_procceser import BatchProcessor
 
 
 class DataProcessor:
+    """
+    DataProcessor coordinates the processing of prompts by batching them, sending them to an LLM client,
+    and managing results and progress tracking.
+    """
+
     def __init__(self, io_repository, project_config, api_url, model_name,
                  max_context_length, max_generation_length, batch_size):
+        """
+        Initializes DataProcessor with dependencies and configuration.
+
+        Args:
+            io_repository: Handles I/O operations for loading/saving data.
+            project_config: Dictionary containing project configurations.
+            api_url: API URL for the LLM client.
+            model_name: Name of the model to use.
+            max_context_length: Maximum token length for the prompt context.
+            max_generation_length: Maximum token length for generated responses.
+            batch_size: Maximum number of prompts per batch.
+        """
         self.io_repository = io_repository
-        self.max_context_length = max_context_length
-        self.max_generation_length = max_generation_length
-        self.tokenizer = TokenizerUtils(model_name,
-                                        max_context_length=self.max_context_length,
-                                        max_generation_length=self.max_generation_length)
-        self.batch_size = batch_size
+        self.tokenizer = TokenizerUtils(model_name, max_context_length=max_context_length,
+                                        max_generation_length=max_generation_length)
         self.llm_client = VLLMClient(api_url, model_name, max_context_length)
-        self.project_config = project_config
-        self.processed_data = self.io_repository.load_processed_data()
+        self.prompt_generator = PromptGenerator(self.tokenizer, project_config)
         self.skipped_data = self.io_repository.load_skipped_data()
-        self.current_index = self.io_repository.load_progress()
+        self.batch_processor = BatchProcessor(batch_size, self.tokenizer, self.skipped_data, self.io_repository)
+        self.current_prompt_index = self.io_repository.load_progress()
+        self.processed_data = self.io_repository.load_processed_data()
 
-    def process_element(self, element_data):
-        element_type = element_data.get("element_type")
-        input_option_groups = self.project_config["element_templates"].get(element_type, {})
-        system_message = self.project_config.get("system_message", "")
-
-        batch_prompts = []
-        metadata = []
-        total_token_count = 0
-        token_limit = self.tokenizer.get_toking_limit()
-
-        for group_name, options in input_option_groups.items():
-            for category, templates in options.items():
-                context, input_text = self.generate_random_input(templates, **element_data)
-                formatted_input = self.tokenizer.format_chat_prompt([
-                    {"role": "system", "content": system_message},
-                    {"role": "context", "content": context},
-                    {"role": "user", "content": input_text}
-                ])
-
-                prompt_tokens = self.tokenizer.tokenize(formatted_input)
-
-                print(
-                    f"\nEvaluating element {element_type} {self.current_index + 1}: Group '{group_name}', Category '{category}'")
-                print(f"Prompt token count: {prompt_tokens}")
-                print(f"Current total token count in batch: {total_token_count}")
-
-                # Skip if a single prompt exceeds the token limit
-                if prompt_tokens > token_limit:
-                    print(f"Skipping prompt: Exceeds individual token limit of {token_limit}")
-                    self.skipped_data.append(element_data)
-                    self.io_repository.save_skipped_data(self.skipped_data)
-                    continue
-
-                # Check if adding this prompt would exceed either the token limit or batch size
-                if (total_token_count + prompt_tokens > token_limit) or (len(batch_prompts) >= self.batch_size):
-                    print(f"Processing batch: Reached token limit or batch size")
-                    self.process_batch(batch_prompts, metadata, self.max_generation_length)
-                    batch_prompts = []
-                    metadata = []
-                    total_token_count = 0  # Reset token count for the new batch
-
-                # Add the current prompt to the batch
-                batch_prompts.append(formatted_input)
-                total_token_count += prompt_tokens
-                metadata.append({
-                    "element_type": element_type,
-                    "group": group_name,
-                    "category": category,
-                    "input_text": input_text,
-                    "original_data": element_data
-                })
-                print(f"Added prompt to batch. New batch size: {len(batch_prompts)}")
-                print(f"Updated total token count: {total_token_count}")
-
-        # Process any remaining prompts in the batch
-        if batch_prompts:
-            print(f"Processing final batch for element '{element_type}' (Index {self.current_index + 1})")
-            self.process_batch(batch_prompts, metadata, self.max_generation_length)
-
-        self.current_index += 1
-        self.save_progress()
-        self.save_data()
-
-    def process_batch(self, batch_prompts, metadata, max_generation_length):
-        responses = self.llm_client.send_request(batch_prompts, max_tokens=max_generation_length)
-        for meta, response_text in zip(metadata, responses):
-            self.processed_data.append({
-                "input": meta["input_text"],
-                "output": response_text,
-                "element_type": meta["element_type"],
-                "group": meta["group"],
-                "category": meta["category"],
-                "original_data": meta["original_data"]
-            })
-            self.print_progress(meta["element_type"], meta["group"], meta["category"], response_text)
-
-    def generate_random_input(self, templates, **kwargs):
-        context_template = self.project_config.get("context_template", "")
-        context = context_template.format(**kwargs)
-        selected_template = random.choice(templates)
-        input_text = selected_template.format(**kwargs)
-        return context, input_text
-
-    def save_data(self):
-        self.io_repository.save_processed_data(self.processed_data)
-
-    def save_progress(self):
-        self.io_repository.save_progress(self.current_index)
+        print("DataProcessor initialized.")
+        print(f"Loaded {len(self.processed_data)} processed records and {len(self.skipped_data)} skipped records.")
+        print(f"Resuming from prompt index: {self.current_prompt_index}")
 
     def process_all_elements(self):
+        """Main method to process all elements, batching prompts and sending them to the LLM client."""
         data = self.io_repository.load_data()
-        while self.current_index < len(data):
-            element = data[self.current_index]
-            self.process_element(element)
+        print(f"Loaded {len(data)} elements for processing.")
+
+        # Generate all prompts and metadata
+        all_prompts = [prompt for element_data in data for prompt in self.prompt_generator.create_prompts(element_data)]
+        prompts_count = len(all_prompts)
+        print(f"Total prompts generated: {prompts_count}")
+
+        # Process prompts in batches, starting from the last saved index
+        while self.current_prompt_index < prompts_count:
+            print(f"Processing from prompt index: {self.current_prompt_index}")
+            batch_prompts, metadata, total_token_count = self.batch_processor.create_batch(
+                all_prompts, prompts_count, self.current_prompt_index
+            )
+            print(f"Created batch with {len(batch_prompts)} prompts. batch tokens size is {total_token_count}")
+
+            # Process the batch and update progress
+            self.process_batch(batch_prompts, metadata)
+            self.current_prompt_index += len(batch_prompts)
+            self.io_repository.save_progress(self.current_prompt_index)
+            print(f"Progress saved at prompt index: {self.current_prompt_index}")
+
+    def process_batch(self, batch_prompts, metadata):
+        """
+        Sends a batch of prompts to the LLM client and processes the responses.
+
+        Args:
+            batch_prompts: List of formatted prompts to send in the batch.
+            metadata: List of metadata dictionaries for each prompt in the batch.
+        """
+        print("Sending batch to LLM client.")
+        choices = self.llm_client.send_request(batch_prompts, max_tokens=self.tokenizer.max_generation_length)
+        print(f"Received {len(choices)} responses from LLM client.")
+
+        # Process each response and metadata entry
+        for meta, choice in zip(metadata, choices):
+            if choice.get("finish_reason", "").strip() == "length":
+                print(f"Skipping due to hallucination for element: {meta['element_type']}")
+                self.skip_due_to_hallucination(meta["original_data"])
+            else:
+                self.save_processed_data(meta, choice["text"])
+
+    def save_processed_data(self, meta, response_text):
+        """
+        Saves a single processed prompt's metadata and response.
+
+        Args:
+            meta: Metadata for the processed prompt.
+            response_text: Generated response from the LLM client.
+        """
+        element_data = {
+            "input": meta["input_text"],
+            "output": response_text,
+            "element_type": meta["element_type"],
+            "group": meta["group"],
+            "category": meta["category"],
+            "original_data": meta["original_data"]
+        }
+        self.processed_data.append(element_data)
+        self.io_repository.save_processed_data(self.processed_data)
+        print(f"Processed data saved for element type: {meta['element_type']}")
+        self.print_progress(meta["element_type"], meta["group"], meta["category"], response_text)
+
+    def skip_due_to_hallucination(self, element_data):
+        """
+        Adds element data to skipped list due to hallucination and saves to the repository.
+
+        Args:
+            element_data: Original data of the element being skipped.
+        """
+        element_data["skip"] = {"reason": "hallucination"}
+        self.skipped_data.append(element_data)
+        self.io_repository.save_skipped_data(self.skipped_data)
+        print(f"Element skipped due to hallucination: {element_data.get('element_type')}")
 
     def print_progress(self, element_type, group_name, category, output):
-        """Prints the progress of the current processing element in a stylized format."""
+        """
+        Prints the progress of the current processing element in a stylized format.
+
+        Args:
+            element_type: Type of the element being processed.
+            group_name: Group of the element.
+            category: Category of the element.
+            output: Generated output from the LLM client.
+        """
         separator = "=" * 80
         print(separator)
-        print(f"Processing Element {self.current_index + 1}".center(80))
+        print(f"Processing Element {self.current_prompt_index + 1}".center(80))
         print(f"Element Type: {element_type} | Group: {group_name} | Category: {category}".center(80))
         print(separator)
         print(f"\n{output}\n")

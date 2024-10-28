@@ -1,120 +1,118 @@
 {
   "project_id": "openshift-qe",
   "system_message": "You are an expert in Go and Ginkgo testing, skilled in creating modular, reusable tests and providing precise guidance. You understand complex Go test cases and can optimize function and module usage while adhering to project conventions.",
-  "context_template": "OpenShift is a Kubernetes-based open-source container platform developed by Red Hat for managing containerized applications at scale. It provides robust infrastructure to automate deployment, scaling, and management of applications, supporting CI/CD, multi-cloud environments, and enhanced security. By extending Kubernetes with additional tools and developer-friendly features, OpenShift aligns well with DevOps workflows and IT operations.\n\nKey Components of OpenShift\n\n- **OpenShift API Server**: The central interface, managing the state and configuration of the cluster by processing API requests and handling communication between components.\n\n- **Kubernetes Controller Manager**: Manages core resources within the cluster, ensuring pod count accuracy and endpoint updates.\n\n- **Etcd**: The cluster’s data store, holding configuration data and metadata for effective environment coordination.\n\n- **OpenShift Router**: A layer 7 load balancer handling external network traffic, managing service access, and SSL termination.\n\n- **OpenShift SDN**: Provides network connectivity and security between pods and nodes, supporting network isolation and seamless communication.\n\n- **Cluster Monitoring and Logging**: Powered by Prometheus, Grafana, and Elasticsearch, it monitors cluster health, troubleshoots, and optimizes performance.\n\n- **Operators**: Manage application lifecycles and configurations, automating complex operational tasks.\n\n- **OpenShift Console**: A web-based console for managing resources and deploying workloads, enhancing accessibility for administrators and developers.\n\n…and additional components contribute to OpenShift's extensive feature set.\n\nRole of Testing in OpenShift QE\n\nThe OpenShift QE repository (openshift-tests) is dedicated to end-to-end (e2e) testing, using Ginkgo and the Kubernetes e2e framework to validate core functionality, stability, and security across OpenShift. This testing encompasses:\n\n- **Functional Validation**: Ensuring each component and configuration functions as expected.\n\n- **Upgrade Verification**: Testing the platform’s upgrade paths to guarantee smooth version transitions.\n\n- **Debugging and Troubleshooting**: Retaining test namespaces to diagnose issues and maintain transparency.\n\nTests cover critical aspects like cluster integrity, upgrade paths, and feature conformance, ensuring OpenShift’s stability, scalability, and security. The QE repository’s comprehensive framework supports a reliable environment that meets enterprise-level deployment demands.\n\nHere is detailed information about the `{element_type}` `{name}`:\n\n{file_location}\n\n{package}\n\n{imports}\n\n{global_vars}\n\n{tags}\n\nCode for `{element_type}` `{name}`:\n\n```go\n{code}\n```\n\nUse this detailed context and data about the `{element_type}` `{name}` to provide a precise, informed response to the question.",
+  "context_template": "OpenShift is a Kubernetes-based open-source container platform developed by Red Hat for managing containerized applications at scale. It provides robust infrastructure to automate deployment, scaling, and management of applications, supporting CI/CD, multi-cloud environments, and enhanced security. By extending Kubernetes with additional tools and developer-friendly features, OpenShift aligns well with DevOps workflows and IT operations.\n\nKey Components of OpenShift\nOpenShift API Server\nThe API server is the central interface, managing the state and configuration of the cluster by processing API requests and handling communication between components.\n\nKubernetes Controller Manager\nThis component manages core resources within the cluster, such as maintaining pod counts and updating endpoint objects to ensure cluster integrity.\n\nEtcd\nEtcd is the cluster’s data store, holding all configuration data and metadata to coordinate the environment effectively.\n\nOpenShift Router\nActing as a layer 7 load balancer, the router handles external network traffic, managing access to services and enforcing SSL termination.\n\nOpenShift SDN\nThe SDN provides network connectivity and security between pods and nodes, supporting network isolation and seamless communication.\n\nCluster Monitoring and Logging\nPowered by Prometheus, Grafana, and Elasticsearch, this stack helps monitor cluster health, troubleshoot, and optimize performance.\n\nOperators\nOperators manage application lifecycles and configurations, reducing manual intervention by automating complex operational tasks.\n\nOpenShift Console\nA web-based console for managing resources and deploying workloads, the console enhances accessibility for both administrators and developers.\n\nand more components contribute to OpenShift's extensive feature set.\n\nRole of Testing in OpenShift QE\nThe OpenShift QE repository (openshift-tests) is dedicated to end-to-end (e2e) testing, using Ginkgo and the Kubernetes e2e framework to validate core functionality, stability, and security across OpenShift. This testing encompasses:\n\nFunctional Validation: Ensuring each component and configuration functions as expected.\nUpgrade Verification: Testing the platform’s upgrade paths to guarantee smooth version transitions.\nDebugging and Troubleshooting: Retaining test namespaces to diagnose issues and maintain transparency.\nTests cover critical aspects like cluster integrity, upgrade paths, and feature conformance, allowing Red Hat to ensure that OpenShift provides a stable, scalable, and secure platform. The QE repository’s comprehensive testing framework contributes to a reliable environment, meeting the demands of enterprise-level deployments.\n\nHere is detailed information about the {element_type} {name}:\n\n{file_location}\n\n{package}\n\n{imports}\n\n{global_vars}\n\nCode for {element_type} {name}: \n```go\n{code}\n\nUse this detailed context and data about the {element_type} {name} to provide a precise, informed response to the question.",
   "element_templates": {
     "test": {
       "Code Description and Understanding": {
         "code_description_understanding_options": [
-          "Provide a detailed description of `{element_type}` `{name}`, explaining each component's role in test execution within the OpenShift QE project.",
-          "Analyze the structure and logic of `{element_type}` `{name}` in the OpenShift QE project, identifying key functions and how they contribute to overall test reliability.",
-          "Describe dependencies and integration points in `{element_type}` `{name}` within the OpenShift QE project, highlighting their significance in the project’s testing framework.",
-          "Examine the use of imports in `{element_type}` `{name}` in the OpenShift QE project, explaining their role in optimizing and extending test functionality.",
-          "Discuss how `{element_type}` `{name}` integrates with other tests or modules in the OpenShift QE project, focusing on dependencies and key functionality for modular testing."
+          "Provide a description of `{element_type}` `{name}` in the OpenShift QE project, explaining its purpose, structure, and each component's role in supporting test execution.",
+          "Describe the main functions of `{element_type}` `{name}` in the OpenShift QE project, including an overview of the element and detailing how each function contributes to test reliability.",
+          "Explain the key dependencies of `{element_type}` `{name}` in the OpenShift QE project, describing the element itself and clarifying how these dependencies support integration within the testing framework.",
+          "Offer an in-depth description of `{element_type}` `{name}` in the OpenShift QE project, discussing how it connects with other tests or modules and how dependencies enable a modular test design.",
+          "Provide an overview of `{element_type}` `{name}` in the OpenShift QE project, describing its purpose and structure, with a focus on its individual components and how they enable effective test execution."
         ]
       },
       "Full Code Display and Explanation": {
         "full_code_display_options": [
-          "Display the complete code of `{element_type}` `{name}` and describe the function of each section to illustrate how it supports test execution in the OpenShift QE project.",
-          "Provide an explanation of each function in the full code of `{element_type}` `{name}`, identifying dependencies and their relevance to the OpenShift QE project.",
-          "Analyze the entire code for `{element_type}` `{name}` within the OpenShift QE project, explaining the purpose of each import and function, with an emphasis on modularity and reusability.",
-          "Show the complete code and provide insights into the design choices for `{element_type}` `{name}`, explaining how they support specific test scenarios in the OpenShift QE project.",
-          "Display the code structure of `{element_type}` `{name}` in the OpenShift QE project, detailing each function and logic path to explain its testing objectives and interactions with other modules."
+          "Show the code of `{element_type}` `{name}` in the OpenShift QE project, explaining each section's role in supporting test execution. Exclude imports if they are not included in the code.",
+          "Detail each function in the code of `{element_type}` `{name}` in the OpenShift QE project, displaying the code and highlighting dependencies along with their significance in the project. Do not include imports if they are absent.",
+          "Present the code of `{element_type}` `{name}` and analyze the purpose of each function within the OpenShift QE project, focusing on reusability and modularity. Only display imports if they are relevant.",
+          "Show the code structure of `{element_type}` `{name}` in the OpenShift QE project, describing design choices and how they support specific test scenarios. Skip imports if none are present in the code.",
+          "Display the code of `{element_type}` `{name}` in the OpenShift QE project, explaining each function and logic path's role in achieving test objectives. If there are no imports, omit them from the code display."
         ]
       },
       "Test Coverage and Gaps Assessment": {
         "test_coverage_gaps_options": [
-          "Evaluate `{element_type}` `{name}`'s test coverage in the OpenShift QE project, identifying edge cases or scenarios that are not covered.",
-          "Analyze `{element_type}` `{name}` in the OpenShift QE project for potential gaps in testing logic, recommending areas for additional test cases.",
-          "Suggest scenarios that `{element_type}` `{name}` in the OpenShift QE project could validate to improve resilience and cover potential corner cases.",
-          "Identify untested functionalities within `{element_type}` `{name}` in the OpenShift QE project, recommending specific areas where coverage can be extended.",
-          "Discuss how the test coverage of `{element_type}` `{name}` in the OpenShift QE project could be enhanced by including additional dependencies or external conditions."
+          "Evaluate the test coverage of `{element_type}` `{name}` in the OpenShift QE project, identifying any edge cases or scenarios that are missing.",
+          "Analyze `{element_type}` `{name}` for potential gaps in test logic within the OpenShift QE project, and suggest areas for additional test cases.",
+          "Suggest additional scenarios in the OpenShift QE project that `{element_type}` `{name}` could validate to improve resilience and cover corner cases.",
+          "Identify untested functions in `{element_type}` `{name}` within the OpenShift QE project, recommending areas to extend coverage.",
+          "Discuss enhancements to `{element_type}` `{name}`'s test coverage in the OpenShift QE project by adding more dependencies or external conditions."
         ]
       },
       "Code Snippet Reusability": {
         "code_snippet_reusability_options": [
-          "Provide a Go snippet demonstrating how `{element_type}` `{name}` in the OpenShift QE project could be adapted to call shared setup and teardown functions.",
-          "Show how `{element_type}` `{name}` in the OpenShift QE project could use helper functions to streamline repeated logic across test cases.",
-          "Generate a Go code example where `{element_type}` `{name}` in the OpenShift QE project incorporates reusable error handling and logging mechanisms.",
-          "Demonstrate how `{element_type}` `{name}` in the OpenShift QE project can utilize existing utilities to reduce redundancy in test setup.",
-          "Illustrate how `{element_type}` `{name}` in the OpenShift QE project could be made more modular by extracting reusable sections into shared functions."
+          "Provide a Go code snippet for `{element_type}` `{name}` in the OpenShift QE project, showing how to integrate shared setup and teardown functions to optimize reusability.",
+          "Demonstrate ways `{element_type}` `{name}` in the OpenShift QE project could use helper functions to streamline repeated logic in tests, optimizing efficiency and maintainability.",
+          "Generate a code example showing how `{element_type}` `{name}` in the OpenShift QE project could implement reusable error handling and logging to optimize consistency across tests.",
+          "Suggest ways `{element_type}` `{name}` in the OpenShift QE project can utilize existing utilities to reduce setup redundancy, enhancing optimization and reducing overhead.",
+          "Illustrate how `{element_type}` `{name}` in the OpenShift QE project could become more modular by extracting reusable code into shared functions, optimizing for modularity and maintainability."
         ]
       },
-      "Test Expansion and Modularity": {
-        "test_expansion_modularity_options": [
-          "Describe how `{element_type}` `{name}` in the OpenShift QE project can be refactored to support modular test case expansion.",
-          "Identify specific sections in `{element_type}` `{name}` in the OpenShift QE project that could become standalone, reusable components.",
-          "Explain how `{element_type}` `{name}` in the OpenShift QE project can be restructured to accommodate new workflows while maintaining readability.",
-          "Discuss possible modularization improvements for `{element_type}` `{name}` in the OpenShift QE project, making it easier to integrate new tests.",
-          "Suggest how `{element_type}` `{name}` in the OpenShift QE project could incorporate additional test paths with minimal modification to existing code."
+      "Ginkgo Test Expansion and Modularity": {
+        "ginkgo_test_expansion_modularity_options": [
+          "Suggest a refactoring approach for `{element_type}` `{name}` in the OpenShift QE project to enhance Ginkgo test expansion and support modular testing, improving maintainability.",
+          "Identify sections in `{element_type}` `{name}` within the OpenShift QE project that can be extracted as standalone, reusable components for Ginkgo tests, promoting modularity and reusability.",
+          "Provide a Ginkgo `Describe` and `It` block template for `{element_type}` `{name}` in the OpenShift QE project, designed to accommodate new test scenarios and modular expansion.",
+          "Recommend new Ginkgo test scenarios for `{element_type}` `{name}` in the OpenShift QE project, ensuring modular integration with minimal changes to existing code.",
+          "Create a Ginkgo test template using table-driven tests for `{element_type}` `{name}` in the OpenShift QE project, optimizing for modularity and covering a range of input scenarios."
         ]
       }
     },
     "test case": {
       "Project Understanding and Test Case Mapping": {
         "test_case_mapping_options": [
-          "Analyze `{element_type}` `{name}` in the OpenShift QE project to describe how it maps its logic within the project framework.",
-          "Discuss the dependencies of `{element_type}` `{name}` in the OpenShift QE project and how they contribute to test case execution.",
-          "Explain how `{element_type}` `{name}` in the OpenShift QE project interacts with other functions and methods, supporting the broader testing suite.",
-          "Describe the role of `{element_type}` `{name}` in validating specific scenarios or conditions within the OpenShift QE project.",
-          "Suggest ways `{element_type}` `{name}` in the OpenShift QE project can be improved to enhance interaction with other functions or modules."
+          "Describe the purpose and current setup of `{element_type}` `{name}` in the OpenShift QE project, focusing on its role within the test case framework.",
+          "Provide an overview of `{element_type}` `{name}` in the OpenShift QE project, detailing its dependencies and how they influence its execution as a test case.",
+          "Explain how `{element_type}` `{name}` functions as a test case in the OpenShift QE project, highlighting its interactions with other functions and its support for the overall test suite.",
+          "Detail the specific scenarios `{element_type}` `{name}` is designed to validate within the OpenShift QE project, describing how it achieves its testing objectives.",
+          "Describe the structure of `{element_type}` `{name}` in the OpenShift QE project, focusing on how it operates as a test case and interacts with related functions or modules."
         ]
       },
       "Full Code Display and Explanation": {
         "full_code_display_options": [
-          "Present the full code of `{element_type}` `{name}` in the OpenShift QE project and explain each part, focusing on its role within the project.",
-          "Provide insights into the design and structure of `{element_type}` `{name}` in the OpenShift QE project, describing the purpose of each code section.",
-          "Show how `{element_type}` `{name}` is structured in its entirety within the OpenShift QE project, explaining how each part aligns with testing objectives.",
-          "Display and break down the complete code of `{element_type}` `{name}` in the OpenShift QE project, emphasizing reusability and maintainability.",
-          "Discuss the significance of each function in the `{element_type}` `{name}` code within the OpenShift QE project, describing its contribution to the test logic."
+          "Present the code for `{element_type}` `{name}` in the OpenShift QE project, displaying each part and focusing on its role within the project. Exclude imports if they are not part of the code.",
+          "Display and explain the design of `{element_type}` `{name}` in the OpenShift QE project, describing the purpose of each code section. Do not include imports if they are absent.",
+          "Show the code structure of `{element_type}` `{name}` in the OpenShift QE project, detailing how it is organized to meet testing objectives. Only show imports if they are relevant.",
+          "Break down and display `{element_type}` `{name}`'s code in the OpenShift QE project, emphasizing maintainability and reusability. Exclude imports if none are present.",
+          "Display the code for each function in `{element_type}` `{name}` in the OpenShift QE project, explaining how it contributes to the test logic. If there are no imports, omit them from the code."
         ]
       },
-      "Test Case Expansion and Reusability": {
-        "test_case_expansion_options": [
-          "Describe ways `{element_type}` `{name}` in the OpenShift QE project could expand coverage by reusing functions or utilities.",
-          "Identify parts of `{element_type}` `{name}` in the OpenShift QE project that can leverage existing validation for new test cases.",
-          "Suggest ways `{element_type}` `{name}` in the OpenShift QE project can be structured to allow easier test scenario expansion.",
-          "Discuss how `{element_type}` `{name}` in the OpenShift QE project can adapt for new dependencies by integrating reusable functions.",
-          "Explain how `{element_type}` `{name}` in the OpenShift QE project can utilize helper functions to validate new test workflows."
+      "Ginkgo Test Case Expansion and Reusability": {
+        "ginkgo_test_case_expansion_reusability_options": [
+          "Suggest ways for `{element_type}` `{name}` in the OpenShift QE project to expand test coverage by reusing functions or utilities in Ginkgo, enhancing modularity and reusability.",
+          "Identify parts of `{element_type}` `{name}` in the OpenShift QE project that could leverage existing validations to create new Ginkgo test cases for extended functionality.",
+          "Recommend structural adjustments in `{element_type}` `{name}` within the OpenShift QE project to facilitate easier Ginkgo test case expansion and modular integration.",
+          "Outline a Ginkgo `It` block and reusable helper functions for `{element_type}` `{name}` in the OpenShift QE project, supporting new dependencies and increasing test flexibility.",
+          "Provide a Ginkgo test snippet for `{element_type}` `{name}` in the OpenShift QE project to validate error handling and complex workflows, ensuring robust test coverage."
         ]
       }
     },
     "function": {
       "Function Understanding and Role within the Project": {
         "function_understanding_options": [
-          "Analyze the purpose of `{element_type}` `{name}` in the OpenShift QE project, describing its role within the project’s code flow.",
-          "Identify the dependencies of `{element_type}` `{name}` in the OpenShift QE project, explaining their importance for its functionality.",
-          "Discuss the significance of `{element_type}` `{name}` within the OpenShift QE project and potential improvements for reusability."
-        ]
-      },
-      "Full Code Display and Explanation": {
+          "Describe the current role and purpose of `{element_type}` `{name}` in the OpenShift QE project, outlining its specific function within the project workflow.",
+          "Provide an explanation of how `{element_type}` `{name}` operates within the OpenShift QE project, detailing its primary responsibilities and function in the existing setup.",
+          "Explain the functionality of `{element_type}` `{name}` as it currently exists in the OpenShift QE project, including its role in supporting project objectives.",
+          "Outline the purpose and current operations of `{element_type}` `{name}` in the OpenShift QE project, focusing on its immediate function within the project structure.",
+          "Summarize the functional role of `{element_type}` `{name}` in the OpenShift QE project, describing its specific tasks and how it fits into the overall workflow."
+        ],
         "full_code_display_options": [
-          "Show the full code of `{element_type}` `{name}` in the OpenShift QE project, explaining the function of each section and its role.",
-          "Break down the entire code of `{element_type}` `{name}` within the OpenShift QE project, providing insights into its structural choices.",
-          "Discuss the function and purpose of each part in `{element_type}` `{name}` in the OpenShift QE project, explaining its modularity."
+          "Present the code of `{element_type}` `{name}` in the OpenShift QE project, displaying each section and explaining its purpose. Exclude imports if they are not included in the code.",
+          "Display the full code of `{element_type}` `{name}` in the OpenShift QE project and analyze its structure, highlighting key sections that enhance modularity. Only show imports if they are relevant.",
+          "Show the code of `{element_type}` `{name}` in the OpenShift QE project, discussing each part's role and emphasizing its modular and reusable design. Do not include imports if they are not part of the code.",
+          "Provide the code for `{element_type}` `{name}` in the OpenShift QE project, explaining how each function contributes to the overall functionality. Exclude imports if they are unnecessary.",
+          "Display and review the code of `{element_type}` `{name}` in the OpenShift QE project, identifying any modular design elements. Only include imports if they are present in the code."
         ]
       },
       "Improving Functionality and Modular Reusability": {
         "function_reusability_options": [
-          "Suggest improvements for `{element_type}` `{name}` in the OpenShift QE project to enhance modularity using shared utilities.",
-          "Identify ways `{element_type}` `{name}` in the OpenShift QE project can extend its functions to handle new conditions.",
-          "Recommend ways to refactor `{element_type}` `{name}` in the OpenShift QE project for easier testing and reusability."
+          "Suggest improvements for modularity in `{element_type}` `{name}` within the OpenShift QE project by incorporating shared utilities.",
+          "Identify ways to extend `{element_type}` `{name}` in the OpenShift QE project for handling new conditions efficiently.",
+          "Recommend refactoring opportunities in `{element_type}` `{name}` within the OpenShift QE project for enhanced testing and reusability.",
+          "Propose techniques to simplify `{element_type}` `{name}` in the OpenShift QE project by breaking down complex functions into smaller, reusable components."
         ]
       }
     },
     "File": {
-      "File Role and Structure Analysis": {
-        "file_role_analysis_options": [
-          "Describe the purpose of `{element_type}` `{name}` in the OpenShift QE project and how it organizes the relevant functions and imports.",
-          "Explain the significance of `{element_type}` `{name}` within the OpenShift QE project structure and how it supports modularity or testability across packages.",
-          "Identify how `{element_type}` `{name}` coordinates with other files or packages in the OpenShift QE project, and suggest areas for structural improvements."
-        ]
-      },
-      "Code Snippets to Describe File Structure and Purpose": {
-        "file_structure_description_snippet_options": [
-          "Provide a Go code snippet that showcases the key functions and imports in `{element_type}` `{name}`, illustrating its main responsibilities within the OpenShift QE project. Include comments to describe each function’s purpose and how it supports the file’s role.",
-          "Generate a code snippet with sample usage and setup for `{element_type}` `{name}`, demonstrating its essential functions and interactions with other modules or packages in the OpenShift QE project. Include explanatory comments to highlight the structure and intent of each component.",
-          "Write a Go code snippet that includes the main function signatures and constants used in `{element_type}` `{name}`, with inline comments explaining how each part contributes to the file’s role and how it integrates within the broader OpenShift QE project structure."
+      "File Role, Structure, and Code Snippets": {
+        "file_role_structure_snippet_options": [
+          "Describe the purpose of `{element_type}` `{name}` in the OpenShift QE project, detailing how it organizes key functions to support the project’s modular structure.",
+          "Explain the significance of `{element_type}` `{name}` within the OpenShift QE project, discussing its role in maintaining modularity and testability across packages. Include a Go code snippet that highlights key functions.",
+          "Identify how `{element_type}` `{name}` coordinates with other files or packages in the OpenShift QE project, suggesting structural improvements. Provide a code snippet to demonstrate these improvements.",
+          "Provide a Go code snippet that showcases the main functions in `{element_type}` `{name}`, illustrating its responsibilities in the OpenShift QE project. Add comments to describe each function’s role in supporting modularity.",
+          "Generate a code snippet with sample usage and setup for `{element_type}` `{name}`, demonstrating essential functions and interactions with other modules in the OpenShift QE project, with comments that explain the structure and purpose of each component."
         ]
       },
       "Test Coverage and Gaps Assessment": {
@@ -128,7 +126,9 @@
         "file_modularity_refactoring_optimization_options": [
           "Suggest ways to refactor and optimize `{element_type}` `{name}` in the OpenShift QE project to improve modularity, maintainability, and performance.",
           "Identify specific functions or blocks in `{element_type}` `{name}` that could be modularized into separate components, making them reusable and easier to maintain within the OpenShift QE project.",
-          "Discuss opportunities to enhance readability, simplify complex sections, and optimize performance within `{element_type}` `{name}` in the OpenShift QE project."
+          "Discuss opportunities to enhance readability, simplify complex sections, and optimize performance within `{element_type}` `{name}` in the OpenShift QE project.",
+          "Recommend restructuring `{element_type}` `{name}` in the OpenShift QE project to reduce code duplication and increase efficiency across multiple components.",
+          "Propose strategies for optimizing `{element_type}` `{name}` in the OpenShift QE project by consolidating similar functions and minimizing dependencies."
         ]
       }
     }
