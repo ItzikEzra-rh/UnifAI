@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Button, CircularProgress } from '@mui/material';
-import axios from '../http/axiosConfig';
+import axios from '../../http/axiosConfig';
 import CheckboxTree from 'react-checkbox-tree';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import CollapseIcon from '@mui/icons-material/Remove'; // Replace with appropriate icon

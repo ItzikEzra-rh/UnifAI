@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useTable, useSortBy, Column } from 'react-table';
-import axios from '../http/axiosLLMConfig';
+import axios from '../../http/axiosLLMConfig';
 import '../styles.css';
-import {TableFormData} from './types/constants'
+import {TableFormData} from '../types/constants'
 import { FaPlay, FaSpinner, FaCheck } from 'react-icons/fa';
 
 const ALL_COLUMNS = 'FULL'

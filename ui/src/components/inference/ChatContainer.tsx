@@ -6,7 +6,7 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
 import AutorenewIcon from '@mui/icons-material/Replay';
-import { FormDropdown } from './FormFields';
+import { FormDropdown } from './shared/FormFields';
 import { useTable, useSortBy, Column } from 'react-table';
 import {ModelData} from './types/constants'
 import ReactLoading from 'react-loading';

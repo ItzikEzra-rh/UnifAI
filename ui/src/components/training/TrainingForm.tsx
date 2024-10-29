@@ -2,10 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { useForm, SubmitHandler } from 'react-hook-form';
 import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
-import axios from '../http/axiosConfig';
-import axiosLLM from '../http/axiosLLMConfig'
+import axios from '../../http/axiosConfig';
+import axiosLLM from '../../http/axiosLLMConfig'
 import { Box, Tabs, Tab, Button } from '@mui/material';
-import { FormField, FormDropdown } from './FormFields';
+import { FormField, FormDropdown } from '../shared/FormFields';
 
 type FormData = {
   projectName: string;

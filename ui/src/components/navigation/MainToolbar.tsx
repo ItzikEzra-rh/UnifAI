@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import Dropdown from './Dropdown';
+import Dropdown from '../shared/Dropdown';
 import '../styles.css';
-import ChatComponent from './ChatContainer';
-import {DATA_SCIENCE_ROLE} from './types/roles'
+import ChatComponent from '../ChatContainer';
+import {DATA_SCIENCE_ROLE} from '../types/roles'
 
 interface MainToolbarProps {
   setContent: (content: string) => void;

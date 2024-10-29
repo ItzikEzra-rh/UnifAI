@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import TopToolbar from './components/TopToolbar';
-import MainToolbar from './components/MainToolbar';
+import TopToolbar from './components/navigation/TopToolbar';
+import MainToolbar from './components/navigation/MainToolbar';
 import MainContent from './components/MainContent';
 import './styles.css';
 import {DATA_SCIENCE_ROLE, USER_ROLE} from './components/types/roles'

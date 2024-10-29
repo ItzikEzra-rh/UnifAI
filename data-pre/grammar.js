@@ -8,6 +8,7 @@ const SETTINGS_KEYWORDS = [
   "Suite Teardown",
   "Force Tags",
   "Default Tags",
+  "Tasks",
   "Test Setup",
   "Test Teardown",
   "Test Template",
@@ -49,12 +50,12 @@ module.exports = grammar({
 
   conflicts: $ => [
     [$.keyword_invocation],
-    [$.variable_assignment],
+    //[$.variable_assignment],
     [$.arguments],
     [$.continuation],
     [$.block],
     [$.except_statement],
-    [$.except_statement, $.continuation],
+    //[$.except_statement, $.continuation],
     [$.finally_statement],
   ],
 
@@ -85,7 +86,7 @@ module.exports = grammar({
       $.arguments,
       $._line_break,
     ),
-        ignored_setting: $ => seq(
+    ignored_setting: $ => seq(
           choice(
                 /Suite\s+\S+/,
                 /Test\s+\S+/
@@ -115,7 +116,8 @@ module.exports = grammar({
       repeat(choice($.keyword_definition, $._empty_line)),
     ),
     keyword_definition: $ => seq(
-      alias($.text_chunk, $.name),
+      //alias($.text_chunk, $.name),
+      alias($.argument, $.name),
       $._line_break,
       alias($.keyword_definition_body, $.body),
     ),
@@ -126,25 +128,45 @@ module.exports = grammar({
         $._empty_line,
       )
     )),
-    keyword_setting: $ => prec.right(seq(
+    keyword_setting: $ => seq(
       choice(
-        seq(setting("Documentation"), optional($.arguments), optional($._line_break)),
-        seq(setting("Tags"), $.arguments, $._line_break),
-        seq(setting("Arguments"), optional($.arguments), $._line_break),
-        seq(setting("Return"), $.arguments, $._line_break),
-        seq(setting("Teardown"), $.arguments, $._line_break),
-        seq(setting("Timeout"), $.arguments, $._line_break),
+        setting("Documentation"),
+        setting("Tags"),
+        setting("Arguments"),
+        setting("Return"),
+        setting("Teardown"),
+        setting("Timeout"),
       ),
       optional($.arguments),
-    )),
+    ),
+    //keyword_setting: $ => prec.right(seq(
+    //  choice(
+    //    seq(setting("Documentation"), optional(repeat1($._separator)), optional($.arguments), optional($._line_break)),
+        //seq(setting("Documentation"), repeat(optional("")), optional($.arguments), optional($._line_break)),
+     //   seq(setting("Tags"), $.arguments, $._line_break),
+      //  seq(setting("Arguments"), optional($.arguments), $._line_break),
+       // seq(setting("Return"), $.arguments, $._line_break),
+        //seq(setting("Teardown"), $.arguments, $._line_break),
+     //   seq(setting("Timeout"), $.arguments, $._line_break),
+    //  ),
+    //  optional( repeat(seq(
+    //          $.indented_ellipses,
+    //          optional($.arguments),
+
+     // ))),
+
+      //optional($.arguments),
+    //)),
 
     // Test cases / Tasks section
     test_cases_section: $ => seq(
-      section_header($, "Test Cases"),
+      choice(section_header($, "Test Cases"),section_header($, "Tasks")),
+      //section_header($, "Test Cases"),
       repeat(choice($.test_case_definition, $._empty_line)),
     ),
     test_case_definition: $ => seq(
-      alias($.text_chunk, $.name),
+      //alias($.text_chunk, $.name),
+      alias($.argument, $.name),
       choice(
         seq(alias($.arguments_without_continuation, $.arguments), $._line_break),
         seq($._line_break, alias($.test_case_definition_body, $.body))
@@ -157,6 +179,7 @@ module.exports = grammar({
         $._empty_line,
       )
     )),
+
     test_case_setting: $ => seq(
       choice(
         setting("Documentation"),
@@ -166,7 +189,7 @@ module.exports = grammar({
         setting("Template"),
         setting("Timeout"),
       ),
-      $.arguments,
+      optional($.arguments),
     ),
 
     // Statements
@@ -188,19 +211,43 @@ module.exports = grammar({
     // Return statement
     return_statement: $ => prec.right(seq(
       "RETURN",
-      optional(seq($._separator, alias($.argument, $.return_value)))
+      optional(seq(repeat1($._separator), alias($.argument, $.return_value)))
     )),
 
-        variable_assignment: $ => seq(
-          choice(
-                seq("${", $.variable_name, "}"),  // Scalar variable
-                seq("@{", $.variable_name, "}"),  // List variable
-                seq("&{", $.variable_name, "}")   // Dictionary variable
-          ),
-          optional(choice("=", " =")),  // Allow both `=` and `=` assignment operators
-          optional($.arguments),  // Arguments after the assignment
-        ),
 
+    // One value assignment
+    variable_assignment_1_expression: $ => prec.right(2,seq(
+          seq(choice(
+                 seq("${", $.variable_name, "}"),  // Scalar variable
+                 seq("@{", $.variable_name, "}"),  // List variable
+                 seq("&{", $.variable_name, "}")   // Dictionary variable
+                 ),
+          optional(choice("=", " =")),  // Allow both `=` and `=` assignment operators
+                  //#optional(repeat($._separator)),  // Allow both `=` and `=` assignment operators
+          optional($.arguments),  // Arguments after the assignment
+          ))),
+
+    // multiple value assignment = is mandatory
+    variable_assignment_multiple_expression: $ => prec.right(3,
+          seq(
+             repeat1(
+               seq(choice(
+                 seq("${", $.variable_name, "}"),  // Scalar variable
+                 seq("@{", $.variable_name, "}"),  // List variable
+                 seq("&{", $.variable_name, "}")   // Dictionary variable
+                 ),
+                 optional(repeat($._separator)))
+          ),
+          //optional(choice("=", " =")),  // Allow both `=` and `=` assignment operators
+          choice("=", " ="),  // Allow both `=` and `=` assignment operators
+          optional(repeat($._separator)),  // Allow both `=` and `=` assignment operators
+          optional($.arguments),  // Arguments after the assignment
+        )),
+
+    variable_assignment: $ => choice(
+          $.variable_assignment_multiple_expression,
+          $.variable_assignment_1_expression,
+        ),
     keyword_invocation: $ => seq(
       alias($.text_chunk, $.keyword),
       optional($.arguments),
@@ -301,6 +348,7 @@ module.exports = grammar({
 
     // Arguments
     arguments: $ => seq(
+      //repeat1(seq($._separator, choice($.argument, seq($.scalar_variable, "=", $.argument)))),
       repeat1(seq($._separator, choice($.argument, seq($.scalar_variable, "=", $.argument)))),
       repeat($.continuation)
     ),
@@ -319,7 +367,7 @@ module.exports = grammar({
 
     argument: $ => seq(
       choice($.text_chunk, $.scalar_variable, $.list_variable, $.dictionary_variable, $.inline_python_expression),
-      repeat(seq(optional(" "), choice($.text_chunk, $.scalar_variable, $.inline_python_expression)))
+      repeat(seq(optional(repeat1(" ")), choice($.text_chunk, $.scalar_variable, $.list_variable, $.dictionary_variable, $.inline_python_expression)))
     ),
 
     scalar_variable: $ => seq("${", optional(" "), $.variable_name, optional(" "), "}"),

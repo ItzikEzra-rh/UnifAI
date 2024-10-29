@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useTable, useSortBy, Column } from 'react-table';
-import axios from '../http/axiosLLMConfig';
+import axios from '../../http/axiosLLMConfig';
 import { FaEye } from 'react-icons/fa';
 import '../styles.css';
 
