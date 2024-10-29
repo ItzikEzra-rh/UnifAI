@@ -137,3 +137,4 @@ class DataProcessor:
         print(separator)
         print(f"\n{output}\n")
         print(separator)
+
