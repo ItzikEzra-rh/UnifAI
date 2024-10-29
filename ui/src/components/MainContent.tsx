@@ -1,12 +1,12 @@
 import React from 'react';
 import ChatComponent from './ChatContainer'
 import AIPicture from '../assets/AIPicture.png';
-import ProjectForm from './ProjectForm'
-import FormTable from './FormTable';
+import ProjectForm from './dataset/ProjectForm'
+import FormTable from './shared/FormTable';
 import Statistics from './Statistics'
 import SavedPrompt from './SavedPrompt'
-import DataSetTable from './DataSetTable'
-import TrainingForm from './TrainingForm'
+import DataSetTable from './dataset/DataSetTable'
+import TrainingForm from './training/TrainingForm'
 import '../styles.css';
 
 interface MainContentProps {

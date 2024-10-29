@@ -2,15 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { useForm, Controller, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
-import axios from '../http/axiosConfig';
-import { FormData } from './types/constants'
-import { TabPanel, FormField, FormDropdown, FormCheckbox, FormFileUpload } from './FormFields'
+import axios from '../../http/axiosConfig';
+import { FormData } from '../types/constants'
+import { TabPanel, FormField, FormDropdown, FormCheckbox, FormFileUpload } from '../shared/FormFields'
 import { Box, Tabs, Tab, Button } from '@mui/material'; 
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
 import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
-import GitForm from './GitTree';
-import SuccessMessage from './SuccessMessage'
+import GitForm from '../git/GitTree';
+import SuccessMessage from '../shared/SuccessMessage'
 import '../styles.css';
 
 SyntaxHighlighter.registerLanguage('python', python);

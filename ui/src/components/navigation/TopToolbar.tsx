@@ -3,7 +3,7 @@ import '../styles.css';
 import RedHatLogo from '../assets/RedhatLogo.png';
 import RedHatLogoTAG from '../assets/RedhatLogoNew.png'
 import { Button, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent } from '@mui/material';
-import {DATA_SCIENCE_ROLE, USER_ROLE} from './types/roles'
+import {DATA_SCIENCE_ROLE, USER_ROLE} from '../types/roles'
 
 interface TopToolbarProps {
   role: string;
