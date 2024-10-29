@@ -39,6 +39,7 @@ class BatchProcessor:
         batch_prompts = []
         metadata = []
         total_token_count = 0
+        skipped_elements_count = 0
 
         for i in range(start_index, prompts_count):
             prompt_info = all_prompts[i]
@@ -49,6 +50,7 @@ class BatchProcessor:
             # Skip if prompt exceeds token limit
             if prompt_tokens > self.token_limit:
                 self.skip_due_to_big_token_size(element_data=prompt_info["metadata"])
+                skipped_elements_count += 1
 
             # Check if adding this prompt would exceed batch size or token limit
             if len(batch_prompts) >= self.batch_size or (total_token_count + prompt_tokens > self.token_limit):
@@ -59,7 +61,7 @@ class BatchProcessor:
             metadata.append(prompt_info["metadata"])
             total_token_count += prompt_tokens
 
-        return batch_prompts, metadata, total_token_count
+        return batch_prompts, metadata, total_token_count, skipped_elements_count
 
     def skip_due_to_big_token_size(self, element_data):
         """

@@ -7,7 +7,7 @@ from unsloth import FastLanguageModel
 from transformers import TextStreamer, TextIteratorStreamer
 from pathlib import Path
 from be_utils.utils import find_latest_checkpoint
-from threading import Thread, Event
+from threading import Thread, Event, Lock
 import torch
 from llm.hugging_face import HFTokenManager
 
@@ -36,6 +36,8 @@ class TextIteratorStreamerModified(TextIteratorStreamer):
 
 
 class ModelLoader:
+    _load_lock = Lock()
+
     def __init__(self, model_id, base_model, project, context_length=8192, model_type="", checkpoint="",
                  huggingface_url='', hf_repo_id=""):
         self.model_id = model_id
@@ -52,17 +54,21 @@ class ModelLoader:
         self.stop_event = None
 
     def load_model(self):
-        try:
-            self.model, self.tokenizer = FastLanguageModel.from_pretrained(
-                model_name=self.hf_repo_id,
-                max_seq_length=self.context_length,
-                dtype=None,
-                load_in_4bit=True,
-                use_auth_token=HFTokenManager().retrieve_token()
-            )
-            return True
-        except Exception as e:
-            raise RuntimeError(f"Failed to load foundational model: {e}")
+        with ModelLoader._load_lock:  # Ensure exclusive access
+            if self.model is not None:
+                print("Model is already loaded.")
+                return False
+            try:
+                self.model, self.tokenizer = FastLanguageModel.from_pretrained(
+                    model_name=self.hf_repo_id,
+                    max_seq_length=self.context_length,
+                    dtype=None,
+                    load_in_4bit=True,
+                    use_auth_token=HFTokenManager().retrieve_token()
+                )
+                return True
+            except Exception as e:
+                raise RuntimeError(f"Failed to load foundational model: {e}")
 
     def stop_infer(self):
         if self.streamer:
@@ -91,13 +97,16 @@ class ModelLoader:
         return self.streamer
 
     def clean_model(self):
-        if self.model is not None:
-            print("cleaning current model..")
-            del self.model
-            del self.tokenizer
-            self.model = None
-            self.tokenizer = None
-            torch.cuda.empty_cache()
+        with ModelLoader._load_lock:  # Ensure exclusive access
+            if self.model is not None:
+                print("Cleaning current model..")
+                del self.model
+                del self.tokenizer
+                self.model = None
+                self.tokenizer = None
+                torch.cuda.empty_cache()
+            else:
+                print("No model loaded to clean.")
 
     def info(self):
         return json.dumps({

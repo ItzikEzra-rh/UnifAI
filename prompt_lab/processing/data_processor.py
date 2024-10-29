@@ -51,9 +51,14 @@ class DataProcessor:
         # Process prompts in batches, starting from the last saved index
         while self.current_prompt_index < prompts_count:
             print(f"Processing from prompt index: {self.current_prompt_index}")
-            batch_prompts, metadata, total_token_count = self.batch_processor.create_batch(
-                all_prompts, prompts_count, self.current_prompt_index
-            )
+            batch_prompts, metadata, total_token_count, skipped_elements_count = self.batch_processor.create_batch(
+                all_prompts,
+                prompts_count,
+                self.current_prompt_index)
+
+            self.current_prompt_index += skipped_elements_count
+            if not batch_prompts:
+                continue
             print(f"Created batch with {len(batch_prompts)} prompts. batch tokens size is {total_token_count}")
 
             # Process the batch and update progress
