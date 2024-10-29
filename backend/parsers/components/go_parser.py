@@ -34,14 +34,16 @@ class GoParser(TreeSitterParser):
 
         def extract_entire_code(node, content, file_type):
             """Helper function to extract entire robot code."""
+            used_imports = get_import_node_code(node)
+            package_name = get_file_package(node)
             return {
                 "type": file_type,
                 "name": os.path.basename(self.realtive_path),
-                "imports": f"Imports Used: {get_import_node_code(node)}",  # Mapped resource imports
+                "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",  # Mapped resource imports
                 "file_location": f"File Location: {self.realtive_path}",
                 "code": content,
                 "global_vars": "",
-                "package": f"Package Name: {get_file_package(node)}",
+                "package": f"Package Name: {package_name}" if package_name else "",
                 "tags": ""
             }
 
@@ -118,15 +120,17 @@ class GoParser(TreeSitterParser):
                 func_name = child.child_by_field_name("name").text.decode("utf-8")
                 func_code = child.text.decode("utf-8")
                 
+                used_imports = get_relevant_imports(func_code, all_imports)
+                global_vars = get_used_global_vars(func_code, global_vars)
                 function = {
                     "type": "function",
                     "name": func_name,
-                    "imports": f"Imports Used: {get_relevant_imports(func_code, all_imports)}",
+                    "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
                     "file_location": f"File Location: {self.realtive_path}",
                     "code": func_code,
                     # "file_code": content,
-                    "global_vars": f"Global Variables: {get_used_global_vars(func_code, global_vars)}",
-                    "package": f"Package Name: {package_name}",
+                    "global_vars": f"Global Variables: {global_vars}" if len(global_vars) > 0 else "",
+                    "package": f"Package Name: {package_name}" if package_name else "",
                     "tags": ""
                 }
                 functions.append(function)
@@ -254,17 +258,20 @@ class GoParser(TreeSitterParser):
                     if arg.type == "interpreted_string_literal":
                         test_name = arg.text.decode("utf-8").strip('"')
                         break
-
+            
+            used_imports = get_relevant_imports(test_code, all_imports)
+            global_vars = get_used_global_vars(test_code, global_vars)
+            tags = extract_tags(describe_block)
             test = {
                 "type": "test",
                 "name": test_name,
-                "imports": f"Imports Used: {get_relevant_imports(test_code, all_imports)}",
+                "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
                 "file_location": f"File Location: {self.realtive_path}",
                 "code": test_code,
                 # "file_code": content,
-                "global_vars": f"Global Variables: {get_used_global_vars(test_code, global_vars)}",
-                "package": f"Package Name: {package_name}",
-                "tags": f"Tags: {extract_tags(describe_block)}"
+                "global_vars": f"Global Variables: {global_vars}" if len(global_vars) > 0 else "",
+                "package": f"Package Name: {package_name}" if package_name else "",
+                "tags": f"Tags: {tags}" if len(tags) > 0 else ""
             }
             
             tests.append(test)
@@ -281,11 +288,12 @@ class GoParser(TreeSitterParser):
                     if arg.type == "interpreted_string_literal":
                         test_case_name = arg.text.decode("utf-8").strip('"')
                         break
-
+            
+            used_imports = get_relevant_imports(test_case_code, all_imports)
             test_case = {
                 "type": "test case",
                 "name": test_case_name,
-                "imports": f"Imports Used: {get_relevant_imports(test_case_code, all_imports)}" ,
+                "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "" ,
                 "file_location": f"File Location: {self.realtive_path}",
                 "code": test_case_code,
                 # "file_code": content,
