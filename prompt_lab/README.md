@@ -49,3 +49,6 @@ Prompt Lab supports customization through its configuration files. You can defin
 Feel free to open issues or create pull requests if you'd like to contribute. We welcome suggestions and improvements to make Prompt Lab even more robust and flexible.
 
 
+## list of Models
+meta-llama/Llama-3.1-8B-Instruct 
+unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit"

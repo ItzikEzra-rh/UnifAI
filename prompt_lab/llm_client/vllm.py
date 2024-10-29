@@ -17,7 +17,7 @@ class VLLMClient(LLMClient):
             "model": self.model_name,
             "prompt": prompts,
             "max_tokens": max_tokens,
-            "temperature": 0.2
+            "temperature": 0.3
         }
         # Send request
         response = requests.post(self.api_url, json=data, headers={"Content-Type": "application/json"})
