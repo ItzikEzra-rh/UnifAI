@@ -8,6 +8,8 @@ from transformers import TrainingArguments
 dtype = None
 load_in_4bit = True  # Use 4bit quantization to reduce memory usage. Can be False.
 
+output_dir = ""
+
 
 def find_latest_checkpoint(output_dir):
     # List all checkpoint directories
@@ -24,9 +26,9 @@ def find_latest_checkpoint(output_dir):
     return os.path.join(output_dir, checkpoints[0])
 
 
-def get_model(max_seq_length=8192, model_name="llama-3-8b-Instruct-bnb-4bit"):
+def get_model(max_seq_length=8192, model_name="llama-3-8b-Instruct-bnb-4bit", lora_rank=16):
     # Set the output directory where checkpoints are saved
-    output_dir = "/home/instruct/RHOAI-MODEL-checkpoints"
+    global output_dir
 
     # Find the latest checkpoint
     latest_checkpoint = find_latest_checkpoint(output_dir) if os.path.exists(output_dir) else ""
@@ -49,7 +51,7 @@ def get_model(max_seq_length=8192, model_name="llama-3-8b-Instruct-bnb-4bit"):
     # Initialize the LoRA model
     model = FastLanguageModel.get_peft_model(
         model,
-        r=64,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
+        r=lora_rank,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                         "gate_proj", "up_proj", "down_proj", ],
         lora_alpha=16,
@@ -73,8 +75,9 @@ def get_data_set(tokenizer, dataset_name=""):
 
         texts = []
         for _input, output in zip(_input, output):
-            text = f"""[INST]{_input}[/INST]{output}""" + EOS_TOKEN
-            texts.append(text)
+            prompt = f"<|begin_of_text|><|start_header_id|>user<|end_header_id|>{_input}<|eot_id|><|start_header_id|>assistant<|end_header_id|>{output}<|eot_id|>"
+            prompt = prompt + EOS_TOKEN
+            texts.append(prompt)
 
         return {"text": texts, }
 
@@ -90,6 +93,8 @@ def get_data_set(tokenizer, dataset_name=""):
 
 
 def get_trainer(model, tokenizer, dataset, batch_size=8, max_seq_length=8192, epoch=1, dataset_name=""):
+    global output_dir
+
     training_args = TrainingArguments(
         run_name=f"robot-framework-test-{dataset_name}",
         # report_to="wandb",
@@ -105,7 +110,7 @@ def get_trainer(model, tokenizer, dataset, batch_size=8, max_seq_length=8192, ep
         weight_decay=0.01,
         lr_scheduler_type="linear",
         seed=3407,
-        output_dir="/home/instruct/RHOAI-MODEL-checkpoints",
+        output_dir=output_dir,
         save_steps=744,  # Save checkpoint every 744 steps
         save_total_limit=int(epoch),  # Only keep the last checkpoint
         load_best_model_at_end=False,  # Optional: only if you want to load the best model
@@ -124,8 +129,9 @@ def get_trainer(model, tokenizer, dataset, batch_size=8, max_seq_length=8192, ep
     return trainer
 
 
-def run(DATASET_NAME, MAX_SEQ_LEN, EPOCHS_NUMBER, BATCH_SIZE, MODEL_NAME):
-    model, tokenizer, checkpoint_dir = get_model(max_seq_length=MAX_SEQ_LEN, model_name=MODEL_NAME)
+def run(DATASET_NAME, MAX_SEQ_LEN, EPOCHS_NUMBER, BATCH_SIZE, MODEL_NAME, lora_rank):
+    global output_dir
+    model, tokenizer, checkpoint_dir = get_model(max_seq_length=MAX_SEQ_LEN, model_name=MODEL_NAME, lora_rank=lora_rank)
     dataset = get_data_set(tokenizer=tokenizer, dataset_name=DATASET_NAME)
     trainer = get_trainer(model=model, tokenizer=tokenizer, dataset=dataset, batch_size=int(BATCH_SIZE),
                           max_seq_length=MAX_SEQ_LEN, epoch=int(EPOCHS_NUMBER), dataset_name=DATASET_NAME)
@@ -149,16 +155,19 @@ def run(DATASET_NAME, MAX_SEQ_LEN, EPOCHS_NUMBER, BATCH_SIZE, MODEL_NAME):
     print(f"Peak reserved memory % of max memory = {used_percentage} %.")
     print(f"Peak reserved memory for training % of max memory = {lora_percentage} %.")
 
-    model.save_pretrained("RHOAI-MODEL")  # Local saving
+    model.save_pretrained(os.path.join(output_dir, "final_model"))  # Local saving
 
 
 def main():
+    global output_dir
     parser = argparse.ArgumentParser(description="Run training script with parameters.")
     parser.add_argument('--dataset', type=str, required=True, help='dataset name')
     parser.add_argument('--max_seq_len', type=int, required=True, help='Maximum sequence length')
     parser.add_argument('--epochs_number', type=int, required=True, help='Number of epochs')
     parser.add_argument('--batch_size', type=int, required=True, help='Batch size')
     parser.add_argument('--model_name', type=str, required=True, help='Name of the model')
+    parser.add_argument('--lora_rank', type=str, required=True, help='lora rank')
+    parser.add_argument('--output_dir', type=str, required=True, help='output dir')
 
     args = parser.parse_args()
 
@@ -167,12 +176,16 @@ def main():
     EPOCHS_NUMBER = int(args.epochs_number)
     BATCH_SIZE = int(args.batch_size)
     MODEL_NAME = args.model_name
+    LORA_RANK = int(args.lora_rank)
+    output_dir = args.output_dir
 
     print(
-        f"DATASET_NAME: {DATASET_NAME}, MAX_SEQ_LEN: {MAX_SEQ_LEN}, EPOCHS_NUMBER: {EPOCHS_NUMBER}, BATCH_SIZE: {BATCH_SIZE}, MODEL_NAME: {MODEL_NAME}")
+        f"DATASET_NAME: {DATASET_NAME}, MAX_SEQ_LEN: {MAX_SEQ_LEN}, EPOCHS_NUMBER: {EPOCHS_NUMBER}, BATCH_SIZE: {BATCH_SIZE}, MODEL_NAME: {MODEL_NAME}, LORA RANK: {LORA_RANK}, output dir: {output_dir}")
 
-    run(DATASET_NAME, MAX_SEQ_LEN, EPOCHS_NUMBER, BATCH_SIZE, MODEL_NAME)
+    run(DATASET_NAME, MAX_SEQ_LEN, EPOCHS_NUMBER, BATCH_SIZE, MODEL_NAME, LORA_RANK)
 
 
 if __name__ == '__main__':
     main()
+
+#"/home/instruct/openshift-qe-checkpoints"
