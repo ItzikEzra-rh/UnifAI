@@ -1,17 +1,9 @@
-import json
-from flask import Flask, request, jsonify
-from unsloth import FastLanguageModel
-from transformers import TextStreamer, TextIteratorStreamer
+from transformers import TextIteratorStreamer, StoppingCriteriaList, StoppingCriteria
 from threading import Thread, Event, Lock
 import torch
 from llm.hugging_face import HFTokenManager
-
-app = Flask(__name__)
-
-# Global variable to hold the model and tokenizer
-model_loader = None
-from transformers import StoppingCriteriaList
-from transformers import StoppingCriteria
+from llm.model_loader import AbstractModelLoader
+from unsloth import FastLanguageModel
 
 
 class CustomStoppingCriteria(StoppingCriteria):
@@ -19,7 +11,6 @@ class CustomStoppingCriteria(StoppingCriteria):
         self.stop_event = stop_event
 
     def __call__(self, input_ids, scores):
-        # Check if the stop event is set
         if self.stop_event.is_set():
             return True
         return False
@@ -30,30 +21,13 @@ class TextIteratorStreamerModified(TextIteratorStreamer):
         raise StopIteration()
 
 
-class ModelLoader:
-    _load_lock = Lock()
-
-    def __init__(self, model_id, base_model, project, context_length=8192, model_type="", checkpoint="",
-                 huggingface_url='', hf_repo_id=""):
-        self.model_id = model_id
-        self.base_model = base_model
-        self.project = project
-        self.context_length = int(context_length)
-        self.model_type = model_type
-        self.checkpoint = checkpoint
-        self.huggingface_url = huggingface_url
-        self.hf_repo_id = hf_repo_id
-        self.model = None
-        self.tokenizer = None
-        self.streamer = None
-        self.stop_event = None
-
+class FastLMModelLoader(AbstractModelLoader):
     def load_model(self):
-        with ModelLoader._load_lock:  # Ensure exclusive access
+        with FastLMModelLoader._load_lock:
             if self.model is not None:
                 print("Model is already loaded.")
                 return False
-            try:
+            try:  # Import here to avoid import conflicts
                 self.model, self.tokenizer = FastLanguageModel.from_pretrained(
                     model_name=self.hf_repo_id,
                     max_seq_length=self.context_length,
@@ -65,17 +39,10 @@ class ModelLoader:
             except Exception as e:
                 raise RuntimeError(f"Failed to load foundational model: {e}")
 
-    def stop_infer(self):
-        if self.streamer:
-            self.streamer.text_queue.put(self.streamer.stop_signal, timeout=self.streamer.timeout)
-            self.stop_event.set()
-            self.streamer = None
-            return True
-        return False
-
     def infer(self, prompt, temperature, max_new_tokens=8192):
         if self.model is None or self.tokenizer is None:
             raise ValueError("Model and tokenizer must be loaded before inference.")
+
         FastLanguageModel.for_inference(self.model)
         inputs = self.tokenizer([prompt], return_tensors="pt").to("cuda")
         self.stop_event = Event()
@@ -91,8 +58,16 @@ class ModelLoader:
         thread.start()
         return self.streamer
 
+    def stop_infer(self):
+        if self.streamer:
+            self.streamer.text_queue.put(self.streamer.stop_signal, timeout=self.streamer.timeout)
+            self.stop_event.set()
+            self.streamer = None
+            return True
+        return False
+
     def clean_model(self):
-        with ModelLoader._load_lock:  # Ensure exclusive access
+        with FastLMModelLoader._load_lock:
             if self.model is not None:
                 print("Cleaning current model..")
                 del self.model
@@ -102,18 +77,3 @@ class ModelLoader:
                 torch.cuda.empty_cache()
             else:
                 print("No model loaded to clean.")
-
-    def info(self):
-        return json.dumps({
-            'model_id': self.model_id,
-            'base_model': self.base_model,
-            'project': self.project,
-            'context_length': self.context_length,
-            'model_type': self.model_type,
-            'checkpoint': self.checkpoint,
-            'huggingface_url': self.huggingface_url,
-            'hf_repo_id': self.hf_repo_id,
-        })
-
-    def __str__(self):
-        return str(self.info())

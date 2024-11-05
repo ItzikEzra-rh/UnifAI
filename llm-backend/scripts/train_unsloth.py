@@ -54,8 +54,8 @@ def get_model(max_seq_length=8192, model_name="llama-3-8b-Instruct-bnb-4bit", lo
         r=lora_rank,  # Choose any number > 0 ! Suggested 8, 16, 32, 64, 128
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj",
                         "gate_proj", "up_proj", "down_proj", ],
-        lora_alpha=16,
-        lora_dropout=0,  # Supports any, but = 0 is optimized
+        lora_alpha=lora_rank * 2,
+        lora_dropout=0.1,  # Supports any, but = 0 is optimized
         bias="none",  # Supports any, but = "none" is optimized
         # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
         use_gradient_checkpointing="unsloth",  # True or "unsloth" for very long context
@@ -111,7 +111,7 @@ def get_trainer(model, tokenizer, dataset, batch_size=8, max_seq_length=8192, ep
         lr_scheduler_type="linear",
         seed=3407,
         output_dir=output_dir,
-        save_steps=744,  # Save checkpoint every 744 steps
+        save_steps=2546,  # Save checkpoint every 744 steps
         save_total_limit=int(epoch),  # Only keep the last checkpoint
         load_best_model_at_end=False,  # Optional: only if you want to load the best model
     )

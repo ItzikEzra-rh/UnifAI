@@ -2,6 +2,8 @@ from llm.register import RegisterModel
 from llm.model import ModelLoader
 import llm.model as llm_model
 from llm.hugging_face import HFTokenManager, HuggingFaceAPI
+from llm.vllm_model_loader import VLLMModelLoader
+from llm.model_loader import AbstractModelLoader
 
 
 def register_trained_model(hf_url):
@@ -22,26 +24,27 @@ def load_model(model_id):
     hf_repo_id = model_info.get('hf_repo_id', "")
 
     # Clean the current model if one is already loaded
-    if llm_model.model_loader and llm_model.model_loader.model_id == model_id:
+    if AbstractModelLoader.model_loader and AbstractModelLoader.model_loader.model_id == model_id:
         return "model already loaded"
-    elif llm_model.model_loader:
-        llm_model.model_loader.clean_model()
+    elif AbstractModelLoader.model_loader:
+        AbstractModelLoader.model_loader.clean_model()
     else:
         print(f"loading model with id {model_id}")
 
-    llm_model.model_loader = ModelLoader(model_id, base_model, project, context_length,
-                                         model_type, checkpoint, huggingface_url, hf_repo_id)
-    return llm_model.model_loader.load_model()
+    AbstractModelLoader.model_loader = VLLMModelLoader(model_id, base_model, project, context_length,
+                                                       model_type, checkpoint, huggingface_url, hf_repo_id)
+    return AbstractModelLoader.model_loader.load_model()
 
 
-def inference(prompt, temperature, max_new_tokens=8192):
-    if not llm_model.model_loader:
+def inference(prompt, temperature, max_new_tokens=4096):
+    model = AbstractModelLoader.model_loader
+    if not model:
         raise ValueError("No model loaded. Please load a model first.")
-    return llm_model.model_loader.infer(prompt, temperature, max_new_tokens=max_new_tokens)
+    return model.infer(prompt, temperature, max_new_tokens=max_new_tokens)
 
 
 def stop_inference():
-    if llm_model.model_loader is not None:
+    if AbstractModelLoader.model_loader is not None:
         return llm_model.model_loader.stop_infer()
     return False
 
@@ -59,15 +62,15 @@ def get_hf_repo_files(repo_id, repo_type):
 
 
 def get_loaded_model():
-    if llm_model.model_loader:
-        return llm_model.model_loader.model_id
+    if AbstractModelLoader.model_loader:
+        return AbstractModelLoader.model_loader.model_id
     return None
 
 
 def unload_model():
-    if llm_model.model_loader:
-        llm_model.model_loader.clean_model()
-        del llm_model.model_loader
-        llm_model.model_loader = None
+    if AbstractModelLoader.model_loader:
+        AbstractModelLoader.model_loader.clean_model()
+        del AbstractModelLoader.model_loader
+        AbstractModelLoader.model_loader = None
         return True
     return False
