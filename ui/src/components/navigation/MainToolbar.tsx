@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Dropdown from '../shared/Dropdown';
-import '../styles.css';
-import ChatComponent from '../ChatContainer';
+import '../../styles.css';
+import ChatComponent from '../inference/ChatContainer';
 import {DATA_SCIENCE_ROLE} from '../types/roles'
 
 interface MainToolbarProps {

@@ -1,9 +1,10 @@
 from dataclasses import dataclass
 from typing import List, Dict, Any, Optional
-from rag.helpers.file_handler import FileHandler
+from handlers.file_handler import FileHandler
 import psycopg2
 import numpy as np
 import faiss
+import json
 
 @dataclass
 class DBConfig:
@@ -48,6 +49,12 @@ class VectorDB:
         cur = conn.cursor()
         
         for idx, (chunk, embedding) in enumerate(zip(chunks, embeddings)):
+            # Replace null characters with a space
+            chunk_text = chunk.replace('\0', ' ')
+            
+            # Convert metadata to JSON string
+            metadata_json = json.dumps(metadata) if metadata else 'null'
+            
             cur.execute("""
                 INSERT INTO documents 
                 (file_path, chunk_index, chunk_text, embedding, metadata)
@@ -55,9 +62,9 @@ class VectorDB:
             """, (
                 file_handler.metadata.file_path,
                 idx,
-                chunk,
+                chunk_text,
                 embedding.tolist(),
-                metadata or {}
+                metadata_json
             ))
         
         conn.commit()

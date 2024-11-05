@@ -2,13 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { useTable, useSortBy, Column } from 'react-table';
 import { IconButton, Modal, Box, Typography } from '@mui/material';
 import { FaFileAlt, FaEdit } from 'react-icons/fa';
-import axios from '../http/axiosConfig';
+import axios from '../../http/axiosConfig';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
 import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css'; // Import Quill styles
-import '../styles.css';
+import '../../styles.css';
 
 // Register the language
 SyntaxHighlighter.registerLanguage('python', python);

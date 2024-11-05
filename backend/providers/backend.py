@@ -118,3 +118,28 @@ def insert_prompt_is_complete(model_id, unique_id, completed):
     """
     result = Collections.by_name('prompts').update_one({'modelId': model_id, 'uniqueId': unique_id}, {"$set": {"completed": completed}})
     return result
+
+@mongo
+def insert_prompt_rating(model_id, user_prompt, response_prompt, rating):
+    """Adding rating to Q/A in the database.
+
+    :param str model_id: The ID of the model associated with the prompt.
+    :param str user_prompt: The user's prompt to be rated.
+    :param str response_prompt: The model's response to the user's prompt.
+    :param int rating: The rating given by the user.
+    :return: Result of the database operation.
+    """
+    query = {
+        'modelId': model_id,
+        'userPrompt': user_prompt,
+        'responsePrompt': response_prompt
+    }
+    
+    # If rating is 0, delete the existing rating if it exists
+    if rating == 0:
+        result = Collections.by_name('ratings').delete_one(query)
+        return result
+    
+    # If a rating exists, update it; otherwise, insert a new one
+    result = Collections.by_name('ratings').update_one(query, {"$set": {"rating": rating}}, upsert=True)
+    return result

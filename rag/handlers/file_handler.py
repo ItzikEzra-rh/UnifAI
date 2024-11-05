@@ -30,6 +30,18 @@ class FileHandler:
     def read_content(self) -> str:
         """Read and store file content"""
         if not self.content:
-            with open(self.file_path, 'r', encoding='utf-8') as file:
+            with open(self.file_path, 'r') as file:
                 self.content = file.read()
+                
+            # # Try to decode the content with various encodings
+            # for encoding in ['utf-8', 'latin-1', 'utf-16']:
+            #     try:
+            #         self.content = content.decode(encoding, errors='replace')
+            #         break
+            #     except UnicodeDecodeError:
+            #         pass
+            # else:
+            #     # If all decoding attempts fail, use a replacement character
+            #     self.content = content.decode('utf-8', 'replace')
+        
         return self.content

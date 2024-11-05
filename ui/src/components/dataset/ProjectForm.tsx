@@ -11,7 +11,7 @@ import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
 import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import GitForm from '../git/GitTree';
 import SuccessMessage from '../shared/SuccessMessage'
-import '../styles.css';
+import '../../styles.css';
 
 SyntaxHighlighter.registerLanguage('python', python);
 
