@@ -629,7 +629,14 @@ const ChatComponent: React.FC = () => {
                     </div>
                   ))}
                 </MessageList>
-                <MessageInput placeholder="Type your message here..." onSend={handleSend} disabled={loadingModel || isStreaming} />
+                <MessageInput placeholder="Type your message here..." onSend={handleSend} disabled={loadingModel || isStreaming}
+                              onPaste={(event) => {
+                                event.preventDefault();
+                                // Get plain text from clipboard
+                                const text = event.clipboardData.getData('text/plain');
+                                document.execCommand('insertText', false, text);
+                              }}
+                />
                 </ChatContainer>
               </MainContainer>
               <Dialog open={isModalOpen}
