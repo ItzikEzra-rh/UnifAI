@@ -74,3 +74,10 @@ def unload_model():
         AbstractModelLoader.model_loader = None
         return True
     return False
+
+
+def clear_chat_history():
+    if AbstractModelLoader.model_loader:
+        AbstractModelLoader.model_loader.clear_chat_history()
+        return True
+    return False

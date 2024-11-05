@@ -84,3 +84,8 @@ def get_loaded_model():
 @backend_bp.route("/unloadModel", methods=["GET"])
 def unload_model():
     return jsonify(llm_provider.unload_model())
+
+
+@backend_bp.route("/clearChatHistory", methods=["GET"])
+def clear_chat_history():
+    return jsonify(llm_provider.clear_chat_history())
