@@ -1,19 +1,20 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from '@chatscope/chat-ui-kit-react';
 import { useForm, Controller } from 'react-hook-form';
 import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
+import StarIcon from '@mui/icons-material/Star';
 import AutorenewIcon from '@mui/icons-material/Replay';
-import { FormDropdown } from './shared/FormFields';
+import { FormDropdown } from '../shared/FormFields';
 import { useTable, useSortBy, Column } from 'react-table';
-import {ModelData} from './types/constants'
+import {ModelData} from '../types/constants'
 import ReactLoading from 'react-loading';
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
-import axiosLLM, { AXIOS_LLM_IP } from '../http/axiosLLMConfig';
-import axiosBE from '../http/axiosConfig'
-import '../styles.css';
+import axiosLLM, { AXIOS_LLM_IP } from '../../http/axiosLLMConfig';
+import axiosBE from '../../http/axiosConfig'
+import '../../styles.css';
 
 interface FormData {
   project: string;
@@ -150,14 +151,27 @@ const ChatComponent: React.FC = () => {
   const [messageToSave, setMessageToSave] = useState<string>('');
   const [temperature, setTemperature] = useState<number>(0.5);
 
+  const [showRating, setShowRating] = useState(false);
+  const [hoverRating, setHoverRating] = useState(0);
+  const [rating, setRating] = useState(0);
+  const [isRated, setIsRated] = useState(false);
+  const starListRef = useRef<HTMLDivElement | null>(null);
+
   const temperatureTooltip = `In LLM inference, temperature controls response randomness \n\n.
-  
   Low temperature (e.g., 0.1): Yields more focused, predictable outputs by favoring the most likely tokens, ideal for accuracy\n.
   High temperature (e.g., 1.0+): Promotes diversity and creativity by allowing less common tokens, good for generating varied content. However, very high values may lead to incoherence\n.
   Temperature 1.0: Provides balanced responses based on token probabilities without added randomness\n.
   In short, lower temperatures yield precise outputs, while higher temperatures add creativity and variation.`;
 
   useEffect(() => {
+    // Close the rating list if clicked outside
+    const handleClickOutside = (event: MouseEvent) => {
+      if (starListRef.current && !starListRef.current.contains(event.target as Node)) {
+        setShowRating(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+
     // Fetch available models on component mount
     const fetchModelsAndCheckLoadedModel = async () => {
       try {
@@ -197,6 +211,7 @@ const ChatComponent: React.FC = () => {
     return () => {
       // Stop inference on component unmount
       axiosLLM.get('/api/backend/stopInference').catch((error) => console.error('Error stopping inference:', error));
+      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
@@ -373,6 +388,39 @@ const ChatComponent: React.FC = () => {
     }
   };
 
+  const onMainRatingIconClick = () => {
+    if (isRated) {
+      handleRating(0); // Reset rating to 0 if already rated
+      setIsRated(false); // Mark as not rated
+      setHoverRating(0)
+    }
+  }
+
+  const handleRating = async (selectedRating: number) => {
+    setRating(selectedRating);
+    setIsRated(true);
+    setShowRating(false);
+  
+    // Send API request with prompt and rating details
+    const userPrompt = messages[messages.length - 2].text;
+    const botResponse = messages[messages.length - 1].text;
+  
+    try {
+      const payload = {
+        modelId: selectedModel?.modelId,
+        prompt: userPrompt,
+        response: botResponse,
+        rating: selectedRating
+      };
+      await axiosBE.post('/api/backend/ratePrompt', payload);
+      console.log('Rate saved successfully');
+      handleModalClose(); // Close the modal after saving
+    } catch (error) {
+      console.error('Error rating prompt:', error);
+    }
+  };
+  
+
   const handleUnLoad = async () => {
     try {
       await axiosLLM.get('/api/backend/unloadModel');
@@ -528,14 +576,48 @@ const ChatComponent: React.FC = () => {
                             </Tooltip>
                           )}
                           {!isStreaming && (
-                            <Tooltip title="Regenerate">
-                              <IconButton
-                                onClick={regenerateResponse}
-                                size="small"
-                              >
-                                <AutorenewIcon />
-                              </IconButton>
-                            </Tooltip>
+                            <>
+                              <Tooltip title="Regenerate">
+                                <IconButton
+                                  onClick={regenerateResponse}
+                                  size="small"
+                                >
+                                  <AutorenewIcon />
+                                </IconButton>
+                              </Tooltip>
+                              
+                              <Tooltip title="Rate">
+                                <IconButton
+                                  onClick={() => onMainRatingIconClick()}
+                                  onMouseEnter={() => setShowRating(true)}
+                                  size="small"
+                                  style={{ color: isRated? 'yellow': '' }} 
+                                >
+                                  <StarIcon />
+                                </IconButton>
+                              </Tooltip>
+
+                              {/* Display 5-Star Row for Rating */}
+                              {showRating && (
+                                <div
+                                  ref={starListRef}
+                                  style={{ display: 'flex', position: 'absolute', top: '40px', left: '80px' }}
+                                >
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <StarIcon
+                                      key={star}
+                                      onClick={() => handleRating(star)}
+                                      onMouseEnter={() => setHoverRating(star)}
+                                      onMouseLeave={() => setHoverRating(0)}
+                                      style={{
+                                        color: star <= (hoverRating || rating) ? 'yellow' : 'grey',
+                                        cursor: 'pointer'
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                            </>
                           )}
                           <Tooltip title="Save">
                             <IconButton onClick={() => handleSaveClick(messages[index-1].text + message.text)} size="small">

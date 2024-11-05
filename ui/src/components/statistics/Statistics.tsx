@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
-import axios from '../http/axiosLLMConfig';
+import axios from '../../http/axiosLLMConfig';
 import { Pie, Line, Bar } from 'react-chartjs-2';
 import 'chart.js/auto';
-import '../styles.css';
+import '../../styles.css';
 
 interface ModelData {
   id: string;

@@ -1,10 +1,10 @@
 import React from 'react';
-import ChatComponent from './ChatContainer'
+import ChatComponent from './inference/ChatContainer'
 import AIPicture from '../assets/AIPicture.png';
 import ProjectForm from './dataset/ProjectForm'
 import FormTable from './shared/FormTable';
-import Statistics from './Statistics'
-import SavedPrompt from './SavedPrompt'
+import Statistics from './statistics/Statistics'
+import SavedPrompt from './inference/SavedPrompt'
 import DataSetTable from './dataset/DataSetTable'
 import TrainingForm from './training/TrainingForm'
 import '../styles.css';

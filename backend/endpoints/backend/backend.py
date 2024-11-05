@@ -5,7 +5,8 @@ from flask import jsonify, Response
 from webargs import fields
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
-from providers.backend import list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, insert_prompt_comment, insert_prompt_is_complete
+from providers.backend import list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
+                              insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating
 
 backend_bp = Blueprint("backend", __name__)
 
@@ -147,4 +148,24 @@ def save_prompt_is_complete(model_id, unique_id, completed):
     except Exception as e:
         # Log the error and return error response
         logging.error(f"Error saving new prompt: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+@backend_bp.route("/ratePrompt", methods=["POST"])
+@from_body({
+    "model_id":           fields.Str(required=True, data_key="modelId"),
+    "user_prompt":        fields.Str(required=True, data_key="prompt"),
+    "response_prompt":    fields.Str(required=True, data_key="response"),
+    "rating":             fields.Number(required=True, data_key="rating"),
+})
+def save_prompt_rating(model_id, user_prompt, response_prompt, rating):
+    try:
+        # Insert LLM prompt into MongoDB collection
+        result = insert_prompt_rating(model_id, user_prompt, response_prompt, rating)
+
+        # Return success response
+        return jsonify({"status": "success"}), 201
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error rating new prompt: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
