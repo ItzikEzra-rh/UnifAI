@@ -5,6 +5,7 @@ from llm.loader.model_loader import AbstractModelLoader
 from llm.chat_manager import ChatManager
 from openai import OpenAI
 import os
+import psutil
 
 
 class VLLMModelLoader(AbstractModelLoader):
@@ -94,14 +95,39 @@ class VLLMModelLoader(AbstractModelLoader):
         self.chat_manager.add_message("assistant", response_content)
 
     def clean_model(self):
-        """Terminate the model process."""
+        """Terminate the model process and wait for the port to be released."""
         with VLLMModelLoader._load_lock:
             if self.vllm_process:
                 self.vllm_process.terminate()
                 self.vllm_process.wait()
                 self.vllm_process = None
+                self.wait_for_port_release(self.vllm_port, timeout=60)
                 return True
             return False
+
+    def wait_for_port_release(self, port, timeout=60):
+        """Wait until the given port is released by checking connection status.
+        to make release time faster(the TIME_WAIT value) use: `sudo sysctl -w net.ipv4.tcp_fin_timeout=2`
+        """
+        start_time = time.time()
+        while time.time() - start_time < timeout:
+            if not self.is_port_in_use(port):
+                print(f"Port {port} has been released.")
+                return True
+            print(f"Waiting for port {port} to be released...")
+            time.sleep(1)
+        print(f"Warning: Port {port} was not released within {timeout} seconds.")
+        return False
+
+    @staticmethod
+    def is_port_in_use(port):
+        """Check if the port is currently in use."""
+        for conn in psutil.net_connections():
+            if conn.laddr.port == port:
+                print(f"Port {port} is in use with status: {conn.status}")
+                return True
+        print(f"Port {port} is free.")
+        return False
 
     def stop_infer(self):
         """Placeholder for stopping inference if needed."""
