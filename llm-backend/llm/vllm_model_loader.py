@@ -4,11 +4,12 @@ import time
 from llm.model_loader import AbstractModelLoader
 from openai import OpenAI
 import os
+from transformers import AutoTokenizer
 
 
 class VLLMModelLoader(AbstractModelLoader):
     vllm_process = None
-    TOKEN_DELTA_PER_MESSAGE = 10
+    TOKEN_DELTA_PER_MESSAGE = 10  # Adjust based on actual token usage per message format
 
     def __init__(self, *args, vllm_port=8000, **kwargs):
         super().__init__(*args, **kwargs)
@@ -16,6 +17,8 @@ class VLLMModelLoader(AbstractModelLoader):
         self.server_url = f"http://0.0.0.0:{self.vllm_port}/"
         self.chat_history = []  # Initialize chat history
         self.total_tokens = 0  # Initialize the total token count
+        self.max_new_tokens = kwargs.get("max_new_tokens", 4096)  # Default for max new tokens
+        self.tokenizer = AutoTokenizer.from_pretrained(self.hf_repo_id)
 
     def load_model(self):
         with VLLMModelLoader._load_lock:
@@ -59,40 +62,41 @@ class VLLMModelLoader(AbstractModelLoader):
         tokens = self.count_tokens(content)
         self.chat_history.append({"role": role, "content": content})
         self.total_tokens += tokens + VLLMModelLoader.TOKEN_DELTA_PER_MESSAGE
+        self.print_in_box(f"Token size now after adding to chat: {self.total_tokens}")
         self.trim_chat_history()
+        self.print_in_box(f"Token size now after trimming: {self.total_tokens}")
 
     def trim_chat_history(self):
-        """Trim the chat history if it exceeds the max context length, accounting for formatting delta."""
-        while self.total_tokens > self.context_length:
+        """Ensure chat history token count does not exceed context length minus max new tokens."""
+        max_allowed_tokens = self.context_length - self.max_new_tokens
+
+        # Trim messages from the start until total_tokens (including formatting) is within max_allowed_tokens
+        while self.total_tokens > max_allowed_tokens:
             if not self.chat_history:
                 break
 
-            # Account for the formatting delta by recalculating with the delta for each message
-            formatting_delta = len(self.chat_history) * VLLMModelLoader.TOKEN_DELTA_PER_MESSAGE
-            if self.total_tokens - formatting_delta <= self.context_length:
-                break  # Stop trimming if the total is within context limit
-
-            # Truncate or remove oldest message if needed
+            # Remove or truncate the oldest message to reduce token count
             oldest_message = self.chat_history[0]
-            message_tokens = self.count_tokens(oldest_message["content"])
+            message_tokens = self.count_tokens(oldest_message["content"]) + VLLMModelLoader.TOKEN_DELTA_PER_MESSAGE
 
-            if message_tokens + VLLMModelLoader.TOKEN_DELTA_PER_MESSAGE <= (self.total_tokens - self.context_length):
-                # Remove entire oldest message if it fits the required reduction
+            if self.total_tokens - message_tokens >= max_allowed_tokens:
+                # Remove the entire oldest message if it reduces tokens sufficiently
                 self.chat_history.pop(0)
-                self.total_tokens -= (message_tokens + VLLMModelLoader.TOKEN_DELTA_PER_MESSAGE)
+                self.total_tokens -= message_tokens
             else:
-                # Partially truncate the oldest message if removing it entirely would exceed context
-                truncate_length = self.total_tokens - self.context_length - VLLMModelLoader.TOKEN_DELTA_PER_MESSAGE
+                # Partially truncate the oldest message if removing it entirely would exceed the limit
+                truncate_length = self.total_tokens - max_allowed_tokens
                 truncated_tokens = self.tokenizer.encode(oldest_message["content"])[truncate_length:]
                 truncated_content = self.tokenizer.decode(truncated_tokens)
                 oldest_message["content"] = truncated_content
-                self.total_tokens = self.context_length  # Now within the limit
+                # Update total_tokens after truncation to ensure it's within max_allowed_tokens
+                self.total_tokens = max_allowed_tokens
 
     def count_tokens(self, content):
         """Use the tokenizer to count tokens for a given content string."""
         return len(self.tokenizer.encode(content))
 
-    def infer(self, prompt, temperature, max_new_tokens=4096):
+    def infer(self, prompt, temperature, max_new_tokens=None):
         openai_api_key = "EMPTY"
         openai_api_base = os.path.join(self.server_url, "v1")
         client = OpenAI(
@@ -100,8 +104,16 @@ class VLLMModelLoader(AbstractModelLoader):
             base_url=openai_api_base,
         )
 
+        if max_new_tokens:
+            self.max_new_tokens = max_new_tokens
+
         # Add the user prompt to the chat history
         self.add_to_chat_history("user", prompt)
+
+        max_allowed_tokens = self.context_length - self.max_new_tokens
+        # Warning if tokens are close to the max allowed limit
+        if self.total_tokens >= max_allowed_tokens:
+            self.print_in_box(f"Warning: Chat history is at max allowed tokens ({self.total_tokens} tokens).")
 
         # Call OpenAI API with the entire chat history and enable streaming
         response = client.chat.completions.create(
@@ -145,3 +157,11 @@ class VLLMModelLoader(AbstractModelLoader):
     def clear_chat_history(self):
         self.total_tokens = 0
         self.chat_history = []
+
+    @staticmethod
+    def print_in_box(message):
+        """Print a message in a visually prominent box."""
+        border = '*' * (len(message) + 6)  # Adjust the border length based on message length
+        print(f"\n{border}")
+        print(f"*  {message}  *")
+        print(border)

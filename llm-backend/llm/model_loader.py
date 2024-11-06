@@ -23,6 +23,7 @@ class AbstractModelLoader(ABC):
         self.model = None
         self.streamer = None
         self.stop_event = None
+        self.max_new_tokens = 4096
 
     @abstractmethod
     def load_model(self):
