@@ -101,6 +101,7 @@ class VLLMModelLoader(AbstractModelLoader):
                 self.vllm_process.terminate()
                 self.vllm_process.wait()
                 self.vllm_process = None
+                time.sleep(5)
                 self.wait_for_port_release(self.vllm_port, timeout=60)
                 return True
             return False
