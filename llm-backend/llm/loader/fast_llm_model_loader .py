@@ -1,8 +1,8 @@
 from transformers import TextIteratorStreamer, StoppingCriteriaList, StoppingCriteria
-from threading import Thread, Event, Lock
+from threading import Thread, Event
 import torch
 from llm.hugging_face import HFTokenManager
-from llm.model_loader import AbstractModelLoader
+from llm.loader.model_loader import AbstractModelLoader
 from unsloth import FastLanguageModel
 
 

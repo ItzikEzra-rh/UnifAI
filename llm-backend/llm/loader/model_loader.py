@@ -9,8 +9,8 @@ class AbstractModelLoader(ABC):
     _load_lock = Lock()
     model_loader = None
 
-    def __init__(self, model_id, base_model, project, context_length=8192, model_type="", checkpoint="",
-                 huggingface_url='', hf_repo_id=""):
+    def __init__(self, model_id, base_model, project, context_length=8192, model_type="",
+                 checkpoint="", huggingface_url='', hf_repo_id="", max_new_tokens=4096):
         self.model_id = model_id
         self.base_model = base_model
         self.project = project
@@ -23,7 +23,7 @@ class AbstractModelLoader(ABC):
         self.model = None
         self.streamer = None
         self.stop_event = None
-        self.max_new_tokens = 4096
+        self.max_new_tokens = max_new_tokens
 
     @abstractmethod
     def load_model(self):

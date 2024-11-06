@@ -1,9 +1,8 @@
 from llm.register import RegisterModel
-from llm.model import ModelLoader
 import llm.model as llm_model
 from llm.hugging_face import HFTokenManager, HuggingFaceAPI
-from llm.vllm_model_loader import VLLMModelLoader
-from llm.model_loader import AbstractModelLoader
+from llm.loader.vllm_model_loader import VLLMModelLoader
+from llm.loader.model_loader import AbstractModelLoader
 
 
 def register_trained_model(hf_url):
