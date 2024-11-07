@@ -1,4 +1,6 @@
 import React, { useEffect, useState, useRef } from 'react';
+import { toast, ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from '@chatscope/chat-ui-kit-react';
 import { useForm, Controller } from 'react-hook-form';
 import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography } from '@mui/material';
@@ -15,6 +17,7 @@ import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
 import axiosLLM, { AXIOS_LLM_IP } from '../../http/axiosLLMConfig';
 import axiosBE from '../../http/axiosConfig'
 import RatingModal from './RatingModal';
+import { v4 as uuidv4 } from 'uuid';
 import '../../styles.css';
 
 interface FormData {
@@ -37,6 +40,15 @@ interface RatingData {
   rating: number;
   ratingText: string;
 }
+
+const LoadingOverlay: React.FC = () => (
+  <div className="loading-overlay">
+    <ReactLoading type="bubbles" color="#000" height={100} width={100} />
+    <h2 style={{ marginTop: '20px', fontSize: '1.5em', textAlign: 'center', color: '#000' }}>
+      Please be patient while we load the requested model. This process may take up to 2 minutes.
+    </h2>
+  </div>
+);
 
 const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }) => {
   const { control, handleSubmit, watch, setValue } = useForm<FormData>();
@@ -147,6 +159,8 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
 };
 
 const ChatComponent: React.FC = () => {
+  const [sessionId, setSessionId] = useState<string>('');
+  const sessionIdRef = useRef<string>(''); // Ref to store sessionId immediately
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [models, setModels] = useState<ModelData[]>([]);
   const [selectedModel, setSelectedModel] = useState<ModelData | null>(null);
@@ -154,8 +168,9 @@ const ChatComponent: React.FC = () => {
   const [loadingModel, setLoadingModel] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [promptName, setPromptName] = useState<string>('');
-  const [messageToSave, setMessageToSave] = useState<string>('');
-  const [temperature, setTemperature] = useState<number>(0.5);
+  const [promptUserLatestMessage, setPromptUserLatestMessage] = useState<string>('');
+  const [promptLLMLatestMessage, setPromptLLMLatestMessage] = useState<string>('');
+  const [temperature, setTemperature] = useState<number>(0.3);
 
   const [isRatingModalOpen, setIsRatingModalOpen] = useState<boolean>(false);
   const [messageRatings, setMessageRatings] = useState<{ [key: number]: RatingData }>({});
@@ -169,6 +184,17 @@ const ChatComponent: React.FC = () => {
   In short, lower temperatures yield precise outputs, while higher temperatures add creativity and variation.`;
 
   useEffect(() => {
+    // Check if there's already a session_id in sessionStorage
+    let currentSessionId = sessionStorage.getItem('session_id') ?? uuidv4();
+    
+    if (!sessionStorage.getItem('session_id')) {
+      // Store the new session_id in sessionStorage if it was newly generated
+      sessionStorage.setItem('session_id', currentSessionId);
+    }
+
+    setSessionId(currentSessionId);
+    sessionIdRef.current = currentSessionId; // Update ref immediately
+
     // Fetch available models on component mount
     const fetchModelsAndCheckLoadedModel = async () => {
       try {
@@ -207,7 +233,8 @@ const ChatComponent: React.FC = () => {
 
     return () => {
       // Stop inference on component unmount
-      axiosLLM.get('/api/backend/stopInference').catch((error) => console.error('Error stopping inference:', error));
+      axiosLLM.get('/api/backend/stopInference', {params: { sessionId: sessionIdRef.current }}).catch((error) => console.error('Error stopping inference:', error));
+      axiosLLM.get('/api/backend/clearChatHistory', {params: { sessionId: sessionIdRef.current }});
     };
   }, []);
 
@@ -217,6 +244,16 @@ const ChatComponent: React.FC = () => {
     setSelectedModel(null);
     setMessages([]);
   };
+
+  const clearChat = async () => {
+    try {
+      const response = await axiosLLM.get('/api/backend/clearChatHistory', {params: { sessionId: sessionId }});
+      setMessages([]);
+    } catch (error) {
+      console.error('Error cleaning the chat:', error);
+      toast.error('An error occurred while trying to clean the chat.');
+    }
+  }
   
   const handleTemperatureChange = (event: Event, newValue: number | number[]) => {
     setTemperature(newValue as number);
@@ -224,13 +261,25 @@ const ChatComponent: React.FC = () => {
 
   const handleModelSelect = async (selectedModel: ModelData) => {
     if (selectedModel) {
-      setSelectedModel(selectedModel);
       setLoadingModel(true);
 
       try {
-        await axiosLLM.get('/api/backend/loadModel', {params: { modelId: selectedModel.modelId }});
+        const response = await axiosLLM.get('/api/backend/loadModel', {
+          params: { modelId: selectedModel.modelId },
+        });
+        
+        // Handle specific backend responses
+        if (
+          response.data === "There is already a loaded model, please unload the model first." ||
+          response.data === "There is a loading model process happening now."
+        ) {
+          toast.warning(response.data);
+        } else {
+          setSelectedModel(selectedModel);
+        }
       } catch (error) {
         console.error('Error loading model:', error);
+        toast.error('An error occurred while loading the model.');
       } finally {
         setLoadingModel(false);
       }
@@ -245,7 +294,7 @@ const ChatComponent: React.FC = () => {
       formattedText = formattedText.replace(/<\/div>/g, '\n');
       formattedText = formattedText.replace(/&nbsp;/g, '');
 
-      const queryParams = new URLSearchParams({ prompt: formattedText, temperature: temperature.toString() }).toString();
+      const queryParams = new URLSearchParams({ prompt: formattedText, temperature: temperature.toString(), sessionId: sessionId }).toString();
       const response = await fetch(`${AXIOS_LLM_IP}/api/backend/inference?${queryParams}`, {
         method: 'GET',
       });
@@ -311,26 +360,27 @@ const ChatComponent: React.FC = () => {
     if (!selectedModel) return;
 
     // Use the prompt template from the selected model
-    const startTag = selectedModel.promptTemplate?.user_tag || '';
-    const endTag = selectedModel.promptTemplate?.end_tag || '';
-    const assistantTag = selectedModel.promptTemplate?.assistant_tag || '';
+    // const startTag = selectedModel.promptTemplate?.user_tag || '';
+    // const endTag = selectedModel.promptTemplate?.end_tag || '';
+    // const assistantTag = selectedModel.promptTemplate?.assistant_tag || '';
 
     // Construct the message using the dynamic prompt template
-    const userMessageText = `${startTag}${text}${endTag} ${assistantTag}`;
+    // const userMessageText = `${startTag}${text}${endTag} ${assistantTag}`;
     const userMessage: ChatMessage = {
       id: new Date().toISOString(),
-      text: userMessageText,
+      text: text,
       sender: 'user',
     };
 
     setMessages([...messages, userMessage]);
     setIsStreaming(true);
 
-    sendQuestion(userMessageText)
+    sendQuestion(text)
   };
 
-  const handleSaveClick = (messageText: string) => {
-    setMessageToSave(messageText); 
+  const handleSaveClick = (userLatestMessage: string, promptLatestMessage: string) => {
+    setPromptUserLatestMessage(userLatestMessage);
+    setPromptLLMLatestMessage(promptLatestMessage);
     setIsModalOpen(true);
   };
 
@@ -346,12 +396,24 @@ const ChatComponent: React.FC = () => {
   const handleSavePrompt = async () => {
     if (!promptName) return; // Do nothing if no prompt name is provided
     if (!selectedModel) return;
-  
+
+    // Function to format a single message based on the sender
+    const formatMessage = (message: ChatMessage): string => {
+      return message.sender === 'user' ? `User: ${message.text}` : `LLM: ${message.text}`;
+    };
+
+    // Function to aggregate all messages
+    const aggregateMessages = (messages: ChatMessage[]): string => {
+      return messages.map(formatMessage).join('\n\n');
+    };
+    
     try {
       const payload = {
         modelId: selectedModel.modelId,
         trainingName: selectedModel.trainingName,
-        promptText: messageToSave, // Message stored in state
+        promptEntireText: aggregateMessages(messages),
+        promptUserLastQuestionText: promptUserLatestMessage,
+        promptLLMLastAnswerText: promptLLMLatestMessage,
         promptName: promptName,   // Name entered by the user
       };
       await axiosBE.post('/api/backend/savePrompt', payload);
@@ -377,7 +439,7 @@ const ChatComponent: React.FC = () => {
 
   const handleStop = async () => {
     try {
-      await axiosLLM.get('/api/backend/stopInference');
+      await axiosLLM.get('/api/backend/stopInference', {params: { sessionId: sessionId }});
       setIsStreaming(false);
     } catch (error) {
       console.error('Error stopping inference:', error);
@@ -514,15 +576,12 @@ const ChatComponent: React.FC = () => {
   return (
     <div style={{ height: '100%', border: '1px solid #ccc', padding: '10px', position: 'relative' }}>
       {loadingModel ? (
-        <div className="loading-overlay">
-          {/* You can use a library like react-loading for the spinner */}
-          <ReactLoading type="bubbles" color="#000" height={100} width={100} />
-        </div>
+        <LoadingOverlay/>
       ) : selectedModel ? (
           <>
             {/* Custom section for displaying model information */}
             <ChatToolTip/>
-            <div style={{ position: 'absolute', top: '10px', right: '175px', display: 'flex', alignItems: 'center', gap: '10px', margin: "0px 10px" }}>
+            <div style={{ position: 'absolute', top: '10px', right: '375px', display: 'flex', alignItems: 'center', gap: '10px', margin: "0px 10px" }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '150px' }}>
                 <Tooltip title={temperatureTooltip} arrow placement="top">
                   <Typography id="temperature-slider" variant="caption" gutterBottom style={{ cursor: 'help' }}>
@@ -542,6 +601,9 @@ const ChatComponent: React.FC = () => {
                 />
               </div>
             </div>
+            <Button variant="contained" color="primary" onClick={clearChat} disabled={isStreaming} style={{ position: 'absolute', top: '10px', right: '180px' }}>
+                Start New Chat
+            </Button>
             <Button variant="contained" color="primary" onClick={unloadModel} style={{ position: 'absolute', top: '10px', right: '10px' }}>
                 Unload Model
             </Button>
@@ -597,7 +659,7 @@ const ChatComponent: React.FC = () => {
                             </>
                           )}
                           <Tooltip title="Save">
-                            <IconButton onClick={() => handleSaveClick(messages[idx-1].text + message.text)} size="small">
+                            <IconButton onClick={() => handleSaveClick(messages[idx-1].text, message.text)} size="small">
                               <SaveIcon />
                             </IconButton>
                           </Tooltip>
@@ -640,6 +702,7 @@ const ChatComponent: React.FC = () => {
             </div>           
           </>): (<ModelSelection models={models} onSelectModel={handleModelSelect} />)
         }
+        <ToastContainer position="top-right" autoClose={5000} hideProgressBar />
     </div>
   );
 };

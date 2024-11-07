@@ -18,6 +18,8 @@ interface SavedPromptData {
   uniqueId: string;
   trainingName: string;
   promptText: string;
+  promptUserLatestText: string;
+  promptLLMLatestText: string;
   promptName?: string;
   comment: string;
   completed: boolean;
@@ -58,7 +60,7 @@ const SavedPrompts: React.FC = () => {
         Header: 'Prompt Text',
         accessor: 'promptText',
         Cell: ({ row }: any) => (
-          <IconButton onClick={() => handleOpen(row.original.promptText)}>
+          <IconButton onClick={() => handleOpen(row.original.promptUserLatestText, row.original.promptLLMLatestText, row.original.promptText )}>
             <FaFileAlt />
           </IconButton>
         ),
@@ -102,33 +104,40 @@ const SavedPrompts: React.FC = () => {
     fetchData();
   }, []);
 
-  const handleOpen = (promptText: string) => {
-    setSelectedPrompt(promptText);
+  // const handleOpen = (promptText: string) => {
+  //   setSelectedPrompt(promptText);
 
-    // Find the index of either '[/INST]' or '<|eot_id|>'
-    const endIndexInst = promptText.indexOf('[/INST]');
-    const endIndexEot = promptText.indexOf('<|start_header_id|>assistant<|end_header_id|>');
+  //   // Find the index of either '[/INST]' or '<|eot_id|>'
+  //   const endIndexInst = promptText.indexOf('[/INST]');
+  //   const endIndexEot = promptText.indexOf('<|start_header_id|>assistant<|end_header_id|>');
 
-    // Determine which marker is present
-    const endIndex = endIndexInst !== -1 ? endIndexInst : endIndexEot;
+  //   // Determine which marker is present
+  //   const endIndex = endIndexInst !== -1 ? endIndexInst : endIndexEot;
 
-    // If a marker is found, split the promptText
-    if (endIndex !== -1) {
-      const markerLength = endIndexInst !== -1 ? '[/INST]'.length : '<|start_header_id|>assistant<|end_header_id|>'.length;
-      // Include the marker in the question part
-      setQuestionPart(promptText.substring(0, endIndex + markerLength));
-      // Answer part starts after the marker
-      setAnswerPart(promptText.substring(endIndex + markerLength));
-    } else {
-      // Handle case where neither marker is found
-      setQuestionPart(promptText);  // Use the whole text as the question
-      setAnswerPart('');            // No answer part if no marker is found
-    }    
-    // const settingsIndex = promptText.indexOf('*** Settings ***:');
-    // setQuestionPart(promptText.substring(0, settingsIndex + 17))
-    // setAnswerPart(promptText.substring(settingsIndex + 17))
+  //   // If a marker is found, split the promptText
+  //   if (endIndex !== -1) {
+  //     const markerLength = endIndexInst !== -1 ? '[/INST]'.length : '<|start_header_id|>assistant<|end_header_id|>'.length;
+  //     // Include the marker in the question part
+  //     setQuestionPart(promptText.substring(0, endIndex + markerLength));
+  //     // Answer part starts after the marker
+  //     setAnswerPart(promptText.substring(endIndex + markerLength));
+  //   } else {
+  //     // Handle case where neither marker is found
+  //     setQuestionPart(promptText);  // Use the whole text as the question
+  //     setAnswerPart('');            // No answer part if no marker is found
+  //   }    
+  //   // const settingsIndex = promptText.indexOf('*** Settings ***:');
+  //   // setQuestionPart(promptText.substring(0, settingsIndex + 17))
+  //   // setAnswerPart(promptText.substring(settingsIndex + 17))
+  //   setOpen(true);
+  // };
+
+  const handleOpen = (userLatestQuestion: string, llmLatestAnswer: string, entireText: string) => {
+    setSelectedPrompt(entireText);
+    setQuestionPart(userLatestQuestion);
+    setAnswerPart(llmLatestAnswer);
     setOpen(true);
-  };
+  }
 
   const handleClose = () => {
     setOpen(false);
@@ -240,6 +249,7 @@ const SavedPrompts: React.FC = () => {
             <div className="code-visualizer">
               <CodeSection title="User Question" content={questionPart} />
               <CodeSection title="LLM Answer" content={answerPart} />
+              <CodeSection title="Entire Chat" content={selectedPrompt || ''} />
             </div>
         </Box>
       </Modal>
