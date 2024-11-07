@@ -133,8 +133,7 @@ def insert_prompt_rating(model_id, user_prompt, response_prompt, rating, rating_
     query = {
         'modelId': model_id,
         'userPrompt': user_prompt,
-        'responsePrompt': response_prompt,
-        'ratingText': rating_text
+        'responsePrompt': response_prompt
     }
     
     # If rating is 0, delete the existing rating if it exists
@@ -143,5 +142,5 @@ def insert_prompt_rating(model_id, user_prompt, response_prompt, rating, rating_
         return result
     
     # If a rating exists, update it; otherwise, insert a new one
-    result = Collections.by_name('ratings').update_one(query, {"$set": {"rating": rating}}, upsert=True)
+    result = Collections.by_name('ratings').update_one(query, {"$set": {"rating": rating, 'ratingText': rating_text}}, upsert=True)
     return result
