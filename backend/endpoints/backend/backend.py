@@ -156,11 +156,12 @@ def save_prompt_is_complete(model_id, unique_id, completed):
     "user_prompt":        fields.Str(required=True, data_key="prompt"),
     "response_prompt":    fields.Str(required=True, data_key="response"),
     "rating":             fields.Number(required=True, data_key="rating"),
+    "rating_text":        fields.Str(missing='', data_key="ratingText"),
 })
-def save_prompt_rating(model_id, user_prompt, response_prompt, rating):
+def save_prompt_rating(model_id, user_prompt, response_prompt, rating, rating_text):
     try:
         # Insert LLM prompt into MongoDB collection
-        result = insert_prompt_rating(model_id, user_prompt, response_prompt, rating)
+        result = insert_prompt_rating(model_id, user_prompt, response_prompt, rating, rating_text)
 
         # Return success response
         return jsonify({"status": "success"}), 201
