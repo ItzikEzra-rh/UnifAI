@@ -6,8 +6,9 @@ from transformers import AutoTokenizer
 
 # Abstract base class for ModelLoader
 class AbstractModelLoader(ABC):
-    _load_lock = Lock()
+    load_lock = Lock()
     model_loader = None
+    is_model_loading = False
 
     def __init__(self, model_id, base_model, project, context_length=8192, model_type="",
                  checkpoint="", huggingface_url='', hf_repo_id="", max_new_tokens=4096):

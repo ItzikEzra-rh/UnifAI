@@ -4,6 +4,7 @@ import time
 from llm.loader.model_loader import AbstractModelLoader
 from llm.chat_manager import ChatManager
 from openai import OpenAI
+import threading
 import os
 import psutil
 
@@ -16,24 +17,24 @@ class VLLMModelLoader(AbstractModelLoader):
         self.vllm_port = vllm_port
         self.server_url = f"http://0.0.0.0:{self.vllm_port}/"
         self.chat_manager = ChatManager(self.context_length, self.max_new_tokens, self.hf_repo_id, self.tokenizer)
+        self.stop_event = threading.Event()
 
     def load_model(self):
         """Load the vLLM model."""
-        with VLLMModelLoader._load_lock:
-            if self.vllm_process is not None:
-                print("vLLM server is already running.")
-                return False
-            try:
-                self.vllm_process = subprocess.Popen(
-                    ["vllm", "serve", self.hf_repo_id,
-                     "--port", str(self.vllm_port),
-                     "--max-model-len", str(self.chat_manager.context_length),
-                     "--quantization", "bitsandbytes",
-                     "--load-format", "bitsandbytes"]
-                )
-                return self.wait_for_server()
-            except Exception as e:
-                raise RuntimeError(f"Failed to start vLLM server: {e}")
+        if self.vllm_process is not None:
+            print("vLLM server is already running.")
+            return False
+        try:
+            self.vllm_process = subprocess.Popen(
+                ["vllm", "serve", self.hf_repo_id,
+                 "--port", str(self.vllm_port),
+                 "--max-model-len", str(self.chat_manager.context_length),
+                 "--quantization", "bitsandbytes",
+                 "--load-format", "bitsandbytes"]
+            )
+            return self.wait_for_server()
+        except Exception as e:
+            raise RuntimeError(f"Failed to start vLLM server: {e}")
 
     def wait_for_server(self, timeout=180, interval=5):
         """Wait for the vLLM server to start within a given timeout."""
@@ -53,8 +54,11 @@ class VLLMModelLoader(AbstractModelLoader):
 
     def infer(self, prompt, temperature, max_new_tokens=None):
         """Send a prompt to the model and stream the response."""
+        self.stop_event.clear()  # Clear any previous stop event
         openai_api_key = "EMPTY"
         openai_api_base = os.path.join(self.server_url, "v1")
+
+        # Instantiate the client
         client = OpenAI(
             api_key=openai_api_key,
             base_url=openai_api_base,
@@ -76,7 +80,7 @@ class VLLMModelLoader(AbstractModelLoader):
             temperature=temperature
         )
 
-        # Stream the response content and update chat history at the end
+        # Stream the response content and check stop event to break
         return self.generate_response(response)
 
     def generate_response(self, response):
@@ -85,18 +89,24 @@ class VLLMModelLoader(AbstractModelLoader):
 
         # Stream each chunk to the client
         for chunk in response:
+            if self.stop_event.is_set():  # Check if stop signal has been triggered
+                response.close()
+                print("Stopping inference as requested.")
+                break
+
             if hasattr(chunk, "choices") and chunk.choices:
                 content = getattr(chunk.choices[0].delta, "content", "")
                 if content:
                     response_content += content
                     yield content.encode('utf-8')
 
-        # Add assistant's response to chat history
-        self.chat_manager.add_message("assistant", response_content)
+        # Add assistant's response to chat history if inference was not stopped
+        if not self.stop_event.is_set():
+            self.chat_manager.add_message("assistant", response_content)
 
     def clean_model(self):
         """Terminate the model process and wait for the port to be released."""
-        with VLLMModelLoader._load_lock:
+        if self.model_loader:
             if self.vllm_process:
                 self.vllm_process.terminate()
                 self.vllm_process.wait()
@@ -104,7 +114,7 @@ class VLLMModelLoader(AbstractModelLoader):
                 time.sleep(5)
                 self.wait_for_port_release(self.vllm_port, timeout=60)
                 return True
-            return False
+        return False
 
     def wait_for_port_release(self, port, timeout=60):
         """Wait until the given port is released by checking connection status.
@@ -131,8 +141,8 @@ class VLLMModelLoader(AbstractModelLoader):
         return False
 
     def stop_infer(self):
-        """Placeholder for stopping inference if needed."""
-        pass
+        """Stop the inference by setting the stop event and deleting the client."""
+        self.stop_event.set()  # Signal to stop streaming
 
     def clear_chat_history(self):
         self.chat_manager.clear_history()
