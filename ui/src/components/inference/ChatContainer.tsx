@@ -14,6 +14,7 @@ import ReactLoading from 'react-loading';
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
 import axiosLLM, { AXIOS_LLM_IP } from '../../http/axiosLLMConfig';
 import axiosBE from '../../http/axiosConfig'
+import RatingModal from './RatingModal';
 import '../../styles.css';
 
 interface FormData {
@@ -30,6 +31,11 @@ interface ChatMessage {
   id: string;
   text: string;
   sender: 'user' | 'bot';
+}
+
+interface RatingData {
+  rating: number;
+  ratingText: string;
 }
 
 const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }) => {
@@ -151,11 +157,10 @@ const ChatComponent: React.FC = () => {
   const [messageToSave, setMessageToSave] = useState<string>('');
   const [temperature, setTemperature] = useState<number>(0.5);
 
-  const [showRating, setShowRating] = useState(false);
-  const [hoverRating, setHoverRating] = useState(0);
-  const [rating, setRating] = useState(0);
-  const [isRated, setIsRated] = useState(false);
-  const starListRef = useRef<HTMLDivElement | null>(null);
+  const [isRatingModalOpen, setIsRatingModalOpen] = useState<boolean>(false);
+  const [messageRatings, setMessageRatings] = useState<{ [key: number]: RatingData }>({});
+  const [currentRatingIdx, setCurrentRatingIdx] = useState<number>(-1);
+  const [messageIsRated, setMessageIsRated] = useState<{ [key: number]: boolean }>({});
 
   const temperatureTooltip = `In LLM inference, temperature controls response randomness \n\n.
   Low temperature (e.g., 0.1): Yields more focused, predictable outputs by favoring the most likely tokens, ideal for accuracy\n.
@@ -164,14 +169,6 @@ const ChatComponent: React.FC = () => {
   In short, lower temperatures yield precise outputs, while higher temperatures add creativity and variation.`;
 
   useEffect(() => {
-    // Close the rating list if clicked outside
-    const handleClickOutside = (event: MouseEvent) => {
-      if (starListRef.current && !starListRef.current.contains(event.target as Node)) {
-        setShowRating(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-
     // Fetch available models on component mount
     const fetchModelsAndCheckLoadedModel = async () => {
       try {
@@ -211,7 +208,6 @@ const ChatComponent: React.FC = () => {
     return () => {
       // Stop inference on component unmount
       axiosLLM.get('/api/backend/stopInference').catch((error) => console.error('Error stopping inference:', error));
-      document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
 
@@ -388,38 +384,41 @@ const ChatComponent: React.FC = () => {
     }
   };
 
-  const onMainRatingIconClick = () => {
-    if (isRated) {
-      handleRating(0); // Reset rating to 0 if already rated
-      setIsRated(false); // Mark as not rated
-      setHoverRating(0)
-    }
-  }
+  const handleRatingClick = (idx: number) => {
+    setCurrentRatingIdx(idx);
+    setIsRatingModalOpen(true);
+  };
 
-  const handleRating = async (selectedRating: number) => {
-    setRating(selectedRating);
-    setIsRated(true);
-    setShowRating(false);
-  
+  const handleRatingModalClose = () => {
+    setIsRatingModalOpen(false);
+    setCurrentRatingIdx(-1);
+  };
+
+  const handleRatingSave = async (rating: number, ratingText: string) => {
+    if (currentRatingIdx === -1) return;
+
+    setMessageRatings({...messageRatings, [currentRatingIdx]: { rating, ratingText }});
+    setMessageIsRated({ ...messageIsRated, [currentRatingIdx]: true });
+
     // Send API request with prompt and rating details
-    const userPrompt = messages[messages.length - 2].text;
-    const botResponse = messages[messages.length - 1].text;
-  
+    const userPrompt = messages[currentRatingIdx - 1].text;
+    const botResponse = messages[currentRatingIdx].text;
+
     try {
       const payload = {
         modelId: selectedModel?.modelId,
         prompt: userPrompt,
         response: botResponse,
-        rating: selectedRating
+        rating,
+        ratingText
       };
       await axiosBE.post('/api/backend/ratePrompt', payload);
       console.log('Rate saved successfully');
-      handleModalClose(); // Close the modal after saving
     } catch (error) {
       console.error('Error rating prompt:', error);
     }
   };
-  
+
 
   const handleUnLoad = async () => {
     try {
@@ -550,7 +549,7 @@ const ChatComponent: React.FC = () => {
               <MainContainer style={{padding: '10px', marginTop: '20px'}}>
                 <ChatContainer>
                 <MessageList>
-                  {messages.map((message, index) => (
+                  {messages.map((message, idx) => (
                     <div key={message.id} style={{ position: 'relative', paddingBottom: '40px' }}>
                       <Message
                         model={{
@@ -558,7 +557,7 @@ const ChatComponent: React.FC = () => {
                           sentTime: 'just now',
                           sender: message.sender === 'user' ? 'You' : 'Bot',
                           direction: message.sender === 'user' ? 'outgoing' : 'incoming',
-                          position: getPosition(index, message.sender),
+                          position: getPosition(idx, message.sender),
                         }}
                       />
                       {message.sender === 'bot' && (
@@ -588,39 +587,17 @@ const ChatComponent: React.FC = () => {
                               
                               <Tooltip title="Rate">
                                 <IconButton
-                                  onClick={() => onMainRatingIconClick()}
-                                  onMouseEnter={() => setShowRating(true)}
+                                  onClick={() => handleRatingClick(idx)}
                                   size="small"
-                                  style={{ color: isRated? 'yellow': '' }} 
+                                  style={{ color: messageIsRated[idx] ? 'yellow' : '' }}
                                 >
                                   <StarIcon />
                                 </IconButton>
                               </Tooltip>
-
-                              {/* Display 5-Star Row for Rating */}
-                              {showRating && (
-                                <div
-                                  ref={starListRef}
-                                  style={{ display: 'flex', position: 'absolute', top: '40px', left: '80px' }}
-                                >
-                                  {[1, 2, 3, 4, 5].map((star) => (
-                                    <StarIcon
-                                      key={star}
-                                      onClick={() => handleRating(star)}
-                                      onMouseEnter={() => setHoverRating(star)}
-                                      onMouseLeave={() => setHoverRating(0)}
-                                      style={{
-                                        color: star <= (hoverRating || rating) ? 'yellow' : 'grey',
-                                        cursor: 'pointer'
-                                      }}
-                                    />
-                                  ))}
-                                </div>
-                              )}
                             </>
                           )}
                           <Tooltip title="Save">
-                            <IconButton onClick={() => handleSaveClick(messages[index-1].text + message.text)} size="small">
+                            <IconButton onClick={() => handleSaveClick(messages[idx-1].text + message.text)} size="small">
                               <SaveIcon />
                             </IconButton>
                           </Tooltip>
@@ -639,6 +616,13 @@ const ChatComponent: React.FC = () => {
                 />
                 </ChatContainer>
               </MainContainer>
+              <RatingModal
+                open={isRatingModalOpen}
+                onClose={handleRatingModalClose}
+                onSave={handleRatingSave}
+                initialRating={currentRatingIdx !== -1 ? messageRatings[currentRatingIdx]?.rating ?? 0 : 0}
+                initialRatingText={currentRatingIdx !== -1 ? messageRatings[currentRatingIdx]?.ratingText ?? '' : ''}
+              />
               <Dialog open={isModalOpen}
                       onClose={handleModalClose}
                       PaperProps={{

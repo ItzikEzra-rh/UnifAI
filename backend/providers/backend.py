@@ -120,19 +120,21 @@ def insert_prompt_is_complete(model_id, unique_id, completed):
     return result
 
 @mongo
-def insert_prompt_rating(model_id, user_prompt, response_prompt, rating):
+def insert_prompt_rating(model_id, user_prompt, response_prompt, rating, rating_text):
     """Adding rating to Q/A in the database.
 
     :param str model_id: The ID of the model associated with the prompt.
     :param str user_prompt: The user's prompt to be rated.
     :param str response_prompt: The model's response to the user's prompt.
     :param int rating: The rating given by the user.
+    :param str rating_text: The rating text explanation given by the user.
     :return: Result of the database operation.
     """
     query = {
         'modelId': model_id,
         'userPrompt': user_prompt,
-        'responsePrompt': response_prompt
+        'responsePrompt': response_prompt,
+        'ratingText': rating_text
     }
     
     # If rating is 0, delete the existing rating if it exists
