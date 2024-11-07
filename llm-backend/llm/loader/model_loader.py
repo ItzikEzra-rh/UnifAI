@@ -35,7 +35,7 @@ class AbstractModelLoader(ABC):
         pass
 
     @abstractmethod
-    def stop_infer(self):
+    def stop_infer(self, session_id):
         pass
 
     @abstractmethod

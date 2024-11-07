@@ -34,9 +34,10 @@ def load_model(model_id):
 @from_query({
     "prompt": fields.Str(data_key="prompt", required=True),
     "temperature": fields.Str(data_key="temperature", required=False, default=None),
+    "session_id": fields.Str(data_key="sessionId", required=False, default="N/A"),
 })
-def inference(prompt, temperature=None):
-    return Response(llm_provider.inference(prompt, temperature), content_type='text/plain')
+def inference(prompt, temperature=None, session_id=""):
+    return Response(llm_provider.inference(prompt, temperature, session_id=session_id), content_type='text/plain')
 
 
 # @backend_bp.route("/inference", methods=["POST"])
@@ -50,8 +51,11 @@ def inference(prompt, temperature=None):
 
 
 @backend_bp.route("/stopInference", methods=["GET"])
-def stop_inference():
-    return jsonify(llm_provider.stop_inference())
+@from_query({
+    "session_id": fields.Str(data_key="sessionId", required=False, default="N/A"),
+})
+def stop_inference(session_id):
+    return jsonify(llm_provider.stop_inference(session_id))
 
 
 @backend_bp.route("/getModels", methods=["GET"])
@@ -87,5 +91,8 @@ def unload_model():
 
 
 @backend_bp.route("/clearChatHistory", methods=["GET"])
-def clear_chat_history():
-    return jsonify(llm_provider.clear_chat_history())
+@from_query({
+    "session_id": fields.Str(data_key="sessionId", required=False, default="N/A"),
+})
+def clear_chat_history(session_id):
+    return jsonify(llm_provider.clear_chat_history(session_id))

@@ -16,8 +16,9 @@ class VLLMModelLoader(AbstractModelLoader):
         super().__init__(*args, **kwargs)
         self.vllm_port = vllm_port
         self.server_url = f"http://0.0.0.0:{self.vllm_port}/"
-        self.chat_manager = ChatManager(self.context_length, self.max_new_tokens, self.hf_repo_id, self.tokenizer)
-        self.stop_event = threading.Event()
+        self.chat_manager = ChatManager(self.context_length, self.max_new_tokens, self.tokenizer)
+        self.stop_event = {}
+        # self.stop_event = threading.Event()
 
     def load_model(self):
         """Load the vLLM model."""
@@ -52,9 +53,10 @@ class VLLMModelLoader(AbstractModelLoader):
         print("vLLM server did not start within the timeout period.")
         return False
 
-    def infer(self, prompt, temperature, max_new_tokens=None):
+    def infer(self, prompt, temperature, max_new_tokens=None, session_id=" "):
         """Send a prompt to the model and stream the response."""
-        self.stop_event.clear()  # Clear any previous stop event
+        self.stop_event[session_id] = threading.Event()
+        self.stop_event[session_id].clear()  # Clear any previous stop event
         openai_api_key = "EMPTY"
         openai_api_base = os.path.join(self.server_url, "v1")
 
@@ -69,11 +71,11 @@ class VLLMModelLoader(AbstractModelLoader):
             self.chat_manager.max_new_tokens = max_new_tokens
 
         # Add user prompt to chat history (token limit check is handled by ChatManager)
-        self.chat_manager.add_message("user", prompt)
+        self.chat_manager.add_message("user", prompt, session_id)
 
         # Call OpenAI API with the entire chat history and enable streaming
         response = client.chat.completions.create(
-            messages=self.chat_manager.chat_history,
+            messages=self.chat_manager.get_chat_history(session_id),
             model=self.hf_repo_id,
             stream=True,
             max_tokens=max_new_tokens,
@@ -81,15 +83,15 @@ class VLLMModelLoader(AbstractModelLoader):
         )
 
         # Stream the response content and check stop event to break
-        return self.generate_response(response)
+        return self.generate_response(response, session_id)
 
-    def generate_response(self, response):
+    def generate_response(self, response, session_id):
         """Stream the OpenAI API response and update the chat history."""
         response_content = ""
 
         # Stream each chunk to the client
         for chunk in response:
-            if self.stop_event.is_set():  # Check if stop signal has been triggered
+            if self.stop_event[session_id].is_set():  # Check if stop signal has been triggered
                 response.close()
                 print("Stopping inference as requested.")
                 break
@@ -101,8 +103,8 @@ class VLLMModelLoader(AbstractModelLoader):
                     yield content.encode('utf-8')
 
         # Add assistant's response to chat history if inference was not stopped
-        if not self.stop_event.is_set():
-            self.chat_manager.add_message("assistant", response_content)
+        if not self.stop_event[session_id].is_set():
+            self.chat_manager.add_message("assistant", response_content, session_id)
 
     def clean_model(self):
         """Terminate the model process and wait for the port to be released."""
@@ -140,9 +142,9 @@ class VLLMModelLoader(AbstractModelLoader):
         print(f"Port {port} is free.")
         return False
 
-    def stop_infer(self):
+    def stop_infer(self, session_id):
         """Stop the inference by setting the stop event and deleting the client."""
-        self.stop_event.set()  # Signal to stop streaming
+        self.stop_event[session_id].set()  # Signal to stop streaming
 
-    def clear_chat_history(self):
-        self.chat_manager.clear_history()
+    def clear_chat_history(self, session_id):
+        self.chat_manager.clear_history(session_id)

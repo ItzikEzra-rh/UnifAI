@@ -46,16 +46,16 @@ def load_model(model_id):
         return res
 
 
-def inference(prompt, temperature, max_new_tokens=4096):
+def inference(prompt, temperature, max_new_tokens=4096, session_id=""):
     model = AbstractModelLoader.model_loader
     if not model:
         raise ValueError("No model loaded. Please load a model first.")
-    return model.infer(prompt, temperature, max_new_tokens=max_new_tokens)
+    return model.infer(prompt, temperature, max_new_tokens=max_new_tokens, session_id=session_id)
 
 
-def stop_inference():
+def stop_inference(session_id):
     if AbstractModelLoader.model_loader is not None:
-        return AbstractModelLoader.model_loader.stop_infer()
+        return AbstractModelLoader.model_loader.stop_infer(session_id)
     return False
 
 
@@ -90,8 +90,8 @@ def unload_model():
         return False
 
 
-def clear_chat_history():
+def clear_chat_history(session_id):
     if AbstractModelLoader.model_loader:
-        AbstractModelLoader.model_loader.clear_chat_history()
+        AbstractModelLoader.model_loader.clear_chat_history(session_id)
         return True
     return False
