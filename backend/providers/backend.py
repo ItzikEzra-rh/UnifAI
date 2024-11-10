@@ -57,12 +57,14 @@ def insert_new_form(project_name, training_name, git_url, git_credential_key, gi
     return result
 
 @mongo
-def insert_new_prompt(model_id, training_name, prompt_text, prompt_name):
+def insert_new_prompt(model_id, training_name, prompt_entire_text, prompt_user_latest_text, prompt_llm_latest_text, prompt_name):
     """inserting new llm prompt response to the database
 
     :param str model_id:
     :param str training_name:
-    :param str prompt_text: 
+    :param str prompt_entire_text: 
+    :param str prompt_user_latest_text: 
+    :param str prompt_llm_latest_text: 
     :param str prompt_name:
     :return:
     """
@@ -72,7 +74,9 @@ def insert_new_prompt(model_id, training_name, prompt_text, prompt_name):
     result = Collections.by_name('prompts').insert_one({'modelId': model_id,
                                                         'uniqueId': unique_id,
                                                         'trainingName': training_name,
-                                                        'promptText': prompt_text,
+                                                        'promptText': prompt_entire_text,
+                                                        'promptUserLatestText': prompt_user_latest_text,
+                                                        'promptLLMLatestText': prompt_llm_latest_text,
                                                         'promptName': prompt_name,
                                                         'comment': ''})
     return result
