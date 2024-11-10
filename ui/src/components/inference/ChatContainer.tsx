@@ -17,6 +17,7 @@ import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
 import axiosLLM, { AXIOS_LLM_IP } from '../../http/axiosLLMConfig';
 import axiosBE from '../../http/axiosConfig'
 import RatingModal from './RatingModal';
+import ChatHistory, { HistoryChat } from './ChatHistory';
 import { v4 as uuidv4 } from 'uuid';
 import '../../styles.css';
 
@@ -177,6 +178,9 @@ const ChatComponent: React.FC = () => {
   const [currentRatingIdx, setCurrentRatingIdx] = useState<number>(-1);
   const [messageIsRated, setMessageIsRated] = useState<{ [key: number]: boolean }>({});
 
+  const [historyChats, setHistoryChats] = useState<HistoryChat[]>([]);
+  const [currentChatId, setCurrentChatId] = useState<string>('current');
+
   const temperatureTooltip = `In LLM inference, temperature controls response randomness \n\n.
   Low temperature (e.g., 0.1): Yields more focused, predictable outputs by favoring the most likely tokens, ideal for accuracy\n.
   High temperature (e.g., 1.0+): Promotes diversity and creativity by allowing less common tokens, good for generating varied content. However, very high values may lead to incoherence\n.
@@ -245,15 +249,61 @@ const ChatComponent: React.FC = () => {
     setMessages([]);
   };
 
+  const handleRecentChatSelect = () => {
+    // Handle the case once user press on 'Start new chat' & certain 'Recent Chat Item' where currently selected, therefore we should update the messages array of the selected 'Recent Chat Item'
+    // Handle the case once user moving between chat histories, we should update the chat that he just moved from with up to date data
+    if (messages.length > 0 && currentChatId != "current" ) {
+      const currentHistory = historyChats.map(chat => chat.id == currentChatId && chat.messages.length !== messages.length ? {...chat, messages: [...messages], timestamp: new Date().toLocaleString()} : chat)
+      setHistoryChats(currentHistory)
+    }
+  }
+
+  const addRecentChat = () => {
+    if (messages.length > 0 && currentChatId == "current") {
+      const firstUserMessage = messages.find(msg => msg.sender === 'user')?.text || 'New conversation';
+      const truncatedMessage = firstUserMessage.length > 40 ? `${firstUserMessage.substring(0, 37)}...` : firstUserMessage;
+
+      const newHistoryChat: HistoryChat = {
+        id: `chat-${historyChats.length + 1}`,
+        name: `Chat ${historyChats.length + 1}`,
+        timestamp: new Date().toLocaleString(),
+        messages: [...messages], // Save a copy of current messages
+        firstMessage: truncatedMessage
+      };
+
+      setHistoryChats(prevHistory => [newHistoryChat, ...prevHistory]);
+    }
+  }
+
   const clearChat = async () => {
     try {
+      handleRecentChatSelect()
+      addRecentChat()
       const response = await axiosLLM.get('/api/backend/clearChatHistory', {params: { sessionId: sessionId }});
       setMessages([]);
+      setCurrentChatId('current');
     } catch (error) {
       console.error('Error cleaning the chat:', error);
       toast.error('An error occurred while trying to clean the chat.');
     }
-  }
+  };
+
+  const handleChatSelect = async (chatId: string, chatMessages: ChatMessage[]) => {
+    try {
+      await axiosLLM.get('/api/backend/clearChatHistory', {
+        params: { sessionId: sessionId }
+      });
+      
+      // Load selected chat messages
+      setMessages(chatMessages);
+      setCurrentChatId(chatId);
+      handleRecentChatSelect()
+      addRecentChat()
+    } catch (error) {
+      console.error('Error loading chat history:', error);
+      toast.error('An error occurred while loading the chat history.');
+    }
+  };
   
   const handleTemperatureChange = (event: Event, newValue: number | number[]) => {
     setTemperature(newValue as number);
@@ -607,8 +657,8 @@ const ChatComponent: React.FC = () => {
             <Button variant="contained" color="primary" onClick={unloadModel} style={{ position: 'absolute', top: '10px', right: '10px' }}>
                 Unload Model
             </Button>
-            <div style={{ position: 'relative', height: '80vh' }}>
-              <MainContainer style={{padding: '10px', marginTop: '20px'}}>
+            <div style={{ position: 'relative', height: '80vh', display: 'flex', gap: '16px' }}>
+              <MainContainer style={{padding: '10px', marginTop: '20px', width: '80%'}}>
                 <ChatContainer>
                 <MessageList>
                   {messages.map((message, idx) => (
@@ -678,6 +728,12 @@ const ChatComponent: React.FC = () => {
                 />
                 </ChatContainer>
               </MainContainer>
+              <ChatHistory 
+                isStreaming={isStreaming}
+                onChatSelect={handleChatSelect}
+                currentChatId={currentChatId}
+                historyChats={historyChats}
+              />
               <RatingModal
                 open={isRatingModalOpen}
                 onClose={handleRatingModalClose}
