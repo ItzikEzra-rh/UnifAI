@@ -459,7 +459,7 @@ const ChatComponent: React.FC = () => {
 
     // Function to aggregate all messages
     const aggregateMessages = (messages: ChatMessage[]): string => {
-      return messages.map(formatMessage).join('\n\n');
+      return messages.map(formatMessage).join('\n');
     };
     
     try {
