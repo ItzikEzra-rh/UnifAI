@@ -294,6 +294,11 @@ const ChatComponent: React.FC = () => {
         params: { sessionId: sessionId }
       });
       
+      const newMessages = chatMessages.map(({ id, text, sender }) => ({ content: text, role: sender === 'bot' ? 'assistant' : sender }));
+      await axiosLLM.post('/api/backend/loadChatContext', {
+        sessionId: sessionId,
+        chat: newMessages,
+      })
       // Load selected chat messages
       setMessages(chatMessages);
       setCurrentChatId(chatId);
