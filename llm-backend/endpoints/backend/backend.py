@@ -96,3 +96,12 @@ def unload_model():
 })
 def clear_chat_history(session_id):
     return jsonify(llm_provider.clear_chat_history(session_id))
+
+
+@backend_bp.route("/loadChatContext", methods=["POST"])
+@from_body({
+    "chat": fields.List(fields.Dict(), missing=[], required=False, data_key="chat"),
+    "session_id": fields.String(data_key="sessionId", required=True),
+})
+def load_chat_context(chat, session_id):
+    return jsonify(llm_provider.load_chat_context(chat, session_id))

@@ -18,7 +18,8 @@ class ChatManager:
 
         self.chat_history[session_id].append({"role": role, "content": content})
         self.total_tokens[session_id] += tokens + self.TOKEN_DELTA_PER_MESSAGE
-        self.print_in_box(f"Token size now after adding to chat for session {session_id}: {self.total_tokens[session_id]}")
+        self.print_in_box(
+            f"Token size now after adding to chat for session {session_id}: {self.total_tokens[session_id]}")
 
         self.trim_history(session_id)
         self.check_token_limit(session_id)  # Check if the total tokens are close to the limit for this session
@@ -27,7 +28,8 @@ class ChatManager:
         """Check if the token count is close to the maximum allowed limit for the session and print a warning if so."""
         max_allowed_tokens = self.context_length - self.max_new_tokens
         if self.total_tokens[session_id] >= max_allowed_tokens:
-            self.print_in_box(f"Warning: Chat history for session {session_id} is at max allowed tokens ({self.total_tokens[session_id]} tokens).")
+            self.print_in_box(
+                f"Warning: Chat history for session {session_id} is at max allowed tokens ({self.total_tokens[session_id]} tokens).")
 
     def trim_history(self, session_id):
         """Ensure chat history token count does not exceed context length minus max new tokens for the session."""
@@ -61,6 +63,13 @@ class ChatManager:
         """Clear the chat history and reset token count for the specific session."""
         self.total_tokens[session_id] = 0
         self.chat_history[session_id] = []
+
+    def load_chat_context(self, chat, session_id):
+        for message in chat:
+            role = message["role"]
+            content = message["content"]
+            self.add_message(role, content, session_id)
+        return True
 
     @staticmethod
     def print_in_box(message):

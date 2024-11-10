@@ -148,3 +148,6 @@ class VLLMModelLoader(AbstractModelLoader):
 
     def clear_chat_history(self, session_id):
         self.chat_manager.clear_history(session_id)
+
+    def load_chat_context(self, chat, session_id):
+        return self.chat_manager.load_chat_context(chat, session_id)

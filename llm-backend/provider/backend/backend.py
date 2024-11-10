@@ -95,3 +95,9 @@ def clear_chat_history(session_id):
         AbstractModelLoader.model_loader.clear_chat_history(session_id)
         return True
     return False
+
+
+def load_chat_context(chat, session_id):
+    if AbstractModelLoader.model_loader:
+        return AbstractModelLoader.model_loader.load_chat_context(chat, session_id)
+    return False

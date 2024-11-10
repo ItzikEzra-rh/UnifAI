@@ -10,15 +10,10 @@ import os
 # Init FLASK
 app = Flask(__name__)
 
-app = Flask(__name__)
-CORS(app, resources={
-    r"/api/*": {
-        "origins": "*",
-        "methods": "*",
-        "allow_headers": "*",
-    "supports_credentials": True
-}
-})
+CORS(app, resources={r"/api/*": {"origins": "*",
+                                 "methods": ["GET", "POST", "OPTIONS"],
+                                 "allow_headers": ["Content-Type", "Authorization"],
+                                 "supports_credentials": True}})
 
 # init_flask_logger('access.log')
 # app.config['result_backend'] = config_params.MONGODB_URL
