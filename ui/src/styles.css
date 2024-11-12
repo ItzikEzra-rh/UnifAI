@@ -342,11 +342,11 @@ body, html, #root {
   font-weight: bold;
 }
 
-.project-name.NCS24 {
+.project-name.ODS-CI {
   color: lightcoral; /* Example color for project name 'X' */
 }
 
-.project-name.ALL {
+.project-name[class*="Openshift QE"] {
   color: lightblue; /* Example color for project name 'X' */
 }
 
