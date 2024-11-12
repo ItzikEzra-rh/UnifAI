@@ -144,7 +144,10 @@ class VLLMModelLoader(AbstractModelLoader):
 
     def stop_infer(self, session_id):
         """Stop the inference by setting the stop event and deleting the client."""
-        self.stop_event[session_id].set()  # Signal to stop streaming
+        if session_id in self.stop_event:
+            self.stop_event[session_id].set()  # Signal to stop streaming
+            return True
+        return False
 
     def clear_chat_history(self, session_id):
         self.chat_manager.clear_history(session_id)
