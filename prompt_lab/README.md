@@ -51,4 +51,11 @@ Feel free to open issues or create pull requests if you'd like to contribute. We
 
 ## list of Models
 meta-llama/Llama-3.1-8B-Instruct 
-unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit"
+unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit
+
+## VLLM command line to run model
+--quantization bitsandbytes --load-format bitsandbytes are optional parameters which are required for quantized  models
+
+```bash
+vllm serve model_repo_hf --port 8000 --max-model-len 8192 --quantization bitsandbytes --load-format bitsandbytes
+```
