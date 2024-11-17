@@ -37,10 +37,13 @@ class GEvalConfig:
             EvalCriterion(
                 metric=EvalMetric.ACCURACY,
                 prompt_template=(
-                    "Rate the accuracy from 1 to 100 for the provided {element_type} "
-                    "considering its implementation, structure, and role.\n\n"
-                    "{detailed_context}\n\n"
-                    "Respond with only a number between 1 and 100."
+                    "Rate from 1 to 100 how accurately the following output answers the given question, "
+                    "considering all the provided context.\n\n"
+                    "Context:\n{input_context}\n\n"
+                    "Question:\n{question}\n\n"
+                    "Provided Output:\n{provided_output}\n\n"
+                    "Provide only a number between 1 and 100 representing how accurately the output "
+                    "answers the question based on the given context."
                 ),
                 weight=1.0
             ),
