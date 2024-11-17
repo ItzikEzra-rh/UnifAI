@@ -42,11 +42,11 @@
       },
       "Ginkgo Test Expansion and Modularity": {
         "ginkgo_test_expansion_modularity_options": [
-          "Suggest a refactoring approach for `{element_type}` `{name}` in the OpenShift QE project to enhance Ginkgo test expansion and support modular testing, improving maintainability.",
-          "Identify sections in `{element_type}` `{name}` within the OpenShift QE project that can be extracted as standalone, reusable components for Ginkgo tests, promoting modularity and reusability.",
-          "Provide a Ginkgo `Describe` and `It` block template for `{element_type}` `{name}` in the OpenShift QE project, designed to accommodate new test scenarios and modular expansion.",
-          "Recommend new Ginkgo test scenarios for `{element_type}` `{name}` in the OpenShift QE project, ensuring modular integration with minimal changes to existing code.",
-          "Create a Ginkgo test template using table-driven tests for `{element_type}` `{name}` in the OpenShift QE project, optimizing for modularity and covering a range of input scenarios."
+          "Suggest a refactoring approach for `{element_type}` `{name}` in the OpenShift QE project to expand and build new Ginkgo tests using `Describe` and `It` blocks, enhancing modularity and maintainability. Exclude imports if they are not necessary.",
+          "Identify specific sections in `{element_type}` `{name}` within the OpenShift QE project that can be expanded into standalone, reusable components for new Ginkgo tests, incorporating `Describe` and `It` blocks for broader test coverage. Only include imports if relevant.",
+          "Provide a Ginkgo `Describe` and `It` block template derived from `{element_type}` `{name}` in the OpenShift QE project to support new test scenarios and modular expansion. Do not include imports if they are not needed.",
+          "Recommend new Ginkgo test scenarios that extend `{element_type}` `{name}` in the OpenShift QE project, using `Describe` and `It` blocks to ensure modular integration with minimal changes to the existing code. Skip imports if they are unnecessary.",
+          "Create a Ginkgo test template using `Describe` and `It` blocks and table-driven tests that build on `{element_type}` `{name}` in the OpenShift QE project, optimizing for modularity and covering a range of test scenarios. Exclude imports if they are not required."
         ]
       }
     },
@@ -71,11 +71,11 @@
       },
       "Ginkgo Test Case Expansion and Reusability": {
         "ginkgo_test_case_expansion_reusability_options": [
-          "Suggest ways for `{element_type}` `{name}` in the OpenShift QE project to expand test coverage by reusing functions or utilities in Ginkgo, enhancing modularity and reusability.",
-          "Identify parts of `{element_type}` `{name}` in the OpenShift QE project that could leverage existing validations to create new Ginkgo test cases for extended functionality.",
-          "Recommend structural adjustments in `{element_type}` `{name}` within the OpenShift QE project to facilitate easier Ginkgo test case expansion and modular integration.",
-          "Outline a Ginkgo `It` block and reusable helper functions for `{element_type}` `{name}` in the OpenShift QE project, supporting new dependencies and increasing test flexibility.",
-          "Provide a Ginkgo test snippet for `{element_type}` `{name}` in the OpenShift QE project to validate error handling and complex workflows, ensuring robust test coverage."
+          "Suggest ways for `{element_type}` `{name}` in the OpenShift QE project to expand test coverage by reusing functions or utilities with `Describe` and `It` blocks in Ginkgo, enhancing modularity and reusability. Exclude imports if they are not needed.",
+          "Identify parts of `{element_type}` `{name}` in the OpenShift QE project that could leverage existing validations to create new Ginkgo test cases using `Describe` and `It` blocks for extended functionality. Only include imports if relevant.",
+          "Recommend structural adjustments in `{element_type}` `{name}` within the OpenShift QE project to facilitate easier Ginkgo test case expansion and modular integration using `Describe` and `It` blocks. Do not display imports if they are unnecessary.",
+          "Outline a Ginkgo `Describe` and `It` block with reusable helper functions for `{element_type}` `{name}` in the OpenShift QE project, supporting new dependencies and increasing test flexibility. Skip imports if none are required.",
+          "Provide a Ginkgo test snippet using `Describe` and `It` blocks for `{element_type}` `{name}` in the OpenShift QE project to validate error handling and complex workflows, ensuring robust test coverage. Exclude imports if they are not used."
         ]
       }
     },
