@@ -32,7 +32,7 @@ def parse_markdown(file_path, max_level=3):
             current_section = {
                 "title": "",
                 "description": "",
-                "element_type": f"level-{level}",
+                "element_type": "heading",
                 "code": False  # Default to False; will update if code is found
             }
         elif token.type == "inline" and current_section:

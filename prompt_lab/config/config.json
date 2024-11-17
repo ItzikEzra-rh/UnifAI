@@ -1,7 +1,7 @@
 {
   "storage_type": "file",
   "input": {
-    "file_path": "/home/instruct/Cluster_Infra_Mapping_4.json"
+    "file_path": "/home/instruct/serverless_Workflows_parsed.json"
   },
   "output": {
     "directory": "data/"
