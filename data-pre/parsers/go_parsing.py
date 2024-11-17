@@ -25,9 +25,10 @@ def get_file_paths_with_suffixes(folder_path, suffixes):
 
     return file_paths
 
-go_folder = '/home/cloud-user/Projects/openshift-tests-private'
+go_folder = '/home/cloud-user/Projects/tag-integration-with-eco-go/eco-gotests'
 go_suffixes = [".go"]
 go_files = get_file_paths_with_suffixes(go_folder, go_suffixes)
+print(f'GO_FILES len: {len(go_files)}')
 
 #########################################################################################################
 
@@ -35,17 +36,17 @@ go_files = get_file_paths_with_suffixes(go_folder, go_suffixes)
 error_count = 0
 error_paths = []
 
-# Loop through the robot files
-for path in go_files:
-    tree_sitter_parser = TreeSitterParser.create_parser(file_path=path)
-    node, _ = tree_sitter_parser.get_root_node()
+# # Loop through all the files
+# for path in go_files:
+#     tree_sitter_parser = TreeSitterParser.create_parser(file_path=path)
+#     node, _ = tree_sitter_parser.get_root_node()
     
-    # Check if the node contains an error
-    # if tree_sitter_parser.is_error_node(node):
-    #     error_count += 1
-    #     error_paths.append(path)
+#     # Check if the node contains an error
+#     if tree_sitter_parser.is_error_node(node):
+#         error_count += 1
+#         error_paths.append(path)
 
-# Print the total count and the paths with errors
+# # Print the total count and the paths with errors
 # print(f"Total number of files with errors: {error_count}")
 # print("Paths with errors:")
 # for error_path in error_paths:
@@ -57,7 +58,7 @@ counter = 0
 
 for path in go_files:
     print(f"Current path:{path}")
-    realtive_file_path = path.replace("/home/cloud-user/Projects/openshift-tests-private/", "", 1)
+    realtive_file_path = path.replace("/home/cloud-user/Projects/tag-integration-with-eco-go/eco-gotests/", "", 1)
     tree_sitter_parser = TreeSitterParser.create_parser(file_path=path, realtive_path=realtive_file_path)
     project_entire_file_mapping = [tree_sitter_parser.enitre_file_parsing(project_file_names_mapping)]
     project_file_functions_mapping = tree_sitter_parser.functions_parsing()
@@ -71,6 +72,6 @@ for path in go_files:
         print(f"Failed to update with: {e}")
 
 json_formatted_str = json.dumps(project_files_mapping, indent=2)
-write_to_file(json_formatted_str, filename='Cluster_Infra_Mapping.json')
+write_to_file(json_formatted_str, filename='Eco_gotests_Mapping.json')
 # print(counter)
 # print(json_formatted_str)
