@@ -1,7 +1,7 @@
-
 import json
-from qa_scoring_system import QAScoringSystem
-from config import Config
+
+from general.qa_scoring_system import QAScoringSystem
+from general.config import Config
 from logger import logger
 
 def main() -> None:

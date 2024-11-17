@@ -2,8 +2,9 @@ import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
-from prompt_formatter import PromptFormatter
-from config import Config
+
+from general.prompt_formatter import PromptFormatter
+from general.config import Config
 from logger import logger
 
 import requests
