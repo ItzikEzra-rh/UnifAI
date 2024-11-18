@@ -17,6 +17,52 @@ class GoParser(TreeSitterParser):
         except:
             return None
         
+    # Helper function to get all the imports of the function
+    def get_all_imports(self, root_node):
+        all_imports = []
+        import_decl = self.get_declaration_node(root_node, "import_declaration")
+        if import_decl:
+            for child in import_decl.children:
+                if child.type == "import_spec_list":
+                    for import_spec_list_child in child.children:
+                        if import_spec_list_child.type == "import_spec":
+                            all_imports.append(import_spec_list_child.text.decode("utf-8"))
+        return all_imports
+    
+    def get_all_structs(self, root_node):
+        """Helper function to get all struct definitions in the file."""
+        all_structs = []
+        for child in root_node.children:
+            if child.type == "type_declaration":
+                for spec in child.children:
+                    if spec.type == "type_spec":
+                        type_node = spec.child_by_field_name("type")
+                        if type_node and type_node.type == "struct_type":
+                            struct_name = spec.child_by_field_name("name").text.decode("utf-8")
+                            all_structs.append(struct_name)
+        return all_structs
+
+    def get_all_interfaces(self, root_node):
+        """Helper function to get all interface definitions in the file."""
+        all_interfaces = []
+        for child in root_node.children:
+            if child.type == "type_declaration":
+                for spec in child.children:
+                    if spec.type == "type_spec":
+                        type_node = spec.child_by_field_name("type")
+                        if type_node and type_node.type == "interface_type":
+                            interface_name = spec.child_by_field_name("name").text.decode("utf-8")
+                            all_interfaces.append(interface_name)
+        return all_interfaces
+
+    def get_used_types(self, code, all_types):
+        """Helper function to find used types (structs or interfaces) in a piece of code."""
+        used_types = []
+        for type_name in all_types:
+            if re.search(r'\b' + re.escape(type_name) + r'\b', code):
+                used_types.append(type_name)
+        return used_types
+        
     def enitre_file_parsing(self, go_file_names_mapping):
         def get_file_package(root_node):
             """Helper function to get the code of all the imports in a go file."""
@@ -37,7 +83,7 @@ class GoParser(TreeSitterParser):
             used_imports = get_import_node_code(node)
             package_name = get_file_package(node)
             return {
-                "type": file_type,
+                "element_type": file_type,
                 "name": os.path.basename(self.realtive_path),
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",  # Mapped resource imports
                 "file_location": f"File Location: {self.realtive_path}",
@@ -59,18 +105,6 @@ class GoParser(TreeSitterParser):
         def get_package_name(node):
             package_node = self.get_declaration_node(node, "package_clause")
             return package_node.text.decode("utf-8").split()[-1] if package_node else ""
-
-        # Helper function to get all the imports of the function
-        def get_all_imports(root_node):
-            all_imports = []
-            import_decl = self.get_declaration_node(root_node, "import_declaration")
-            if import_decl:
-                for child in import_decl.children:
-                    if child.type == "import_spec_list":
-                        for import_spec_list_child in child.children:
-                            if import_spec_list_child.type == "import_spec":
-                                all_imports.append(import_spec_list_child.text.decode("utf-8"))
-            return all_imports
         
         # Helper function to get relevant imports for a function
         def get_relevant_imports(func_code, all_imports):
@@ -105,8 +139,10 @@ class GoParser(TreeSitterParser):
                     used_global_vars[var_name] = var_value
             return used_global_vars
 
-        # Get all imports
-        all_imports = get_all_imports(root_node)
+        # Get all imports/structs/interfaces
+        all_imports = self.get_all_imports(root_node)
+        all_structs = self.get_all_structs(root_node)
+        all_interfaces = self.get_all_interfaces(root_node)
 
         # Get global variables
         global_vars = get_global_vars(root_node)
@@ -116,16 +152,20 @@ class GoParser(TreeSitterParser):
 
         # Find all function declarations
         for child in root_node.children:
-            if child.type == "function_declaration":
+            if child.type == "function_declaration" or child.type == "method_declaration":
                 func_name = child.child_by_field_name("name").text.decode("utf-8")
                 func_code = child.text.decode("utf-8")
                 
                 used_imports = get_relevant_imports(func_code, all_imports)
+                used_structs = self.get_used_types(func_code, all_structs)
+                used_interfaces = self.get_used_types(func_code, all_interfaces)
                 global_vars = get_used_global_vars(func_code, global_vars)
                 function = {
-                    "type": "function",
+                    "element_type": "function",
                     "name": func_name,
                     "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
+                    "structs": f"Structs Used: {used_structs}" if len(used_structs) > 0 else "",
+                    "interfaces": f"Interfaces Used: {used_interfaces}" if len(used_interfaces) > 0 else "",
                     "file_location": f"File Location: {self.realtive_path}",
                     "code": func_code,
                     # "file_code": content,
@@ -146,18 +186,6 @@ class GoParser(TreeSitterParser):
             """Helper function to get package name"""
             package_node = self.get_declaration_node(node, "package_clause")
             return package_node.text.decode("utf-8").split()[-1] if package_node else ""
-
-        def get_all_imports(root_node):
-            """Helper function to get all imports"""
-            all_imports = []
-            import_decl = self.get_declaration_node(root_node, "import_declaration")
-            if import_decl:
-                for child in import_decl.children:
-                    if child.type == "import_spec_list":
-                        for import_spec_list_child in child.children:
-                            if import_spec_list_child.type == "import_spec":
-                                all_imports.append(import_spec_list_child.text.decode("utf-8"))
-            return all_imports
 
         def get_relevant_imports(test_code, all_imports):
             """Helper function to get relevant imports for a test"""
@@ -239,7 +267,9 @@ class GoParser(TreeSitterParser):
             return describe_blocks, it_blocks
 
         # Get initial data
-        all_imports = get_all_imports(root_node)
+        all_imports = self.get_all_imports(root_node)
+        all_structs = self.get_all_structs(root_node)
+        all_interfaces = self.get_all_interfaces(root_node)
         global_vars = get_global_vars(root_node)
         package_name = get_package_name(root_node)
 
@@ -260,12 +290,16 @@ class GoParser(TreeSitterParser):
                         break
             
             used_imports = get_relevant_imports(test_code, all_imports)
+            used_structs = self.get_used_types(test_code, all_structs)
+            used_interfaces = self.get_used_types(test_code, all_interfaces)
             global_vars = get_used_global_vars(test_code, global_vars)
             tags = extract_tags(describe_block)
             test = {
-                "type": "test",
+                "element_type": "test",
                 "name": test_name,
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
+                "structs": f"Structs Used: {used_structs}" if len(used_structs) > 0 else "",
+                "interfaces": f"Interfaces Used: {used_interfaces}" if len(used_interfaces) > 0 else "",
                 "file_location": f"File Location: {self.realtive_path}",
                 "code": test_code,
                 # "file_code": content,
@@ -291,7 +325,7 @@ class GoParser(TreeSitterParser):
             
             used_imports = get_relevant_imports(test_case_code, all_imports)
             test_case = {
-                "type": "test case",
+                "element_type": "test case",
                 "name": test_case_name,
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "" ,
                 "file_location": f"File Location: {self.realtive_path}",
