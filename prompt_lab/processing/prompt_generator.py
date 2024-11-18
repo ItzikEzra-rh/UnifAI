@@ -1,3 +1,5 @@
+import copy
+
 from jinja2 import Environment
 import random
 import string
@@ -74,19 +76,30 @@ class PromptGenerator:
 
     @staticmethod
     def _format_context(context_template, element):
-        # Parse the template to find placeholders
+        """
+        Format the context template by ensuring each placeholder in the template
+        is formatted only once.
+        """
+        element_copied = copy.deepcopy(element)
+
+        # Parse placeholders from the template
         formatter = string.Formatter()
         placeholders = [field_name for _, field_name, _, _ in formatter.parse(context_template) if field_name]
 
-        # Fill in missing keys with defaults and append "\n data" to each placeholder value
+        # Format each placeholder value if not already formatted
         for placeholder in placeholders:
-            if not element.get(placeholder):  # Check if placeholder is missing or its value is empty
-                element[placeholder] = ""
+            if element_copied.get(placeholder):
+                value = element_copied[placeholder]
+                # Check if the value is a string and starts with the formatted prefix
+                if isinstance(value, str) and value.startswith(f"{placeholder}:\n"):
+                    continue  # Already formatted, skip
+                # Format and update the placeholder
+                element_copied[placeholder] = f"{placeholder}:\n{value}"
             else:
-                element[placeholder] = f"{placeholder}:\n{element[placeholder]}\n"
+                element_copied[placeholder] = ""  # Default for missing placeholders
 
         # Format the context
-        return context_template.format(**element)
+        return context_template.format(**element_copied)
 
     def _generate_random_input(self, template_questions, element_data):
         """
