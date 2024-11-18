@@ -114,25 +114,44 @@ class GEvalQASystem:
 
 
 from deepeval.test_case import LLMTestCase
-from deepeval.metrics import (
-    AnswerRelevancyMetric,
-    HallucinationMetric,
-    FaithfulnessMetric,
-    ContextualRelevancyMetric
-)
+from deepeval.metrics import AnswerRelevancyMetric
+from deepeval.models import LLMModel
 from transformers import AutoTokenizer
 
+class VLLMModel(LLMModel):
+    """Custom VLLM model implementation for DeepEval."""
+    
+    def __init__(self, api_url: str = "http://localhost:8000/v1/completions"):
+        self.api_url = api_url
+        
+    async def generate(self, prompt: str) -> str:
+        """Generate text using local VLLM service."""
+        try:
+            response = requests.post(
+                self.api_url,
+                json={
+                    "prompt": prompt,
+                    "max_tokens": 512,
+                    "temperature": 0.7,
+                    "stop": None
+                }
+            )
+            response.raise_for_status()
+            return response.json()["choices"][0]["text"]
+        except Exception as e:
+            logger.error(f"VLLM API call failed: {e}")
+            raise
+
 class DeepEvalQASystem:
-    """Q&A evaluation system using DeepEval library."""
+    """Q&A evaluation system using DeepEval library with VLLM."""
 
     def __init__(self, config: Config):
         """Initialize the evaluation system."""
         self.config = config
+        self.vllm_model = VLLMModel(api_url=config.VLLM_API_URL)
+        # Initialize metrics with custom VLLM model
         self.metrics = [
-            AnswerRelevancyMetric(threshold=0.7),
-            HallucinationMetric(threshold=0.7),
-            FaithfulnessMetric(threshold=0.7),
-            ContextualRelevancyMetric(threshold=0.7)
+            AnswerRelevancyMetric(threshold=0.7, model=self.vllm_model),
         ]
 
     def create_test_case(self, element: Dict[str, Any]) -> LLMTestCase:

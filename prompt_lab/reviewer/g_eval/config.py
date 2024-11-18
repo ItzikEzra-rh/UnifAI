@@ -70,20 +70,6 @@ class Config:
             path.mkdir(parents=True, exist_ok=True)
 
 ################################################################################################################
-
-from deepeval import configure_models
-
-configure_models({
-    "llama": {
-        "type": "local",  # or "api" depending on your setup
-        "model": "meta-llama/Llama-3.1-8B-Instruct",
-        "parameters": {
-            "temperature": 0.3,
-            "max_tokens": 4
-        }
-    }
-})
-
 @dataclass
 class GEvalConfig:
     """Configuration parameters."""
