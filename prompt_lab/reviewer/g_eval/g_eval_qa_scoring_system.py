@@ -130,7 +130,7 @@ class BaseLLMModel(ABC):
 class VLLMModel(BaseLLMModel):
     """Custom VLLM model implementation."""
     
-    def __init__(self, api_url: str = "http://localhost:8000/v1/completions"):
+    def __init__(self, api_url: str = "http://0.0.0.0:8000/v1/completions"):
         self.api_url = api_url
         
     async def generate(self, prompt: str) -> str:
