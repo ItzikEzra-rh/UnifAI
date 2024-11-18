@@ -113,10 +113,9 @@ class GEvalQASystem:
             raise
 
 
-from deepeval import evaluate
-from deepeval.metrics import Accuracy, Relevance, Completeness
-from deepeval.test_case import LLMTestCase
-from transformers import AutoTokenize
+from deepeval import TestCase
+from deepeval.metrics import HallucinationMetric, AnswerRelevancyMetric, ContextRelevancyMetric
+from transformers import AutoTokenizer
 
 class DeepEvalQASystem:
     """Q&A evaluation system using DeepEval library."""
@@ -125,23 +124,12 @@ class DeepEvalQASystem:
         """Initialize the evaluation system."""
         self.config = config
         self.metrics = [
-            Accuracy(threshold=0.7),
-            Relevance(threshold=0.7),
-            Completeness(threshold=0.7)
+            HallucinationMetric(threshold=0.7),
+            AnswerRelevancyMetric(threshold=0.7),
+            ContextRelevancyMetric(threshold=0.7)
         ]
-        
-        # Custom model configuration for DeepEval
-        # Note: This requires proper setup in DeepEval configuration
-        self.model_config = {
-            "model": self.config.MODEL_NAME,
-            "type": "local",  # or "api" depending on your setup
-            "parameters": {
-                "temperature": 0.3,
-                "max_tokens": 4
-            }
-        }
 
-    def create_test_case(self, element: Dict[str, Any]) -> LLMTestCase:
+    def create_test_case(self, element: Dict[str, Any]) -> TestCase:
         """Create a DeepEval test case from an element."""
         original_data = element.get("original_data", {})
         
@@ -157,7 +145,7 @@ class DeepEvalQASystem:
             f"```go\n{original_data.get('code', 'No code provided')}\n```"
         )
 
-        return LLMTestCase(
+        return TestCase(
             input=element.get("input", ""),
             actual_output=element.get("output", ""),
             context=context,
@@ -174,11 +162,10 @@ class DeepEvalQASystem:
         
         try:
             # Run evaluation with all metrics
-            results = await evaluate(
-                test_case,
-                metrics=self.metrics,
-                model=self.model_config
-            )
+            results = []
+            for metric in self.metrics:
+                result = await metric.measure(test_case)
+                results.append(result)
             
             # Calculate average score across all metrics
             total_score = sum(result.score for result in results)
