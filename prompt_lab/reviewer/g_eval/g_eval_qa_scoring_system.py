@@ -117,6 +117,9 @@ from deepeval.test_case import LLMTestCase
 from deepeval.metrics import BaseMetric
 from transformers import AutoTokenizer
 
+# Initialize the tokenizer
+tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.1-8B-Instruct")
+
 # Create our own base model class
 class BaseLLMModel(ABC):
     """Base class for LLM models."""
@@ -133,18 +136,16 @@ class VLLMModel(BaseLLMModel):
     def __init__(self, api_url: str = "http://0.0.0.0:8000/v1/completions"):
         self.api_url = api_url
         
-    async def generate(self, prompt: str) -> str:
-        """Generate text using local VLLM service."""
+    async def generate(self, messages: List[Dict[str, str]]) -> str:
+        """Generate text using local VLLM service with chat format."""
         try:
-            response = requests.post(
-                self.api_url,
-                json={
-                    "prompt": prompt,
-                    "max_tokens": 512,
-                    "temperature": 0.7,
-                    "stop": None
-                }
-            )
+            data = {
+                "model": "meta-llama/Llama-3.1-8B-Instruct",
+                "prompt": messages,
+                "max_tokens": 6,
+                "temperature": 0.3
+            }
+            response = requests.post(self.api_url, json=data, headers={"Content-Type": "application/json"})
             response.raise_for_status()
             return response.json()["choices"][0]["text"]
         except Exception as e:
@@ -166,6 +167,7 @@ class CustomAnswerRelevancyMetric(BaseMetric):
     async def _evaluate(self, test_case: LLMTestCase) -> Dict[str, Any]:
         """Evaluate the relevancy of the answer using the VLLM model."""
         prompt = self._create_evaluation_prompt(test_case)
+        prompt_text = tokenizer.apply_chat_template(prompt, tokenize=False, add_generation_prompt=True)
         
         try:
             response = await self.model.generate(prompt)
@@ -173,8 +175,10 @@ class CustomAnswerRelevancyMetric(BaseMetric):
             # Extract score from response
             try:
                 score_line = response.split('\n')[0]
-                self.score = float(score_line.split(':')[1].strip())
-                self.reason = '\n'.join(response.split('\n')[1:])
+                score_value = float(score_line)  # Expecting just a number from 1-10
+                # Convert 1-10 score to 0-1 range
+                self.score = score_value / 10.0
+                self.reason = f"Model provided score: {score_value}/10"
                 
                 # Ensure score is between 0 and 1
                 self.score = max(0.0, min(1.0, self.score))
@@ -194,19 +198,33 @@ class CustomAnswerRelevancyMetric(BaseMetric):
             "reason": self.reason
         }
     
-    def _create_evaluation_prompt(self, test_case: LLMTestCase) -> str:
-        """Create a prompt for evaluating answer relevancy."""
-        return f"""Please evaluate the relevancy and accuracy of the following answer. 
-                   Provide a score between 0.0 and 1.0, where 1.0 means perfectly relevant and accurate, 
-                   and 0.0 means completely irrelevant or inaccurate.
+    def _create_evaluation_prompt(self, test_case: LLMTestCase) -> List[Dict[str, str]]:
+        """Create a prompt for evaluating answer relevancy in chat format."""
+        system_message = (
+            "You are a reviewer. Rate the output based on the following criteria, using a scale from 1 to 10. "
+            "Respond with only a single number from 1 to 10, with no additional text or punctuation.\n\n"
+            "Relevance: Assess how well the output addresses the input request. A high score reflects a strong, "
+            "meaningful connection between the input and output.\n\n"
+            "Absence of Hallucinations: Ensure the output does not contain irrelevant or invented information. "
+            "This includes:\n"
+            "- Repetitive phrases or nonsensical strings\n"
+            "- Incomplete or trailing sentences\n"
+            "- Sections of text that do not contribute meaningfully to the requested answer\n"
+            "Any presence of hallucinated content should result in a failing score.\n\n"
+            "Quality: Evaluate the clarity, coherence, and completeness of the output."
+        )
 
-                   Context: {test_case.context}
-                   Question: {test_case.input}
-                   Actual Answer: {test_case.actual_output}
+        evaluation_content = (
+            f"Context: {test_case.context}\n"
+            f"Question: {test_case.input}\n"
+            f"Answer: {test_case.actual_output}\n\n"
+            f"Your score (1-10):"
+        )
 
-                   Please respond in the following format:
-                   Score: [score between 0.0 and 1.0]
-                   Reason: [detailed explanation of the score]"""
+        return [
+            {"role": "system", "content": system_message},
+            {"role": "user", "content": evaluation_content}
+        ]
 
 class DeepEvalQASystem:
     """Q&A evaluation system using DeepEval library with VLLM."""
@@ -224,27 +242,20 @@ class DeepEvalQASystem:
         """Create a DeepEval test case from an element."""
         original_data = element.get("original_data", {})
         
-        # Format context
-        context = (
-            f"Here is detailed information about the {element['element_type']} "
+        context = [
+            f"Information about {element['element_type']} "
             f"{original_data.get('name', 'unnamed')}:\n\n"
-            f"{original_data.get('file_location', 'No location provided')}\n\n"
-            f"{original_data.get('package', 'No package information')}\n\n"
-            f"{original_data.get('imports', 'No imports')}\n\n"
-            f"{original_data.get('global_vars', 'No global variables')}\n\n"
-            f"Code for {element['element_type']} {original_data.get('name', 'unnamed')}: \n"
-            f"```go\n{original_data.get('code', 'No code provided')}\n```"
-        )
+            f"Location: {original_data.get('file_location', 'No location provided')}\n"
+            f"Package: {original_data.get('package', 'No package information')}\n"
+            f"Imports: {original_data.get('imports', 'No imports')}\n"
+            f"Global Variables: {original_data.get('global_vars', 'No global variables')}\n\n"
+            f"Code:\n```go\n{original_data.get('code', 'No code provided')}\n```"
+        ]
 
         return LLMTestCase(
             input=element.get("input", ""),
             actual_output=element.get("output", ""),
-            context=context,
-            metadata={
-                "element_type": element.get("element_type", ""),
-                # "group": element.get("group", ""),
-                # "category": element.get("category", "")
-            }
+            context=context
         )
 
     async def evaluate_element(self, element: Dict[str, Any]) -> Dict[str, Any]:

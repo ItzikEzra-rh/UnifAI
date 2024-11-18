@@ -73,7 +73,7 @@ class Config:
 @dataclass
 class GEvalConfig:
     """Configuration parameters."""
-    INPUT_FILE_PATH: Path = Path("data/Cluster_Infra_Mapping_5_processed.json")
+    INPUT_FILE_PATH: Path = Path("data/openshift-qe-dataset.json")
     PASSED_FILE_PATH: Path = Path("data/passed.json")
     FAILED_FILE_PATH: Path = Path("data/failed.json")
     VLLM_API_URL: str = "http://0.0.0.0:8000/v1/completions"
