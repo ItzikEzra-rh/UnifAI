@@ -76,5 +76,6 @@ class GEvalConfig:
     INPUT_FILE_PATH: Path = Path("data/Cluster_Infra_Mapping_5_processed.json")
     PASSED_FILE_PATH: Path = Path("data/passed.json")
     FAILED_FILE_PATH: Path = Path("data/failed.json")
-    MODEL_NAME: str = "meta-llama/Llama-3.1-8B-Instruct"
+    VLLM_API_URL: str = "http://0.0.0.0:8000/v1/completions"
+    # MODEL_NAME: str = "meta-llama/Llama-3.1-8B-Instruct"
     SCORE_THRESHOLD: float = 0.7  # 70% threshold

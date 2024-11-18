@@ -153,39 +153,46 @@ class VLLMModel(BaseLLMModel):
 
 class CustomAnswerRelevancyMetric(BaseMetric):
     """Custom implementation of answer relevancy metric using VLLM."""
-    
     def __init__(self, threshold: float = 0.7, model: BaseLLMModel = None):
-        super().__init__(threshold)
+        self.threshold = threshold
         self.model = model or VLLMModel()
-        
-    async def measure(self, test_case: LLMTestCase) -> Tuple[float, str]:
-        """
-        Measure the relevancy of the answer using the VLLM model.
-        Returns a tuple of (score, reason).
-        """
+        self.reason = None
+        self.score = 0.0
+    
+    @property
+    def name(self) -> str:
+        return "Answer Relevancy"
+    
+    async def _evaluate(self, test_case: LLMTestCase) -> Dict[str, Any]:
+        """Evaluate the relevancy of the answer using the VLLM model."""
         prompt = self._create_evaluation_prompt(test_case)
         
         try:
             response = await self.model.generate(prompt)
             
             # Extract score from response
-            # Assuming the model returns a response in format "Score: X.XX\nReason: ..."
             try:
                 score_line = response.split('\n')[0]
-                score = float(score_line.split(':')[1].strip())
-                reason = '\n'.join(response.split('\n')[1:])
+                self.score = float(score_line.split(':')[1].strip())
+                self.reason = '\n'.join(response.split('\n')[1:])
                 
                 # Ensure score is between 0 and 1
-                score = max(0.0, min(1.0, score))
+                self.score = max(0.0, min(1.0, self.score))
                 
-                return score, reason
             except (ValueError, IndexError) as e:
                 logger.error(f"Error parsing model response: {e}")
-                return 0.0, f"Error parsing response: {str(e)}"
+                self.score = 0.0
+                self.reason = f"Error parsing response: {str(e)}"
                 
         except Exception as e:
             logger.error(f"Error during measurement: {e}")
-            return 0.0, f"Error during measurement: {str(e)}"
+            self.score = 0.0
+            self.reason = f"Error during measurement: {str(e)}"
+        
+        return {
+            "score": self.score,
+            "reason": self.reason
+        }
     
     def _create_evaluation_prompt(self, test_case: LLMTestCase) -> str:
         """Create a prompt for evaluating answer relevancy."""
@@ -248,18 +255,18 @@ class DeepEvalQASystem:
             # Run evaluation with all metrics
             results = []
             for metric in self.metrics:
-                score, reason = await metric.measure(test_case)
-                results.append((score, reason))
+                result = await metric._evaluate(test_case)
+                results.append(result)
             
             # Calculate average score
-            total_score = sum(score for score, _ in results)
+            total_score = sum(result["score"] for result in results)
             avg_score = total_score / len(results)
             
             return {
                 "element": element,
                 "scores": {
-                    f"Metric_{i}": {"score": score, "reason": reason}
-                    for i, (score, reason) in enumerate(results)
+                    f"Metric_{i}": result
+                    for i, result in enumerate(results)
                 },
                 "final_score": avg_score,
                 "passed": avg_score >= self.config.SCORE_THRESHOLD
