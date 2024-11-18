@@ -112,14 +112,23 @@ class GEvalQASystem:
             logger.error(f"Error saving results to {file_path}: {e}")
             raise
 
-
+from abc import ABC, abstractmethod
 from deepeval.test_case import LLMTestCase
 from deepeval.metrics import AnswerRelevancyMetric
-from deepeval.models import LLMModel
 from transformers import AutoTokenizer
 
-class VLLMModel(LLMModel):
-    """Custom VLLM model implementation for DeepEval."""
+# Create our own base model class
+class BaseLLMModel(ABC):
+    """Base class for LLM models."""
+    
+    @abstractmethod
+    async def generate(self, prompt: str) -> str:
+        """Generate text from the model."""
+        pass
+
+
+class VLLMModel(BaseLLMModel):
+    """Custom VLLM model implementation."""
     
     def __init__(self, api_url: str = "http://localhost:8000/v1/completions"):
         self.api_url = api_url
@@ -145,7 +154,7 @@ class VLLMModel(LLMModel):
 class DeepEvalQASystem:
     """Q&A evaluation system using DeepEval library with VLLM."""
 
-    def __init__(self, config: Config):
+    def __init__(self, config: GEvalConfig):
         """Initialize the evaluation system."""
         self.config = config
         self.vllm_model = VLLMModel(api_url=config.VLLM_API_URL)
