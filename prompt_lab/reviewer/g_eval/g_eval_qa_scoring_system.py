@@ -114,19 +114,25 @@ class GEvalQASystem:
 
 
 from deepeval.test_case import LLMTestCase
-from deepeval.metrics import HallucinationMetric, AnswerRelevancyMetric, ContextRelevancyMetric
+from deepeval.metrics import (
+    AnswerRelevancyMetric,
+    HallucinationMetric,
+    FaithfulnessMetric,
+    ContextualRelevancyMetric
+)
 from transformers import AutoTokenizer
 
 class DeepEvalQASystem:
     """Q&A evaluation system using DeepEval library."""
 
-    def __init__(self, config: GEvalConfig):
+    def __init__(self, config: Config):
         """Initialize the evaluation system."""
         self.config = config
         self.metrics = [
-            HallucinationMetric(threshold=0.7),
             AnswerRelevancyMetric(threshold=0.7),
-            ContextRelevancyMetric(threshold=0.7)
+            HallucinationMetric(threshold=0.7),
+            FaithfulnessMetric(threshold=0.7),
+            ContextualRelevancyMetric(threshold=0.7)
         ]
 
     def create_test_case(self, element: Dict[str, Any]) -> LLMTestCase:
