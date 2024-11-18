@@ -74,15 +74,13 @@ class PromptGenerator:
 
     @staticmethod
     def _format_context(context_template, element):
-        import string
-
         # Parse the template to find placeholders
         formatter = string.Formatter()
         placeholders = [field_name for _, field_name, _, _ in formatter.parse(context_template) if field_name]
 
         # Fill in missing keys with defaults and append "\n data" to each placeholder value
         for placeholder in placeholders:
-            if placeholder not in element:
+            if not element.get(placeholder):  # Check if placeholder is missing or its value is empty
                 element[placeholder] = ""
             else:
                 element[placeholder] = f"{placeholder}:\n{element[placeholder]}\n"

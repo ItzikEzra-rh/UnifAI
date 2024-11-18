@@ -107,9 +107,19 @@
         },
         "metadata_and_execution_context": {
           "questions": [
-            "Describe how metadata in the workflow `{name}` (e.g., annotations, descriptions) aligns with the workflow’s goals.",
-            "Explain the relationship between the execution context defined in properties and its implementation in the workflow code.",
-            "Discuss how the workflow `{name}` properties ensure the workflow’s portability across environments."
+            "Describe how metadata in the workflow `{name}` (e.g., annotations, descriptions) aligns with the workflow’s goals, and how the properties file contributes to this alignment.",
+            "Explain the relationship between the execution context defined in the properties file and its implementation in the workflow code.",
+            "Discuss how the properties file ensures the workflow `{name}` remains portable and adaptable across different environments."
+          ],
+          "condition": "{{ element.properties != '' }}"
+        },
+        "properties_secret_relation_to_workflow": {
+          "questions": [
+            "Explain how properties defined in the properties file are referenced using `$SECRET` in the workflow `{name}` to dynamically configure execution and behavior.",
+            "Identify specific sections of the workflow `{name}` code where `$SECRET` is used to access properties defined in the properties file, and explain their role in influencing workflow operations.",
+            "Discuss how the workflow `{name}` uses `$SECRET` to dynamically integrate property values from the properties file, ensuring flexibility and adaptability during execution.",
+            "Analyze the relationship between the properties defined in the properties file and their usage through `$SECRET` in the workflow `{name}`, explaining how this interaction supports runtime configurations and aligns with workflow goals.",
+            "Provide examples from the workflow `{name}` showing how specific properties defined in the properties file are accessed via `$SECRET`, and explain how changes to these properties directly impact workflow behavior and functionality."
           ],
           "condition": "{{ element.properties != '' }}"
         }
@@ -139,21 +149,20 @@
       "specs_and_workflow_relationship": {
         "specs_understanding": {
           "questions": [
-            "Break down the key elements of the specifications referenced in the workflow `{name}`, explaining their purpose and relevance.",
-            "Discuss how the specifications ensure interoperability between the workflow `{name}` and various platforms or tools.",
-            "Explain how the rules defined in the specifications guide the structure, states, and transitions in the workflow `{name}`.",
-            "Analyze the specifications used in `{name}` to identify how they define error handling, retries, and data transformations.",
-            "Describe the role of the specifications in ensuring that the workflow `{name}` is portable, scalable, and maintainable across environments."
+            "Break down the core components of the specs files located in the `specs/` directory and referenced in the workflow `{name}`, detailing their structure, purpose, and how they define the APIs or services that the workflow interacts with.",
+            "Explain how the specs files (with paths starting in `specs/`) referenced in the workflow `{name}` define interoperability standards for the specific services used by the workflow, ensuring seamless integration across platforms and tools.",
+            "Discuss the rules and conventions outlined in the specs files (found in `specs/`) that are relevant to the specific services used in the workflow `{name}`, including request/response schemas, error handling protocols, and security requirements.",
+            "Analyze how the specs files located in the `specs/` directory define critical aspects such as retries, data transformations, and error codes for the specific services used in the workflow `{name}`, and discuss their relevance to ensuring robust service interactions.",
+            "Describe the role of the specs files (found under `specs/`) in ensuring that the services used by the workflow `{name}` adhere to defined standards, supporting scalability, portability, and maintainability of those services within the workflow."
           ],
           "condition": "{{ element.specs | length > 0 }}"
         },
         "workflow_and_specs_alignment": {
           "questions": [
-            "Analyze the workflow `{name}` and explain how its design and implementation adhere to the specs' rules and principles.",
-            "Discuss how the specs shape critical aspects of the workflow `{name}`, such as state transitions, data handling, and service integrations.",
-            "Identify potential gaps or inconsistencies in the workflow `{name}` compared to the specs and suggest improvements to enhance compliance.",
-            "Explain how the workflow `{name}` incorporates specific features or constraints from the specs to ensure predictable behavior.",
-            "Discuss how adherence to the specs in the workflow `{name}` impacts its reusability and compatibility with various runtimes or tools."
+            "Explain how the workflow `{name}` utilizes the specs files located in the `specs/` directory to define interactions with APIs or services, highlighting the specific services described in those files.",
+            "Identify specific parts of the specs files within the `specs/` directory that are critical to the workflow `{name}`, and describe how these parts guide the workflow’s integration with the relevant services.",
+            "Analyze how the specs files located in the `specs/` directory influence the workflow `{name}` by defining rules for error handling, retries, and request/response formats, ensuring consistent interactions with the services described.",
+            "Describe the interaction between the workflow `{name}` and the specs files located in the `specs/` directory, focusing on how the workflow dynamically applies the rules or constraints defined in the specs files to achieve its objectives for specific services."
           ],
           "condition": "{{ element.specs | length > 0 }}"
         }
@@ -170,11 +179,11 @@
         },
         "property_and_metadata_gaps": {
           "questions": [
-            "Assess the workflow properties in `{name}` to identify any missing or incomplete metadata that might limit its functionality.",
-            "Evaluate the annotations and descriptions in the workflow `{name}` and suggest improvements to ensure clarity and alignment with the specification.",
-            "Discuss whether the workflow `{name}` properties adequately define execution constraints, such as timeouts or retries, and suggest enhancements.",
-            "Identify any gaps in the configuration of workflow properties in `{name}` that could hinder deployment or portability.",
-            "Analyze the metadata in `{name}` and determine if additional information is needed to better document or manage the workflow."
+            "Assess the properties defined in the properties file of the workflow `{name}` to identify any missing or incomplete entries that might limit its functionality, and explain how these properties should be accessed in the workflow using `$SECRET.[PROPERTY_KEY]`.",
+            "Evaluate how the annotations and descriptions in the workflow `{name}` align with the properties in the properties file, and suggest improvements to ensure clarity and alignment with the specification. Additionally, describe how these properties are or should be referenced in the workflow using `$SECRET.[PROPERTY_KEY]`.",
+            "Discuss whether the properties in the properties file for workflow `{name}` adequately define execution constraints, such as timeouts or retries, and suggest enhancements if needed. Explain how these constraints can be implemented in the workflow using `$SECRET.[PROPERTY_KEY]`.",
+            "Identify any gaps in the configuration of the properties file for workflow `{name}` that could hinder its deployment or portability across environments. Provide examples of how missing properties should be referenced in the workflow using `$SECRET.[PROPERTY_KEY]`.",
+            "Analyze the properties file for workflow `{name}` and determine if additional entries are needed to better document or manage the workflow. Discuss how these new properties can be utilized in the workflow using `$SECRET.[PROPERTY_KEY]`."
           ],
           "condition": "{{ element.properties != '' }}"
         },
@@ -190,11 +199,11 @@
         },
         "specs_alignment_gaps": {
           "questions": [
-            "Identify areas where the workflow `{name}` does not fully align with the Serverless Workflow Specification and suggest corrections.",
-            "Discuss whether the workflow `{name}` adheres to all rules defined in the specification, and highlight any gaps in compliance.",
-            "Evaluate the workflow `{name}` to determine if additional features or constraints from the specification could enhance its functionality.",
-            "Analyze the implementation of the workflow `{name}` and identify areas where adherence to the specification could be improved.",
-            "Provide recommendations to close any gaps in `{name}` that may hinder its interoperability or compliance with the specification."
+            "Identify areas where the workflow `{name}` does not fully align with the Serverless Workflow Specification, particularly in its use of the specs files located in the `specs/` directory, and suggest corrections.",
+            "Discuss whether the workflow `{name}` adheres to all rules defined in the specification and the referenced specs files in the `specs/` directory, highlighting any gaps in compliance for the services it integrates with.",
+            "Evaluate the workflow `{name}` to determine if additional features or constraints from the specification or specs files in the `specs/` directory could enhance its functionality, particularly for its service interactions.",
+            "Analyze the implementation of the workflow `{name}` and identify areas where adherence to the specification and proper utilization of specs files in the `specs/` directory could be improved, ensuring better integration with defined services.",
+            "Provide recommendations to close any gaps in `{name}` that may hinder its interoperability or compliance with the specification and the specs files in the `specs/` directory, particularly for its service-oriented operations."
           ],
           "condition": "{{ element.specs | length > 0 }}"
         }
