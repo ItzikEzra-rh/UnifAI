@@ -68,3 +68,27 @@ class Config:
         """Ensure paths exist."""
         for path in [self.INPUT_FILE_PATH.parent, self.PASSED_FILE_PATH.parent, self.FAILED_FILE_PATH.parent]:
             path.mkdir(parents=True, exist_ok=True)
+
+################################################################################################################
+
+from deepeval import configure_models
+
+configure_models({
+    "llama": {
+        "type": "local",  # or "api" depending on your setup
+        "model": "meta-llama/Llama-3.1-8B-Instruct",
+        "parameters": {
+            "temperature": 0.3,
+            "max_tokens": 4
+        }
+    }
+})
+
+@dataclass
+class GEvalConfig:
+    """Configuration parameters."""
+    INPUT_FILE_PATH: Path = Path("data/Cluster_Infra_Mapping_5_processed.json")
+    PASSED_FILE_PATH: Path = Path("data/passed.json")
+    FAILED_FILE_PATH: Path = Path("data/failed.json")
+    MODEL_NAME: str = "meta-llama/Llama-3.1-8B-Instruct"
+    SCORE_THRESHOLD: float = 0.7  # 70% threshold

@@ -30,6 +30,30 @@ def main() -> None:
         logger.error(f"An error occurred: {e}")
         raise
 
+###############################################################################################################################################
+
+import asyncio
+
+from g_eval.g_eval_qa_scoring_system import DeepEvalQASystem
+from g_eval.config import GEvalConfig
+
+async def deepeval_main() -> None:
+    """Main function to run the DeepEval-based evaluation system."""
+    try:
+        config = GEvalConfig()
+        eval_system = DeepEvalQASystem(config)
+
+        # Load input data
+        with config.INPUT_FILE_PATH.open('r') as f:
+            elements = json.load(f)
+
+        # Process elements
+        await eval_system.process_elements(elements)
+
+    except Exception as e:
+        logger.error(f"An error occurred: {e}")
+        raise
 
 if __name__ == "__main__":
-    main()
+    # main()
+    asyncio.run(deepeval_main())

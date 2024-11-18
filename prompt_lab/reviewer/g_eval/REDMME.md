@@ -19,3 +19,18 @@ Dictionary structured which provide a specific scoring question for each element
 Each question is designed to elicit a rating from 1 to 100, based on the thoroughness and correctness of the answer in relation to each unique prompt.
 Each entry in scoring_questions represents a detailed scoring prompt designed to accurately assess the correctness of an answer in terms
 of purpose, clarity, modularity, and reusability specific to each question type.
+
+** Deepeval overview **
+
+1. DeepEval provides pre-implemented metrics (Accuracy, Relevance, Completeness, etc.)
+2. Metrics are thoroughly tested and maintained
+3. Easier to add new metrics by extending DeepEval's base classes
+4. DeepEval provides a structured testing framework with LLMTestCase
+5. Better handling of test cases and evaluation results
+6. Built-in support for async evaluation
+7. DeepEval handles model interactions more robustly
+8. Better support for different model types (API, local)
+9. Built-in caching and optimization
+10. Easier to add custom metrics by extending DeepEval's base classes
+11. Better integration with other testing tools
+12. More standardized approach to evaluation
