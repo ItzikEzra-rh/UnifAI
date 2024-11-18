@@ -170,7 +170,7 @@ class CustomAnswerRelevancyMetric(BaseMetric):
         prompt_text = tokenizer.apply_chat_template(prompt, tokenize=False, add_generation_prompt=True)
         
         try:
-            response = await self.model.generate(prompt)
+            response = await self.model.generate(prompt_text)
             
             # Extract score from response
             try:

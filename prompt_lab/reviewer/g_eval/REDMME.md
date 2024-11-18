@@ -10,6 +10,9 @@ To use this system, you can:
 2. Adjust weights and scoring thresholds as needed
 3. Add new metrics to the EvalMetric enum if required
 
+Depends on the model you are serving, you might need to use the command: huggingface-cli login (in order to be able to use tokenizer)
+E.G. if the base model you intend to use for the reviewer is "meta-llama/Llama-3.1-8B-Instruct" please make sure login to HF
+
 Run the reviewer with: (make sure you are located directly under the reviewer folder)
 $ python -m g_eval.g_eval_review
 
