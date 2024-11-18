@@ -113,7 +113,7 @@ class GEvalQASystem:
             raise
 
 
-from deepeval import TestCase
+from deepeval.test_case import LLMTestCase
 from deepeval.metrics import HallucinationMetric, AnswerRelevancyMetric, ContextRelevancyMetric
 from transformers import AutoTokenizer
 
@@ -129,7 +129,7 @@ class DeepEvalQASystem:
             ContextRelevancyMetric(threshold=0.7)
         ]
 
-    def create_test_case(self, element: Dict[str, Any]) -> TestCase:
+    def create_test_case(self, element: Dict[str, Any]) -> LLMTestCase:
         """Create a DeepEval test case from an element."""
         original_data = element.get("original_data", {})
         
@@ -145,7 +145,7 @@ class DeepEvalQASystem:
             f"```go\n{original_data.get('code', 'No code provided')}\n```"
         )
 
-        return TestCase(
+        return LLMTestCase(
             input=element.get("input", ""),
             actual_output=element.get("output", ""),
             context=context,
