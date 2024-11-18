@@ -2,7 +2,7 @@ import json
 import requests
 
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from transformers import AutoTokenizer
 
 from logger import logger
@@ -114,7 +114,7 @@ class GEvalQASystem:
 
 from abc import ABC, abstractmethod
 from deepeval.test_case import LLMTestCase
-from deepeval.metrics import AnswerRelevancyMetric
+from deepeval.metrics import BaseMetric
 from transformers import AutoTokenizer
 
 # Create our own base model class
@@ -151,6 +151,56 @@ class VLLMModel(BaseLLMModel):
             logger.error(f"VLLM API call failed: {e}")
             raise
 
+class CustomAnswerRelevancyMetric(BaseMetric):
+    """Custom implementation of answer relevancy metric using VLLM."""
+    
+    def __init__(self, threshold: float = 0.7, model: BaseLLMModel = None):
+        super().__init__(threshold)
+        self.model = model or VLLMModel()
+        
+    async def measure(self, test_case: LLMTestCase) -> Tuple[float, str]:
+        """
+        Measure the relevancy of the answer using the VLLM model.
+        Returns a tuple of (score, reason).
+        """
+        prompt = self._create_evaluation_prompt(test_case)
+        
+        try:
+            response = await self.model.generate(prompt)
+            
+            # Extract score from response
+            # Assuming the model returns a response in format "Score: X.XX\nReason: ..."
+            try:
+                score_line = response.split('\n')[0]
+                score = float(score_line.split(':')[1].strip())
+                reason = '\n'.join(response.split('\n')[1:])
+                
+                # Ensure score is between 0 and 1
+                score = max(0.0, min(1.0, score))
+                
+                return score, reason
+            except (ValueError, IndexError) as e:
+                logger.error(f"Error parsing model response: {e}")
+                return 0.0, f"Error parsing response: {str(e)}"
+                
+        except Exception as e:
+            logger.error(f"Error during measurement: {e}")
+            return 0.0, f"Error during measurement: {str(e)}"
+    
+    def _create_evaluation_prompt(self, test_case: LLMTestCase) -> str:
+        """Create a prompt for evaluating answer relevancy."""
+        return f"""Please evaluate the relevancy and accuracy of the following answer. 
+                   Provide a score between 0.0 and 1.0, where 1.0 means perfectly relevant and accurate, 
+                   and 0.0 means completely irrelevant or inaccurate.
+
+                   Context: {test_case.context}
+                   Question: {test_case.input}
+                   Actual Answer: {test_case.actual_output}
+
+                   Please respond in the following format:
+                   Score: [score between 0.0 and 1.0]
+                   Reason: [detailed explanation of the score]"""
+
 class DeepEvalQASystem:
     """Q&A evaluation system using DeepEval library with VLLM."""
 
@@ -160,7 +210,7 @@ class DeepEvalQASystem:
         self.vllm_model = VLLMModel(api_url=config.VLLM_API_URL)
         # Initialize metrics with custom VLLM model
         self.metrics = [
-            AnswerRelevancyMetric(threshold=0.7, model=self.vllm_model),
+            CustomAnswerRelevancyMetric(threshold=0.7, model=self.vllm_model),
         ]
 
     def create_test_case(self, element: Dict[str, Any]) -> LLMTestCase:
@@ -198,18 +248,18 @@ class DeepEvalQASystem:
             # Run evaluation with all metrics
             results = []
             for metric in self.metrics:
-                result = await metric.measure(test_case)
-                results.append(result)
+                score, reason = await metric.measure(test_case)
+                results.append((score, reason))
             
-            # Calculate average score across all metrics
-            total_score = sum(result.score for result in results)
+            # Calculate average score
+            total_score = sum(score for score, _ in results)
             avg_score = total_score / len(results)
             
             return {
                 "element": element,
                 "scores": {
-                    metric.__class__.__name__: result.score
-                    for metric, result in zip(self.metrics, results)
+                    f"Metric_{i}": {"score": score, "reason": reason}
+                    for i, (score, reason) in enumerate(results)
                 },
                 "final_score": avg_score,
                 "passed": avg_score >= self.config.SCORE_THRESHOLD
