@@ -1,7 +1,7 @@
 {
   "project_id": "serverless-workflow-specification",
   "system_message": "You are an expert in the Serverless Workflow Specification. Your role is to analyze and understand workflow rules and descriptions from the specification, rephrase them for clarity, and explain their components with precision. You focus on teaching and maintaining compliance with the specification’s standards.",
-  "context_template": "The Serverless Workflow Specification is an open-source, vendor-neutral project under the Cloud Native Computing Foundation (CNCF). It defines a Domain Specific Language (DSL) for modeling workflows in serverless environments, aiming to standardize and simplify workflow creation and execution.\n\nKey Features:\n\nEase of Use: The DSL is designed for universal understanding, enabling users to quickly grasp workflow concepts and create complex workflows effortlessly.\n\nEvent-Driven: It seamlessly integrates events into workflows, supporting various formats, including CloudEvents, to facilitate event-driven architectures.\n\nService-Oriented: The specification allows integration with service-oriented architectures, enabling workflows to interact with services over standard protocols like HTTP, gRPC, OpenAPI, and AsyncAPI.\n\nFunction-as-a-Service (FaaS) Centric: It supports invoking functions hosted on various platforms within workflows, promoting a FaaS paradigm and enabling microservices architectures.\n\nFault Tolerance and Scalability: The DSL offers features such as error handling, conditional branching, event handling, and looping constructs to ensure robustness and scalability across different environments.\n\nEcosystem Components:\n\nDSL: Defines the syntax and semantics of Serverless Workflow specifications.\n\nConformance Test Kit (CTK): A set of Gherkin features for conformance testing and Behavior Driven Design (BDD), ensuring compliance across implementations.\n\nSDKs: Available for Go, Java, .NET, Python, and TypeScript, these SDKs enable developers to interact with serverless workflows in various programming languages.\n\nRuntimes: Environments for executing workflows defined using the Serverless Workflow DSL, ensuring seamless deployment and operation.\n\nTooling: Additional utilities and resources to enhance the development, debugging, and management of serverless workflows.\n\nElement Details:\n\n{title}\n\n{description}\n\n{name}\n\n{specs}\n\n{schemas}\n\n{properties}\n\n{workflow}",
+  "context_template": "The Workflow Element Details:\n\n{title}\n\n{description}\n\n{name}\n\n{specs}\n\n{schemas}\n\n{properties}\n\n{workflow}",
   "element_templates": {
     "heading": {
       "Description and Code Understanding": {
@@ -89,8 +89,11 @@
         "code_snippets": {
           "questions": [
             "Extract a code snippet from the workflow `{name}` that defines a critical state and explain its functionality.",
-            "Provide a snippet of the workflow `{name}` showing data input handling and explain how it works.",
-            "Generate a snippet showing error handling or retry logic in the workflow `{name}` and explain its purpose."
+            "What code snippet from the workflow `{name}` defines a critical state, and how does it function within the overall workflow?",
+            "Can you extract and analyze a snippet from the workflow `{name}` that demonstrates transitions between states and their logic?",
+            "Identify a section of the workflow `{name}` code that defines a key action in a critical state and explain its contribution to the workflow.",
+            "Show a snippet from the workflow `{name}` that implements error handling with `onErrors` and describe its purpose and configuration.",
+            "Highlight a part of the workflow `{name}` code that handles data input or output within a state, and explain how it supports workflow execution and data integrity."
           ]
         }
       },
@@ -161,7 +164,6 @@
           "questions": [
             "Explain how the workflow `{name}` utilizes the specs files located in the `specs/` directory to define interactions with APIs or services, highlighting the specific services described in those files.",
             "Identify specific parts of the specs files within the `specs/` directory that are critical to the workflow `{name}`, and describe how these parts guide the workflow’s integration with the relevant services.",
-            "Analyze how the specs files located in the `specs/` directory influence the workflow `{name}` by defining rules for error handling, retries, and request/response formats, ensuring consistent interactions with the services described.",
             "Describe the interaction between the workflow `{name}` and the specs files located in the `specs/` directory, focusing on how the workflow dynamically applies the rules or constraints defined in the specs files to achieve its objectives for specific services."
           ],
           "condition": "{{ 'specs' in element and element.specs and element.specs | length > 0 }}"
@@ -170,20 +172,20 @@
       "workflow_gaps_analysis": {
         "design_and_structure_gaps": {
           "questions": [
-            "Identify any missing components in the workflow `{name}` that could impact its execution or reliability, such as states or transitions.",
-            "Analyze the structure of the workflow `{name}` and highlight areas where modularity or reusability could be improved.",
-            "Discuss whether the workflow `{name}` adequately handles error scenarios, and suggest improvements for error handling or retries.",
-            "Examine the transitions between states in the workflow `{name}` and identify any inconsistencies or potential bottlenecks.",
-            "Evaluate whether the workflow `{name}` supports sufficient scalability and suggest changes to enhance its scalability."
+            "Identify any missing components in the workflow `{name}` that could impact its execution or reliability, such as states or transitions. Specifically, verify if `onErrors` is implemented where applicable.",
+            "Analyze the structure of the workflow `{name}` and highlight areas where modularity or reusability could be improved, including the use of `onErrors` for managing exceptions.",
+            "Discuss whether the workflow `{name}` adequately handles error scenarios using `onErrors`, and suggest improvements for error handling or retries.",
+            "Examine the transitions between states in the workflow `{name}` and identify any inconsistencies or potential bottlenecks, ensuring `onErrors` is properly configured for error-prone states.",
+            "Evaluate whether the workflow `{name}` supports sufficient scalability and suggest changes to enhance its scalability, particularly in terms of error handling through `onErrors`."
           ]
         },
         "property_and_metadata_gaps": {
           "questions": [
-            "Assess the properties defined in the properties file of the workflow `{name}` to identify any missing or incomplete entries that might limit its functionality, and explain how these properties should be accessed in the workflow using `$SECRET.[PROPERTY_KEY]`.",
-            "Evaluate how the annotations and descriptions in the workflow `{name}` align with the properties in the properties file, and suggest improvements to ensure clarity and alignment with the specification. Additionally, describe how these properties are or should be referenced in the workflow using `$SECRET.[PROPERTY_KEY]`.",
-            "Discuss whether the properties in the properties file for workflow `{name}` adequately define execution constraints, such as timeouts or retries, and suggest enhancements if needed. Explain how these constraints can be implemented in the workflow using `$SECRET.[PROPERTY_KEY]`.",
-            "Identify any gaps in the configuration of the properties file for workflow `{name}` that could hinder its deployment or portability across environments. Provide examples of how missing properties should be referenced in the workflow using `$SECRET.[PROPERTY_KEY]`.",
-            "Analyze the properties file for workflow `{name}` and determine if additional entries are needed to better document or manage the workflow. Discuss how these new properties can be utilized in the workflow using `$SECRET.[PROPERTY_KEY]`."
+            "Assess the properties defined in the properties file of the workflow `{name}` to identify any missing or incomplete entries that might limit its functionality. Explain how `onErrors` should reference properties, such as retry policies, using `$SECRET.[PROPERTY_KEY]`.",
+            "Evaluate how the annotations and descriptions in the workflow `{name}` align with the properties in the properties file, and suggest improvements to ensure clarity and alignment with `onErrors` for error handling.",
+            "Discuss whether the properties in the properties file for workflow `{name}` adequately define execution constraints, such as timeouts or retries. Suggest enhancements if needed, and describe how these constraints can be implemented using `onErrors`.",
+            "Identify any gaps in the configuration of the properties file for workflow `{name}` that could hinder its deployment or portability across environments. Provide examples of how missing properties should be accessed by `onErrors` using `$SECRET.[PROPERTY_KEY]`.",
+            "Analyze the properties file for workflow `{name}` and determine if additional entries are needed to better document or manage error handling. Discuss how `onErrors` can utilize these new properties effectively."
           ],
           "condition": "{{ 'properties' in element and element.properties and element.properties != '' }}"
         },
