@@ -111,7 +111,7 @@ def get_trainer(model, tokenizer, dataset, batch_size=8, max_seq_length=8192, ep
         lr_scheduler_type="linear",
         seed=3407,
         output_dir=output_dir,
-        save_steps=2546,  # Save checkpoint every 744 steps
+        save_steps=174,  # Save checkpoint every 174 steps
         save_total_limit=int(epoch),  # Only keep the last checkpoint
         load_best_model_at_end=False,  # Optional: only if you want to load the best model
     )
