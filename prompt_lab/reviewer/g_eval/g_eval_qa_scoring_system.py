@@ -74,7 +74,7 @@ class GEvalQASystem:
             "final_score": final_score
         }
 
-    def process_elements(self, elements: List[Dict[str, Any]]) -> None:
+    async def process_elements(self, elements: List[Dict[str, Any]]) -> None:
         """Process all elements with GEval evaluation."""
         for element in elements:
             try:

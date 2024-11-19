@@ -2,30 +2,41 @@ import json
 
 from g_eval.config import Config
 from g_eval.g_eval_qa_scoring_system import GEvalQASystem
+from g_eval.g_eval_system_async import AsyncGEvalSystem
 from logger import logger
 
-def main() -> None:
-    """Main function to run the GEval-based evaluation system."""
+# def main() -> None:
+#     """Main function to run the GEval-based evaluation system."""
+#     try:
+#         config = Config()
+#         eval_system = GEvalQASystem(config)
+
+#         # Load input data
+#         with config.INPUT_FILE_PATH.open('r') as f:
+#             elements = json.load(f)
+
+#         # Process elements
+#         eval_system.process_elements(elements)
+
+#         # Save results
+#         eval_system.save_results(eval_system.passed_elements, config.PASSED_FILE_PATH)
+#         eval_system.save_results(eval_system.failed_elements, config.FAILED_FILE_PATH)
+
+#         logger.info(
+#             f"Evaluation complete. {len(eval_system.passed_elements)} elements passed and "
+#             f"{len(eval_system.failed_elements)} elements failed."
+#         )
+
+#     except Exception as e:
+#         logger.error(f"An error occurred: {e}")
+#         raise
+
+async def main() -> None:
+    """Main async function to run the GEval-based evaluation system."""
     try:
         config = Config()
-        eval_system = GEvalQASystem(config)
-
-        # Load input data
-        with config.INPUT_FILE_PATH.open('r') as f:
-            elements = json.load(f)
-
-        # Process elements
-        eval_system.process_elements(elements)
-
-        # Save results
-        eval_system.save_results(eval_system.passed_elements, config.PASSED_FILE_PATH)
-        eval_system.save_results(eval_system.failed_elements, config.FAILED_FILE_PATH)
-
-        logger.info(
-            f"Evaluation complete. {len(eval_system.passed_elements)} elements passed and "
-            f"{len(eval_system.failed_elements)} elements failed."
-        )
-
+        async_eval_system = AsyncGEvalSystem(config)
+        await async_eval_system.start_monitoring()
     except Exception as e:
         logger.error(f"An error occurred: {e}")
         raise
@@ -55,5 +66,5 @@ async def deepeval_main() -> None:
         raise
 
 if __name__ == "__main__":
-    # main()
-    asyncio.run(deepeval_main())
+    asyncio.run(main())
+    # asyncio.run(deepeval_main())
