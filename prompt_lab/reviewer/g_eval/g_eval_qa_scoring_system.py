@@ -67,10 +67,15 @@ class GEvalQASystem:
             scores[criterion.metric] = GEvalScorer.parse_score(response, criterion)
             
         final_score = GEvalScorer.aggregate_scores(scores, self.config.GEVAL_CONFIG)
+        # Convert to string format
+        formatted_scores = "\n".join(
+            f"Metric Name: {metric.value.capitalize()}, Score: {score:.2f}"
+            for metric, score in scores.items()
+        )
         
         return {
             "element": element,
-            "criterion_scores": scores,
+            "criterion_scores": formatted_scores,
             "final_score": final_score
         }
 

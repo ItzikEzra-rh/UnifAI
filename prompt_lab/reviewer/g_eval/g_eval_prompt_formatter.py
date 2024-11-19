@@ -32,8 +32,8 @@ class GEvalPromptFormatter:
         
         return [
             {"role": "system", "content": (
-                "You are an expert evaluator. Analyze how accurately the provided output "
-                "answers the question, taking into account all the context provided. "
+                "You are an expert evaluator. Analyze how accurately the 'Provided Output'"
+                "answers the 'Question', taking into account all the 'Context' provided. "
                 "Provide a numerical score only."
             )},
             {"role": "user", "content": context}

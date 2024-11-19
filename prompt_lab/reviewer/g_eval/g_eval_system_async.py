@@ -70,7 +70,7 @@ class AsyncGEvalSystem:
                     elements = json.load(f)
                 if elements:
                     logger.info(f"Processing initial content with {len(elements)} elements")
-                    await self.process_elements(elements)
+                    await self.eval_system.process_elements(elements, self.processed_elements)
                     self.last_activity = time.time()
         except Exception as e:
             logger.error(f"Error processing initial content: {e}")

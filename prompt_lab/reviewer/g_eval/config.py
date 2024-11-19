@@ -37,8 +37,8 @@ class GEvalConfig:
             EvalCriterion(
                 metric=EvalMetric.ACCURACY,
                 prompt_template=(
-                    "Rate from 1 to 100 how accurately the following output answers the given question, "
-                    "considering all the provided context.\n\n"
+                    "Rate from 1 to 100 how accurately the following 'Provided Output' answers the given 'Question', "
+                    "considering all the provided 'Context'.\n\n"
                     "Context:\n{input_context}\n\n"
                     "Question:\n{question}\n\n"
                     "Provided Output:\n{provided_output}\n\n"
