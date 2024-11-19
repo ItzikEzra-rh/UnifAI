@@ -74,13 +74,14 @@ class GEvalQASystem:
             "final_score": final_score
         }
 
-    async def process_elements(self, elements: List[Dict[str, Any]]) -> None:
+    async def process_elements(self, elements: List[Dict[str, Any]], processed_elements: List[Dict[str, Any]]) -> None:
         """Process all elements with GEval evaluation."""
         for element in elements:
             try:
                 evaluation = self.evaluate_element(element)
                 self._categorize_evaluation(evaluation)
                 self._log_evaluation(evaluation)
+                processed_elements.add(element.get('id'))
             except Exception as e:
                 logger.error(f"Error processing element: {e}")
                 self.failed_elements.append({

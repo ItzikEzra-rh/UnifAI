@@ -10,8 +10,9 @@ from g_eval.g_eval_qa_scoring_system import GEvalQASystem
 from logger import logger
 
 class FileChangeHandler(FileSystemEventHandler):
-    def __init__(self, callback):
+    def __init__(self, callback, loop):
         self.callback = callback
+        self.loop = loop
         self.last_modified = 0
         self.processing_lock = asyncio.Lock()
         
@@ -22,7 +23,7 @@ class FileChangeHandler(FileSystemEventHandler):
         current_time = time.time()
         if current_time - self.last_modified > 0.5:  # Debounce modifications
             self.last_modified = current_time
-            asyncio.create_task(self.callback())
+            asyncio.run_coroutine_threadsafe(self.callback(), self.loop)
 
 class AsyncGEvalSystem:
     def __init__(self, config: Config):
@@ -32,12 +33,19 @@ class AsyncGEvalSystem:
         self.observer = None
         self.last_activity = time.time()
         self.is_running = False
+        self.loop = None
         
     async def start_monitoring(self):
         """Start monitoring the input file for changes."""
         self.is_running = True
+        self.loop = asyncio.get_running_loop()
+        
+        # Process existing file content first
+        await self.process_initial_content()
+        
+        # Start file monitoring
         self.observer = Observer()
-        event_handler = FileChangeHandler(self.handle_file_change)
+        event_handler = FileChangeHandler(self.handle_file_change, self.loop)
         self.observer.schedule(event_handler, str(self.config.INPUT_FILE_PATH.parent), recursive=False)
         self.observer.start()
         
@@ -53,6 +61,19 @@ class AsyncGEvalSystem:
             logger.error(f"Error in monitoring loop: {e}")
             await self.stop_monitoring()
             raise
+
+    async def process_initial_content(self):
+        """Process the initial content of the file if it exists."""
+        try:
+            if self.config.INPUT_FILE_PATH.exists():
+                with self.config.INPUT_FILE_PATH.open('r') as f:
+                    elements = json.load(f)
+                if elements:
+                    logger.info(f"Processing initial content with {len(elements)} elements")
+                    await self.process_elements(elements)
+                    self.last_activity = time.time()
+        except Exception as e:
+            logger.error(f"Error processing initial content: {e}")
 
     async def stop_monitoring(self):
         """Stop monitoring and cleanup."""
@@ -93,7 +114,7 @@ class AsyncGEvalSystem:
             ]
             
             if new_elements:
-                await self.eval_system.process_elements(new_elements)
+                await self.eval_system.process_elements(new_elements, self.processed_elements)
                 
         except Exception as e:
             logger.error(f"Error handling file change: {e}")
