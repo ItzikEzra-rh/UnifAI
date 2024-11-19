@@ -1,9 +1,11 @@
 import json
 import requests
 from transformers import AutoTokenizer
+import string
+import copy
 
 # Configuration
-INPUT_FILE_PATH = "data/Cluster_Infra_Mapping_5_processed.json"  # Path to the JSON file with elements
+INPUT_FILE_PATH = "data/serverless_Workflows_parsed_processed.json"  # Path to the JSON file with elements
 PASSED_FILE_PATH = "data/passed.json"  # Path to save elements that passed
 FAILED_FILE_PATH = "data/failed.json"  # Path to save elements that failed
 API_URL = "http://0.0.0.0:8000/v1/completions"  # API URL for LLM
@@ -78,6 +80,33 @@ def send_request(prompts):
     response.raise_for_status()
 
     return [choice["text"] for choice in sorted(response.json().get("choices", []), key=lambda x: x.get("index", 0))]
+
+
+def _format_context(context_template, element):
+    """
+    Format the context template by ensuring each placeholder in the template
+    is formatted only once.
+    """
+    element_copied = copy.deepcopy(element)
+
+    # Parse placeholders from the template
+    formatter = string.Formatter()
+    placeholders = [field_name for _, field_name, _, _ in formatter.parse(context_template) if field_name]
+
+    # Format each placeholder value if not already formatted
+    for placeholder in placeholders:
+        if element_copied.get(placeholder):
+            value = element_copied[placeholder]
+            # Check if the value is a string and starts with the formatted prefix
+            if isinstance(value, str) and value.startswith(f"{placeholder}:\n"):
+                continue  # Already formatted, skip
+            # Format and update the placeholder
+            element_copied[placeholder] = f"{placeholder}:\n{value}"
+        else:
+            element_copied[placeholder] = ""  # Default for missing placeholders
+
+    # Format the context
+    return context_template.format(**element_copied)
 
 
 def main():
