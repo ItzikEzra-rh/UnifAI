@@ -17,9 +17,10 @@ def sanity_check():
 @backend_bp.route("/registerTrainedModel", methods=["POST"])
 @from_body({
     "hf_url": fields.Str(data_key="hfUrl", required=True),
+    "quantized": fields.Bool(data_key="quantized", required=False, default=True),
 })
-def register_trained_model(hf_url):
-    return llm_provider.register_trained_model(hf_url)
+def register_trained_model(hf_url, quantized):
+    return llm_provider.register_trained_model(hf_url, quantized)
 
 
 @backend_bp.route("/loadModel", methods=["GET"])

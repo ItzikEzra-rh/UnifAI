@@ -26,13 +26,17 @@ class VLLMModelLoader(AbstractModelLoader):
             print("vLLM server is already running.")
             return False
         try:
-            self.vllm_process = subprocess.Popen(
-                ["vllm", "serve", self.hf_repo_id,
-                 "--port", str(self.vllm_port),
-                 "--max-model-len", str(self.chat_manager.context_length),
-                 "--quantization", "bitsandbytes",
-                 "--load-format", "bitsandbytes"]
-            )
+            cmd = ["vllm", "serve", self.hf_repo_id,
+                   "--port", str(self.vllm_port),
+                   "--max-model-len", str(self.chat_manager.context_length)]
+
+            if self.quantized:
+                quantized_cmd = ["--quantization", "bitsandbytes",
+                                 "--load-format", "bitsandbytes"]
+                cmd.extend(quantized_cmd)
+            print(cmd)
+            self.vllm_process = subprocess.Popen(cmd)
+
             return self.wait_for_server()
         except Exception as e:
             raise RuntimeError(f"Failed to start vLLM server: {e}")

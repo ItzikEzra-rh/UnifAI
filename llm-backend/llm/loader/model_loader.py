@@ -11,7 +11,7 @@ class AbstractModelLoader(ABC):
     is_model_loading = False
 
     def __init__(self, model_id, base_model, project, context_length=8192, model_type="",
-                 checkpoint="", huggingface_url='', hf_repo_id="", max_new_tokens=4096):
+                 checkpoint="", huggingface_url='', hf_repo_id="", max_new_tokens=4096, quantized=True):
         self.model_id = model_id
         self.base_model = base_model
         self.project = project
@@ -25,6 +25,7 @@ class AbstractModelLoader(ABC):
         self.streamer = None
         self.stop_event = None
         self.max_new_tokens = max_new_tokens
+        self.quantized = quantized
 
     @abstractmethod
     def load_model(self):
@@ -52,6 +53,7 @@ class AbstractModelLoader(ABC):
             'checkpoint': self.checkpoint,
             'huggingface_url': self.huggingface_url,
             'hf_repo_id': self.hf_repo_id,
+            'quantized': self.quantized,
         })
 
     def __str__(self):
