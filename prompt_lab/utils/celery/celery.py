@@ -1,8 +1,8 @@
-from be_utils.utils import get_be_ip, get_rabbitmq_port
+from utils.util import get_rabbitmq_url
 from celery import Celery
 
 _celery_client = Celery('celery',
-                        broker=f'amqp://{get_be_ip()}:{get_rabbitmq_port()}',
+                        broker=get_rabbitmq_url(),
                         BROKER_USER='genie',
                         BROKER_PASSWORD='genie123')
 

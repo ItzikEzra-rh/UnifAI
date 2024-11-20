@@ -9,3 +9,4 @@ webargs
 flask_pymongo
 pandas
 celery
+celery-batches

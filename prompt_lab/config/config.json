@@ -16,10 +16,13 @@
   },
   "rabbitmq": {
     "port": 443,
-    "url": "amqp://127.0.0.1:{port}"
+    "url": "amqp://0.0.0.0:{port}"
   },
   "mongodb": {
     "port": 27017,
     "url": "mongodb://127.0.0.1:{port}"
+  },
+  "templates": {
+    "project_path": "config/project_config.json"
   }
 }
