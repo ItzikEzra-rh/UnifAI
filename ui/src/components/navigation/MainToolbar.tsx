@@ -20,7 +20,7 @@ interface dropdownItems {
 }
 
 const dropdownAllItems: dropdownItems[] = [
-  { title: 'About',items: [{ label: 'Welcome', content: 'Welcome Content' }]},
+  { title: 'About',items: [{ label: 'Welcome', content: 'Welcome Content' }, { label: 'More about AI', content: 'Info Content' }]},
   { title: 'Dataset', items: [{ label: 'Creating Dataset', content: 'Form Content' }, { label: 'Available Datasets', content: 'Dataset Table' }]},
   { title: 'Training', items: [{ label: 'Train New Model', content: 'Train Form' }, { label: 'Avaliable Trained Models', content: 'Form Table' }]},
   { title: 'Inference', items: [{ label: 'Generate Automatic Test', content: 'Chatbot Prompt' }, { label: 'Saved Prompts', content: 'Saved Prompts' }]},
