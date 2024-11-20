@@ -12,10 +12,10 @@ import traceback
 #     sender.add_periodic_task(60.0, mongo_storage_limitation_task.s(), name=task_name)
 
 
-
 @celery.task()
 def fetch_resources_task():
     pass
+
 
 # send_task(task_name="notify_statistics_master_worker",
 #           data=dict(sample_id=sample_id,
@@ -26,8 +26,5 @@ def fetch_resources_task():
 def samples_handler(requests):
     live_samples = []
     for request in requests:
-        try:
-            raw_sample_1 = request.kwargs['raw_sample_1']
-            raw_sample_2 = request.kwargs['raw_sample_2']
-
-
+        raw_sample_1 = request.kwargs['raw_sample_1']
+        raw_sample_2 = request.kwargs['raw_sample_2']

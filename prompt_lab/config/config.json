@@ -13,5 +13,13 @@
     "max_generation_length": 4096,
     "max_context_length": 16384,
     "batch_size": 8
+  },
+  "rabbitmq": {
+    "port": 443,
+    "url": "amqp://127.0.0.1:{port}"
+  },
+  "mongodb": {
+    "port": 27017,
+    "url": "mongodb://127.0.0.1:{port}"
   }
 }

@@ -1,7 +1,7 @@
 """
 Module for importing non-configured flask extensions
 """
-from celery_app import Celery
+from celery import Celery
 from config.configParams import config_params
 
 
@@ -18,5 +18,3 @@ def make_celery():
 
 
 celery = make_celery()
-
-
