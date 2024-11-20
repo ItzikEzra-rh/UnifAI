@@ -10,12 +10,12 @@ class RegisterModel:
         self.collection = Collections.by_name(collection_name)
         self.auth_token = auth_token
 
-    def register_model(self, model_url):
+    def register_model(self, model_url, quantized):
         # Extract the repo_id from the URL
         repo_id = self._extract_repo_id(model_url)
 
         # Attempt to download and process the card.json or fallback to config.json
-        model_data = self._fetch_and_parse_model_data(repo_id)
+        model_data = self._fetch_and_parse_model_data(repo_id, quantized)
 
         if self.model_exists(model_data):
             return f"Model '{model_data['base_model']}' for project '{model_data['project']}' already exists."
@@ -48,7 +48,7 @@ class RegisterModel:
 
     def model_exists(self, model_data):
         return self.collection.find_one({
-            "name":  model_data['name'],
+            "name": model_data['name'],
             "base_model": model_data['base_model'],
             "project": model_data['project'],
             "context_length": model_data['context_length'],
@@ -56,9 +56,10 @@ class RegisterModel:
             "checkpoint": model_data.get('checkpoint', ""),
             "huggingface_url": model_data.get('huggingface_url', ""),
             "hf_repo_id": model_data.get('hf_repo_id', ""),
+            "quantized": model_data.get('quantized', True),
         }) is not None
 
-    def _fetch_and_parse_model_data(self, repo_id):
+    def _fetch_and_parse_model_data(self, repo_id, quantized):
         # Attempt to download card.json, fallback to config.json
         card_path = None
         try:
@@ -76,7 +77,8 @@ class RegisterModel:
                 "checkpoint": card_data.get('checkpoint', ""),
                 "prompt_template": card_data.get('prompt_template', {}),
                 "huggingface_url": f"https://huggingface.co/{repo_id}",
-                "hf_repo_id": repo_id
+                "hf_repo_id": repo_id,
+                "quantized": quantized
             }
 
             if model_data['model_type'] not in ['finetuned', 'checkpoint']:
@@ -98,7 +100,8 @@ class RegisterModel:
                 "model_type": 'foundational',
                 "checkpoint": "",
                 "huggingface_url": f"https://huggingface.co/{repo_id}",
-                "hf_repo_id": repo_id
+                "hf_repo_id": repo_id,
+                "quantized": quantized
             }
 
             if os.path.exists(config_path):

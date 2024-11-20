@@ -5,8 +5,8 @@ from llm.loader.vllm_model_loader import VLLMModelLoader
 from llm.loader.model_loader import AbstractModelLoader
 
 
-def register_trained_model(hf_url):
-    return RegisterModel().register_model(hf_url)
+def register_trained_model(hf_url, quantized):
+    return RegisterModel().register_model(hf_url, quantized)
 
 
 def load_model(model_id):
@@ -28,18 +28,9 @@ def load_model(model_id):
         checkpoint = model_info.get('checkpoint', "")
         huggingface_url = model_info.get('huggingface_url', 'Unknown')
         hf_repo_id = model_info.get('hf_repo_id', "")
-
-        # Clean the current model if one is already loaded
-        # if AbstractModelLoader.model_loader and AbstractModelLoader.model_loader.model_id == model_id:
-        #     return "model already loaded"
-        # elif AbstractModelLoader.model_loader:
-        # if AbstractModelLoader.model_loader:
-        #     AbstractModelLoader.model_loader.clean_model()
-        # else:
-        #     print(f"loading model with id {model_id}")
-
+        quantized = bool(model_info.get('quantized', True))
         model = VLLMModelLoader(model_id, base_model, project, context_length,
-                                model_type, checkpoint, huggingface_url, hf_repo_id)
+                                model_type, checkpoint, huggingface_url, hf_repo_id, quantized=quantized)
         res = model.load_model()
         AbstractModelLoader.model_loader = model
         AbstractModelLoader.is_model_loading = False
