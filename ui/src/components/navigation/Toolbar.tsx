@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import { Breadcrumbs, Menu, MenuItem, Button, Typography } from '@mui/material';
-import { DATA_SCIENCE_ROLE } from '../types/roles';
-import {StyledBreadcrumb} from '../shared/StyledBreadcrumb';
+import { Breadcrumbs, Menu, MenuItem, Button, FormControl, InputLabel, Select, SelectChangeEvent } from '@mui/material';
+import { DATA_SCIENCE_ROLE, USER_ROLE } from '../types/roles';
+import RedHatLogoTAG from '../../assets/RedhatLogoNew.png'
+import SendIcon from '@mui/icons-material/Send';
+import HelpIcon from '@mui/icons-material/Help';
+import { StyledBreadcrumb } from '../shared/StyledBreadcrumb';
 
-interface MainToolbarProps {
-  setContent: (content: string) => void;
+interface ToolbarProps {
   role: string;
+  setRole: (role: string) => void;
+  setContent: (content: string) => void;
 }
 
 interface DropdownItem {
@@ -32,7 +36,7 @@ const dropdownUserItems: DropdownItems[] = [
   { title: 'Statistics', items: [{ label: 'Graphs', content: 'Advanced Statistics' }] },
 ];
 
-const MainToolbar: React.FC<MainToolbarProps> = ({ setContent, role }) => {
+const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
   const [selectedItem, setSelectedItem] = useState<string | null>(null);
   const [dropdownList, setDropdownList] = useState<DropdownItems[]>(dropdownUserItems);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
@@ -57,40 +61,58 @@ const MainToolbar: React.FC<MainToolbarProps> = ({ setContent, role }) => {
     setAnchorEl(null); // Close the menu
   };
 
-  return (
-    <div className="main-toolbar">
-      <Breadcrumbs aria-label="breadcrumb">
-        {dropdownList.map((dropdown) => (
-          <StyledBreadcrumb
-            key={dropdown.title}
-            component="button"
-            label={dropdown.title}
-            onClick={(event) => handleBreadcrumbClick(event, dropdown.title)}
-          />
-        ))}
-      </Breadcrumbs>
+  const handleRoleChange = (event: SelectChangeEvent) => {
+    setRole(event.target.value);
+  };
 
-      {/* Dropdown Menus */}
-      {dropdownList.map((dropdown) => (
-        <Menu
-          key={dropdown.title}
-          anchorEl={anchorEl}
-          open={menuTitle === dropdown.title}
-          onClose={handleMenuClose}
-        >
-          {dropdown.items.map((item) => (
-            <MenuItem
-              key={item.label}
-              selected={selectedItem === item.label}
-              onClick={() => handleMenuItemClick(item)}
-            >
-              {item.label}
-            </MenuItem>
+  return (
+    <div >
+        <div className="logo">
+            <img src={RedHatLogoTAG} alt="Logo" className="logo-image" />
+        </div>
+        <Breadcrumbs aria-label="breadcrumb">
+          {dropdownList.map((dropdown) => (
+            <StyledBreadcrumb
+              key={dropdown.title}
+              component="button"
+              label={dropdown.title}
+              onClick={(event) => handleBreadcrumbClick(event, dropdown.title)}
+            />
           ))}
-        </Menu>
-      ))}
+        </Breadcrumbs>
+
+        {/* Dropdown Menus */}
+        {dropdownList.map((dropdown) => (
+          <Menu
+            key={dropdown.title}
+            anchorEl={anchorEl}
+            open={menuTitle === dropdown.title}
+            onClose={handleMenuClose}
+          >
+            {dropdown.items.map((item) => (
+              <MenuItem
+                key={item.label}
+                selected={selectedItem === item.label}
+                onClick={() => handleMenuItemClick(item)}
+              >
+                {item.label}
+              </MenuItem>
+            ))}
+          </Menu>
+        ))}
+      <div className="toolbar-buttons">
+          <FormControl variant="outlined" className="role-selection">
+            <InputLabel>Role Selection</InputLabel>
+            <Select value={role} onChange={handleRoleChange} label="Role Selection">
+              <MenuItem value={USER_ROLE}>User Role</MenuItem>
+              <MenuItem value={DATA_SCIENCE_ROLE}>Data Science Role</MenuItem>
+            </Select>
+          </FormControl>
+          <Button variant="contained" endIcon={<SendIcon/>}>Log In</Button>
+          <Button variant="contained" endIcon={<HelpIcon/>}>Support</Button>
+        </div>
     </div>
   );
 };
 
-export default MainToolbar;
+export default Toolbar;
