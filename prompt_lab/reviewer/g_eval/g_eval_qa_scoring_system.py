@@ -6,9 +6,10 @@ from typing import Any, Dict, List, Tuple
 from transformers import AutoTokenizer
 
 from logger import logger
-from g_eval.config import EvalMetric, Config, GEvalConfig
-from g_eval.g_eval_prompt_formatter import GEvalPromptFormatter
-from g_eval.g_eval_scorer import GEvalScorer
+from reviewer.g_eval.config import EvalMetric, Config, GEvalConfig
+from reviewer.g_eval.g_eval_prompt_formatter import GEvalPromptFormatter
+from reviewer.g_eval.g_eval_scorer import GEvalScorer
+from utils.celery.celery import send_task
 
 class GEvalQASystem:
     """Main class for GEval-based Q&A evaluation system."""
@@ -87,6 +88,14 @@ class GEvalQASystem:
                 self._categorize_evaluation(evaluation)
                 self._log_evaluation(evaluation)
                 processed_elements.add(element.get('id'))
+
+                send_task(task_name="fetch_reviewer_passed_generated_objects",
+                          data=self.passed_elements,
+                          celery_queue='reviewer_pass_queue')
+                
+                send_task(task_name="fetch_reviewer_failed_generated_objects",
+                          data=self.failed_elements,
+                          celery_queue='reviewer_fail_queue')
             except Exception as e:
                 logger.error(f"Error processing element: {e}")
                 self.failed_elements.append({

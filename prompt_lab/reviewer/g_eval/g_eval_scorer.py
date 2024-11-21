@@ -1,4 +1,4 @@
-from g_eval.config import EvalCriterion, GEvalConfig, EvalMetric
+from reviewer.g_eval.config import EvalCriterion, GEvalConfig, EvalMetric
 from typing import Any, Dict, List, Optional, Union
 from logger import logger
 

@@ -1,6 +1,7 @@
 import logging
 from celery_batches import Batches
 from celery_app.init import celery
+from reviewer.g_eval.g_eval_review import process_elements
 
 from utils.celery.celery import send_task
 import traceback
@@ -28,3 +29,16 @@ def samples_handler(requests):
     for request in requests:
         raw_sample_1 = request.kwargs['raw_sample_1']
         raw_sample_2 = request.kwargs['raw_sample_2']
+
+@celery.task()
+def fetch_prompt_lab_generated_objects(data):
+    process_elements(data)
+
+@celery.task()
+def fetch_reviewer_passed_generated_objects(data):
+    # Need to implement
+    pass
+
+@celery.task()
+def fetch_reviewer_failed_generated_objects(data):
+    pass

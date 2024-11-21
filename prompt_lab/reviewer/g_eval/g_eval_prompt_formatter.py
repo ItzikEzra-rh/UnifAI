@@ -1,4 +1,4 @@
-from g_eval.config import EvalCriterion
+from reviewer.g_eval.config import EvalCriterion
 from typing import Any, Dict, List
 
 class GEvalPromptFormatter:
