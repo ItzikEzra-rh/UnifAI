@@ -14,8 +14,9 @@ def main() -> None:
             elements = json.load(f)
 
         send_task(task_name="fetch_prompt_lab_generated_objects",
-                    data=elements,
-                    celery_queue='reviewer_queue')
+                  #data={'data': elements},
+                  celery_queue='reviewer_queue',
+                  data=elements)
         
     except Exception as e:
         logger.error(f"An error occurred: {e}")

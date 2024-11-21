@@ -80,14 +80,13 @@ class GEvalQASystem:
             "final_score": final_score
         }
 
-    async def process_elements(self, elements: List[Dict[str, Any]], processed_elements: List[Dict[str, Any]]) -> None:
+    async def process_elements(self, elements: List[Dict[str, Any]]) -> None:
         """Process all elements with GEval evaluation."""
         for element in elements:
             try:
                 evaluation = self.evaluate_element(element)
                 self._categorize_evaluation(evaluation)
                 self._log_evaluation(evaluation)
-                processed_elements.add(element.get('id'))
 
                 send_task(task_name="fetch_reviewer_passed_generated_objects",
                           data=self.passed_elements,
