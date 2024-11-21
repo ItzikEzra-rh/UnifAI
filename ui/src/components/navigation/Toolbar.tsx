@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Breadcrumbs, Menu, MenuItem, Button, FormControl, InputLabel, Select, SelectChangeEvent } from '@mui/material';
 import { DATA_SCIENCE_ROLE, USER_ROLE } from '../types/roles';
-import RedHatLogoTAG from '../../assets/RedhatLogoNew.png'
+import RedHatLogoTAG from '../../assets/RedhatLogoNew.png';
 import SendIcon from '@mui/icons-material/Send';
 import HelpIcon from '@mui/icons-material/Help';
 import { StyledBreadcrumb } from '../shared/StyledBreadcrumb';
@@ -52,9 +52,9 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
   };
 
   const handleMenuItemClick = (item: DropdownItem) => {
-    setSelectedItem(item.label);
-    setContent(item.content);
-    setAnchorEl(null); // Close the menu after selection
+    setSelectedItem(item.label); // Update the selected item
+    setContent(item.content);     // Update the content
+    setAnchorEl(null);            // Close the dropdown by setting anchorEl to null
   };
 
   const handleMenuClose = () => {
@@ -66,10 +66,12 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
   };
 
   return (
-    <div >
-        <div className="logo">
-            <img src={RedHatLogoTAG} alt="Logo" className="logo-image" />
-        </div>
+    <div className="toolbar">
+      <div className="logo">
+        <img src={RedHatLogoTAG} alt="Logo" className="logo-image" />
+      </div>
+
+      <div className="breadcrumbs">
         <Breadcrumbs aria-label="breadcrumb">
           {dropdownList.map((dropdown) => (
             <StyledBreadcrumb
@@ -80,37 +82,39 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
             />
           ))}
         </Breadcrumbs>
+      </div>
 
-        {/* Dropdown Menus */}
-        {dropdownList.map((dropdown) => (
-          <Menu
-            key={dropdown.title}
-            anchorEl={anchorEl}
-            open={menuTitle === dropdown.title}
-            onClose={handleMenuClose}
-          >
-            {dropdown.items.map((item) => (
-              <MenuItem
-                key={item.label}
-                selected={selectedItem === item.label}
-                onClick={() => handleMenuItemClick(item)}
-              >
-                {item.label}
-              </MenuItem>
-            ))}
-          </Menu>
-        ))}
+      {/* Dropdown Menus */}
+      {dropdownList.map((dropdown) => (
+        <Menu
+          key={dropdown.title}
+          anchorEl={anchorEl}
+          open={menuTitle === dropdown.title && Boolean(anchorEl)} // Only open if this menu is active
+          onClose={handleMenuClose} // Close menu when clicking outside or when an item is selected
+        >
+          {dropdown.items.map((item) => (
+            <MenuItem
+              key={item.label}
+              selected={selectedItem === item.label}
+              onClick={() => handleMenuItemClick(item)} // Close the dropdown on item click
+            >
+              {item.label}
+            </MenuItem>
+          ))}
+        </Menu>
+      ))}
+
       <div className="toolbar-buttons">
-          <FormControl variant="outlined" className="role-selection">
-            <InputLabel>Role Selection</InputLabel>
-            <Select value={role} onChange={handleRoleChange} label="Role Selection">
-              <MenuItem value={USER_ROLE}>User Role</MenuItem>
-              <MenuItem value={DATA_SCIENCE_ROLE}>Data Science Role</MenuItem>
-            </Select>
-          </FormControl>
-          <Button variant="contained" endIcon={<SendIcon/>}>Log In</Button>
-          <Button variant="contained" endIcon={<HelpIcon/>}>Support</Button>
-        </div>
+        <FormControl variant="outlined" className="role-selection">
+          <InputLabel>Role Selection</InputLabel>
+          <Select value={role} onChange={handleRoleChange} label="Role Selection">
+            <MenuItem value={USER_ROLE}>User Role</MenuItem>
+            <MenuItem value={DATA_SCIENCE_ROLE}>Data Science Role</MenuItem>
+          </Select>
+        </FormControl>
+        <Button variant="contained" endIcon={<SendIcon />}>Log In</Button>
+        <Button variant="contained" endIcon={<HelpIcon />}>Support</Button>
+      </div>
     </div>
   );
 };

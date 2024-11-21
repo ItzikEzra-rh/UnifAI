@@ -11,6 +11,41 @@ body, html, #root {
   height: 100vh;
 }
 
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px;
+}
+
+.logo {
+  flex: 1;
+  display: flex;
+  justify-content: flex-start;
+}
+
+.breadcrumbs {
+  flex: 2;
+  display: flex;
+  justify-content: center;
+}
+
+.toolbar-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex: 1;
+}
+
+.logo-image {
+  height: 40px;
+}
+
+.role-selection {
+  min-width: 150px;
+}
+
+
 .top-main-container {
   display: flex;
   flex-direction: column; /* Stack top and main toolbar vertically */
@@ -36,14 +71,6 @@ body, html, #root {
   flex-shrink: 0;  /* Prevent it from shrinking */
 }
 
-.logo {
-  display: flex;
-  align-items: center;
-}
-
-.logo-image {
-  height: 40px;
-}
 
 .logo-text {
   color: black;
@@ -51,12 +78,6 @@ body, html, #root {
   font-size: 18px;
   margin-left: 10px;
   font-weight: bold;
-}
-
-.toolbar-buttons {
-  display: flex;
-  align-items: center;  /* Align buttons on the same line */
-  gap: 10px;  /* Add spacing between buttons */
 }
 
 .role-selection {
@@ -75,33 +96,17 @@ body, html, #root {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.top-toolbar .toolbar-buttons {
+.top-toolbar {
   border: 2px solid #fff;
   color: #fff;
   font-weight: bold;
   padding: 5px 15px;
 }
 
-.top-toolbar .toolbar-buttons {
+.top-toolbar {
   background-color: rgba(255, 255, 255, 0.1);
 }
 
-.breadcrumb {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-left: 20px;
-  font-size: 14px;
-}
-
-.breadcrumb > span {
-  cursor: pointer;
-  color: #007bff;
-}
-
-.breadcrumb > span:hover {
-  text-decoration: underline;
-}
 
 .top-toolbar {
   display: flex;
