@@ -6,9 +6,9 @@ from g_eval.g_eval_system_async import AsyncGEvalSystem
 from logger import logger
 
 
-def process_elements(elements):
+async def process_elements(elements):
     try: 
-        eval_system.process_elements(elements)
+        await eval_system.process_elements(elements)
         logger.info(
             f"Evaluation complete. {len(eval_system.passed_elements)} elements passed and "
             f"{len(eval_system.failed_elements)} elements failed."

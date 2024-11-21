@@ -19,4 +19,4 @@ def send_task(task_name, celery_queue, **kwargs):
     client = celery_client()
     client.send_task(f"celery_app.tasks.{task_name}",
                      queue=celery_queue,
-                     **kwargs)
+                     kwargs=kwargs)

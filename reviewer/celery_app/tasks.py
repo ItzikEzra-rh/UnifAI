@@ -5,6 +5,7 @@ from g_eval.g_eval_review import process_elements, save_elements
 
 from utils.celery.celery import send_task
 import traceback
+import asyncio
 
 
 # @celery.on_after_configure.connect
@@ -21,7 +22,7 @@ import traceback
 
 @celery.task()
 def fetch_prompt_lab_generated_objects(data):
-    process_elements(data)
+    asyncio.run(process_elements(data))
 
 @celery.task()
 def fetch_reviewer_passed_generated_objects(data):
