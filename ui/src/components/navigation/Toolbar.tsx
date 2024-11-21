@@ -113,8 +113,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
 
       <div className="toolbar-buttons">
         <FormControl variant="outlined" className="role-selection">
-          <InputLabel>Role Selection</InputLabel>
-          <Select value={role} onChange={handleRoleChange} label="Role Selection">
+          <Select value={role} onChange={handleRoleChange} sx={{color: 'red', backgroundColor: 'white'}}>
             <MenuItem value={USER_ROLE}>User Role</MenuItem>
             <MenuItem value={DATA_SCIENCE_ROLE}>Data Science Role</MenuItem>
           </Select>
