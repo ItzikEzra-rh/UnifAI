@@ -23,7 +23,7 @@ interface DropdownItems {
 }
 
 const dropdownAllItems: DropdownItems[] = [
-  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' }, { label: 'More about AI', content: 'Info Content' }] },
+  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' }] },
   { title: 'Dataset', items: [{ label: 'Creating Dataset', content: 'Form Content' }, { label: 'Available Datasets', content: 'Dataset Table' }] },
   { title: 'Training', items: [{ label: 'Train New Model', content: 'Train Form' }, { label: 'Available Trained Models', content: 'Form Table' }] },
   { title: 'Inference', items: [{ label: 'Generate Automatic Test', content: 'Chatbot Prompt' }, { label: 'Saved Prompts', content: 'Saved Prompts' }] },
@@ -31,7 +31,7 @@ const dropdownAllItems: DropdownItems[] = [
 ];
 
 const dropdownUserItems: DropdownItems[] = [
-  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' }, { label: 'More about AI', content: 'Info Content' }] },
+  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' }] },
   { title: 'Inference', items: [{ label: 'Generate Automatic Test', content: 'Chatbot Prompt' }, { label: 'Saved Prompts', content: 'Saved Prompts' }] },
   { title: 'Statistics', items: [{ label: 'Graphs', content: 'Advanced Statistics' }] },
 ];
@@ -52,10 +52,10 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
   };
 
   const handleMenuItemClick = (item: DropdownItem) => {
-    setSelectedItem(item.label); // Update the selected item
-    setContent(item.content);     // Update the content
-    setAnchorEl(null);            // Close the dropdown by setting anchorEl to null
-  };
+    setSelectedItem(item.label);    // Set selected item
+    setContent(item.content);       // Update content
+    setAnchorEl(null);              // Close the dropdown by setting anchorEl to null
+  };  
 
   const handleMenuClose = () => {
     setAnchorEl(null); // Close the menu
@@ -84,19 +84,18 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
         </Breadcrumbs>
       </div>
 
-      {/* Dropdown Menus */}
       {dropdownList.map((dropdown) => (
         <Menu
           key={dropdown.title}
           anchorEl={anchorEl}
-          open={menuTitle === dropdown.title && Boolean(anchorEl)} // Only open if this menu is active
-          onClose={handleMenuClose} // Close menu when clicking outside or when an item is selected
+          open={menuTitle === dropdown.title}
+          onClose={handleMenuClose}
         >
           {dropdown.items.map((item) => (
             <MenuItem
               key={item.label}
               selected={selectedItem === item.label}
-              onClick={() => handleMenuItemClick(item)} // Close the dropdown on item click
+              onClick={() => handleMenuItemClick(item)}
             >
               {item.label}
             </MenuItem>

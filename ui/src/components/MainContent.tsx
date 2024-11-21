@@ -69,33 +69,9 @@ const MainContent: React.FC<MainContentProps> = ({ content }) => {
     );
   }
 
-  const InfoContent = () => {
-    return (
-      <Card sx={{ maxWidth: '80%', margin: '50px auto', padding: 3, borderRadius: 2, boxShadow: 3 }}>
-        <CardContent>
-          <Typography variant="h2" component="h2">
-            Understanding AI and Model Training Parameters
-          </Typography>
-
-          <Typography variant="h5" gutterBottom>
-            What is AI?
-          </Typography>
-          <Typography paragraph>
-            Artificial Intelligence (AI) refers to the simulation of human intelligence in machines that are programmed
-            to think, learn, and make decisions.
-            At its core, AI uses algorithms and data to identify patterns and provide outputs.
-            In the context of test generation, AI models analyze a wide range of input data, learn from it,
-            and produce customized questions, options, and solutions based on your requirements.
-          </Typography>
-        </CardContent>
-      </Card>
-    );
-  }
-
   const getContentElement = (content: string) => {
     switch (content) {
       case 'Welcome Content': return <WelcomeContent />;
-      case 'Info Content': return <InfoContent />;
       case 'Form Content': return <ProjectForm />;
       case 'Train Form': return <TrainingForm />;
       case 'Form Table': return <FormTable />;
