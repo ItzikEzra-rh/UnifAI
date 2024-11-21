@@ -20,9 +20,8 @@ def process_elements(elements):
         raise
 
 def save_elements(elements):
-    pass
     # Save results
-    # eval_system.save_results(eval_system.passed_elements, config.PASSED_FILE_PATH)
+    eval_system.save_results(elements, config.PASSED_FILE_PATH)
     # eval_system.save_results(eval_system.failed_elements, config.FAILED_FILE_PATH)
 
 
