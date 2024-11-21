@@ -1,8 +1,8 @@
 import json
 
-from reviewer.g_eval.config import Config
-from reviewer.g_eval.g_eval_qa_scoring_system import GEvalQASystem
-from reviewer.g_eval.g_eval_system_async import AsyncGEvalSystem
+from g_eval.config import Config
+from g_eval.g_eval_qa_scoring_system import GEvalQASystem
+from g_eval.g_eval_system_async import AsyncGEvalSystem
 from logger import logger
 
 # def main() -> None:
