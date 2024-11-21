@@ -2,6 +2,8 @@ from llm_client.vllm import VLLMClient
 from utils.tokenizer import TokenizerUtils
 from processing.prompt_generator import PromptGenerator
 from processing.batch_procceser import BatchProcessor
+from utils.celery.celery import send_task, is_celery_queue_empty
+from time import sleep
 
 
 class DataProcessor:
@@ -33,39 +35,28 @@ class DataProcessor:
         self.batch_processor = BatchProcessor(batch_size, self.tokenizer, self.skipped_data, self.io_repository)
         self.current_prompt_index = self.io_repository.load_progress()
         self.processed_data = self.io_repository.load_processed_data()
-
         print("DataProcessor initialized.")
-        print(f"Loaded {len(self.processed_data)} processed records and {len(self.skipped_data)} skipped records.")
-        print(f"Resuming from prompt index: {self.current_prompt_index}")
 
     def process_all_elements(self):
         """Main method to process all elements, batching prompts and sending them to the LLM client."""
-        data = self.io_repository.load_data()
-        print(f"Loaded {len(data)} elements for processing.")
-
         # Generate all prompts and metadata
-        all_prompts = [prompt for element_data in data for prompt in self.prompt_generator.create_prompts(element_data)]
-        prompts_count = len(all_prompts)
-        print(f"Total prompts generated: {prompts_count}")
-
-        # Process prompts in batches, starting from the last saved index
-        while self.current_prompt_index < prompts_count:
-            print(f"Processing from prompt index: {self.current_prompt_index}")
-            batch_prompts, metadata, total_token_count, skipped_elements_count = self.batch_processor.create_batch(
-                all_prompts,
-                prompts_count,
-                self.current_prompt_index)
-
-            self.current_prompt_index += skipped_elements_count
-            if not batch_prompts:
+        for element in self.io_repository.load_data():
+            if element["uid"] in self.processed_data:
                 continue
-            print(f"Created batch with {len(batch_prompts)} prompts. batch tokens size is {total_token_count}")
 
-            # Process the batch and update progress
-            self.process_batch(batch_prompts, metadata)
-            self.current_prompt_index += len(batch_prompts)
-            self.io_repository.save_progress(self.current_prompt_index)
-            print(f"Progress saved at prompt index: {self.current_prompt_index}")
+            prompts = self.prompt_generator.create_prompts(element_data=element)
+            for prompt in prompts:
+                if not self.batch_processor.add_prompt(prompt=prompt) and self.batch_processor.is_batch_full():
+                    batch = self.batch_processor.finalize_batch()
+                    if batch:
+                        # send to process batch by prompts process workers
+                        while True:
+                            if is_celery_queue_empty("prompts_process_queue"):
+                                send_task(task_name="fetch_prompts_batch",
+                                          celery_queue="prompts_process_queue",
+                                          batch=batch)
+                                break
+                            sleep(2)
 
     def process_batch(self, batch_prompts, metadata):
         """
@@ -80,33 +71,20 @@ class DataProcessor:
         print(f"Received {len(choices)} responses from LLM client.")
 
         # Process each response and metadata entry
+        llm_res_batch = []
         for meta, choice in zip(metadata, choices):
-            if choice.get("finish_reason", "").strip() == "length":
-                print(f"Skipping due to hallucination for element: {meta['element_type']}")
-                self.skip_due_to_hallucination(meta["original_data"])
-            else:
-                self.save_processed_data(meta, choice["text"])
-
-    def save_processed_data(self, meta, response_text):
-        """
-        Saves a single processed prompt's metadata and response.
-
-        Args:
-            meta: Metadata for the processed prompt.
-            response_text: Generated response from the LLM client.
-        """
-        element_data = {
-            "input": meta["input_text"],
-            "output": response_text,
-            "element_type": meta["element_type"],
-            "group": meta["group"],
-            "category": meta["category"],
-            "original_data": meta["original_data"]
-        }
-        self.processed_data.append(element_data)
-        self.io_repository.save_processed_data(self.processed_data)
-        print(f"Processed data saved for element type: {meta['element_type']}")
-        self.print_progress(meta["element_type"], meta["group"], meta["category"], response_text)
+            self.print_progress(meta["element_type"], meta["group"], meta["category"], choice["text"])
+            element_data = {
+                "uid": meta["original_data"]["uid"],
+                "input": meta["input_text"],
+                "output": choice["text"],
+                "element_type": meta["element_type"],
+                "group": meta["group"],
+                "category": meta["category"],
+                "original_data": meta["original_data"]
+            }
+            llm_res_batch.append(element_data)
+        return llm_res_batch
 
     def skip_due_to_hallucination(self, element_data):
         """

@@ -10,3 +10,4 @@ flask_pymongo
 pandas
 celery
 celery-batches
+ijson

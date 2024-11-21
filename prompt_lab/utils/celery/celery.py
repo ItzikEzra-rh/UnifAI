@@ -1,22 +1,30 @@
-from utils.util import get_rabbitmq_url
-from celery import Celery
-
-_celery_client = Celery('celery',
-                        broker=get_rabbitmq_url(),
-                        BROKER_USER='genie',
-                        BROKER_PASSWORD='genie123')
+from celery_app.init import celery
 
 
-def celery_client():
-    """
-    get the db instance
-    """
-    global _celery_client
-    return _celery_client
-
-
-def send_task(task_name, data, celery_queue):
-    client = celery_client()
-    client.send_task(f"celery_app.tasks.{task_name}",
-                     kwargs=data,
+def send_task(task_name, celery_queue, **kwargs):
+    celery.send_task(f"celery_app.tasks.{task_name}",
+                     kwargs=kwargs,
                      queue=celery_queue)
+
+
+def is_celery_queue_empty(queue_name: str) -> bool:
+    """
+    Checks if a given Celery queue is empty by inspecting both reserved and scheduled tasks.
+
+    Args:
+        queue_name (str): Name of the queue to check.
+
+    Returns:
+        bool: True if the queue is empty, False otherwise.
+    """
+    inspect = celery.control.inspect()
+    # Check reserved tasks
+    reserved_tasks = inspect.reserved()
+
+    if reserved_tasks:
+        for worker, tasks in reserved_tasks.items():
+            for task in tasks:
+                if task.get('delivery_info', {}).get('routing_key') == queue_name:
+                    print(f"Queue '{queue_name}' is not empty. Found reserved task: {task['name']}")
+                    return False
+    return True

@@ -1,7 +1,33 @@
 from storage.data_repository import DataRepository
-from storage.data_repository import FileHandler
+import json
 from pathlib import Path
 import os
+import ijson
+
+
+class FileHandler:
+    def __init__(self, file_path):
+        self.file_path = file_path
+
+    def load_json(self, default_value=None):
+        """Load JSON data from a file or return a default if it doesn't exist."""
+        if os.path.exists(self.file_path):
+            with open(self.file_path, 'r') as file:
+                return json.load(file)
+        return default_value if default_value is not None else []
+
+    def save_json(self, data, indent=None):
+        """Save JSON data to a file with optional indentation."""
+        with open(self.file_path, 'w') as file:
+            json.dump(data, file, indent=indent)
+
+    def load_ijson(self):
+        if os.path.exists(self.file_path):
+            with open(self.file_path, 'r') as file:
+                for item in ijson.items(file, "item"):
+                    yield item  # Process items while the file is open
+        else:
+            return iter([])
 
 
 class FileDataRepository(DataRepository):
@@ -15,7 +41,8 @@ class FileDataRepository(DataRepository):
         self.progress_file = FileHandler(os.path.join(output_directory, f"{base_name}_progress.json"))
 
     def load_data(self):
-        return self.input_file.load_json()
+        for element in self.input_file.load_ijson():
+            yield element
 
     def save_processed_data(self, data):
         self.processed_file.save_json(data, indent=4)

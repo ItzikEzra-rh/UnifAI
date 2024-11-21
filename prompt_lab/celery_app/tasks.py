@@ -1,44 +1,15 @@
 import logging
-from celery_batches import Batches
 from celery_app.init import celery
-from reviewer.g_eval.g_eval_review import process_elements
-
-from utils.celery.celery import send_task
-import traceback
+from processing.factory import DataProcessorFactory
+from utils.celery.celery import send_task, is_celery_queue_empty
 
 
-# @celery.on_after_configure.connect
-# def setup_periodic_tasks(sender, **kwargs):
-#     task_name = 'Periodic job - kill live samples once mongo cross storage limitation'
-#     sender.add_periodic_task(60.0, mongo_storage_limitation_task.s(), name=task_name)
-
-
-@celery.task()
-def fetch_resources_task():
-    pass
-
-
-# send_task(task_name="notify_statistics_master_worker",
-#           data=dict(sample_id=sample_id,
-#                     worker_id=sample.current_worker_id),
-#           celery_queue='asc_statistics')
-
-@celery.task(base=Batches, flush_every=10, flush_interval=1)
-def samples_handler(requests):
-    live_samples = []
-    for request in requests:
-        raw_sample_1 = request.kwargs['raw_sample_1']
-        raw_sample_2 = request.kwargs['raw_sample_2']
-
-@celery.task()
-def fetch_prompt_lab_generated_objects(data):
-    process_elements(data)
-
-@celery.task()
-def fetch_reviewer_passed_generated_objects(data):
-    # Need to implement
-    pass
-
-@celery.task()
-def fetch_reviewer_failed_generated_objects(data):
-    pass
+@celery.task(queue='high_priority')
+def fetch_prompts_batch(batch):
+    formatted_prompt = [element["formatted_prompt"] for element in batch]
+    metadata = [element["metadata"] for element in batch]
+    data_processor = DataProcessorFactory().create()
+    res_batch = data_processor.process_batch(batch_prompts=formatted_prompt, metadata=metadata)
+    send_task(task_name="fetch_prompt_lab_generated_objects",
+              celery_queue="reviewer_queue",
+              data=res_batch)

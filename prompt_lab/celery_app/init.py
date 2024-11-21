@@ -12,6 +12,8 @@ def make_celery():
     """
     celery_app = Celery('celery_promp_lab',
                         broker=get_rabbitmq_url(),
+                        BROKER_USER='genie',
+                        BROKER_PASSWORD='genie123',
                         backend=get_mongo_url(),
                         include=['celery_app.tasks'])
     return celery_app

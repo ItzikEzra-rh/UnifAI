@@ -1,14 +1,14 @@
 {
   "storage_type": "file",
   "input": {
-    "file_path": "/home/instruct/workflows.json"
+    "file_path": "/home/instruct/parsed_specification_with_uid.json"
   },
   "output": {
     "directory": "data/"
   },
   "model_config": {
-    "tokenizer_path": "oodeh/serverless-workflows-readme-r16-a16-epoch10",
-    "model_name": "oodeh/serverless-workflows-readme-r16-a16-epoch10",
+    "tokenizer_path": "meta-llama/Llama-3.1-8B-Instruct",
+    "model_name": "meta-llama/Llama-3.1-8B-Instruct",
     "api_url": "http://0.0.0.0:8000/v1/completions",
     "max_generation_length": 4096,
     "max_context_length": 16384,
