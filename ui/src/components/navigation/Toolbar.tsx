@@ -5,6 +5,7 @@ import RedHatLogoTAG from '../../assets/RedhatLogoNew.png';
 import SendIcon from '@mui/icons-material/Send';
 import HelpIcon from '@mui/icons-material/Help';
 import { StyledBreadcrumb } from '../shared/StyledBreadcrumb';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
 interface ToolbarProps {
   role: string;
@@ -23,7 +24,7 @@ interface DropdownItems {
 }
 
 const dropdownAllItems: DropdownItems[] = [
-  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' }] },
+  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' }, { label: 'More about AI', content: 'Info Content' }] },
   { title: 'Dataset', items: [{ label: 'Creating Dataset', content: 'Form Content' }, { label: 'Available Datasets', content: 'Dataset Table' }] },
   { title: 'Training', items: [{ label: 'Train New Model', content: 'Train Form' }, { label: 'Available Trained Models', content: 'Form Table' }] },
   { title: 'Inference', items: [{ label: 'Generate Automatic Test', content: 'Chatbot Prompt' }, { label: 'Saved Prompts', content: 'Saved Prompts' }] },
@@ -31,7 +32,7 @@ const dropdownAllItems: DropdownItems[] = [
 ];
 
 const dropdownUserItems: DropdownItems[] = [
-  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' }] },
+  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' }, { label: 'More about AI', content: 'Info Content' }] },
   { title: 'Inference', items: [{ label: 'Generate Automatic Test', content: 'Chatbot Prompt' }, { label: 'Saved Prompts', content: 'Saved Prompts' }] },
   { title: 'Statistics', items: [{ label: 'Graphs', content: 'Advanced Statistics' }] },
 ];
@@ -52,10 +53,10 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
   };
 
   const handleMenuItemClick = (item: DropdownItem) => {
-    setSelectedItem(item.label);    // Set selected item
-    setContent(item.content);       // Update content
-    setAnchorEl(null);              // Close the dropdown by setting anchorEl to null
-  };  
+    setSelectedItem(item.label); // Update the selected item
+    setContent(item.content);     // Update the content
+    setAnchorEl(null);            // Close the dropdown by setting anchorEl to null
+  };
 
   const handleMenuClose = () => {
     setAnchorEl(null); // Close the menu
@@ -77,25 +78,33 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
             <StyledBreadcrumb
               key={dropdown.title}
               component="button"
-              label={dropdown.title}
+              label={
+                <>
+                  {/* Title */}
+                  {dropdown.title}
+                  {/* Arrow icon after the title */}
+                  <KeyboardArrowDownIcon />
+                </>
+              }
               onClick={(event) => handleBreadcrumbClick(event, dropdown.title)}
             />
           ))}
         </Breadcrumbs>
       </div>
 
+      {/* Dropdown Menus */}
       {dropdownList.map((dropdown) => (
         <Menu
           key={dropdown.title}
           anchorEl={anchorEl}
-          open={menuTitle === dropdown.title}
-          onClose={handleMenuClose}
+          open={menuTitle === dropdown.title && Boolean(anchorEl)} // Only open if this menu is active
+          onClose={handleMenuClose} // Close menu when clicking outside or when an item is selected
         >
           {dropdown.items.map((item) => (
             <MenuItem
               key={item.label}
               selected={selectedItem === item.label}
-              onClick={() => handleMenuItemClick(item)}
+              onClick={() => handleMenuItemClick(item)} // Close the dropdown on item click
             >
               {item.label}
             </MenuItem>
@@ -111,8 +120,8 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
             <MenuItem value={DATA_SCIENCE_ROLE}>Data Science Role</MenuItem>
           </Select>
         </FormControl>
-        <Button variant="contained" endIcon={<SendIcon />}>Log In</Button>
-        <Button variant="contained" endIcon={<HelpIcon />}>Support</Button>
+        <Button variant="contained" color="error" endIcon={<SendIcon />}>Log In</Button>
+        <Button variant="contained" color="error" endIcon={<HelpIcon />}>Support</Button>
       </div>
     </div>
   );

@@ -635,7 +635,15 @@ const ChatComponent: React.FC = () => {
       ) : selectedModel ? (
           <>
             {/* Custom section for displaying model information */}
-            <ChatToolTip/>
+            <div style={{
+    position: 'absolute', 
+    top: '10px', 
+    right: '0', 
+    width: '100%', 
+    display: 'flex', 
+    justifyContent: 'flex-end', 
+    gap: '10px',
+    paddingRight: '20px'}}>
             <div style={{ position: 'absolute', top: '10px', right: '375px', display: 'flex', alignItems: 'center', gap: '10px', margin: "0px 10px" }}>
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '150px' }}>
                 <Tooltip title={temperatureTooltip} arrow placement="top">
@@ -656,12 +664,14 @@ const ChatComponent: React.FC = () => {
                 />
               </div>
             </div>
-            <Button variant="contained" color="primary" onClick={clearChat} disabled={isStreaming} style={{ position: 'absolute', top: '10px', right: '180px' }}>
+            <Button variant="contained" color="error" onClick={clearChat} disabled={isStreaming} style={{ position: 'absolute', top: '10px', right: '180px' }}>
                 Start New Chat
             </Button>
-            <Button variant="contained" color="primary" onClick={unloadModel} style={{ position: 'absolute', top: '10px', right: '10px' }}>
+            <Button variant="contained" color="error" onClick={unloadModel} style={{ position: 'absolute', top: '10px', right: '10px' }}>
                 Unload Model
             </Button>
+            </div>
+            <ChatToolTip/>
             <div style={{ position: 'relative', height: '80vh', display: 'flex', gap: '16px' }}>
               <MainContainer style={{padding: '10px', marginTop: '20px', width: '80%'}}>
                 <ChatContainer>

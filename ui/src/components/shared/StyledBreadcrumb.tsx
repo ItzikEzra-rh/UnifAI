@@ -13,6 +13,7 @@ export const StyledBreadcrumb = styled(Chip)(({ theme }) => {
     return {
       backgroundColor,
       height: theme.spacing(3),
+      width: '150px',
       color: theme.palette.text.primary,
       fontWeight: theme.typography.fontWeightRegular,
       '&:hover, &:focus': {
