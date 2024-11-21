@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTable, useSortBy, Column } from 'react-table';
-import { IconButton, Modal, Box, Typography } from '@mui/material';
+import { IconButton, Modal, Box, Typography, Table, TableHead, TableRow, TableCell, TableSortLabel, TableBody } from '@mui/material';
 import { FaFileAlt, FaEdit } from 'react-icons/fa';
 import axios from '../../http/axiosConfig';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -194,40 +194,45 @@ const SavedPrompts: React.FC = () => {
   return (
     <div className="table-container">
       <h2>Saved Prompts</h2>
-      <table {...getTableProps()} className="forms-table">
-        <thead>
-          {headerGroups.map(headerGroup => (
-            <tr {...headerGroup.getHeaderGroupProps()}>
-              {headerGroup.headers.map((column: any) => (
-                <th {...column.getHeaderProps(column.getSortByToggleProps())}>
+      <Table {...getTableProps()} className="forms-table">
+      <TableHead>
+        {headerGroups.map(headerGroup => (
+          <TableRow {...headerGroup.getHeaderGroupProps()}>
+            {headerGroup.headers.map((column: any) => (
+              <TableCell {...column.getHeaderProps(column.getSortByToggleProps())} sx={{ borderRight: '1px solid #ddd' }}>
+                <TableSortLabel
+                  active={column.isSorted}
+                  direction={column.isSortedDesc ? 'desc' : 'asc'}
+                >
                   {column.render('Header')}
-                  <span>
-                    {column.isSorted
-                      ? column.isSortedDesc
-                        ? ' 🔽'
-                        : ' 🔼'
-                      : ''}
-                  </span>
-                </th>
+                </TableSortLabel>
+                <span>
+                  {column.isSorted
+                    ? column.isSortedDesc
+                      ? ' 🔽'
+                      : ' 🔼'
+                    : ''}
+                </span>
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableHead>
+      <TableBody {...getTableBodyProps()}>
+        {rows.map(row => {
+          prepareRow(row);
+          return (
+            <TableRow {...row.getRowProps()}>
+              {row.cells.map(cell => (
+                <TableCell {...cell.getCellProps()} className="table-cell" sx={{ borderRight: '1px solid #ddd' }}>
+                  {cell.render('Cell')}
+                </TableCell>
               ))}
-            </tr>
-          ))}
-        </thead>
-        <tbody {...getTableBodyProps()}>
-          {rows.map(row => {
-            prepareRow(row);
-            return (
-              <tr {...row.getRowProps()}>
-                {row.cells.map(cell => (
-                  <td {...cell.getCellProps()} className="table-cell">
-                    {cell.render('Cell')}
-                  </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
       <Modal open={open} onClose={handleClose}>
         <Box
             sx={{

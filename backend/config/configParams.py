@@ -24,8 +24,6 @@ class ConfigParams():
     """ class that is responsible for parsing all the attributes from config_file """
 
     def get_param_by_env(self, param):
-        print(param)
-        print(os.environ)
         full_param_name = ''.join([os.environ['BACKEND_ENV'].upper(), '_', param.upper()])
         return config_params.__getattribute__(full_param_name)
 

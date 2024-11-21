@@ -10,6 +10,7 @@ import StopIcon from '@mui/icons-material/Stop';
 import StarIcon from '@mui/icons-material/Star';
 import AutorenewIcon from '@mui/icons-material/Replay';
 import { FormDropdown } from '../shared/FormFields';
+import { Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel } from '@mui/material';
 import { useTable, useSortBy, Column } from 'react-table';
 import { ModelData } from '../types/constants'
 import ReactLoading from 'react-loading';
@@ -583,27 +584,33 @@ const ChatComponent: React.FC = () => {
   );
 
   const ChatToolTip = () =>
-    <table {...getTableProps()} className="forms-table">
-      <thead>
+    <Table {...getTableProps()} className="forms-table">
+      <TableHead>
         {headerGroups.map(headerGroup => (
-          <tr {...headerGroup.getHeaderGroupProps()}>
+          <TableRow {...headerGroup.getHeaderGroupProps()}>
             {headerGroup.headers.map((column: any) => (
-              <th {...column.getHeaderProps(column.getSortByToggleProps())}>
-                {column.render('Header')}
-              </th>
+              <TableCell {...column.getHeaderProps(column.getSortByToggleProps())} sx={{ borderRight: '1px solid #ddd' }}>
+                <TableSortLabel
+                  active={column.isSorted}
+                  direction={column.isSortedDesc ? 'desc' : 'asc'}
+                >
+                  {column.render('Header')}
+                </TableSortLabel>
+              </TableCell>
             ))}
-          </tr>
+          </TableRow>
         ))}
-      </thead>
-      <tbody {...getTableBodyProps()}>
+      </TableHead>
+      <TableBody {...getTableBodyProps()}>
         {rows.map(row => {
           prepareRow(row);
           return (
-            <tr {...row.getRowProps()}>
+            <TableRow {...row.getRowProps()}>
               {row.cells.map(cell => (
-                <td
+                <TableCell
                   {...cell.getCellProps()}
                   className="table-cell"
+                  sx={{ borderRight: '1px solid #ddd' }}
                   onMouseEnter={(e) => {
                     const columnIndex = cell.column.id;
                     const cells = document.querySelectorAll(`td[data-column-id="${columnIndex}"]`);
@@ -617,13 +624,13 @@ const ChatComponent: React.FC = () => {
                   data-column-id={cell.column.id}
                 >
                   {cell.render('Cell')}
-                </td>
+                </TableCell>
               ))}
-            </tr>
+            </TableRow>
           );
         })}
-      </tbody>
-    </table>
+      </TableBody>
+    </Table>
 
   const data = React.useMemo(() => selectedModel ? [selectedModel] : [], [selectedModel]);
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
