@@ -4,7 +4,6 @@ import { DATA_SCIENCE_ROLE, USER_ROLE } from '../types/roles';
 import RedHatLogoTAG from '../../assets/RedhatLogoNew.png';
 import SendIcon from '@mui/icons-material/Send';
 import HelpIcon from '@mui/icons-material/Help';
-import { StyledBreadcrumb } from '../shared/StyledBreadcrumb';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
 interface ToolbarProps {
@@ -24,7 +23,7 @@ interface DropdownItems {
 }
 
 const dropdownAllItems: DropdownItems[] = [
-  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' }, { label: 'More about AI', content: 'Info Content' }] },
+  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' } ]},
   { title: 'Dataset', items: [{ label: 'Creating Dataset', content: 'Form Content' }, { label: 'Available Datasets', content: 'Dataset Table' }] },
   { title: 'Training', items: [{ label: 'Train New Model', content: 'Train Form' }, { label: 'Available Trained Models', content: 'Form Table' }] },
   { title: 'Inference', items: [{ label: 'Generate Automatic Test', content: 'Chatbot Prompt' }, { label: 'Saved Prompts', content: 'Saved Prompts' }] },
@@ -32,7 +31,7 @@ const dropdownAllItems: DropdownItems[] = [
 ];
 
 const dropdownUserItems: DropdownItems[] = [
-  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' }, { label: 'More about AI', content: 'Info Content' }] },
+  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' } ] },
   { title: 'Inference', items: [{ label: 'Generate Automatic Test', content: 'Chatbot Prompt' }, { label: 'Saved Prompts', content: 'Saved Prompts' }] },
   { title: 'Statistics', items: [{ label: 'Graphs', content: 'Advanced Statistics' }] },
 ];
@@ -73,24 +72,24 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
       </div>
 
       <div className="breadcrumbs">
-        <Breadcrumbs aria-label="breadcrumb">
-          {dropdownList.map((dropdown) => (
-            <StyledBreadcrumb
-              key={dropdown.title}
-              component="button"
-              label={
-                <>
-                  {/* Title */}
-                  {dropdown.title}
-                  {/* Arrow icon after the title */}
-                  <KeyboardArrowDownIcon />
-                </>
-              }
-              onClick={(event) => handleBreadcrumbClick(event, dropdown.title)}
-            />
-          ))}
-        </Breadcrumbs>
-      </div>
+  <Breadcrumbs aria-label="breadcrumb">
+    {dropdownList.map((dropdown) => (
+      <button
+        key={dropdown.title}
+        className="breadcrumb"  // Apply the CSS class here
+        onClick={(event) => handleBreadcrumbClick(event, dropdown.title)}
+      >
+        <>
+          {/* Title */}
+          {dropdown.title}
+          {/* Arrow icon after the title */}
+          <KeyboardArrowDownIcon />
+        </>
+      </button>
+    ))}
+  </Breadcrumbs>
+</div>
+
 
       {/* Dropdown Menus */}
       {dropdownList.map((dropdown) => (

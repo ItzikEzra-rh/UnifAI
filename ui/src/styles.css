@@ -3,6 +3,10 @@ body, html, #root {
   padding: 0;
   height: 100%;
   font-family: Arial, sans-serif;
+  --text-primary: #000000; /* or use your theme color */
+  --background-color-light: #f5f5f5; /* light mode background */
+  --background-color-light-hover: #e0e0e0; /* hover background */
+  --background-color-light-active: #d0d0d0; /* active background */
 }
 
 .app {
@@ -23,6 +27,36 @@ body, html, #root {
   flex: 1;
   display: flex;
   justify-content: flex-start;
+}
+
+.breadcrumb {
+  height: 24px; 
+  width: 120px;
+  color: var(--text-primary);
+  font-weight: 400; 
+  font-family: 'Roboto', sans-serif; 
+  background-color: var(--background-color-light);
+  border-radius: 12px; 
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px; 
+  transition: background-color 0.3s, box-shadow 0.3s;
+  border: none; 
+}
+
+.breadcrumb:hover,
+.breadcrumb:focus {
+  background-color: var(--background-color-light-hover); /* hover background */
+}
+
+.breadcrumb:active {
+  box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.2); /* box-shadow for active state */
+  background-color: var(--background-color-light-active); /* active background */
+}
+
+.breadcrumb svg {
+  margin-left: 8px; /* Adds space between title and the icon */
 }
 
 .breadcrumbs {
@@ -239,6 +273,7 @@ body, html, #root {
 }
 
 .forms-table {
+  margin-top: 60px;
   width: 100%;
   border-collapse: collapse;
 }
