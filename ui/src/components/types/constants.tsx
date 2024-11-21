@@ -5,7 +5,7 @@ export interface FormData {
     gitCredentialKey: string;
     gitFolderPath?: string;
     gitBranchName: string;
-    baseModelName: 'Mistral' | 'Lama' | 'Granite';
+    baseModelName: 'Mistral' | 'Llama' | 'Granite';
     testsCodeFramework: 'Python' | 'Robot' | 'Go' | 'Jmeter';
     numberOfTests: number;
     expandDatasetTo: '5x' | '10x' | '25x' | '50x' | '100x';
@@ -16,7 +16,7 @@ export interface FormData {
 export interface TableFormData {
     projectName: string;
     trainingName: string;
-    baseModelName: 'Mistral' | 'Lama' | 'Granite';
+    baseModelName: 'Mistral' | 'Llama' | 'Granite';
     testsCodeFramework: 'Python' | 'Robot' | 'Go' | 'Jmeter';
     status: 'Initial' | 'In progress' | 'Finished';
     progress: string; // Represented by percentage (e.g., "50%")

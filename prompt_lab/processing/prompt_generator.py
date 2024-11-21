@@ -1,4 +1,8 @@
+import copy
+
+from jinja2 import Environment
 import random
+import string
 
 
 class PromptGenerator:
@@ -26,55 +30,83 @@ class PromptGenerator:
         Generates formatted prompts and metadata for a given element.
 
         Args:
-            element_data (dict): Dictionary containing information about the element for
-                                 which prompts are generated. It includes `element_type`
+            element_data (dict): Contains information about the element for
+                                 which prompts are generated, including `element_type`
                                  and other attributes required by the templates.
 
         Returns:
-            list: A list of dictionaries, each containing a formatted prompt and metadata.
-                  Each dictionary contains:
-                  - `formatted_prompt` (str): The fully formatted prompt text.
-                  - `metadata` (dict): Metadata associated with the prompt, including:
-                      - `element_type` (str): The type of the element.
-                      - `group` (str): The group name for the prompt.
-                      - `category` (str): The category of the prompt.
-                      - `input_text` (str): The input text generated from templates.
-                      - `original_data` (dict): The original element data.
-                      - `token_count` (int): The token count of the formatted prompt.
-
-        Notes:
-            - Prompts that exceed the token limit are skipped.
+            list[dict]: A list of dictionaries, each containing:
+                        - `formatted_prompt` (str): The fully formatted prompt text.
+                        - `metadata` (dict): Metadata associated with the prompt.
         """
-        all_prompts = []
+        prompts = []
         element_type = element_data.get("element_type")
-        input_option_groups = self.project_config["element_templates"].get(element_type, {})
+        input_groups = self.project_config["element_templates"].get(element_type, {})
         system_message = self.project_config.get("system_message", "")
+        env = Environment()
 
-        for group_name, options in input_option_groups.items():
-            for category, templates in options.items():
-                # Generate context and input text for the prompt
-                context, input_text = self._generate_random_input(templates, **element_data)
+        for group_name, categories in input_groups.items():
+            for category_name, templates in categories.items():
+                # Check condition if specified
+                condition = templates.get("condition")
+                if condition and env.from_string(condition).render(element=element_data) != "True":
+                    continue
+
+                questions = templates.get("questions", [])
+                if not questions:
+                    continue
+
+                # Generate context and input text
+                context, input_text = self._generate_random_input(questions, element_data)
                 formatted_prompt = self._format_prompt(system_message, context, input_text)
 
                 # Append prompt with metadata
-                all_prompts.append({
+                prompts.append({
                     "formatted_prompt": formatted_prompt,
                     "metadata": {
                         "element_type": element_type,
                         "group": group_name,
-                        "category": category,
+                        "category": category_name,
                         "input_text": input_text,
                         "original_data": element_data,
                     }
                 })
-        return all_prompts
 
-    def _generate_random_input(self, templates, **kwargs):
+        return prompts
+
+    @staticmethod
+    def _format_context(context_template, element):
+        """
+        Format the context template by ensuring each placeholder in the template
+        is formatted only once.
+        """
+        element_copied = copy.deepcopy(element)
+
+        # Parse placeholders from the template
+        formatter = string.Formatter()
+        placeholders = [field_name for _, field_name, _, _ in formatter.parse(context_template) if field_name]
+
+        # Format each placeholder value if not already formatted
+        for placeholder in placeholders:
+            if element_copied.get(placeholder):
+                value = element_copied[placeholder]
+                # Check if the value is a string and starts with the formatted prefix
+                if isinstance(value, str) and value.startswith(f"{placeholder}:\n"):
+                    continue  # Already formatted, skip
+                # Format and update the placeholder
+                element_copied[placeholder] = f"{placeholder}:\n{value}"
+            else:
+                element_copied[placeholder] = ""  # Default for missing placeholders
+
+        # Format the context
+        return context_template.format(**element_copied)
+
+    def _generate_random_input(self, template_questions, element_data):
         """
         Generates randomized input text from the provided templates and element data.
 
         Args:
-            templates (list): A list of template strings for generating input text.
+            template_questions (list): A list of template strings for generating input text.
             **kwargs: Additional keyword arguments used for formatting the templates.
 
         Returns:
@@ -84,9 +116,9 @@ class PromptGenerator:
                 - `input_text` (str): The input text generated from a randomly selected template.
         """
         context_template = self.project_config.get("context_template", "")
-        context = context_template.format(**kwargs)
-        selected_template = random.choice(templates)
-        input_text = selected_template.format(**kwargs)
+        context = self._format_context(context_template, element_data)
+        selected_template = random.choice(template_questions)
+        input_text = selected_template.format(**element_data)
         return context, input_text
 
     def _format_prompt(self, system_message, context, input_text):

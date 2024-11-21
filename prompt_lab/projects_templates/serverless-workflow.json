@@ -1,7 +1,7 @@
 {
   "project_id": "serverless-workflow-specification",
   "system_message": "You are an expert in the Serverless Workflow Specification. Your role is to analyze and understand workflow rules and descriptions from the specification, rephrase them for clarity, and explain their components with precision. You focus on teaching and maintaining compliance with the specification’s standards.",
-  "context_template": "The Workflow Element Details:\n\n{title}\n\n{description}\n\n{name}\n\n{specs}\n\n{schemas}\n\n{properties}\n\n{workflow}",
+  "context_template": "The Serverless Workflow Specification is an open-source, vendor-neutral project under the Cloud Native Computing Foundation (CNCF). It defines a Domain Specific Language (DSL) for modeling workflows in serverless environments, aiming to standardize and simplify workflow creation and execution.\n\nKey Features:\n\nEase of Use: The DSL is designed for universal understanding, enabling users to quickly grasp workflow concepts and create complex workflows effortlessly.\n\nEvent-Driven: It seamlessly integrates events into workflows, supporting various formats, including CloudEvents, to facilitate event-driven architectures.\n\nService-Oriented: The specification allows integration with service-oriented architectures, enabling workflows to interact with services over standard protocols like HTTP, gRPC, OpenAPI, and AsyncAPI.\n\nFunction-as-a-Service (FaaS) Centric: It supports invoking functions hosted on various platforms within workflows, promoting a FaaS paradigm and enabling microservices architectures.\n\nFault Tolerance and Scalability: The DSL offers features such as error handling, conditional branching, event handling, and looping constructs to ensure robustness and scalability across different environments.\n\nEcosystem Components:\n\nDSL: Defines the syntax and semantics of Serverless Workflow specifications.\n\nConformance Test Kit (CTK): A set of Gherkin features for conformance testing and Behavior Driven Design (BDD), ensuring compliance across implementations.\n\nSDKs: Available for Go, Java, .NET, Python, and TypeScript, these SDKs enable developers to interact with serverless workflows in various programming languages.\n\nRuntimes: Environments for executing workflows defined using the Serverless Workflow DSL, ensuring seamless deployment and operation.\n\nTooling: Additional utilities and resources to enhance the development, debugging, and management of serverless workflows.\n\nElement Details:\n\n{title}\n\n{description}\n\n{name}\n\n{specs}\n\n{schemas}\n\n{properties}\n\n{workflow}",
   "element_templates": {
     "heading": {
       "Description and Code Understanding": {
@@ -22,7 +22,7 @@
           ]
         },
         "Description and Code Relationship": {
-          "condition": "{{ 'code' in element and element.code and element.code == true }}",
+          "condition": "{{ element.code == true }}",
           "questions": [
             "Explain how the `{title}` relates to the provided code, focusing on the alignment between the two and using all details from the full description.",
             "Identify components in the code of `{title}` that reflect the description and explain their role, ensuring the explanation uses the full description.",
@@ -31,7 +31,7 @@
           ]
         },
         "Code Understanding and Generation": {
-          "condition": "{{ 'code' in element and element.code and element.code == true }}",
+          "condition": "{{ element.code == true }}",
           "questions": [
             "Display the full code of `{title}` and explain how it adheres to the rules in the description, referencing all details from the description.",
             "Provide a step-by-step explanation of the code for `{title}`, linking each part to its purpose in the description and covering all the information in the full description.",
@@ -41,7 +41,7 @@
           ]
         },
         "Specification Rule Application to Code": {
-          "condition": "{{ 'code' in element and element.code and element.code == true }}",
+          "condition": "{{ element.code == true }}",
           "questions": [
             "Describe how the rules in the Serverless Workflow Specification are reflected in the code for `{title}`, using all details from the full description.",
             "Identify potential improvements to the code of `{title}` to better align with the description or specification rules, ensuring all aspects of the description are considered.",
@@ -103,7 +103,7 @@
             "Analyze the role of properties in the workflow `{name}` and explain how they enable customization, portability, and alignment with the workflow’s purpose.",
             "Provide examples from the workflow `{name}` showing how changes to properties, such as timeouts or annotations, directly affect its behavior or functionality."
           ],
-          "condition": "{{ 'properties' in element and element.properties and element.properties != '' }}"
+          "condition": "{{ element.properties != '' }}"
         },
         "metadata_and_execution_context": {
           "questions": [
@@ -111,7 +111,7 @@
             "Explain the relationship between the execution context defined in the properties file and its implementation in the workflow code.",
             "Discuss how the properties file ensures the workflow `{name}` remains portable and adaptable across different environments."
           ],
-          "condition": "{{ 'properties' in element and element.properties and element.properties != '' }}"
+          "condition": "{{ element.properties != '' }}"
         },
         "properties_secret_relation_to_workflow": {
           "questions": [
@@ -121,7 +121,7 @@
             "Analyze the relationship between the properties defined in the properties file and their usage through `$SECRET` in the workflow `{name}`, explaining how this interaction supports runtime configurations and aligns with workflow goals.",
             "Provide examples from the workflow `{name}` showing how specific properties defined in the properties file are accessed via `$SECRET`, and explain how changes to these properties directly impact workflow behavior and functionality."
           ],
-          "condition": "{{ 'properties' in element and element.properties and element.properties != '' }}"
+          "condition": "{{ element.properties != '' }}"
         }
       },
       "schemas_relationship": {
@@ -133,7 +133,7 @@
             "If the input schema exists, explain how it interacts with states and actions to process data effectively in the workflow `{name}`; if the output schema exists, describe how it ensures predictable and reliable delivery of results.",
             "If both input and output schemas exist, analyze how they together establish a clear data contract in the workflow `{name}`, ensuring smooth data flow and compliance with the Serverless Workflow Specification."
           ],
-          "condition": "{{ 'schemas' in element and element.schemas and element.schemas | length > 0 }}"
+          "condition": "{{ element.schemas | length > 0 }}"
         },
         "showing_and_explaining_schemas": {
           "questions": [
@@ -143,7 +143,7 @@
             "Highlight specific sections of the input schema code in `{name}` (if it exists) that enforce data constraints, and explain their significance.",
             "If the output schema code exists in `{name}`, identify and explain sections that ensure compatibility with downstream systems."
           ],
-          "condition": "{{ 'schemas' in element and element.schemas and element.schemas | length > 0 }}"
+          "condition": "{{ element.schemas | length > 0 }}"
         }
       },
       "specs_and_workflow_relationship": {
@@ -155,7 +155,7 @@
             "Analyze how the specs files located in the `specs/` directory define critical aspects such as retries, data transformations, and error codes for the specific services used in the workflow `{name}`, and discuss their relevance to ensuring robust service interactions.",
             "Describe the role of the specs files (found under `specs/`) in ensuring that the services used by the workflow `{name}` adhere to defined standards, supporting scalability, portability, and maintainability of those services within the workflow."
           ],
-          "condition": "{{ 'specs' in element and element.specs and element.specs | length > 0 }}"
+          "condition": "{{ element.specs | length > 0 }}"
         },
         "workflow_and_specs_alignment": {
           "questions": [
@@ -164,7 +164,7 @@
             "Analyze how the specs files located in the `specs/` directory influence the workflow `{name}` by defining rules for error handling, retries, and request/response formats, ensuring consistent interactions with the services described.",
             "Describe the interaction between the workflow `{name}` and the specs files located in the `specs/` directory, focusing on how the workflow dynamically applies the rules or constraints defined in the specs files to achieve its objectives for specific services."
           ],
-          "condition": "{{ 'specs' in element and element.specs and element.specs | length > 0 }}"
+          "condition": "{{ element.specs | length > 0 }}"
         }
       },
       "workflow_gaps_analysis": {
@@ -185,7 +185,7 @@
             "Identify any gaps in the configuration of the properties file for workflow `{name}` that could hinder its deployment or portability across environments. Provide examples of how missing properties should be referenced in the workflow using `$SECRET.[PROPERTY_KEY]`.",
             "Analyze the properties file for workflow `{name}` and determine if additional entries are needed to better document or manage the workflow. Discuss how these new properties can be utilized in the workflow using `$SECRET.[PROPERTY_KEY]`."
           ],
-          "condition": "{{ 'properties' in element and element.properties and element.properties != '' }}"
+          "condition": "{{ element.properties != '' }}"
         },
         "schema_and_data_gaps": {
           "questions": [
@@ -195,7 +195,7 @@
             "Identify any schema mismatches or ambiguities in `{name}` that could lead to data handling issues during execution.",
             "Analyze the use of schemas in `{name}` and determine whether additional fields or constraints are needed to ensure data integrity."
           ],
-          "condition": "{{ 'schemas' in element and element.schemas and element.schemas | length > 0 }}"
+          "condition": "{{ element.schemas | length > 0 }}"
         },
         "specs_alignment_gaps": {
           "questions": [
@@ -205,7 +205,7 @@
             "Analyze the implementation of the workflow `{name}` and identify areas where adherence to the specification and proper utilization of specs files in the `specs/` directory could be improved, ensuring better integration with defined services.",
             "Provide recommendations to close any gaps in `{name}` that may hinder its interoperability or compliance with the specification and the specs files in the `specs/` directory, particularly for its service-oriented operations."
           ],
-          "condition": "{{ 'specs' in element and element.specs and element.specs | length > 0 }}"
+          "condition": "{{ element.specs | length > 0 }}"
         }
       }
     }

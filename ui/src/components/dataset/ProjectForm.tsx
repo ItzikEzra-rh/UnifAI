@@ -23,7 +23,7 @@ const schema = yup.object().shape({
     gitBranchName: yup.string().required('Git Branch Name is required'),
     gitFolderPath: yup.string(),
     // gitFolderPath: yup.string().required('Git Path to Expand From is required'),
-    baseModelName: yup.string().oneOf(['Mistral', 'Lama', 'Granite']).required('Base Model Name is required'),
+    baseModelName: yup.string().oneOf(['Mistral', 'Llama', 'Granite']).required('Base Model Name is required'),
     testsCodeFramework: yup.string().oneOf(['Python', 'Robot', 'Go', 'Jmeter']).required('Tests Code Language is required'),
     numberOfTests: yup.number().required('Number of Tests is required').positive().integer(),
     expandDatasetTo: yup.string().oneOf(['5x', '10x', '25x', '50x', '100x']).required('Expand Dataset To is required'),
@@ -149,7 +149,7 @@ const ProjectForm: React.FC = () => {
                     <FormField name="gitCredentialKey" label="Git Credential Key" control={control} errors={errors} secret={true} />
                     <FormField name="gitBranchName" label="Git Branch Name" control={control} errors={errors} />
                     <FormField name="gitFolderPath" label="Git Path To Fetch From" control={control} errors={errors} />
-                    <FormDropdown name="baseModelName" label="Foundational Model Name" control={control} errors={errors} options={['Mistral', 'Lama', 'Granite']} />
+                    <FormDropdown name="baseModelName" label="Foundational Model Name" control={control} errors={errors} options={['Mistral', 'Llama', 'Granite']} />
                     <FormDropdown name="testsCodeFramework" label="Tests Code Framework" control={control} errors={errors} options={['Python', 'Robot', 'Go', 'Jmeter']} />
                     <Button type="button" variant="contained" color="primary" onClick={handleNextClick} disabled={!isFirstTabValid} style={{ float: 'right', marginTop: '10px' }}>
                         Next
