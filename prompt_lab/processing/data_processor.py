@@ -115,3 +115,9 @@ class DataProcessor:
         print(separator)
         print(f"\n{output}\n")
         print(separator)
+
+# TODO is this the best way to check the celery queue?
+# TODO check processed and uid test
+# TODO make sure code works as expected
+# TODO indexing with print
+# TODO Flask?

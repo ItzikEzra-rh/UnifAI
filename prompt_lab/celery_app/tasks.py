@@ -4,7 +4,7 @@ from processing.factory import DataProcessorFactory
 from utils.celery.celery import send_task, is_celery_queue_empty
 
 
-@celery.task(queue='high_priority')
+@celery.task()
 def fetch_prompts_batch(batch):
     formatted_prompt = [element["formatted_prompt"] for element in batch]
     metadata = [element["metadata"] for element in batch]
