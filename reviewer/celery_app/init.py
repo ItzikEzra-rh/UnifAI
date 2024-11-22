@@ -10,7 +10,7 @@ def make_celery():
     run celery using:
     celery -A celery_app.init worker --loglevel=info
     """
-    celery_app = Celery('celery_promp_lab',
+    celery_app = Celery('celery_reviewer',
                         broker=get_rabbitmq_url(),
                         BROKER_USER='genie',
                         BROKER_PASSWORD='genie123',
