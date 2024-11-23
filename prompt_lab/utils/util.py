@@ -1,6 +1,7 @@
 from config.manager import config
 from storage.file_data_repository import FileDataRepository
 import json
+import os
 
 
 def get_mongo_url():
@@ -31,3 +32,8 @@ def load_json_config(file_path):
     """Load JSON configuration from a file."""
     with open(file_path, 'r') as file:
         return json.load(file)
+
+
+def mkdir(directory):
+    if not os.path.exists(directory):
+        os.makedirs(directory)

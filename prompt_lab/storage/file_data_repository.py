@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import os
 import ijson
+from utils.util import mkdir
 
 
 class FileHandler:
@@ -32,6 +33,7 @@ class FileHandler:
 
 class FileDataRepository(DataRepository):
     def __init__(self, input_file_path, output_directory):
+        mkdir(output_directory)
         self.input_file = FileHandler(input_file_path)
 
         # Derive other file names from the input file name
