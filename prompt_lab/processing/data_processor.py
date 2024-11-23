@@ -2,7 +2,7 @@ from llm_client.vllm import VLLMClient
 from utils.tokenizer import TokenizerUtils
 from processing.prompt_generator import PromptGenerator
 from processing.batch_procceser import BatchProcessor
-from utils.celery.celery import send_task, is_celery_queue_empty
+from utils.celery.celery import send_task, get_queue_length_rabbitmq
 from time import sleep
 
 
@@ -35,11 +35,11 @@ class DataProcessor:
         self.batch_processor = BatchProcessor(batch_size, self.tokenizer, self.skipped_data, self.io_repository)
         self.current_prompt_index = self.io_repository.load_progress()
         self.processed_data = self.io_repository.load_processed_data()
+        self.queue_name = "prompts_process_queue"
+        self.target_queue_size = 10
         print("DataProcessor initialized.")
 
     def process_all_elements(self):
-        """Main method to process all elements, batching prompts and sending them to the LLM client."""
-        # Generate all prompts and metadata
         for element in self.io_repository.load_data():
             if element["uid"] in self.processed_data:
                 continue
@@ -49,14 +49,20 @@ class DataProcessor:
                 if not self.batch_processor.add_prompt(prompt=prompt) and self.batch_processor.is_batch_full():
                     batch = self.batch_processor.finalize_batch()
                     if batch:
-                        # send to process batch by prompts process workers
-                        while True:
-                            if is_celery_queue_empty("prompts_process_queue"):
-                                send_task(task_name="fetch_prompts_batch",
-                                          celery_queue="prompts_process_queue",
-                                          batch=batch)
-                                break
-                            sleep(2)
+                        self.send_batch_to_queue(batch)
+
+    def send_batch_to_queue(self, batch):
+        while True:
+            queue_size = get_queue_length_rabbitmq(self.queue_name)
+            print(queue_size)
+            if queue_size < self.target_queue_size:
+                send_task(task_name="fetch_prompts_batch",
+                          celery_queue=self.queue_name,
+                          batch=batch)
+                break
+            else:
+                # Wait before checking again to avoid excessive API calls
+                sleep(5)
 
     def process_batch(self, batch_prompts, metadata):
         """

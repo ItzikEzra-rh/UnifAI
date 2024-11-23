@@ -1,4 +1,6 @@
 from celery_app.init import celery
+from kombu import Connection
+from utils.util import get_rabbitmq_url
 
 
 def send_task(task_name, celery_queue, **kwargs):
@@ -28,3 +30,9 @@ def is_celery_queue_empty(queue_name: str) -> bool:
                     print(f"Queue '{queue_name}' is not empty. Found reserved task: {task['name']}")
                     return False
     return True
+
+
+def get_queue_length_rabbitmq(queue_name):
+    with Connection(get_rabbitmq_url()) as conn:
+        queue = conn.SimpleQueue(queue_name)
+        return queue.qsize()
