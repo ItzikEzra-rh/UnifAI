@@ -15,8 +15,8 @@
     "batch_size": 8
   },
   "rabbitmq": {
-    "port": 5672,
-    "url": "amqp://0.0.0.0:{port}"
+    "port": 443,
+    "url": "amqp://instructlab.v249k.sandbox1145.opentlc.com:{port}"
   },
   "mongodb": {
     "port": 27017,
