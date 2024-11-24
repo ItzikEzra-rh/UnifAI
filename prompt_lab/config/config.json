@@ -1,7 +1,7 @@
 {
   "storage_type": "file",
   "input": {
-    "file_path": "/home/instruct/parsed_specification_with_uid.json"
+    "file_path": "/app/parsed_specification_with_uid.json"
   },
   "output": {
     "directory": "data/"
