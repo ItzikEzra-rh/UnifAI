@@ -27,7 +27,7 @@ RUN /bin/bash -c "huggingface-cli login --token ${HF_TOKEN}"
 WORKDIR /app/repo/prompt_lab
 
 # TODO: Once all the changes will be pushed to main - Remove the line below
-RUN git checkout GENIE-14/EPIC/reviewer-functionality
+RUN git checkout GENIE-68/story/make-celery-template
 
 # Install dependencies
 RUN /bin/bash -c "pip install --upgrade pip && \
