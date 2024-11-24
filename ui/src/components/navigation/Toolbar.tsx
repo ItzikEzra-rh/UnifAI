@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Menu, MenuItem, Button, FormControl, Select, SelectChangeEvent, ButtonGroup } from '@mui/material';
 import { DATA_SCIENCE_ROLE, USER_ROLE } from '../types/roles';
 import RedHatLogoTAG from '../../assets/RedhatLogoNew.png';
@@ -41,20 +41,39 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
   const [dropdownList, setDropdownList] = useState<DropdownItems[]>(dropdownUserItems);
   const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const [menuTitle, setMenuTitle] = useState<string>('');
+  const [selectedButton, setSelectedButton] = useState<string | null>(null); // Track the selected button
+  const toolbarRef = useRef<HTMLDivElement>(null); // Ref for toolbar container
 
   useEffect(() => {
     role === DATA_SCIENCE_ROLE ? setDropdownList(dropdownAllItems) : setDropdownList(dropdownUserItems);
   }, [role]);
 
+  // Detect clicks outside of the toolbar and reset the selectedButton
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(event.target as Node)) {
+        setSelectedButton(null); // Reset the selected button when clicking outside
+        setAnchorEl(null); // Close the dropdown menu
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const handleClick = (event: React.MouseEvent<HTMLElement>, title: string) => {
     setAnchorEl(event.currentTarget);
     setMenuTitle(title);
+    setSelectedButton(title); // Set the selected button
   };
 
   const handleMenuItemClick = (item: DropdownItem) => {
-    setSelectedItem(item.label); 
-    setContent(item.content);  
-    setAnchorEl(null);    
+    setSelectedItem(item.label);
+    setContent(item.content);
+    setAnchorEl(null);
+    setSelectedButton(null); // Reset selected button after selecting an item
   };
 
   const handleMenuClose = () => {
@@ -66,7 +85,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
   };
 
   return (
-    <div className="toolbar">
+    <div className="toolbar" ref={toolbarRef}>
       <div className="left-section">
         <a href="/">
           <img src={RedHatLogoTAG} alt="Logo" className="logo-image" />
@@ -77,7 +96,10 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
               key={dropdown.title}
               endIcon={<KeyboardArrowDownIcon />}
               onClick={(event) => handleClick(event, dropdown.title)}
-            > {dropdown.title} </Button>
+              className={selectedButton === dropdown.title ? 'selected' : ''} // Add the selected class
+            >
+              {dropdown.title}
+            </Button>
           ))}
         </ButtonGroup>
       </div>
@@ -85,9 +107,8 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
         <Menu
           key={dropdown.title}
           anchorEl={anchorEl}
-          
-          open={menuTitle === dropdown.title && Boolean(anchorEl)} 
-          onClose={handleMenuClose} 
+          open={menuTitle === dropdown.title && Boolean(anchorEl)}
+          onClose={handleMenuClose}
         >
           {dropdown.items.map((item) => (
             <MenuItem

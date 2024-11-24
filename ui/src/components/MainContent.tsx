@@ -6,7 +6,7 @@ import Statistics from './statistics/Statistics'
 import SavedPrompt from './inference/SavedPrompt'
 import DataSetTable from './dataset/DataSetTable'
 import TrainingForm from './training/TrainingForm'
-import { Card, CardContent, Typography, Box, Button } from '@mui/material';
+import { Card, CardContent, Typography } from '@mui/material';
 import '../styles.css';
 
 interface MainContentProps {
