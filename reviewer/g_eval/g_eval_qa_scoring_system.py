@@ -88,13 +88,13 @@ class GEvalQASystem:
                 self._categorize_evaluation(evaluation)
                 self._log_evaluation(evaluation)
 
-                send_task(task_name="fetch_reviewer_passed_generated_objects",
+                send_task(task_name="process_passed_prompts",
                           data=self.passed_elements,
-                          celery_queue='reviewer_pass_queue')
+                          celery_queue='reviewer_passed')
                 
-                send_task(task_name="fetch_reviewer_failed_generated_objects",
-                          data=self.failed_elements,
-                          celery_queue='reviewer_fail_queue')
+                # send_task(task_name="fetch_reviewer_failed_generated_objects",
+                #           data=self.failed_elements,
+                #           celery_queue='reviewer_fail_queue')
             except Exception as e:
                 logger.error(f"Error processing element: {e}")
                 self.failed_elements.append({
