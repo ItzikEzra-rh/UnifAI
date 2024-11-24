@@ -35,12 +35,12 @@ RUN git clone https://Nirsisr:${GITHUB_TOKEN}@github.com/Nirsisr/AI-TC-s-Generat
 WORKDIR /app/repo
 
 # Install dependencies
+# TODO: Once all the changes will be pushed to main - comment out the lines below instead of the manual pip install
 # RUN /bin/bash -c "source /app/venv/bin/activate && \
 #     pip install --upgrade pip && \
 #     pip install -r prompt_lab/requirements.txt && \
 #     pip install vllm celery"
 
-# Install dependencies
 RUN /bin/bash -c "source /app/venv/bin/activate && \
     pip install --upgrade pip && \
     pip install flask-cors websocket-client websockets scapy pymongo uwsgi webargs flask_pymongo pandas celery celery-batches && \
