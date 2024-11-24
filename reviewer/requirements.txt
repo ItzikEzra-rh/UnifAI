@@ -10,3 +10,5 @@ flask_pymongo
 pandas
 celery
 celery-batches
+transformers
+watchdog

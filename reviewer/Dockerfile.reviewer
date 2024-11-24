@@ -36,11 +36,11 @@ RUN git checkout GENIE-14/EPIC/reviewer-functionality
 # Install dependencies
 # TODO: Once all the changes will be pushed to main - comment out the lines below instead of the manual pip install
 # RUN /bin/bash -c "pip install --upgrade pip && \
-#     pip install -r prompt_lab/requirements.txt && \
+#     pip install -r requirements.txt && \
 #     pip install vllm celery"
 
 RUN /bin/bash -c "pip install --upgrade pip && \
-    pip install flask-cors websocket-client websockets scapy pymongo uwsgi webargs flask_pymongo pandas celery celery-batches transformers"
+    pip install flask-cors websocket-client websockets scapy pymongo uwsgi webargs flask_pymongo pandas celery celery-batches transformers watchdog"
 
 # Create a startup script to run the services
 RUN echo '#!/bin/bash' > /app/start-service.sh && \
