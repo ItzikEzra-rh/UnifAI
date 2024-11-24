@@ -11,3 +11,4 @@ pandas
 celery
 celery-batches
 ijson
+transformers
