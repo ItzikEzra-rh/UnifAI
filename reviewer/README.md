@@ -4,7 +4,7 @@
 podman build -t reviewer-service .
 
 # To run reviewer worker:
-podman run --gpus all reviewer-service reviewer
+podman run --name celery_worker --gpus all --net=host reviewer-service -d reviewer
 
 # To run reviewer pass/fail worker:
-podman run --gpus all reviewer-service reviewer_pass_fail
+podman run --name celery_worker --gpus all --net=host reviewer-service -d reviewer_pass_fail
