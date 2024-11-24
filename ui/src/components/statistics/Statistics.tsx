@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import axios from '../../http/axiosLLMConfig';
-import { Pie, Line, Bar } from 'react-chartjs-2';
+import { Line, Bar } from 'react-chartjs-2';
+import { PieChart } from '@mui/x-charts/PieChart';
 import 'chart.js/auto';
 import '../../styles.css';
 
@@ -41,33 +42,25 @@ const StatisticsGraphs: React.FC = () => {
       return acc;
     }, {});
 
-    return {
-      labels: Object.keys(projectCounts),
-      datasets: [
-        {
-          data: Object.values(projectCounts),
-          backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56'],
-        },
-      ],
-    };
+    return Object.entries(projectCounts).map(([key, value]) => ({
+      id: key,
+      value,
+    }));
   };
+
 
   const getModelNameData = () => {
     const modelNameCounts = data.reduce((acc: Record<string, number>, item) => {
       acc[item.modelName] = (acc[item.modelName] || 0) + 1;
       return acc;
     }, {});
-
-    return {
-      labels: Object.keys(modelNameCounts),
-      datasets: [
-        {
-          data: Object.values(modelNameCounts),
-          backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'],
-        },
-      ],
-    };
+  
+    return Object.entries(modelNameCounts).map(([key, value]) => ({
+      id: key,
+      value,
+    }));
   };
+  
 
   const getLineChartData = () => {
     return {
@@ -103,7 +96,7 @@ const StatisticsGraphs: React.FC = () => {
         },
       ],
     };
-  };
+  };  
 
   return (
     <div className="statistics-graphs">
@@ -111,11 +104,27 @@ const StatisticsGraphs: React.FC = () => {
       <div className="graph-row">
         <div className="graph-container">
           <h3>Project Distribution</h3>
-          <Pie data={getProjectsData()} />
+          <PieChart series={[{data: getProjectsData()}]} 
+            slotProps={{
+              legend: {
+                hidden: false,
+                direction: 'column',
+                position: { vertical: 'top', horizontal: 'middle' },
+                padding: 0,
+              },
+            }}
+          />
         </div>
         <div className="graph-container">
           <h3>Model Name Distribution</h3>
-          <Pie data={getModelNameData()} />
+          <PieChart series={[{data: getModelNameData()}
+          ]} slotProps={{
+            legend: {
+              direction: 'column',
+              position: { vertical: 'top', horizontal: 'middle' },
+              padding: 0,
+            },
+          }}/>
         </div>
       </div>
 

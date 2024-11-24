@@ -12,6 +12,9 @@ const theme = createTheme({
     fontWeightRegular: 400,
     fontWeightMedium: 500,
   },
+  palette: {
+    mode: 'light', // Or 'dark'
+  },
 });
 
 const root = ReactDOM.createRoot(
