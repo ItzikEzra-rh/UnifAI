@@ -65,8 +65,11 @@ vllm serve model_repo_hf --port 8000 --max-model-len 8192 --quantization bitsand
 # Building the image
 podman build -t promptlab-service .
 
-# To run reviewer worker:
+# To run promptlab worker:
 podman run --name promptlab_worker --gpus all --net=host promptlab-service prompt_processor
 
-# To run reviewer pass/fail worker:
+# To run promptlab handler worker:
 podman run --name promptlab_handler --gpus all --net=host promptlab-service prompt_submiter
+
+# To run promptlab dispatcher worker:
+podman run --name prompt_dispatcher --gpus all --net=host promptlab-service prompt_dispatcher
