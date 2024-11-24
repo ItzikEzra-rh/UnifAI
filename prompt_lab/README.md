@@ -59,3 +59,14 @@ unsloth/Meta-Llama-3.1-8B-Instruct-bnb-4bit
 ```bash
 vllm serve model_repo_hf --port 8000 --max-model-len 8192 --quantization bitsandbytes --load-format bitsandbytes
 ```
+
+** Here are the instructions, explaining how to use the Dockerfile of the reviewer component: **
+
+# Building the image
+podman build -t promptlab-service .
+
+# To run reviewer worker:
+podman run --name promptlab_worker --gpus all --net=host promptlab-service prompt_processor
+
+# To run reviewer pass/fail worker:
+podman run --name promptlab_handler --gpus all --net=host promptlab-service prompt_submiter
