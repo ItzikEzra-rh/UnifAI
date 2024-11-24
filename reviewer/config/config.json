@@ -16,7 +16,7 @@
   },
   "rabbitmq": {
     "port": 443,
-    "url": "amqp://instructlab.v250k.sandbox1145.opentlc.com:{port}"
+    "url": "amqp://instructlab.v249k.sandbox1145.opentlc.com:{port}"
   },
   "mongodb": {
     "port": 27017,
