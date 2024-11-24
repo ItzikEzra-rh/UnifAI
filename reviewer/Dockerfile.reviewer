@@ -1,9 +1,9 @@
-# Start with NVIDIA CUDA base image compatible with RHEL9
-FROM nvidia/cuda:12.4.0-devel-ubi9
+# Use the specified Red Hat Universal Base Image 9 (UBI9)
+FROM registry.access.redhat.com/ubi9/ubi
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV HF_TOKEN="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"
+ENV HF_TOKEN="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"
 ENV GITHUB_TOKEN="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"
 
 # Set working directory
@@ -14,47 +14,42 @@ RUN dnf update -y && \
     dnf install -y python3-pip git python3-devel gcc gcc-c++ make cmake kernel-devel wget which numactl \
     && dnf clean all
 
-# Install pip and virtualenv
-RUN pip3 install --upgrade pip virtualenv
+# # Install pip and virtualenv
+# RUN pip3 install --upgrade pip virtualenv
 
-# Create virtual environment with absolute path
-RUN python3 -m virtualenv /app/venv
+# # Create virtual environment with absolute path
+# RUN python3 -m virtualenv /app/venv
 
 # Install huggingface_hub before logging in
-RUN /bin/bash -c "source /app/venv/bin/activate && \
-    pip install --upgrade huggingface_hub"
+RUN /bin/bash -c "pip install --upgrade huggingface_hub"
 
 # Clone the repository using token authentication
 RUN git clone https://Nirsisr:${GITHUB_TOKEN}@github.com/Nirsisr/AI-TC-s-Generator.git /app/repo
 
 # Login to Hugging Face
-# RUN /bin/bash -c "source /app/venv/bin/activate && \
-#     huggingface-cli login --token ${HF_TOKEN}"
+RUN /bin/bash -c "huggingface-cli login --token ${HF_TOKEN}"
 
 # Change to repository directory and install dependencies
-WORKDIR /app/repo
+WORKDIR /app/repo/reviewer
+RUN git checkout GENIE-14/EPIC/reviewer-functionality
 
 # Install dependencies
 # TODO: Once all the changes will be pushed to main - comment out the lines below instead of the manual pip install
-# RUN /bin/bash -c "source /app/venv/bin/activate && \
-#     pip install --upgrade pip && \
+# RUN /bin/bash -c "pip install --upgrade pip && \
 #     pip install -r prompt_lab/requirements.txt && \
 #     pip install vllm celery"
 
-RUN /bin/bash -c "source /app/venv/bin/activate && \
-    pip install --upgrade pip && \
-    pip install flask-cors websocket-client websockets scapy pymongo uwsgi webargs flask_pymongo pandas celery celery-batches && \
-    pip install vllm celery"
+RUN /bin/bash -c "pip install --upgrade pip && \
+    pip install flask-cors websocket-client websockets scapy pymongo uwsgi webargs flask_pymongo pandas celery celery-batches"
 
 # Create a startup script to run the services
 RUN echo '#!/bin/bash' > /app/start-service.sh && \
-    echo 'source /app/venv/bin/activate' >> /app/start-service.sh && \
     echo 'case "$1" in' >> /app/start-service.sh && \
     echo '  "reviewer")' >> /app/start-service.sh && \
-    echo '    celery -A reviewer.celery_app.init worker -c 1 --loglevel=info -Q reviewer_queue -n reviewer' >> /app/start-service.sh && \
+    echo '    celery -A celery_app.init worker -c 1 --loglevel=info -Q reviewer_queue -n reviewer' >> /app/start-service.sh && \
     echo '    ;;' >> /app/start-service.sh && \
     echo '  "reviewer_pass_fail")' >> /app/start-service.sh && \
-    echo '    celery -A reviewer.celery_app.init worker -c 1 --loglevel=info -Q reviewer_pass_queue,reviewer_fail_queue -n reviewer' >> /app/start-service.sh && \
+    echo '    celery -A celery_app.init worker -c 1 --loglevel=info -Q reviewer_pass_queue,reviewer_fail_queue -n reviewer' >> /app/start-service.sh && \
     echo '    ;;' >> /app/start-service.sh && \
     echo '  *)' >> /app/start-service.sh && \
     echo '    echo "Please specify service: reviewer, or reviewer_pass_fail"' >> /app/start-service.sh && \
