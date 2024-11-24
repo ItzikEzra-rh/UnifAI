@@ -3,10 +3,11 @@ import json
 from pathlib import Path
 import os
 import ijson
-from utils.util import mkdir
+from utils.util import mkdir, append_to_json_list, append_to_json_object
+from config.manager import config
 
 
-class FileHandler:
+class JsonFileHandler:
     def __init__(self, file_path):
         self.file_path = file_path
 
@@ -15,7 +16,7 @@ class FileHandler:
         if os.path.exists(self.file_path):
             with open(self.file_path, 'r') as file:
                 return json.load(file)
-        return default_value if default_value is not None else []
+        return default_value if default_value is not None else {}
 
     def save_json(self, data, indent=None):
         """Save JSON data to a file with optional indentation."""
@@ -30,37 +31,54 @@ class FileHandler:
         else:
             return iter([])
 
+    def append_to_list(self, obj):
+        append_to_json_list(self.file_path, obj)
+
+    def append_to_object(self, key, val):
+        append_to_json_object(self.file_path, key, val)
+
 
 class FileDataRepository(DataRepository):
     def __init__(self, input_file_path, output_directory):
         mkdir(output_directory)
-        self.input_file = FileHandler(input_file_path)
+        self.input_file = JsonFileHandler(input_file_path)
 
         # Derive other file names from the input file name
         base_name = Path(input_file_path).stem
-        self.processed_file = FileHandler(os.path.join(output_directory, f"{base_name}_processed.json"))
-        self.skipped_file = FileHandler(os.path.join(output_directory, f"{base_name}_skipped.json"))
-        self.progress_file = FileHandler(os.path.join(output_directory, f"{base_name}_progress.json"))
+        self.processed_file = JsonFileHandler(os.path.join(output_directory, f"{base_name}_processed.json"))
+        self.skipped_file = JsonFileHandler(os.path.join(output_directory, f"{base_name}_skipped.json"))
+        self.progress_file = JsonFileHandler(os.path.join(output_directory, f"{base_name}_progress.json"))
 
     def load_data(self):
         for element in self.input_file.load_ijson():
             yield element
 
-    def save_processed_data(self, data):
-        self.processed_file.save_json(data, indent=4)
+    def save_processed_data(self, element):
+        self.processed_file.append_to_list(element)
 
-    def save_progress(self, current_index):
-        self.progress_file.save_json({"prompt_index": current_index})
+    def save_progress(self, uuid, value=""):
+        self.progress_file.append_to_object(uuid, value)
 
     def save_skipped_data(self, data):
         self.skipped_file.save_json(data, indent=4)
 
     def load_progress(self):
-        progress_data = self.progress_file.load_json(default_value={"prompt_index": 0})
-        return progress_data.get('prompt_index', 0)
+        return self.progress_file.load_json()
 
     def load_processed_data(self):
-        return self.processed_file.load_json()
+        pass
 
     def load_skipped_data(self):
         return self.skipped_file.load_json()
+
+    @staticmethod
+    def configure_repository():
+        """Configure the repository based on config and repo_type."""
+        storage_type = config.get('storage_type')
+
+        if storage_type == 'file':
+            return FileDataRepository(
+                input_file_path=config.get('input.file_path'),
+                output_directory=config.get('output.directory')
+            )
+        return None  # Default to None if not configured

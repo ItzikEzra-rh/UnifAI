@@ -11,8 +11,23 @@
     "model_name": "meta-llama/Llama-3.1-8B-Instruct",
     "api_url": "http://0.0.0.0:8000/v1/completions",
     "max_generation_length": 4096,
-    "max_context_length": 16384,
-    "batch_size": 8
+    "max_context_length": 16384
+  },
+  "prompt_lab": {
+    "batch_size": 8,
+    "queues": {
+      "fetch_prompts_queue": {
+        "target_size": 10,
+        "name": "prompts_process_queue"
+      }
+    }
+  },
+  "reviewer": {
+    "queues": {
+      "reviewer_passed_queue": {
+        "name": "reviewer_passed"
+      }
+    }
   },
   "rabbitmq": {
     "port": 443,

@@ -19,7 +19,7 @@ class DataRepository(ABC):
         pass
 
     @abstractmethod
-    def save_progress(self, data):
+    def save_progress(self, uuid, value=""):
         pass
 
     @abstractmethod

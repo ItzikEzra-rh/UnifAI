@@ -22,6 +22,7 @@ class BatchProcessor:
         self.current_batch = []
         self.current_token_count = 0
         self.skipped_elements_count = 0
+        self.is_batch_full = False
 
     def add_prompt(self, prompt):
         """
@@ -42,21 +43,16 @@ class BatchProcessor:
 
         # Check if adding the prompt exceeds batch constraints
         if self.current_token_count + prompt_tokens > self.token_limit or len(self.current_batch) >= self.batch_size:
+            self.is_batch_full = True
             return False
 
         # Add the prompt to the current batch
         self.current_batch.append(prompt)
         self.current_token_count += prompt_tokens
+        print(f"current batch size: {len(self.current_batch)}")
+        print(f"current token size of batch: {self.current_token_count}")
+
         return True
-
-    def is_batch_full(self):
-        """
-        Checks if the current batch is full based on size or token constraints.
-
-        Returns:
-            bool: True if the batch is full, False otherwise.
-        """
-        return len(self.current_batch) >= self.batch_size or self.current_token_count >= self.token_limit
 
     def finalize_batch(self):
         """
@@ -84,6 +80,7 @@ class BatchProcessor:
         """
         self.current_batch = []
         self.current_token_count = 0
+        self.is_batch_full = False
 
     def _skip_due_to_token_size(self, metadata):
         """

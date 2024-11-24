@@ -13,7 +13,8 @@ class DataProcessor:
     """
 
     def __init__(self, io_repository, project_config, api_url, model_name,
-                 max_context_length, max_generation_length, batch_size):
+                 max_context_length, max_generation_length, batch_size, fetch_prompts_queue_target_size,
+                 fetch_prompts_queue_name):
         """
         Initializes DataProcessor with dependencies and configuration.
 
@@ -33,31 +34,31 @@ class DataProcessor:
         self.prompt_generator = PromptGenerator(self.tokenizer, project_config)
         self.skipped_data = self.io_repository.load_skipped_data()
         self.batch_processor = BatchProcessor(batch_size, self.tokenizer, self.skipped_data, self.io_repository)
-        self.current_prompt_index = self.io_repository.load_progress()
-        self.processed_data = self.io_repository.load_processed_data()
-        self.queue_name = "prompts_process_queue"
-        self.target_queue_size = 10
+        self.processed_uuids = self.io_repository.load_progress()
+        self.fetch_prompts_queue_name = fetch_prompts_queue_name
+        self.fetch_prompts_queue_target_size = fetch_prompts_queue_target_size
         print("DataProcessor initialized.")
 
     def process_all_elements(self):
         for element in self.io_repository.load_data():
-            if element["uid"] in self.processed_data:
+            if element["uid"] in self.processed_uuids:
                 continue
 
             prompts = self.prompt_generator.create_prompts(element_data=element)
             for prompt in prompts:
-                if not self.batch_processor.add_prompt(prompt=prompt) and self.batch_processor.is_batch_full():
+                if not self.batch_processor.add_prompt(prompt=prompt) and self.batch_processor.is_batch_full:
                     batch = self.batch_processor.finalize_batch()
                     if batch:
                         self.send_batch_to_queue(batch)
 
     def send_batch_to_queue(self, batch):
         while True:
-            queue_size = get_queue_length_rabbitmq(self.queue_name)
+            queue_size = get_queue_length_rabbitmq(self.fetch_prompts_queue_name)
             print(queue_size)
-            if queue_size < self.target_queue_size:
+            if queue_size < self.fetch_prompts_queue_target_size:
+                print(f"batch size {len(batch)} sending to queue")
                 send_task(task_name="fetch_prompts_batch",
-                          celery_queue=self.queue_name,
+                          celery_queue=self.fetch_prompts_queue_name,
                           batch=batch)
                 break
             else:
@@ -92,6 +93,14 @@ class DataProcessor:
             llm_res_batch.append(element_data)
         return llm_res_batch
 
+    def save_processed_prompt(self, prompt):
+        uuid = prompt.get("uuid")
+        if uuid:
+            self.io_repository.save_processed_data(prompt)
+            self.io_repository.save_progress(uuid)
+            return True
+        return False
+
     def skip_due_to_hallucination(self, element_data):
         """
         Adds element data to skipped list due to hallucination and saves to the repository.
@@ -121,9 +130,3 @@ class DataProcessor:
         print(separator)
         print(f"\n{output}\n")
         print(separator)
-
-# TODO is this the best way to check the celery queue?
-# TODO check processed and uid test
-# TODO make sure code works as expected
-# TODO indexing with print
-# TODO Flask?

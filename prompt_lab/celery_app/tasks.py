@@ -1,7 +1,7 @@
 import logging
 from celery_app.init import celery
 from processing.factory import DataProcessorFactory
-from utils.celery.celery import send_task, is_celery_queue_empty
+from utils.celery.celery import send_task
 
 
 @celery.task()
@@ -13,3 +13,10 @@ def fetch_prompts_batch(batch):
     send_task(task_name="fetch_prompt_lab_generated_objects",
               celery_queue="reviewer_queue",
               data=res_batch)
+
+
+@celery.task()
+def process_passed_prompts(data):
+    data_processor = DataProcessorFactory().create()
+    for prompt in data:
+        data_processor.save_processed_prompt(prompt)
