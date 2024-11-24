@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Breadcrumbs, Menu, MenuItem, Button, FormControl, InputLabel, Select, SelectChangeEvent, ButtonGroup } from '@mui/material';
+import { Menu, MenuItem, Button, FormControl, Select, SelectChangeEvent, ButtonGroup } from '@mui/material';
 import { DATA_SCIENCE_ROLE, USER_ROLE } from '../types/roles';
 import RedHatLogoTAG from '../../assets/RedhatLogoNew.png';
 import SendIcon from '@mui/icons-material/Send';
 import HelpIcon from '@mui/icons-material/Help';
-import "@fontsource/red-hat-display";
-
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
 interface ToolbarProps {
@@ -48,19 +46,19 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
     role === DATA_SCIENCE_ROLE ? setDropdownList(dropdownAllItems) : setDropdownList(dropdownUserItems);
   }, [role]);
 
-  const handleBreadcrumbClick = (event: React.MouseEvent<HTMLElement>, title: string) => {
+  const handleClick = (event: React.MouseEvent<HTMLElement>, title: string) => {
     setAnchorEl(event.currentTarget);
     setMenuTitle(title);
   };
 
   const handleMenuItemClick = (item: DropdownItem) => {
-    setSelectedItem(item.label); // Update the selected item
-    setContent(item.content);     // Update the content
-    setAnchorEl(null);            // Close the dropdown by setting anchorEl to null
+    setSelectedItem(item.label); 
+    setContent(item.content);  
+    setAnchorEl(null);    
   };
 
   const handleMenuClose = () => {
-    setAnchorEl(null); // Close the menu
+    setAnchorEl(null);
   };
 
   const handleRoleChange = (event: SelectChangeEvent) => {
@@ -68,17 +66,17 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
   };
 
   return (
-    <div className="toolbar" style={{fontFamily: 'Red Hat Display'}}>
+    <div className="toolbar">
       <div className="left-section">
-        <div className="logo">
+        <a href="/">
           <img src={RedHatLogoTAG} alt="Logo" className="logo-image" />
-        </div>
+        </a>
         <ButtonGroup variant="contained" className="dropdown-buttons" aria-label="Basic button group">
           {dropdownList.map((dropdown) => (
             <Button
               key={dropdown.title}
               endIcon={<KeyboardArrowDownIcon />}
-              onClick={(event) => handleBreadcrumbClick(event, dropdown.title)}
+              onClick={(event) => handleClick(event, dropdown.title)}
             > {dropdown.title} </Button>
           ))}
         </ButtonGroup>
@@ -87,6 +85,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
         <Menu
           key={dropdown.title}
           anchorEl={anchorEl}
+          
           open={menuTitle === dropdown.title && Boolean(anchorEl)} 
           onClose={handleMenuClose} 
         >

@@ -1,20 +1,14 @@
-
 body, html, #root {
   margin: 0;
   padding: 0;
   height: 100%;
   font-family: 'Red Hat Display', sans-serif;
-  --text-primary: #000000; 
-  --background-color-light: #f5f5f5; 
-  --background-color-light-hover: #e0e0e0; 
-  --background-color-light-active: #d0d0d0;
 }
 
 .app {
   display: flex;
   flex-direction: column;  /* Stack items vertically */
   height: 100vh;
-  font-family: 'Red Hat Display';
 }
 
 .toolbar {
@@ -35,8 +29,9 @@ body, html, #root {
 .dropdown-buttons .MuiButton-root {
   background-color: black;
   color: white;
-  font-family: 'Red Hat Display';
-  font-weight: bold;
+  border: none !important;
+  font-size: 18px;
+  width: 130px;
   height: 80px; 
   text-transform: none;
   margin-left: 8px; 
@@ -49,7 +44,6 @@ body, html, #root {
 .toolbar-buttons {
   display: flex;
   justify-content: flex-end;
-  font-family: 'Red Hat Display';
   gap: 10px;
   flex: 1;
 }
@@ -66,7 +60,6 @@ body, html, #root {
 .role-selection {
   color:white;
   min-width: 150px;
-  font-family: 'Red Hat Display';
 }
 
 
@@ -98,7 +91,6 @@ body, html, #root {
 
 .logo-text {
   color: black;
-  font-family: 'Red Hat Display';
   font-size: 18px;
   margin-left: 10px;
   font-weight: bold;
@@ -412,7 +404,6 @@ body, html, #root {
   align-items: baseline;
   margin: 8px 0;
   font-size: 14px;
-  font-family: 'Red Hat Display';
   /* font-family: 'Verdana, Geneva, Tahoma, sans-serif'; */
 }
 

@@ -7,7 +7,6 @@ import SavedPrompt from './inference/SavedPrompt'
 import DataSetTable from './dataset/DataSetTable'
 import TrainingForm from './training/TrainingForm'
 import { Card, CardContent, Typography, Box, Button } from '@mui/material';
-import '@fontsource/roboto/300.css';
 import '../styles.css';
 
 interface MainContentProps {
@@ -20,14 +19,11 @@ const MainContent: React.FC<MainContentProps> = ({ content }) => {
     return (
       <Card sx={{ maxWidth: '80%', margin: '50px auto', padding: 3, borderRadius: 2, boxShadow: 3 }}>
         <CardContent>
-          <Typography variant="h2" component="h2">
+          <Typography variant="h2" component="h2" style={{textAlign: 'center'}}>
             Welcome to GENIE!
           </Typography>
-          <Typography variant="h5" gutterBottom>
-            Welcome to GENIE (ראשי תיבות)! Here, we leverage artificial intelligence to create tailored tests efficiently and effectively. To help you better understand how it all works,
-            here’s a brief overview of the core concepts and parameters involved in training AI models.
-          </Typography>
-          <Typography paragraph>
+
+          <Typography variant="h5" paragraph>
             Our <strong>primary objective</strong> is to establish a pre-tuned language model capable of producing high-quality Test Case code that adheres to the specific requirements of our automation team, including code styling and reusable conventions.
           </Typography>
           <Typography paragraph>
@@ -36,34 +32,7 @@ const MainContent: React.FC<MainContentProps> = ({ content }) => {
             We began by utilizing the NCS robot production test cases (TCs) and developing a parser to analyze the code of over 300 TCs. This parser will segment the code into a comprehensive logical dataset, which will subsequently be used to fine-tune our language model (LLM).
           </Typography>
 
-          <Typography variant="h6" sx={{ color: 'red', fontWeight: 'bold', marginTop: 2 }}>
-            Proof Of Concept Goal
-            </Typography>
-            <Typography paragraph>
-            Our goal with the proof of concept (POC) is to enable users with basic knowledge of robot to request the generation of new test cases (TCs) from the language model (LLM) and receive high-quality results. The generated tests will adhere to the same conventions as the existing tests in the project.
-          </Typography>
-
-          <Box sx={{ margin: '20px 0', position: 'relative', overflow: 'hidden', paddingTop: '56.25%' /* 16:9 aspect ratio */ }}>
-            <iframe
-              src="https://docs.google.com/presentation/d/e/2PACX-1vSk0sFE-y0og_QYcTgLP4jjPl51H07UGQb170mFjvKb32A0FMBOUctGykFEFM8RZuNORQpxFv5FK4e-/embed?start=false&loop=false&delayms=3000"
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                height: '100%',
-                border: 'none',
-              }}
-              allowFullScreen
-              title="TAG Presentation"
-            ></iframe>
-          </Box>
-
-          <Box sx={{ display: 'flex', justifyContent: 'center', marginTop: 3 }}>
-            <Button variant="contained" color="primary">
-              Learn More
-            </Button>
-          </Box>
+        
         </CardContent>
       </Card>
     );
