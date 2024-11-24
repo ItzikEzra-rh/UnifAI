@@ -1,18 +1,20 @@
+
 body, html, #root {
   margin: 0;
   padding: 0;
   height: 100%;
-  font-family: Arial, sans-serif;
-  --text-primary: #000000; /* or use your theme color */
-  --background-color-light: #f5f5f5; /* light mode background */
-  --background-color-light-hover: #e0e0e0; /* hover background */
-  --background-color-light-active: #d0d0d0; /* active background */
+  font-family: 'Red Hat Display', sans-serif;
+  --text-primary: #000000; 
+  --background-color-light: #f5f5f5; 
+  --background-color-light-hover: #e0e0e0; 
+  --background-color-light-active: #d0d0d0;
 }
 
 .app {
   display: flex;
   flex-direction: column;  /* Stack items vertically */
   height: 100vh;
+  font-family: 'Red Hat Display';
 }
 
 .toolbar {
@@ -30,47 +32,31 @@ body, html, #root {
   justify-content: flex-start;
 }
 
-.breadcrumb {
-  height: 24px; 
-  width: 120px;
-  color: var(--text-primary);
-  font-weight: 400; 
-  font-family: 'Roboto', sans-serif; 
-  background-color: var(--background-color-light);
-  border-radius: 12px; 
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 8px; 
-  transition: background-color 0.3s, box-shadow 0.3s;
-  border: none; 
+.dropdown-buttons .MuiButton-root {
+  background-color: black;
+  color: white;
+  font-family: 'Red Hat Display';
+  font-weight: bold;
+  height: 80px; 
+  text-transform: none;
+  margin-left: 8px; 
 }
 
-.breadcrumb:hover,
-.breadcrumb:focus {
-  background-color: var(--background-color-light-hover); /* hover background */
-}
-
-.breadcrumb:active {
-  box-shadow: 1px 1px 5px rgba(0, 0, 0, 0.2); /* box-shadow for active state */
-  background-color: var(--background-color-light-active); /* active background */
-}
-
-.breadcrumb svg {
-  margin-left: 8px; /* Adds space between title and the icon */
-}
-
-.breadcrumbs {
-  flex: 2;
-  display: flex;
-  justify-content: center;
+.dropdown-buttons .MuiButton-root:hover {
+  background-color: #333333; 
 }
 
 .toolbar-buttons {
   display: flex;
   justify-content: flex-end;
+  font-family: 'Red Hat Display';
   gap: 10px;
   flex: 1;
+}
+
+.left-section {
+  display: flex;
+  align-items: center;
 }
 
 .logo-image {
@@ -80,6 +66,7 @@ body, html, #root {
 .role-selection {
   color:white;
   min-width: 150px;
+  font-family: 'Red Hat Display';
 }
 
 
@@ -111,7 +98,7 @@ body, html, #root {
 
 .logo-text {
   color: black;
-  font-family: 'Arial', sans-serif;
+  font-family: 'Red Hat Display';
   font-size: 18px;
   margin-left: 10px;
   font-weight: bold;
@@ -425,7 +412,8 @@ body, html, #root {
   align-items: baseline;
   margin: 8px 0;
   font-size: 14px;
-  font-family: 'Verdana, Geneva, Tahoma, sans-serif';
+  font-family: 'Red Hat Display';
+  /* font-family: 'Verdana, Geneva, Tahoma, sans-serif'; */
 }
 
 .step-details-list li strong {

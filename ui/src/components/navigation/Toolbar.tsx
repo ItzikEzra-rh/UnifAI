@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Breadcrumbs, Menu, MenuItem, Button, FormControl, InputLabel, Select, SelectChangeEvent } from '@mui/material';
+import { Breadcrumbs, Menu, MenuItem, Button, FormControl, InputLabel, Select, SelectChangeEvent, ButtonGroup } from '@mui/material';
 import { DATA_SCIENCE_ROLE, USER_ROLE } from '../types/roles';
 import RedHatLogoTAG from '../../assets/RedhatLogoNew.png';
 import SendIcon from '@mui/icons-material/Send';
 import HelpIcon from '@mui/icons-material/Help';
+import "@fontsource/red-hat-display";
+
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 
 interface ToolbarProps {
@@ -23,7 +25,7 @@ interface DropdownItems {
 }
 
 const dropdownAllItems: DropdownItems[] = [
-  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' } ]},
+  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' }] },
   { title: 'Dataset', items: [{ label: 'Creating Dataset', content: 'Form Content' }, { label: 'Available Datasets', content: 'Dataset Table' }] },
   { title: 'Training', items: [{ label: 'Train New Model', content: 'Train Form' }, { label: 'Available Trained Models', content: 'Form Table' }] },
   { title: 'Inference', items: [{ label: 'Generate Automatic Test', content: 'Chatbot Prompt' }, { label: 'Saved Prompts', content: 'Saved Prompts' }] },
@@ -31,7 +33,7 @@ const dropdownAllItems: DropdownItems[] = [
 ];
 
 const dropdownUserItems: DropdownItems[] = [
-  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' } ] },
+  { title: 'About', items: [{ label: 'Welcome', content: 'Welcome Content' }] },
   { title: 'Inference', items: [{ label: 'Generate Automatic Test', content: 'Chatbot Prompt' }, { label: 'Saved Prompts', content: 'Saved Prompts' }] },
   { title: 'Statistics', items: [{ label: 'Graphs', content: 'Advanced Statistics' }] },
 ];
@@ -66,38 +68,27 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
   };
 
   return (
-    <div className="toolbar">
-      <div className="logo">
-        <img src={RedHatLogoTAG} alt="Logo" className="logo-image" />
+    <div className="toolbar" style={{fontFamily: 'Red Hat Display'}}>
+      <div className="left-section">
+        <div className="logo">
+          <img src={RedHatLogoTAG} alt="Logo" className="logo-image" />
+        </div>
+        <ButtonGroup variant="contained" className="dropdown-buttons" aria-label="Basic button group">
+          {dropdownList.map((dropdown) => (
+            <Button
+              key={dropdown.title}
+              endIcon={<KeyboardArrowDownIcon />}
+              onClick={(event) => handleBreadcrumbClick(event, dropdown.title)}
+            > {dropdown.title} </Button>
+          ))}
+        </ButtonGroup>
       </div>
-
-      <div className="breadcrumbs">
-  <Breadcrumbs aria-label="breadcrumb">
-    {dropdownList.map((dropdown) => (
-      <button
-        key={dropdown.title}
-        className="breadcrumb"  // Apply the CSS class here
-        onClick={(event) => handleBreadcrumbClick(event, dropdown.title)}
-      >
-        <>
-          {/* Title */}
-          {dropdown.title}
-          {/* Arrow icon after the title */}
-          <KeyboardArrowDownIcon />
-        </>
-      </button>
-    ))}
-  </Breadcrumbs>
-</div>
-
-
-      {/* Dropdown Menus */}
       {dropdownList.map((dropdown) => (
         <Menu
           key={dropdown.title}
           anchorEl={anchorEl}
-          open={menuTitle === dropdown.title && Boolean(anchorEl)} // Only open if this menu is active
-          onClose={handleMenuClose} // Close menu when clicking outside or when an item is selected
+          open={menuTitle === dropdown.title && Boolean(anchorEl)} 
+          onClose={handleMenuClose} 
         >
           {dropdown.items.map((item) => (
             <MenuItem
@@ -113,7 +104,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
 
       <div className="toolbar-buttons">
         <FormControl variant="outlined" className="role-selection">
-          <Select value={role} onChange={handleRoleChange} sx={{color: 'red', backgroundColor: 'white'}}>
+          <Select value={role} onChange={handleRoleChange} sx={{ color: 'red', backgroundColor: 'white' }}>
             <MenuItem value={USER_ROLE}>User Role</MenuItem>
             <MenuItem value={DATA_SCIENCE_ROLE}>Data Science Role</MenuItem>
           </Select>
