@@ -41,7 +41,7 @@ class DataProcessor:
 
     def process_all_elements(self):
         for element in self.io_repository.load_data():
-            if element["uid"] in self.processed_uuids:
+            if element["uuid"] in self.processed_uuids:
                 continue
 
             prompts = self.prompt_generator.create_prompts(element_data=element)
@@ -82,7 +82,7 @@ class DataProcessor:
         for meta, choice in zip(metadata, choices):
             self.print_progress(meta["element_type"], meta["group"], meta["category"], choice["text"])
             element_data = {
-                "uid": meta["original_data"]["uid"],
+                "uuid": meta["original_data"]["uuid"],
                 "input": meta["input_text"],
                 "output": choice["text"],
                 "element_type": meta["element_type"],
@@ -125,7 +125,7 @@ class DataProcessor:
         """
         separator = "=" * 80
         print(separator)
-        print(f"Processing Element {self.current_prompt_index + 1}".center(80))
+        print(f"Processing Element ".center(80))
         print(f"Element Type: {element_type} | Group: {group_name} | Category: {category}".center(80))
         print(separator)
         print(f"\n{output}\n")
