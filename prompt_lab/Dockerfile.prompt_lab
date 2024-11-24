@@ -52,8 +52,11 @@ RUN echo '#!/bin/bash' > /app/start-service.sh && \
     echo 'esac' >> /app/start-service.sh && \
     chmod +x /app/start-service.sh
 
+# need container for flower: celery -A celery_app.init flower
+
 # Set the entrypoint to the startup script
 ENTRYPOINT ["/app/start-service.sh"]
 
 # Default command (can be overridden)
 CMD ["*"]
+
