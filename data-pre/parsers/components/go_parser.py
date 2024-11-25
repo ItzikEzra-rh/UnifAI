@@ -88,6 +88,8 @@ class GoParser(TreeSitterParser):
                 "uuid": str(uuid.uuid4()),
                 "name": os.path.basename(self.realtive_path),
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",  # Mapped resource imports
+                "structs": "",
+                "interfaces": "",
                 "file_location": f"File Location: {self.realtive_path}",
                 "code": content,
                 "global_vars": "",
@@ -333,6 +335,8 @@ class GoParser(TreeSitterParser):
                 "uuid": str(uuid.uuid4()),
                 "name": test_case_name,
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "" ,
+                "structs": "",
+                "interfaces": "",
                 "file_location": f"File Location: {self.realtive_path}",
                 "code": test_case_code,
                 # "file_code": content,

@@ -37,13 +37,15 @@ class GEvalConfig:
             EvalCriterion(
                 metric=EvalMetric.ACCURACY,
                 prompt_template=(
-                    "Rate from 1 to 100 how accurately the following 'Provided Output' answers the given 'Question', "
+                    # "Rate from 1 to 100 how accurately the following 'Provided Output' answers the given 'Question', "
+                    "Rate from 1 to 100 how accurately the following 'Provided Output' answers the given 'Validation Question', "
                     "considering all the provided 'Context'.\n\n"
                     "Context:\n{input_context}\n\n"
                     "Question:\n{question}\n\n"
+                    "Validation Question:\n{validation_question}\n\n"
                     "Provided Output:\n{provided_output}\n\n"
-                    "Provide only a number between 1 and 100 representing how accurately the output "
-                    "answers the question based on the given context."
+                    # "Base your rating on: {validation_question}"
+                    "Provide only a number between 1 and 100 representing how accurately the output answers the question based on the given context."
                 ),
                 weight=1.0
             ),
@@ -60,7 +62,7 @@ class Config:
     MODEL_NAME: str = "meta-llama/Llama-3.1-8B-Instruct"
     BATCH_SIZE_LIMIT: int = 8
     MAX_TOKENS: int = 4
-    MAX_CONTEXT_LEN: int = 8192
+    MAX_CONTEXT_LEN: int = 16384
     SCORE_THRESHOLD: float = 70.0
     GEVAL_CONFIG: GEvalConfig = field(default_factory=GEvalConfig.default_config)
 
