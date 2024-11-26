@@ -32,8 +32,7 @@ class DataProcessor:
                                         max_generation_length=max_generation_length)
         self.llm_client = VLLMClient(api_url, model_name, max_context_length)
         self.prompt_generator = PromptGenerator(self.tokenizer, project_config)
-        self.skipped_data = self.io_repository.load_skipped_data()
-        self.batch_processor = BatchProcessor(batch_size, self.tokenizer, self.skipped_data, self.io_repository)
+        self.batch_processor = BatchProcessor(batch_size, self.tokenizer, self.io_repository)
         self.processed_uuids = self.io_repository.load_progress()
         self.fetch_prompts_queue_name = fetch_prompts_queue_name
         self.fetch_prompts_queue_target_size = fetch_prompts_queue_target_size
@@ -108,18 +107,6 @@ class DataProcessor:
             self.io_repository.save_progress(uuid)
             return True
         return False
-
-    def skip_due_to_hallucination(self, element_data):
-        """
-        Adds element data to skipped list due to hallucination and saves to the repository.
-
-        Args:
-            element_data: Original data of the element being skipped.
-        """
-        element_data["skip"] = {"reason": "hallucination"}
-        self.skipped_data.append(element_data)
-        self.io_repository.save_skipped_data(self.skipped_data)
-        print(f"Element skipped due to hallucination: {element_data.get('element_type')}")
 
     def print_progress(self, element_type, group_name, category, output):
         """

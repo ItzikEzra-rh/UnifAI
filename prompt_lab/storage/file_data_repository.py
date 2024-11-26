@@ -60,7 +60,7 @@ class FileDataRepository(DataRepository):
         self.progress_file.append_to_object(uuid, value)
 
     def save_skipped_data(self, data):
-        self.skipped_file.save_json(data, indent=4)
+        self.skipped_file.append_to_list(data)
 
     def load_progress(self):
         return self.progress_file.load_json()

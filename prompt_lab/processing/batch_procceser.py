@@ -7,7 +7,7 @@ class BatchProcessor:
     It tracks the current batch and allows for processing and retrieving batches incrementally.
     """
 
-    def __init__(self, batch_size, tokenizer, skipped_data, io_repository):
+    def __init__(self, batch_size, tokenizer, io_repository):
         """
         Initializes the BatchProcessor with batching parameters.
 
@@ -19,7 +19,6 @@ class BatchProcessor:
         """
         self.batch_size = batch_size
         self.tokenizer = tokenizer
-        self.skipped_data = skipped_data
         self.io_repository = io_repository
         self.token_limit = self.tokenizer.get_toking_limit()
         self.current_batch = []
@@ -99,9 +98,7 @@ class BatchProcessor:
             metadata (dict): Metadata of the skipped prompt.
         """
         metadata["skip"] = {"reason": "token_size"}
-        self.skipped_data.append(metadata)
-        self.io_repository.save_skipped_data(self.skipped_data)
-        self.skipped_elements_count += 1
+        self.io_repository.save_skipped_data(metadata)
         print(f"Skipped prompt due to token size: {metadata.get('element_type')}")
 
     def get_skipped_count(self):
