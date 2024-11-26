@@ -58,8 +58,30 @@ body, html, #root {
 }
 
 .role-selection {
-  color:white;
+  background-color: white;
   min-width: 150px;
+}
+
+.role-selection .MuiOutlinedInput-notchedOutline {
+  border-color: red;
+}
+
+.role-selection .MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: darkred; 
+}
+
+.role-selection .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: red; 
+}
+
+.role-selection .MuiInputLabel-root {
+  color: red;
+  font-style:italic;
+  margin-top: 6.5px;
+}
+
+.role-selection .MuiInputLabel-root.Mui-focused {
+  color: red; 
 }
 
 .main-content {

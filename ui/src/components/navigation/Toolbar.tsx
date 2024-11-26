@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Menu, MenuItem, Button, FormControl, Select, SelectChangeEvent, ButtonGroup } from '@mui/material';
+import { Menu, MenuItem, Button, FormControl, Select, SelectChangeEvent, ButtonGroup, InputLabel } from '@mui/material';
 import { DATA_SCIENCE_ROLE, USER_ROLE } from '../types/roles';
 import RedHatLogoTAG from '../../assets/RedhatLogoNew.png';
 import SendIcon from '@mui/icons-material/Send';
@@ -123,12 +123,13 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
       ))}
 
       <div className="toolbar-buttons">
-        <FormControl variant="outlined" className="role-selection">
-          <Select value={role} onChange={handleRoleChange} sx={{ color: 'red', backgroundColor: 'white' }}>
-            <MenuItem value={USER_ROLE}>User Role</MenuItem>
-            <MenuItem value={DATA_SCIENCE_ROLE}>Data Science Role</MenuItem>
-          </Select>
-        </FormControl>
+      <FormControl variant="outlined" className="role-selection">
+      <InputLabel>Role Selection</InputLabel>
+      <Select value={role} onChange={handleRoleChange}>
+        <MenuItem value={USER_ROLE}>User Role</MenuItem>
+        <MenuItem value={DATA_SCIENCE_ROLE}>Data Science Role</MenuItem>
+      </Select>
+    </FormControl>
         <Button variant="contained" color="error" endIcon={<SendIcon />}>Log In</Button>
         <Button variant="contained" color="error" endIcon={<HelpIcon />}>Support</Button>
       </div>
