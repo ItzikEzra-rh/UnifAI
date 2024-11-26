@@ -1,10 +1,10 @@
 {
   "storage_type": "file",
   "input": {
-    "file_path": "/home/instruct/Eco_gotests_Mapping_Latest_8.json"
+    "file_path": "/app/repo/prompt_lab/data/Eco_gotests_Mapping_Latest.json"
   },
   "output": {
-    "directory": "data/"
+    "directory": "/app/repo/prompt_lab/data/"
   },
   "model_config": {
     "tokenizer_path": "meta-llama/Llama-3.1-8B-Instruct",
