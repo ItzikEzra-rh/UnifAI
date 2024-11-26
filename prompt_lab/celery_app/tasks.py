@@ -18,6 +18,5 @@ def fetch_prompts_batch(batch):
 @celery.task()
 def process_passed_prompts(data):
     data_processor = DataProcessorFactory().create()
-    print(len(data))
     for prompt in data:
         data_processor.save_processed_prompt(prompt)

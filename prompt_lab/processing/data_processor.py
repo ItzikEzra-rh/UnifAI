@@ -40,22 +40,22 @@ class DataProcessor:
         print("DataProcessor initialized.")
 
     def process_all_elements(self):
+        element_count = 1
         for element in self.io_repository.load_data():
             if element["uuid"] in self.processed_uuids:
                 continue
 
             prompts = self.prompt_generator.create_prompts(element_data=element)
-            print(f"num of prompts {len(prompts)}")
             for prompt in prompts:
                 if not self.batch_processor.add_prompt(prompt=prompt) and self.batch_processor.is_batch_full:
                     batch = self.batch_processor.finalize_batch()
                     if batch:
-                        print(f"len of batch {len(batch)}")
                         self.send_batch_to_queue(batch)
+            print(f"element number {element_count}")
+            element_count += 1
 
         batch = self.batch_processor.finalize_batch()
         if batch:
-            print(f"len of batch {len(batch)}")
             self.send_batch_to_queue(batch)
 
     def send_batch_to_queue(self, batch):
