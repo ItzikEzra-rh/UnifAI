@@ -88,6 +88,7 @@ class DataProcessor:
                 "element_type": meta["element_type"],
                 "group": meta["group"],
                 "category": meta["category"],
+                "validation": meta["validation"],
                 "original_data": meta["original_data"]
             }
             llm_res_batch.append(element_data)

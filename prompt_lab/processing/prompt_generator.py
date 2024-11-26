@@ -57,7 +57,7 @@ class PromptGenerator:
                     continue
 
                 # Generate context and input text
-                context, input_text = self._generate_random_input(questions, element_data)
+                context, input_text, validation_text = self._generate_random_input(questions, element_data)
                 formatted_prompt = self._format_prompt(system_message, context, input_text)
 
                 # Append prompt with metadata
@@ -67,6 +67,7 @@ class PromptGenerator:
                         "element_type": element_type,
                         "group": group_name,
                         "category": category_name,
+                        "validation": validation_text,
                         "input_text": input_text,
                         "original_data": element_data,
                     }
@@ -118,8 +119,9 @@ class PromptGenerator:
         context_template = self.project_config.get("context_template", "")
         context = self._format_context(context_template, element_data)
         selected_template = random.choice(template_questions)
-        input_text = selected_template.format(**element_data)
-        return context, input_text
+        input_text = selected_template["question"].format(**element_data)
+        validation_text = selected_template["validation"].format(**element_data)
+        return context, input_text, validation_text
 
     def _format_prompt(self, system_message, context, input_text):
         """
