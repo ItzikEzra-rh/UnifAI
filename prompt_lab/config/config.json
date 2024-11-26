@@ -17,7 +17,7 @@
     "batch_size": 16,
     "queues": {
       "fetch_prompts_queue": {
-        "target_size": 8,
+        "target_size": 64,
         "name": "prompts_process_queue"
       }
     }

@@ -51,7 +51,7 @@ class DataProcessor:
                     batch = self.batch_processor.finalize_batch()
                     if batch:
                         self.send_batch_to_queue(batch)
-            print(f"element number {element_count}")
+            print(f"submitted element number {element_count}")
             element_count += 1
 
         batch = self.batch_processor.finalize_batch()
