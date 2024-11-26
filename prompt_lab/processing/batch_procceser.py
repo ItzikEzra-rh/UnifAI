@@ -1,3 +1,6 @@
+import copy
+
+
 class BatchProcessor:
     """
     BatchProcessor manages batching of prompts based on size and token constraints.
@@ -23,6 +26,8 @@ class BatchProcessor:
         self.current_token_count = 0
         self.skipped_elements_count = 0
         self.is_batch_full = False
+        self.remnant_prompt = None
+        self.remnant_token_size_prompt = 0
 
     def add_prompt(self, prompt):
         """
@@ -44,13 +49,15 @@ class BatchProcessor:
         # Check if adding the prompt exceeds batch constraints
         if self.current_token_count + prompt_tokens > self.token_limit or len(self.current_batch) >= self.batch_size:
             self.is_batch_full = True
+            self.remnant_prompt = prompt
+            self.remnant_token_size_prompt = prompt_tokens
             return False
 
         # Add the prompt to the current batch
         self.current_batch.append(prompt)
         self.current_token_count += prompt_tokens
-        print(f"current batch size: {len(self.current_batch)}")
-        print(f"current token size of batch: {self.current_token_count}")
+        # print(f"current batch size: {len(self.current_batch)}")
+        # print(f"current token size of batch: {self.current_token_count}")
 
         return True
 
@@ -61,7 +68,7 @@ class BatchProcessor:
         Returns:
             list: The finalized batch of prompts.
         """
-        finalized_batch = self.current_batch
+        finalized_batch = copy.deepcopy(self.current_batch)
         self._reset_batch()
         return finalized_batch
 
@@ -78,8 +85,10 @@ class BatchProcessor:
         """
         Resets the internal state for the current batch.
         """
-        self.current_batch = []
-        self.current_token_count = 0
+        self.current_batch = [self.remnant_prompt]
+        self.current_token_count = self.remnant_token_size_prompt
+        self.remnant_prompt = None
+        self.remnant_token_size_prompt = 0
         self.is_batch_full = False
 
     def _skip_due_to_token_size(self, metadata):

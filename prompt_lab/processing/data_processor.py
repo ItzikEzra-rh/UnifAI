@@ -45,18 +45,25 @@ class DataProcessor:
                 continue
 
             prompts = self.prompt_generator.create_prompts(element_data=element)
+            print(f"num of prompts {len(prompts)}")
             for prompt in prompts:
                 if not self.batch_processor.add_prompt(prompt=prompt) and self.batch_processor.is_batch_full:
                     batch = self.batch_processor.finalize_batch()
                     if batch:
+                        print(f"len of batch {len(batch)}")
                         self.send_batch_to_queue(batch)
+
+        batch = self.batch_processor.finalize_batch()
+        if batch:
+            print(f"len of batch {len(batch)}")
+            self.send_batch_to_queue(batch)
 
     def send_batch_to_queue(self, batch):
         while True:
             queue_size = get_queue_length_rabbitmq(self.fetch_prompts_queue_name)
-            print(queue_size)
+            # print(queue_size)
             if queue_size < self.fetch_prompts_queue_target_size:
-                print(f"batch size {len(batch)} sending to queue")
+                # print(f"batch size {len(batch)} sending to queue")
                 send_task(task_name="fetch_prompts_batch",
                           celery_queue=self.fetch_prompts_queue_name,
                           batch=batch)

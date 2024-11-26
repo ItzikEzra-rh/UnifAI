@@ -1,7 +1,7 @@
 {
   "storage_type": "file",
   "input": {
-    "file_path": "/app/parsed_specification_with_uid.json"
+    "file_path": "/home/instruct/Eco_gotests_Mapping_Latest_8.json"
   },
   "output": {
     "directory": "data/"
@@ -14,10 +14,10 @@
     "max_context_length": 16384
   },
   "prompt_lab": {
-    "batch_size": 8,
+    "batch_size": 16,
     "queues": {
       "fetch_prompts_queue": {
-        "target_size": 20,
+        "target_size": 8,
         "name": "prompts_process_queue"
       }
     }
