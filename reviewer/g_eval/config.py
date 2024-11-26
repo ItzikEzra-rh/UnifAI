@@ -77,7 +77,7 @@ class Config:
     BATCH_SIZE_LIMIT: int = 8
     MAX_TOKENS: int = 4
     MAX_CONTEXT_LEN: int = 16384
-    SCORE_THRESHOLD: float = 85.0
+    SCORE_THRESHOLD: float = 80.0
     GEVAL_CONFIG: GEvalConfig = field(default_factory=GEvalConfig.default_config)
 
     def __post_init__(self):
