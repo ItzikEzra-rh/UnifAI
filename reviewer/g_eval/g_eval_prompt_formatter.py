@@ -27,13 +27,14 @@ class GEvalPromptFormatter:
             # name=original_data.get("name", "unnamed"),
             input_context=input_context,
             question=element.get("input", "No input provided."),
-            provided_output=element.get("output", "No output provided.")
+            provided_output=element.get("output", "No output provided."),
+            validation_question=element.get("validation", "No validation question provided.")
         )
         
         return [
             {"role": "system", "content": (
                 "You are an expert evaluator. Analyze how accurately the 'Provided Output'"
-                "answers the 'Question', taking into account all the 'Context' provided. "
+                "answers the 'Validation Question', taking into account all the 'Context' provided. "
                 "Provide a numerical score only."
             )},
             {"role": "user", "content": context}

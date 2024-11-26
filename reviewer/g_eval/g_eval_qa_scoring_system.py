@@ -67,6 +67,10 @@ class GEvalQASystem:
             response = self.send_request([prompt_text])[0]
             scores[criterion.metric] = GEvalScorer.parse_score(response, criterion)
             
+            # # Comment out the lines below in case we want to follow each structure of Q&A pair
+            # logger.info("\n--- Prompt Text ---")
+            # logger.info(f"Prompt: {prompt_text}")
+            
         final_score = GEvalScorer.aggregate_scores(scores, self.config.GEVAL_CONFIG)
         # Convert to string format
         formatted_scores = "\n".join(
