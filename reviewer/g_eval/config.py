@@ -37,20 +37,30 @@ class GEvalConfig:
             EvalCriterion(
                 metric=EvalMetric.ACCURACY,
                 prompt_template = (
-                    "Instructions for the Reviewer:\n"
-                    "Your task is to evaluate the accuracy of the provided output in answering the given question. "
-                    "Use the validation question as a guideline to assess how well the output addresses the specific requirements of the question within the provided context.\n\n"
-                    "Question:\n{question}\n\n"
-                    "Context:\n{input_context}\n\n"
-                    "Provided Output:\n{provided_output}\n\n"
-                    "Validation Question:\n{validation_question}\n\n"
-                    "Your Evaluation:\n"
-                    "Rate with one number from **1 to 100** (e.g. 95,50) how accurately the 'Provided Output' answers the 'Question' based on the 'Validation Question' and the given 'Context.'\n\n"
-                    "Provide only a single number (1–100) as your rating, where:\n"
-                    "- `1` indicates the output fails completely to address the validation question or the context.\n"
-                    "- `100` indicates the output fully addresses the validation question and aligns perfectly with the context.\n\n"
                     "Base your rating solely on the 'Validation Question.'"
+                    "Rate from 1 to 100 how accurately the following 'Provided Output' answers the given 'Validation Question', "
+                    "considering all the provided 'Context'.\n\n"
+                    "Original Question:\n{question}\n\n"
+                    "Context:\n{input_context}\n\n"
+                    "Validation Question:\n{validation_question}\n\n"
+                    "Provided Output:\n{provided_output}\n\n"
+                    "Provide only a number between 1 and 100 representing how accurately the 'Provided Output' answers the 'Validation Question' based on the given context."
                 ),
+                # prompt_template = (
+                    # "Instructions for the Reviewer:\n"
+                    # "Your task is to evaluate the accuracy of the `Provided Output` in answering the `Validation Question`. "
+                    # "Use the `Validation Question` as a guideline to assess how well the `Provided Output` addresses the specific requirements of the original question within the provided context.\n\n"
+                    # "Original Question:\n{question}\n\n"
+                    # "Context:\n{input_context}\n\n"
+                    # "Validation Question:\n{validation_question}\n\n"
+                    # "Provided Output:\n{provided_output}\n\n"
+                    # "Your Evaluation:\n"
+                    # "Rate with one number from **1 to 100** (e.g. 95,50) how accurately the 'Provided Output' answers the 'Validation Question' based on the given 'Context.'\n\n"
+                    # "Provide only a single number (1–100) as your rating, where:\n"
+                    # "- `1` indicates the output fails completely to address the validation question based on the given context.\n"
+                    # "- `100` indicates the output fully addresses the validation question and aligns perfectly with the context.\n\n"
+                    # "Base your rating solely on the 'Validation Question.'"
+                # ),
                 weight=1.0
             ),
             # Add more criteria as needed
@@ -67,7 +77,7 @@ class Config:
     BATCH_SIZE_LIMIT: int = 8
     MAX_TOKENS: int = 4
     MAX_CONTEXT_LEN: int = 16384
-    SCORE_THRESHOLD: float = 70.0
+    SCORE_THRESHOLD: float = 85.0
     GEVAL_CONFIG: GEvalConfig = field(default_factory=GEvalConfig.default_config)
 
     def __post_init__(self):
