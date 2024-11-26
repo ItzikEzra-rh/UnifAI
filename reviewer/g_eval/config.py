@@ -36,16 +36,20 @@ class GEvalConfig:
         return cls(criteria=[
             EvalCriterion(
                 metric=EvalMetric.ACCURACY,
-                prompt_template=(
-                    # "Rate from 1 to 100 how accurately the following 'Provided Output' answers the given 'Question', "
-                    "Rate from 1 to 100 how accurately the following 'Provided Output' answers the given 'Validation Question', "
-                    "considering all the provided 'Context'.\n\n"
-                    "Context:\n{input_context}\n\n"
+                prompt_template = (
+                    "Instructions for the Reviewer:\n"
+                    "Your task is to evaluate the accuracy of the provided output in answering the given question. "
+                    "Use the validation question as a guideline to assess how well the output addresses the specific requirements of the question within the provided context.\n\n"
                     "Question:\n{question}\n\n"
-                    "Validation Question:\n{validation_question}\n\n"
+                    "Context:\n{input_context}\n\n"
                     "Provided Output:\n{provided_output}\n\n"
-                    # "Base your rating on: {validation_question}"
-                    "Provide only a number between 1 and 100 representing how accurately the output answers the question based on the given context."
+                    "Validation Question:\n{validation_question}\n\n"
+                    "Your Evaluation:\n"
+                    "Rate with one number from **1 to 100** (e.g. 95,50) how accurately the 'Provided Output' answers the 'Question' based on the 'Validation Question' and the given 'Context.'\n\n"
+                    "Provide only a single number (1–100) as your rating, where:\n"
+                    "- `1` indicates the output fails completely to address the validation question or the context.\n"
+                    "- `100` indicates the output fully addresses the validation question and aligns perfectly with the context.\n\n"
+                    "Base your rating solely on the 'Validation Question.'"
                 ),
                 weight=1.0
             ),
