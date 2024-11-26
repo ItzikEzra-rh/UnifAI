@@ -3,6 +3,7 @@ import axios from '../../http/axiosLLMConfig';
 import { PieChart, BarChart, LineChart } from '@mui/x-charts';
 import 'chart.js/auto';
 import '../../styles.css';
+import Charts from './Charts';
 
 interface ModelData {
   id: string;
@@ -41,9 +42,10 @@ const StatisticsGraphs: React.FC = () => {
       return acc;
     }, {});
 
-    return Object.entries(projectCounts).map(([key, value]) => ({
-      id: key,
-      value,
+    return Object.entries(projectCounts).map(([key, value], idx) => ({
+      id: idx,
+      label: key,
+      value: value,
     }));
   };
 
@@ -53,9 +55,10 @@ const StatisticsGraphs: React.FC = () => {
       return acc;
     }, {});
 
-    return Object.entries(modelNameCounts).map(([key, value]) => ({
-      id: key,
-      value,
+    return Object.entries(modelNameCounts).map(([key, value], idx) => ({
+      id: idx,
+      label: key,
+      value: value,
     }));
   };
 
@@ -80,54 +83,36 @@ const StatisticsGraphs: React.FC = () => {
   return (
     <div className="statistics-graphs">
       <div className="graph-row">
-        <div className="graph-container">
-          <h3>Project Distribution</h3>
-          <PieChart
-            series={[{ data: getProjectsData() }]}
-            slotProps={{
-              legend: {
-                hidden: false,
-                direction: 'column',
-                position: { vertical: 'top', horizontal: 'middle' },
-                padding: 0,
-              },
-            }}
-          />
-        </div>
-        <div className="graph-container">
-          <h3>Model Name Distribution</h3>
-          <PieChart
-            series={[{ data: getModelNameData() }]}
-            slotProps={{
-              legend: {
-                direction: 'column',
-                position: { vertical: 'top', horizontal: 'middle' },
-                padding: 0,
-              },
-            }}
-          />
-        </div>
+        <Charts
+          type="pie"
+          data={getProjectsData()}
+          title="Project Distribution"
+        />
+        <Charts
+          type="pie"
+          data={getModelNameData()}
+          title="Model Name Distribution"
+        />
       </div>
       <div className="graph-row">
-        <div className="graph-container">
-          <h3>Context Length by Project</h3>
-          <BarChart
-            xAxis={[{data: getBarChartData().projects, scaleType: 'band'}]}
-            series={[{data: getBarChartData().contextLengths, label: 'Context Length'}]}
-            width={600}
-            height={400}
-          />
-        </div>
-        <div className="graph-container">
-          <h3>Context Length by Model</h3>
-          <LineChart
-            xAxis={[{data: getLineChartData().modelNames, scaleType: 'band'}]}
-            yAxis={[{scaleType: 'linear'}]}
-            series={[{data: getLineChartData().contextLengths, label: 'Context Length'}]}
-            width={600} 
-            height={300} 
-          />
-        </div>
+          <Charts
+          type="bar"
+          data={getBarChartData().projects.map((project, idx) => ({
+            label: project,
+            value: getBarChartData().contextLengths[idx],
+          }))}
+          title="Context Length by Project"
+          label="Context Length"
+        />
+        <Charts
+          type="line"
+          data={getLineChartData().modelNames.map((modelName, idx) => ({
+            label: modelName,
+            value: getLineChartData().contextLengths[idx],
+          }))}
+          title="Context Length by Model"
+          label="Context Length"
+        />
       </div>
     </div>
   );
