@@ -47,12 +47,14 @@ class DataProcessor:
             prompts = self.prompt_generator.create_prompts(element_data=element)
             for prompt in prompts:
                 if not self.batch_processor.add_prompt(prompt=prompt) and self.batch_processor.is_batch_full:
-                    batch = self.batch_processor.finalize_batch()
-                    if batch:
-                        self.send_batch_to_queue(batch)
+                    self.process_batch()
             print(f"submitted element number {element_count}")
             element_count += 1
 
+        # process remnant prompts in the last batch
+        self.process_batch()
+
+    def process_batch(self):
         batch = self.batch_processor.finalize_batch()
         if batch:
             self.send_batch_to_queue(batch)
