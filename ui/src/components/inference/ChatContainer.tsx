@@ -584,7 +584,7 @@ const ChatComponent: React.FC = () => {
   );
 
   const ChatToolTip = () =>
-    <Table {...getTableProps()} className="forms-table">
+    <Table {...getTableProps()} className="table-chat-container">
       <TableHead>
         {headerGroups.map(headerGroup => (
           <TableRow {...headerGroup.getHeaderGroupProps()}>

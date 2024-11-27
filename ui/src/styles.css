@@ -1,7 +1,7 @@
 body, html, #root {
   margin: 0;
   padding: 0;
-  height: 100%;
+  height: 100vh;
   font-family: 'Red Hat Display', sans-serif;
 }
 
@@ -9,16 +9,6 @@ body, html, #root {
   display: flex;
   flex-direction: column;  /* Stack items vertically */
   height: 100vh;
-}
-
-[data-theme="dark"] {
-  --background-color: #121212;
-  --text-color: #e0e0e0;
-}
-
-[data-theme="light"] {
-  --background-color: #fff;
-  --text-color: #000;
 }
 
 .toolbar {
@@ -68,8 +58,8 @@ body, html, #root {
 }
 
 .role-selection {
-  background-color: white;
-  min-width: 150px;
+  background-color: #f9f9f9;
+  width: 180px;
 }
 
 .role-selection .MuiOutlinedInput-notchedOutline {
@@ -94,8 +84,17 @@ body, html, #root {
   color: red; 
 }
 
+.info {
+  width: 80%;
+  margin: 50px auto;
+  padding: 3;
+  border-radius: 2; 
+  box-shadow: 3;
+}
+
 .main-content {
   flex: 1;
+  height: 100vh;
   padding: 20px;
   background-color: #f9f9f9;
   border-top: 1px solid #ccc;
@@ -196,34 +195,46 @@ body, html, #root {
   background-color: #45a049;
 }
 
-/* Tables Styles */
 .table-container {
   margin: 50px 20px;
 }
 
-.forms-table {
-  margin-top: 60px;
+.forms-table,
+.table-chat-container {
   width: 100%;
   border-collapse: collapse;
 }
 
 .forms-table th,
-.forms-table td {
+.table-chat-container th,
+.forms-table td,
+.table-chat-container td {
   padding: 10px;
   border: 1px solid #ddd;
   text-align: left;
 }
 
-.forms-table th {
+.forms-table th,
+.table-chat-container th {
   background-color: #e0e0e0;
 }
 
-.forms-table tr:nth-child(even) {
+.forms-table tr:nth-child(even),
+.table-chat-container tr:nth-child(even) {
   background-color: #f9f9f9;
 }
 
-.forms-table tr:hover {
+.forms-table tr:hover,
+.table-chat-container tr:hover {
   background-color: #f1f1f1;
+}
+
+.forms-table {
+  margin-top: 0;
+}
+
+.table-chat-container {
+  margin-top: 60px;
 }
 
 .table-cell {
