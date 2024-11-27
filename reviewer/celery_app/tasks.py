@@ -1,7 +1,7 @@
 import logging
 from celery_batches import Batches
 from celery_app.init import celery
-from reviewer.g_eval.review import process_elements, save_elements
+from g_eval.review import process_elements, save_elements
 
 from utils.celery.celery import send_task
 import traceback

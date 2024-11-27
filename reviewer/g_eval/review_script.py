@@ -2,8 +2,7 @@ import json
 import asyncio
 
 from g_eval.config import Config
-from reviewer.g_eval.qa_scoring_system import GEvalQASystem
-from reviewer.g_eval.system_async import AsyncGEvalSystem
+from g_eval.system_async import AsyncGEvalSystem
 from logger import logger
 
 # def main() -> None:

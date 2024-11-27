@@ -1,8 +1,7 @@
 import json
 
 from g_eval.config import Config
-from reviewer.g_eval.qa_scoring_system import GEvalQASystem
-from reviewer.g_eval.system_async import AsyncGEvalSystem
+from g_eval.qa_scoring_system import GEvalQASystem
 from utils.celery.celery import send_task
 from logger import logger
 

@@ -7,8 +7,8 @@ from transformers import AutoTokenizer
 
 from logger import logger
 from g_eval.config import EvalMetric, Config, GEvalConfig
-from reviewer.g_eval.prompt_formatter import GEvalPromptFormatter
-from reviewer.g_eval.scorer import GEvalScorer
+from g_eval.prompt_formatter import GEvalPromptFormatter
+from g_eval.scorer import GEvalScorer
 from utils.celery.celery import send_task
 
 class GEvalQASystem:
