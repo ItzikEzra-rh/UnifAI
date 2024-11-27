@@ -6,7 +6,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler, FileModifiedEvent
 
 from g_eval.config import Config
-from g_eval.g_eval_qa_scoring_system import GEvalQASystem
+from g_eval.qa_scoring_system import GEvalQASystem
 from logger import logger
 
 class FileChangeHandler(FileSystemEventHandler):
