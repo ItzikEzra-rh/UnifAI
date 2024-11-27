@@ -11,6 +11,16 @@ body, html, #root {
   height: 100vh;
 }
 
+[data-theme="dark"] {
+  --background-color: #121212;
+  --text-color: #e0e0e0;
+}
+
+[data-theme="light"] {
+  --background-color: #fff;
+  --text-color: #000;
+}
+
 .toolbar {
   background-color: black;
   display: flex;
