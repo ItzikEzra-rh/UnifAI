@@ -1,0 +1,28 @@
+{
+  "storage_type": "file",
+  "input": {
+    "file_path": "/home/instruct/workflows.json"
+  },
+  "output": {
+    "directory": "data/"
+  },
+  "model_config": {
+    "tokenizer_path": "oodeh/serverless-workflows-readme-r16-a16-epoch10",
+    "model_name": "oodeh/serverless-workflows-readme-r16-a16-epoch10",
+    "api_url": "http://0.0.0.0:8000/v1/completions",
+    "max_generation_length": 4096,
+    "max_context_length": 16384,
+    "batch_size": 8
+  },
+  "rabbitmq": {
+    "port": 443,
+    "url": "amqp://instructlab.v249k.sandbox1145.opentlc.com:{port}"
+  },
+  "mongodb": {
+    "port": 27017,
+    "url": "mongodb://127.0.0.1:{port}"
+  },
+  "templates": {
+    "project_path": "config/project_config.json"
+  }
+}

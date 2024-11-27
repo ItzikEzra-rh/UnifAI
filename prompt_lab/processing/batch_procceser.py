@@ -1,77 +1,111 @@
+import copy
+
+
 class BatchProcessor:
     """
-    BatchProcessor is responsible for managing batching logic, ensuring that prompts
-    are grouped into batches that meet specified constraints for size and token limits.
+    BatchProcessor manages batching of prompts based on size and token constraints.
+    It tracks the current batch and allows for processing and retrieving batches incrementally.
     """
 
-    def __init__(self, batch_size, tokenizer, skipped_data, io_repository):
+    def __init__(self, batch_size, tokenizer, io_repository):
         """
         Initializes the BatchProcessor with batching parameters.
 
         Args:
-            batch_size (int): The maximum number of prompts allowed in a single batch.
-            token_limit (int): The maximum token count allowed for a batch.
+            batch_size (int): Maximum number of prompts allowed in a single batch.
+            tokenizer: Tokenizer instance used for calculating token counts.
+            skipped_data (list): List to store skipped prompts.
+            io_repository: Repository instance for saving skipped data.
         """
         self.batch_size = batch_size
         self.tokenizer = tokenizer
-        self.skipped_data = skipped_data
         self.io_repository = io_repository
         self.token_limit = self.tokenizer.get_toking_limit()
+        self.current_batch = []
+        self.current_token_count = 0
+        self.skipped_elements_count = 0
+        self.is_batch_full = False
+        self.remnant_prompt = None
+        self.remnant_token_size_prompt = 0
 
-    def create_batch(self, all_prompts, prompts_count, start_index):
+    def add_prompt(self, prompt):
         """
-        Creates a batch of prompts from the provided list starting at the specified index.
+        Attempts to add a prompt to the current batch. If constraints are exceeded, the prompt is skipped.
 
         Args:
-            all_prompts (list): A list of all available prompts, each with metadata.
-            prompts_count (int): The total number of prompts available.
-            start_index (int): The starting index in `all_prompts` from which to begin batching.
+            prompt (dict): A single prompt with metadata.
 
         Returns:
-            tuple: A tuple containing two lists:
-                - batch_prompts (list): The prompts selected for the batch.
-                - metadata (list): The corresponding metadata for each prompt in the batch.
-
-        Notes:
-            - The batch will contain prompts until either the batch size limit or token limit is reached.
-            - Batching stops if adding another prompt would exceed either the batch size or token count limits.
+            bool: True if the prompt was added successfully, False otherwise.
         """
-        batch_prompts = []
-        metadata = []
-        total_token_count = 0
-        skipped_elements_count = 0
+        prompt_tokens = self.tokenizer.tokenize(prompt["formatted_prompt"])
+        prompt["token_count"] = prompt_tokens
 
-        for i in range(start_index, prompts_count):
-            prompt_info = all_prompts[i]
+        if prompt_tokens > self.token_limit:
+            self._skip_due_to_token_size(prompt["metadata"])
+            return False
 
-            prompt_tokens = self.tokenizer.tokenize(prompt_info["formatted_prompt"])
-            prompt_info["metadata"]["token_count"] = prompt_tokens
+        # Check if adding the prompt exceeds batch constraints
+        if self.current_token_count + prompt_tokens > self.token_limit or len(self.current_batch) >= self.batch_size:
+            self.is_batch_full = True
+            self.remnant_prompt = prompt
+            self.remnant_token_size_prompt = prompt_tokens
+            return False
 
-            # Skip if prompt exceeds token limit
-            if prompt_tokens > self.token_limit:
-                self.skip_due_to_big_token_size(element_data=prompt_info["metadata"])
-                skipped_elements_count += 1
+        # Add the prompt to the current batch
+        self.current_batch.append(prompt)
+        self.current_token_count += prompt_tokens
+        # print(f"current batch size: {len(self.current_batch)}")
+        # print(f"current token size of batch: {self.current_token_count}")
 
-            # Check if adding this prompt would exceed batch size or token limit
-            if len(batch_prompts) >= self.batch_size or (total_token_count + prompt_tokens > self.token_limit):
-                break
+        return True
 
-            # Add prompt and update metadata and token count
-            batch_prompts.append(prompt_info["formatted_prompt"])
-            metadata.append(prompt_info["metadata"])
-            total_token_count += prompt_tokens
-
-        return batch_prompts, metadata, total_token_count, skipped_elements_count
-
-    def skip_due_to_big_token_size(self, element_data):
+    def finalize_batch(self):
         """
-        Adds element data to skipped list due to hallucination and saves to the repository.
+        Finalizes and retrieves the current batch, resetting the internal state.
+
+        Returns:
+            list: The finalized batch of prompts.
+        """
+        finalized_batch = copy.deepcopy(self.current_batch)
+        self._reset_batch()
+        return finalized_batch
+
+    def get_current_batch(self):
+        """
+        Retrieves the current batch without resetting it.
+
+        Returns:
+            list: The current batch of prompts.
+        """
+        return self.current_batch
+
+    def _reset_batch(self):
+        """
+        Resets the internal state for the current batch.
+        """
+        self.current_batch = [self.remnant_prompt]
+        self.current_token_count = self.remnant_token_size_prompt
+        self.remnant_prompt = None
+        self.remnant_token_size_prompt = 0
+        self.is_batch_full = False
+
+    def _skip_due_to_token_size(self, metadata):
+        """
+        Handles prompts that exceed token size constraints by marking them as skipped.
 
         Args:
-            element_data: Original data of the element being skipped.
+            metadata (dict): Metadata of the skipped prompt.
         """
-        element_data["skip"] = {"reason": "token_size"}
-        self.skipped_data.append(element_data)
-        self.io_repository.save_skipped_data(self.skipped_data)
-        print(
-            f"Element {element_data.get('element_type')} skipped due to big token size {element_data.get('token_count')}")
+        metadata["skip"] = {"reason": "token_size"}
+        self.io_repository.save_skipped_data(metadata)
+        print(f"Skipped prompt due to token size: {metadata.get('element_type')}")
+
+    def get_skipped_count(self):
+        """
+        Retrieves the total number of skipped prompts.
+
+        Returns:
+            int: Count of skipped prompts.
+        """
+        return self.skipped_elements_count

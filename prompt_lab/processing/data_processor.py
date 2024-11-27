@@ -2,6 +2,8 @@ from llm_client.vllm import VLLMClient
 from utils.tokenizer import TokenizerUtils
 from processing.prompt_generator import PromptGenerator
 from processing.batch_procceser import BatchProcessor
+from utils.celery.celery import send_task, get_queue_length_rabbitmq
+from time import sleep
 
 
 class DataProcessor:
@@ -11,7 +13,8 @@ class DataProcessor:
     """
 
     def __init__(self, io_repository, project_config, api_url, model_name,
-                 max_context_length, max_generation_length, batch_size):
+                 max_context_length, max_generation_length, batch_size, fetch_prompts_queue_target_size,
+                 fetch_prompts_queue_name):
         """
         Initializes DataProcessor with dependencies and configuration.
 
@@ -29,43 +32,46 @@ class DataProcessor:
                                         max_generation_length=max_generation_length)
         self.llm_client = VLLMClient(api_url, model_name, max_context_length)
         self.prompt_generator = PromptGenerator(self.tokenizer, project_config)
-        self.skipped_data = self.io_repository.load_skipped_data()
-        self.batch_processor = BatchProcessor(batch_size, self.tokenizer, self.skipped_data, self.io_repository)
-        self.current_prompt_index = self.io_repository.load_progress()
-        self.processed_data = self.io_repository.load_processed_data()
-
+        self.batch_processor = BatchProcessor(batch_size, self.tokenizer, self.io_repository)
+        self.processed_uuids = self.io_repository.load_progress()
+        self.fetch_prompts_queue_name = fetch_prompts_queue_name
+        self.fetch_prompts_queue_target_size = fetch_prompts_queue_target_size
         print("DataProcessor initialized.")
-        print(f"Loaded {len(self.processed_data)} processed records and {len(self.skipped_data)} skipped records.")
-        print(f"Resuming from prompt index: {self.current_prompt_index}")
 
     def process_all_elements(self):
-        """Main method to process all elements, batching prompts and sending them to the LLM client."""
-        data = self.io_repository.load_data()
-        print(f"Loaded {len(data)} elements for processing.")
-
-        # Generate all prompts and metadata
-        all_prompts = [prompt for element_data in data for prompt in self.prompt_generator.create_prompts(element_data)]
-        prompts_count = len(all_prompts)
-        print(f"Total prompts generated: {prompts_count}")
-
-        # Process prompts in batches, starting from the last saved index
-        while self.current_prompt_index < prompts_count:
-            print(f"Processing from prompt index: {self.current_prompt_index}")
-            batch_prompts, metadata, total_token_count, skipped_elements_count = self.batch_processor.create_batch(
-                all_prompts,
-                prompts_count,
-                self.current_prompt_index)
-
-            self.current_prompt_index += skipped_elements_count
-            if not batch_prompts:
+        element_count = 1
+        for element in self.io_repository.load_data():
+            if element["uuid"] in self.processed_uuids:
                 continue
-            print(f"Created batch with {len(batch_prompts)} prompts. batch tokens size is {total_token_count}")
 
-            # Process the batch and update progress
-            self.process_batch(batch_prompts, metadata)
-            self.current_prompt_index += len(batch_prompts)
-            self.io_repository.save_progress(self.current_prompt_index)
-            print(f"Progress saved at prompt index: {self.current_prompt_index}")
+            prompts = self.prompt_generator.create_prompts(element_data=element)
+            for prompt in prompts:
+                if not self.batch_processor.add_prompt(prompt=prompt) and self.batch_processor.is_batch_full:
+                    self.process_batch()
+            print(f"submitted element number {element_count}")
+            element_count += 1
+
+        # process remnant prompts in the last batch
+        self.process_batch()
+
+    def process_batch(self):
+        batch = self.batch_processor.finalize_batch()
+        if batch:
+            self.send_batch_to_queue(batch)
+
+    def send_batch_to_queue(self, batch):
+        while True:
+            queue_size = get_queue_length_rabbitmq(self.fetch_prompts_queue_name)
+            # print(queue_size)
+            if queue_size < self.fetch_prompts_queue_target_size:
+                # print(f"batch size {len(batch)} sending to queue")
+                send_task(task_name="fetch_prompts_batch",
+                          celery_queue=self.fetch_prompts_queue_name,
+                          batch=batch)
+                break
+            else:
+                # Wait before checking again to avoid excessive API calls
+                sleep(5)
 
     def process_batch(self, batch_prompts, metadata):
         """
@@ -80,45 +86,29 @@ class DataProcessor:
         print(f"Received {len(choices)} responses from LLM client.")
 
         # Process each response and metadata entry
+        llm_res_batch = []
         for meta, choice in zip(metadata, choices):
-            if choice.get("finish_reason", "").strip() == "length":
-                print(f"Skipping due to hallucination for element: {meta['element_type']}")
-                self.skip_due_to_hallucination(meta["original_data"])
-            else:
-                self.save_processed_data(meta, choice["text"])
+            self.print_progress(meta["element_type"], meta["group"], meta["category"], choice["text"])
+            element_data = {
+                "uuid": meta["original_data"]["uuid"],
+                "input": meta["input_text"],
+                "output": choice["text"],
+                "element_type": meta["element_type"],
+                "group": meta["group"],
+                "category": meta["category"],
+                "validation": meta["validation"],
+                "original_data": meta["original_data"]
+            }
+            llm_res_batch.append(element_data)
+        return llm_res_batch
 
-    def save_processed_data(self, meta, response_text):
-        """
-        Saves a single processed prompt's metadata and response.
-
-        Args:
-            meta: Metadata for the processed prompt.
-            response_text: Generated response from the LLM client.
-        """
-        element_data = {
-            "input": meta["input_text"],
-            "output": response_text,
-            "element_type": meta["element_type"],
-            "group": meta["group"],
-            "category": meta["category"],
-            "original_data": meta["original_data"]
-        }
-        self.processed_data.append(element_data)
-        self.io_repository.save_processed_data(self.processed_data)
-        print(f"Processed data saved for element type: {meta['element_type']}")
-        self.print_progress(meta["element_type"], meta["group"], meta["category"], response_text)
-
-    def skip_due_to_hallucination(self, element_data):
-        """
-        Adds element data to skipped list due to hallucination and saves to the repository.
-
-        Args:
-            element_data: Original data of the element being skipped.
-        """
-        element_data["skip"] = {"reason": "hallucination"}
-        self.skipped_data.append(element_data)
-        self.io_repository.save_skipped_data(self.skipped_data)
-        print(f"Element skipped due to hallucination: {element_data.get('element_type')}")
+    def save_processed_prompt(self, prompt):
+        uuid = prompt.get("uuid")
+        if uuid:
+            self.io_repository.save_processed_data(prompt)
+            self.io_repository.save_progress(uuid)
+            return True
+        return False
 
     def print_progress(self, element_type, group_name, category, output):
         """
@@ -132,7 +122,7 @@ class DataProcessor:
         """
         separator = "=" * 80
         print(separator)
-        print(f"Processing Element {self.current_prompt_index + 1}".center(80))
+        print(f"Processing Element ".center(80))
         print(f"Element Type: {element_type} | Group: {group_name} | Category: {category}".center(80))
         print(separator)
         print(f"\n{output}\n")

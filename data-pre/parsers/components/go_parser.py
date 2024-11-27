@@ -1,5 +1,6 @@
 import re
 import os
+import uuid
 from .tree_sitter_parser import TreeSitterParser
 
 GO_LANGUAGE_PATH = '/home/cloud-user/Projects/playGround/tree-sitter-playground/tree-sitter-go/go.so'
@@ -84,8 +85,11 @@ class GoParser(TreeSitterParser):
             package_name = get_file_package(node)
             return {
                 "element_type": file_type,
+                "uuid": str(uuid.uuid4()),
                 "name": os.path.basename(self.realtive_path),
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",  # Mapped resource imports
+                "structs": "",
+                "interfaces": "",
                 "file_location": f"File Location: {self.realtive_path}",
                 "code": content,
                 "global_vars": "",
@@ -162,6 +166,7 @@ class GoParser(TreeSitterParser):
                 global_vars = get_used_global_vars(func_code, global_vars)
                 function = {
                     "element_type": "function",
+                    "uuid": str(uuid.uuid4()),
                     "name": func_name,
                     "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
                     "structs": f"Structs Used: {used_structs}" if len(used_structs) > 0 else "",
@@ -296,6 +301,7 @@ class GoParser(TreeSitterParser):
             tags = extract_tags(describe_block)
             test = {
                 "element_type": "test",
+                "uuid": str(uuid.uuid4()),
                 "name": test_name,
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
                 "structs": f"Structs Used: {used_structs}" if len(used_structs) > 0 else "",
@@ -326,8 +332,11 @@ class GoParser(TreeSitterParser):
             used_imports = get_relevant_imports(test_case_code, all_imports)
             test_case = {
                 "element_type": "test case",
+                "uuid": str(uuid.uuid4()),
                 "name": test_case_name,
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "" ,
+                "structs": "",
+                "interfaces": "",
                 "file_location": f"File Location: {self.realtive_path}",
                 "code": test_case_code,
                 # "file_code": content,
