@@ -10,7 +10,7 @@ class GitlabAPI:
         self.private_token = repo_auth_key
 
     def _get(self, url):
-        response = requests.get(url)
+        response = requests.get(url, verify=False)
         data = response.json()
         return data, response
 
