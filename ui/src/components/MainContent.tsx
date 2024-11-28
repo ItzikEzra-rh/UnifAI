@@ -40,14 +40,12 @@ const MainContent: React.FC<MainContentProps> = ({ content }) => {
           <div style={{ margin: '50px auto', width: '80%' }}>
             <iframe
               src="https://docs.google.com/presentation/d/e/2PACX-1vSk0sFE-y0og_QYcTgLP4jjPl51H07UGQb170mFjvKb32A0FMBOUctGykFEFM8RZuNORQpxFv5FK4e-/embed?start=false&loop=false&delayms=3000"
-              frameBorder="0"
               width="100%"
               height="480"
               allowFullScreen
               title="TAG Presentation"
             ></iframe>
           </div>
-
         </CardContent>
       </Card>
     );

@@ -12,7 +12,7 @@ const theme = createTheme({
     fontWeightMedium: 500,
   },
   palette: {
-    mode: 'light', 
+    mode: 'light',
   },
 });
 

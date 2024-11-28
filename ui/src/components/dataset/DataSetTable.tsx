@@ -43,7 +43,7 @@ const DataSetTable: React.FC = () => {
           <span onClick={() => setSelectedFile(value)} style={{ cursor: 'pointer' }}>
             <FaEye />
           </span>
-        ),        
+        ),
       },
     ],
     []
@@ -89,7 +89,7 @@ const DataSetTable: React.FC = () => {
                       cells.forEach(
                         (cell) =>
                           (cell as HTMLElement).style.backgroundColor =
-                            'rgba(46, 120, 199, 0.2)'
+                          'rgba(46, 120, 199, 0.2)'
                       );
                     }}
                     onMouseLeave={(e) => {
@@ -111,12 +111,11 @@ const DataSetTable: React.FC = () => {
           })}
         </TableBody>
       </Table>
-      
+
       {selectedFile && (
         <div className="iframe-container">
           <iframe
             src={`https://huggingface.co/datasets/oodeh/NcsRobotTestFramework/embed/viewer?file=${encodeURIComponent(selectedFile)}`}
-            frameBorder="0"
             width="100%"
             height="560px"
           ></iframe>

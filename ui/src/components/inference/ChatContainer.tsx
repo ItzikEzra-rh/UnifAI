@@ -642,25 +642,25 @@ const ChatComponent: React.FC = () => {
       ) : selectedModel ? (
         <>
           {/* Custom section for displaying model information */}
-          <div style={{position: 'absolute', top: '10px', right: '0', width: '100%', display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingRight: '20px'}}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '150px' }}>
-                <Tooltip title={temperatureTooltip} arrow placement="top">
-                  <Typography id="temperature-slider" variant="caption" gutterBottom style={{ cursor: 'help' }}>
-                    Temperature: {temperature.toFixed(1)}
-                  </Typography>
-                </Tooltip>
-                <Slider
-                  value={temperature}
-                  onChange={handleTemperatureChange}
-                  aria-labelledby="temperature-slider"
-                  valueLabelDisplay="auto"
-                  color="error"
-                  step={0.1}
-                  marks
-                  min={0}
-                  max={2}
-                  size="small"
-                />
+          <div style={{ position: 'absolute', top: '10px', right: '0', width: '100%', display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingRight: '20px' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '150px' }}>
+              <Tooltip title={temperatureTooltip} arrow placement="top">
+                <Typography id="temperature-slider" variant="caption" gutterBottom style={{ cursor: 'help' }}>
+                  Temperature: {temperature.toFixed(1)}
+                </Typography>
+              </Tooltip>
+              <Slider
+                value={temperature}
+                onChange={handleTemperatureChange}
+                aria-labelledby="temperature-slider"
+                valueLabelDisplay="auto"
+                color="error"
+                step={0.1}
+                marks
+                min={0}
+                max={2}
+                size="small"
+              />
             </div>
             <Button variant="contained" color="error" onClick={clearChat} disabled={isStreaming} >
               Start New Chat

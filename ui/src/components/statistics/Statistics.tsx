@@ -1,9 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from '../../http/axiosLLMConfig';
-import { PieChart, BarChart, LineChart } from '@mui/x-charts';
 import 'chart.js/auto';
 import '../../styles.css';
-import Charts from './Charts';
+import Charts from '../shared/Charts';
 
 interface ModelData {
   id: string;
@@ -73,8 +72,8 @@ const StatisticsGraphs: React.FC = () => {
   };
 
   const getLineChartData = () => {
-    const modelNames = data.map((item) => item.modelName); 
-    const contextLengths = data.map((item) => item.contextLength); 
+    const modelNames = data.map((item) => item.modelName);
+    const contextLengths = data.map((item) => item.contextLength);
     return { modelNames, contextLengths };
   };
 
@@ -95,7 +94,7 @@ const StatisticsGraphs: React.FC = () => {
         />
       </div>
       <div className="graph-row">
-          <Charts
+        <Charts
           type="bar"
           data={getBarChartData().projects.map((project, idx) => ({
             label: project,
