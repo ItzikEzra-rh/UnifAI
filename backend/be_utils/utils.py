@@ -1,4 +1,4 @@
-from llm_be_config.configParams import config_params
+from config.configParams import config_params
 from subprocess import PIPE, Popen
 import functools
 import shutil

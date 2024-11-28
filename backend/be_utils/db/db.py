@@ -1,6 +1,6 @@
 from bson.objectid import ObjectId
 from pymongo import MongoClient
-from llm_be_config.configParams import config_params
+from config.configParams import config_params
 from be_utils.utils import shell_exec
 import os
 import functools
