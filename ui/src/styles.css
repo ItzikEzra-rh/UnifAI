@@ -7,7 +7,7 @@ body, html, #root {
 
 .app {
   display: flex;
-  flex-direction: column;  /* Stack items vertically */
+  flex-direction: column;  
   height: 100vh;
 }
 
@@ -128,11 +128,11 @@ body, html, #root {
 }
 
 .form-tabs .MuiTab-textColorPrimary.Mui-selected {
-  color: #2e78c7;
+  color: #d32020;
 }
 
 .form-tabs .MuiTabs-indicator {
-  background-color: #2e78c7;
+  background-color: #d32020;
 }
 
 .form-section {
@@ -382,7 +382,7 @@ body, html, #root {
 .step-details-list li strong {
   min-width: 100px;
   margin-right: 10px;
-  color: #007bff;
+  color: #d32020;
 }
 
 .step-details-list li span {

@@ -48,12 +48,11 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
     role === DATA_SCIENCE_ROLE ? setDropdownList(dropdownAllItems) : setDropdownList(dropdownUserItems);
   }, [role]);
 
-  // Detect clicks outside of the toolbar and reset the selectedButton
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (toolbarRef.current && !toolbarRef.current.contains(event.target as Node)) {
-        setSelectedButton(null); // Reset the selected button when clicking outside
-        setAnchorEl(null); // Close the dropdown menu
+        setSelectedButton(null);
+        setAnchorEl(null);
       }
     };
 
@@ -66,14 +65,14 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
   const handleClick = (event: React.MouseEvent<HTMLElement>, title: string) => {
     setAnchorEl(event.currentTarget);
     setMenuTitle(title);
-    setSelectedButton(title); // Set the selected button
+    setSelectedButton(title);
   };
 
   const handleMenuItemClick = (item: DropdownItem) => {
     setSelectedItem(item.label);
     setContent(item.content);
     setAnchorEl(null);
-    setSelectedButton(null); // Reset selected button after selecting an item
+    setSelectedButton(null);
   };
 
   const handleMenuClose = () => {
@@ -96,7 +95,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
               key={dropdown.title}
               endIcon={<KeyboardArrowDownIcon />}
               onClick={(event) => handleClick(event, dropdown.title)}
-              className={selectedButton === dropdown.title ? 'selected' : ''} // Add the selected class
+              className={selectedButton === dropdown.title ? 'selected' : ''}
             >
               {dropdown.title}
             </Button>
@@ -114,7 +113,7 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
             <MenuItem
               key={item.label}
               selected={selectedItem === item.label}
-              onClick={() => handleMenuItemClick(item)} // Close the dropdown on item click
+              onClick={() => handleMenuItemClick(item)}
             >
               {item.label}
             </MenuItem>
@@ -123,13 +122,13 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
       ))}
 
       <div className="toolbar-buttons">
-      <FormControl variant="outlined" className="role-selection">
-      <InputLabel>Role Selection</InputLabel>
-      <Select value={role} onChange={handleRoleChange}>
-        <MenuItem value={USER_ROLE}>User Role</MenuItem>
-        <MenuItem value={DATA_SCIENCE_ROLE}>Data Science Role</MenuItem>
-      </Select>
-    </FormControl>
+        <FormControl variant="outlined" className="role-selection">
+          <InputLabel>Role Selection</InputLabel>
+          <Select value={role} onChange={handleRoleChange}>
+            <MenuItem value={USER_ROLE}>User Role</MenuItem>
+            <MenuItem value={DATA_SCIENCE_ROLE}>Data Science Role</MenuItem>
+          </Select>
+        </FormControl>
         <Button variant="contained" color="error" endIcon={<SendIcon />}>Log In</Button>
         <Button variant="contained" color="error" endIcon={<HelpIcon />}>Support</Button>
       </div>

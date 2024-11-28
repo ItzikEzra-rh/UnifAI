@@ -19,20 +19,19 @@ const MainContent: React.FC<MainContentProps> = ({ content }) => {
     return (
       <Card className='info'>
         <CardContent>
-          <Typography variant="h2" component="h2" style={{textAlign: 'center'}}>
+          <Typography variant="h2" component="h2" style={{ textAlign: 'center' }}>
             Welcome to GENIE!
           </Typography>
           <br></br>
           <Typography variant="h5" paragraph>
             Our <strong>primary objective</strong> is to establish a pre-tuned language model capable of producing high-quality Test Case code that adheres to the specific requirements of our automation team, including code styling and reusable conventions.
           </Typography>
-          
           <Typography paragraph>
             Over the last few months, with advancements in AI capabilities and increased focus in Red Hat on AI/LLM, we have embarked on developing an in-house AI tool designed to generate test case (TC) code.
             <br></br>
             We began by utilizing the NCS robot production test cases (TCs) and developing a parser to analyze the code of over 300 TCs. This parser will segment the code into a comprehensive logical dataset, which will subsequently be used to fine-tune our language model (LLM).
           </Typography>
-          <Typography variant="h5" style={{textAlign: 'center'}}> Proof Of Concept Goal </Typography>
+          <Typography variant="h5" style={{ textAlign: 'center' }}> Proof Of Concept Goal </Typography>
           <br></br>
           <Typography paragraph>
             Our goal with the proof of concept (POC) is to enable users with basic knowledge of robot to request the generation of new test cases (TCs)
@@ -48,7 +47,7 @@ const MainContent: React.FC<MainContentProps> = ({ content }) => {
               title="TAG Presentation"
             ></iframe>
           </div>
-        
+
         </CardContent>
       </Card>
     );
