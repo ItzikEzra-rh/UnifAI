@@ -65,3 +65,11 @@ def append_to_json_object(file_path, new_key, new_value):
                 file.write(b',')
                 file.write(json.dumps({new_key: new_value})[1:-1].encode())
                 file.write(b'}')
+
+
+def sort_nested_dict(data):
+    if isinstance(data, dict):
+        return {key: sort_nested_dict(value) for key, value in sorted(data.items())}
+    elif isinstance(data, list):
+        return sorted(sort_nested_dict(x) for x in data)
+    return data

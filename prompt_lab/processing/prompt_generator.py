@@ -1,8 +1,10 @@
 import copy
-
+import json
 from jinja2 import Environment
 import random
 import string
+import hashlib
+from utils.util import sort_nested_dict
 
 
 class PromptGenerator:
@@ -59,9 +61,7 @@ class PromptGenerator:
                 # Generate context and input text
                 context, input_text, validation_text = self._generate_random_input(questions, element_data)
                 formatted_prompt = self._format_prompt(system_message, context, input_text)
-
-                # Append prompt with metadata
-                prompts.append({
+                prompt_data = {
                     "formatted_prompt": formatted_prompt,
                     "metadata": {
                         "element_type": element_type,
@@ -71,7 +71,20 @@ class PromptGenerator:
                         "input_text": input_text,
                         "original_data": element_data,
                     }
-                })
+                }
+
+                # create something that can pin or star the prompt category and group with relation to the element uuid
+                group_category_prompt_metadata = prompt_data["metadata"]["original_data"][
+                                                     "uuid"] + group_name + category_name
+
+                # Generate the MD5 hash
+                uuid = hashlib.md5(group_category_prompt_metadata.encode()).hexdigest()
+
+                # Add the UUID back to the structure
+                prompt_data["metadata"]["uuid"] = uuid
+
+                # Append prompt with metadata
+                prompts.append(prompt_data)
 
         return prompts
 
