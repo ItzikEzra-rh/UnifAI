@@ -26,9 +26,6 @@ RUN /bin/bash -c "huggingface-cli login --token ${HF_TOKEN}"
 # Change to repository directory and install dependencies
 WORKDIR /app/repo/prompt_lab
 
-# TODO: Once all the changes will be pushed to main - Remove the line below
-RUN git checkout GENIE-68/story/make-celery-template
-
 # Install dependencies
 RUN /bin/bash -c "pip install --upgrade pip && \
     pip install -r requirements.txt"
