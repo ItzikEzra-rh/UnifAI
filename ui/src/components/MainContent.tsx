@@ -7,6 +7,7 @@ import SavedPrompt from './inference/SavedPrompt'
 import DataSetTable from './dataset/DataSetTable'
 import TrainingForm from './training/TrainingForm'
 import { Card, CardContent, Typography } from '@mui/material';
+import AiAgentGraph from '../AiAgentsGraph.png';
 import '../styles.css';
 
 interface MainContentProps {
@@ -31,13 +32,17 @@ const MainContent: React.FC<MainContentProps> = ({ content }) => {
             <br></br>
             We began by utilizing the NCS robot production test cases (TCs) and developing a parser to analyze the code of over 300 TCs. This parser will segment the code into a comprehensive logical dataset, which will subsequently be used to fine-tune our language model (LLM).
           </Typography>
-          <Typography variant="h5" style={{ textAlign: 'center' }}> Proof Of Concept Goal </Typography>
-          <br></br>
-          <Typography paragraph>
-            Our goal with the proof of concept (POC) is to enable users with basic knowledge of robot to request the generation of new test cases (TCs)
-            from the language model (LLM) and receive high quality results. The generated tests will adhere to the same conventions as the existing tests in the project.
-          </Typography>
-          <div style={{ margin: '50px auto', width: '80%' }}>
+
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <img
+              src={AiAgentGraph}
+              alt="AI Agent Graph"
+              style={{ width: '40%', height: 'auto' }}
+            />
+          </div>
+
+          
+          {/* <div style={{ margin: '50px auto', width: '80%' }}>
             <iframe
               src="https://docs.google.com/presentation/d/e/2PACX-1vSk0sFE-y0og_QYcTgLP4jjPl51H07UGQb170mFjvKb32A0FMBOUctGykFEFM8RZuNORQpxFv5FK4e-/embed?start=false&loop=false&delayms=3000"
               width="100%"
@@ -45,7 +50,7 @@ const MainContent: React.FC<MainContentProps> = ({ content }) => {
               allowFullScreen
               title="TAG Presentation"
             ></iframe>
-          </div>
+          </div> */}
         </CardContent>
       </Card>
     );
