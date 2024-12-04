@@ -129,8 +129,8 @@ const Toolbar: React.FC<ToolbarProps> = ({ role, setRole, setContent }) => {
             <MenuItem value={DATA_SCIENCE_ROLE}>Data Science Role</MenuItem>
           </Select>
         </FormControl>
-        <Button variant="contained" color="error" endIcon={<SendIcon />}>Log In</Button>
-        <Button variant="contained" color="error" endIcon={<HelpIcon />}>Support</Button>
+        <Button variant="contained" sx={{backgroundColor: "red"}} endIcon={<SendIcon />}>Log In</Button>
+        <Button variant="contained" sx={{backgroundColor: "red"}} endIcon={<HelpIcon />}>Support</Button>
       </div>
     </div>
   );

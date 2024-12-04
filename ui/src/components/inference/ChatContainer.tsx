@@ -654,7 +654,7 @@ const ChatComponent: React.FC = () => {
                 onChange={handleTemperatureChange}
                 aria-labelledby="temperature-slider"
                 valueLabelDisplay="auto"
-                color="error"
+                sx={{color: "red"}}
                 step={0.1}
                 marks
                 min={0}
@@ -662,10 +662,10 @@ const ChatComponent: React.FC = () => {
                 size="small"
               />
             </div>
-            <Button variant="contained" color="error" onClick={clearChat} disabled={isStreaming} >
+            <Button variant="contained" sx={{backgroundColor: "red"}} onClick={clearChat} disabled={isStreaming} >
               Start New Chat
             </Button>
-            <Button variant="contained" color="error" onClick={unloadModel} >
+            <Button variant="contained" sx={{backgroundColor: "red"}} onClick={unloadModel} >
               Unload Model
             </Button>
           </div>
