@@ -41,11 +41,10 @@ class DataProcessor:
     def process_all_elements(self):
         element_count = 1
         for element in self.io_repository.load_data():
-            if element["uuid"] in self.processed_uuids:
-                continue
-
             prompts = self.prompt_generator.create_prompts(element_data=element)
             for prompt in prompts:
+                if prompt["metadata"]["uuid"] in self.processed_uuids:
+                    continue
                 if not self.batch_processor.add_prompt(prompt=prompt) and self.batch_processor.is_batch_full:
                     self.__process_batch()
             print(f"submitted element number {element_count}")
@@ -90,7 +89,7 @@ class DataProcessor:
         for meta, choice in zip(metadata, choices):
             self.print_progress(meta["element_type"], meta["group"], meta["category"], choice["text"])
             element_data = {
-                "uuid": meta["original_data"]["uuid"],
+                "uuid": meta["uuid"],
                 "input": meta["input_text"],
                 "output": choice["text"],
                 "element_type": meta["element_type"],
