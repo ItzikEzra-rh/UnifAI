@@ -3,6 +3,7 @@ import { useTable, useSortBy, Column } from 'react-table';
 import axios from '../../http/axiosLLMConfig';
 import { FaEye } from 'react-icons/fa';
 import '../../styles.css';
+import { Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel } from '@mui/material';
 
 interface RepoFileData {
   name: string;
@@ -42,7 +43,7 @@ const DataSetTable: React.FC = () => {
           <span onClick={() => setSelectedFile(value)} style={{ cursor: 'pointer' }}>
             <FaEye />
           </span>
-        ),        
+        ),
       },
     ],
     []
@@ -53,49 +54,68 @@ const DataSetTable: React.FC = () => {
   return (
     <div className="table-container">
       <h2>Dataset Files</h2>
-      <table {...getTableProps()} className="forms-table">
-        <thead>
-          {headerGroups.map(headerGroup => (
-            <tr {...headerGroup.getHeaderGroupProps()}>
+      <Table {...getTableProps()} className="forms-table">
+        <TableHead>
+          {headerGroups.map((headerGroup: any) => (
+            <TableRow {...headerGroup.getHeaderGroupProps()}>
               {headerGroup.headers.map((column: any) => (
-                <th {...column.getHeaderProps(column.getSortByToggleProps())}>
-                  {column.render('Header')}
-                  <span>
-                    {column.isSorted
-                      ? column.isSortedDesc
-                        ? ' 🔽'
-                        : ' 🔼'
-                      : ''}
-                  </span>
-                </th>
+                <TableCell {...column.getHeaderProps()}>
+                  <TableSortLabel
+                    active={column.isSorted}
+                    direction={column.isSortedDesc ? 'desc' : 'asc'}
+                    {...column.getSortByToggleProps()}
+                  >
+                    {column.render('Header')}
+                  </TableSortLabel>
+                </TableCell>
               ))}
-            </tr>
+            </TableRow>
           ))}
-        </thead>
-        <tbody {...getTableBodyProps()}>
-          {rows.map(row => {
+        </TableHead>
+        <TableBody>
+          {rows.map((row: any) => {
             prepareRow(row);
             return (
-              <tr {...row.getRowProps()}>
-                {row.cells.map(cell => (
-                  <td
+              <TableRow {...row.getRowProps()}>
+                {row.cells.map((cell: any) => (
+                  <TableCell
                     {...cell.getCellProps()}
                     className="table-cell"
+                    onMouseEnter={(e) => {
+                      const columnIndex = cell.column.id;
+                      const cells = document.querySelectorAll(
+                        `td[data-column-id="${columnIndex}"]`
+                      );
+                      cells.forEach(
+                        (cell) =>
+                          (cell as HTMLElement).style.backgroundColor =
+                          'rgba(46, 120, 199, 0.2)'
+                      );
+                    }}
+                    onMouseLeave={(e) => {
+                      const columnIndex = cell.column.id;
+                      const cells = document.querySelectorAll(
+                        `td[data-column-id="${columnIndex}"]`
+                      );
+                      cells.forEach(
+                        (cell) => (cell as HTMLElement).style.backgroundColor = ''
+                      );
+                    }}
+                    data-column-id={cell.column.id}
                   >
                     {cell.render('Cell')}
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
-      
+        </TableBody>
+      </Table>
+
       {selectedFile && (
         <div className="iframe-container">
           <iframe
             src={`https://huggingface.co/datasets/oodeh/NcsRobotTestFramework/embed/viewer?file=${encodeURIComponent(selectedFile)}`}
-            frameBorder="0"
             width="100%"
             height="560px"
           ></iframe>

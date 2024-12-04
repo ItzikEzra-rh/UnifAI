@@ -2,8 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { useTable, useSortBy, Column } from 'react-table';
 import axios from '../../http/axiosLLMConfig';
 import '../../styles.css';
-import {TableFormData} from '../types/constants'
+import { TableFormData } from '../types/constants'
 import { FaPlay, FaSpinner, FaCheck } from 'react-icons/fa';
+import { Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel } from '@mui/material';
 
 const ALL_COLUMNS = 'FULL'
 const MANDATORY_COLUMNS = 'BASIC'
@@ -19,7 +20,7 @@ const ModelsTable: React.FC<{ columnsType: typeof ALL_COLUMNS | typeof MANDATORY
     }
   };
 
-  const getStatusIcon  = (status: string) => {
+  const getStatusIcon = (status: string) => {
     switch (status) {
       case 'Initial': return <FaPlay style={{ color: 'grey' }} />;
       case 'In progress': return <FaSpinner style={{ color: 'orange' }} />;
@@ -28,10 +29,11 @@ const ModelsTable: React.FC<{ columnsType: typeof ALL_COLUMNS | typeof MANDATORY
     }
   };
 
-  const basicColumns : Column<TableFormData>[] = React.useMemo(
+  const basicColumns: Column<TableFormData>[] = React.useMemo(
     () => [
       { Header: 'Base Model Name', accessor: 'baseModelName' },
-      { Header: 'Status', accessor: 'status', Cell: ({ value }) => (
+      {
+        Header: 'Status', accessor: 'status', Cell: ({ value }) => (
           <span style={{ color: getStatusColor(value) }}>
             {getStatusIcon(value)} {value}
           </span>
@@ -43,7 +45,8 @@ const ModelsTable: React.FC<{ columnsType: typeof ALL_COLUMNS | typeof MANDATORY
 
   const fullColumns: Column<TableFormData>[] = React.useMemo(
     () => [
-      { Header: 'Project Name', accessor: 'projectName', Cell: ({ row }: any) => (
+      {
+        Header: 'Project Name', accessor: 'projectName', Cell: ({ row }: any) => (
           <span className={`project-name ${row.values.projectName}`}>
             {row.values.projectName}
           </span>
@@ -57,60 +60,69 @@ const ModelsTable: React.FC<{ columnsType: typeof ALL_COLUMNS | typeof MANDATORY
     []
   );
 
-  const columns = columnsType == ALL_COLUMNS ? fullColumns: basicColumns
-  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
+  const columns = columnsType == ALL_COLUMNS ? fullColumns : basicColumns
+  const { getTableProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
 
   return (
     <div className="table-container">
       <h2>{title}</h2>
-      <table {...getTableProps()} className="forms-table">
-        <thead>
-          {headerGroups.map(headerGroup => (
-            <tr {...headerGroup.getHeaderGroupProps()}>
+      <Table {...getTableProps()} className="forms-table">
+        <TableHead>
+          {headerGroups.map((headerGroup: any) => (
+            <TableRow {...headerGroup.getHeaderGroupProps()}>
               {headerGroup.headers.map((column: any) => (
-                <th {...column.getHeaderProps(column.getSortByToggleProps())}>
-                  {column.render('Header')}
-                  <span>
-                    {column.isSorted
-                      ? column.isSortedDesc
-                        ? ' 🔽'
-                        : ' 🔼'
-                      : ''}
-                  </span>
-                </th>
+                <TableCell {...column.getHeaderProps()}>
+                  <TableSortLabel
+                    active={column.isSorted}
+                    direction={column.isSortedDesc ? 'desc' : 'asc'}
+                    {...column.getSortByToggleProps()}
+                  >
+                    {column.render('Header')}
+                  </TableSortLabel>
+                </TableCell>
               ))}
-            </tr>
+            </TableRow>
           ))}
-        </thead>
-        <tbody {...getTableBodyProps()}>
-          {rows.map(row => {
+        </TableHead>
+        <TableBody>
+          {rows.map((row: any) => {
             prepareRow(row);
             return (
-              <tr {...row.getRowProps()}>
-                {row.cells.map(cell => (
-                  <td
+              <TableRow {...row.getRowProps()}>
+                {row.cells.map((cell: any) => (
+                  <TableCell
                     {...cell.getCellProps()}
                     className="table-cell"
                     onMouseEnter={(e) => {
                       const columnIndex = cell.column.id;
-                      const cells = document.querySelectorAll(`td[data-column-id="${columnIndex}"]`);
-                      cells.forEach(cell => (cell as HTMLElement).style.backgroundColor = 'rgba(46, 120, 199, 0.2)');
+                      const cells = document.querySelectorAll(
+                        `td[data-column-id="${columnIndex}"]`
+                      );
+                      cells.forEach(
+                        (cell) =>
+                          (cell as HTMLElement).style.backgroundColor =
+                          'rgba(46, 120, 199, 0.2)'
+                      );
                     }}
                     onMouseLeave={(e) => {
                       const columnIndex = cell.column.id;
-                      const cells = document.querySelectorAll(`td[data-column-id="${columnIndex}"]`);
-                      cells.forEach(cell => (cell as HTMLElement).style.backgroundColor = '');
+                      const cells = document.querySelectorAll(
+                        `td[data-column-id="${columnIndex}"]`
+                      );
+                      cells.forEach(
+                        (cell) => (cell as HTMLElement).style.backgroundColor = ''
+                      );
                     }}
                     data-column-id={cell.column.id}
                   >
                     {cell.render('Cell')}
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 };
@@ -171,7 +183,7 @@ const FormsTable: React.FC = () => {
   const fineTunedModels = data.filter(model => model.modelType === 'finetuned' || model.modelType === 'checkpoint');
   const foundationalModels = data.filter(model => model.modelType === 'foundational');
 
-  const TableToolTip = () => 
+  const TableToolTip = () =>
     <div className="tooltip-container">
       <h3 className="tooltip-header">Status Explanation</h3>
       <ul className="tooltip-list">
@@ -184,7 +196,7 @@ const FormsTable: React.FC = () => {
   return (
     <div className="table-container">
       <ModelsTable columnsType={ALL_COLUMNS} data={fineTunedModels} title="Fine Tuned Models" />
-      <TableToolTip/>
+      <TableToolTip />
       <ModelsTable columnsType={MANDATORY_COLUMNS} data={foundationalModels} title="Foundational Models" />
     </div>
   );

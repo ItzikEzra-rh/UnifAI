@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import axios from '../../http/axiosLLMConfig';
-import { Pie, Line, Bar } from 'react-chartjs-2';
 import 'chart.js/auto';
 import '../../styles.css';
+import Charts from '../shared/Charts';
 
 interface ModelData {
   id: string;
@@ -41,15 +41,11 @@ const StatisticsGraphs: React.FC = () => {
       return acc;
     }, {});
 
-    return {
-      labels: Object.keys(projectCounts),
-      datasets: [
-        {
-          data: Object.values(projectCounts),
-          backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56'],
-        },
-      ],
-    };
+    return Object.entries(projectCounts).map(([key, value], idx) => ({
+      id: idx,
+      label: key,
+      value: value,
+    }));
   };
 
   const getModelNameData = () => {
@@ -58,78 +54,65 @@ const StatisticsGraphs: React.FC = () => {
       return acc;
     }, {});
 
-    return {
-      labels: Object.keys(modelNameCounts),
-      datasets: [
-        {
-          data: Object.values(modelNameCounts),
-          backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'],
-        },
-      ],
-    };
-  };
-
-  const getLineChartData = () => {
-    return {
-      labels: data.map(item => item.modelName),
-      datasets: [
-        {
-          label: 'Context Length',
-          data: data.map(item => item.contextLength),
-          backgroundColor: '#ffffff',  // Point fill color (inside)
-          borderColor: '#ffffff',      // Point border color
-          borderWidth: 3,              // Increase border thickness for visibility
-          pointBorderColor: '#ffffff', // White border color for dark mode
-          pointBackgroundColor: '#36A2EB', // Point fill color
-          pointBorderWidth: 3,         // Increase border width
-          pointRadius: 8,              // Increase point size for visibility
-          fill: false,
-          showLine: false,             // No connecting line between points
-        },
-      ],
-    };
+    return Object.entries(modelNameCounts).map(([key, value], idx) => ({
+      id: idx,
+      label: key,
+      value: value,
+    }));
   };
 
   const getBarChartData = () => {
-    return {
-      labels: data.map(item => item.modelName),
-      datasets: [
-        {
-          label: 'Context Length',
-          data: data.map(item => item.contextLength),
-          backgroundColor: '#ffffff', // Bar color (white for dark mode)
-          borderColor: '#ffffff',
-          borderWidth: 1,
-        },
-      ],
-    };
+    const projects = Array.from(new Set(data.map((item) => item.project)));
+    const contextLengths = projects.map((project) =>
+      data
+        .filter((item) => item.project === project)
+        .reduce((sum, item) => sum + item.contextLength, 0)
+    );
+    return { projects, contextLengths };
   };
+
+  const getLineChartData = () => {
+    const modelNames = data.map((item) => item.modelName);
+    const contextLengths = data.map((item) => item.contextLength);
+    return { modelNames, contextLengths };
+  };
+
+
 
   return (
     <div className="statistics-graphs">
-
       <div className="graph-row">
-        <div className="graph-container">
-          <h3>Project Distribution</h3>
-          <Pie data={getProjectsData()} />
-        </div>
-        <div className="graph-container">
-          <h3>Model Name Distribution</h3>
-          <Pie data={getModelNameData()} />
-        </div>
+        <Charts
+          type="pie"
+          data={getProjectsData()}
+          title="Project Distribution"
+        />
+        <Charts
+          type="pie"
+          data={getModelNameData()}
+          title="Model Name Distribution"
+        />
       </div>
-
       <div className="graph-row">
-        <div className="graph-container">
-            <h3>Context Length by Project</h3>
-            <Bar data={getBarChartData()}/>
-        </div>
-        <div className="graph-container">
-          <h3>Context Length by Project</h3>
-          <Line data={getLineChartData ()} />
-        </div>
+        <Charts
+          type="bar"
+          data={getBarChartData().projects.map((project, idx) => ({
+            label: project,
+            value: getBarChartData().contextLengths[idx],
+          }))}
+          title="Context Length by Project"
+          label="Context Length"
+        />
+        <Charts
+          type="line"
+          data={getLineChartData().modelNames.map((modelName, idx) => ({
+            label: modelName,
+            value: getLineChartData().contextLengths[idx],
+          }))}
+          title="Context Length by Model"
+          label="Context Length"
+        />
       </div>
-
     </div>
   );
 };

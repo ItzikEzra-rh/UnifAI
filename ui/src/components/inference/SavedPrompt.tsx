@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTable, useSortBy, Column } from 'react-table';
-import { IconButton, Modal, Box, Typography } from '@mui/material';
+import { IconButton, Modal, Box, Typography, Table, TableHead, TableRow, TableCell, TableSortLabel, TableBody } from '@mui/material';
 import { FaFileAlt, FaEdit } from 'react-icons/fa';
 import axios from '../../http/axiosConfig';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -32,7 +32,7 @@ interface CodeSectionProps {
 
 const CodeSection: React.FC<CodeSectionProps> = ({ title, content }) => (
   <div>
-    <Typography variant="h6" style={{fontFamily: "ui-monospace"}} gutterBottom>
+    <Typography variant="h6" style={{ fontFamily: "ui-monospace" }} gutterBottom>
       {title}
     </Typography>
     <SyntaxHighlighter language="python" style={github}>
@@ -60,7 +60,7 @@ const SavedPrompts: React.FC = () => {
         Header: 'Prompt Text',
         accessor: 'promptText',
         Cell: ({ row }: any) => (
-          <IconButton onClick={() => handleOpen(row.original.promptUserLatestText, row.original.promptLLMLatestText, row.original.promptText )}>
+          <IconButton onClick={() => handleOpen(row.original.promptUserLatestText, row.original.promptLLMLatestText, row.original.promptText)}>
             <FaFileAlt />
           </IconButton>
         ),
@@ -78,7 +78,7 @@ const SavedPrompts: React.FC = () => {
       },
       {
         Header: 'Completed',
-        accessor: 'completed', 
+        accessor: 'completed',
         Cell: ({ row }: any) => (
           <input
             type="checkbox"
@@ -148,12 +148,12 @@ const SavedPrompts: React.FC = () => {
     setCommentData({ modelId: row.modelId, uniqueId: row.uniqueId, comment: row.comment });
     setEditOpen(true);
   };
-  
+
   const handleEditClose = () => {
     setEditOpen(false);
     setCommentData(null);
   };
-  
+
   const handleSaveComment = async () => {
     if (commentData) {
       try {
@@ -176,7 +176,7 @@ const SavedPrompts: React.FC = () => {
         uniqueId,
         completed
       });
-  
+
       // Update the state after successful API call
       setData(prevData =>
         prevData.map(item => item.modelId === modelId && item.uniqueId === uniqueId ? { ...item, completed } : item)
@@ -185,7 +185,7 @@ const SavedPrompts: React.FC = () => {
       console.error('Error marking prompt as complete:', error);
     }
   };
-  
+
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable(
     { columns, data },
     useSortBy
@@ -194,13 +194,18 @@ const SavedPrompts: React.FC = () => {
   return (
     <div className="table-container">
       <h2>Saved Prompts</h2>
-      <table {...getTableProps()} className="forms-table">
-        <thead>
+      <Table {...getTableProps()} className="forms-table">
+        <TableHead>
           {headerGroups.map(headerGroup => (
-            <tr {...headerGroup.getHeaderGroupProps()}>
+            <TableRow {...headerGroup.getHeaderGroupProps()}>
               {headerGroup.headers.map((column: any) => (
-                <th {...column.getHeaderProps(column.getSortByToggleProps())}>
-                  {column.render('Header')}
+                <TableCell {...column.getHeaderProps(column.getSortByToggleProps())} sx={{ borderRight: '1px solid #ddd' }}>
+                  <TableSortLabel
+                    active={column.isSorted}
+                    direction={column.isSortedDesc ? 'desc' : 'asc'}
+                  >
+                    {column.render('Header')}
+                  </TableSortLabel>
                   <span>
                     {column.isSorted
                       ? column.isSortedDesc
@@ -208,29 +213,29 @@ const SavedPrompts: React.FC = () => {
                         : ' 🔼'
                       : ''}
                   </span>
-                </th>
+                </TableCell>
               ))}
-            </tr>
+            </TableRow>
           ))}
-        </thead>
-        <tbody {...getTableBodyProps()}>
+        </TableHead>
+        <TableBody {...getTableBodyProps()}>
           {rows.map(row => {
             prepareRow(row);
             return (
-              <tr {...row.getRowProps()}>
+              <TableRow {...row.getRowProps()}>
                 {row.cells.map(cell => (
-                  <td {...cell.getCellProps()} className="table-cell">
+                  <TableCell {...cell.getCellProps()} className="table-cell" sx={{ borderRight: '1px solid #ddd' }}>
                     {cell.render('Cell')}
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             );
           })}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
       <Modal open={open} onClose={handleClose}>
         <Box
-            sx={{
+          sx={{
             position: 'absolute',
             top: '50%',
             left: '50%',
@@ -244,13 +249,13 @@ const SavedPrompts: React.FC = () => {
             maxWidth: '80%',
             maxHeight: '80%',
             p: 4,
-            }}
+          }}
         >
-            <div className="code-visualizer">
-              <CodeSection title="User Question" content={questionPart} />
-              <CodeSection title="LLM Answer" content={answerPart} />
-              <CodeSection title="Entire Chat" content={selectedPrompt || ''} />
-            </div>
+          <div className="code-visualizer">
+            <CodeSection title="User Question" content={questionPart} />
+            <CodeSection title="LLM Answer" content={answerPart} />
+            <CodeSection title="Entire Chat" content={selectedPrompt || ''} />
+          </div>
         </Box>
       </Modal>
       <Modal open={editOpen} onClose={handleEditClose}>
