@@ -1,7 +1,7 @@
 {
   "storage_type": "file",
   "input": {
-    "file_path": "/home/instruct/data/Eco_gotests_Mapping_Latest.json"
+    "file_path": "/home/instruct/data/MTA_project_parsed.json"
   },
   "output": {
     "directory": "/home/instruct/data/"
@@ -38,6 +38,11 @@
     "url": "mongodb://127.0.0.1:{port}"
   },
   "templates": {
-    "project_path": "config/project_config.json"
+    "project_path": "projects_templates/DeepScope/typescript.json",
+    "usable_params": [
+      "project_id",
+      "project_repo",
+      "coding_language"
+    ]
   }
 }

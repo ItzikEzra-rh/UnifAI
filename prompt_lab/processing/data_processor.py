@@ -1,3 +1,5 @@
+import pprint
+
 from llm_client.vllm import VLLMClient
 from utils.tokenizer import TokenizerUtils
 from processing.prompt_generator import PromptGenerator
@@ -45,6 +47,7 @@ class DataProcessor:
             for prompt in prompts:
                 if prompt["metadata"]["uuid"] in self.processed_uuids:
                     continue
+
                 if not self.batch_processor.add_prompt(prompt=prompt) and self.batch_processor.is_batch_full:
                     self.__process_batch()
             print(f"submitted element number {element_count}")
