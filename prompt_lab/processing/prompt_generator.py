@@ -1,10 +1,9 @@
 import copy
-import json
 from jinja2 import Environment
 import random
 import string
 import hashlib
-from utils.util import sort_nested_dict
+from config.manager import config
 
 
 class PromptGenerator:
@@ -44,8 +43,15 @@ class PromptGenerator:
         prompts = []
         element_type = element_data.get("element_type")
         input_groups = self.project_config["element_templates"].get(element_type, {})
+        template_used_params_list = config.get('templates.usable_params')
+        template_used_params = {}
         system_message = self.project_config.get("system_message", "")
         env = Environment()
+
+        for used_param in template_used_params_list:
+            value = self.project_config.get(used_param)
+            if value:
+                template_used_params[used_param] = value
 
         for group_name, categories in input_groups.items():
             for category_name, templates in categories.items():
@@ -59,7 +65,9 @@ class PromptGenerator:
                     continue
 
                 # Generate context and input text
-                context, input_text, validation_text = self._generate_random_input(questions, element_data)
+                context, input_text, validation_text = self._generate_random_input(questions, element_data,
+                                                                                   template_used_params)
+
                 formatted_prompt = self._format_prompt(system_message, context, input_text)
                 prompt_data = {
                     "formatted_prompt": formatted_prompt,
@@ -89,7 +97,7 @@ class PromptGenerator:
         return prompts
 
     @staticmethod
-    def _format_context(context_template, element):
+    def _format_context(context_template, element, template_used_params):
         """
         Format the context template by ensuring each placeholder in the template
         is formatted only once.
@@ -113,9 +121,9 @@ class PromptGenerator:
                 element_copied[placeholder] = ""  # Default for missing placeholders
 
         # Format the context
-        return context_template.format(**element_copied)
+        return context_template.format(**{**element_copied, **template_used_params})
 
-    def _generate_random_input(self, template_questions, element_data):
+    def _generate_random_input(self, template_questions, element_data, template_used_params):
         """
         Generates randomized input text from the provided templates and element data.
 
@@ -130,10 +138,10 @@ class PromptGenerator:
                 - `input_text` (str): The input text generated from a randomly selected template.
         """
         context_template = self.project_config.get("context_template", "")
-        context = self._format_context(context_template, element_data)
+        context = self._format_context(context_template, element_data, template_used_params)
         selected_template = random.choice(template_questions)
-        input_text = selected_template["question"].format(**element_data)
-        validation_text = selected_template["validation"].format(**element_data)
+        input_text = selected_template["question"].format(**{**element_data, **template_used_params})
+        validation_text = selected_template["validation"].format(**{**element_data, **template_used_params})
         return context, input_text, validation_text
 
     def _format_prompt(self, system_message, context, input_text):
