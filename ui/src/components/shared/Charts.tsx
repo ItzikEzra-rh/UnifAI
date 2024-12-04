@@ -1,15 +1,16 @@
 import React from 'react';
 import { PieChart, BarChart, LineChart } from '@mui/x-charts';
 
-const width=600;
-const height=400;
+const DEFAULT_WIDTH=600;
+const DEFAULT_HEIGHT=400;
+
 interface ChartProps {
   type: 'pie' | 'bar' | 'line';
   data: any[];
-  width?: number;
-  height?: number;
   title: string;
   label?: string;
+  width?: number;
+  height?: number;
 }
 
 const Charts: React.FC<ChartProps> = ({
@@ -17,8 +18,8 @@ const Charts: React.FC<ChartProps> = ({
   data,
   title,
   label = '',
-  width = 600,
-  height = 400
+  width = DEFAULT_WIDTH,
+  height = DEFAULT_HEIGHT
 }) => {
   const renderChart = () => {
     switch (type) {
