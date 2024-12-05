@@ -45,38 +45,6 @@ const WelcomeContent = () => {
                  </div>
             </CardContent>
         </Card>
-        // <Card className='info'>
-        //     <CardContent>
-        //         <Typography variant="h2" component="h2" style={{ textAlign: 'center' }}>
-        //             Welcome to <b>GENIE</b>!
-        //         </Typography>
-        //         <Typography variant="h4" component="h4" style={{ textAlign: 'center' }}>
-        //             (<b>G</b>enerative <b>E</b>ngine for <b>N</b>ew <b>I</b>nsights and <b>E</b>xecution)
-        //         </Typography>
-        //         <br></br>
-        //         <Box display="flex" justifyContent="center" alignItems="center">
-        //             <Typography variant="body1" sx={{ marginLeft: 10, marginRight: 2 }}>
-        //                 The <b>complexity and feature richness</b> of new products present challenges that call for <b>exploring new technologies</b> to enhance <b>quality</b> and boost <b>efficiency</b>.
-        //             </Typography>
-        //             <ArrowForwardIcon sx={{color: 'red'}} />
-        //             <Typography variant="body1" sx={{ marginX: 2 }}>
-        //                 Develop a <b>fine-tuned language model</b> capable of generating <b>high-quality code</b> for automated tests, significantly <b>reducing development time</b>.
-        //             </Typography>
-        //             <ArrowForwardIcon sx={{color: 'red'}} />
-        //             <Typography variant="body1" sx={{ marginLeft: 2, marginRight: 10 }}>
-        //                 The model will be tailored to meet the <b>specific requirements</b> of the product's automation framework and the Quality Engineering (QE) teams, ensuring <b>adherence to proper code style and reusable conventions</b>.
-        //             </Typography>
-        //         </Box>
-        //         <br></br>
-        //         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-        //             <img
-        //             src={AiAgentGraph}
-        //             alt="AI Agent Graph"
-        //             style={{ width: '40%', height: 'auto' }}
-        //             />
-        //         </div>
-        //     </CardContent>
-        // </Card>
     //       {/* <div style={{ margin: '50px auto', width: '80%' }}>
     //         <iframe
     //           src="https://docs.google.com/presentation/d/e/2PACX-1vSk0sFE-y0og_QYcTgLP4jjPl51H07UGQb170mFjvKb32A0FMBOUctGykFEFM8RZuNORQpxFv5FK4e-/embed?start=false&loop=false&delayms=3000"
