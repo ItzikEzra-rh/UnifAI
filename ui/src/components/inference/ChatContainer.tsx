@@ -672,7 +672,7 @@ const ChatComponent: React.FC = () => {
           <>
             <ChatToolTip />
           </>
-          <div style={{ position: 'relative', height: '80vh', display: 'flex', gap: '16px' }}>
+          <div style={{ position: 'relative', height: '65vh', display: 'flex', gap: '16px' }}>
             <MainContainer style={{ padding: '10px', marginTop: '20px', width: '80%' }}>
               <ChatContainer>
                 <MessageList>
