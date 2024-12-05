@@ -636,7 +636,7 @@ const ChatComponent: React.FC = () => {
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
 
   return (
-    <div style={{ height: '100%', border: '1px solid #ccc', padding: '10px', position: 'relative' }}>
+    <div style={{ height: '82vh', border: '1px solid #ccc', padding: '10px', position: 'relative' }}>
       {loadingModel ? (
         <LoadingOverlay />
       ) : selectedModel ? (

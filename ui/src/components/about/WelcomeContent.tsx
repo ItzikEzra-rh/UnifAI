@@ -16,19 +16,13 @@ const WelcomeContent = () => {
                     <br></br>
                     <div style={{marginLeft: 30, marginRight: 30}}>
                         <Typography variant="h6">
-                            1. <span style={{ fontWeight: 'bold', textDecoration: 'underline', textDecorationColor: 'red' }}>
-                            Jira Miner:
-                            </span> Fetches bugs and project insights from Jira, setting the foundation for analysis and resolution.
+                            1. <b>Jira Miner:</b> Fetches bugs and project insights from Jira, setting the foundation for analysis and resolution.
                         </Typography>
                         <Typography variant="h6">
-                            2. <span style={{ fontWeight: 'bold', textDecoration: 'underline', textDecorationColor: 'red' }}>
-                            Deep Code:
-                            </span> Analyzes codebases to identify vulnerabilities, recommend fixes, and provide actionable insights.
+                            2. <b>Deep Code:</b> Analyzes codebases to identify vulnerabilities, recommend fixes, and provide actionable insights.
                         </Typography>
                         <Typography variant="h6">
-                            3. <span style={{ fontWeight: 'bold', textDecoration: 'underline', textDecorationColor: 'red' }}>
-                            TAG (Test Automation Generator):
-                            </span> Generates automated tests to detect and validate bugs or verify code changes efficiently.
+                            3. <b>TAG (Test Automation Generator):</b> Generates automated tests to detect and validate bugs or verify code changes efficiently.
                         </Typography>
                     </div>
                     <br></br>
