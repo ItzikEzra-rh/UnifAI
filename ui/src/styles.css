@@ -187,14 +187,6 @@ body, html, #root {
   justify-content: flex-end;
 }
 
-.end-buttons {
-  background-color: red;
-}
-
-.end-buttons:hover {
-  background-color: #e7adad ;
-}
-
 .disabled-tab {
   pointer-events: none;
   opacity: 0.5;
@@ -346,7 +338,6 @@ body, html, #root {
 
 .statistics-graphs {
   display: flex;
-  height: 100%;
   flex-direction: column;
   align-items: center;
   gap: 20px;
