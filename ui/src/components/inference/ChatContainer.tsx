@@ -636,13 +636,13 @@ const ChatComponent: React.FC = () => {
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
 
   return (
-    <div style={{ height: '82vh', border: '1px solid #ccc', padding: '10px', position: 'relative' }}>
+    <div style={{ height: '84vh', border: '1px solid #ccc', padding: '10px', position: 'relative' }}>
       {loadingModel ? (
         <LoadingOverlay />
       ) : selectedModel ? (
         <>
           {/* Custom section for displaying model information */}
-          <div style={{ position: 'absolute', top: '10px', right: '0', width: '100%', display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingRight: '20px' }}>
+          <div style={{ height: '5vh', position: 'absolute', top: '10px', right: '0', width: '100%', display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingRight: '20px' }}>
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '150px' }}>
               <Tooltip title={temperatureTooltip} arrow placement="top">
                 <Typography id="temperature-slider" variant="caption" gutterBottom style={{ cursor: 'help' }}>
@@ -662,10 +662,10 @@ const ChatComponent: React.FC = () => {
                 size="small"
               />
             </div>
-            <Button variant="contained" sx={{backgroundColor: "red"}} onClick={clearChat} disabled={isStreaming} >
+            <Button variant="contained" sx={{backgroundColor: "red", '&:hover': {backgroundColor: '#e7adad'}}} onClick={clearChat} disabled={isStreaming} >
               Start New Chat
             </Button>
-            <Button variant="contained" sx={{backgroundColor: "red"}} onClick={unloadModel} >
+            <Button variant="contained" sx={{backgroundColor: "red", '&:hover': {backgroundColor: '#e7adad'}}} onClick={unloadModel} >
               Unload Model
             </Button>
           </div>
