@@ -40,7 +40,7 @@ const WelcomeContent = () => {
                      <img
                      src={AiAgentGraph}
                      alt="AI Agent Graph"
-                     style={{ width: '50%', height: 'auto' }}
+                     style={{ width: '40%', height: 'auto' }}
                      />
                  </div>
             </CardContent>
