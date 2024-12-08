@@ -636,14 +636,14 @@ const ChatComponent: React.FC = () => {
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
 
   return (
-    <div style={{ height: '84vh', border: '1px solid #ccc', padding: '10px', position: 'relative' }}>
+    <div className="chat-container-wrapper">
       {loadingModel ? (
         <LoadingOverlay />
       ) : selectedModel ? (
         <>
           {/* Custom section for displaying model information */}
-          <div style={{ height: '5vh', position: 'absolute', top: '10px', right: '0', width: '100%', display: 'flex', justifyContent: 'flex-end', gap: '10px', paddingRight: '20px' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '150px' }}>
+          <div className="chat-top-buttons">
+            <div className="temp-slider">
               <Tooltip title={temperatureTooltip} arrow placement="top">
                 <Typography id="temperature-slider" variant="caption" gutterBottom style={{ cursor: 'help' }}>
                   Temperature: {temperature.toFixed(1)}
@@ -662,18 +662,18 @@ const ChatComponent: React.FC = () => {
                 size="small"
               />
             </div>
-            <Button variant="contained" sx={{backgroundColor: "red", '&:hover': {backgroundColor: '#e7adad'}}} onClick={clearChat} disabled={isStreaming} >
+            <Button variant="contained" className='end-button' onClick={clearChat} disabled={isStreaming} >
               Start New Chat
             </Button>
-            <Button variant="contained" sx={{backgroundColor: "red", '&:hover': {backgroundColor: '#e7adad'}}} onClick={unloadModel} >
+            <Button variant="contained" className='end-button' onClick={unloadModel} >
               Unload Model
             </Button>
           </div>
           <>
             <ChatToolTip />
           </>
-          <div style={{ position: 'relative', height: '65vh', display: 'flex', gap: '16px' }}>
-            <MainContainer style={{ padding: '10px', marginTop: '20px', width: '80%' }}>
+          <div style={{position: 'relative', height: '100%', display: 'flex', gap: '16px', overflowY: 'auto'}}>
+            <MainContainer style={{padding: '10px', marginTop: '20px', flexGrow: 1, maxHeight: '95%', overflowY: 'auto'}}>
               <ChatContainer>
                 <MessageList>
                   {messages.map((message, idx) => (

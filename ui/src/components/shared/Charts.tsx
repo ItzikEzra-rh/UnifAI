@@ -34,9 +34,9 @@ const Charts: React.FC<ChartProps> = ({
               legend: {
                 direction: 'row',
                 position: { vertical: 'top', horizontal: 'middle' },
-                padding: 0,
+                padding: -10,
                 labelStyle: {
-                  fontSize: '12px', // Adjust the font size here
+                  fontSize: '12px'
                 },
               },
             }}

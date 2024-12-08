@@ -19,7 +19,7 @@ body, html, #root {
   justify-content: space-between;
   align-items: center;
   padding: 10px;
-  height: 7vh;
+  height: 8%;
 }
 
 .dropdown-buttons .MuiButton-root {
@@ -50,21 +50,13 @@ body, html, #root {
   flex: 1;
 }
 
-.toolbar-buttons .end-button {
-  background-color: red;
-}
-
-.toolbar-buttons .end-button:hover {
-  background-color: #e7adad ;
-}
-
 .left-section {
   display: flex;
   align-items: center;
 }
 
 .logo-image {
-  height: 4vh;
+  height: 5vh;
 }
 
 .role-selection {
@@ -105,7 +97,7 @@ body, html, #root {
 
 .main-content {
   flex: 1;
-  height: 100%;
+  height: 85%;
   padding: 20px;
   background-color: #f9f9f9;
   border-top: 1px solid #ccc;
@@ -127,12 +119,25 @@ body, html, #root {
   margin: 0 auto;
 }
 
-.form-container .end-button {
+.end-button,
+.chat-top-buttons .end-button,
+.form-container .end-button,
+.toolbar-buttons .end-button {
   background-color: red;
 }
 
-.form-container .end-button:hover {
-  background-color: #e7adad;
+.end-button:hover,
+.chat-top-buttons .end-button:hover,
+.form-container .end-button:hover,
+.toolbar-buttons .end-button:hover {
+  background-color: #bb0000;
+}
+
+.end-button:disabled,
+.chat-top-buttons .end-button:disabled,
+.form-container .end-button:disabled,
+.toolbar-buttons .end-button:disabled {
+  background-color: #9a9595;
 }
 
 .form-tabs {
@@ -334,6 +339,34 @@ body, html, #root {
   justify-content: center;
   align-items: center;
   z-index: 1000;
+}
+
+.chat-container-wrapper {
+  height: calc(100% - 10px);
+  border: 1px solid #ccc;
+  padding: 10px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-top-buttons {
+  height: 5vh;
+  position: absolute;
+  top: 10px;
+  right: 0;
+  width: 100%;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-right: 20px;
+}
+
+.temp-slider {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 150px;
 }
 
 .statistics-graphs {
