@@ -34,9 +34,9 @@ const Charts: React.FC<ChartProps> = ({
               legend: {
                 direction: 'row',
                 position: { vertical: 'top', horizontal: 'middle' },
-                padding: 0,
+                padding: -10, // in MUI charts, negative padding is valid and used to push the legend up
                 labelStyle: {
-                  fontSize: '12px', // Adjust the font size here
+                  fontSize: '12px'
                 },
               },
             }}

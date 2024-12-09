@@ -151,7 +151,7 @@ const ProjectForm: React.FC = () => {
                     <FormField name="gitFolderPath" label="Git Path To Fetch From" control={control} errors={errors} />
                     <FormDropdown name="baseModelName" label="Foundational Model Name" control={control} errors={errors} options={['Mistral', 'Llama', 'Granite']} />
                     <FormDropdown name="testsCodeFramework" label="Tests Code Framework" control={control} errors={errors} options={['Python', 'Robot', 'Go', 'Jmeter']} />
-                    <Button type="button" variant="contained" color="primary" onClick={handleNextClick} disabled={!isFirstTabValid} style={{ float: 'right', marginTop: '10px' }}>
+                    <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isFirstTabValid} style={{ float: 'right', marginTop: '10px' }}>
                         Next
                     </Button>
                     </form>
@@ -159,7 +159,7 @@ const ProjectForm: React.FC = () => {
                 <TabPanel value={activeTab} index={1}>
                   <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath') || ''} 
                           triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked}/>
-                  <Button type="button" variant="contained" color="primary" onClick={handleNextClick} disabled={!isSecondTabValid} style={{ float: 'right', marginTop: '10px' }}>
+                  <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isSecondTabValid} style={{ float: 'right', marginTop: '10px' }}>
                         Next
                   </Button>
                 </TabPanel>
@@ -176,7 +176,7 @@ const ProjectForm: React.FC = () => {
                             </SyntaxHighlighter>
                         </div>
                     )}
-                    <Button type="submit" variant="contained" color="primary" disabled={!isThirdTabValid} style={{ float: 'right', marginTop: '10px' }}>
+                    <Button type="submit" variant="contained" className="end-button" disabled={!isThirdTabValid} style={{ float: 'right', marginTop: '10px' }}>
                         Create Dataset
                     </Button>
                     </form>

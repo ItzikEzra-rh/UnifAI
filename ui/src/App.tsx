@@ -10,10 +10,8 @@ const App: React.FC = () => {
 
   return (
     <div className="app">
-      <div className="top-main-container">
-        <Toolbar role={role} setRole={setRole} setContent={setContent} />
-        <MainContent content={content} />
-      </div>
+      <Toolbar role={role} setRole={setRole} setContent={setContent} />
+      <MainContent content={content} />
     </div>
   );
 };

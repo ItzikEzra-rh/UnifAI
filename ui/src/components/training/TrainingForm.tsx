@@ -127,7 +127,7 @@ const TrainingForm: React.FC = () => {
           <Button
             type="button"
             variant="contained"
-            color="primary"
+            className="end-button"
             onClick={handleNextClick}
             disabled={!isTab1Valid}
             style={{ float: 'right', marginTop: '10px' }}
@@ -146,7 +146,7 @@ const TrainingForm: React.FC = () => {
             <Button
               type="submit"
               variant="contained"
-              color="primary"
+              className="end-button"
               disabled={!isTab2Valid}
               style={{ float: 'right', marginTop: '10px' }}
             >
