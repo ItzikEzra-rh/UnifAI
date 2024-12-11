@@ -38,7 +38,7 @@
     "url": "mongodb://127.0.0.1:{port}"
   },
   "templates": {
-    "project_path": "projects_templates/DeepScope/typescript.json",
+    "project_path": "projects_templates/DeepCode/typescript.json",
     "usable_params": [
       "project_id",
       "project_repo",
