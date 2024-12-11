@@ -26,6 +26,9 @@ RUN /bin/bash -c "huggingface-cli login --token ${HF_TOKEN}"
 # Change to repository directory and install dependencies
 WORKDIR /app/repo/reviewer
 
+# Substitute ENV variables to config file
+RUN envsubst < config/config.json > config/config.tmp && mv config/config.tmp config/config.json
+
 # Install dependencies
 RUN /bin/bash -c "pip install --upgrade pip && \
     pip install -r requirements.txt"

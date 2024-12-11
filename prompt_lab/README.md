@@ -73,12 +73,40 @@ podman build -t promptlab-service .
 
 # To run promptlab worker:
 
-podman run -d --name promptlab_worker --gpus all --net=host promptlab-service prompt_processor
+```bash
+podman run -d --name promptlab_worker --gpus all --net=host \
+  -e INPUT_JSON_PATH="$INPUT_JSON_PATH" \
+  -e OUTPUT_DATA_DIR_PATH="$OUTPUT_DATA_DIR_PATH" \
+  -e RABBITMQ_PORT="$RABBITMQ_PORT" \
+  -e RABBITMQ_IP="$RABBITMQ_IP" \
+  -e MONGODB_PORT="$MONGODB_PORT" \
+  -e MONGODB_IP="$MONGODB_IP" \
+  promptlab-service prompt_processor
+ ```
 
 # To run promptlab dispatcher worker:
 
-podman run -d --name prompt_dispatcher --gpus all --net=host promptlab-service prompt_dispatcher
+```bash
+podman run -d --name prompt_dispatcher --gpus all --net=host \
+  -e INPUT_JSON_PATH="$INPUT_JSON_PATH" \
+  -e OUTPUT_DATA_DIR_PATH="$OUTPUT_DATA_DIR_PATH" \
+  -e RABBITMQ_PORT="$RABBITMQ_PORT" \
+  -e RABBITMQ_IP="$RABBITMQ_IP" \
+  -e MONGODB_PORT="$MONGODB_PORT" \
+  -e MONGODB_IP="$MONGODB_IP" \
+  promptlab-service prompt_dispatcher
+```
 
 # To run promptlab handler worker:
 
-podman run -d --name promptlab_handler --gpus all --net=host promptlab-service prompt_submiter
+```bash
+podman run -d --name promptlab_handler --gpus all --net=host \
+  -e INPUT_JSON_PATH="$INPUT_JSON_PATH" \
+  -e OUTPUT_DATA_DIR_PATH="$OUTPUT_DATA_DIR_PATH" \
+  -e RABBITMQ_PORT="$RABBITMQ_PORT" \
+  -e RABBITMQ_IP="$RABBITMQ_IP" \
+  -e MONGODB_PORT="$MONGODB_PORT" \
+  -e MONGODB_IP="$MONGODB_IP" \
+  promptlab-service prompt_submiter
+
+```

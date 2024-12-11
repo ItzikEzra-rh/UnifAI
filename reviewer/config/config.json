@@ -15,12 +15,12 @@
     "batch_size": 8
   },
   "rabbitmq": {
-    "port": 443,
-    "url": "amqp://instructlab.v249k.sandbox1145.opentlc.com:{port}"
+    "port": "${RABBITMQ_PORT}",
+    "url": "amqp://${RABBITMQ_IP}:{port}"
   },
   "mongodb": {
-    "port": 27017,
-    "url": "mongodb://127.0.0.1:{port}"
+    "port": "${MONGODB_PORT}",
+    "url": "mongodb://${MONGODB_IP}:{port}"
   },
   "templates": {
     "project_path": "config/project_config.json"
