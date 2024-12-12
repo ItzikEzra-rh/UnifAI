@@ -26,15 +26,13 @@ RUN /bin/bash -c "huggingface-cli login --token ${HF_TOKEN}"
 # Change to repository directory and install dependencies
 WORKDIR /app/repo/prompt_lab
 
-# Substitute ENV variables to config file
-RUN envsubst < config/config.json > config/config.tmp && mv config/config.tmp config/config.json
-
 # Install dependencies
 RUN /bin/bash -c "pip install --upgrade pip && \
     pip install -r requirements.txt"
 
 # Create a startup script to run the services
 RUN echo '#!/bin/bash' > /app/start-service.sh && \
+    echo 'envsubst < config/config.json > config/config.tmp && mv config/config.tmp config/config.json' >> /app/start-service.sh && \
     echo 'case "$1" in' >> /app/start-service.sh && \
     echo '  "prompt_processor")' >> /app/start-service.sh && \
     echo '    celery -A celery_app.init worker -c 3 --prefetch-multiplier 1 --loglevel=info  -Q prompts_process_queue -n prompts_process_queue' >> /app/start-service.sh && \
