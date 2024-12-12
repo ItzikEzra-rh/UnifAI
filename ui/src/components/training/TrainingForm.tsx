@@ -144,7 +144,6 @@ const TrainingForm: React.FC = () => {
                 variant="contained"
                 className="end-button"
                 disabled={!isTab2Valid}
-                
               >
                 Start Training
               </Button>
