@@ -102,7 +102,7 @@ def get_trainer(model, tokenizer, dataset, batch_size=8, max_seq_length=8192, ep
         gradient_accumulation_steps=4,
         warmup_steps=5,
         num_train_epochs=epoch,
-        learning_rate=1e-4,
+        learning_rate=2e-5,
         fp16=not torch.cuda.is_bf16_supported(),
         bf16=torch.cuda.is_bf16_supported(),
         logging_steps=1,

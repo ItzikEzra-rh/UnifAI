@@ -11,7 +11,7 @@ WORKDIR /app
 
 # Install system dependencies
 RUN dnf update -y && \
-    dnf install -y python3-pip git python3-devel gcc gcc-c++ make cmake kernel-devel wget which numactl \
+    dnf install -y python3-pip git python3-devel gcc gcc-c++ make cmake kernel-devel wget which numactl gettext \
     && dnf clean all
 
 # Install huggingface_hub before logging in
@@ -25,6 +25,9 @@ RUN /bin/bash -c "huggingface-cli login --token ${HF_TOKEN}"
 
 # Change to repository directory and install dependencies
 WORKDIR /app/repo/reviewer
+
+# Substitute ENV variables to config file
+RUN envsubst < config/config.json > config/config.tmp && mv config/config.tmp config/config.json
 
 # Install dependencies
 RUN /bin/bash -c "pip install --upgrade pip && \
