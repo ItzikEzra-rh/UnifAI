@@ -30,11 +30,11 @@
     }
   },
   "rabbitmq": {
-    "port": "${RABBITMQ_PORT}",
+    "port": ${RABBITMQ_PORT},
     "url": "amqp://${RABBITMQ_IP}:{port}"
   },
   "mongodb": {
-    "port": "${MONGODB_PORT}",
+    "port": ${MONGODB_PORT},
     "url": "mongodb://${MONGODB_IP}:{port}"
   },
   "templates": {
