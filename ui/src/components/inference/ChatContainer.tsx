@@ -3,7 +3,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from '@chatscope/chat-ui-kit-react';
 import { useForm, Controller } from 'react-hook-form';
-import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography } from '@mui/material';
+import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography, makeStyles } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
@@ -96,7 +96,7 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
       }
     }
   };
-
+ 
   return (
     <form onSubmit={handleSubmit(handleModelSubmit)} className="form-section">
       <FormDropdown
@@ -130,7 +130,7 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
               <div>
                 <Stepper activeStep={activeStep} alternativeLabel nonLinear>
                   {steps.map((step, index) => (
-                    <Step key={index}>
+                    <Step key={index} className="custom-step">
                       <StepButton onClick={() => handleStepClick(index)}>
                         {step.label}
                       </StepButton>
@@ -155,7 +155,9 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
           )}
         </div>
       )}
-      <Button type="submit" variant="contained" color="primary" disabled={!selectedModel || !selectedProject} style={{ float: 'right', marginTop: '10px' }}> Load Model</Button>
+      <div className="form-bottom-button">
+        <Button className="end-button" type="submit" variant="contained" color="primary" disabled={!selectedModel || !selectedProject}> Load Model</Button>
+      </div>
     </form>
   );
 };

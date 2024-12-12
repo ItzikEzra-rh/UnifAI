@@ -122,6 +122,7 @@ body, html, #root {
 .end-button,
 .chat-top-buttons .end-button,
 .form-container .end-button,
+.form-section .end-button,
 .toolbar-buttons .end-button {
   background-color: red;
 }
@@ -129,6 +130,7 @@ body, html, #root {
 .end-button:hover,
 .chat-top-buttons .end-button:hover,
 .form-container .end-button:hover,
+.form-section .end-button:hover,
 .toolbar-buttons .end-button:hover {
   background-color: #bb0000;
 }
@@ -136,6 +138,7 @@ body, html, #root {
 .end-button:disabled,
 .chat-top-buttons .end-button:disabled,
 .form-container .end-button:disabled,
+.form-section .end-button:disabled,
 .toolbar-buttons .end-button:disabled {
   background-color: #9a9595;
 }
@@ -449,4 +452,24 @@ body, html, #root {
 
 .step-details-list li span {
   flex-grow: 1;
+}
+
+.custom-step .MuiStepLabel-root .Mui-completed {
+  color: red;
+}
+
+.custom-step .MuiStepLabel-label.Mui-completed.MuiStepLabel-alternativeLabel {
+  color: grey;
+}
+
+.custom-step .MuiStepLabel-root .Mui-active {
+  color: red;
+}
+
+.custom-step .MuiStepLabel-label.Mui-active.MuiStepLabel-alternativeLabel {
+  color: grey;
+}
+
+.custom-step .MuiStepLabel-root .Mui-active .MuiStepIcon-text {
+  fill: white;
 }

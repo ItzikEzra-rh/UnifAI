@@ -15,6 +15,8 @@ interface PropTypes {
   triggerOpen: boolean;
   checked: string[];
   setChecked: (checked: string[]) => void;
+  loading: boolean;
+  setLoading: (loading: boolean) => void;
 }
 
 interface TreeItem {
@@ -94,10 +96,9 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ c
     </ButtonGroup>
 );
 
-const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked }) => {
+const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked, loading, setLoading }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [checkedDB, setCheckedDB] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [nodes, setNodes] = useState<TreeItem[]>([]);
@@ -184,7 +185,7 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
   return (
     <>
         {loading ?
-        <CircularProgress /> :
+        <CircularProgress sx={{color: "red"}} /> :
         <>
             <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
             <CheckboxTree nodes={nodes}
