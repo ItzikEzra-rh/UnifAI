@@ -10,7 +10,7 @@ const SuccessMessage: React.FC = () => {
         alignItems: 'center',
         justifyContent: 'center',
         flexDirection: 'row',
-        color: 'white',
+        color: 'black',
         padding: '50px',
         borderRadius: '8px',
         textAlign: 'center',

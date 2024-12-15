@@ -119,6 +119,78 @@ body, html, #root {
   margin: 0 auto;
 }
 
+.form-layout {
+  display: flex;
+  flex-direction: row;
+}
+
+.form-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: 20px;
+}
+
+.progress-indicator {
+  display: flex;
+  flex-direction: column;
+  align-items: left;
+  width: 20%;
+  height: 100%;
+  margin-bottom: 20px;
+  /* background-color: #ffffff; */
+  border-radius: 10px;
+  
+}
+
+.progress-step {
+  display: flex;
+  align-items: center;
+}
+
+.progress-step-container {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+
+.circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #e0e0e0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.progress-step.filled .circle {
+  background-color: red;
+}
+
+.progress-step.active .circle {
+  background-color: red;
+}
+
+.label {
+  margin-left: 10px;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.progress-line {
+  width: 2px;
+  margin-left: 14px;
+  height: 50px;
+  background-color: #e0e0e0;
+}
+
+.progress-line.filled {
+  background-color: red;
+}
+
+
 .end-button,
 .chat-top-buttons .end-button,
 .form-container .end-button,
@@ -165,6 +237,7 @@ body, html, #root {
 .form-section {
   background-color: white;
   flex-grow: 1;
+  width: 80%;
   display: flex;
   flex-direction: column;
   padding: 20px;
