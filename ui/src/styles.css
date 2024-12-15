@@ -123,22 +123,23 @@ body, html, #root {
 .progress-menu {
   display: flex;
   justify-content: center;
-  align-items: center;
-  width: 100%;
+  align-items: top;
+  margin-top: 20px;
+  width: 25%;
 }
 
 .progress-list {
   list-style-type: none;
   display: flex;
-  align-items: center;
+  flex-direction: column; /* Keep column direction for vertical layout */
+  align-items: flex-start; /* Align items to the left */
   padding: 0;
   margin: 0;
 }
 
 .progress-item {
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  align-items: center; /* Align circle and label horizontally */
   position: relative;
 }
 
@@ -146,33 +147,35 @@ body, html, #root {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background-color: #e0e0e0; 
+  background-color: #e0e0e0;
   border: 2px solid #e0e0e0;
-  color: transparent; 
+  color: transparent;
   display: flex;
   justify-content: center;
   align-items: center;
   font-size: 14px;
   font-weight: bold;
   position: relative;
-  z-index: 1; 
+  z-index: 1;
+  margin-bottom: 40px;
 }
 
 .label {
-  margin-left: 10px;
+  margin-left: 10px; /* Space between the circle and the label */
   font-size: 14px;
   font-weight: bold;
   color: black;
+  margin-bottom: 40px;
 }
 
 .line {
-  width: 100px;
-  height: 2px;
+  width: 2px; /* Keep it vertical */
+  height: 74px; /* Adjust height as needed */
   background-color: #e0e0e0;
   position: absolute;
-  left: 100%;
-  top: 25%;
-  transform: translateX(-50%);
+  top: 50%; /* Position below the circle */
+  left: 15px; /* Align with the circle's center */
+  transform: translateY(-50%);
   z-index: 0;
 }
 
@@ -189,7 +192,7 @@ body, html, #root {
 }
 
 .progress-item.active .line {
-  background: linear-gradient(to right, #f5504c 50%);
+  background: linear-gradient(to bottom, #f5504c 50%);
 }
 
 .progress-item.completed .line {
@@ -199,6 +202,8 @@ body, html, #root {
 .progress-item:last-child .line {
   display: none;
 }
+
+
 
 .end-button,
 .chat-top-buttons .end-button,
@@ -248,12 +253,9 @@ body, html, #root {
   display: flex;
   flex-direction: column;
   padding: 20px;
-  margin-top: 20px;
   border-radius: 5px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  width: 80%; 
-  margin-left: auto;
-  margin-right: auto; 
+  width: 90%;  
 }
 
 .form-section.disabled {

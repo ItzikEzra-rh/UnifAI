@@ -103,8 +103,9 @@ const TrainingForm: React.FC = () => {
 
   return (
     <Box className="form-container">
+      <div style={{display: 'flex', flexDirection: 'row'}}>
       <ProgressIndicator steps={steps} activeStep={activeTab} />
-
+      <div style={{width: '75%'}}>
       {activeTab === 0 && (
         <Box className="form-section">
           <FormDropdown
@@ -160,6 +161,8 @@ const TrainingForm: React.FC = () => {
           </form>
         </Box>
       )}
+      </div>
+      </div>
     </Box>
   );
 };

@@ -143,9 +143,9 @@ const ProjectForm: React.FC = () => {
       {formSubmitted ? (
         <SuccessMessage />
       ) : (
-        <>
+        <div style={{display: 'flex', flexDirection: 'row'}}>
           <ProgressIndicator steps={steps} activeStep={activeTab} />          
-           
+          <div style={{width: '75%'}}>
             <TabPanel value={activeTab} index={0}>
               <form className="form-section">
                 <FormField name="projectName" label="Project Name" control={control} errors={errors} />
@@ -200,7 +200,8 @@ const ProjectForm: React.FC = () => {
                 </div>
               </form>
             </TabPanel>
-            </>
+            </div>
+            </div>
       )}
     </Box>
     
