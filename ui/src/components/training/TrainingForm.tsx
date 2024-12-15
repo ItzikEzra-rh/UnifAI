@@ -6,6 +6,7 @@ import axios from '../../http/axiosConfig';
 import axiosLLM from '../../http/axiosLLMConfig'
 import { Box, Tabs, Tab, Button } from '@mui/material';
 import { FormField, FormDropdown } from '../shared/FormFields';
+import ProgressIndicator from '../shared/ProgressIndicator';
 
 type FormData = {
   projectName: string;
@@ -89,15 +90,20 @@ const TrainingForm: React.FC = () => {
     setActiveTab(activeTab + 1);
   };
 
+  const handleBackClick = () => {
+    if (activeTab > 0) {
+      setActiveTab((prev) => prev - 1);
+    }
+  };
+
   const isTab1Valid = !!watch('projectName') && !!watch('trainingName') && !!watch('datasetName');
   const isTab2Valid = !!watch('epochNumber') && !!watch('saveSteps') && !!watch('warmupSteps');
 
+  const steps = ['Training Selection', 'Training Form'];
+
   return (
     <Box className="form-container">
-      <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} aria-label="form tabs" className="form-tabs">
-        <Tab label="Training Selection" />
-        <Tab label="Training Form" className={activeTab === 1 ? '' : 'disabled-tab'} />
-      </Tabs>
+      <ProgressIndicator steps={steps} activeStep={activeTab} />
 
       {activeTab === 0 && (
         <Box className="form-section">
@@ -138,7 +144,10 @@ const TrainingForm: React.FC = () => {
             <FormField name="epochNumber" label="Epoch Number" type="number" control={control} errors={errors} />
             <FormField name="saveSteps" label="Save Steps" type="number" control={control} errors={errors} />
             <FormField name="warmupSteps" label="Warmup Steps" type="number" control={control} errors={errors} />
-            <div className="form-bottom-button">
+            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
+                  <Button type="button" variant="contained" className="end-button" onClick={handleBackClick} >
+                    Back
+                  </Button>
               <Button
                 type="submit"
                 variant="contained"

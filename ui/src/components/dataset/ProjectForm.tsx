@@ -143,9 +143,9 @@ const ProjectForm: React.FC = () => {
       {formSubmitted ? (
         <SuccessMessage />
       ) : (
-        <div className="form-layout">
+        <>
           <ProgressIndicator steps={steps} activeStep={activeTab} />          
-          <div className="form-content">
+           
             <TabPanel value={activeTab} index={0}>
               <form className="form-section">
                 <FormField name="projectName" label="Project Name" control={control} errors={errors} />
@@ -164,15 +164,17 @@ const ProjectForm: React.FC = () => {
               </form>
             </TabPanel>
             <TabPanel value={activeTab} index={1}>
+              <div className="form-section">
             <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath') || ''} 
                           triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked} loading={gitLoading} setLoading={setGitLoading} />
-            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between'}}>
-            <Button type="button" variant="contained" className="end-button" onClick={handleBackClick} disabled={activeTab === 0}>
+            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
+            <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
               Back
             </Button>
             <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isSecondTabValid || gitLoading} style={{ width: '5%', float: 'right',  }}>
               Next
             </Button>
+            </div>
             </div>
             </TabPanel>
             <TabPanel value={activeTab} index={2}>
@@ -189,7 +191,7 @@ const ProjectForm: React.FC = () => {
                     </div>
                 )}
                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
-                  <Button type="button" variant="contained" className="end-button" onClick={handleBackClick} disabled={activeTab === 0}>
+                  <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
                     Back
                   </Button>
                   <Button type="submit" variant="contained" className="end-button" disabled={!isThirdTabValid} >
@@ -198,8 +200,7 @@ const ProjectForm: React.FC = () => {
                 </div>
               </form>
             </TabPanel>
-          </div>
-        </div>
+            </>
       )}
     </Box>
     

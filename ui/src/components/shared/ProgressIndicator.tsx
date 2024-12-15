@@ -7,20 +7,19 @@ interface ProgressIndicatorProps {
 
 const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({ steps, activeStep }) => {
   return (
-    <div className="progress-indicator">
-      {steps.map((step, index) => (
-        <React.Fragment key={index}>
-          <div className="progress-step-container">
-            <div className={`progress-step ${activeStep >= index ? 'filled' : ''}`}>
-              <div className="circle"></div>
-            </div>
+    <div className="progress-menu">
+      <ul className="progress-list">
+        {steps.map((step, index) => (
+          <li
+            key={index}
+            className={`progress-item ${index < activeStep ? 'completed' : ''} ${index === activeStep ? 'active' : ''}`}
+          >
+            <div className="circle" />
             <div className="label">{step}</div>
-          </div>
-          {index < steps.length - 1 && (
-            <div className={`progress-line ${activeStep > index ? 'filled' : ''}`}></div>
-          )}
-        </React.Fragment>
-      ))}
+            {index < steps.length - 1 && <div className="line"></div>}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 };
