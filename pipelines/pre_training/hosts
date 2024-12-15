@@ -1,0 +1,18 @@
+#  hosts - Inventory file (example)
+[all:vars]
+ansible_connection=ssh
+
+[controller]
+remote_vm1 ansible_host=instructlab.ttwrq.sandbox1761.opentlc.com ansible_user=instruct ansible_ssh_pass=MTkzMjA1
+
+[prompt_lab_submitter]
+remote_vm1 ansible_host=instructlab.ttwrq.sandbox1761.opentlc.com ansible_user=instruct ansible_ssh_pass=MTkzMjA1
+
+[prompt_lab_dispatcher]
+remote_vm1 ansible_host=instructlab.ttwrq.sandbox1761.opentlc.com ansible_user=instruct ansible_ssh_pass=MTkzMjA1
+
+[prompt_lab_worker]
+remote_vm1 ansible_host=instructlab.ttwrq.sandbox1761.opentlc.com ansible_user=instruct ansible_ssh_pass=MTkzMjA1
+
+[reviewers]
+remote_vm2 ansible_host=instructlab.r2cqv.sandbox2215.opentlc.com ansible_user=instruct ansible_ssh_pass=MTU1NzY1
