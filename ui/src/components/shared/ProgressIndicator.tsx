@@ -14,9 +14,14 @@ const ProgressIndicator: React.FC<ProgressIndicatorProps> = ({ steps, activeStep
             key={index}
             className={`progress-item ${index < activeStep ? 'completed' : ''} ${index === activeStep ? 'active' : ''}`}
           >
-            <div className="circle" />
+            <div className="circle">{index+1}</div>
             <div className="label">{step}</div>
-            {index < steps.length - 1 && <div className="line"></div>}
+            {/* Add a separate line for each step except the last one */}
+            {index < steps.length - 1 && (
+              <div
+                className={`line ${index < activeStep - 1 ? 'completed' : ''}`}
+              ></div>
+            )}
           </li>
         ))}
       </ul>

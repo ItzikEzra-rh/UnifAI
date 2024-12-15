@@ -147,9 +147,9 @@ body, html, #root {
   width: 30px;
   height: 30px;
   border-radius: 50%;
-  background-color: #e0e0e0;
-  border: 2px solid #e0e0e0;
-  color: transparent;
+  background-color: #f9f9f9;
+  border: 3px solid #e0e0e0;
+  color: #e0e0e0;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -162,20 +162,21 @@ body, html, #root {
 
 .label {
   margin-left: 10px; /* Space between the circle and the label */
-  font-size: 14px;
+  font-size: 15px;
   font-weight: bold;
   color: black;
   margin-bottom: 40px;
 }
 
+
 .line {
-  width: 2px; /* Keep it vertical */
-  height: 74px; /* Adjust height as needed */
+  width: 2px; 
+  height: 50px; 
   background-color: #e0e0e0;
   position: absolute;
-  top: 50%; /* Position below the circle */
-  left: 15px; /* Align with the circle's center */
-  transform: translateY(-50%);
+  top: 30px; 
+  left: 17.5px;
+  transform: translateX(-50%);
   z-index: 0;
 }
 
