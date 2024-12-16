@@ -4,9 +4,9 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import axios from '../../http/axiosConfig';
 import axiosLLM from '../../http/axiosLLMConfig'
-import { Box, Tabs, Tab, Button } from '@mui/material';
+import { Box, Button, Stepper, StepContent, Step } from '@mui/material';
 import { FormField, FormDropdown } from '../shared/FormFields';
-import ProgressIndicator from '../shared/ProgressIndicator';
+import { CustomStepIcon, CustomStepLabel } from '../shared/StepperIcons';
 
 type FormData = {
   projectName: string;
@@ -31,7 +31,7 @@ const schema = yup.object().shape({
 });
 
 const TrainingForm: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeStep, setActiveStep] = useState(0);
   const [forms, setForms] = useState<any[]>([]);
   const [data, setData] = useState<RepoFileData[]>([]);
   const [projects, setProjects] = useState<Set<string>>(new Set());
@@ -87,26 +87,27 @@ const TrainingForm: React.FC = () => {
   };
 
   const handleNextClick = () => {
-    setActiveTab(activeTab + 1);
+    setActiveStep(activeStep + 1);
   };
 
   const handleBackClick = () => {
-    if (activeTab > 0) {
-      setActiveTab((prev) => prev - 1);
+    if (activeStep > 0) {
+      setActiveStep((prev) => prev - 1);
     }
   };
 
   const isTab1Valid = !!watch('projectName') && !!watch('trainingName') && !!watch('datasetName');
   const isTab2Valid = !!watch('epochNumber') && !!watch('saveSteps') && !!watch('warmupSteps');
 
-  const steps = ['Training Selection', 'Training Form'];
 
   return (
     <Box className="form-container">
-      <div style={{display: 'flex', flexDirection: 'row'}}>
-        <ProgressIndicator steps={steps} activeStep={activeTab} />
-        <div style={{width: '75%'}}>
-          {activeTab === 0 && (
+      <Stepper activeStep={activeStep} orientation="vertical">
+          <Step>
+            <CustomStepLabel StepIconComponent={(props) => <CustomStepIcon {...props} />}>
+              Training Selection
+            </CustomStepLabel>
+            <StepContent>
             <Box className="form-section">
               <FormDropdown
                 name="projectName"
@@ -137,8 +138,13 @@ const TrainingForm: React.FC = () => {
                 </Button>
               </div>
             </Box>
-          )}
-          {activeTab === 1 && (
+            </StepContent>
+          </Step>
+          <Step>
+            <CustomStepLabel StepIconComponent={(props) => <CustomStepIcon {...props} />}>
+              Training Form
+            </CustomStepLabel>
+            <StepContent>
             <Box className="form-section">
               <form onSubmit={handleSubmit(onSubmit)}>
                 <FormField name="epochNumber" label="Epoch Number" type="number" control={control} errors={errors} />
@@ -154,9 +160,10 @@ const TrainingForm: React.FC = () => {
                 </div>
               </form>
             </Box>
-          )}
-          </div>
-      </div>
+            </StepContent>
+          </Step>
+          
+        </Stepper>
     </Box>
   );
 };

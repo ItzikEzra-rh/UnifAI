@@ -641,7 +641,7 @@ const ChatComponent: React.FC = () => {
     <div className="chat-container-wrapper">
       {loadingModel ? (
         <LoadingOverlay />
-      ) : selectedModel ? (
+      ) : false ? (
         <>
           {/* Custom section for displaying model information */}
           <div className="chat-top-buttons">
