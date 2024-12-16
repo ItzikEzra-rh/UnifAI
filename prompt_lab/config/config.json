@@ -1,10 +1,10 @@
 {
   "storage_type": "file",
   "input": {
-    "file_path": "/home/instruct/data/MTA_project_parsed.json"
+    "file_path": "${INPUT_JSON_PATH}"
   },
   "output": {
-    "directory": "/home/instruct/data/"
+    "directory": "${OUTPUT_DATA_DIR_PATH}"
   },
   "model_config": {
     "tokenizer_path": "meta-llama/Llama-3.1-8B-Instruct",
@@ -30,15 +30,15 @@
     }
   },
   "rabbitmq": {
-    "port": 443,
-    "url": "amqp://instructlab.v249k.sandbox1145.opentlc.com:{port}"
+    "port": ${RABBITMQ_PORT},
+    "url": "amqp://${RABBITMQ_IP}:{port}"
   },
   "mongodb": {
-    "port": 27017,
-    "url": "mongodb://127.0.0.1:{port}"
+    "port": ${MONGODB_PORT},
+    "url": "mongodb://${MONGODB_IP}:{port}"
   },
   "templates": {
-    "project_path": "projects_templates/DeepScope/typescript.json",
+    "project_path": "projects_templates/DeepCode/typescript.json",
     "usable_params": [
       "project_id",
       "project_repo",

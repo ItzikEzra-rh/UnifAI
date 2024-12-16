@@ -11,7 +11,7 @@ WORKDIR /app
 
 # Install system dependencies
 RUN dnf update -y && \
-    dnf install -y python3-pip git python3-devel gcc gcc-c++ make cmake kernel-devel wget which numactl \
+    dnf install -y python3-pip git python3-devel gcc gcc-c++ make cmake kernel-devel wget which numactl gettext \
     && dnf clean all
 
 # Install huggingface_hub before logging in
@@ -35,6 +35,7 @@ RUN /bin/bash -c "pip install --upgrade pip && \
 
 # Create a startup script to run the services
 RUN echo '#!/bin/bash' > /app/start-service.sh && \
+    echo 'envsubst < config/config.json > config/config.tmp && mv config/config.tmp config/config.json' >> /app/start-service.sh && \
     echo 'case "$1" in' >> /app/start-service.sh && \
     echo '  "reviewer")' >> /app/start-service.sh && \
     echo '    celery -A celery_app.init worker -c 1 --loglevel=info -Q reviewer_queue -n reviewer' >> /app/start-service.sh && \
@@ -42,12 +43,16 @@ RUN echo '#!/bin/bash' > /app/start-service.sh && \
     echo '  "reviewer_pass_fail")' >> /app/start-service.sh && \
     echo '    celery -A celery_app.init worker -c 1 --loglevel=info -Q reviewer_pass_queue,reviewer_fail_queue -n reviewer' >> /app/start-service.sh && \
     echo '    ;;' >> /app/start-service.sh && \
+    echo '  "bash")' >> /app/start-service.sh && \
+    echo '    bash' >> /app/start-service.sh && \
+    echo '    ;;' >> /app/start-service.sh && \
     echo '  *)' >> /app/start-service.sh && \
     echo '    echo "Please specify service: reviewer, or reviewer_pass_fail"' >> /app/start-service.sh && \
     echo '    exit 1' >> /app/start-service.sh && \
     echo '    ;;' >> /app/start-service.sh && \
     echo 'esac' >> /app/start-service.sh && \
     chmod +x /app/start-service.sh
+
 
 # Set the entrypoint to the startup script
 ENTRYPOINT ["/app/start-service.sh"]

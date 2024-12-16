@@ -1,0 +1,193 @@
+{
+  "project_id": "MTA",
+  "project_repo": "https://github.com/konveyor/tackle2-ui",
+  "coding_language": "typescript",
+  "system_message": "You are an expert in TypeScript, skilled in designing modular, scalable, and reusable code. You provide precise guidance on solving complex problems, ensuring optimal use of TypeScript features such as types, interfaces, generics, and modules. You follow clear and consistent coding principles, enabling clean, maintainable, and efficient codebases.",
+  "context_template": "the {project_id} repository: {project_repo}.\nBelow is the element details:\n\n{element_type}\n\n{name}\n\n{file_location}\n\n{imports}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
+  "element_templates": {
+    "function": {
+      "Function Understanding and Code Description": {
+        "function_understanding_and_description": {
+          "questions": [
+            {
+              "question": "In the context of {project_id}, what is the purpose of `{element_type}` `{name}`? Provide a detailed explanation of its responsibilities and significance.",
+              "validation": "Is the explanation comprehensive and clear about the purpose, responsibilities, and significance of `{element_type}` `{name}` within {project_id}?"
+            },
+            {
+              "question": "Exploring the key objectives of `{element_type}` `{name}` in the {project_id} project: Provide a detailed explanation of its responsibilities and importance.",
+              "validation": "Is the explanation comprehensive and clear about the key objectives, responsibilities, and importance of `{element_type}` `{name}` for {project_id}?"
+            },
+            {
+              "question": "What function does `{element_type}` `{name}` serve within the {project_id} system? Provide a detailed explanation of its responsibilities and role.",
+              "validation": "Is the explanation comprehensive and clear about the function, responsibilities, and role of `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "Analyzing the role of `{element_type}` `{name}` for {project_id}: Provide a detailed explanation of its responsibilities and relevance.",
+              "validation": "Is the explanation comprehensive and clear about the role, responsibilities, and relevance of `{element_type}` `{name}` in the context of {project_id}?"
+            },
+            {
+              "question": "{project_id}'s implementation: What is the significance of `{element_type}` `{name}`? Provide a detailed explanation of its purpose and responsibilities.",
+              "validation": "Is the explanation comprehensive and clear about the significance, purpose, and responsibilities of `{element_type}` `{name}` within {project_id}?"
+            }
+          ]
+        },
+        "function_usage_and_import": {
+          "questions": [
+            {
+              "question": "In the {project_id} project, provide a code snippet demonstrating how to use `{element_type}` `{name}`, including the correct file location for importing it.",
+              "validation": "Is the code snippet accurate in demonstrating the usage of `{element_type}` `{name}`, and does it include the correct import location for {project_id}?"
+            },
+            {
+              "question": "Show an example of correctly importing and using `{element_type}` `{name}` within the {project_id} context. Include the import path and a sample use case.",
+              "validation": "Does the example clearly show the correct import method and provide a practical use case for `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "How can `{element_type}` `{name}` be utilized in the context of {project_id}? Provide a code example with proper imports.",
+              "validation": "Is the code example comprehensive in demonstrating the utilization of `{element_type}` `{name}`, with correct imports for {project_id}?"
+            },
+            {
+              "question": "Write a code example demonstrating the usage of `{element_type}` `{name}` for the {project_id} project, ensuring the import path is accurate.",
+              "validation": "Does the code example accurately showcase the usage of `{element_type}` `{name}` with the correct import path in {project_id}?"
+            }
+          ]
+        },
+        "function_full_code": {
+          "questions": [
+            {
+              "question": "For the {project_id} project, provide the complete implementation of `{element_type}` `{name}` and explain its purpose and functionality.",
+              "validation": "Does the response include the full implementation of `{element_type}` `{name}` with a clear explanation of its purpose and functionality in {project_id}?"
+            },
+            {
+              "question": "Show the full code of `{element_type}` `{name}` for {project_id}, including all related imports, and explain how it operates within the context.",
+              "validation": "Is the complete code of `{element_type}` `{name}` shown, including relevant imports, and is there a clear explanation of its operation in {project_id}?"
+            },
+            {
+              "question": "Provide the entire source code for `{element_type}` `{name}` as defined in the {project_id} project and describe its role in the implementation.",
+              "validation": "Does the provided code fully represent `{element_type}` `{name}` and include a description of its role within {project_id}?"
+            },
+            {
+              "question": "What is the full implementation of `{element_type}` `{name}` in the context of {project_id}? Include any dependencies or imports used and explain how they contribute to its functionality.",
+              "validation": "Is the full implementation of `{element_type}` `{name}` provided, along with an explanation of its dependencies and their contributions in {project_id}?"
+            },
+            {
+              "question": "Can you show the full source code of `{element_type}` `{name}` for the {project_id} project, ensuring it reflects the complete functionality, and explain how it achieves its objectives?",
+              "validation": "Is the full functionality of `{element_type}` `{name}` reflected in the provided code with a detailed explanation of how it achieves its objectives in {project_id}?"
+            }
+          ]
+        }
+      },
+      "Error Handling and Type Safety": {
+        "error_handling_type_safety_options": {
+          "questions": [
+            {
+              "question": "In the {project_id} context, demonstrate how `{element_type}` `{name}` uses TypeScript's type system to prevent runtime errors and improve code reliability, including specific type guards or narrowing techniques.",
+              "validation": "Does the demonstration effectively show the use of TypeScript's type system for error prevention in {project_id}, highlighting unique type guards or narrowing techniques in `{element_type}` `{name}`?"
+            },
+            {
+              "question": "Analyze the error handling mechanisms in `{element_type}` `{name}` for the {project_id} project, highlighting how TypeScript's strong typing contributes to robust error prevention and management.",
+              "validation": "Is the analysis comprehensive in explaining how TypeScript's strong typing supports error prevention in `{element_type}` `{name}` within {project_id}?"
+            },
+            {
+              "question": "Explain the strategies used in `{element_type}` `{name}` for {project_id} to ensure type safety, including the use of optional chaining, null checks, and type assertions.",
+              "validation": "Does the explanation clearly outline the type safety strategies in `{element_type}` `{name}` for {project_id}, including optional chaining, null checks, and type assertions?"
+            },
+            {
+              "question": "Illustrate the implementation of comprehensive error handling patterns that leverage TypeScript's type system in `{element_type}` `{name}` for the {project_id} project.",
+              "validation": "Is the illustration of error handling patterns thorough and effectively demonstrates the use of TypeScript's type system in `{element_type}` `{name}` for {project_id}?"
+            }
+          ]
+        }
+      },
+      "Performance and Type Optimization": {
+        "performance_typing_options": {
+          "questions": [
+            {
+              "question": "In the context of {project_id}, identify opportunities to optimize type definitions for better compile-time type checking and runtime performance in `{element_type}` `{name}`.",
+              "validation": "Are the optimization opportunities for type definitions in {project_id}'s `{element_type}` `{name}` comprehensive and specific to improving type checking and runtime performance?"
+            },
+            {
+              "question": "Analyze the current type implementation in `{element_type}` `{name}` for the {project_id} project and suggest improvements for more efficient type checking and code execution.",
+              "validation": "Does the analysis provide a detailed and actionable assessment of the current type implementation in `{element_type}` `{name}` for {project_id} with clear improvement suggestions?"
+            },
+            {
+              "question": "Demonstrate advanced type optimization techniques that could be applied to `{element_type}` `{name}` in {project_id} to enhance its performance and type safety.",
+              "validation": "Are the demonstrated type optimization techniques for `{element_type}` `{name}` in {project_id} advanced, practical, and likely to improve performance and type safety?"
+            },
+            {
+              "question": "Explore how generic constraints and type narrowing can be used to improve the performance of `{element_type}` `{name}` within the {project_id} project.",
+              "validation": "Does the exploration effectively show how generic constraints and type narrowing can optimize the performance of `{element_type}` `{name}` in {project_id}?"
+            }
+          ]
+        }
+      },
+      "Modularity and Reusability": {
+        "function_reusability_options": {
+          "questions": [
+            {
+              "question": "For the {project_id} project, suggest improvements for modularity in `{element_type}` `{name}` by incorporating shared utilities and generic type patterns.",
+              "validation": "Are the suggested improvements for modularity in `{element_type}` `{name}` for {project_id} comprehensive and practical?"
+            },
+            {
+              "question": "Identify ways to extend `{element_type}` `{name}` in the context of {project_id} for handling new conditions efficiently, using TypeScript's advanced type features.",
+              "validation": "Do the identified extension methods for `{element_type}` `{name}` in {project_id} demonstrate efficient handling of new conditions using advanced TypeScript type features?"
+            },
+            {
+              "question": "Recommend refactoring opportunities in `{element_type}` `{name}` for the {project_id} project to enhance reusability through generics and interface design.",
+              "validation": "Are the recommended refactoring opportunities for `{element_type}` `{name}` in {project_id} effective in improving reusability through generics and interface design?"
+            },
+            {
+              "question": "Propose techniques to simplify `{element_type}` `{name}` in {project_id} by breaking down complex functions into smaller, reusable components with strong type definitions.",
+              "validation": "Do the proposed techniques effectively simplify `{element_type}` `{name}` in {project_id} by creating more modular and reusable components?"
+            }
+          ]
+        }
+      }
+    },
+    "file": {
+      "File Role and TypeScript Structure": {
+        "file_role_structure_options": {
+          "questions": [
+            {
+              "question": "In the {project_id} project, describe the purpose of `{element_type}` `{name}`, detailing how it organizes key functions and leverages TypeScript's modular structure.",
+              "validation": "Is the description comprehensive in explaining the purpose, function organization, and TypeScript modular structure of `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "For {project_id}, explain the `{element_type}` `{name}`, discussing its role in maintaining modularity, type safety, and testability.",
+              "validation": "Does the explanation thoroughly cover the role of `{element_type}` `{name}` in maintaining modularity, type safety, and testability for {project_id}?"
+            },
+            {
+              "question": "Provide a TypeScript code snippet that showcases the main functions in `{element_type}` `{name}` for the {project_id} project, illustrating its responsibilities in supporting the type system.",
+              "validation": "Is the code snippet effective in demonstrating the main functions and their responsibilities within the type system of `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "Generate a code snippet for {project_id} demonstrating essential functions and type interactions in `{element_type}` `{name}`, highlighting TypeScript-specific design patterns.",
+              "validation": "Does the code snippet effectively highlight the TypeScript design patterns and type interactions in `{element_type}` `{name}` for {project_id}?"
+            }
+          ]
+        }
+      },
+      "TypeScript Modularity and Optimization": {
+        "file_modularity_refactoring_options": {
+          "questions": [
+            {
+              "question": "In the context of {project_id}, suggest ways to refactor and optimize `{element_type}` `{name}` to improve type safety, modularity, and performance.",
+              "validation": "Are the suggested refactoring and optimization methods for `{element_type}` `{name}` in {project_id} comprehensive and tailored to improving type safety, modularity, and performance?"
+            },
+            {
+              "question": "For the {project_id} project, identify specific functions or type definitions in `{element_type}` `{name}` that could be modularized into more reusable and type-safe components.",
+              "validation": "Do the identified functions and type definitions in `{element_type}` `{name}` for {project_id} demonstrate clear potential for improved modularity and type safety?"
+            },
+            {
+              "question": "Discuss opportunities to enhance type readability, simplify complex type structures, and optimize performance within `{element_type}` `{name}` in the {project_id} project.",
+              "validation": "Is the discussion thorough in addressing type readability, type structure simplification, and performance optimization for `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "In {project_id}, recommend restructuring `{element_type}` `{name}` to reduce type complexity and increase type inference efficiency across multiple components.",
+              "validation": "Are the recommendations effective in reducing type complexity and improving type inference efficiency for `{element_type}` `{name}` in {project_id}?"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
