@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
-import { useForm, Controller, SubmitHandler } from 'react-hook-form';
+import { useForm, SubmitHandler } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import axios from '../../http/axiosConfig';
 import { FormData } from '../types/constants'
 import { TabPanel, FormField, FormDropdown, FormCheckbox, FormFileUpload } from '../shared/FormFields'
-import { Box, Tabs, Tab, Button } from '@mui/material'; 
+import { Box, Button } from '@mui/material'; 
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
 import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
@@ -140,72 +140,69 @@ const ProjectForm: React.FC = () => {
 
     return (
       <Box className="form-container">
-      {formSubmitted ? (
-        <SuccessMessage />
-      ) : (
-        <div style={{display: 'flex', flexDirection: 'row'}}>
-          <ProgressIndicator steps={steps} activeStep={activeTab} />          
-          <div style={{width: '75%'}}>
-            <TabPanel value={activeTab} index={0}>
-              <form className="form-section">
-                <FormField name="projectName" label="Project Name" control={control} errors={errors} />
-                <FormField name="trainingName" label="Training Name" control={control} errors={errors} />
-                <FormField name="gitUrl" label="Git Repository Url" control={control} errors={errors} />
-                <FormField name="gitCredentialKey" label="Git Credential Key" control={control} errors={errors} secret={true} />
-                <FormField name="gitBranchName" label="Git Branch Name" control={control} errors={errors} />
-                <FormField name="gitFolderPath" label="Git Path To Fetch From" control={control} errors={errors} />
-                <FormDropdown name="baseModelName" label="Foundational Model Name" control={control} errors={errors} options={['Mistral', 'Llama', 'Granite']} />
-                <FormDropdown name="testsCodeFramework" label="Tests Code Framework" control={control} errors={errors} options={['Python', 'Robot', 'Go', 'Jmeter']} />
-                <div className="form-bottom-button">
-                  <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isFirstTabValid} style={{ width: '5%'}}>
-                      Next
-                  </Button>
-                </div>
-              </form>
-            </TabPanel>
-            <TabPanel value={activeTab} index={1}>
-              <div className="form-section">
-            <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath') || ''} 
+        {formSubmitted ? 
+          <SuccessMessage /> : 
+          <div style={{display: 'flex', flexDirection: 'row'}}>
+            <ProgressIndicator steps={steps} activeStep={activeTab} />          
+            <div style={{width: '75%'}}>
+              <TabPanel value={activeTab} index={0}>
+                <form className="form-section">
+                  <FormField name="projectName" label="Project Name" control={control} errors={errors} />
+                  <FormField name="trainingName" label="Training Name" control={control} errors={errors} />
+                  <FormField name="gitUrl" label="Git Repository Url" control={control} errors={errors} />
+                  <FormField name="gitCredentialKey" label="Git Credential Key" control={control} errors={errors} secret={true} />
+                  <FormField name="gitBranchName" label="Git Branch Name" control={control} errors={errors} />
+                  <FormField name="gitFolderPath" label="Git Path To Fetch From" control={control} errors={errors} />
+                  <FormDropdown name="baseModelName" label="Foundational Model Name" control={control} errors={errors} options={['Mistral', 'Llama', 'Granite']} />
+                  <FormDropdown name="testsCodeFramework" label="Tests Code Framework" control={control} errors={errors} options={['Python', 'Robot', 'Go', 'Jmeter']} />
+                  <div className="form-bottom-button">
+                    <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isFirstTabValid} style={{ width: '5%'}}>
+                        Next
+                    </Button>
+                  </div>
+                </form>
+              </TabPanel>
+              <TabPanel value={activeTab} index={1}>
+                <div className="form-section">
+                  <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath') || ''} 
                           triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked} loading={gitLoading} setLoading={setGitLoading} />
-            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
-            <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
-              Back
-            </Button>
-            <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isSecondTabValid || gitLoading} style={{ width: '5%', float: 'right',  }}>
-              Next
-            </Button>
-            </div>
-            </div>
-            </TabPanel>
-            <TabPanel value={activeTab} index={2}>
-              <form onSubmit={handleSubmit(onSubmit)} className="form-section">
-                <FormField name="numberOfTests" label="Number of Tests" type="number" control={control} errors={errors} disabled={true} />
-                <FormDropdown name="expandDatasetTo" label="Expand Dataset To" control={control} errors={errors} options={['5x', '10x', '25x', '50x', '100x']} />
-                <FormCheckbox name="datasetGradingUpgrade" label="Dataset Quality Upgrade" control={control} errors={errors} />
-                <FormFileUpload name="parserFile" label="Upload Parser File" control={control} errors={errors} onFileUpload={handleFileUpload} />
-                {uploadedCode && (
-                    <div className="code-visualizer">
-                        <SyntaxHighlighter language="python" style={github}>
-                            {uploadedCode}
-                        </SyntaxHighlighter>
-                    </div>
-                )}
-                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
-                  <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
-                    Back
-                  </Button>
-                  <Button type="submit" variant="contained" className="end-button" disabled={!isThirdTabValid} >
-                      Create Dataset
-                  </Button>
+                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
+                    <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
+                      Back
+                    </Button>
+                    <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isSecondTabValid || gitLoading} style={{ width: '5%', float: 'right',  }}>
+                      Next
+                    </Button>
+                  </div>
                 </div>
-              </form>
-            </TabPanel>
+              </TabPanel>
+              <TabPanel value={activeTab} index={2}>
+                <form onSubmit={handleSubmit(onSubmit)} className="form-section">
+                  <FormField name="numberOfTests" label="Number of Tests" type="number" control={control} errors={errors} disabled={true} />
+                  <FormDropdown name="expandDatasetTo" label="Expand Dataset To" control={control} errors={errors} options={['5x', '10x', '25x', '50x', '100x']} />
+                  <FormCheckbox name="datasetGradingUpgrade" label="Dataset Quality Upgrade" control={control} errors={errors} />
+                  <FormFileUpload name="parserFile" label="Upload Parser File" control={control} errors={errors} onFileUpload={handleFileUpload} />
+                  {uploadedCode && (
+                      <div className="code-visualizer">
+                          <SyntaxHighlighter language="python" style={github}>
+                              {uploadedCode}
+                          </SyntaxHighlighter>
+                      </div>)}
+                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
+                    <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
+                      Back
+                    </Button>
+                    <Button type="submit" variant="contained" className="end-button" disabled={!isThirdTabValid} >
+                        Create Dataset
+                    </Button>
+                  </div>
+                </form>
+              </TabPanel>
             </div>
-            </div>
-      )}
-    </Box>
-    
-      );
+          </div>
+        }
+      </Box>
+    );
 };
 
 export default ProjectForm;

@@ -184,20 +184,20 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
 
   return (
     <>
-        {loading ?
-        <div style={{ display: 'flex', justifyContent: 'center'}}>
-          <CircularProgress sx={{color: "red",}} />
-        </div> :
-        <div className="form-section">
-            <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
-            <CheckboxTree nodes={nodes}
-                          checked={checked}
-                          expanded={expanded}
-                          onCheck={(checkedItems) => setChecked(checkedItems)}
-                          onExpand={(expandedItems) => setExpanded(expandedItems)}
-            />
-            <div className="tests-selected">{checked.length} Tests Selected</div>
-        </div>}
+      {loading ?
+      <div style={{ display: 'flex', justifyContent: 'center'}}>
+        <CircularProgress sx={{color: "red",}} />
+      </div> :
+      <div className="form-section">
+        <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
+        <CheckboxTree nodes={nodes}
+                      checked={checked}
+                      expanded={expanded}
+                      onCheck={(checkedItems) => setChecked(checkedItems)}
+                      onExpand={(expandedItems) => setExpanded(expandedItems)}
+        />
+        <div className="tests-selected">{checked.length} Tests Selected</div>
+      </div>}
     </>
   );
 };

@@ -104,64 +104,58 @@ const TrainingForm: React.FC = () => {
   return (
     <Box className="form-container">
       <div style={{display: 'flex', flexDirection: 'row'}}>
-      <ProgressIndicator steps={steps} activeStep={activeTab} />
-      <div style={{width: '75%'}}>
-      {activeTab === 0 && (
-        <Box className="form-section">
-          <FormDropdown
-            name="projectName"
-            label="Choose Project"
-            control={control}
-            errors={errors}
-            options={Array.from(projects)}
-          />
-          <FormDropdown
-            name="trainingName"
-            label="Choose Training Name"
-            control={control}
-            errors={errors}
-            options={trainingOptions}
-            disabled={!watch('projectName')}
-          />
-          <FormDropdown
-            name="datasetName"
-            label="Choose Dataset"
-            control={control}
-            errors={errors}
-            options={data.map(dataset => dataset.name)}
-            disabled={!watch('projectName')}
-          />
-          <div className="form-bottom-button">
-            <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isTab1Valid}>
-              Next
-            </Button>
-          </div>
-        </Box>
-      )}
-
-      {activeTab === 1 && (
-        <Box className="form-section">
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <FormField name="epochNumber" label="Epoch Number" type="number" control={control} errors={errors} />
-            <FormField name="saveSteps" label="Save Steps" type="number" control={control} errors={errors} />
-            <FormField name="warmupSteps" label="Warmup Steps" type="number" control={control} errors={errors} />
-            <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
+        <ProgressIndicator steps={steps} activeStep={activeTab} />
+        <div style={{width: '75%'}}>
+          {activeTab === 0 && (
+            <Box className="form-section">
+              <FormDropdown
+                name="projectName"
+                label="Choose Project"
+                control={control}
+                errors={errors}
+                options={Array.from(projects)}
+              />
+              <FormDropdown
+                name="trainingName"
+                label="Choose Training Name"
+                control={control}
+                errors={errors}
+                options={trainingOptions}
+                disabled={!watch('projectName')}
+              />
+              <FormDropdown
+                name="datasetName"
+                label="Choose Dataset"
+                control={control}
+                errors={errors}
+                options={data.map(dataset => dataset.name)}
+                disabled={!watch('projectName')}
+              />
+              <div className="form-bottom-button">
+                <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isTab1Valid}>
+                  Next
+                </Button>
+              </div>
+            </Box>
+          )}
+          {activeTab === 1 && (
+            <Box className="form-section">
+              <form onSubmit={handleSubmit(onSubmit)}>
+                <FormField name="epochNumber" label="Epoch Number" type="number" control={control} errors={errors} />
+                <FormField name="saveSteps" label="Save Steps" type="number" control={control} errors={errors} />
+                <FormField name="warmupSteps" label="Warmup Steps" type="number" control={control} errors={errors} />
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
                   <Button type="button" variant="contained" className="end-button" onClick={handleBackClick} >
                     Back
                   </Button>
-              <Button
-                type="submit"
-                variant="contained"
-                className="end-button"
-                disabled={!isTab2Valid}
-              >
-                Start Training
-              </Button>
-            </div>
-          </form>
-        </Box>
-      )}
-      </div>
+                  <Button type="submit" variant="contained" className="end-button" disabled={!isTab2Valid}>
+                    Start Training
+                  </Button>
+                </div>
+              </form>
+            </Box>
+          )}
+          </div>
       </div>
     </Box>
   );
