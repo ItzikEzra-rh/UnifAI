@@ -176,18 +176,18 @@ const ProjectForm: React.FC = () => {
               Git Form
             </CustomStepLabel>
             <StepContent>
-            <div className="form-section">
-                  <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath') || ''} 
-                          triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked} loading={gitLoading} setLoading={setGitLoading} />
-                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
-                    <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
-                      Back
-                    </Button>
-                    <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isSecondTabValid || gitLoading} style={{ width: '5%', float: 'right',  }}>
-                      Next
-                    </Button>
-                  </div>
+              <div className="form-section">
+                <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath') || ''} 
+                        triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked} loading={gitLoading} setLoading={setGitLoading} />
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
+                  <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
+                    Back
+                  </Button>
+                  <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isSecondTabValid || gitLoading} style={{ width: '5%', float: 'right',  }}>
+                    Next
+                  </Button>
                 </div>
+              </div>
             </StepContent>
           </Step>
           <Step>
@@ -195,26 +195,26 @@ const ProjectForm: React.FC = () => {
               Dataset Form
             </CustomStepLabel>
             <StepContent>
-            <form onSubmit={handleSubmit(onSubmit)} className="form-section">
-                  <FormField name="numberOfTests" label="Number of Tests" type="number" control={control} errors={errors} disabled={true} />
-                  <FormDropdown name="expandDatasetTo" label="Expand Dataset To" control={control} errors={errors} options={['5x', '10x', '25x', '50x', '100x']} />
-                  <FormCheckbox name="datasetGradingUpgrade" label="Dataset Quality Upgrade" control={control} errors={errors} />
-                  <FormFileUpload name="parserFile" label="Upload Parser File" control={control} errors={errors} onFileUpload={handleFileUpload} />
-                  {uploadedCode && (
-                      <div className="code-visualizer">
-                          <SyntaxHighlighter language="python" style={github}>
-                              {uploadedCode}
-                          </SyntaxHighlighter>
-                      </div>)}
-                  <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
-                    <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
-                      Back
-                    </Button>
-                    <Button type="submit" variant="contained" className="end-button" disabled={!isThirdTabValid} >
-                        Create Dataset
-                    </Button>
-                  </div>
-                </form>
+              <form onSubmit={handleSubmit(onSubmit)} className="form-section">
+                <FormField name="numberOfTests" label="Number of Tests" type="number" control={control} errors={errors} disabled={true} />
+                <FormDropdown name="expandDatasetTo" label="Expand Dataset To" control={control} errors={errors} options={['5x', '10x', '25x', '50x', '100x']} />
+                <FormCheckbox name="datasetGradingUpgrade" label="Dataset Quality Upgrade" control={control} errors={errors} />
+                <FormFileUpload name="parserFile" label="Upload Parser File" control={control} errors={errors} onFileUpload={handleFileUpload} />
+                {uploadedCode && (
+                    <div className="code-visualizer">
+                        <SyntaxHighlighter language="python" style={github}>
+                            {uploadedCode}
+                        </SyntaxHighlighter>
+                    </div>)}
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
+                  <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
+                    Back
+                  </Button>
+                  <Button type="submit" variant="contained" className="end-button" disabled={!isThirdTabValid} >
+                      Create Dataset
+                  </Button>
+                </div>
+              </form>
             </StepContent>
           </Step>
         </Stepper>

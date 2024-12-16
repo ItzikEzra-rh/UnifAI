@@ -103,11 +103,11 @@ const TrainingForm: React.FC = () => {
   return (
     <Box className="form-container">
       <Stepper activeStep={activeStep} orientation="vertical">
-          <Step>
-            <CustomStepLabel StepIconComponent={(props) => <CustomStepIcon {...props} />}>
-              Training Selection
-            </CustomStepLabel>
-            <StepContent>
+        <Step>
+          <CustomStepLabel StepIconComponent={(props) => <CustomStepIcon {...props} />}>
+            Training Selection
+          </CustomStepLabel>
+          <StepContent>
             <Box className="form-section">
               <FormDropdown
                 name="projectName"
@@ -138,13 +138,13 @@ const TrainingForm: React.FC = () => {
                 </Button>
               </div>
             </Box>
-            </StepContent>
-          </Step>
-          <Step>
-            <CustomStepLabel StepIconComponent={(props) => <CustomStepIcon {...props} />}>
-              Training Form
-            </CustomStepLabel>
-            <StepContent>
+          </StepContent>
+        </Step>
+        <Step>
+          <CustomStepLabel StepIconComponent={(props) => <CustomStepIcon {...props} />}>
+            Training Form
+          </CustomStepLabel>
+          <StepContent>
             <Box className="form-section">
               <form onSubmit={handleSubmit(onSubmit)}>
                 <FormField name="epochNumber" label="Epoch Number" type="number" control={control} errors={errors} />
@@ -160,10 +160,9 @@ const TrainingForm: React.FC = () => {
                 </div>
               </form>
             </Box>
-            </StepContent>
-          </Step>
-          
-        </Stepper>
+          </StepContent>
+        </Step>
+      </Stepper>
     </Box>
   );
 };

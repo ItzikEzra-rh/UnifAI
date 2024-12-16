@@ -7,13 +7,13 @@ export const CustomStepIcon: React.FC<StepIconProps> = ({ active, completed, ico
           width: 36,
           height: 36,
           borderRadius: '50%',
-          backgroundColor: active || completed ? '#f5504c' : '#e0e0e0', // Red for active/completed, grey otherwise
+          backgroundColor: active || completed ? '#f5504c' : '#e0e0e0',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'white', // Text color
+          color: 'white', 
           fontWeight: 'bold',
-          fontSize: '1rem', // Adjust font size for the number
+          fontSize: '1rem',
         }}
       >
         {icon}
@@ -21,11 +21,10 @@ export const CustomStepIcon: React.FC<StepIconProps> = ({ active, completed, ico
     );
   };
   
-  // Custom StepLabel styles
   export const CustomStepLabel = styled(StepLabel)({
     '& .MuiStepLabel-label': {
-      fontSize: '1.25rem', // Larger font size
-      color: 'black', // Black text
+      fontSize: '1.25rem',
+      color: 'black', 
       fontWeight: 'bold',
     },
   });
