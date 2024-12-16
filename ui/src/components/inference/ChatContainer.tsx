@@ -3,7 +3,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from '@chatscope/chat-ui-kit-react';
 import { useForm } from 'react-hook-form';
-import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography } from '@mui/material';
+import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography, Box } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
@@ -98,6 +98,7 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
   };
  
   return (
+    <Box style={{padding: '20px'}}>
     <form onSubmit={handleSubmit(handleModelSubmit)}>
       <FormDropdown
         name="project"
@@ -159,6 +160,7 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
         <Button className="end-button" type="submit" variant="contained" color="primary" disabled={!selectedModel || !selectedProject}> Load Model</Button>
       </div>
     </form>
+    </Box>
   );
 };
 
