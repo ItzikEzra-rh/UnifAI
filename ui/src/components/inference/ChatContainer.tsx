@@ -98,7 +98,6 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
   };
  
   return (
-    <div style={{display: 'flex', alignItems: 'center'}}>
     <form onSubmit={handleSubmit(handleModelSubmit)}>
       <FormDropdown
         name="project"
@@ -160,7 +159,6 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
         <Button className="end-button" type="submit" variant="contained" color="primary" disabled={!selectedModel || !selectedProject}> Load Model</Button>
       </div>
     </form>
-    </div>
   );
 };
 
@@ -643,8 +641,7 @@ const ChatComponent: React.FC = () => {
     <div className="chat-container-wrapper">
       {loadingModel ? (
         <LoadingOverlay />
-      // ) : selectedModel ? (
-      ) : false ? (
+      ) : selectedModel ? (
         <>
           {/* Custom section for displaying model information */}
           <div className="chat-top-buttons">
