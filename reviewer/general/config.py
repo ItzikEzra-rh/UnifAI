@@ -8,7 +8,7 @@ class Config:
     PASSED_FILE_PATH: Path = Path("data/passed.json")
     FAILED_FILE_PATH: Path = Path("data/failed.json")
     API_URL: str = "http://0.0.0.0:8000/v1/completions"
-    MODEL_NAME: str = "oodeh/mta-DeepCode-r32-a32-epoch20"
+    MODEL_NAME: str = "meta-llama/Llama-3.1-8B-Instruct"
     BATCH_SIZE_LIMIT: int = 8
     MAX_TOKENS: int = 2
     MAX_CONTEXT_LEN: int = 8192
