@@ -1,0 +1,379 @@
+{
+    "project_id": "kubevirt",
+    "project_repo": "https://github.com/kubevirt/kubevirt/tests",
+    "coding_language": "go",
+    "system_message": "You are an expert in Go and Ginkgo testing, skilled in creating modular, reusable tests and providing precise guidance. You understand complex Go test cases and can optimize function and module usage while adhering to project conventions.",
+    "context_template": "KubeVirt is an open-source project that extends Kubernetes to enable virtual machine (VM) workloads to run alongside containerized workloads. It allows organizations to manage and orchestrate both VMs and containers using a unified Kubernetes platform. Key points about KubeVirt:
+                        Purpose: It enables the management of legacy virtualized workloads on Kubernetes, bridging the gap between containerized and traditional virtual machines.
+                        Integration with Kubernetes: KubeVirt runs VMs as Kubernetes resources (custom resource definitions - CRDs), allowing you to manage VMs using Kubernetes-native tools like kubectl.
+                        Virtualization Layer: It leverages KVM (Kernel-based Virtual Machine) for virtualization and QEMU for VM emulation, orchestrated through Kubernetes.
+                        Unified Management: It provides developers and operators a single control plane for both VMs and containers, simplifying infrastructure management.
+                        Use Case: Useful for organizations that need to modernize their workloads gradually by running virtualized applications alongside cloud-native ones.
+                        KubeVirt is especially beneficial in hybrid scenarios where legacy VMs coexist with containerized workloads, enabling a smooth migration path to Kubernetes-based infrastructure.\n\n
+                        We are analyzing elements from the KubeVirt repository: https://github.com/kubevirt/kubevirt/tests.\nBelow is the element of type {element_type} with the name {name}:\n\n{file_location}\n\n{element_type}\n\n{tags}\n\n{package}\n\n{imports}\n\n{structs}\n\n{interfaces}\n\n{global_vars}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
+    "element_templates": {
+      "test": {
+        "Code Description and Understanding": {
+          "code_description_understanding_options": {
+            "questions": [
+              {
+                "question": "Provide a description of `{element_type}` `{name}` in the kubevirt project, explaining its purpose, structure, and each component's role in supporting test execution.",
+                "validation": "Is the description clear, accurate, and does it sufficiently explain the purpose, structure, and role of each component of `{element_type}` `{name}`?"
+              },
+              {
+                "question": "Describe the main functions of `{element_type}` `{name}` in the kubevirt project, including an overview of the element and detailing how each function contributes to test reliability.",
+                "validation": "Does the description accurately outline the main functions of `{element_type}` `{name}` and explain their contribution to test reliability?"
+              },
+              {
+                "question": "Explain the key dependencies of `{element_type}` `{name}` in the kubevirt project, describing the element itself and clarifying how these dependencies support integration within the testing framework.",
+                "validation": "Are the key dependencies of `{element_type}` `{name}` clearly identified and their integration within the testing framework explained effectively?"
+              },
+              {
+                "question": "Offer an in-depth description of `{element_type}` `{name}` in the kubevirt project, discussing how it connects with other tests or modules and how dependencies enable a modular test design.",
+                "validation": "Does the description provide sufficient detail on how `{element_type}` `{name}` connects with other tests or modules and leverages dependencies for modular design?"
+              },
+              {
+                "question": "Provide an overview of `{element_type}` `{name}` in the kubevirt project, describing its purpose and structure, with a focus on its individual components and how they enable effective test execution.",
+                "validation": "Is the overview comprehensive in describing the purpose, structure, and components of `{element_type}` `{name}`, and does it clarify how they support effective test execution?"
+              }
+            ]
+          },
+          "code_structs_interfaces_options": {
+            "questions": [
+              {
+                "question": "Describe the role of structs or interfaces in `{element_type}` `{name}` in the kubevirt project, focusing on how they contribute to the functionality and design of the code.",
+                "validation": "Does the description clearly explain the role of structs or interfaces and their contribution to functionality and design in `{element_type}` `{name}`?"
+              },
+              {
+                "question": "Explain how structs or interfaces in `{element_type}` `{name}` are used to promote modularity and reusability in the kubevirt project.",
+                "validation": "Does the explanation effectively show how structs or interfaces promote modularity and reusability in `{element_type}` `{name}`?"
+              },
+              {
+                "question": "Provide an example of how to use a struct or an interface from `{element_type}` `{name}` in the kubevirt project, including initialization or implementation and a practical use case.",
+                "validation": "Does the provided example demonstrate clear steps to initialize or implement a struct or interface and apply it in a practical scenario?"
+              },
+              {
+                "question": "Analyze the design of structs or interfaces in `{element_type}` `{name}` in the kubevirt project, identifying potential improvements to enhance maintainability or performance.",
+                "validation": "Does the analysis identify practical improvements to enhance the maintainability or performance of structs or interfaces in `{element_type}` `{name}`?"
+              }
+            ],
+            "condition": "{{ element.structs != '' or element.interfaces != ''  }}"
+          }
+        },
+        "Full Code Display and Explanation": {
+          "full_code_display_options": {
+            "questions": [
+              {
+                "question": "Show the complete code of `{element_type}` `{name}` from the kubevirt project, providing a detailed explanation of each section's role in supporting test execution. Do not include irrelevant imports.",
+                "validation": "Does the explanation thoroughly describe the role of each section in `{element_type}` `{name}` while displaying the full code and excluding irrelevant imports?"
+              },
+              {
+                "question": "Present the entire code of `{element_type}` `{name}` from the kubevirt project and analyze the purpose of each function, emphasizing reusability and modularity. Only include imports if they are directly relevant.",
+                "validation": "Does the analysis comprehensively address the purpose, reusability, and modularity of each function in `{element_type}` `{name}` while displaying the full code?"
+              },
+              {
+                "question": "Display the full code of `{element_type}` `{name}` from the kubevirt project, explaining the role of each function and logic path in achieving test objectives. Exclude imports if they are not part of the code.",
+                "validation": "Are the roles of each function and logic path in `{element_type}` `{name}` clearly explained in the context of achieving test objectives while presenting the full code?"
+              },
+              {
+                "question": "Provide the full source code of `{element_type}` `{name}` from the kubevirt project, offering insights into how each part contributes to the overall functionality and purpose. Irrelevant imports should be omitted.",
+                "validation": "Does the explanation provide clear insights into the contribution of each part of `{element_type}` `{name}` while showing the full code and omitting irrelevant imports?"
+              },
+              {
+                "question": "Showcase the entire code of `{element_type}` `{name}` from the kubevirt project and describe the functionality of each segment in the context of testing. Include imports only if they are necessary for understanding the code.",
+                "validation": "Does the explanation effectively describe the functionality of each segment in `{element_type}` `{name}` while displaying the full code and including only relevant imports?"
+              }
+            ]
+          }
+        },
+        "Test Coverage and Gaps Assessment": {
+          "test_coverage_gaps_options": {
+            "questions": [
+              {
+                "question": "Suggest additional scenarios in the kubevirt project that `{element_type}` `{name}` could validate to improve resilience and cover corner cases.",
+                "validation": ""
+              },
+              {
+                "question": "Discuss enhancements to `{element_type}` `{name}`'s test coverage in the kubevirt project by adding more dependencies or external conditions.",
+                "validation": "Are the enhancements to test coverage for `{element_type}` `{name}` well-explained, focusing on dependencies or external conditions?"
+              },
+              {
+                "question": "Propose additional test cases for `{element_type}` `{name}` in the kubevirt project to address edge cases and improve robustness.",
+                "validation": "Are the proposed test cases for `{element_type}` `{name}` comprehensive and effective in addressing edge cases and enhancing robustness?"
+              },
+              {
+                "question": "Identify new testing scenarios for `{element_type}` `{name}` in the kubevirt project that would strengthen its ability to handle uncommon or extreme conditions.",
+                "validation": "Are the identified testing scenarios for `{element_type}` `{name}` clearly outlined and focused on handling uncommon or extreme conditions?"
+              }
+            ]
+          }
+        },
+        "Code Snippet Reusability": {
+          "code_snippet_reusability_options": {
+            "questions": [
+              {
+                "question": "Demonstrate ways `{element_type}` `{name}` in the kubevirt project could use helper functions to streamline repeated logic in tests, optimizing efficiency and maintainability.",
+                "validation": "Are the demonstrated ways to use helper functions clear, and do they optimize efficiency and maintainability?"
+              },
+              {
+                "question": "Generate a code example showing how `{element_type}` `{name}` in the kubevirt project could implement reusable error handling and logging to optimize consistency across tests.",
+                "validation": "Does the generated code example demonstrate reusable error handling and logging effectively for consistency?"
+              },
+              {
+                "question": "Illustrate how `{element_type}` `{name}` in the kubevirt project could become more modular by extracting reusable code into shared functions, optimizing for modularity and maintainability.",
+                "validation": "Does the illustration provide clear steps to extract reusable code and enhance modularity and maintainability?"
+              }
+            ]
+          }
+        },
+        "Ginkgo Test Expansion and Modularity": {
+          "ginkgo_test_expansion_modularity_options": {
+            "questions": [
+              {
+                "question": "Suggest a refactoring approach for `{element_type}` `{name}` in the kubevirt project to expand and build new Ginkgo tests using `Describe` and `It` blocks, enhancing modularity and maintainability. Exclude imports if they are not necessary.",
+                "validation": "Does the suggested refactoring approach effectively enhance modularity and maintainability for `{element_type}` `{name}`?"
+              },
+              {
+                "question": "Identify specific sections in `{element_type}` `{name}` within the kubevirt project that can be expanded into standalone, reusable components for new Ginkgo tests, incorporating `Describe` and `It` blocks for broader test coverage. Only include imports if relevant.",
+                "validation": "Are the identified sections clear and their expansion into reusable components feasible for broader test coverage?"
+              },
+              {
+                "question": "Provide a Ginkgo `Describe` and `It` block template derived from `{element_type}` `{name}` in the kubevirt project to support new test scenarios and modular expansion. Do not include imports if they are not needed.",
+                "validation": "Does the provided Ginkgo block template effectively support new test scenarios and modular expansion?"
+              },
+              {
+                "question": "Create a Ginkgo test template using `Describe` and `It` blocks and table-driven tests that build on `{element_type}` `{name}` in the kubevirt project, optimizing for modularity and covering a range of test scenarios. Exclude imports if they are not required.",
+                "validation": "Does the created test template effectively optimize modularity and cover a range of test scenarios?"
+              }
+            ]
+          }
+        }
+      },
+      "test case": {
+        "Project Understanding and Test Case Mapping": {
+          "test_case_mapping_options": {
+            "questions": [
+              {
+                "question": "Provide an overview of `{element_type}` `{name}` in the kubevirt project, detailing its dependencies and how they influence its execution as a test case.",
+                "validation": "Are the dependencies and their influence on `{element_type}` `{name}` clearly outlined in the provided overview?"
+              },
+              {
+                "question": "Explain how `{element_type}` `{name}` functions as a test case in the kubevirt project, highlighting its interactions with other functions and its support for the overall test suite.",
+                "validation": "Does the explanation effectively highlight the interactions and role of `{element_type}` `{name}` within the overall test suite?"
+              },
+              {
+                "question": "Detail the specific scenarios `{element_type}` `{name}` is designed to validate within the kubevirt project, describing how it achieves its testing objectives.",
+                "validation": "Are the specific scenarios and testing objectives of `{element_type}` `{name}` adequately detailed and clear?"
+              },
+              {
+                "question": "Describe the structure of `{element_type}` `{name}` in the kubevirt project, focusing on how it operates as a test case and interacts with related functions or modules.",
+                "validation": "Does the description of `{element_type}` `{name}`'s structure clarify how it operates as a test case and interacts with other modules?"
+              }
+            ]
+          }
+        },
+        "Full Code Display and Explanation": {
+          "full_code_display_options": {
+            "questions": [
+              {
+                "question": "Show the full code of `{element_type}` `{name}` in the kubevirt project, explaining each section's role in supporting test execution. Exclude imports if they are not included in the full code.",
+                "validation": "Does the full code of `{element_type}` `{name}` appear, and is each section's role in supporting test execution explained while excluding unnecessary imports?"
+              },
+              {
+                "question": "Detail each function in the full code of `{element_type}` `{name}` in the kubevirt project, displaying the full code and highlighting dependencies along with their significance in the project. Do not include imports if they are absent.",
+                "validation": "Is the full code of `{element_type}` `{name}` provided, with each function detailed and dependencies highlighted along with their significance?"
+              },
+              {
+                "question": "Present the full code of `{element_type}` `{name}` and analyze the purpose of each function within the kubevirt project, focusing on reusability and modularity. Only display imports if they are relevant.",
+                "validation": "Is the full code of `{element_type}` `{name}` presented, and is the purpose of each function analyzed with a focus on reusability and modularity while including only relevant imports?"
+              },
+              {
+                "question": "Display the full code of `{element_type}` `{name}` in the kubevirt project, explaining each function and logic path's role in achieving test objectives. If there are no imports, omit them from the full code display.",
+                "validation": "Is the full code of `{element_type}` `{name}` displayed, and is each function and logic path's role in achieving test objectives clearly explained while omitting unnecessary imports?"
+              }
+            ]
+          },
+          "code_structs_interfaces_options": {
+            "questions": [
+              {
+                "question": "Describe the role of structs or interfaces in `{element_type}` `{name}` in the kubevirt project, focusing on how they contribute to the functionality and design of the code.",
+                "validation": "Does the description clearly explain the role of structs or interfaces and their contribution to functionality and design in `{element_type}` `{name}`?"
+              },
+              {
+                "question": "Explain how structs or interfaces in `{element_type}` `{name}` are used to promote modularity and reusability in the kubevirt project.",
+                "validation": "Does the explanation effectively show how structs or interfaces promote modularity and reusability in `{element_type}` `{name}`?"
+              },
+              {
+                "question": "Provide an example of how to use a struct or an interface from `{element_type}` `{name}` in the kubevirt project, including initialization or implementation and a practical use case.",
+                "validation": "Does the provided example demonstrate clear steps to initialize or implement a struct or interface and apply it in a practical scenario?"
+              },
+              {
+                "question": "Analyze the design of structs or interfaces in `{element_type}` `{name}` in the kubevirt project, identifying potential improvements to enhance maintainability or performance.",
+                "validation": "Does the analysis identify practical improvements to enhance the maintainability or performance of structs or interfaces in `{element_type}` `{name}`?"
+              }
+            ],
+            "condition": "{{ element.structs != '' or element.interfaces != ''  }}"
+          }
+        },
+        "Ginkgo Test Case Expansion and Reusability": {
+          "ginkgo_test_expansion_modularity_options": {
+            "questions": [
+              {
+                "question": "Suggest a refactoring approach for `{element_type}` `{name}` in the kubevirt project to expand and build new Ginkgo tests using `Describe` and `It` blocks, enhancing modularity and maintainability. Exclude imports if they are not necessary.",
+                "validation": "Does the suggested refactoring approach effectively enhance modularity and maintainability for `{element_type}` `{name}`?"
+              },
+              {
+                "question": "Identify specific sections in `{element_type}` `{name}` within the kubevirt project that can be expanded into standalone, reusable components for new Ginkgo tests, incorporating `Describe` and `It` blocks for broader test coverage. Only include imports if relevant.",
+                "validation": "Are the identified sections clear and their expansion into reusable components feasible for broader test coverage?"
+              },
+              {
+                "question": "Provide a Ginkgo `Describe` and `It` block template derived from `{element_type}` `{name}` in the kubevirt project to support new test scenarios and modular expansion. Do not include imports if they are not needed.",
+                "validation": "Does the provided Ginkgo block template effectively support new test scenarios and modular expansion?"
+              },
+              {
+                "question": "Create a Ginkgo test template using `Describe` and `It` blocks and table-driven tests that build on `{element_type}` `{name}` in the kubevirt project, optimizing for modularity and covering a range of test scenarios. Exclude imports if they are not required.",
+                "validation": "Does the created test template effectively optimize modularity and cover a range of test scenarios?"
+              }
+            ]
+          }
+        }
+      },
+      "function": {
+        "Function Understanding and code description": {
+          "function_understanding_options": {
+            "questions": [
+              {
+                "question": "Describe the current role and purpose of `{element_type}` `{name}` in the kubevirt project. Additionally, provide a code snippet demonstrating how to use this function, including importing it from the correct file location.",
+                "validation": "Does the description clearly outline the current role and purpose of `{element_type}` `{name}`, and is the provided code snippet accurate in demonstrating its usage with the correct import?"
+              },
+              {
+                "question": "Provide an explanation of how `{element_type}` `{name}` operates within the kubevirt project, detailing its primary responsibilities and function in the existing setup. Include a code snippet showing how to use the function with the correct file location for imports.",
+                "validation": "Is the explanation of `{element_type}` `{name}`'s operation detailed and clear, covering its primary responsibilities and function in the setup, and is the code snippet accurate and practical with the correct import?"
+              },
+              {
+                "question": "Explain the functionality and purpose of `{element_type}` `{name}` within the kubevirt project. Include a code snippet that demonstrates how to correctly use this function, including importing it from the correct file location.",
+                "validation": "Does the explanation clearly describe the functionality and purpose of `{element_type}` `{name}` and provide an accurate code snippet with the correct file import?"
+              },
+              {
+                "question": "Detail the purpose and current usage of `{element_type}` `{name}` in the kubevirt project. Provide a code snippet that accurately illustrates how to use this function, including importing it from the correct file location.",
+                "validation": "Is the purpose and usage of `{element_type}` `{name}` described effectively, and does the code snippet demonstrate its use accurately with the correct import path?"
+              }
+            ]
+          },
+          "full_code_display_options": {
+            "questions": [
+              {
+                "question": "Present the full code of `{element_type}` `{name}` in the kubevirt project, displaying each section and explaining its purpose. Exclude imports if they are not included in the code.",
+                "validation": "Is the full code of `{element_type}` `{name}` displayed clearly, with each section's purpose explained effectively and unnecessary imports excluded?"
+              },
+              {
+                "question": "Display the full code of `{element_type}` `{name}` in the kubevirt project and analyze its structure, highlighting key sections that enhance modularity. Only show imports if they are relevant.",
+                "validation": "Does the analysis highlight key sections of the full code in `{element_type}` `{name}` that enhance modularity, and are relevant imports included?"
+              },
+              {
+                "question": "Show the full code of `{element_type}` `{name}` in the kubevirt project, discussing each part's role and emphasizing its modular and reusable design. Do not include imports if they are not part of the code.",
+                "validation": "Is the role of each part of the full code of `{element_type}` `{name}` discussed clearly, with emphasis on modular and reusable design?"
+              },
+              {
+                "question": "Provide the full code for `{element_type}` `{name}` in the kubevirt project, explaining how each function contributes to the overall functionality. Exclude imports if they are unnecessary.",
+                "validation": "Does the explanation clarify how each function in the full code of `{element_type}` `{name}` contributes to the overall functionality while excluding unnecessary imports?"
+              },
+              {
+                "question": "Display and review the full code of `{element_type}` `{name}` in the kubevirt project, identifying any modular design elements. Only include imports if they are present in the code.",
+                "validation": "Are modular design elements in the full code of `{element_type}` `{name}` identified clearly in the review, and are relevant imports included?"
+              }
+            ]
+          },
+          "code_structs_interfaces_options": {
+            "questions": [
+              {
+                "question": "Describe the role of structs or interfaces in `{element_type}` `{name}` in the kubevirt project, focusing on how they contribute to the functionality and design of the code.",
+                "validation": "Does the description clearly explain the role of structs or interfaces and their contribution to functionality and design in `{element_type}` `{name}`?"
+              },
+              {
+                "question": "Explain how structs or interfaces in `{element_type}` `{name}` are used to promote modularity and reusability in the kubevirt project.",
+                "validation": "Does the explanation effectively show how structs or interfaces promote modularity and reusability in `{element_type}` `{name}`?"
+              },
+              {
+                "question": "Provide an example of how to use a struct or an interface from `{element_type}` `{name}` in the kubevirt project, including initialization or implementation and a practical use case.",
+                "validation": "Does the provided example demonstrate clear steps to initialize or implement a struct or interface and apply it in a practical scenario?"
+              },
+              {
+                "question": "Analyze the design of structs or interfaces in `{element_type}` `{name}` in the kubevirt project, identifying potential improvements to enhance maintainability or performance.",
+                "validation": "Does the analysis identify practical improvements to enhance the maintainability or performance of structs or interfaces in `{element_type}` `{name}`?"
+              }
+            ],
+            "condition": "{{ element.structs != '' or element.interfaces != ''  }}"
+          }
+        },
+        "Improving Functionality and Modular Reusability": {
+          "function_reusability_options": {
+            "questions": [
+              {
+                "question": "Suggest improvements for modularity in `{element_type}` `{name}` within the kubevirt project by incorporating shared utilities, and provide a code snippet showing how to use this function by importing it from the correct file location.",
+                "validation": "Are the suggested improvements for modularity in `{element_type}` `{name}` practical, focused on incorporating shared utilities, and supported by a clear code snippet demonstrating its usage and correct import?"
+              },
+              {
+                "question": "Identify ways to extend `{element_type}` `{name}` in the kubevirt project for handling new conditions efficiently, and provide a code snippet demonstrating how to use the function with the correct file location for imports.",
+                "validation": "Are the identified ways to extend `{element_type}` `{name}` practical, focused on efficiently handling new conditions, and accompanied by a code snippet showing correct usage and import?"
+              },
+              {
+                "question": "Recommend refactoring opportunities in `{element_type}` `{name}` within the kubevirt project for reusability, and include a code snippet that demonstrates its usage by importing it from the correct file location.",
+                "validation": "Are the recommended refactoring opportunities for `{element_type}` `{name}` clear, aligned with reusability, and supported by a code snippet showing proper usage and import?"
+              },
+              {
+                "question": "Propose techniques to simplify `{element_type}` `{name}` in the kubevirt project by breaking down complex functions into smaller, reusable components, and provide a code snippet demonstrating its usage with the correct file location for imports.",
+                "validation": "Are the proposed techniques for simplifying `{element_type}` `{name}` clear, focused on breaking down complex functions into reusable components, and supported by a code snippet showing proper usage and import?"
+              }
+            ]
+          }
+        }
+      },
+      "File": {
+        "File Role, Structure, and Code Snippets": {
+          "file_role_structure_snippet_options": {
+            "questions": [
+              {
+                "question": "Describe the purpose of `{element_type}` `{name}` in the kubevirt project, detailing how it organizes key functions to support the project’s modular structure.",
+                "validation": "Does the description clearly detail the purpose of `{element_type}` `{name}` and how it organizes key functions to support modularity?"
+              },
+              {
+                "question": "Explain the `{element_type}` `{name}` within the kubevirt project, discussing its role in maintaining modularity and testability. Include a Go code snippet that highlights key functions.",
+                "validation": "Does the explanation of `{element_type}` `{name}` effectively discuss its role in maintaining modularity and testability, and is the provided code snippet relevant?"
+              },
+              {
+                "question": "Provide a Go code snippet that showcases the main functions in `{element_type}` `{name}`, illustrating its responsibilities in the kubevirt project. Add comments to describe each function’s role in supporting modularity.",
+                "validation": "Does the provided code snippet clearly showcase the main functions and include meaningful comments on their roles in supporting modularity?"
+              },
+              {
+                "question": "Generate a code snippet with sample usage and setup for `{element_type}` `{name}`, demonstrating essential functions and interactions with other modules in the kubevirt project, with comments that explain the structure and purpose of each component.",
+                "validation": "Is the generated code snippet clear in demonstrating essential functions and interactions, with comments effectively explaining the structure and purpose?"
+              }
+            ]
+          }
+        },
+        "Modularity, Refactoring, and Optimization": {
+          "file_modularity_refactoring_optimization_options": {
+            "questions": [
+              {
+                "question": "Suggest ways to refactor and optimize `{element_type}` `{name}` in the kubevirt project to improve modularity, maintainability, and performance.",
+                "validation": "Are the suggested ways to refactor and optimize `{element_type}` `{name}` practical and aligned with improving modularity, maintainability, and performance?"
+              },
+              {
+                "question": "Identify specific functions or blocks in `{element_type}` `{name}` that could be modularized into separate components, making them reusable and easier to maintain within the kubevirt project.",
+                "validation": "Are the identified functions or blocks for modularization practical and well-suited for reuse and easier maintenance?"
+              },
+              {
+                "question": "Discuss opportunities to enhance readability, simplify complex sections, and optimize performance within `{element_type}` `{name}` in the kubevirt project.",
+                "validation": "Are the opportunities to enhance readability, simplify complexity, and optimize performance in `{element_type}` `{name}` well-identified and actionable?"
+              },
+              {
+                "question": "Recommend restructuring `{element_type}` `{name}` in the kubevirt project to reduce code duplication and increase efficiency across multiple components.",
+                "validation": "Are the restructuring recommendations for `{element_type}` `{name}` practical for reducing code duplication and increasing efficiency?"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
