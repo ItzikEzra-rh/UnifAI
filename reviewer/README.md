@@ -25,3 +25,11 @@ podman run --name celery_worker --gpus all --net=host \
   reviewer-service reviewer_pass_fail
 
 ```
+
+# env Params needed for reviewer
+```
+REVIEWER_MODEL_HF_ID
+REVIEWER_MAX_GENERATION_LENGTH
+RABBITMQ_PORT
+MONGODB_PORT
+```

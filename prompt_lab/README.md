@@ -110,3 +110,23 @@ podman run -d --name promptlab_handler --gpus all --net=host \
   promptlab-service prompt_submiter
 
 ```
+
+
+# config params that is needed when running the containers:
+
+```
+INPUT_JSON_PATH
+OUTPUT_DATA_DIR_PATH
+PROMPT_LAB_MODEL_HF_ID
+PROMPT_LAB_MAX_GENERATION_LENGTH
+PROMPT_LAB_MAX_CONTEXT_LENGTH
+BATCH_SIZE
+QUEUE_TARGET_SIZE
+RABBITMQ_PORT
+RABBITMQ_IP
+MONGODB_PORT
+MONGODB_IP
+TEMPLATE_PATH
+TEMPLATE_AGENT
+TEMPLATE_TYPE
+```
