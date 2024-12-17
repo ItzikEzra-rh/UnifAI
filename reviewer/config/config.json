@@ -5,7 +5,7 @@
     "api_url": "http://0.0.0.0:8000/v1/completions",
     "max_generation_length": ${REVIEWER_MAX_GENERATION_LENGTH},
     "max_context_length": ${REVIEWER_MAX_CONTEXT_LENGTH},
-    "batch_size": 8
+    "batch_size": ${REVIEWER_BATCH_SIZE}
   },
   "rabbitmq": {
     "port": ${RABBITMQ_PORT},

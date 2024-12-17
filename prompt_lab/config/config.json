@@ -14,7 +14,7 @@
     "max_context_length": ${PROMPT_LAB_MAX_CONTEXT_LENGTH}
   },
   "prompt_lab": {
-    "batch_size": ${BATCH_SIZE},
+    "batch_size": ${PROMPT_LAB_BATCH_SIZE},
     "queues": {
       "fetch_prompts_queue": {
         "target_size": ${QUEUE_TARGET_SIZE},
@@ -38,7 +38,7 @@
     "url": "mongodb://${MONGODB_IP}:{port}"
   },
   "templates": {
-    "path": "${TEMPLATE_PATH}",
+    "path": "${TEMPLATE_NAME}",
     "dir_path": "projects_templates/",
     "agent": "${TEMPLATE_AGENT}",
     "type": "${TEMPLATE_TYPE}",

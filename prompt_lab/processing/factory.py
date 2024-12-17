@@ -15,11 +15,10 @@ class DataProcessorFactory:
         self.configure_repository = FileDataRepository.configure_repository()
 
     def create(self) -> DataProcessor:
-        project_config = self.config.get("templates.path") or os.path.join(
-            self.config.get("templates.dir_path"),
-            self.config.get("templates.agent"),
-            f'{self.config.get("templates.type")}.json'
-        )
+        project_config = os.path.join(self.config.get("templates.dir_path"),
+                                      self.config.get("templates.agent"),
+                                      f'{self.config.get("templates.type")}.json') if not self.config.get(
+            "templates.path") else self.config.get("templates.path")
         io_repository = self.configure_repository
         project_config = load_json_config(project_config)
 
