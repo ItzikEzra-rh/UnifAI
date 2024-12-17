@@ -43,10 +43,10 @@ RUN echo '#!/bin/bash' > /app/start-service.sh && \
     echo '  "prompt_submiter")' >> /app/start-service.sh && \
     echo '    python3 main.py' >> /app/start-service.sh && \
     echo '    ;;' >> /app/start-service.sh && \
-    echo '  *)' >> /app/start-service.sh && \
     echo '  "bash")' >> /app/start-service.sh && \
     echo '    bash' >> /app/start-service.sh && \
     echo '    ;;' >> /app/start-service.sh && \
+    echo '  *)' >> /app/start-service.sh && \
     echo '    echo "Please specify service: prompt_processor, prompt_submiter or prompt_dispatcher"' >> /app/start-service.sh && \
     echo '    exit 1' >> /app/start-service.sh && \
     echo '    ;;' >> /app/start-service.sh && \
