@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Button, CircularProgress } from '@mui/material';
+import { Button, CircularProgress, IconButton } from '@mui/material';
 import axios from '../../http/axiosConfig';
 import CheckboxTree from 'react-checkbox-tree';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import CollapseIcon from '@mui/icons-material/Remove'; // Replace with appropriate icon
 import ExpandIcon from '@mui/icons-material/Add'; // Replace with appropriate icon
+import VisibilityIcon from '@mui/icons-material/Visibility'; // Replace with appropriate icon
 import "./GitTree.css";
 
 interface PropTypes {
@@ -34,6 +35,21 @@ export function stringContainsSpace(item: string) {
     return /\s/.test(item)
 }
 
+const LabelTest = ( value: any ) => {
+  const handleClick = () => {
+    console.log(value);
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      <IconButton onClick={handleClick} title="View">
+        <VisibilityIcon />
+      </IconButton>
+      <span>{value['value']}</span>
+    </div>
+  );
+};
+
 /**
  * create an hierarchical tree object which present the files on stash (paths)
  * for each file checking if he already in database(dbList) if so he is disabled
@@ -56,7 +72,7 @@ export function buildTree(paths: string[][], previousPath: string[] | string, db
           item = {
               name: name ,
               value: isContainsSpace ? fileFullPath + "_disabled" : fileFullPath,
-              label: value,
+              label: <LabelTest value={value} />,
               children: [],
               path: fileFullPath,
               disabled: isPathInDb(dbList, fileFullPath) || stringContainsSpace(name),
