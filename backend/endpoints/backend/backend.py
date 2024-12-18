@@ -5,7 +5,7 @@ from flask import jsonify, Response
 from webargs import fields
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
-from providers.backend import list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
+from providers.backend import get_test_content_from_gitlab, list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
                               insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating
 
 backend_bp = Blueprint("backend", __name__)
@@ -32,6 +32,26 @@ def get_test_list_from_gitlab(repo_url, repo_auth_key, repo_folder_path, branch)
     """
     list_of_files = list_of_files_from_gitlab(repo_url, repo_auth_key, repo_folder_path, branch)
     return json_response({"result": list_of_files})
+
+@backend_bp.route("/file-details", methods=["GET"])
+@from_query({"repo_url":         fields.Str(required=True, data_key="gitUrl"),
+             "repo_auth_key":    fields.Str(required=True, data_key="gitCredentialKey"),
+             "repo_folder_path": fields.Str(required=True, data_key="gitFolderPath"),
+             "branch":           fields.Str(missing='dev', data_key="gitBranchName"),
+             "test_path":        fields.Str(required=True, data_key="testPath")})
+def get_test_details(repo_url, repo_auth_key, repo_folder_path, branch, test_path):
+    """Fetch details for a specific test file from GitLab.
+
+    :param str repo_url: Git repository URL
+    :param str repo_auth_key: Authentication key for GitLab
+    :param str repo_folder_path: Folder path in the Git repository
+    :param str branch: Branch name
+    :param str test_path: Path of the test file
+    :return: Content of the test file
+    """
+    test_content = get_test_content_from_gitlab(repo_url, repo_auth_key, branch, test_path)
+    return json_response({"result": {"path": test_path, "content": test_content}})
+
 
 @backend_bp.route("/forms", methods=["POST"])
 @from_body({

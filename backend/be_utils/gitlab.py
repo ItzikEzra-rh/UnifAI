@@ -87,3 +87,18 @@ class GitlabAPI:
             # Extract the timestamp of the last commit
             return data[0]["committed_date"]
         return
+    
+    def get_file_content(self, file_path, branch):
+        """Fetch the content of a file from GitLab.
+
+        :param str file_path: Path of the file
+        :param str branch: Branch name
+        :return: File content as a string
+        """
+        url = f"{self.browse_url}/repository/files/{file_path}?ref={branch}&private_token={self.private_token}"
+        data, response = self._get(url)
+        if response.ok and "content" in data:
+            import base64
+            # Decode the base64-encoded content returned by GitLab
+            return base64.b64decode(data["content"]).decode("utf-8")
+        raise ValueError(f"Unable to fetch content for file: {file_path}")

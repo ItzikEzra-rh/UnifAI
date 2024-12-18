@@ -32,6 +32,19 @@ def list_of_files_from_gitlab(repo_url, repo_auth_key, repo_folder_path, branch)
     file_list_gitlab = gitlab.list_files(repo_folder_path, branch)
     return get_directory_list(file_list_gitlab, [])
 
+def get_test_content_from_gitlab(repo_url, repo_auth_key, branch, test_path):
+    """Fetch test file content from GitLab.
+
+    :param str repo_url: Git repository URL
+    :param str repo_auth_key: Authentication key
+    :param str branch: Branch name
+    :param str test_path: Path of the test file
+    :return: File content as a string
+    """
+    gitlab = GitlabAPI(repo_url, repo_auth_key)
+    file_content = gitlab.get_file_content(test_path, branch)
+    return file_content
+
 @mongo
 def insert_new_form(project_name, training_name, git_url, git_credential_key, git_folder_path, git_branch_name, base_model_name,
                     tests_code_framework, number_of_tests, expand_dataset_to, dataset_grading_upgrade):
