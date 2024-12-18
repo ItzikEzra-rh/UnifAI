@@ -4,7 +4,7 @@ FROM registry.access.redhat.com/ubi9/ubi
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
 ENV HF_TOKEN="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"
-ENV GITHUB_TOKEN="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"
+ENV GITHUB_TOKEN="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"
 
 # Set working directory
 WORKDIR /app
