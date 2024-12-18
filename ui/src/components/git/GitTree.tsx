@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Button, CircularProgress, IconButton } from '@mui/material';
+import { Button, CircularProgress, IconButton, Modal } from '@mui/material';
 import axios from '../../http/axiosConfig';
 import CheckboxTree from 'react-checkbox-tree';
 import ButtonGroup from '@mui/material/ButtonGroup';
@@ -35,21 +35,6 @@ export function stringContainsSpace(item: string) {
     return /\s/.test(item)
 }
 
-const LabelTest = ( value: any ) => {
-  const handleClick = () => {
-    console.log(value);
-  };
-
-  return (
-    <div style={{ display: 'flex', alignItems: 'center' }}>
-      <IconButton onClick={handleClick} title="View">
-        <VisibilityIcon />
-      </IconButton>
-      <span>{value['value']}</span>
-    </div>
-  );
-};
-
 /**
  * create an hierarchical tree object which present the files on stash (paths)
  * for each file checking if he already in database(dbList) if so he is disabled
@@ -72,7 +57,7 @@ export function buildTree(paths: string[][], previousPath: string[] | string, db
           item = {
               name: name ,
               value: isContainsSpace ? fileFullPath + "_disabled" : fileFullPath,
-              label: <LabelTest value={value} />,
+              label: value,
               children: [],
               path: fileFullPath,
               disabled: isPathInDb(dbList, fileFullPath) || stringContainsSpace(name),
@@ -137,7 +122,10 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
       .catch(() => setLoading(false));
   }, [gitUrl, gitCredentialKey]);
 
-  const fetchTestDetails = (testPath: string) => {
+  const onClick = (node: any) => {
+    console.log(node)
+    const testPath = node.value
+    console.log(testPath)
     setLoading(true);
     axios.get('/api/backend/fileContent', {
       params: {
@@ -152,10 +140,10 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
       console.log(response)
       const content = response.data.result.content;
       console.log(content)
-      alert(`Test Content:\n${content}`);
+      console.log(`Test Content:\n${content}`);
     })
     .catch(() => {
-      alert("Failed to fetch test content.");
+      console.error("Failed to fetch test content.");
     })
     .finally(() => {
       setLoading(false);
@@ -183,12 +171,12 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
   const onCheck = (checked: string[]) => {
     setChecked(checked.filter(item => !isPathInDb(testsInDB, item)));
   
-    // Fetch the test content for the clicked file path
-    checked.forEach(item => {
-      if (!isPathInDb(testsInDB, item)) {
-        fetchTestDetails(item); // Call fetchTestDetails with the path of the clicked item
-      }
-    });
+    // // Fetch the test content for the clicked file path
+    // checked.forEach(item => {
+    //   if (!isPathInDb(testsInDB, item)) {
+    //     fetchTestDetails(item); // Call fetchTestDetails with the path of the clicked item
+    //   }
+    // });
   };
 
   
@@ -238,6 +226,21 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     }
   }, [triggerOpen]);
 
+  
+const LabelTest = ( value: any ) => {
+  const handleClick = () => {
+    console.log(value);
+  };
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center' }}>
+      <IconButton onClick={handleClick} title="View">
+        <VisibilityIcon />
+      </IconButton>
+    </div>
+  );
+};
+
   return (
     <>
         {loading ?
@@ -250,6 +253,8 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
               expanded={expanded}
               onCheck={onCheck} // Call the onCheck function
               onExpand={(expandedItems) => setExpanded(expandedItems)}
+              onClick={onClick}
+              icons={{leaf: <VisibilityIcon sx={{'size': 'small'}}/>}}
             />
 
             <div className="tests-selected">{checked.length} Tests Selected</div>
