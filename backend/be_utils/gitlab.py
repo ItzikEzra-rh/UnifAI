@@ -95,10 +95,22 @@ class GitlabAPI:
         :param str branch: Branch name
         :return: File content as a string
         """
-        url = f"{self.browse_url}/repository/files/{file_path}?ref={branch}&private_token={self.private_token}"
+        import urllib.parse
+        file_path = "/24.0/0011_cleanup_robot_and_nocleanup_resources.robot"
+        encoded_path = urllib.parse.quote(file_path)
+
+        url = f"{self.browse_url}/repository/files/{encoded_path}?ref={branch}&private_token={self.private_token}"
+        print(url)
         data, response = self._get(url)
+        
+        # Check if the response is successful and contains the content field
         if response.ok and "content" in data:
-            import base64
-            # Decode the base64-encoded content returned by GitLab
-            return base64.b64decode(data["content"]).decode("utf-8")
-        raise ValueError(f"Unable to fetch content for file: {file_path}")
+            try:
+                import base64
+                # Decode the base64 content and return it as a UTF-8 string
+                file_content = base64.b64decode(data["content"]).decode("utf-8")
+                return file_content
+            except Exception as e:
+                raise ValueError(f"Error decoding content: {e}")
+        else:
+            raise ValueError(f"Unable to fetch content for file: {file_path}. Response: {response.status_code}")

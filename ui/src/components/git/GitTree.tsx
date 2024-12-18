@@ -42,40 +42,45 @@ export function stringContainsSpace(item: string) {
  * @param previousPath
  * @param dbList
  */
-export function buildTree (paths: string[][], previousPath: string[] | string, dbList: {[key: string]: boolean}) {
-    const items: any[] = [];
-    paths.forEach(path => {
-        const name = path[0];
-        const value = path[0];
-        const rest = path.slice(1);
-        const isContainsSpace = stringContainsSpace(name);
-        let item = items.find( e => e.name === name);
-        if (item === undefined && value !== "") {
-            const fileFullPath = previousPath + "/" + value;
-            item = {
-                name: name ,
-                value: isContainsSpace ? fileFullPath + "_disabled" : fileFullPath,
-                label: value,
-                children: [],
-                path: fileFullPath,
-                disabled: isPathInDb(dbList, fileFullPath) || stringContainsSpace(name),
-                className: isContainsSpace ? "warning_space" : "",
-                title: isContainsSpace ? "Test name contains spaces, please remove any spaces from file name" : ""
-            };
-            items.push(item);
-        }
-        if (rest.length > 0) {
-            item.children.push(rest);
-        }
-    });
-    items.forEach(item  =>  {
-        item.children = buildTree(item.children, item.path, dbList);
-        if (item.children.length === 0) {
-            delete item["children"]
-        }
-    });
-    return items;
+export function buildTree(paths: string[][], previousPath: string[] | string, dbList: {[key: string]: boolean}) {
+  const items: any[] = [];
+  paths.forEach(path => {
+      const name = path[0];
+      const value = path[0];
+      const rest = path.slice(1);
+      const isContainsSpace = stringContainsSpace(name);
+      let item = items.find( e => e.name === name);
+      
+      if (item === undefined && value !== "") {
+          const fileFullPath = previousPath + "/" + value;
+          item = {
+              name: name ,
+              value: isContainsSpace ? fileFullPath + "_disabled" : fileFullPath,
+              label: value,
+              children: [],
+              path: fileFullPath,
+              disabled: isPathInDb(dbList, fileFullPath) || stringContainsSpace(name),
+              className: isContainsSpace ? "warning_space" : "",
+              title: isContainsSpace ? "Test name contains spaces, please remove any spaces from file name" : "",
+              hasEyeIcon: true // Add this field to show the eye icon
+          };
+          items.push(item);
+      }
+      
+      if (rest.length > 0) {
+          item.children.push(rest);
+      }
+  });
+  
+  items.forEach(item =>  {
+      item.children = buildTree(item.children, item.path, dbList);
+      if (item.children.length === 0) {
+          delete item["children"];
+      }
+  });
+  return items;
 }
+
 
 /**
  * check if node is in dbList, keys in dbList are stored without "/" prefix
@@ -116,6 +121,32 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
       .catch(() => setLoading(false));
   }, [gitUrl, gitCredentialKey]);
 
+  const fetchTestDetails = (testPath: string) => {
+    setLoading(true);
+    axios.get('/api/backend/fileContent', {
+      params: {
+        gitUrl,
+        gitCredentialKey,
+        gitFolderPath,
+        gitBranchName,
+        testPath
+      }
+    })
+    .then(response => {
+      console.log(response)
+      const content = response.data.result.content;
+      console.log(content)
+      alert(`Test Content:\n${content}`);
+    })
+    .catch(() => {
+      alert("Failed to fetch test content.");
+    })
+    .finally(() => {
+      setLoading(false);
+    });
+  };
+  
+
   const buildTreeWrapper = (testsList: TestItem[]) => {
     const paths: string[][] = [];
     const testsInDB: { [key: string]: boolean } = {};
@@ -135,7 +166,17 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
 
   const onCheck = (checked: string[]) => {
     setChecked(checked.filter(item => !isPathInDb(testsInDB, item)));
+  
+    // Fetch the test content for the clicked file path
+    checked.forEach(item => {
+      if (!isPathInDb(testsInDB, item)) {
+        fetchTestDetails(item); // Call fetchTestDetails with the path of the clicked item
+      }
+    });
   };
+
+  
+  
 
 //   const onResponse = (response: any) => {
 //     if (response.error) {
@@ -187,12 +228,14 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
         <CircularProgress /> :
         <>
             <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
-            <CheckboxTree nodes={nodes}
-                          checked={checked}
-                          expanded={expanded}
-                          onCheck={(checkedItems) => setChecked(checkedItems)}
-                          onExpand={(expandedItems) => setExpanded(expandedItems)}
+            <CheckboxTree
+              nodes={nodes}
+              checked={checked}
+              expanded={expanded}
+              onCheck={onCheck} // Call the onCheck function
+              onExpand={(expandedItems) => setExpanded(expandedItems)}
             />
+
             <div className="tests-selected">{checked.length} Tests Selected</div>
         </>}
     </>

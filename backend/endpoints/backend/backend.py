@@ -33,7 +33,7 @@ def get_test_list_from_gitlab(repo_url, repo_auth_key, repo_folder_path, branch)
     list_of_files = list_of_files_from_gitlab(repo_url, repo_auth_key, repo_folder_path, branch)
     return json_response({"result": list_of_files})
 
-@backend_bp.route("/file-details", methods=["GET"])
+@backend_bp.route("/fileContent", methods=["GET"])
 @from_query({"repo_url":         fields.Str(required=True, data_key="gitUrl"),
              "repo_auth_key":    fields.Str(required=True, data_key="gitCredentialKey"),
              "repo_folder_path": fields.Str(required=True, data_key="gitFolderPath"),
@@ -49,6 +49,7 @@ def get_test_details(repo_url, repo_auth_key, repo_folder_path, branch, test_pat
     :param str test_path: Path of the test file
     :return: Content of the test file
     """
+    
     test_content = get_test_content_from_gitlab(repo_url, repo_auth_key, branch, test_path)
     return json_response({"result": {"path": test_path, "content": test_content}})
 
