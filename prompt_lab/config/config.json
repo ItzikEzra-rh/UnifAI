@@ -38,7 +38,7 @@
     "url": "mongodb://${MONGODB_IP}:{port}"
   },
   "templates": {
-    "project_path": "projects_templates/cnv_template.json",
+    "project_path": "projects_templates/TAG/typescript.json",
     "usable_params": [
       "project_id",
       "project_repo",
