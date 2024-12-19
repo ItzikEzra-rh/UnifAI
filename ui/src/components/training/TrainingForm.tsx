@@ -124,16 +124,11 @@ const TrainingForm: React.FC = () => {
             options={data.map(dataset => dataset.name)}
             disabled={!watch('projectName')}
           />
-          <Button
-            type="button"
-            variant="contained"
-            className="end-button"
-            onClick={handleNextClick}
-            disabled={!isTab1Valid}
-            style={{ float: 'right', marginTop: '10px' }}
-          >
-            Next
-          </Button>
+          <div className="form-bottom-button">
+            <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isTab1Valid}>
+              Next
+            </Button>
+          </div>
         </Box>
       )}
 
@@ -143,15 +138,16 @@ const TrainingForm: React.FC = () => {
             <FormField name="epochNumber" label="Epoch Number" type="number" control={control} errors={errors} />
             <FormField name="saveSteps" label="Save Steps" type="number" control={control} errors={errors} />
             <FormField name="warmupSteps" label="Warmup Steps" type="number" control={control} errors={errors} />
-            <Button
-              type="submit"
-              variant="contained"
-              className="end-button"
-              disabled={!isTab2Valid}
-              style={{ float: 'right', marginTop: '10px' }}
-            >
-              Start Training
-            </Button>
+            <div className="form-bottom-button">
+              <Button
+                type="submit"
+                variant="contained"
+                className="end-button"
+                disabled={!isTab2Valid}
+              >
+                Start Training
+              </Button>
+            </div>
           </form>
         </Box>
       )}

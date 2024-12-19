@@ -96,7 +96,7 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
       }
     }
   };
-
+ 
   return (
     <form onSubmit={handleSubmit(handleModelSubmit)} className="form-section">
       <FormDropdown
@@ -130,7 +130,7 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
               <div>
                 <Stepper activeStep={activeStep} alternativeLabel nonLinear>
                   {steps.map((step, index) => (
-                    <Step key={index}>
+                    <Step key={index} className="custom-step">
                       <StepButton onClick={() => handleStepClick(index)}>
                         {step.label}
                       </StepButton>
@@ -155,7 +155,9 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
           )}
         </div>
       )}
-      <Button type="submit" variant="contained" color="primary" disabled={!selectedModel || !selectedProject} style={{ float: 'right', marginTop: '10px' }}> Load Model</Button>
+      <div className="form-bottom-button">
+        <Button className="end-button" type="submit" variant="contained" color="primary" disabled={!selectedModel || !selectedProject}> Load Model</Button>
+      </div>
     </form>
   );
 };

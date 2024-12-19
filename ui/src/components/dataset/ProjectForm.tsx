@@ -46,6 +46,7 @@ const ProjectForm: React.FC = () => {
     const [isFirstTabValid, setIsFirstTabValid] = useState(false);
     const [isSecondTabValid, setIsSecondTabValid] = useState(false);
     const [isThirdTabValid, setIsThirdTabValid] = useState(false);
+    const [gitLoading, setGitLoading] = useState(false);
     const [formSubmitted, setFormSubmitted] = useState(false);
 
     // Existing state for checked items
@@ -151,15 +152,17 @@ const ProjectForm: React.FC = () => {
                     <FormField name="gitFolderPath" label="Git Path To Fetch From" control={control} errors={errors} />
                     <FormDropdown name="baseModelName" label="Foundational Model Name" control={control} errors={errors} options={['Mistral', 'Llama', 'Granite']} />
                     <FormDropdown name="testsCodeFramework" label="Tests Code Framework" control={control} errors={errors} options={['Python', 'Robot', 'Go', 'Jmeter']} />
-                    <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isFirstTabValid} style={{ float: 'right', marginTop: '10px' }}>
-                        Next
-                    </Button>
+                    <div className="form-bottom-button">
+                      <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isFirstTabValid} style={{ width: '5%'}}>
+                          Next
+                      </Button>
+                    </div>
                     </form>
                 </TabPanel>
                 <TabPanel value={activeTab} index={1}>
                   <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath') || ''} 
-                          triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked}/>
-                  <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isSecondTabValid} style={{ float: 'right', marginTop: '10px' }}>
+                          triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked} loading={gitLoading} setLoading={setGitLoading} />
+                  <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isSecondTabValid || gitLoading} style={{ width: '5%', float: 'right',  }}>
                         Next
                   </Button>
                 </TabPanel>
@@ -176,9 +179,11 @@ const ProjectForm: React.FC = () => {
                             </SyntaxHighlighter>
                         </div>
                     )}
-                    <Button type="submit" variant="contained" className="end-button" disabled={!isThirdTabValid} style={{ float: 'right', marginTop: '10px' }}>
-                        Create Dataset
-                    </Button>
+                    <div className="form-bottom-button">
+                      <Button type="submit" variant="contained" className="end-button" disabled={!isThirdTabValid} >
+                          Create Dataset
+                      </Button>
+                    </div>
                     </form>
                 </TabPanel>
             </>)}

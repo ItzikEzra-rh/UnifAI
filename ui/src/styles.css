@@ -79,7 +79,7 @@ body, html, #root {
 .role-selection .MuiInputLabel-root {
   color: red;
   font-style:italic;
-  margin-top: 8px;
+  margin-top: 11px;
 }
 
 .role-selection .MuiInputLabel-root.Mui-focused {
@@ -122,6 +122,7 @@ body, html, #root {
 .end-button,
 .chat-top-buttons .end-button,
 .form-container .end-button,
+.form-section .end-button,
 .toolbar-buttons .end-button {
   background-color: red;
 }
@@ -129,6 +130,7 @@ body, html, #root {
 .end-button:hover,
 .chat-top-buttons .end-button:hover,
 .form-container .end-button:hover,
+.form-section .end-button:hover,
 .toolbar-buttons .end-button:hover {
   background-color: #bb0000;
 }
@@ -136,6 +138,7 @@ body, html, #root {
 .end-button:disabled,
 .chat-top-buttons .end-button:disabled,
 .form-container .end-button:disabled,
+.form-section .end-button:disabled,
 .toolbar-buttons .end-button:disabled {
   background-color: #9a9595;
 }
@@ -161,6 +164,9 @@ body, html, #root {
 
 .form-section {
   background-color: white;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
   padding: 20px;
   margin-top: 20px;
   border-radius: 5px;
@@ -200,6 +206,12 @@ body, html, #root {
 .error {
   color: red;
   font-size: 0.9em;
+}
+
+.form-bottom-button {
+  display: flex; 
+  justify-content: flex-end;
+  margin-top: 10px;
 }
 
 .button-group {
@@ -440,4 +452,24 @@ body, html, #root {
 
 .step-details-list li span {
   flex-grow: 1;
+}
+
+.custom-step .MuiStepLabel-root .Mui-completed {
+  color: red;
+}
+
+.custom-step .MuiStepLabel-label.Mui-completed.MuiStepLabel-alternativeLabel {
+  color: grey;
+}
+
+.custom-step .MuiStepLabel-root .Mui-active {
+  color: red;
+}
+
+.custom-step .MuiStepLabel-label.Mui-active.MuiStepLabel-alternativeLabel {
+  color: grey;
+}
+
+.custom-step .MuiStepLabel-root .Mui-active .MuiStepIcon-text {
+  fill: white;
 }
