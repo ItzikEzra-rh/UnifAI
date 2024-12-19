@@ -2,8 +2,8 @@ import React, { useEffect, useState, useRef } from 'react';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from '@chatscope/chat-ui-kit-react';
-import { useForm, Controller } from 'react-hook-form';
-import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography } from '@mui/material';
+import { useForm } from 'react-hook-form';
+import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography, Box } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
@@ -96,67 +96,71 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
       }
     }
   };
-
+ 
   return (
-    <form onSubmit={handleSubmit(handleModelSubmit)} className="form-section">
-      <FormDropdown
-        name="project"
-        label="Choose Project"
-        control={control}
-        errors={{}}
-        options={Array.from(new Set(models.map((model) => model.project)))}
-        onSelect={handleProjectSelection}
-      />
-      <FormDropdown
-        name="model"
-        label="Choose Model"
-        control={control}
-        errors={{}}
-        options={filteredModels.map((model) => model.trainingName)}
-        onSelect={handleModelSelection}
-      />
-      {selectedDropDownMenu && (
-        <div className="model-details" style={{ marginTop: '20px' }}>
-          <h4>Selected Model Details</h4>
-          {selectedDropDownMenu.project && <p>Project: {selectedDropDownMenu.project}</p>}
-          {selectedDropDownMenu.modelMaxSeqLen && <p>Context Length: {selectedDropDownMenu.modelMaxSeqLen}</p>}
-          {selectedDropDownMenu.modelName && <p>Model Name: {selectedDropDownMenu.modelName}</p>}
-          {selectedDropDownMenu.modelType && <p>Model Type: {selectedDropDownMenu.modelType}</p>}
-          {selectedDropDownMenu.checkpoint && <p>Checkpoint: {selectedDropDownMenu.checkpoint}</p>}
-          <br /><br />
-          {steps.length > 0 && (
-            <div className="finetune-steps">
-              <h4>Finetune Evolution</h4>
-              <div>
-                <Stepper activeStep={activeStep} alternativeLabel nonLinear>
-                  {steps.map((step, index) => (
-                    <Step key={index}>
-                      <StepButton onClick={() => handleStepClick(index)}>
-                        {step.label}
-                      </StepButton>
-                    </Step>
-                  ))}
-                </Stepper>
+    <Box style={{padding: '20px'}}>
+      <form onSubmit={handleSubmit(handleModelSubmit)}>
+        <FormDropdown
+          name="project"
+          label="Choose Project"
+          control={control}
+          errors={{}}
+          options={Array.from(new Set(models.map((model) => model.project)))}
+          onSelect={handleProjectSelection}
+        />
+        <FormDropdown
+          name="model"
+          label="Choose Model"
+          control={control}
+          errors={{}}
+          options={filteredModels.map((model) => model.trainingName)}
+          onSelect={handleModelSelection}
+        />
+        {selectedDropDownMenu && (
+          <div className="model-details" style={{ marginTop: '20px' }}>
+            <h4>Selected Model Details</h4>
+            {selectedDropDownMenu.project && <p>Project: {selectedDropDownMenu.project}</p>}
+            {selectedDropDownMenu.modelMaxSeqLen && <p>Context Length: {selectedDropDownMenu.modelMaxSeqLen}</p>}
+            {selectedDropDownMenu.modelName && <p>Model Name: {selectedDropDownMenu.modelName}</p>}
+            {selectedDropDownMenu.modelType && <p>Model Type: {selectedDropDownMenu.modelType}</p>}
+            {selectedDropDownMenu.checkpoint && <p>Checkpoint: {selectedDropDownMenu.checkpoint}</p>}
+            <br /><br />
+            {steps.length > 0 && (
+              <div className="finetune-steps">
+                <h4>Finetune Evolution</h4>
+                <div>
+                  <Stepper activeStep={activeStep} alternativeLabel nonLinear>
+                    {steps.map((step, index) => (
+                      <Step key={index} className="custom-step">
+                        <StepButton onClick={() => handleStepClick(index)}>
+                          {step.label}
+                        </StepButton>
+                      </Step>
+                    ))}
+                  </Stepper>
 
-                {activeStep !== null && steps[activeStep].details && (
-                  <div className="step-details-container">
-                    {/* <pre>{JSON.stringify(steps[activeStep].details, null, 2)}</pre> */}
-                    <ul className="step-details-list">
-                      {Object.entries(steps[activeStep].details).map(([key, value]) => (
-                        <li key={key}>
-                          <strong>{key}:</strong> {String(value)}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                  {activeStep !== null && steps[activeStep].details && (
+                    <div className="step-details-container">
+                      {/* <pre>{JSON.stringify(steps[activeStep].details, null, 2)}</pre> */}
+                      <ul className="step-details-list">
+                        {Object.entries(steps[activeStep].details).map(([key, value]) => (
+                          <li key={key}>
+                            <strong>{key}:</strong> {String(value)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+        )}
+        <div className="form-bottom-button">
+          <Button className="end-button" type="submit" variant="contained" color="primary" disabled={!selectedModel || !selectedProject}> Load Model</Button>
         </div>
-      )}
-      <Button type="submit" variant="contained" color="primary" disabled={!selectedModel || !selectedProject} style={{ float: 'right', marginTop: '10px' }}> Load Model</Button>
-    </form>
+      </form>
+    </Box>
   );
 };
 

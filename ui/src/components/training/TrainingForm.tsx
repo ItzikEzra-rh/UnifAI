@@ -4,8 +4,9 @@ import * as yup from 'yup';
 import { yupResolver } from '@hookform/resolvers/yup';
 import axios from '../../http/axiosConfig';
 import axiosLLM from '../../http/axiosLLMConfig'
-import { Box, Tabs, Tab, Button } from '@mui/material';
+import { Box, Button, Stepper, StepContent, Step } from '@mui/material';
 import { FormField, FormDropdown } from '../shared/FormFields';
+import { CustomStepIcon, CustomStepLabel } from '../shared/StepperIcons';
 
 type FormData = {
   projectName: string;
@@ -30,7 +31,7 @@ const schema = yup.object().shape({
 });
 
 const TrainingForm: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeStep, setActiveStep] = useState(0);
   const [forms, setForms] = useState<any[]>([]);
   const [data, setData] = useState<RepoFileData[]>([]);
   const [projects, setProjects] = useState<Set<string>>(new Set());
@@ -86,75 +87,82 @@ const TrainingForm: React.FC = () => {
   };
 
   const handleNextClick = () => {
-    setActiveTab(activeTab + 1);
+    setActiveStep(activeStep + 1);
+  };
+
+  const handleBackClick = () => {
+    if (activeStep > 0) {
+      setActiveStep((prev) => prev - 1);
+    }
   };
 
   const isTab1Valid = !!watch('projectName') && !!watch('trainingName') && !!watch('datasetName');
   const isTab2Valid = !!watch('epochNumber') && !!watch('saveSteps') && !!watch('warmupSteps');
 
+
   return (
     <Box className="form-container">
-      <Tabs value={activeTab} onChange={(_, newValue) => setActiveTab(newValue)} aria-label="form tabs" className="form-tabs">
-        <Tab label="Training Selection" />
-        <Tab label="Training Form" className={activeTab === 1 ? '' : 'disabled-tab'} />
-      </Tabs>
-
-      {activeTab === 0 && (
-        <Box className="form-section">
-          <FormDropdown
-            name="projectName"
-            label="Choose Project"
-            control={control}
-            errors={errors}
-            options={Array.from(projects)}
-          />
-          <FormDropdown
-            name="trainingName"
-            label="Choose Training Name"
-            control={control}
-            errors={errors}
-            options={trainingOptions}
-            disabled={!watch('projectName')}
-          />
-          <FormDropdown
-            name="datasetName"
-            label="Choose Dataset"
-            control={control}
-            errors={errors}
-            options={data.map(dataset => dataset.name)}
-            disabled={!watch('projectName')}
-          />
-          <Button
-            type="button"
-            variant="contained"
-            className="end-button"
-            onClick={handleNextClick}
-            disabled={!isTab1Valid}
-            style={{ float: 'right', marginTop: '10px' }}
-          >
-            Next
-          </Button>
-        </Box>
-      )}
-
-      {activeTab === 1 && (
-        <Box className="form-section">
-          <form onSubmit={handleSubmit(onSubmit)}>
-            <FormField name="epochNumber" label="Epoch Number" type="number" control={control} errors={errors} />
-            <FormField name="saveSteps" label="Save Steps" type="number" control={control} errors={errors} />
-            <FormField name="warmupSteps" label="Warmup Steps" type="number" control={control} errors={errors} />
-            <Button
-              type="submit"
-              variant="contained"
-              className="end-button"
-              disabled={!isTab2Valid}
-              style={{ float: 'right', marginTop: '10px' }}
-            >
-              Start Training
-            </Button>
-          </form>
-        </Box>
-      )}
+      <Stepper activeStep={activeStep} orientation="vertical">
+        <Step>
+          <CustomStepLabel StepIconComponent={(props) => <CustomStepIcon {...props} />}>
+            Training Selection
+          </CustomStepLabel>
+          <StepContent>
+            <Box className="form-section">
+              <FormDropdown
+                name="projectName"
+                label="Choose Project"
+                control={control}
+                errors={errors}
+                options={Array.from(projects)}
+              />
+              <FormDropdown
+                name="trainingName"
+                label="Choose Training Name"
+                control={control}
+                errors={errors}
+                options={trainingOptions}
+                disabled={!watch('projectName')}
+              />
+              <FormDropdown
+                name="datasetName"
+                label="Choose Dataset"
+                control={control}
+                errors={errors}
+                options={data.map(dataset => dataset.name)}
+                disabled={!watch('projectName')}
+              />
+              <div className="form-bottom-button">
+                <Button type="button" variant="contained" className="end-button" onClick={handleNextClick} disabled={!isTab1Valid}>
+                  Next
+                </Button>
+              </div>
+            </Box>
+          </StepContent>
+        </Step>
+        <Step>
+          <CustomStepLabel StepIconComponent={(props) => <CustomStepIcon {...props} />}>
+            Training Form
+          </CustomStepLabel>
+          <StepContent>
+            <Box className="form-section">
+              <form onSubmit={handleSubmit(onSubmit)}>
+                <FormField name="epochNumber" label="Epoch Number" type="number" control={control} errors={errors} />
+                <FormField name="saveSteps" label="Save Steps" type="number" control={control} errors={errors} />
+                <FormField name="warmupSteps" label="Warmup Steps" type="number" control={control} errors={errors} />
+                <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
+                  <Button type="button" variant="contained" className="end-button" onClick={handleBackClick} >
+                    Back
+                  </Button>
+                  <Button type="submit" variant="contained" className="end-button" disabled={!isTab2Valid}>
+                    Start Training
+                  </Button>
+                </div>
+              </form>
+            </Box>
+          </StepContent>
+        </Step>
+      </Stepper>
     </Box>
   );
 };

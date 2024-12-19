@@ -3,8 +3,8 @@ import { Button, CircularProgress } from '@mui/material';
 import axios from '../../http/axiosConfig';
 import CheckboxTree from 'react-checkbox-tree';
 import ButtonGroup from '@mui/material/ButtonGroup';
-import CollapseIcon from '@mui/icons-material/Remove'; // Replace with appropriate icon
-import ExpandIcon from '@mui/icons-material/Add'; // Replace with appropriate icon
+import CollapseIcon from '@mui/icons-material/Remove'; 
+import ExpandIcon from '@mui/icons-material/Add'; 
 import "./GitTree.css";
 
 interface PropTypes {
@@ -15,6 +15,8 @@ interface PropTypes {
   triggerOpen: boolean;
   checked: string[];
   setChecked: (checked: string[]) => void;
+  loading: boolean;
+  setLoading: (loading: boolean) => void;
 }
 
 interface TreeItem {
@@ -94,10 +96,9 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ c
     </ButtonGroup>
 );
 
-const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked }) => {
+const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked, loading, setLoading }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [checkedDB, setCheckedDB] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [nodes, setNodes] = useState<TreeItem[]>([]);
@@ -183,18 +184,20 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
 
   return (
     <>
-        {loading ?
-        <CircularProgress /> :
-        <>
-            <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
-            <CheckboxTree nodes={nodes}
-                          checked={checked}
-                          expanded={expanded}
-                          onCheck={(checkedItems) => setChecked(checkedItems)}
-                          onExpand={(expandedItems) => setExpanded(expandedItems)}
-            />
-            <div className="tests-selected">{checked.length} Tests Selected</div>
-        </>}
+      {loading ?
+      <div style={{ display: 'flex', justifyContent: 'center'}}>
+        <CircularProgress sx={{color: "red",}} />
+      </div> :
+      <div className="form-section">
+        <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
+        <CheckboxTree nodes={nodes}
+                      checked={checked}
+                      expanded={expanded}
+                      onCheck={(checkedItems) => setChecked(checkedItems)}
+                      onExpand={(expandedItems) => setExpanded(expandedItems)}
+        />
+        <div className="tests-selected">{checked.length} Tests Selected</div>
+      </div>}
     </>
   );
 };

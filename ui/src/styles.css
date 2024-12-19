@@ -39,8 +39,8 @@ body, html, #root {
 }
 
 .dropdown-buttons .MuiButton-root.selected {
-  border-top: solid red !important; /* Keep the red border */
-  background-color: black !important; /* Keep the background color */
+  border-top: solid red !important; 
+  background-color: black !important; 
 }
 
 .toolbar-buttons {
@@ -79,7 +79,7 @@ body, html, #root {
 .role-selection .MuiInputLabel-root {
   color: red;
   font-style:italic;
-  margin-top: 8px;
+  margin-top: 11px;
 }
 
 .role-selection .MuiInputLabel-root.Mui-focused {
@@ -112,16 +112,105 @@ body, html, #root {
 .form-container {
   display: flex;
   flex-direction: column;
+  justify-content: center;
   padding: 20px;
   background-color: #f9f9f9;
   border-radius: 5px;
-  width: 60%;
+  width: 80%;
   margin: 0 auto;
 }
+
+.progress-menu {
+  display: flex;
+  justify-content: center;
+  align-items: top;
+  margin-top: 20px;
+  width: 25%;
+}
+
+.progress-list {
+  list-style-type: none;
+  display: flex;
+  flex-direction: column; 
+  align-items: flex-start; 
+  padding: 0;
+  margin: 0;
+}
+
+.progress-item {
+  display: flex;
+  align-items: center; 
+  position: relative;
+}
+
+.circle {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background-color: #f9f9f9;
+  border: 3px solid #e0e0e0;
+  color: #e0e0e0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 14px;
+  font-weight: bold;
+  position: relative;
+  z-index: 1;
+  margin-bottom: 40px;
+}
+
+.label {
+  margin-left: 10px; 
+  font-size: 15px;
+  font-weight: bold;
+  color: black;
+  margin-bottom: 40px;
+}
+
+
+.line {
+  width: 2px; 
+  height: 50px; 
+  background-color: #e0e0e0;
+  position: absolute;
+  top: 30px; 
+  left: 17.5px;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+
+.progress-item.completed .circle {
+  background-color: #f5504c;
+  border-color: #f5504c;
+  color: white;
+}
+
+.progress-item.active .circle {
+  background-color: #f5504c;
+  border-color: #f5504c;
+  color: white;
+}
+
+.progress-item.active .line {
+  background: linear-gradient(to bottom, #f5504c 50%);
+}
+
+.progress-item.completed .line {
+  background-color: #f5504c;
+}
+
+.progress-item:last-child .line {
+  display: none;
+}
+
+
 
 .end-button,
 .chat-top-buttons .end-button,
 .form-container .end-button,
+.form-section .end-button,
+.form-bottom-button .end-button,
 .toolbar-buttons .end-button {
   background-color: red;
 }
@@ -129,6 +218,8 @@ body, html, #root {
 .end-button:hover,
 .chat-top-buttons .end-button:hover,
 .form-container .end-button:hover,
+.form-section .end-button:hover,
+.form-bottom-button .end-button:hover,
 .toolbar-buttons .end-button:hover {
   background-color: #bb0000;
 }
@@ -136,6 +227,8 @@ body, html, #root {
 .end-button:disabled,
 .chat-top-buttons .end-button:disabled,
 .form-container .end-button:disabled,
+.form-section .end-button:disabled,
+.form-bottom-button .end-button:disabled,
 .toolbar-buttons .end-button:disabled {
   background-color: #9a9595;
 }
@@ -161,10 +254,12 @@ body, html, #root {
 
 .form-section {
   background-color: white;
+  display: flex;
+  flex-direction: column;
   padding: 20px;
-  margin-top: 20px;
   border-radius: 5px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  width: 90%;  
 }
 
 .form-section.disabled {
@@ -200,6 +295,12 @@ body, html, #root {
 .error {
   color: red;
   font-size: 0.9em;
+}
+
+.form-bottom-button {
+  display: flex; 
+  justify-content: flex-end;
+  margin-top: 10px;
 }
 
 .button-group {
@@ -395,15 +496,14 @@ body, html, #root {
 }
 
 .MuiChartsLegend-root {
-  /* Adjust the size, margin, or positioning */
   display: flex; 
   justify-content: center;
   align-items: center;
-  gap: 10px; /* spacing between legend items */
+  gap: 10px; 
 }
 
 .MuiChartsLegend-column {
-  flex-direction: column; /* For vertical legends */
+  flex-direction: column; 
   margin: 10px 0;
 }
 
@@ -440,4 +540,24 @@ body, html, #root {
 
 .step-details-list li span {
   flex-grow: 1;
+}
+
+.custom-step .MuiStepLabel-root .Mui-completed {
+  color: red;
+}
+
+.custom-step .MuiStepLabel-label.Mui-completed.MuiStepLabel-alternativeLabel {
+  color: grey;
+}
+
+.custom-step .MuiStepLabel-root .Mui-active {
+  color: red;
+}
+
+.custom-step .MuiStepLabel-label.Mui-active.MuiStepLabel-alternativeLabel {
+  color: grey;
+}
+
+.custom-step .MuiStepLabel-root .Mui-active .MuiStepIcon-text {
+  fill: white;
 }
