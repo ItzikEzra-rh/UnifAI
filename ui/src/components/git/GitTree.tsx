@@ -16,6 +16,8 @@ interface PropTypes {
   triggerOpen: boolean;
   checked: string[];
   setChecked: (checked: string[]) => void;
+  loading: boolean;
+  setLoading: (loading: boolean) => void;
 }
 
 interface TreeItem {
@@ -100,10 +102,9 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ c
     </ButtonGroup>
 );
 
-const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked }) => {
+const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked, loading, setLoading }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState(false);
-  const [loading, setLoading] = useState(false);
   const [checkedDB, setCheckedDB] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<string[]>([]);
   const [nodes, setNodes] = useState<TreeItem[]>([]);
@@ -243,22 +244,20 @@ const LabelTest = ( value: any ) => {
 
   return (
     <>
-        {loading ?
-        <CircularProgress /> :
-        <>
-            <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
-            <CheckboxTree
-              nodes={nodes}
-              checked={checked}
-              expanded={expanded}
-              onCheck={onCheck} // Call the onCheck function
-              onExpand={(expandedItems) => setExpanded(expandedItems)}
-              onClick={onClick}
-              icons={{leaf: <VisibilityIcon sx={{'size': 'small'}}/>}}
-            />
-
-            <div className="tests-selected">{checked.length} Tests Selected</div>
-        </>}
+      {loading ?
+      <div style={{ display: 'flex', justifyContent: 'center'}}>
+        <CircularProgress sx={{color: "red",}} />
+      </div> :
+      <div className="form-section">
+        <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
+        <CheckboxTree nodes={nodes}
+                      checked={checked}
+                      expanded={expanded}
+                      onCheck={(checkedItems) => setChecked(checkedItems)}
+                      onExpand={(expandedItems) => setExpanded(expandedItems)}
+        />
+        <div className="tests-selected">{checked.length} Tests Selected</div>
+      </div>}
     </>
   );
 };
