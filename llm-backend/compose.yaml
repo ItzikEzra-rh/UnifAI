@@ -25,6 +25,7 @@ services:
     container_name: llm-backend
     environment:
       - HUGGING_FACE_HUB_TOKEN=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
+    #entrypoint: ["bash", "-lc", "sleep infinity"]
     deploy:
       resources:
         reservations:

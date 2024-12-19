@@ -1,7 +1,7 @@
 from endpoints import register_all_endpoints
 from flask import Flask
 from flask_cors import CORS
-from llm_be_config.configParams import config_params
+from config.configParams import config_params
 from be_utils.db.flaks_db import register_mongo
 # from be_utils.utils import init_flask_logger
 from endpoints.request_rules import RequestRules

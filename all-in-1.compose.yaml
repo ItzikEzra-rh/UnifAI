@@ -1,0 +1,75 @@
+version: "3.6"
+
+include:
+  - vllm.compose.yaml
+
+networks:
+  genie-network:
+    driver: bridge
+    name: genie-network
+
+services:
+
+  mongodb:
+    image: docker.io/mongodb/mongodb-community-server:6.0-ubi8
+    container_name: mongodb
+    networks:
+      - genie-network
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  ui:
+    image: localhost/ui:latest
+    build:
+      context: ui
+      dockerfile: Dockerfile
+    ports:
+      - "443:8080"  # 8443
+    container_name: ui
+    networks:
+      - genie-network
+
+  be:
+    image: localhost/be:latest
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    container_name: be
+    #entrypoint: ["bash", "-lc", "sleep infinity"]
+    networks:
+      - genie-network
+    environment:
+      - BACKEND_ENV=development
+
+
+  llm-be:
+    image: localhost/llm-be:latest
+    build:
+      context: llm-backend
+      dockerfile: Dockerfile
+    privileged: true
+    ports:
+      - "8443:443"
+    container_name: llm-be
+    #entrypoint: ["bash", "-lc", "sleep infinity"]
+    environment:
+      - HUGGING_FACE_HUB_TOKEN=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
+      - BACKEND_ENV=development
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu] 
+    networks:
+      - genie-network
+    volumes:
+      - model-v:/data/models
+
+volumes:
+  mongo_data:
