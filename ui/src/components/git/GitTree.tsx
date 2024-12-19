@@ -3,8 +3,8 @@ import { Button, CircularProgress } from '@mui/material';
 import axios from '../../http/axiosConfig';
 import CheckboxTree from 'react-checkbox-tree';
 import ButtonGroup from '@mui/material/ButtonGroup';
-import CollapseIcon from '@mui/icons-material/Remove'; // Replace with appropriate icon
-import ExpandIcon from '@mui/icons-material/Add'; // Replace with appropriate icon
+import CollapseIcon from '@mui/icons-material/Remove'; 
+import ExpandIcon from '@mui/icons-material/Add'; 
 import "./GitTree.css";
 
 interface PropTypes {
@@ -184,18 +184,20 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
 
   return (
     <>
-        {loading ?
-        <CircularProgress sx={{color: "red"}} /> :
-        <>
-            <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
-            <CheckboxTree nodes={nodes}
-                          checked={checked}
-                          expanded={expanded}
-                          onCheck={(checkedItems) => setChecked(checkedItems)}
-                          onExpand={(expandedItems) => setExpanded(expandedItems)}
-            />
-            <div className="tests-selected">{checked.length} Tests Selected</div>
-        </>}
+      {loading ?
+      <div style={{ display: 'flex', justifyContent: 'center'}}>
+        <CircularProgress sx={{color: "red",}} />
+      </div> :
+      <div className="form-section">
+        <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
+        <CheckboxTree nodes={nodes}
+                      checked={checked}
+                      expanded={expanded}
+                      onCheck={(checkedItems) => setChecked(checkedItems)}
+                      onExpand={(expandedItems) => setExpanded(expandedItems)}
+        />
+        <div className="tests-selected">{checked.length} Tests Selected</div>
+      </div>}
     </>
   );
 };
