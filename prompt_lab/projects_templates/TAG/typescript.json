@@ -1,100 +1,358 @@
 {
-  "project_id": "{project_name}",
-  "project_repo": "{repository_url}",
-  "testing_framework": "jest",
-  "system_message": "You are an expert in TypeScript testing, skilled in designing comprehensive, robust, and maintainable test suites. You provide precise guidance on creating effective tests that ensure code quality, catch edge cases, and validate complex type interactions.",
-  "context_template": "the {project_id} repository: {project_repo}.\nBelow is the element of type {element_type} with the name {name}:\n\n{element_data}\n\nUtilize the provided element details and code to address the user's question accurately.",
+  "project_id": "MTA",
+  "project_repo": "https://github.com/konveyor/tackle-ui-tests",
+  "coding_language": "typescript",
+  "system_message": "You are an expert in TypeScript, skilled in designing modular, scalable, and reusable code. You provide precise guidance on solving complex problems, ensuring optimal use of TypeScript features such as types, interfaces, generics, and modules. You follow clear and consistent coding principles, enabling clean, maintainable, and efficient codebases.",
+  "context_template": "the {project_id} repository: {project_repo}.\nBelow is the element details:\n\n{element_type}\n\n{name}\n\n{file_location}\n\n{imports}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
   "element_templates": {
-    "test case": {
-      "Test Case Analysis": {
-        "test_case_understanding_options": {
+    "function": {
+      "Function Understanding and Code Description": {
+        "function_understanding_and_description": {
           "questions": [
-            "Explain the specific scenario and purpose of test case `{name}` in the {project_id} project. Detail the input conditions, expected behavior, and the specific code path or edge case being validated.",
-            "Analyze the test case `{name}` to understand its role in ensuring code reliability. Break down the test's inputs, assertions, and the specific functionality being tested within the {project_id} project.",
-            "Describe the design rationale behind test case `{name}`, highlighting how it contributes to the overall test coverage and type safety of the {project_id} project.",
-            "Examine the test case `{name}` to identify the key type constraints, error conditions, or complex logic being verified in the {project_id} project.",
-            "Provide insights into the test case `{name}`, explaining its significance in catching potential bugs or validating critical functionality within the {project_id} project."
+            {
+              "question": "In the context of {project_id}, what is the purpose of `{element_type}` `{name}`? Provide a detailed explanation of its responsibilities and significance.",
+              "validation": "Is the explanation comprehensive and clear about the purpose, responsibilities, and significance of `{element_type}` `{name}` within {project_id}?"
+            },
+            {
+              "question": "Exploring the key objectives of `{element_type}` `{name}` in the {project_id} project: Provide a detailed explanation of its responsibilities and importance.",
+              "validation": "Is the explanation comprehensive and clear about the key objectives, responsibilities, and importance of `{element_type}` `{name}` for {project_id}?"
+            },
+            {
+              "question": "What function does `{element_type}` `{name}` serve within the {project_id} system? Provide a detailed explanation of its responsibilities and role.",
+              "validation": "Is the explanation comprehensive and clear about the function, responsibilities, and role of `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "Analyzing the role of `{element_type}` `{name}` for {project_id}: Provide a detailed explanation of its responsibilities and relevance.",
+              "validation": "Is the explanation comprehensive and clear about the role, responsibilities, and relevance of `{element_type}` `{name}` in the context of {project_id}?"
+            },
+            {
+              "question": "{project_id}'s implementation: What is the significance of `{element_type}` `{name}`? Provide a detailed explanation of its purpose and responsibilities.",
+              "validation": "Is the explanation comprehensive and clear about the significance, purpose, and responsibilities of `{element_type}` `{name}` within {project_id}?"
+            }
+          ]
+        },
+        "function_usage_and_import": {
+          "questions": [
+            {
+              "question": "In the {project_id} project, provide a code snippet demonstrating how to use `{element_type}` `{name}`, including the correct file location for importing it.",
+              "validation": "Is the code snippet accurate in demonstrating the usage of `{element_type}` `{name}`, and does it include the correct import location for {project_id}?"
+            },
+            {
+              "question": "Show an example of correctly importing and using `{element_type}` `{name}` within the {project_id} context. Include the import path and a sample use case.",
+              "validation": "Does the example clearly show the correct import method and provide a practical use case for `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "How can `{element_type}` `{name}` be utilized in the context of {project_id}? Provide a code example with proper imports.",
+              "validation": "Is the code example comprehensive in demonstrating the utilization of `{element_type}` `{name}`, with correct imports for {project_id}?"
+            },
+            {
+              "question": "Write a code example demonstrating the usage of `{element_type}` `{name}` for the {project_id} project, ensuring the import path is accurate.",
+              "validation": "Does the code example accurately showcase the usage of `{element_type}` `{name}` with the correct import path in {project_id}?"
+            }
+          ]
+        },
+        "function_full_code": {
+          "questions": [
+            {
+              "question": "For the {project_id} project, provide the complete implementation of `{element_type}` `{name}` and explain its purpose and functionality.",
+              "validation": "Does the response include the full implementation of `{element_type}` `{name}` with a clear explanation of its purpose and functionality in {project_id}?"
+            },
+            {
+              "question": "Show the full code of `{element_type}` `{name}` for {project_id}, including all related imports, and explain how it operates within the context.",
+              "validation": "Is the complete code of `{element_type}` `{name}` shown, including relevant imports, and is there a clear explanation of its operation in {project_id}?"
+            },
+            {
+              "question": "Provide the entire source code for `{element_type}` `{name}` as defined in the {project_id} project and describe its role in the implementation.",
+              "validation": "Does the provided code fully represent `{element_type}` `{name}` and include a description of its role within {project_id}?"
+            },
+            {
+              "question": "What is the full implementation of `{element_type}` `{name}` in the context of {project_id}? Include any dependencies or imports used and explain how they contribute to its functionality.",
+              "validation": "Is the full implementation of `{element_type}` `{name}` provided, along with an explanation of its dependencies and their contributions in {project_id}?"
+            },
+            {
+              "question": "Can you show the full source code of `{element_type}` `{name}` for the {project_id} project, ensuring it reflects the complete functionality, and explain how it achieves its objectives?",
+              "validation": "Is the full functionality of `{element_type}` `{name}` reflected in the provided code with a detailed explanation of how it achieves its objectives in {project_id}?"
+            }
           ]
         }
       },
-      "Test Case Type Safety and Complexity": {
-        "test_case_type_safety_options": {
+      "Error Handling and Type Safety": {
+        "error_handling_type_safety_options": {
           "questions": [
-            "Demonstrate how test case `{name}` leverages TypeScript's type system to ensure comprehensive type checking and prevent potential runtime errors in the {project_id} project.",
-            "Analyze the type annotations and type-related assertions in test case `{name}`, explaining how they contribute to robust type safety and predictable behavior.",
-            "Explore the advanced type techniques used in test case `{name}`, such as generics, union types, or type guards that enhance the test's effectiveness.",
-            "Illustrate how the test case `{name}` handles complex type scenarios, edge cases, or potentially ambiguous type interactions specific to the {project_id} project.",
-            "Examine the type constraints and type inference mechanisms employed in test case `{name}` to validate type-related behaviors."
+            {
+              "question": "In the {project_id} context, demonstrate how `{element_type}` `{name}` uses TypeScript's type system to prevent runtime errors and improve code reliability, including specific type guards or narrowing techniques.",
+              "validation": "Does the demonstration effectively show the use of TypeScript's type system for error prevention in {project_id}, highlighting unique type guards or narrowing techniques in `{element_type}` `{name}`?"
+            },
+            {
+              "question": "Analyze the error handling mechanisms in `{element_type}` `{name}` for the {project_id} project, highlighting how TypeScript's strong typing contributes to robust error prevention and management.",
+              "validation": "Is the analysis comprehensive in explaining how TypeScript's strong typing supports error prevention in `{element_type}` `{name}` within {project_id}?"
+            },
+            {
+              "question": "Explain the strategies used in `{element_type}` `{name}` for {project_id} to ensure type safety, including the use of optional chaining, null checks, and type assertions.",
+              "validation": "Does the explanation clearly outline the type safety strategies in `{element_type}` `{name}` for {project_id}, including optional chaining, null checks, and type assertions?"
+            },
+            {
+              "question": "Illustrate the implementation of comprehensive error handling patterns that leverage TypeScript's type system in `{element_type}` `{name}` for the {project_id} project.",
+              "validation": "Is the illustration of error handling patterns thorough and effectively demonstrates the use of TypeScript's type system in `{element_type}` `{name}` for {project_id}?"
+            }
           ]
         }
       },
-      "Test Coverage and Edge Case Exploration": {
-        "test_coverage_options": {
+      "Performance and Type Optimization": {
+        "performance_typing_options": {
           "questions": [
-            "Identify potential additional test scenarios that could complement test case `{name}` to improve overall test coverage in the {project_id} project.",
-            "Suggest edge cases or boundary conditions that might be missing from the current implementation of test case `{name}`.",
-            "Analyze the current test case `{name}` and propose strategies to expand its scope and capture more nuanced behaviors or potential failure modes.",
-            "Explore how test case `{name}` could be enhanced to provide more comprehensive validation of the underlying function or component.",
-            "Recommend additional test variations that could provide deeper insights into the functionality tested by `{name}`."
+            {
+              "question": "In the context of {project_id}, identify opportunities to optimize type definitions for better compile-time type checking and runtime performance in `{element_type}` `{name}`.",
+              "validation": "Are the optimization opportunities for type definitions in {project_id}'s `{element_type}` `{name}` comprehensive and specific to improving type checking and runtime performance?"
+            },
+            {
+              "question": "Analyze the current type implementation in `{element_type}` `{name}` for the {project_id} project and suggest improvements for more efficient type checking and code execution.",
+              "validation": "Does the analysis provide a detailed and actionable assessment of the current type implementation in `{element_type}` `{name}` for {project_id} with clear improvement suggestions?"
+            },
+            {
+              "question": "Demonstrate advanced type optimization techniques that could be applied to `{element_type}` `{name}` in {project_id} to enhance its performance and type safety.",
+              "validation": "Are the demonstrated type optimization techniques for `{element_type}` `{name}` in {project_id} advanced, practical, and likely to improve performance and type safety?"
+            },
+            {
+              "question": "Explore how generic constraints and type narrowing can be used to improve the performance of `{element_type}` `{name}` within the {project_id} project.",
+              "validation": "Does the exploration effectively show how generic constraints and type narrowing can optimize the performance of `{element_type}` `{name}` in {project_id}?"
+            }
           ]
         }
       },
-      "Test Mocking and Dependency Handling": {
-        "test_mocking_options": {
+      "Modularity and Reusability": {
+        "function_reusability_options": {
           "questions": [
-            "Explain the mocking strategies used in test case `{name}`, detailing how dependencies are isolated and controlled to ensure predictable test results.",
-            "Analyze the approach to handling external dependencies, API calls, or complex interactions within test case `{name}`.",
-            "Demonstrate how the test case `{name}` creates mock objects or stub implementations to simulate various scenarios.",
-            "Explore the techniques used to manage and inject mock dependencies in the test case, ensuring clean and isolated testing environments.",
-            "Provide insights into how test case `{name}` handles complex dependency interactions and ensures reproducible test outcomes."
+            {
+              "question": "For the {project_id} project, suggest improvements for modularity in `{element_type}` `{name}` by incorporating shared utilities and generic type patterns.",
+              "validation": "Are the suggested improvements for modularity in `{element_type}` `{name}` for {project_id} comprehensive and practical?"
+            },
+            {
+              "question": "Identify ways to extend `{element_type}` `{name}` in the context of {project_id} for handling new conditions efficiently, using TypeScript's advanced type features.",
+              "validation": "Do the identified extension methods for `{element_type}` `{name}` in {project_id} demonstrate efficient handling of new conditions using advanced TypeScript type features?"
+            },
+            {
+              "question": "Recommend refactoring opportunities in `{element_type}` `{name}` for the {project_id} project to enhance reusability through generics and interface design.",
+              "validation": "Are the recommended refactoring opportunities for `{element_type}` `{name}` in {project_id} effective in improving reusability through generics and interface design?"
+            },
+            {
+              "question": "Propose techniques to simplify `{element_type}` `{name}` in {project_id} by breaking down complex functions into smaller, reusable components with strong type definitions.",
+              "validation": "Do the proposed techniques effectively simplify `{element_type}` `{name}` in {project_id} by creating more modular and reusable components?"
+            }
+          ]
+        }
+      }
+    },
+    "file": {
+      "File Role and TypeScript Structure": {
+        "file_role_structure_options": {
+          "questions": [
+            {
+              "question": "In the {project_id} project, describe the purpose of `{element_type}` `{name}`, detailing how it organizes key functions and leverages TypeScript's modular structure.",
+              "validation": "Is the description comprehensive in explaining the purpose, function organization, and TypeScript modular structure of `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "For {project_id}, explain the `{element_type}` `{name}`, discussing its role in maintaining modularity, type safety, and testability.",
+              "validation": "Does the explanation thoroughly cover the role of `{element_type}` `{name}` in maintaining modularity, type safety, and testability for {project_id}?"
+            },
+            {
+              "question": "Provide a TypeScript code snippet that showcases the main functions in `{element_type}` `{name}` for the {project_id} project, illustrating its responsibilities in supporting the type system.",
+              "validation": "Is the code snippet effective in demonstrating the main functions and their responsibilities within the type system of `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "Generate a code snippet for {project_id} demonstrating essential functions and type interactions in `{element_type}` `{name}`, highlighting TypeScript-specific design patterns.",
+              "validation": "Does the code snippet effectively highlight the TypeScript design patterns and type interactions in `{element_type}` `{name}` for {project_id}?"
+            }
+          ]
+        }
+      },
+      "TypeScript Modularity and Optimization": {
+        "file_modularity_refactoring_options": {
+          "questions": [
+            {
+              "question": "In the context of {project_id}, suggest ways to refactor and optimize `{element_type}` `{name}` to improve type safety, modularity, and performance.",
+              "validation": "Are the suggested refactoring and optimization methods for `{element_type}` `{name}` in {project_id} comprehensive and tailored to improving type safety, modularity, and performance?"
+            },
+            {
+              "question": "For the {project_id} project, identify specific functions or type definitions in `{element_type}` `{name}` that could be modularized into more reusable and type-safe components.",
+              "validation": "Do the identified functions and type definitions in `{element_type}` `{name}` for {project_id} demonstrate clear potential for improved modularity and type safety?"
+            },
+            {
+              "question": "Discuss opportunities to enhance type readability, simplify complex type structures, and optimize performance within `{element_type}` `{name}` in the {project_id} project.",
+              "validation": "Is the discussion thorough in addressing type readability, type structure simplification, and performance optimization for `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "In {project_id}, recommend restructuring `{element_type}` `{name}` to reduce type complexity and increase type inference efficiency across multiple components.",
+              "validation": "Are the recommendations effective in reducing type complexity and improving type inference efficiency for `{element_type}` `{name}` in {project_id}?"
+            }
           ]
         }
       }
     },
     "test": {
-      "Test Suite Comprehensive Analysis": {
-        "test_suite_understanding_options": {
+      "Test Strategy and Coverage": {
+        "test_strategy_options": {
           "questions": [
-            "Describe the purpose and scope of test `{name}` in the {project_id} project, explaining its role in validating specific functionality or component behavior.",
-            "Analyze the overall structure and approach of test `{name}`, highlighting its key test cases, coverage strategy, and type safety mechanisms.",
-            "Provide a detailed breakdown of the test suite `{name}`, explaining how it ensures code reliability and catches potential issues.",
-            "Examine the design principles and testing strategies employed in test `{name}` within the {project_id} project.",
-            "Illustrate the comprehensive approach used in test `{name}` to validate complex type interactions and functional behaviors."
+            {
+              "question": "Describe the comprehensive test strategy for `{element_type}` `{name}` in the {project_id} project. How does it ensure thorough coverage of different scenarios and edge cases?",
+              "validation": "Does the explanation provide a detailed overview of the test strategy, covering the scope, approach, and specific techniques used to achieve comprehensive testing for `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "What is the overall testing strategy for `{element_type}` `{name}` in {project_id}, and how does it address scenario diversity and edge case coverage?",
+              "validation": "Does the response include a detailed strategy for covering diverse scenarios and edge cases for `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "Explain the key components of the testing strategy for `{element_type}` `{name}` in {project_id}, focusing on how it ensures exhaustive validation and scenario coverage.",
+              "validation": "Is the testing strategy for `{element_type}` `{name}` in {project_id} well-defined and comprehensive in its approach to validation?"
+            },
+            {
+              "question": "Provide an in-depth analysis of the testing strategy for `{element_type}` `{name}` in {project_id}. How does it guarantee effective scenario and edge case coverage?",
+              "validation": "Does the analysis highlight how the testing strategy ensures effective validation of `{element_type}` `{name}` in {project_id}?"
+            }
           ]
-        }
-      },
-      "Test Suite Optimization and Refactoring": {
-        "test_suite_optimization_options": {
+        },
+        "test_type_and_technique": {
           "questions": [
-            "Suggest improvements to test `{name}` to enhance its test coverage, readability, and maintainability within the {project_id} project.",
-            "Identify opportunities to refactor the test suite `{name}` to improve its type safety, reduce redundancy, and increase test efficiency.",
-            "Recommend strategies to optimize the test setup, teardown, and assertion mechanisms in test `{name}`.",
-            "Explore advanced testing techniques that could be applied to test `{name}` to provide more robust and comprehensive validation.",
-            "Analyze the current test suite `{name}` and propose methods to simplify its structure while maintaining thorough test coverage."
+            {
+              "question": "Explain the different types of tests implemented for `{element_type}` `{name}` in {project_id}. Discuss unit tests, integration tests, and any specialized testing techniques used.",
+              "validation": "Does the explanation thoroughly cover the various test types and specialized testing techniques applied to `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "What are the testing methodologies applied for `{element_type}` `{name}` in {project_id}, and how do they contribute to robust validation?",
+              "validation": "Is the description of testing methodologies for `{element_type}` `{name}` in {project_id} complete and well-articulated?"
+            },
+            {
+              "question": "Describe the various testing approaches for `{element_type}` `{name}` in {project_id}, including unit, integration, and advanced testing techniques.",
+              "validation": "Does the response provide a clear and detailed explanation of the testing approaches used for `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "How do the testing techniques for `{element_type}` `{name}` in {project_id} ensure effective validation across different testing levels?",
+              "validation": "Does the explanation cover all testing levels and techniques applied to `{element_type}` `{name}` in {project_id}?"
+            }
+          ]
+        },
+        "test_implementation_details": {
+          "questions": [
+            {
+              "question": "For the {project_id} project, provide the full implementation of `{element_type}` `{name}`, including all test cases, setup, and teardown mechanisms. Explain how each test contributes to verifying the component's functionality.",
+              "validation": "Does the response include a complete implementation of `{element_type}` `{name}` with a comprehensive explanation of each test case's purpose and contribution to functionality verification in {project_id}?"
+            },
+            {
+              "question": "Present the detailed implementation of `{element_type}` `{name}` in {project_id}, explaining the role of setup, execution, and teardown mechanisms.",
+              "validation": "Does the response offer a thorough implementation with clear explanations for each step in `{element_type}` `{name}` for {project_id}?"
+            },
+            {
+              "question": "Provide a step-by-step breakdown of the test suite implementation for `{element_type}` `{name}` in {project_id}, focusing on its structure and objectives.",
+              "validation": "Is the test suite implementation of `{element_type}` `{name}` in {project_id} well-documented and aligned with its objectives?"
+            },
+            {
+              "question": "How does the implementation of `{element_type}` `{name}` in {project_id} ensure functionality verification through detailed setup, execution, and teardown processes?",
+              "validation": "Is the implementation description for `{element_type}` `{name}` in {project_id} thorough and aligned with functionality goals?"
+            }
+          ]
+        },
+        "error_handling_and_edge_cases": {
+          "questions": [
+            {
+              "question": "Demonstrate how `{element_type}` `{name}` in {project_id} handles error scenarios and edge cases through its test suite. Provide examples of tests that cover exceptional conditions and potential failure modes.",
+              "validation": "Do the provided test examples effectively showcase the handling of error scenarios and edge cases for `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "How does the test suite for `{element_type}` `{name}` in {project_id} ensure robust coverage of error scenarios and edge cases? Provide specific examples.",
+              "validation": "Does the response include detailed examples and strategies for handling edge cases and error scenarios in `{element_type}` `{name}` for {project_id}?"
+            },
+            {
+              "question": "Explain the error handling strategies employed for `{element_type}` `{name}` in {project_id}, highlighting tests for exceptional conditions and their robustness.",
+              "validation": "Does the explanation comprehensively cover error handling strategies and their implementation for `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "What mechanisms are in place in `{element_type}` `{name}` for {project_id} to address edge cases and unexpected inputs effectively?",
+              "validation": "Is the explanation clear and detailed in showcasing the mechanisms for handling edge cases and unexpected inputs in `{element_type}` `{name}` for {project_id}?"
+            }
           ]
         }
       }
     },
-    "File": {
-      "Test File Structure and Organization": {
-        "test_file_analysis_options": {
+    "test_case": {
+      "Test Case Design and Analysis": {
+        "test_case_structure_options": {
           "questions": [
-            "Explain the role of test file `{name}` in the {project_id} project, detailing its organization, test grouping, and overall testing approach.",
-            "Analyze the structure of test file `{name}`, highlighting how it supports comprehensive test coverage and type safety.",
-            "Describe the key testing strategies and type-related validations implemented in test file `{name}`.",
-            "Examine the file's approach to organizing test cases, managing dependencies, and ensuring clean test implementations.",
-            "Provide insights into how test file `{name}` contributes to the overall testing strategy of the {project_id} project."
+            {
+              "question": "What are the design principles behind the `{element_type}` `{name}` test case for the {project_id} project, and how do they ensure meaningful and thorough testing of the target component?",
+              "validation": "Does the description provide a clear and detailed explanation of the test case design principles for `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "How does the `{element_type}` `{name}` test case design for {project_id} achieve comprehensive validation of the component, and what principles guide its structure?",
+              "validation": "Does the description highlight the comprehensive design principles of `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "Explain the underlying principles of the `{element_type}` `{name}` test case in {project_id} and how they support a robust testing process.",
+              "validation": "Is the explanation detailed in describing the principles that ensure the robustness of `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "Describe the rationale and guiding principles of the `{element_type}` `{name}` test case design in {project_id} and how they enhance testing effectiveness.",
+              "validation": "Does the rationale effectively explain the test case design principles for `{element_type}` `{name}` in {project_id}?"
+            }
           ]
-        }
-      },
-      "Test File Modularity and Best Practices": {
-        "test_file_modularity_options": {
+        },
+        "test_case_implementation_details": {
           "questions": [
-            "Suggest improvements to test file `{name}` to enhance its modularity, reusability, and adherence to testing best practices.",
-            "Identify opportunities to refactor the test file `{name}` to improve test organization, reduce duplication, and increase maintainability.",
-            "Recommend strategies to leverage TypeScript's type system more effectively within the test file `{name}`.",
-            "Explore advanced testing patterns that could be applied to test file `{name}` to provide more robust and flexible test implementations.",
-            "Analyze the current structure of test file `{name}` and propose methods to simplify its complexity while maintaining comprehensive test coverage."
+            {
+              "question": "For the {project_id} project, provide the full implementation of `{element_type}` `{name}`, including all setup, execution, and assertion steps. Explain the rationale behind each test case component.",
+              "validation": "Does the response include a complete implementation of `{element_type}` `{name}` with a comprehensive explanation of each component's purpose and contribution in {project_id}?"
+            },
+            {
+              "question": "Provide the detailed implementation of `{element_type}` `{name}` for {project_id}, describing its setup, execution process, and validation steps along with their rationale.",
+              "validation": "Does the implementation description of `{element_type}` `{name}` in {project_id} include all necessary steps with clear rationale?"
+            },
+            {
+              "question": "Share the full test case implementation of `{element_type}` `{name}` in {project_id}, specifying each phase—setup, execution, and assertions—and justify their inclusion.",
+              "validation": "Is the test case implementation of `{element_type}` `{name}` in {project_id} thorough and well-justified?"
+            },
+            {
+              "question": "Outline the complete structure of `{element_type}` `{name}` in {project_id}, detailing its implementation and explaining the rationale for each component's design.",
+              "validation": "Does the response provide a detailed implementation and rationale for `{element_type}` `{name}` in {project_id}?"
+            }
+          ]
+        },
+        "test_case_scenario_coverage": {
+          "questions": [
+            {
+              "question": "Analyze the scenario coverage for `{element_type}` `{name}` in {project_id}. Discuss how the test case addresses different input combinations, edge cases, and potential failure modes.",
+              "validation": "Does the analysis comprehensively cover the various scenarios, input combinations, and potential failure modes tested by `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "Examine the coverage of `{element_type}` `{name}` in {project_id}, detailing how edge cases and diverse input combinations are handled.",
+              "validation": "Does the response cover edge cases and input combinations comprehensively for `{element_type}` `{name}` in {project_id}?"
+            },
+            {
+              "question": "Evaluate the `{element_type}` `{name}` test case in {project_id} and its approach to covering a wide range of scenarios, including edge cases and failure points.",
+              "validation": "Does the evaluation describe how `{element_type}` `{name}` in {project_id} ensures robust scenario coverage?"
+            },
+            {
+              "question": "How does the `{element_type}` `{name}` test case in {project_id} address edge cases, unexpected inputs, and potential failure conditions?",
+              "validation": "Is the explanation of scenario coverage for `{element_type}` `{name}` in {project_id} thorough and well-detailed?"
+            }
+          ]
+        },
+        "test_case_type_safety_and_validation": {
+          "questions": [
+            {
+              "question": "Demonstrate how the `{element_type}` `{name}` test case leverages TypeScript's type system to ensure rigorous type checking and validation in the {project_id} project.",
+              "validation": "Do the examples effectively showcase the use of TypeScript's type system for validation in the `{element_type}` `{name}` test case for {project_id}?"
+            },
+            {
+              "question": "Show how `{element_type}` `{name}` uses TypeScript's type features in {project_id} to enforce strong type checking and catch potential issues early.",
+              "validation": "Does the response clearly illustrate the use of TypeScript's type system to enhance validation in `{element_type}` `{name}` for {project_id}?"
+            },
+            {
+              "question": "Explain how TypeScript's type safety mechanisms are utilized in the `{element_type}` `{name}` test case to prevent errors in {project_id}.",
+              "validation": "Is the explanation clear and effective in demonstrating the role of TypeScript's type safety in `{element_type}` `{name}` for {project_id}?"
+            },
+            {
+              "question": "Describe how `{element_type}` `{name}` employs TypeScript type checking to ensure correctness and reliability in {project_id}.",
+              "validation": "Does the response highlight the benefits and implementation of TypeScript type checking in `{element_type}` `{name}` for {project_id}?"
+            }
           ]
         }
       }

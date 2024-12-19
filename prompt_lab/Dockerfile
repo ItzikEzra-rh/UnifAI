@@ -24,35 +24,36 @@ RUN git clone https://Nirsisr:${GITHUB_TOKEN}@github.com/Nirsisr/AI-TC-s-Generat
 RUN /bin/bash -c "huggingface-cli login --token ${HF_TOKEN}"
 
 # Change to repository directory and install dependencies
-WORKDIR /app/repo/reviewer
+WORKDIR /app/repo/prompt_lab
 
 # Install dependencies
 RUN /bin/bash -c "pip install --upgrade pip && \
     pip install -r requirements.txt"
 
-# RUN /bin/bash -c "pip install --upgrade pip && \
-#     pip install flask-cors websocket-client websockets scapy pymongo uwsgi webargs flask_pymongo pandas celery celery-batches transformers watchdog"
-
 # Create a startup script to run the services
 RUN echo '#!/bin/bash' > /app/start-service.sh && \
     echo 'envsubst < config/config.json > config/config.tmp && mv config/config.tmp config/config.json' >> /app/start-service.sh && \
     echo 'case "$1" in' >> /app/start-service.sh && \
-    echo '  "reviewer")' >> /app/start-service.sh && \
-    echo '    celery -A celery_app.init worker -c 1 --loglevel=info -Q reviewer_queue -n reviewer' >> /app/start-service.sh && \
+    echo '  "prompt_processor")' >> /app/start-service.sh && \
+    echo '    celery -A celery_app.init worker -c 3 --prefetch-multiplier 1 --loglevel=info  -Q prompts_process_queue -n prompts_process_queue' >> /app/start-service.sh && \
     echo '    ;;' >> /app/start-service.sh && \
-    echo '  "reviewer_pass_fail")' >> /app/start-service.sh && \
-    echo '    celery -A celery_app.init worker -c 1 --loglevel=info -Q reviewer_pass_queue,reviewer_fail_queue -n reviewer' >> /app/start-service.sh && \
+    echo '  "prompt_dispatcher")' >> /app/start-service.sh && \
+    echo '    celery -A celery_app.init worker -c 1 --loglevel=info -Q reviewer_passed -n  reviewer_passed' >> /app/start-service.sh && \
+    echo '    ;;' >> /app/start-service.sh && \
+    echo '  "prompt_submiter")' >> /app/start-service.sh && \
+    echo '    python3 main.py' >> /app/start-service.sh && \
     echo '    ;;' >> /app/start-service.sh && \
     echo '  "bash")' >> /app/start-service.sh && \
     echo '    bash' >> /app/start-service.sh && \
     echo '    ;;' >> /app/start-service.sh && \
     echo '  *)' >> /app/start-service.sh && \
-    echo '    echo "Please specify service: reviewer, or reviewer_pass_fail"' >> /app/start-service.sh && \
+    echo '    echo "Please specify service: prompt_processor, prompt_submiter or prompt_dispatcher"' >> /app/start-service.sh && \
     echo '    exit 1' >> /app/start-service.sh && \
     echo '    ;;' >> /app/start-service.sh && \
     echo 'esac' >> /app/start-service.sh && \
     chmod +x /app/start-service.sh
 
+# need container for flower: celery -A celery_app.init flower
 
 # Set the entrypoint to the startup script
 ENTRYPOINT ["/app/start-service.sh"]
