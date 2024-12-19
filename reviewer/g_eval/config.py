@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from enum import Enum
 from typing import List
+from config.manager import config
 
 class EvalMetric(Enum):
     """Evaluation metrics supported by the system."""
@@ -72,12 +73,12 @@ class Config:
     INPUT_FILE_PATH: Path = Path("data/openshift-qe-dataset.json")
     PASSED_FILE_PATH: Path = Path("data/passed.json")
     FAILED_FILE_PATH: Path = Path("data/failed.json")
-    API_URL: str = "http://0.0.0.0:8000/v1/completions"
-    MODEL_NAME: str = "oodeh/mta-DeepCode-r32-a32-epoch20"
+    API_URL: str = config.get('model_config.api_url')
+    MODEL_NAME: str = config.get('model_config.model_name')
     BATCH_SIZE_LIMIT: int = 8
     MAX_TOKENS: int = 4
-    MAX_CONTEXT_LEN: int = 16384
-    SCORE_THRESHOLD: float = 80.0
+    MAX_CONTEXT_LEN: int = config.get('model_config.max_context_length')
+    SCORE_THRESHOLD: float = config.get('general.score_threshold')
     GEVAL_CONFIG: GEvalConfig = field(default_factory=GEvalConfig.default_config)
 
     def __post_init__(self):
@@ -92,6 +93,6 @@ class GEvalConfig:
     INPUT_FILE_PATH: Path = Path("data/openshift-qe-dataset.json")
     PASSED_FILE_PATH: Path = Path("data/passed.json")
     FAILED_FILE_PATH: Path = Path("data/failed.json")
-    VLLM_API_URL: str = "http://0.0.0.0:8000/v1/completions"
-    # MODEL_NAME: str = "meta-llama/Llama-3.1-8B-Instruct"
+    VLLM_API_URL: str = config.get('model_config.api_url')
+    # MODEL_NAME: str = config.get('model_config.model_name')
     SCORE_THRESHOLD: float = 0.7  # 70% threshold

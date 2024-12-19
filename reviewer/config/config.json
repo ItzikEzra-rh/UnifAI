@@ -14,5 +14,8 @@
   "mongodb": {
     "port": ${MONGODB_PORT},
     "url": "mongodb://${MONGODB_IP}:{port}"
+  },
+  "general": {
+    "score_threshold": ${REVIEWER_SCORE_THRESHOLD}
   }
 }

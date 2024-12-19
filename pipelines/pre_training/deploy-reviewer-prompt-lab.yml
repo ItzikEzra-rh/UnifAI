@@ -128,6 +128,7 @@
     reviewer_max_generation_length: "{{ REVIEWER_MAX_GENERATION_LENGTH }}"
     reviewer_max_context_length: "{{ REVIEWER_MAX_CONTEXT_LENGTH }}"
     reviewer_batch_size: "{{ REVIEWER_BATCH_SIZE }}"
+    reviewer_score_threshold: "{{ REVIEWER_SCORE_THRESHOLD }}"
 
   tasks:
     - name: Pull Reviewer image
@@ -159,6 +160,7 @@
             -e REVIEWER_MAX_GENERATION_LENGTH={{ reviewer_max_generation_length }} \
             -e REVIEWER_MAX_CONTEXT_LENGTH={{ reviewer_max_context_length }} \
             -e REVIEWER_BATCH_SIZE={{ reviewer_batch_size }} \
+            -e REVIEWER_SCORE_THRESHOLD={{ reviewer_score_threshold }} \
             {{ reviewer_image_name }} reviewer
 
 ################################################################################################
