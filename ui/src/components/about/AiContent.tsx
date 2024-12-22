@@ -1,5 +1,6 @@
 import { Box, Card, CardContent, Typography } from '@mui/material';
 import RedHatAI from '../../assets/RedHatAI.png';
+import GenieLogoOrigin from '../../assets/GenieLogoOrigin.png';
 
 const AiContent = () => {
     return (
@@ -41,34 +42,65 @@ const AiContent = () => {
                     1. <b>Sequence Length</b>
                         <br></br>
                         <div style={{marginLeft: 30}}>
-                            • Sequence length defines the maximum number of tokens (words, phrases, or symbols) that the AI can process at once.
+                            • Defines the maximum number of tokens (words, phrases, or symbols) that the AI can process at once.
                             <br></br>
                             • Longer sequences capture more context but may increase computational requirements.
+                            <br></br>
+                            • Model Max Sequence Length represents the absolute upper limit the model can handle.
                         </div>
                     2. <b>Model Size</b>
                         <br></br>
                         <div style={{marginLeft: 30}}>
-                            • This refers to the number of parameters in an AI model, which influences its capability to learn and generalize from data. Larger models tend to be more powerful but require more training resources.
+                            • Refers to the number of parameters in an AI model, which influences its capability to learn and generalize from data.
+                            <br></br>
+                            • Larger models tend to be more powerful but require more training resources.
                         </div>
                     3. <b>Learning Rate</b>
                         <br></br>
                         <div style={{marginLeft: 30}}>
-                            • The learning rate determines how quickly the model adapts to new data during training. It’s a balance—too high, and the model may overshoot optimal solutions; too low, and training may take unnecessarily long.
+                            • Determines how quickly the model adapts to new data during training. 
+                            <br></br>
+                            • Balancing this is critical—too high, and the model may overshoot optimal solutions; too low, and training may take unnecessarily long.
                         </div>
                     4. <b>Epochs</b>
                         <br></br>
                         <div style={{marginLeft: 30}}>
-                            • An epoch is one complete pass through the entire training dataset. More epochs allow the model to refine its learning but can lead to overfitting if overdone.
+                            • Represents one complete pass through the entire training dataset. 
+                            <br></br>
+                            • A larger epoch number allows the model to refine its learning but can lead to overfitting if overdone.
                         </div>
                     5. <b>Batch Size</b>
                         <br></br>
                         <div style={{marginLeft: 30}}>
-                            • Batch size indicates how many samples the model processes before updating its parameters. It impacts training speed and memory usage.
+                            • Indicates how many samples the model processes before updating its parameters. 
+                            <br></br>
+                            • Impacts training speed and memory usage.
                         </div>
                     6. <b>Validation Split</b>
                         <br></br>
                         <div style={{marginLeft: 30}}>
-                            • This parameter defines the proportion of data used to evaluate the model’s performance during training, ensuring it generalizes well to unseen data.
+                            • Defines the proportion of data used to evaluate the model’s performance during training, ensuring it generalizes well to unseen data.
+                        </div>
+                    7. <b>Temperature</b>
+                        <br></br>
+                        <div style={{marginLeft: 30}}>
+                            • Controls the randomness of the AI's output.
+                            <br></br>
+                            • A higher temperature produces more diverse and creative responses, while a lower value makes responses more deterministic.
+                        </div>
+                    8. <b>Save Steps</b>
+                        <br></br>
+                        <div style={{marginLeft: 30}}>
+                            • Determines how often the model saves its progress during training.
+                            <br></br>
+                            • Frequent saves ensure minimal data loss in case of interruptions.
+                        </div>
+                    9. <b>Warmup Steps</b>
+                        <br></br>
+                        <div style={{marginLeft: 30}}>
+                            • A specified number of steps at the beginning of training where the learning rate gradually increases.
+                            <br></br>
+                            • Helps stabilize the model's learning process.
                         </div>
                     <br></br>
                 </Typography>
@@ -83,12 +115,24 @@ const AiContent = () => {
                         3. <b>Test Generation: </b> The trained model creates questions, answers, and explanations that meet your specified needs.
                     </div>
                 </Typography>
-                <br></br>
-                <Typography variant="body1" sx={{fontSize: '18px'}}>
-                    Our system is designed to make these technical aspects seamless, allowing you to focus on utilizing high-quality tests tailored to your goals.
-                    <br></br>
-                    For more detailed insights or custom configurations, feel free to explore our documentation or contact our support team.
-                </Typography>
+                <br></br><br></br>
+                <Box display="flex" alignItems="center">
+                    <Typography variant="body1" sx={{ width: '60%', marginRight: 2, fontSize: 18 }}>
+                    <Typography variant="h5" component="h5">
+                        <b>Why choose GENIE?</b>
+                    </Typography>
+                        Our system is designed to make these technical aspects seamless, allowing you to focus on utilizing high-quality tests tailored to your goals.
+                        <br></br>
+                        For more detailed insights or custom configurations, feel free to explore our documentation or contact our support team.
+                    </Typography>
+                    <div style={{display: 'flex', justifyContent: 'flex-end'}}>
+                        <img
+                        src={GenieLogoOrigin}
+                        alt="Genie Logo Origin"
+                        style={{ width: '30%', height: 'auto' }}
+                        />
+                    </div>
+                </Box>
             </CardContent>
         </Card>
     );
