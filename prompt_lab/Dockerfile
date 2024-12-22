@@ -10,13 +10,12 @@ RUN dnf update -y && \
     dnf install -y python3-pip python3-devel kernel-devel wget which numactl && \
     dnf clean all
 
-# Copy requirements file and install dependencies
-COPY requirements.txt /app/repo/prompt_lab/requirements.txt
-RUN pip install --upgrade pip && pip install -r /app/repo/prompt_lab/requirements.txt
-
 # Add application source code
 COPY . /app/repo/prompt_lab
 RUN chmod 755 /app/repo/prompt_lab/start-service.sh
+
+# Install Python dependencies
+RUN pip install --upgrade pip && pip install -r /app/repo/prompt_lab/requirements.txt
 
 # Set entrypoint
 ENTRYPOINT ["/app/repo/prompt_lab/start-service.sh"]
