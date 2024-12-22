@@ -354,7 +354,17 @@ const ChatComponent: React.FC = () => {
       formattedText = formattedText.replace(/<\/div>/g, '\n');
       formattedText = formattedText.replace(/&nbsp;/g, '');
 
-      const queryParams = new URLSearchParams({ prompt: formattedText, temperature: temperature.toString(), sessionId: sessionId }).toString();
+      // Check for loaded model
+      const loadedModelResponse = await axiosLLM.get<string | null>('/api/backend/getLoadedModel');
+      const loadedModelId = loadedModelResponse.data;
+
+      if (loadedModelId != selectedModel?.modelId) {
+        toast.warning("Another model is currently loaded into TAG. You are being redirected to the previous page.");
+        setSelectedModel(null);
+        setMessages([]);
+      }
+
+      const queryParams = new URLSearchParams({ prompt: formattedText, temperature: temperature.toString(), sessionId: sessionId, modelId: selectedModel?.modelId || "" }).toString();
       const response = await fetch(`${AXIOS_LLM_IP}/api/backend/inference?${queryParams}`, {
         method: 'GET',
       });
