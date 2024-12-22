@@ -3,60 +3,20 @@ FROM registry.access.redhat.com/ubi9/ubi
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-ENV HF_TOKEN="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"
-ENV GITHUB_TOKEN="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"
-
-# Set working directory
-WORKDIR /app
+WORKDIR /app/repo/prompt_lab
 
 # Install system dependencies
 RUN dnf update -y && \
-    dnf install -y python3-pip git python3-devel gcc gcc-c++ make cmake kernel-devel wget which numactl gettext \
-    && dnf clean all
+    dnf install -y python3-pip python3-devel kernel-devel wget which numactl && \
+    dnf clean all
 
-# Install huggingface_hub before logging in
-RUN /bin/bash -c "pip install --upgrade huggingface_hub"
+# Copy requirements file and install dependencies
+COPY requirements.txt /app/repo/prompt_lab/requirements.txt
+RUN pip install --upgrade pip && pip install -r /app/repo/prompt_lab/requirements.txt
 
-# Clone the repository using token authentication
-RUN git clone https://Nirsisr:${GITHUB_TOKEN}@github.com/Nirsisr/AI-TC-s-Generator.git /app/repo
+# Add application source code
+COPY . /app/repo/prompt_lab
+RUN chmod 755 /app/repo/prompt_lab/start-service.sh
 
-# Login to Hugging Face
-RUN /bin/bash -c "huggingface-cli login --token ${HF_TOKEN}"
-
-# Change to repository directory and install dependencies
-WORKDIR /app/repo/prompt_lab
-
-# Install dependencies
-RUN /bin/bash -c "pip install --upgrade pip && \
-    pip install -r requirements.txt"
-
-# Create a startup script to run the services
-RUN echo '#!/bin/bash' > /app/start-service.sh && \
-    echo 'envsubst < config/config.json > config/config.tmp && mv config/config.tmp config/config.json' >> /app/start-service.sh && \
-    echo 'case "$1" in' >> /app/start-service.sh && \
-    echo '  "prompt_processor")' >> /app/start-service.sh && \
-    echo '    celery -A celery_app.init worker -c 3 --prefetch-multiplier 1 --loglevel=info  -Q prompts_process_queue -n prompts_process_queue' >> /app/start-service.sh && \
-    echo '    ;;' >> /app/start-service.sh && \
-    echo '  "prompt_dispatcher")' >> /app/start-service.sh && \
-    echo '    celery -A celery_app.init worker -c 1 --loglevel=info -Q reviewer_passed -n  reviewer_passed' >> /app/start-service.sh && \
-    echo '    ;;' >> /app/start-service.sh && \
-    echo '  "prompt_submiter")' >> /app/start-service.sh && \
-    echo '    python3 main.py' >> /app/start-service.sh && \
-    echo '    ;;' >> /app/start-service.sh && \
-    echo '  "bash")' >> /app/start-service.sh && \
-    echo '    bash' >> /app/start-service.sh && \
-    echo '    ;;' >> /app/start-service.sh && \
-    echo '  *)' >> /app/start-service.sh && \
-    echo '    echo "Please specify service: prompt_processor, prompt_submiter or prompt_dispatcher"' >> /app/start-service.sh && \
-    echo '    exit 1' >> /app/start-service.sh && \
-    echo '    ;;' >> /app/start-service.sh && \
-    echo 'esac' >> /app/start-service.sh && \
-    chmod +x /app/start-service.sh
-
-# need container for flower: celery -A celery_app.init flower
-
-# Set the entrypoint to the startup script
-ENTRYPOINT ["/app/start-service.sh"]
-
-# Default command (can be overridden)
-CMD ["*"]
+# Set entrypoint
+ENTRYPOINT ["/app/repo/prompt_lab/start-service.sh"]
