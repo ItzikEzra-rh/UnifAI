@@ -364,7 +364,7 @@ const ChatComponent: React.FC = () => {
         setMessages([]);
       }
 
-      const queryParams = new URLSearchParams({ prompt: formattedText, temperature: temperature.toString(), sessionId: sessionId, modelId: selectedModel?.modelId || "" }).toString();
+      const queryParams = new URLSearchParams({ prompt: formattedText, temperature: temperature.toString(), sessionId: sessionId }).toString();
       const response = await fetch(`${AXIOS_LLM_IP}/api/backend/inference?${queryParams}`, {
         method: 'GET',
       });
