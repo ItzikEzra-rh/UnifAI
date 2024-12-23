@@ -6,7 +6,7 @@ from webargs import fields
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
 from providers.backend import list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
-                              insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating, delete_prompt
+                              insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating, delete_prompt, add_inference_counter_per_each_model
 
 backend_bp = Blueprint("backend", __name__)
 
@@ -188,4 +188,22 @@ def delete_prompt_from_db(unique_id):
     except Exception as e:
         # Log the error and return error response
         logging.error(f"Error deleting prompt: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+@backend_bp.route("/addInferenceCounter", methods=["POST"])
+@from_body({
+    "model_id":        fields.Str(required=True, data_key="modelId"),
+    "model_name":      fields.Str(required=True, data_key="modelName"),
+})
+def add_inference_counter(model_id, model_name):
+    try:
+        # Increase the counter representing 'inference usage' per each model_id under MongoDB collection
+        result = add_inference_counter_per_each_model(model_id, model_name)
+
+        # Return success response
+        return jsonify({"status": "success"}), 201
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error increase the counter of {model_id}: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
