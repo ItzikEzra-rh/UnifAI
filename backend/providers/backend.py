@@ -172,3 +172,20 @@ def add_inference_counter_per_each_model(model_id, model_name):
         upsert=True
     )
     return result
+
+@mongo
+def retrieve_inference_counter(model_id):
+    """
+    :param str  model_id:
+    :return:
+    """
+    result = Collections.by_name('models').find_one({'modelId': model_id})
+    return result
+
+@mongo
+def retrieve_inference_counter_all():
+    """
+    :return:
+    """
+    result = Collections.by_name('models').find()
+    return list(result)
