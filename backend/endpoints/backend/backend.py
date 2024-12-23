@@ -6,7 +6,7 @@ from webargs import fields
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
 from providers.backend import list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
-                              insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating
+                              insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating, delete_prompt
 
 backend_bp = Blueprint("backend", __name__)
 
@@ -171,4 +171,21 @@ def save_prompt_rating(model_id, user_prompt, response_prompt, rating, rating_te
     except Exception as e:
         # Log the error and return error response
         logging.error(f"Error rating new prompt: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+@backend_bp.route("/deletePrompt", methods=["POST"])
+@from_body({
+    "unique_id":       fields.Str(required=True, data_key="uniqueId"),
+})
+def delete_prompt_from_db(unique_id):
+    try:
+        # Delete LLM pre-saved prompt from MongoDB collection
+        result = delete_prompt(unique_id)
+
+        # Return success response
+        return jsonify({"status": "success"}), 201
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error deleting prompt: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500

@@ -124,6 +124,17 @@ def insert_prompt_is_complete(model_id, unique_id, completed):
     return result
 
 @mongo
+def delete_prompt(unique_id):
+    """deleting existing llm prompt from the database
+
+    :param str  unique_id:
+    :return:
+    """
+    result = Collections.by_name('prompts').delete_one({'uniqueId': unique_id})
+    return result
+
+
+@mongo
 def insert_prompt_rating(model_id, user_prompt, response_prompt, rating, rating_text):
     """Adding rating to Q/A in the database.
 
