@@ -110,9 +110,18 @@ const AiContent = () => {
                 <br></br>
                 <Typography variant="body1" sx={{fontSize: '18px'}}>
                     <div style={{marginLeft: 30}}>
-                        1. <b>Data Processing: </b> The AI analyzes input data, including text, patterns, and user requirements. <br></br>
-                        2. <b>Training the Model: </b>Using the parameters mentioned above, the AI fine-tunes its understanding of the data to generate accurate, contextually appropriate questions.<br></br>
-                        3. <b>Test Generation: </b> The trained model creates questions, answers, and explanations that meet your specified needs.
+                        1. <b>Data Processing: </b>  
+                        <div style={{marginLeft: 30}}>
+                            The AI analyzes input data, including text, patterns, and user requirements.
+                        </div>
+                        2. <b>Training the Model: </b>  
+                        <div style={{marginLeft: 30}}>
+                            Using the parameters mentioned above, the AI fine-tunes its understanding of the data to generate accurate, contextually appropriate questions.
+                        </div>
+                        3. <b>Test Generation: </b>  
+                        <div style={{marginLeft: 30}}>
+                            The trained model creates questions, answers, and explanations that meet your specified needs.
+                        </div>
                     </div>
                 </Typography>
                 <br></br><br></br>
@@ -123,7 +132,7 @@ const AiContent = () => {
                     </Typography>
                         Our system is designed to make these technical aspects seamless, allowing you to focus on utilizing high-quality tests tailored to your goals.
                         <br></br>
-                        For more detailed insights or custom configurations, feel free to explore our documentation or contact our support team.
+                        For more detailed insights or custom configurations, feel free to contact our support team.
                     </Typography>
                     <div style={{display: 'flex', justifyContent: 'flex-end'}}>
                         <img
