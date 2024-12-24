@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Button, CircularProgress, IconButton, Modal, Typography } from '@mui/material';
+import { Box, Button, CircularProgress, IconButton, Modal, Typography, Checkbox } from '@mui/material';
 import axios from '../../http/axiosConfig';
-import CheckboxTree from 'react-checkbox-tree';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import CollapseIcon from '@mui/icons-material/Remove'; // Replace with appropriate icon
 import ExpandIcon from '@mui/icons-material/Add'; // Replace with appropriate icon
 import VisibilityIcon from '@mui/icons-material/Visibility'; // Replace with appropriate icon
+import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';  // Updated import
 import "./GitTree.css";
-import { VisibilityOutlined } from '@mui/icons-material';
+import FolderIcon from '@mui/icons-material/Folder'; // Folder icon for expandable nodes
+
 
 interface PropTypes {
   gitUrl: string;
@@ -21,8 +22,8 @@ interface PropTypes {
   setLoading: (loading: boolean) => void;
 }
 
-interface TreeItem {
-  children?: TreeItem[]; // Mark children as optional
+interface TreeItemData {
+  children?: TreeItemData[]; // Mark children as optional
   disabled: boolean;
   label: string | JSX.Element; // Allow JSX.Element for enhanced labels
   path: string;
@@ -34,14 +35,22 @@ interface TestItem {
   in_db: string;
 }
 
+interface TreeNodeProps {
+  node: TreeItemData;
+  checked: string[];
+  setChecked: (checked: string[]) => void;
+  setSelectedNodeLabel: (selectedNodeLabel: any) => void;
+  setModalOpen: (modalOpen: boolean) => void;
+}
+
 export function stringContainsSpace(item: string) {
     return /\s/.test(item)
 }
 
 /**
- * create an hierarchical tree object which present the files on stash (paths)
- * for each file checking if he already in database(dbList) if so he is disabled
- * previousPath is used accumulate the hierarchical path of file
+ * create an hierarchical tree object which presents the files on stash (paths)
+ * for each file checking if it is already in the database (dbList)
+ * previousPath is used to accumulate the hierarchical path of file
  * @param paths
  * @param previousPath
  * @param dbList
@@ -85,7 +94,6 @@ export function buildTree(paths: string[][], previousPath: string[] | string, db
   return items;
 }
 
-
 /**
  * check if node is in dbList, keys in dbList are stored without "/" prefix
  * nodes have prefix "/" , we remove prefix to check if it's in the dictionary
@@ -103,6 +111,54 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ c
     </ButtonGroup>
 );
 
+const TreeNode: React.FC<TreeNodeProps> = ({ node, checked, setChecked, setSelectedNodeLabel, setModalOpen }) => {
+  const handleIconClick = () => {
+    setSelectedNodeLabel(node.label); // Set the selected node label
+    setModalOpen(true); // Open the modal
+  };
+
+  return (
+    <TreeItem
+      key={node.value}
+      itemId={node.value}
+      label={
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Checkbox
+            checked={checked.includes(node.value)} // Check if node is selected
+            disabled={node.disabled}
+            onChange={(event) => {
+              const newChecked = event.target.checked
+                ? [...checked, node.value] // Add node to checked if selected
+                : checked.filter((item) => item !== node.value); // Remove node if deselected
+              setChecked(newChecked); // Update checked state
+            }}
+          />
+          {node.children?.length && node.children?.length > 0 ? 
+            <FolderIcon sx={{ marginRight: 1 }} /> : 
+            <IconButton onClick={handleIconClick} sx={{ marginRight: 1 }}>
+              <VisibilityIcon />
+            </IconButton>
+          }
+          {node.label}
+        </Box>
+      }
+    >
+      {/* Recursively render children nodes */}
+      {node.children?.map((childNode) => (
+        <TreeNode
+          key={childNode.value}
+          node={childNode}
+          checked={checked}
+          setChecked={setChecked}
+          setSelectedNodeLabel={setSelectedNodeLabel}
+          setModalOpen={setModalOpen}
+        />
+      ))}
+    </TreeItem>
+  );
+};
+
+
 const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked, loading, setLoading }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState(false);
@@ -110,7 +166,7 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedNodeLabel, setSelectedNodeLabel] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
-  const [nodes, setNodes] = useState<TreeItem[]>([]);
+  const [nodes, setNodes] = useState<TreeItemData[]>([]);
   const [testsInDB, setTestsInDB] = useState<{ [key: string]: boolean }>({});
 
   const getTestsTree = useCallback(() => {
@@ -130,32 +186,7 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     console.log(node)
     setSelectedNodeLabel(node.value);
     setModalOpen(true);
-    
-    // const testPath = node.value
-    // console.log(testPath)
-    // setLoading(true);
-    // axios.get('/api/backend/fileContent', {
-    //   params: {
-    //     gitUrl,
-    //     gitCredentialKey,
-    //     gitFolderPath,
-    //     gitBranchName,
-    //     testPath
-    //   }
-    // })
-    // .then(response => {
-    //   console.log(response)
-    //   const content = response.data.result.content;
-    //   console.log(content)
-    //   console.log(`Test Content:\n${content}`);
-    // })
-    // .catch(() => {
-    //   console.error("Failed to fetch test content.");
-    // })
-    // .finally(() => {
-      setLoading(false);
   };
-  
 
   const buildTreeWrapper = (testsList: TestItem[]) => {
     const paths: string[][] = [];
@@ -174,7 +205,6 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     setLoading(false);
   };
 
-
   const open = () => {
     setLoading(true);
     setIsOpen(true);
@@ -187,7 +217,7 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
   };
 
   const collapseAll = () => setExpanded([]);
-  const accumulatePath = (nodes: TreeItem) => {
+  const accumulatePath = (nodes: TreeItemData) => {
     let tmpArr: string[] = [];
     if (nodes.children && nodes.children.length > 0) {
       tmpArr = Array.prototype.concat(...nodes.children.map(child => accumulatePath(child)));
@@ -207,52 +237,52 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     }
   }, [triggerOpen]);
 
-  
-
   const handleClose = () => {
     setModalOpen(false);
   };
-  
 
   return (
     <>
-      {loading ?
-      <div style={{ display: 'flex', justifyContent: 'center'}}>
-        <CircularProgress sx={{color: "red",}} />
-      </div> :
-      <div className="form-section">
-        <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
-        <CheckboxTree nodes={nodes}
-                      checked={checked}
-                      expanded={expanded}
-                      onCheck={(checkedItems) => setChecked(checkedItems)}
-                      onExpand={(expandedItems) => setExpanded(expandedItems)}
-                      icons={{
-                        leaf: <VisibilityIcon onClick={onClick}/>
-                      }}
-        />
-        <div className="tests-selected">{checked.length} Tests Selected</div>
-        <Modal open={modalOpen} onClose={handleClose}>
-        <Box
-          sx={{
-            position: "absolute",
-            top: "50%",
-            left: "50%",
-            transform: "translate(-50%, -50%)",
-            width: 300,
-            bgcolor: "background.paper",
-            boxShadow: 24,
-            p: 4,
-            borderRadius: "8px",
-          }}
-        >
-          <Typography variant="h6" component="h2">
-            Node Label
-          </Typography>
-          <Typography sx={{ mt: 2 }}>{selectedNodeLabel}</Typography>
-        </Box>
-      </Modal>
-      </div>}
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress sx={{ color: "red" }} />
+        </div>
+      ) : (
+        <div className="form-section">
+          <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
+          <SimpleTreeView
+            multiSelect
+            selectedItems={checked}
+            expandedItems={expanded}
+            onExpandedItemsChange={(event, nodeIds) => setExpanded(nodeIds)}
+          >
+            {nodes.map((node) => (
+              <TreeNode key={node.value} node={node} checked={checked} setChecked={setChecked} setSelectedNodeLabel={setSelectedNodeLabel} setModalOpen={setModalOpen}/>
+            ))}
+          </SimpleTreeView>
+          <div className="tests-selected">{checked.length} Tests Selected</div>
+          <Modal open={modalOpen} onClose={handleClose}>
+            <Box
+              sx={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                transform: "translate(-50%, -50%)",
+                width: 300,
+                bgcolor: "background.paper",
+                boxShadow: 24,
+                p: 4,
+                borderRadius: "8px",
+              }}
+            >
+              <Typography variant="h6" component="h2">
+                Node Label
+              </Typography>
+              <Typography sx={{ mt: 2 }}>{selectedNodeLabel}</Typography>
+            </Box>
+          </Modal>
+        </div>
+      )}
     </>
   );
 };
