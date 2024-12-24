@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Button, CircularProgress, IconButton, Modal } from '@mui/material';
+import { Box, Button, CircularProgress, IconButton, Modal, Typography } from '@mui/material';
 import axios from '../../http/axiosConfig';
 import CheckboxTree from 'react-checkbox-tree';
 import ButtonGroup from '@mui/material/ButtonGroup';
@@ -7,6 +7,7 @@ import CollapseIcon from '@mui/icons-material/Remove'; // Replace with appropria
 import ExpandIcon from '@mui/icons-material/Add'; // Replace with appropriate icon
 import VisibilityIcon from '@mui/icons-material/Visibility'; // Replace with appropriate icon
 import "./GitTree.css";
+import { VisibilityOutlined } from '@mui/icons-material';
 
 interface PropTypes {
   gitUrl: string;
@@ -21,9 +22,9 @@ interface PropTypes {
 }
 
 interface TreeItem {
-  children: TreeItem[];
+  children?: TreeItem[]; // Mark children as optional
   disabled: boolean;
-  label: string;
+  label: string | JSX.Element; // Allow JSX.Element for enhanced labels
   path: string;
   value: string;
 }
@@ -106,6 +107,8 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
   const [isOpen, setIsOpen] = useState(false);
   const [error, setError] = useState(false);
   const [checkedDB, setCheckedDB] = useState<string[]>([]);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [selectedNodeLabel, setSelectedNodeLabel] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
   const [nodes, setNodes] = useState<TreeItem[]>([]);
   const [testsInDB, setTestsInDB] = useState<{ [key: string]: boolean }>({});
@@ -227,20 +230,36 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     }
   }, [triggerOpen]);
 
+  const handleIconClick = (label: string | JSX.Element) => {
+    const labelText = typeof label === "string" ? label : "Unknown Label";
+    setSelectedNodeLabel(labelText);
+    setModalOpen(true);
+  };
   
-const LabelTest = ( value: any ) => {
-  const handleClick = () => {
-    console.log(value);
+
+  const handleClose = () => {
+    setModalOpen(false);
   };
 
-  return (
-    <div style={{ display: 'flex', alignItems: 'center' }}>
-      <IconButton onClick={handleClick} title="View">
-        <VisibilityIcon />
-      </IconButton>
-    </div>
-  );
-};
+  const enhanceNodesWithIcons = (nodes: TreeItem[]): TreeItem[] =>
+    nodes.map(node => ({
+      ...node,
+      label: (
+        <span >
+          {node.label}
+          <VisibilityOutlined
+            style={{ marginLeft: "5px", cursor: "pointer" }}
+            onClick={(e) => {
+              e.stopPropagation(); // Prevent node selection
+              handleIconClick(node.label);
+            }}
+          />
+        </span>
+      ),
+      children: node.children ? enhanceNodesWithIcons(node.children) : undefined, // Recursively process children
+    }));
+  
+  
 
   return (
     <>
@@ -250,13 +269,33 @@ const LabelTest = ( value: any ) => {
       </div> :
       <div className="form-section">
         <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
-        <CheckboxTree nodes={nodes}
+        <CheckboxTree nodes={enhanceNodesWithIcons(nodes)}
                       checked={checked}
                       expanded={expanded}
                       onCheck={(checkedItems) => setChecked(checkedItems)}
                       onExpand={(expandedItems) => setExpanded(expandedItems)}
         />
         <div className="tests-selected">{checked.length} Tests Selected</div>
+        <Modal open={modalOpen} onClose={handleClose}>
+        <Box
+          sx={{
+            position: "absolute",
+            top: "50%",
+            left: "50%",
+            transform: "translate(-50%, -50%)",
+            width: 300,
+            bgcolor: "background.paper",
+            boxShadow: 24,
+            p: 4,
+            borderRadius: "8px",
+          }}
+        >
+          <Typography variant="h6" component="h2">
+            Node Label
+          </Typography>
+          <Typography sx={{ mt: 2 }}>{selectedNodeLabel}</Typography>
+        </Box>
+      </Modal>
       </div>}
     </>
   );
