@@ -354,6 +354,16 @@ const ChatComponent: React.FC = () => {
       formattedText = formattedText.replace(/<\/div>/g, '\n');
       formattedText = formattedText.replace(/&nbsp;/g, '');
 
+      // Check for loaded model
+      const loadedModelResponse = await axiosLLM.get<string | null>('/api/backend/getLoadedModel');
+      const loadedModelId = loadedModelResponse.data;
+
+      if (loadedModelId != selectedModel?.modelId) {
+        toast.warning("Another model is currently loaded into TAG. You are being redirected to the previous page.");
+        setSelectedModel(null);
+        setMessages([]);
+      }
+
       const queryParams = new URLSearchParams({ prompt: formattedText, temperature: temperature.toString(), sessionId: sessionId }).toString();
       const response = await fetch(`${AXIOS_LLM_IP}/api/backend/inference?${queryParams}`, {
         method: 'GET',
@@ -361,6 +371,9 @@ const ChatComponent: React.FC = () => {
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       if (!response.body) throw new Error('ReadableStream not supported!');
+      
+      // Monitor each model (based on unique uuid) by checking how many times users leverage the latest for inference 
+      await axiosBE.post('/api/backend/addInferenceCounter', { modelId: selectedModel?.modelId, modelName: selectedModel?.modelName });
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();

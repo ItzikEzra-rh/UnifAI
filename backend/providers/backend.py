@@ -137,6 +137,17 @@ def insert_prompt_is_complete(model_id, unique_id, completed):
     return result
 
 @mongo
+def delete_prompt(unique_id):
+    """deleting existing llm prompt from the database
+
+    :param str  unique_id:
+    :return:
+    """
+    result = Collections.by_name('prompts').delete_one({'uniqueId': unique_id})
+    return result
+
+
+@mongo
 def insert_prompt_rating(model_id, user_prompt, response_prompt, rating, rating_text):
     """Adding rating to Q/A in the database.
 
@@ -161,3 +172,33 @@ def insert_prompt_rating(model_id, user_prompt, response_prompt, rating, rating_
     # If a rating exists, update it; otherwise, insert a new one
     result = Collections.by_name('ratings').update_one(query, {"$set": {"rating": rating, 'ratingText': rating_text}}, upsert=True)
     return result
+
+@mongo
+def add_inference_counter_per_each_model(model_id, model_name):
+    """
+    :param str  model_id:
+    :param str  model_name:
+    :return:
+    """
+    result = Collections.by_name('models').update_one({'modelId': model_id, 'modelName': model_name},
+        {'$inc': {'inferenceCounter': 1}},
+        upsert=True
+    )
+    return result
+
+@mongo
+def retrieve_inference_counter(model_id):
+    """
+    :param str  model_id:
+    :return:
+    """
+    result = Collections.by_name('models').find_one({'modelId': model_id})
+    return result
+
+@mongo
+def retrieve_inference_counter_all():
+    """
+    :return:
+    """
+    result = Collections.by_name('models').find()
+    return list(result)
