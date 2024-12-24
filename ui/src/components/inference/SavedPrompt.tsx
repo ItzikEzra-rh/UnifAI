@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTable, useSortBy, Column } from 'react-table';
 import { IconButton, Modal, Box, Typography, Table, TableHead, TableRow, TableCell, TableSortLabel, TableBody } from '@mui/material';
-import { FaFileAlt, FaEdit } from 'react-icons/fa';
+import { FaFileAlt, FaEdit, FaTrash } from 'react-icons/fa';
 import axios from '../../http/axiosConfig';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
@@ -23,6 +23,7 @@ interface SavedPromptData {
   promptName?: string;
   comment: string;
   completed: boolean;
+  delete: void;
 }
 
 interface CodeSectionProps {
@@ -49,6 +50,8 @@ const SavedPrompts: React.FC = () => {
   const [selectedPrompt, setSelectedPrompt] = useState<string | null>(null);
   const [questionPart, setQuestionPart] = useState<string>(''); // Include the '*** Settings ***:' in the question part
   const [answerPart, setAnswerPart] = useState<string>(''); // Start after '*** Settings ***:' for the answer part
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [promptToDelete, setPromptToDelete] = useState<{ modelId: string, uniqueId: string, promptName: string } | null>(null);
 
   const columns: Column<SavedPromptData>[] = React.useMemo(
     () => [
@@ -85,6 +88,15 @@ const SavedPrompts: React.FC = () => {
             checked={row.original.completed || false} // Assuming `completed` is a boolean in your data
             onChange={(e) => handleCompletedChange(row.original.modelId, row.original.uniqueId, e.target.checked)}
           />
+        ),
+      },
+      {
+        Header: 'Delete',
+        accessor: 'delete',
+        Cell: ({ row }: any) => (
+          <IconButton onClick={() => handleDeleteOpen(row.original.modelId, row.original.uniqueId, row.original.promptName)}>
+            <FaTrash />
+          </IconButton>
         ),
       },
     ],
@@ -186,6 +198,34 @@ const SavedPrompts: React.FC = () => {
     }
   };
 
+  const handleDeleteOpen = (modelId: string, uniqueId: string, promptName: string) => {
+    setPromptToDelete({ modelId, uniqueId, promptName });
+    setDeleteModalOpen(true);
+  };
+  
+  const handleDeleteClose = () => {
+    setDeleteModalOpen(false);
+    setPromptToDelete(null);
+  };
+  
+  const handleDeleteConfirm = async () => {
+    if (promptToDelete) {
+      try {
+        await axios.post('/api/backend/deletePrompt', {
+          uniqueId: promptToDelete.uniqueId
+        });
+        
+        // Update the state to remove the deleted prompt
+        setData(prevData => 
+          prevData.filter(item => item.uniqueId !== promptToDelete.uniqueId)
+        );
+        handleDeleteClose();
+      } catch (error) {
+        console.error('Error deleting prompt:', error);
+      }
+    }
+  };
+
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable(
     { columns, data },
     useSortBy
@@ -276,6 +316,71 @@ const SavedPrompts: React.FC = () => {
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
             <button onClick={handleEditClose}>Cancel</button>
             <button onClick={handleSaveComment} style={{ marginLeft: 8 }}>Save</button>
+          </Box>
+        </Box>
+      </Modal>
+      <Modal open={deleteModalOpen} onClose={handleDeleteClose}>
+        <Box
+          sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: 400,
+            bgcolor: 'background.paper',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            p: 3,
+          }}
+        >
+          <Typography 
+            variant="h6" 
+            component="h2" 
+            sx={{ 
+              mb: 2,
+              fontWeight: 500,
+              color: '#1a1a1a'
+            }}
+          >
+            Are you sure you want to delete '{promptToDelete?.promptName}' prompt?
+          </Typography>
+          <Box sx={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            mt: 3,
+            pt: 2,
+            borderTop: '1px solid #eaeaea'
+          }}>
+            <button 
+              onClick={handleDeleteClose}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: '1px solid #e0e0e0',
+                backgroundColor: '#ffffff',
+                color: '#666666',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontWeight: 500,
+              }}
+            >
+              No
+            </button>
+            <button 
+              onClick={handleDeleteConfirm}
+              style={{
+                padding: '8px 16px',
+                borderRadius: '6px',
+                border: 'none',
+                backgroundColor: '#dc2626',
+                color: 'white',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
+                fontWeight: 500,
+              }}
+            >
+              Yes
+            </button>
           </Box>
         </Box>
       </Modal>

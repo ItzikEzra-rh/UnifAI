@@ -6,7 +6,8 @@ from webargs import fields
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
 from providers.backend import list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
-                              insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating
+                              insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating, delete_prompt, add_inference_counter_per_each_model, \
+                              retrieve_inference_counter, retrieve_inference_counter_all
 
 backend_bp = Blueprint("backend", __name__)
 
@@ -171,4 +172,70 @@ def save_prompt_rating(model_id, user_prompt, response_prompt, rating, rating_te
     except Exception as e:
         # Log the error and return error response
         logging.error(f"Error rating new prompt: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+@backend_bp.route("/deletePrompt", methods=["POST"])
+@from_body({
+    "unique_id":       fields.Str(required=True, data_key="uniqueId"),
+})
+def delete_prompt_from_db(unique_id):
+    try:
+        # Delete LLM pre-saved prompt from MongoDB collection
+        result = delete_prompt(unique_id)
+
+        # Return success response
+        return jsonify({"status": "success"}), 201
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error deleting prompt: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+@backend_bp.route("/addInferenceCounter", methods=["POST"])
+@from_body({
+    "model_id":        fields.Str(required=True, data_key="modelId"),
+    "model_name":      fields.Str(required=True, data_key="modelName"),
+})
+def add_inference_counter(model_id, model_name):
+    try:
+        # Increase the counter representing 'inference usage' per each model_id under MongoDB collection
+        result = add_inference_counter_per_each_model(model_id, model_name)
+
+        # Return success response
+        return jsonify({"status": "success"}), 201
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error increase the counter of {model_id}: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+@backend_bp.route("/inferenceCounter", methods=["GET"])
+@from_query({
+    "model_id":        fields.Str(required=True, data_key="modelId"),
+})
+def retrieve_inference_counter_per_dedicated_model(model_id):
+    try:
+        # Retrieve the counter representing 'inference usage' per specific model_id under MongoDB collection
+        result = retrieve_inference_counter(model_id)
+
+        # Return success response
+        return jsonify({"status": "success", "response": str(result)}), 201
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error retreive the counter of {model_id}: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+@backend_bp.route("/inferenceCounterAll", methods=["GET"])
+def retrieve_inference_counter_per_all_models():
+    try:
+        # Retrieve the counter representing 'inference usage' per all models under MongoDB collection
+        result = retrieve_inference_counter_all()
+
+        # Return success response
+        return jsonify({"status": "success", "response": str(result)}), 201
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error retreive the counter of all models: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
