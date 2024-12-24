@@ -128,30 +128,32 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
 
   const onClick = (node: any) => {
     console.log(node)
-    const testPath = node.value
-    console.log(testPath)
-    setLoading(true);
-    axios.get('/api/backend/fileContent', {
-      params: {
-        gitUrl,
-        gitCredentialKey,
-        gitFolderPath,
-        gitBranchName,
-        testPath
-      }
-    })
-    .then(response => {
-      console.log(response)
-      const content = response.data.result.content;
-      console.log(content)
-      console.log(`Test Content:\n${content}`);
-    })
-    .catch(() => {
-      console.error("Failed to fetch test content.");
-    })
-    .finally(() => {
+    setSelectedNodeLabel(node.value);
+    setModalOpen(true);
+    
+    // const testPath = node.value
+    // console.log(testPath)
+    // setLoading(true);
+    // axios.get('/api/backend/fileContent', {
+    //   params: {
+    //     gitUrl,
+    //     gitCredentialKey,
+    //     gitFolderPath,
+    //     gitBranchName,
+    //     testPath
+    //   }
+    // })
+    // .then(response => {
+    //   console.log(response)
+    //   const content = response.data.result.content;
+    //   console.log(content)
+    //   console.log(`Test Content:\n${content}`);
+    // })
+    // .catch(() => {
+    //   console.error("Failed to fetch test content.");
+    // })
+    // .finally(() => {
       setLoading(false);
-    });
   };
   
 
@@ -172,31 +174,6 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     setLoading(false);
   };
 
-  const onCheck = (checked: string[]) => {
-    setChecked(checked.filter(item => !isPathInDb(testsInDB, item)));
-  
-    // // Fetch the test content for the clicked file path
-    // checked.forEach(item => {
-    //   if (!isPathInDb(testsInDB, item)) {
-    //     fetchTestDetails(item); // Call fetchTestDetails with the path of the clicked item
-    //   }
-    // });
-  };
-
-  
-  
-
-//   const onResponse = (response: any) => {
-//     if (response.error) {
-//       getTestsTree();
-//     } else {
-//       close();
-//     }
-//   };
-
-//   const onError = () => {
-//     getTestsTree();
-//   };
 
   const open = () => {
     setLoading(true);
@@ -230,35 +207,11 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     }
   }, [triggerOpen]);
 
-  const handleIconClick = (label: string | JSX.Element) => {
-    const labelText = typeof label === "string" ? label : "Unknown Label";
-    setSelectedNodeLabel(labelText);
-    setModalOpen(true);
-  };
   
 
   const handleClose = () => {
     setModalOpen(false);
   };
-
-  const enhanceNodesWithIcons = (nodes: TreeItem[]): TreeItem[] =>
-    nodes.map(node => ({
-      ...node,
-      label: (
-        <span >
-          {node.label}
-          <VisibilityOutlined
-            style={{ marginLeft: "5px", cursor: "pointer" }}
-            onClick={(e) => {
-              e.stopPropagation(); // Prevent node selection
-              handleIconClick(node.label);
-            }}
-          />
-        </span>
-      ),
-      children: node.children ? enhanceNodesWithIcons(node.children) : undefined, // Recursively process children
-    }));
-  
   
 
   return (
@@ -269,11 +222,14 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
       </div> :
       <div className="form-section">
         <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
-        <CheckboxTree nodes={enhanceNodesWithIcons(nodes)}
+        <CheckboxTree nodes={nodes}
                       checked={checked}
                       expanded={expanded}
                       onCheck={(checkedItems) => setChecked(checkedItems)}
                       onExpand={(expandedItems) => setExpanded(expandedItems)}
+                      icons={{
+                        leaf: <VisibilityIcon onClick={onClick}/>
+                      }}
         />
         <div className="tests-selected">{checked.length} Tests Selected</div>
         <Modal open={modalOpen} onClose={handleClose}>
