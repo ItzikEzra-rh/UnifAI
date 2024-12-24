@@ -1,6 +1,7 @@
 import logging
 import os
 from flask import request, Blueprint
+from flask_cors import cross_origin
 from flask import jsonify, Response
 from webargs import fields
 from helpers.apiargs import Fields, from_query, from_body
@@ -37,6 +38,8 @@ def get_test_list_from_gitlab(repo_url, repo_auth_key, repo_folder_path, branch)
     return json_response({"result": list_of_files})
 
 @backend_bp.route("/fileContent", methods=["GET"])
+@cross_origin(origin='localhost', headers=['Content-Type', 'Authorization'])
+
 @from_query({"repo_url":         fields.Str(required=True, data_key="gitUrl"),
              "repo_auth_key":    fields.Str(required=True, data_key="gitCredentialKey"),
              "repo_folder_path": fields.Str(required=True, data_key="gitFolderPath"),
@@ -52,7 +55,7 @@ def get_test_details(repo_url, repo_auth_key, repo_folder_path, branch, test_pat
     :param str test_path: Path of the test file
     :return: Content of the test file
     """
-    
+    print(repo_url)
     test_content = get_test_content_from_gitlab(repo_url, repo_auth_key, branch, test_path)
     return json_response({"result": {"path": test_path, "content": test_content}})
 

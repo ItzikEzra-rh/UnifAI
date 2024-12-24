@@ -95,11 +95,7 @@ class GitlabAPI:
         :param str branch: Branch name
         :return: File content as a string
         """
-        import urllib.parse
-        file_path = "/24.0/0011_cleanup_robot_and_nocleanup_resources.robot"
-        encoded_path = urllib.parse.quote(file_path)
-
-        url = f"{self.browse_url}/repository/files/{encoded_path}?ref={branch}&private_token={self.private_token}"
+        url = f"{self.browse_url}/files/{file_path}?ref={branch}&private_token={self.private_token}"
         print(url)
         data, response = self._get(url)
         
