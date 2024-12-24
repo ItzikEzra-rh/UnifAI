@@ -5,9 +5,9 @@ import GenieLogoOrigin from '../../assets/GenieLogoOrigin.png';
 const AiContent = () => {
     return (
         <Card className='info'>
-            <CardContent sx={{marginLeft: 5, marginRight: 5}}>
-                <Typography variant="h4" component="h4">
-                    <b>Understanding AI and Model Training Parameters</b>
+            <CardContent sx={{marginLeft: 8, marginRight: 8}}>
+                <Typography variant="h2" component="h2" style={{ textAlign: 'center', marginTop: '10px' }}>
+                    Understanding AI and Model Training Parameters
                 </Typography>
                 <br></br>
                 <Typography variant="body1" sx={{fontSize: '18px'}}>
