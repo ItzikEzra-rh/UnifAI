@@ -2,6 +2,7 @@ from processing.data_processor import DataProcessor
 from config.manager import config
 from utils.util import load_json_config
 from storage.file_data_repository import FileDataRepository
+import os
 
 
 class DataProcessorFactory:
@@ -14,7 +15,10 @@ class DataProcessorFactory:
         self.configure_repository = FileDataRepository.configure_repository()
 
     def create(self) -> DataProcessor:
-        project_config = self.config.get("templates.project_path")
+        project_config = os.path.join(self.config.get("templates.dir_path"),
+                                      self.config.get("templates.agent"),
+                                      f'{self.config.get("templates.type")}.json') if not self.config.get(
+            "templates.path") else self.config.get("templates.path")
         io_repository = self.configure_repository
         project_config = load_json_config(project_config)
 
