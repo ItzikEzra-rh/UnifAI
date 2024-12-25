@@ -221,7 +221,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked
           gitBranchName={gitBranchName}
         />
         {childNode.label == selectedNodeLabel && selectedNodeContent && modalOpen && (
-      <div className="code-visualizer">
+      <div className="code-visualizer-tree">
           <SyntaxHighlighter language="python" style={github}>
               {selectedNodeContent}
           </SyntaxHighlighter>
