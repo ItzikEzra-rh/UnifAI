@@ -117,6 +117,11 @@ const ProjectForm: React.FC = () => {
     };
 
     const handleBackClick = () => {
+      if (activeStep === 1) { // Reset the checked tests when going back to the first tab
+        setChecked([]);
+        setValue('numberOfTests', 0);
+      }
+      
       if (activeStep > 0) {
         setActiveStep((prev) => prev - 1);
       }
@@ -177,8 +182,18 @@ const ProjectForm: React.FC = () => {
             </CustomStepLabel>
             <StepContent>
               <div className="form-section">
-                <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath') || ''} 
-                        triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked} loading={gitLoading} setLoading={setGitLoading} testsCodeFramework={watch('testsCodeFramework')}/>
+                <GitForm projectFormDetails={{
+                          gitUrl: watch('gitUrl'),
+                          gitCredentialKey: watch('gitCredentialKey'),
+                          gitBranchName: watch('gitBranchName'),
+                          gitFolderPath: watch('gitFolderPath') || '',
+                          testsCodeFramework: watch('testsCodeFramework'),
+                        }} 
+                        triggerOpen={triggerGitFormOpen} 
+                        checked={checked} 
+                        setChecked={setChecked} 
+                        loading={gitLoading} 
+                        setLoading={setGitLoading} />
                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
                   <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
                     Back

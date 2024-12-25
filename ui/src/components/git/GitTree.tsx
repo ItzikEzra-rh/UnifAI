@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Button, CircularProgress, IconButton, Modal, Typography, Checkbox } from '@mui/material';
+import { Box, Button, CircularProgress, IconButton, Checkbox } from '@mui/material';
 import axios from '../../http/axiosConfig';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import CollapseIcon from '@mui/icons-material/Remove';
@@ -11,17 +11,21 @@ import "./GitTree.css";
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
-interface PropTypes {
+interface ProjectFormDetails {
   gitUrl: string;
   gitCredentialKey: string;
   gitBranchName: string;
   gitFolderPath: string;
+  testsCodeFramework: string;
+}
+
+interface PropTypes {
+  projectFormDetails: ProjectFormDetails;
   triggerOpen: boolean;
   checked: string[];
   setChecked: React.Dispatch<React.SetStateAction<string[]>>;
   loading: boolean;
   setLoading: (loading: boolean) => void;
-  testsCodeFramework: string;
 }
 
 interface TreeItemData {
@@ -45,12 +49,9 @@ interface TreeNodeProps {
   setSelectedNodeLabel: (selectedNodeLabel: any) => void;
   selectedNodeContent: any;
   setSelectedNodeContent: (selectedNodeContent: any) => void;
-  modalOpen: boolean;
-  setModalOpen: (modalOpen: boolean) => void;
-  gitUrl: string;
-  gitCredentialKey: string;
-  gitFolderPath: string;
-  gitBranchName: string;
+  testContentOpen: boolean;
+  setTestContentOpen: (testContentOpen: boolean) => void;
+  projectFormDetails: ProjectFormDetails;
 }
 
 export function stringContainsSpace(item: string) {
@@ -85,7 +86,6 @@ export function buildTree(paths: string[][], previousPath: string[] | string, db
               disabled: isPathInDb(dbList, fileFullPath) || stringContainsSpace(name),
               className: isContainsSpace ? "warning_space" : "",
               title: isContainsSpace ? "Test name contains spaces, please remove any spaces from file name" : "",
-              hasEyeIcon: true // Add this field to show the eye icon
           };
           items.push(item);
       }
@@ -143,10 +143,24 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ c
  * - `gitBranchName`: The branch name in the Git repository.
  */
 
-const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked, selectedNodeLabel, setSelectedNodeLabel, selectedNodeContent, setSelectedNodeContent, modalOpen, setModalOpen, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName}) => {
+const TreeNode: React.FC<TreeNodeProps> = React.memo(({
+                                                        node,
+                                                        checked,
+                                                        setChecked,
+                                                        selectedNodeLabel,
+                                                        setSelectedNodeLabel,
+                                                        selectedNodeContent,
+                                                        setSelectedNodeContent,
+                                                        testContentOpen,
+                                                        setTestContentOpen,
+                                                        projectFormDetails,
+                                                      }) => {
+  const { gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testsCodeFramework } = projectFormDetails;
+  
+  
   const handleIconClick = () => {
-    if (modalOpen) {
-      setModalOpen(false);
+    if (testContentOpen) {
+      setTestContentOpen(false);
     } else {
       axios.get('/api/backend/fileContent', {params: {gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value}})
     .then((response) => {
@@ -157,7 +171,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked
       console.error('Error fetching test details:', error);
     });
     setSelectedNodeLabel(node.label); 
-    setModalOpen(true);
+    setTestContentOpen(true);
     }
   };
 
@@ -184,7 +198,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked
       key={node.value}
       itemId={node.value}
       label={
-        <Box sx={{height: '15px', display: 'flex', alignItems: 'center', padding: '2px 4px', fontSize: '0.875rem'}}>
+        <Box sx={{height: '15px', display: 'flex', alignItems: 'center', padding: '2px 4px', fontSize: '1rem'}}>
           <Checkbox
             checked={checked.includes(node.value)}
             disabled={node.disabled}
@@ -193,9 +207,9 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked
             size="small"
           />
           {node.children?.length && node.children?.length > 0 ? 
-            <FolderIcon sx={{ marginRight: 0.5, fontSize: '1rem' }} /> : 
+            <FolderIcon fontSize='small' sx={{ marginRight: 0.5 }} /> : 
             <IconButton onClick={handleIconClick} sx={{ marginRight: 1 }}>
-              <VisibilityIcon fontSize='small'/>
+              <VisibilityIcon fontSize='small' sx={{ color: testContentOpen && selectedNodeLabel === node.label ? 'black' : 'grey' }}/>
             </IconButton>
           }
           {node.label}
@@ -213,16 +227,13 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked
           setSelectedNodeLabel={setSelectedNodeLabel}
           selectedNodeContent={selectedNodeContent}
           setSelectedNodeContent={setSelectedNodeContent}
-          modalOpen={modalOpen}
-          setModalOpen={setModalOpen}
-          gitUrl={gitUrl}            
-          gitCredentialKey={gitCredentialKey}
-          gitFolderPath={gitFolderPath}
-          gitBranchName={gitBranchName}
+          testContentOpen={testContentOpen}
+          setTestContentOpen={setTestContentOpen}
+          projectFormDetails={projectFormDetails}
         />
-        {childNode.label == selectedNodeLabel && selectedNodeContent && modalOpen && (
+        {childNode.label == selectedNodeLabel && selectedNodeContent && testContentOpen && (
       <div className="code-visualizer-tree">
-          <SyntaxHighlighter language="python" style={github}>
+          <SyntaxHighlighter language={testsCodeFramework} style={github}>
               {selectedNodeContent}
           </SyntaxHighlighter>
       </div>)}
@@ -235,15 +246,23 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked
 });
 
 
-const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked, loading, setLoading, testsCodeFramework }) => {
+const GitForm: React.FC<PropTypes> = ({
+          projectFormDetails,
+          triggerOpen,
+          checked,
+          setChecked,
+          loading,
+          setLoading,
+        }) => {
+  const { gitUrl, gitCredentialKey, gitBranchName, gitFolderPath } = projectFormDetails;
   const [isOpen, setIsOpen] = useState(false);
   const [checkedDB, setCheckedDB] = useState<string[]>([]);
-  const [modalOpen, setModalOpen] = useState(false);
   const [selectedNodeLabel, setSelectedNodeLabel] = useState("");
   const [selectedNodeContent, setSelectedNodeContent] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
   const [nodes, setNodes] = useState<TreeItemData[]>([]);
   const [testsInDB, setTestsInDB] = useState<{ [key: string]: boolean }>({});
+  const [testContentOpen, setTestContentOpen] = useState(false);
 
   const getTestsTree = useCallback(() => {
     setLoading(true);
@@ -256,7 +275,7 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
       },
     }).then(response => buildTreeWrapper(response.data.result))
       .catch(() => setLoading(false));
-  }, [gitUrl, gitCredentialKey]);
+  }, [projectFormDetails]);
 
 
   const buildTreeWrapper = (testsList: TestItem[]) => {
@@ -283,11 +302,6 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     getTestsTree();
   };
 
-  const close = () => {
-    setIsOpen(false);
-  };
-
-  const collapseAll = () => setExpanded([]);
   const accumulatePath = (nodes: TreeItemData) => {
     let tmpArr: string[] = [];
     if (nodes.children && nodes.children.length > 0) {
@@ -342,12 +356,9 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
                   setSelectedNodeLabel={setSelectedNodeLabel} 
                   selectedNodeContent={selectedNodeContent}
                   setSelectedNodeContent={setSelectedNodeContent}
-                  modalOpen={modalOpen}
-                  setModalOpen={setModalOpen}
-                  gitUrl={gitUrl}            
-                  gitCredentialKey={gitCredentialKey}
-                  gitFolderPath={gitFolderPath}
-                  gitBranchName={gitBranchName}  
+                  testContentOpen={testContentOpen}
+                  setTestContentOpen={setTestContentOpen}
+                  projectFormDetails={projectFormDetails}
                 />
               ))}
             </SimpleTreeView>
