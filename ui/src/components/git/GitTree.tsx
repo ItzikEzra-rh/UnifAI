@@ -22,9 +22,9 @@ interface PropTypes {
 }
 
 interface TreeItemData {
-  children?: TreeItemData[]; // Mark children as optional
+  children?: TreeItemData[];
   disabled: boolean;
-  label: string | JSX.Element; // Allow JSX.Element for enhanced labels
+  label: string | JSX.Element;
   path: string;
   value: string;
 }
@@ -114,27 +114,31 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ c
     </ButtonGroup>
 );
 
-const TreeNode: React.FC<TreeNodeProps> = React.memo(({ 
-                node, 
-                checked, 
-                setChecked, 
-                setSelectedNodeLabel, 
-                setModalOpen, 
-                gitUrl, 
-                gitCredentialKey, 
-                gitFolderPath, 
-                gitBranchName 
-              }) => {
+/**
+ * TreeNode Component
+ * 
+ * This component renders a single node in a hierarchical tree view. It supports both folder and file nodes. 
+ * - For folder nodes, it displays a folder icon and allows expansion to show child nodes.
+ * - For file nodes, it displays a visibility icon that, when clicked, fetches the content of the file via an API call and displays it in a modal.
+ * 
+ * It also includes a checkbox for selecting nodes. When checked, all descendant nodes (if any) are included in the `checked` state. 
+ * The component is recursively rendered for child nodes, enabling deep tree structures.
+ * 
+ * Props:
+ * - `node`: The data representing the current tree node, including label, value, and children.
+ * - `checked`: Array of selected node values.
+ * - `setChecked`: Function to update the selected nodes state.
+ * - `setSelectedNodeLabel`: Function to set the label/content for the selected node in the modal.
+ * - `setModalOpen`: Function to control the visibility of the modal.
+ * - `gitUrl`: The URL of the Git repository.
+ * - `gitCredentialKey`: Credential key for accessing the Git repository.
+ * - `gitFolderPath`: Path to the folder within the Git repository.
+ * - `gitBranchName`: The branch name in the Git repository.
+ */
+
+const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked, setSelectedNodeLabel, setModalOpen, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName}) => {
   const handleIconClick = () => {
-    axios.get('/api/backend/fileContent', {
-      params: {
-        gitUrl,
-        gitCredentialKey,
-        gitFolderPath,
-        gitBranchName,
-        testPath: node.value
-      }
-    })
+    axios.get('/api/backend/fileContent', {params: {gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value}})
     .then((response) => {
       const { content, path } = response.data.result;
       console.log(`Test content for ${path}: \n${content}`);
@@ -169,18 +173,12 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
       key={node.value}
       itemId={node.value}
       label={
-        <Box sx={{
-          height: '15px',
-          display: 'flex',
-          alignItems: 'center',
-          padding: '2px 4px',
-          fontSize: '0.875rem', 
-        }}>
+        <Box sx={{height: '15px', display: 'flex', alignItems: 'center', padding: '2px 4px', fontSize: '0.875rem'}}>
           <Checkbox
             checked={checked.includes(node.value)}
             disabled={node.disabled}
             onChange={(event) => handleCheckboxChange(node, event.target.checked)}
-            sx={{ padding: '2px', marginRight: '4px' }} // Minimized padding and margin
+            sx={{ padding: '2px', marginRight: '4px' }}
             size="small"
           />
           {node.children?.length && node.children?.length > 0 ? 
@@ -305,36 +303,28 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
       ) : (
         <div className="form-section">
           <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
-          <Box
-    sx={{
-      maxHeight: "400px", // Limit the height of the tree container
-      overflow: "auto", // Enable scrolling when content overflows
-      border: "1px solid #ccc", // Optional: Add a border for clarity
-      borderRadius: "4px", // Optional: Rounded corners
-    }}
-  >
-          <SimpleTreeView
-  multiSelect
-  selectedItems={checked}
-  expandedItems={expanded}
-  onExpandedItemsChange={(event, nodeIds) => setExpanded(nodeIds)}
->
-  {nodes.map((node) => (
-    <TreeNode 
-      key={node.value} 
-      node={node} 
-      checked={checked} 
-      setChecked={setChecked} 
-      setSelectedNodeLabel={setSelectedNodeLabel} 
-      setModalOpen={setModalOpen}
-      gitUrl={gitUrl}            
-      gitCredentialKey={gitCredentialKey}
-      gitFolderPath={gitFolderPath}
-      gitBranchName={gitBranchName}  
-    />
-  ))}
-</SimpleTreeView>
-
+          <Box sx={{maxHeight: "400px", overflow: "auto", border: "1px solid #ccc", borderRadius: "4px"}}>
+            <SimpleTreeView
+              multiSelect
+              selectedItems={checked}
+              expandedItems={expanded}
+              onExpandedItemsChange={(event, nodeIds) => setExpanded(nodeIds)}
+            >
+              {nodes.map((node) => (
+                <TreeNode 
+                  key={node.value} 
+                  node={node} 
+                  checked={checked} 
+                  setChecked={setChecked} 
+                  setSelectedNodeLabel={setSelectedNodeLabel} 
+                  setModalOpen={setModalOpen}
+                  gitUrl={gitUrl}            
+                  gitCredentialKey={gitCredentialKey}
+                  gitFolderPath={gitFolderPath}
+                  gitBranchName={gitBranchName}  
+                />
+              ))}
+            </SimpleTreeView>
           </Box>
           <div className="tests-selected">{countSelectedTests(nodes, checked)} Tests Selected</div>
           <Modal open={modalOpen} onClose={handleClose}>

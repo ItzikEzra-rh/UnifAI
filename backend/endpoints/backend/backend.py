@@ -55,7 +55,6 @@ def get_test_details(repo_url, repo_auth_key, repo_folder_path, branch, test_pat
     :param str test_path: Path of the test file
     :return: Content of the test file
     """
-    print(repo_url)
     test_content = get_test_content_from_gitlab(repo_url, repo_auth_key, branch, test_path)
     return json_response({"result": {"path": test_path, "content": test_content}})
 

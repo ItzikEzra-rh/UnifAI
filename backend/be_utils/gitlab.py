@@ -1,3 +1,4 @@
+from urllib.parse import quote_plus
 import requests
 import threading
 
@@ -8,6 +9,7 @@ class GitlabAPI:
     def __init__(self, repo_url, repo_auth_key):
         self.browse_url = repo_url
         self.private_token = repo_auth_key
+        self.project_id = repo_url.split('/projects/')[1].split('/')[0]
 
     def _get(self, url):
         response = requests.get(url, verify=False)
@@ -75,38 +77,21 @@ class GitlabAPI:
             return []
         return [blob_file for blob_file in list_of_files if blob_file["type"] == "blob"]
 
-    def get_test_last_update(self, test_path, branch):
-        """call to gitlab api to get the commits of a certain test in a ceratin branch
-
-        :return: the timestamp of the last commit
-        """
-
-        url = "{}/commits?path={}&ref_name={}&private_token={}".format(self.browse_url, test_path, branch, self.private_token)
-        data, _ = self._get(url)
-        if type(data) is list and len(data) > 0:
-            # Extract the timestamp of the last commit
-            return data[0]["committed_date"]
-        return
-    
     def get_file_content(self, file_path, branch):
-        """Fetch the content of a file from GitLab.
+        """Fetch content of a specific file from GitLab.
 
-        :param str file_path: Path of the file
-        :param str branch: Branch name
+        :param str file_path: Path of the file to retrieve
+        :param str branch: Branch name to fetch the file from
         :return: File content as a string
         """
-        url = f"{self.browse_url}/files/{file_path}?ref={branch}&private_token={self.private_token}"
-        print(url)
-        data, response = self._get(url)
-        
-        # Check if the response is successful and contains the content field
-        if response.ok and "content" in data:
-            try:
-                import base64
-                # Decode the base64 content and return it as a UTF-8 string
-                file_content = base64.b64decode(data["content"]).decode("utf-8")
-                return file_content
-            except Exception as e:
-                raise ValueError(f"Error decoding content: {e}")
+        if file_path.startswith('/'):
+            file_path = file_path[1:]
+
+        file_path_encoded = quote_plus(file_path) 
+        url = f"{self.browse_url}/files/{file_path_encoded}/raw?ref={branch}&private_token={self.private_token}"
+        response = requests.get(url, verify=False)
+
+        if response.status_code == 200:
+            return response.text  # Return the raw content of the file
         else:
-            raise ValueError(f"Unable to fetch content for file: {file_path}. Response: {response.status_code}")
+            raise Exception(f"Failed to fetch file content: {response.status_code} - {response.text}")
