@@ -159,22 +159,26 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
   
   
   const handleIconClick = () => {
-    if (testContentOpen) {
-      setTestContentOpen(false);
-    } else {
-      axios.get('/api/backend/fileContent', {params: {gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value}})
-    .then((response) => {
-      const { content } = response.data.result;
-      setSelectedNodeContent(content); 
-    })
-    .catch((error) => {
-      console.error('Error fetching test details:', error);
-    });
-    setSelectedNodeLabel(node.label); 
-    setTestContentOpen(true);
-    }
+    setTestContentOpen(false); 
+      setSelectedNodeContent('');
+    if (testContentOpen && selectedNodeLabel === node.label) {
+      return;
+    } 
+      
+      axios.get('/api/backend/fileContent', { params: { gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value } })
+        .then((response) => {
+          const { content } = response.data.result;
+          setSelectedNodeContent(content);
+        })
+        .catch((error) => {
+          console.error('Error fetching test details:', error);
+        });
+  
+      setSelectedNodeLabel(node.label);
+      setTestContentOpen(true);
+    
   };
-
+  
   const handleCheckboxChange = (node: TreeItemData, isChecked: boolean) => {
     const getAllChildren = (node: TreeItemData): string[] => {
       if (!node.children) return [node.value];
@@ -231,12 +235,15 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
           setTestContentOpen={setTestContentOpen}
           projectFormDetails={projectFormDetails}
         />
-        {childNode.label == selectedNodeLabel && selectedNodeContent && testContentOpen && (
-      <div className="code-visualizer-tree">
-          <SyntaxHighlighter language={testsCodeFramework} style={github}>
-              {selectedNodeContent}
-          </SyntaxHighlighter>
-      </div>)}
+          {childNode.label == selectedNodeLabel  && testContentOpen &&
+          ( selectedNodeContent ? <div className="code-visualizer-tree">
+            <SyntaxHighlighter language={testsCodeFramework} style={github}>
+                {selectedNodeContent}
+            </SyntaxHighlighter>
+        </div> : <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress sx={{ color: "red" }} />
+        </div>)}
+          
         </>
       ))}
     </TreeItem>
