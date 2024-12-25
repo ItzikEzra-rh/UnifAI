@@ -2,13 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Box, Button, CircularProgress, IconButton, Modal, Typography, Checkbox } from '@mui/material';
 import axios from '../../http/axiosConfig';
 import ButtonGroup from '@mui/material/ButtonGroup';
-import CollapseIcon from '@mui/icons-material/Remove'; // Replace with appropriate icon
-import ExpandIcon from '@mui/icons-material/Add'; // Replace with appropriate icon
-import VisibilityIcon from '@mui/icons-material/Visibility'; // Replace with appropriate icon
-import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';  // Updated import
+import CollapseIcon from '@mui/icons-material/Remove';
+import ExpandIcon from '@mui/icons-material/Add'; 
+import VisibilityIcon from '@mui/icons-material/Visibility'; 
+import FolderIcon from '@mui/icons-material/Folder';
+import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';  
 import "./GitTree.css";
-import FolderIcon from '@mui/icons-material/Folder'; // Folder icon for expandable nodes
-
 
 interface PropTypes {
   gitUrl: string;
@@ -17,7 +16,7 @@ interface PropTypes {
   gitFolderPath: string;
   triggerOpen: boolean;
   checked: string[];
-  setChecked: (checked: string[]) => void;
+  setChecked: React.Dispatch<React.SetStateAction<string[]>>;
   loading: boolean;
   setLoading: (loading: boolean) => void;
 }
@@ -38,7 +37,7 @@ interface TestItem {
 interface TreeNodeProps {
   node: TreeItemData;
   checked: string[];
-  setChecked: (checked: string[]) => void;
+  setChecked: React.Dispatch<React.SetStateAction<string[]>>;
   setSelectedNodeLabel: (selectedNodeLabel: any) => void;
   setModalOpen: (modalOpen: boolean) => void;
   gitUrl: string;
@@ -115,7 +114,17 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ c
     </ButtonGroup>
 );
 
-const TreeNode: React.FC<TreeNodeProps> = ({ node, checked, setChecked, setSelectedNodeLabel, setModalOpen, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName}) => {
+const TreeNode: React.FC<TreeNodeProps> = React.memo(({ 
+                node, 
+                checked, 
+                setChecked, 
+                setSelectedNodeLabel, 
+                setModalOpen, 
+                gitUrl, 
+                gitCredentialKey, 
+                gitFolderPath, 
+                gitBranchName 
+              }) => {
   const handleIconClick = () => {
     axios.get('/api/backend/fileContent', {
       params: {
@@ -129,35 +138,55 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, checked, setChecked, setSelec
     .then((response) => {
       const { content, path } = response.data.result;
       console.log(`Test content for ${path}: \n${content}`);
-      setSelectedNodeLabel(content); // You could display the content in the modal or handle as needed
+      setSelectedNodeLabel(content); 
     })
     .catch((error) => {
       console.error('Error fetching test details:', error);
     });
-    setSelectedNodeLabel(node.label); // Set the selected node label
-    setModalOpen(true); // Open the modal
+    setSelectedNodeLabel(node.label); 
+    setModalOpen(true);
   };
+
+  const handleCheckboxChange = (node: TreeItemData, isChecked: boolean) => {
+    const getAllChildren = (node: TreeItemData): string[] => {
+      if (!node.children) return [node.value];
+      return node.children.flatMap(getAllChildren).concat(node.value);
+    };
+  
+    const childrenValues = getAllChildren(node);
+  
+    if (isChecked) {
+      setChecked(prev => [...prev, ...childrenValues.filter((val) => !prev.includes(val))]);
+
+    } else {
+      setChecked((prev) => prev.filter((val) => !childrenValues.includes(val)));
+    }
+  };
+  
 
   return (
     <TreeItem
       key={node.value}
       itemId={node.value}
       label={
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+        <Box sx={{
+          height: '15px',
+          display: 'flex',
+          alignItems: 'center',
+          padding: '2px 4px',
+          fontSize: '0.875rem', 
+        }}>
           <Checkbox
             checked={checked.includes(node.value)}
             disabled={node.disabled}
-            onChange={(event) => {
-              const newChecked = event.target.checked
-                ? [...checked, node.value]
-                : checked.filter((item) => item !== node.value);
-              setChecked(newChecked);
-            }}
+            onChange={(event) => handleCheckboxChange(node, event.target.checked)}
+            sx={{ padding: '2px', marginRight: '4px' }} // Minimized padding and margin
+            size="small"
           />
           {node.children?.length && node.children?.length > 0 ? 
-            <FolderIcon sx={{ marginRight: 1 }} /> : 
+            <FolderIcon sx={{ marginRight: 0.5, fontSize: '1rem' }} /> : 
             <IconButton onClick={handleIconClick} sx={{ marginRight: 1 }}>
-              <VisibilityIcon />
+              <VisibilityIcon fontSize='small'/>
             </IconButton>
           }
           {node.label}
@@ -180,7 +209,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, checked, setChecked, setSelec
       ))}
     </TreeItem>
   );
-};
+});
 
 
 const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked, loading, setLoading }) => {
@@ -259,6 +288,14 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     setModalOpen(false);
   };
 
+  const countSelectedTests = (nodes: TreeItemData[], checked: string[]): number => {
+    const countTests = (node: TreeItemData): number => {
+      if (!node.children) return checked.includes(node.value) ? 1 : 0;
+      return node.children.reduce((sum, child) => sum + countTests(child), 0);
+    };
+    return nodes.reduce((sum, node) => sum + countTests(node), 0);
+  };
+  
   return (
     <>
       {loading ? (
@@ -268,27 +305,38 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
       ) : (
         <div className="form-section">
           <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
+          <Box
+    sx={{
+      maxHeight: "400px", // Limit the height of the tree container
+      overflow: "auto", // Enable scrolling when content overflows
+      border: "1px solid #ccc", // Optional: Add a border for clarity
+      borderRadius: "4px", // Optional: Rounded corners
+    }}
+  >
           <SimpleTreeView
-            multiSelect
-            selectedItems={checked}
-            expandedItems={expanded}
-            onExpandedItemsChange={(event, nodeIds) => setExpanded(nodeIds)}
-          >
-            {nodes.map((node) => (
-              <TreeNode 
-                key={node.value} 
-                node={node} 
-                checked={checked} 
-                setChecked={setChecked} 
-                setSelectedNodeLabel={setSelectedNodeLabel} 
-                setModalOpen={setModalOpen}
-                gitUrl={gitUrl}            
-                gitCredentialKey={gitCredentialKey}
-                gitFolderPath={gitFolderPath}
-                gitBranchName={gitBranchName}  />
-            ))}
-          </SimpleTreeView>
-          <div className="tests-selected">{checked.length} Tests Selected</div>
+  multiSelect
+  selectedItems={checked}
+  expandedItems={expanded}
+  onExpandedItemsChange={(event, nodeIds) => setExpanded(nodeIds)}
+>
+  {nodes.map((node) => (
+    <TreeNode 
+      key={node.value} 
+      node={node} 
+      checked={checked} 
+      setChecked={setChecked} 
+      setSelectedNodeLabel={setSelectedNodeLabel} 
+      setModalOpen={setModalOpen}
+      gitUrl={gitUrl}            
+      gitCredentialKey={gitCredentialKey}
+      gitFolderPath={gitFolderPath}
+      gitBranchName={gitBranchName}  
+    />
+  ))}
+</SimpleTreeView>
+
+          </Box>
+          <div className="tests-selected">{countSelectedTests(nodes, checked)} Tests Selected</div>
           <Modal open={modalOpen} onClose={handleClose}>
             <Box
               sx={{
