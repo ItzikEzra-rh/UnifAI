@@ -41,8 +41,11 @@ interface TreeNodeProps {
   node: TreeItemData;
   checked: string[];
   setChecked: React.Dispatch<React.SetStateAction<string[]>>;
+  selectedNodeLabel: string;
   setSelectedNodeLabel: (selectedNodeLabel: any) => void;
+  selectedNodeContent: any;
   setSelectedNodeContent: (selectedNodeContent: any) => void;
+  modalOpen: boolean;
   setModalOpen: (modalOpen: boolean) => void;
   gitUrl: string;
   gitCredentialKey: string;
@@ -140,11 +143,14 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ c
  * - `gitBranchName`: The branch name in the Git repository.
  */
 
-const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked, setSelectedNodeLabel, setSelectedNodeContent, setModalOpen, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName}) => {
+const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked, selectedNodeLabel, setSelectedNodeLabel, selectedNodeContent, setSelectedNodeContent, modalOpen, setModalOpen, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName}) => {
   const handleIconClick = () => {
-    axios.get('/api/backend/fileContent', {params: {gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value}})
+    if (modalOpen) {
+      setModalOpen(false);
+    } else {
+      axios.get('/api/backend/fileContent', {params: {gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value}})
     .then((response) => {
-      const { content, path } = response.data.result;
+      const { content } = response.data.result;
       setSelectedNodeContent(content); 
     })
     .catch((error) => {
@@ -152,6 +158,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked
     });
     setSelectedNodeLabel(node.label); 
     setModalOpen(true);
+    }
   };
 
   const handleCheckboxChange = (node: TreeItemData, isChecked: boolean) => {
@@ -172,6 +179,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked
   
 
   return (
+    <>
     <TreeItem
       key={node.value}
       itemId={node.value}
@@ -195,21 +203,34 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked
       }
     >
       {node.children?.map((childNode) => (
+        <>
         <TreeNode
           key={childNode.value}
           node={childNode}
           checked={checked}
           setChecked={setChecked}
+          selectedNodeLabel={selectedNodeLabel}
           setSelectedNodeLabel={setSelectedNodeLabel}
+          selectedNodeContent={selectedNodeContent}
           setSelectedNodeContent={setSelectedNodeContent}
+          modalOpen={modalOpen}
           setModalOpen={setModalOpen}
           gitUrl={gitUrl}            
           gitCredentialKey={gitCredentialKey}
           gitFolderPath={gitFolderPath}
           gitBranchName={gitBranchName}
         />
+        {childNode.label == selectedNodeLabel && selectedNodeContent && modalOpen && (
+      <div className="code-visualizer">
+          <SyntaxHighlighter language="python" style={github}>
+              {selectedNodeContent}
+          </SyntaxHighlighter>
+      </div>)}
+        </>
       ))}
     </TreeItem>
+    
+      </>
   );
 });
 
@@ -287,10 +308,6 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     }
   }, [triggerOpen]);
 
-  const handleClose = () => {
-    setModalOpen(false);
-  };
-
   const countSelectedTests = (nodes: TreeItemData[], checked: string[]): number => {
     const countTests = (node: TreeItemData): number => {
       if (!node.children) return checked.includes(node.value) ? 1 : 0;
@@ -321,8 +338,11 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
                   node={node} 
                   checked={checked} 
                   setChecked={setChecked} 
+                  selectedNodeLabel={selectedNodeLabel}
                   setSelectedNodeLabel={setSelectedNodeLabel} 
+                  selectedNodeContent={selectedNodeContent}
                   setSelectedNodeContent={setSelectedNodeContent}
+                  modalOpen={modalOpen}
                   setModalOpen={setModalOpen}
                   gitUrl={gitUrl}            
                   gitCredentialKey={gitCredentialKey}
@@ -333,30 +353,6 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
             </SimpleTreeView>
           </Box>
           <div className="tests-selected">{countSelectedTests(nodes, checked)} Tests Selected</div>
-          <Modal open={modalOpen} onClose={handleClose}>
-            <Box
-              sx={{
-                position: "absolute",
-                top: "50%",
-                left: "50%",
-                transform: "translate(-50%, -50%)",
-                width: '80%',
-                bgcolor: "background.paper",
-                boxShadow: 24,
-                p: 4,
-                borderRadius: "8px",
-              }}
-            >
-              <Typography variant="h4">{selectedNodeLabel}</Typography>
-              {selectedNodeContent && (
-                                  <div className="code-visualizer">
-                                      <SyntaxHighlighter language={testsCodeFramework} style={github}>
-                                          {selectedNodeContent}
-                                      </SyntaxHighlighter>
-                                  </div>)}
-              
-            </Box>
-          </Modal>
         </div>
       )}
     </>
