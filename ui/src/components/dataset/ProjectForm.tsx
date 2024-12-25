@@ -178,7 +178,7 @@ const ProjectForm: React.FC = () => {
             <StepContent>
               <div className="form-section">
                 <GitForm gitUrl={watch('gitUrl')} gitCredentialKey={watch('gitCredentialKey')} gitBranchName={watch('gitBranchName')} gitFolderPath={watch('gitFolderPath') || ''} 
-                        triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked} loading={gitLoading} setLoading={setGitLoading} />
+                        triggerOpen={triggerGitFormOpen} checked={checked} setChecked={setChecked} loading={gitLoading} setLoading={setGitLoading} testsCodeFramework={watch('testsCodeFramework')}/>
                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
                   <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
                     Back

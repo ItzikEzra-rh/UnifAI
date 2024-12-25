@@ -8,6 +8,8 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import FolderIcon from '@mui/icons-material/Folder';
 import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';  
 import "./GitTree.css";
+import SyntaxHighlighter from 'react-syntax-highlighter';
+import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
 interface PropTypes {
   gitUrl: string;
@@ -19,6 +21,7 @@ interface PropTypes {
   setChecked: React.Dispatch<React.SetStateAction<string[]>>;
   loading: boolean;
   setLoading: (loading: boolean) => void;
+  testsCodeFramework: string;
 }
 
 interface TreeItemData {
@@ -39,6 +42,7 @@ interface TreeNodeProps {
   checked: string[];
   setChecked: React.Dispatch<React.SetStateAction<string[]>>;
   setSelectedNodeLabel: (selectedNodeLabel: any) => void;
+  setSelectedNodeContent: (selectedNodeContent: any) => void;
   setModalOpen: (modalOpen: boolean) => void;
   gitUrl: string;
   gitCredentialKey: string;
@@ -136,13 +140,12 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ c
  * - `gitBranchName`: The branch name in the Git repository.
  */
 
-const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked, setSelectedNodeLabel, setModalOpen, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName}) => {
+const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked, setSelectedNodeLabel, setSelectedNodeContent, setModalOpen, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName}) => {
   const handleIconClick = () => {
     axios.get('/api/backend/fileContent', {params: {gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value}})
     .then((response) => {
       const { content, path } = response.data.result;
-      console.log(`Test content for ${path}: \n${content}`);
-      setSelectedNodeLabel(content); 
+      setSelectedNodeContent(content); 
     })
     .catch((error) => {
       console.error('Error fetching test details:', error);
@@ -198,6 +201,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked
           checked={checked}
           setChecked={setChecked}
           setSelectedNodeLabel={setSelectedNodeLabel}
+          setSelectedNodeContent={setSelectedNodeContent}
           setModalOpen={setModalOpen}
           gitUrl={gitUrl}            
           gitCredentialKey={gitCredentialKey}
@@ -210,11 +214,12 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({node, checked, setChecked
 });
 
 
-const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked, loading, setLoading }) => {
+const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked, loading, setLoading, testsCodeFramework }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [checkedDB, setCheckedDB] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedNodeLabel, setSelectedNodeLabel] = useState("");
+  const [selectedNodeContent, setSelectedNodeContent] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
   const [nodes, setNodes] = useState<TreeItemData[]>([]);
   const [testsInDB, setTestsInDB] = useState<{ [key: string]: boolean }>({});
@@ -317,6 +322,7 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
                   checked={checked} 
                   setChecked={setChecked} 
                   setSelectedNodeLabel={setSelectedNodeLabel} 
+                  setSelectedNodeContent={setSelectedNodeContent}
                   setModalOpen={setModalOpen}
                   gitUrl={gitUrl}            
                   gitCredentialKey={gitCredentialKey}
@@ -334,17 +340,21 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
                 top: "50%",
                 left: "50%",
                 transform: "translate(-50%, -50%)",
-                width: 300,
+                width: '80%',
                 bgcolor: "background.paper",
                 boxShadow: 24,
                 p: 4,
                 borderRadius: "8px",
               }}
             >
-              <Typography variant="h6" component="h2">
-                {selectedNodeLabel}
-              </Typography>
-              <Typography sx={{ mt: 2 }}>content</Typography>
+              <Typography variant="h4">{selectedNodeLabel}</Typography>
+              {selectedNodeContent && (
+                                  <div className="code-visualizer">
+                                      <SyntaxHighlighter language={testsCodeFramework} style={github}>
+                                          {selectedNodeContent}
+                                      </SyntaxHighlighter>
+                                  </div>)}
+              
             </Box>
           </Modal>
         </div>
