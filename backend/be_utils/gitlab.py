@@ -9,7 +9,6 @@ class GitlabAPI:
     def __init__(self, repo_url, repo_auth_key):
         self.browse_url = repo_url
         self.private_token = repo_auth_key
-        self.project_id = repo_url.split('/projects/')[1].split('/')[0]
 
     def _get(self, url):
         response = requests.get(url, verify=False)
@@ -77,6 +76,19 @@ class GitlabAPI:
             return []
         return [blob_file for blob_file in list_of_files if blob_file["type"] == "blob"]
 
+    def get_test_last_update(self, test_path, branch):
+        """call to gitlab api to get the commits of a certain test in a ceratin branch
+
+        :return: the timestamp of the last commit
+        """
+
+        url = "{}/commits?path={}&ref_name={}&private_token={}".format(self.browse_url, test_path, branch, self.private_token)
+        data, _ = self._get(url)
+        if type(data) is list and len(data) > 0:
+            # Extract the timestamp of the last commit
+            return data[0]["committed_date"]
+        return
+
     def get_file_content(self, file_path, branch):
         """Fetch content of a specific file from GitLab.
 
@@ -85,13 +97,13 @@ class GitlabAPI:
         :return: File content as a string
         """
         if file_path.startswith('/'):
-            file_path = file_path[1:]
+            file_path = file_path[1:] # Remove leading slash from the file path
 
-        file_path_encoded = quote_plus(file_path) 
+        file_path_encoded = quote_plus(file_path) # Convert slashes to the correct encoding for the API call
         url = f"{self.browse_url}/files/{file_path_encoded}/raw?ref={branch}&private_token={self.private_token}"
         response = requests.get(url, verify=False)
 
         if response.status_code == 200:
-            return response.text  # Return the raw content of the file
+            return response.text 
         else:
             raise Exception(f"Failed to fetch file content: {response.status_code} - {response.text}")
