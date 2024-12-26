@@ -67,38 +67,38 @@ export function stringContainsSpace(item: string) {
  * @param dbList
  */
 export function buildTree (paths: string[][], previousPath: string[] | string, dbList: {[key: string]: boolean}) {
-      const items: any[] = [];
-      paths.forEach(path => {
-          const name = path[0];
-          const value = path[0];
-          const rest = path.slice(1);
-          const isContainsSpace = stringContainsSpace(name);
-          let item = items.find( e => e.name === name);
-          if (item === undefined && value !== "") {
-              const fileFullPath = previousPath + "/" + value;
-              item = {
-                  name: name ,
-                  value: isContainsSpace ? fileFullPath + "_disabled" : fileFullPath,
-                  label: value,
-                  children: [],
-                  path: fileFullPath,
-                  disabled: isPathInDb(dbList, fileFullPath) || stringContainsSpace(name),
-                  className: isContainsSpace ? "warning_space" : "",
-                  title: isContainsSpace ? "Test name contains spaces, please remove any spaces from file name" : ""
-              };
-              items.push(item);
-          }
-          if (rest.length > 0) {
-              item.children.push(rest);
-          }
-      });
-      items.forEach(item  =>  {
-          item.children = buildTree(item.children, item.path, dbList);
-          if (item.children.length === 0) {
-              delete item["children"]
-          }
-      });
-      return items;
+    const items: any[] = [];
+    paths.forEach(path => {
+        const name = path[0];
+        const value = path[0];
+        const rest = path.slice(1);
+        const isContainsSpace = stringContainsSpace(name);
+        let item = items.find( e => e.name === name);
+        if (item === undefined && value !== "") {
+            const fileFullPath = previousPath + "/" + value;
+            item = {
+                name: name ,
+                value: isContainsSpace ? fileFullPath + "_disabled" : fileFullPath,
+                label: value,
+                children: [],
+                path: fileFullPath,
+                disabled: isPathInDb(dbList, fileFullPath) || stringContainsSpace(name),
+                className: isContainsSpace ? "warning_space" : "",
+                title: isContainsSpace ? "Test name contains spaces, please remove any spaces from file name" : ""
+            };
+            items.push(item);
+        }
+        if (rest.length > 0) {
+            item.children.push(rest);
+        }
+    });
+    items.forEach(item  =>  {
+        item.children = buildTree(item.children, item.path, dbList);
+        if (item.children.length === 0) {
+            delete item["children"]
+        }
+    });
+    return items;
 }
 
 /**
