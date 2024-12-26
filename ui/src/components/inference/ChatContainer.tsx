@@ -481,8 +481,10 @@ const ChatComponent: React.FC = () => {
     };
 
     try {
+      console.log(selectedModel)
       const payload = {
         modelId: selectedModel.modelId,
+        modelName: selectedModel.modelName,
         trainingName: selectedModel.trainingName,
         promptEntireText: aggregateMessages(messages),
         promptUserLastQuestionText: promptUserLatestMessage,

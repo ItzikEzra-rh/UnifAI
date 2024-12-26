@@ -15,6 +15,7 @@ SyntaxHighlighter.registerLanguage('python', python);
 
 interface SavedPromptData {
   modelId: string;
+  modelName: string;
   uniqueId: string;
   trainingName: string;
   promptText: string;
