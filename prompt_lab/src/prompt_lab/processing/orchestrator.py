@@ -1,12 +1,10 @@
 # my_project/processing/orchestrator.py
 
-import time
+
 from typing import List
-from models.prompt import Prompt
-from policies.retry_policy import RetryPolicy
-from processing.batch import Batch
-from processing.prompt_generator import PromptGenerator
-# from utils.celery.celery import send_task, get_queue_length_rabbitmq
+from prompt import Prompt, Batch, PromptGenerator
+from policies.retry import RetryPolicy
+
 
 class Orchestrator:
     """
