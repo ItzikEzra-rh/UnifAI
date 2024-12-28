@@ -4,7 +4,7 @@ file_data_repository.py
 Implements FileDataRepository, which uses JSONFileHandler for
 input, processed, skipped, and progress data in local JSON files.
 """
-
+from typing import Dict, Any, Iterator
 from storage import (DataRepository,
                      JSONFileHandler)
 
@@ -43,7 +43,7 @@ class FileDataRepository(DataRepository):
     # DataRepository interface
     # ---------------------------
 
-    def load_data(self) -> Iterator[Dict[str, Any]]:
+    def input_load_data(self) -> Iterator[Dict[str, Any]]:
         """
         Read data from the input JSON file (treated as a JSON list).
         """

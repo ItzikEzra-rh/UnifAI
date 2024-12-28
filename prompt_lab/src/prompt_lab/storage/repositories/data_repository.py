@@ -6,7 +6,7 @@ class DataRepository(ABC):
     """Abstract class for a data repository interface."""
 
     @abstractmethod
-    def load_data(self) -> Iterator[Dict[str, Any]]:
+    def input_load_data(self) -> Iterator[Dict[str, Any]]:
         """Return the main data input in a streaming/iterative fashion."""
         pass
 
@@ -32,6 +32,10 @@ class DataRepository(ABC):
 
     @abstractmethod
     def save_skipped_data(self, data: Dict[str, Any]) -> None:
+        pass
+
+    @abstractmethod
+    def get_input_size(self) -> int:
         pass
 
     @abstractmethod

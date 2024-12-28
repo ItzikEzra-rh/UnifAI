@@ -47,7 +47,10 @@ class HybridHFMongoRepository(DataRepository):
     def load_data(self) -> Iterator[Dict[str, Any]]:
         return self.input_handler.read_data()
 
-    def load_processed_data(self) -> Iterator[Dict[str, Any]]:
+    def get_input_size(self) -> int:
+        return self.input_handler.get_size()
+
+    def input_load_data(self) -> Iterator[Dict[str, Any]]:
         return self.processed_handler.read_data()
 
     def load_skipped_data(self) -> Iterator[Dict[str, Any]]:

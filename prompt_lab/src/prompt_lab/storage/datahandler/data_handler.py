@@ -61,3 +61,6 @@ class DataHandler(ABC):
         By default, raises NotImplementedError.
         """
         raise NotImplementedError("Not applicable for this handler.")
+
+    def get_size(self) -> int:
+        pass

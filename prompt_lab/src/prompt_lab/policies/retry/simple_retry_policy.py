@@ -1,5 +1,6 @@
 from .retry_policy import RetryPolicy
 
+
 class SimpleRetryPolicy(RetryPolicy):
     """
     If 'retry_count' < max_retries, increment it and allow re-queue.
@@ -16,7 +17,7 @@ class SimpleRetryPolicy(RetryPolicy):
             # Clear any skip reason if it exists
             if "skip" in prompt.metadata:
                 del prompt.metadata["skip"]
-            print(f"[RetryPolicy] Retrying prompt {prompt.uuid} (attempt {current_retry+1})")
+            print(f"[RetryPolicy] Retrying prompt {prompt.uuid} (attempt {current_retry + 1})")
             return True
         else:
             prompt.metadata.setdefault("skip", {})

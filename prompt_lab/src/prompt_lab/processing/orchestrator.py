@@ -1,9 +1,6 @@
-# my_project/processing/orchestrator.py
-
-
 from typing import List
 from prompt import Prompt, Batch, PromptGenerator
-from policies.retry import RetryPolicy
+from policies import RetryPolicy
 
 
 class Orchestrator:

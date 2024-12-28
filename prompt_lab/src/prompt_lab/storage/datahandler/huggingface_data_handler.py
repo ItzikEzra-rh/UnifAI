@@ -39,7 +39,7 @@ class HuggingFaceDataHandler(DataHandler):
         self.token = token
         self.buffer_size = buffer_size
         self._buffer: List[Dict[str, Any]] = []
-
+        self.size = 0
         dataset = load_dataset(
             repo_id,
             split=split,
@@ -50,6 +50,7 @@ class HuggingFaceDataHandler(DataHandler):
             self._dataset = dataset[self.split]
         else:
             self._dataset = dataset
+        self.count_dataset_size()
 
     def read_data(self) -> Iterator[Dict[str, Any]]:
         """
@@ -99,6 +100,12 @@ class HuggingFaceDataHandler(DataHandler):
             k: [r.get(k) for r in records]
             for k in sorted(all_keys)
         }
+
+    def count_dataset_size(self):
+        self.size = sum(1 for _ in self._dataset)
+
+    def get_size(self) -> int:
+        return self.size
 
     def close(self) -> None:
         """
