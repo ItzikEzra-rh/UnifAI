@@ -691,9 +691,9 @@ const ChatComponent: React.FC = () => {
           <>
             <ChatToolTip />
           </>
-          <div style={{position: 'relative', height: '100%', display: 'flex', gap: '16px'}}>
-            <MainContainer style={{padding: '10px', marginTop: '20px', flexGrow: 1, maxHeight: '95%',}}>
-              <ChatContainer>
+          <div style={{position: 'relative', maxHeight: '80%', height: '100%', display: 'flex', gap: '16px'}}>
+            <MainContainer style={{padding: '10px', marginTop: '20px', flexGrow: 1}}>  
+            <ChatContainer>
                 <MessageList>
                   {messages.map((message, idx) => (
                     <div key={message.id} style={{ position: 'relative', paddingBottom: '40px' }}>
