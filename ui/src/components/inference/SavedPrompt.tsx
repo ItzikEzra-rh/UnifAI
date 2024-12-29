@@ -70,6 +70,10 @@ const SavedPrompts: React.FC = () => {
         ),
       },
       {
+        Header: 'Model Name',
+        accessor: (row: SavedPromptData) => row.modelName || "N/A"
+      },
+      {
         Header: 'Comment',
         accessor: 'comment',
         Cell: ({ row }: any) => (

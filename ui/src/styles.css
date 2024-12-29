@@ -97,15 +97,11 @@ body, html, #root {
 
 .main-content {
   flex: 1;
-  height: 85%; /* You can adjust this based on your layout */
+  height: 85%;
   padding: 20px;
   background-color: #f9f9f9;
   border-top: 1px solid #ccc;
-  display: flex;
-  flex-direction: column;
 }
-
-
 
 .bottom-right-image {
   position: absolute;
@@ -447,26 +443,12 @@ body, html, #root {
 }
 
 .chat-container-wrapper {
-  height: 100%;
+  height: calc(100% - 10px);
   border: 1px solid #ccc;
   padding: 10px;
   position: relative;
   display: flex;
   flex-direction: column;
-  overflow-y: auto; /* Enable scrolling */
-}
-
-.chat-container-wrapper::-webkit-scrollbar {
-  width: 8px;
-}
-
-.chat-container-wrapper::-webkit-scrollbar-thumb {
-  background-color: #888;
-  border-radius: 4px;
-}
-
-.chat-container-wrapper::-webkit-scrollbar-thumb:hover {
-  background-color: #555;
 }
 
 .chat-top-buttons {
