@@ -52,7 +52,7 @@ class Orchestrator:
         """
         Main loop: read prompts from generator, add to batch, submit when full, continue.
         """
-        count = 0
+
         for prompt in self.generator:
             if prompt.uuid in self.processed_uuids:
                 # Already processed
@@ -68,15 +68,9 @@ class Orchestrator:
                 if not self.skip_policy.should_skip(prompt):
                     self.batch.add_prompt(prompt)
 
-            count += 1
-            if count % 100 == 0:
-                print(f"[Orchestrator] Processed {count} prompts...")
-
         # leftover
         if self.batch.has_prompts():
             self._submit_current_batch()
-
-        print(f"[Orchestrator] All prompts processed. Total: {count}")
 
     def _submit_current_batch(self):
         finalized_prompts = self.batch.finalize_batch()

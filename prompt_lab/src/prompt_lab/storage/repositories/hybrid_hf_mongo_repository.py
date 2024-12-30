@@ -7,7 +7,7 @@ Uses a HuggingFaceDataHandler for input, MongoDataHandler for processed/skipped/
 and defers export logic to an HFExporter.
 """
 
-from typing import Dict, Any, Iterator
+from typing import Dict, Any, Iterator, Set
 from storage import (DataRepository,
                      HuggingFaceDataHandler,
                      MongoDataHandler,
@@ -63,10 +63,11 @@ class HybridHFMongoRepository(DataRepository):
         self.skipped_handler.append_record(data)
 
     def save_progress(self, uuid: str, value: str = "") -> None:
-        self.progress_handler.append_record({"uuid": uuid, "value": value})
+        self.progress_handler.append_record({"uuid": uuid})
 
-    def load_progress(self) -> Iterator[Dict[str, Any]]:
-        return self.progress_handler.read_data()
+    def load_progress(self) -> Set[str]:
+        progress_processed_uuid = {uuid_obj["uuid"] for uuid_obj in self.progress_handler.read_data()}
+        return progress_processed_uuid
 
     def close(self) -> None:
         self.input_handler.close()

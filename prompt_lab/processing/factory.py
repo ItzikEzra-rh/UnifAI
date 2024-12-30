@@ -1,4 +1,4 @@
-from processing.data_processor import DataProcessor
+from core.data_processor import DataProcessor
 from config.manager import config
 from utils.util import load_json_config
 from storage.file_data_repository import FileDataRepository

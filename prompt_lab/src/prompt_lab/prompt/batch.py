@@ -1,10 +1,9 @@
-# my_project/processing/batch.py
-
 import copy
 from typing import List
-from models.prompt import Prompt
-from strategies.batch_strategy import BatchStrategy
-from policies.skip_policy import SkipPolicy
+from prompt import Prompt
+from strategies import BatchStrategy, CompositeBatchStrategy
+from policies import CompositeRetryPolicy, CompositeSkipPolicy
+from policies import SkipPolicy
 
 
 class Batch:
@@ -14,10 +13,10 @@ class Batch:
     and defers skip logic to a SkipPolicy.
     """
 
-    def __init__(self, batch_strategy: BatchStrategy, skip_policy: SkipPolicy, repository):
-        self.batch_strategy = batch_strategy
-        self.skip_policy = skip_policy
-        self.repository = repository  # can be used if we need to log anything
+    def __init__(self, batch_strategies: CompositeBatchStrategy, skip_policies: CompositeSkipPolicy, repository):
+        self.batch_strategies = batch_strategies
+        self.skip_policies = skip_policies
+        self.repository = repository
         self.prompts: List[Prompt] = []
 
     def add_prompt(self, prompt: Prompt) -> bool:
@@ -25,13 +24,13 @@ class Batch:
         1) Check if skip_policy wants to skip the prompt.
         2) If not skipped, see if batch_strategy allows adding it.
         """
-        if self.skip_policy.should_skip(prompt):
+        if self.skip_policies.should_skip(prompt):
+            return False
+        if not self.batch_strategies.can_add_prompt(current_batch=self.prompts, new_prompt=prompt):
             return False
 
-        if self.batch_strategy.can_add_prompt(self.prompts, prompt):
-            self.prompts.append(prompt)
-            return True
-        return False
+        self.add_prompt(prompt)
+        return True
 
     def finalize_batch(self) -> List[Prompt]:
         """

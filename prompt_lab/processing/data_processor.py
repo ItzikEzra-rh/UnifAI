@@ -2,8 +2,8 @@ import pprint
 
 from llm_client.vllm import VLLMClient
 from utils.tokenizer import TokenizerUtils
-from processing.prompt_generator import PromptGenerator
-from processing.batch_procceser import BatchProcessor
+from core.prompt_generator import PromptGenerator
+from core.batch_procceser import BatchProcessor
 from utils.celery.celery import send_task, get_queue_length_rabbitmq
 from time import sleep
 

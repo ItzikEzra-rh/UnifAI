@@ -36,3 +36,13 @@ def get_queue_length_rabbitmq(queue_name):
     with Connection(get_rabbitmq_url()) as conn:
         queue = conn.SimpleQueue(queue_name)
         return queue.qsize()
+
+
+def is_queue_full(queue_name, queue_target_size) -> bool:
+    """Check if the RabbitMQ queue is full."""
+    try:
+        queue_length = get_queue_length_rabbitmq(queue_name)
+        return queue_length >= queue_target_size
+    except Exception as e:
+        print(f"[Orchestrator] Error checking queue length: {e}")
+        return True

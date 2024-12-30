@@ -9,10 +9,10 @@ class PromptGenerator:
     Orchestrates the generation of prompts by combining TemplateManager and PromptFormatter.
     """
 
-    def __init__(self, repository, tokenizer, project_config):
+    def __init__(self, repository, tokenizer):
         self.repository = repository
-        self.template_manager = TemplateManager(project_config)
-        self.prompt_formatter = PromptFormatter(project_config, tokenizer)
+        self.template_manager = TemplateManager()
+        self.prompt_formatter = PromptFormatter(self.template_manager, tokenizer)
 
     def __iter__(self):
         """Iterate over generated Prompt objects."""

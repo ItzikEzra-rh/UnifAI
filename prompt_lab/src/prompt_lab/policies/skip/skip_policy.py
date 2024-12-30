@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
-from models.prompt import Prompt
+from prompt import Prompt
+
 
 class SkipPolicy(ABC):
     """

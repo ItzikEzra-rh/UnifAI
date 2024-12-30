@@ -1,6 +1,6 @@
 import logging
 from celery_app.init import celery
-from processing.factory import DataProcessorFactory
+from core.factory import DataProcessorFactory
 from utils.celery.celery import send_task
 
 

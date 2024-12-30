@@ -1,7 +1,7 @@
-
 from abc import ABC, abstractmethod
-from models.prompt import Prompt
+from prompt import Prompt
 from typing import List
+
 
 class BatchStrategy(ABC):
     """

@@ -9,7 +9,7 @@ from llm_client.vllm import VLLMClient
 from policies.skip_policy import TokenSizeSkipPolicy
 from policies.retry_policy import SimpleRetryPolicy
 from strategies.max_size_and_token_batch_strategy import MaxSizeAndTokenBatchStrategy
-from processing.orchestrator import Orchestrator
+from core.orchestrator import Orchestrator
 
 def create_orchestrator() -> Orchestrator:
     # 1) Build repository

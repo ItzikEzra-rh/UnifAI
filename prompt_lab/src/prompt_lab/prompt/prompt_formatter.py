@@ -14,8 +14,8 @@ class PromptFormatter:
     def __init__(self, template_manager: TemplateManager, tokenizer):
         self.template_manager = template_manager
         self.tokenizer = tokenizer
-        self.system_message = template_manager.project_config.get("system_message", "")
-        self.context_template = template_manager.project_config.get("context_template", "")
+        self.system_message = template_manager.get_template_system_message()
+        self.context_template = template_manager.get_template_context_message()
 
     def render_context(self, element_data: dict) -> str:
         """Render the context template using the provided element data."""
