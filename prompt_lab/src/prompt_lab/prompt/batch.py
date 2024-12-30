@@ -1,9 +1,8 @@
 import copy
 from typing import List
 from prompt import Prompt
-from strategies import BatchStrategy, CompositeBatchStrategy
-from policies import CompositeRetryPolicy, CompositeSkipPolicy
-from policies import SkipPolicy
+from strategies import CompositeBatchStrategy
+from policies import CompositeSkipPolicy
 
 
 class Batch:

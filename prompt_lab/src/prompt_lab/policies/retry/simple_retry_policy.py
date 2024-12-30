@@ -1,4 +1,6 @@
 from .retry_policy import RetryPolicy
+from prompt import Prompt
+from prompt import PromptGenerator
 
 
 class SimpleRetryPolicy(RetryPolicy):
@@ -11,16 +13,10 @@ class SimpleRetryPolicy(RetryPolicy):
         self.max_retries = max_retries
 
     def apply_retry_logic(self, prompt: Prompt) -> bool:
-        current_retry = prompt.metadata.get("retry_count", 0)
-        if current_retry < self.max_retries:
-            prompt.metadata["retry_count"] = current_retry + 1
-            # Clear any skip reason if it exists
-            if "skip" in prompt.metadata:
-                del prompt.metadata["skip"]
-            print(f"[RetryPolicy] Retrying prompt {prompt.uuid} (attempt {current_retry + 1})")
+        if prompt.retry_count < self.max_retries:
+            prompt.retry_count += 1
+
+            print(f"[RetryPolicy] Retrying prompt {prompt.uuid} (attempt {prompt.retry_count})")
             return True
         else:
-            prompt.metadata.setdefault("skip", {})
-            prompt.metadata["skip"]["reason"] = "exceeded_max_retries"
-            print(f"[RetryPolicy] Prompt {prompt.uuid} exceeded max retries -> skip")
             return False

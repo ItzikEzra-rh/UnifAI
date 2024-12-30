@@ -77,6 +77,7 @@ class PromptGenerator:
                         "category": category_name,
                         "validation": validation_text,
                         "input_text": input_text,
+                        "output_text": "",
                         "original_data": element_data,
                     }
                 }

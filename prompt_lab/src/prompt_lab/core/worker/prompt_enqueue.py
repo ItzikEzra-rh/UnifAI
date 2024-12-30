@@ -1,14 +1,15 @@
 from typing import List
 from prompt import Batch, PromptGenerator
-from policies import CompositeSkipPolicy
-from strategies import CompositeBatchStrategy
+from policies import CompositeSkipPolicy, SkipPolicy
+from strategies import CompositeBatchStrategy, BatchStrategy
 from utils.celery.celery import is_queue_full, send_task
+from utils.tokenizer import TokenizerUtils
 import time
 
 
 class PromptEnqueue:
     """
-    The main coordinator:
+    The main responsibility:
       - Iterates over PromptGenerator for the next prompt
       - Uses a Batch to add prompts (with skip & strategy constraints)
       - Submits the batch to a queue when full
@@ -17,22 +18,21 @@ class PromptEnqueue:
     def __init__(
             self,
             repository,
-            tokenizer,
-            batch_strategies: List,
-            skip_policies: List,
-            batch_size: int,
+            tokenizer: TokenizerUtils,
+            batch_strategies: List[BatchStrategy],
+            skip_policies: List[SkipPolicy],
             queue_target_size: int,
-            queue_name: str
+            prompts_queue_name: str,
+            prompt_query_task_name: str = "fetch_prompts_batch"
     ):
         self.repository = repository
         self.tokenizer = tokenizer
-
+        self.prompt_query_task_name = prompt_query_task_name
         self.batch_strategies = CompositeBatchStrategy(batch_strategies)
         self.skip_policies = CompositeSkipPolicy(skip_policies)
-        self.batch_size = batch_size
 
         self.queue_target_size = queue_target_size
-        self.queue_name = queue_name
+        self.prompts_queue_name = prompts_queue_name
 
         self.generator = PromptGenerator(self.repository, self.tokenizer)
         self.batch = Batch(self.batch_strategies, self.skip_policies, self.repository)
@@ -71,11 +71,11 @@ class PromptEnqueue:
         if not finalized_prompts:
             return
 
-        while is_queue_full(queue_name=self.queue_name, queue_target_size=self.queue_target_size):
+        while is_queue_full(queue_name=self.prompts_queue_name, queue_target_size=self.queue_target_size):
             # print(f"[Orchestrator] Queue {self.queue_name} is full. Retrying in 5 seconds...")
             time.sleep(5)
 
         payload = [p.to_dict() for p in finalized_prompts]
-        send_task("fetch_prompts_batch", celery_queue=self.queue_name, batch=payload)
+        send_task(self.prompt_query_task_name, celery_queue=self.prompts_queue_name, batch=payload)
 
-        print(f"[Orchestrator] Submitted {len(finalized_prompts)} prompts to queue {self.queue_name}.")
+        print(f"[Orchestrator] Submitted {len(finalized_prompts)} prompts to queue {self.prompts_queue_name}.")
