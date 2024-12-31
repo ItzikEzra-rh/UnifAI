@@ -233,10 +233,9 @@ def retrieve_inference_counter_per_all_models():
     try:
         # Retrieve the counter representing 'inference usage' per all models under MongoDB collection
         result = json.loads(json_util.dumps(retrieve_inference_counter_all()))
-        pretty_result = json.dumps(result, indent=4)
 
         # Return success response
-        return jsonify({"status": "success", "response": str(pretty_result)}), 201
+        return jsonify({"status": "success", "response": result}), 201
 
     except Exception as e:
         # Log the error and return error response
