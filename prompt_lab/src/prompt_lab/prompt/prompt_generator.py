@@ -1,7 +1,6 @@
 from template import TemplateManager
 from .prompt_formatter import PromptFormatter
 from tqdm import tqdm
-import random
 
 
 class PromptGenerator:
@@ -43,10 +42,9 @@ class PromptGenerator:
                 if not questions:
                     continue
 
-                question_def = random.choice(questions)
                 yield self.prompt_formatter.format_prompt(
                     element_data,
                     group_name,
                     category_name,
-                    question_def
+                    questions
                 )

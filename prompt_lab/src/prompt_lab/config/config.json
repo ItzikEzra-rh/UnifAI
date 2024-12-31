@@ -15,6 +15,7 @@
   },
   "prompt_lab": {
     "batch_size": ${PROMPT_LAB_BATCH_SIZE},
+    "max_retry": ${MAX_RETRY},
     "queues": {
       "fetch_prompts_queue": {
         "target_size": ${QUEUE_TARGET_SIZE},

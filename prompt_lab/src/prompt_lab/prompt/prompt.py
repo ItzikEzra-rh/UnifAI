@@ -1,30 +1,39 @@
+import random
+from dataclasses import dataclass, asdict
 import json
 
 
+@dataclass
 class Prompt:
     """
     Represents a single prompt with:
-      - UUID
-      - The final 'formatted_prompt' text to be sent to LLM
-      - Token count
-      - Arbitrary 'metadata' dict with details about the prompt
+      - A unique identifier (UUID)
+      - The formatted prompt text to be sent to the LLM
+      - The type of element (element_type) being represented
+      - Group and category classifications
+      - Validation rules as a dictionary
+      - Input text associated with the prompt
+      - Original data used for generating the prompt
+      - Token count and retry count for managing processing
+      - Flags indicating whether the prompt failed and the reason for skipping
     """
-
-    def __init__(self, uuid: str, formatted_prompt: str, metadata: dict, token_count: int = 0, retry_count: int = 0,
-                 failed: bool = False):
-        self.uuid = uuid
-        self.formatted_prompt = formatted_prompt
-        self.metadata = metadata or {}
-        self.token_count = token_count
-        self.retry_count = retry_count
-        self.failed = failed
-        self.skip_reason = None
+    uuid: str
+    formatted_prompt: str
+    element_type: str
+    group: str
+    category: str
+    questions: list
+    validation: dict
+    input_text: str
+    original_data: dict
+    output_text: str = ""
+    token_count: int = 0
+    retry_count: int = 0
+    failed: bool = False
+    skip_reason: str = None
 
     def set_skip_reason(self, reason: str) -> None:
         self.skip_reason = reason
-
-    def set_output_text(self, output_text: str) -> None:
-        self.metadata["output_text"] = output_text
 
     @property
     def is_failed(self) -> bool:
@@ -32,31 +41,21 @@ class Prompt:
 
     def to_dict(self) -> dict:
         """
-        Convert to a dictionary for serialization (e.g., sending to Celery).
+        Convert the object to a dictionary for serialization.
         """
-        return {
-            "uuid": self.uuid,
-            "formatted_prompt": self.formatted_prompt,
-            "token_count": self.token_count,
-            "metadata": self.metadata,
-            "retry_count": self.retry_count,
-            "failed": self.failed,
-            "skip_reason": self.skip_reason
-        }
+        return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> "Prompt":
+    def from_dict(cls, **kwargs) -> "Prompt":
         """
         Create a Prompt instance from a dictionary.
         """
-        return cls(
-            uuid=data.get("uuid", ""),
-            formatted_prompt=data.get("formatted_prompt", ""),
-            metadata=data.get("metadata", {}),
-            token_count=data.get("token_count", 0),
-            retry_count=data.get("retry_count", 0),
-            failed=data.get("failed", 0),
-        )
+        return cls(**kwargs)
+
+    def shuffle_user_input(self):
+        question = random.choice(self.questions)
+        self.input_text = question["question"]
+        self.validation = question["validation"]
 
     def __repr__(self) -> str:
         return json.dumps(self.to_dict(), indent=2)

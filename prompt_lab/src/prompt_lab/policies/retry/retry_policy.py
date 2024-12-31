@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from models.prompt import Prompt
+from prompt import Prompt
 
 
 class RetryPolicy(ABC):
@@ -8,7 +8,7 @@ class RetryPolicy(ABC):
     """
 
     @abstractmethod
-    def apply_retry_logic(self, prompt: Prompt) -> bool:
+    def apply_retry(self, prompt: Prompt) -> bool:
         """
         Return True if we are retrying the prompt, False if we skip permanently.
         """

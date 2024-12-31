@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, Any, Iterator
+from typing import Dict, Any, Iterator, List
 
 
 class DataRepository(ABC):
@@ -19,11 +19,11 @@ class DataRepository(ABC):
         pass
 
     @abstractmethod
-    def save_processed_data(self, data: Dict[str, Any]) -> None:
+    def save_processed_data(self, data: List[Dict[str, Any]]) -> None:
         pass
 
     @abstractmethod
-    def save_progress(self, uuid: str, value: str = "") -> None:
+    def save_progress(self, uuid: List[str]) -> None:
         pass
 
     @abstractmethod

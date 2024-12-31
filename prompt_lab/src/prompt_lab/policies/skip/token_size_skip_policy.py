@@ -1,4 +1,5 @@
-from policies.skip.skip_policy import SkipPolicy
+from policies import SkipPolicy
+from prompt import Prompt
 
 
 class TokenSizeSkipPolicy(SkipPolicy):
@@ -13,13 +14,9 @@ class TokenSizeSkipPolicy(SkipPolicy):
     def should_skip(self, prompt: Prompt) -> bool:
         if prompt.token_count > self.max_token_limit:
             # Mark skip reason
-            prompt.metadata.setdefault("skip", {})
-            prompt.metadata["skip"]["reason"] = "token_size_exceeded"
+            prompt.set_skip_reason("token_size_exceeded")
             # Save to "skipped" data in the repository
-            self.repository.save_skipped_data({
-                "uuid": prompt.uuid,
-                "metadata": prompt.metadata
-            })
-            print(f"[SkipPolicy] Skipped prompt due to token size: {prompt.uuid}")
+            self.repository.save_skipped_data(prompt.to_dict())
+            print(f"[SkipPolicy] Skipped prompt due to token size {prompt.token_count}, uuid: {prompt.uuid}")
             return True
         return False

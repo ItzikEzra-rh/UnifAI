@@ -10,9 +10,10 @@ class TokenizerUtils:
 
     def tokenize(self, text):
         """Tokenize the text and update the token count for the prompt."""
-        tokens = self.tokenizer.encode(text, truncation=False)
-        self.prompt_token_count = len(tokens)
-        return self.prompt_token_count
+        return self.tokenizer.encode(text, truncation=False)
+
+    def count_tokens(self, text):
+        return len(self.tokenize(text))
 
     def format_chat_prompt(self, messages):
         """Format chat messages for LLMs that support chat templates."""

@@ -3,6 +3,7 @@ import copy
 import string
 from prompt import Prompt
 from template import TemplateManager
+import random
 
 
 class PromptFormatter:
@@ -14,8 +15,8 @@ class PromptFormatter:
     def __init__(self, template_manager: TemplateManager, tokenizer):
         self.template_manager = template_manager
         self.tokenizer = tokenizer
-        self.system_message = template_manager.get_template_system_message()
-        self.context_template = template_manager.get_template_context_message()
+        self.system_message = self.template_manager.get_template_system_message()
+        self.context_template = self.template_manager.get_template_context_message()
 
     def render_context(self, element_data: dict) -> str:
         """Render the context template using the provided element data."""
@@ -35,13 +36,17 @@ class PromptFormatter:
 
         return self.context_template.format(**combined_data)
 
-    def format_prompt(self, element_data: dict, group_name: str, category_name: str, question_def: dict) -> Prompt:
+    def format_prompt(self, element_data: dict, group_name: str, category_name: str, questions: []) -> Prompt:
         """Prepare a fully formatted Prompt object."""
         context_text = self.render_context(element_data)
         template_params = self.template_manager.get_template_params()
-        user_input = question_def["question"].format(**{**element_data, **template_params})
-        validation_text = question_def["validation"].format(**{**element_data, **template_params})
+        for question in questions:
+            question["question"] = question["question"].format(**{**element_data, **template_params})
+            question["validation"] = question["validation"].format(**{**element_data, **template_params})
 
+        question = random.choice(questions)
+        user_input = question["question"]
+        validation_text = question["validation"]
         formatted_prompt = self.tokenizer.format_chat_prompt([
             {"role": "system", "content": self.system_message},
             {"role": "context", "content": context_text},
@@ -54,21 +59,12 @@ class PromptFormatter:
         return Prompt(
             uuid=prompt_uuid,
             formatted_prompt=formatted_prompt,
-            metadata={
-                "element_type": element_data.get("element_type"),
-                "group": group_name,
-                "category": category_name,
-                "validation": validation_text,
-                "input_text": user_input,
-                "original_data": element_data
-            },
-            token_count=self._count_tokens(formatted_prompt)
+            element_type=element_data.get("element_type"),
+            group=group_name,
+            category=category_name,
+            questions=questions,
+            validation=validation_text,
+            input_text=user_input,
+            original_data=element_data,
+            token_count=self.tokenizer.count_tokens(formatted_prompt)
         )
-
-    def _count_tokens(self, text: str) -> int:
-        """Count tokens in the provided text using the tokenizer."""
-        if hasattr(self.tokenizer, "count_tokens"):
-            return self.tokenizer.count_tokens(text)
-        elif hasattr(self.tokenizer, "tokenize"):
-            return len(self.tokenizer.tokenize(text))
-        return 0
