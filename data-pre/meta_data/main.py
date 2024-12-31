@@ -1,11 +1,12 @@
 import os
 import json
 import sys
+from bson import json_util
 
 # sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from meta_data.helpers.meta_data_project_expander import MetaDataProjectExpander
-from meta_data.helpers.meta_data_extractor import MetaDataExtractor
 from meta_data.helpers.meta_data_query_expander import MetaDataQueryExpander
+from meta_data.helpers.meta_data_retriever import MetaDataRetriever
 
 def read_file(file_path):
     """
@@ -37,10 +38,11 @@ def main():
 
     # Add metadata to each parsed element & Add the entire elements to the DB
     project_meta_expander.add_metadata()
-    project_meta_expander.add_to_db()
+    # project_meta_expander.add_to_db()
 
     query_meta_expander = MetaDataQueryExpander(
-        query="default query",
+        query="Please create a test case that create ReplicaSet & should update and verify readyReplicas once VMIs are up",
+        project_name="kubevirt",
         model_name="default_model",
         model_id="model_id_123"
     )
@@ -49,6 +51,13 @@ def main():
     query_metadata = query_meta_expander.extract_metadata()
     print("Extracted Query Metadata:", json.dumps(query_metadata, indent=4))
 
+    meta_data_retreiver = MetaDataRetriever(query_metadata=query_metadata)
+    best_match = meta_data_retreiver.best_match()
+
+    # Serialize the best_match list properly, including ObjectId handling
+    best_match_serialized = json.loads(json_util.dumps(best_match))
+    # print("Best Match Elements:", json.dumps(best_match_serialized, indent=4))
+    print("Best Match Elements Length:", len(best_match_serialized))
 
 if __name__ == "__main__":
     main()
