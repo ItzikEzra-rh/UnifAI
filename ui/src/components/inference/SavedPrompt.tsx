@@ -15,6 +15,7 @@ SyntaxHighlighter.registerLanguage('python', python);
 
 interface SavedPromptData {
   modelId: string;
+  modelName: string;
   uniqueId: string;
   trainingName: string;
   promptText: string;
@@ -67,6 +68,10 @@ const SavedPrompts: React.FC = () => {
             <FaFileAlt />
           </IconButton>
         ),
+      },
+      {
+        Header: 'Model Name',
+        accessor: (row: SavedPromptData) => row.modelName || "N/A"
       },
       {
         Header: 'Comment',

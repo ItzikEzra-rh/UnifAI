@@ -91,16 +91,17 @@ def insert_form(project_name, training_name, git_url, git_credential_key, git_fo
 @backend_bp.route("/savePrompt", methods=["POST"])
 @from_body({
     "model_id":                    fields.Str(required=True, data_key="modelId"),
+    "model_name":                  fields.Str(required=True, data_key="modelName"),
     "training_name":               fields.Str(required=True, data_key="trainingName"),
     "prompt_entire_text":          fields.Str(required=True, data_key="promptEntireText"),
     "prompt_user_latest_text":     fields.Str(required=True, data_key="promptUserLastQuestionText"),
     "prompt_llm_latest_text":      fields.Str(required=True, data_key="promptLLMLastAnswerText"),
     "prompt_name":                 fields.Str(required=True, data_key="promptName"),
 })
-def save_prompt(model_id, training_name, prompt_entire_text, prompt_user_latest_text, prompt_llm_latest_text, prompt_name):
+def save_prompt(model_id, model_name, training_name, prompt_entire_text, prompt_user_latest_text, prompt_llm_latest_text, prompt_name):
     try:
         # Insert LLM prompt into MongoDB collection
-        result = insert_new_prompt(model_id, training_name, prompt_entire_text, prompt_user_latest_text, prompt_llm_latest_text, prompt_name)
+        result = insert_new_prompt(model_id, model_name, training_name, prompt_entire_text, prompt_user_latest_text, prompt_llm_latest_text, prompt_name)
 
         # Return success response with inserted id
         return jsonify({"status": "success", "inserted_id": str(result.inserted_id)}), 201
