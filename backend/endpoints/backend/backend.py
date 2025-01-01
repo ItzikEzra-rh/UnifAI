@@ -39,9 +39,7 @@ def get_test_list_from_gitlab(repo_url, repo_auth_key, repo_folder_path, branch)
     list_of_files = list_of_files_from_gitlab(repo_url, repo_auth_key, repo_folder_path, branch)
     return json_response({"result": list_of_files})
 
-@backend_bp.route("/fileContent", methods=["GET"])
-@cross_origin(origin='localhost', headers=['Content-Type', 'Authorization'])
-
+@backend_bp.route("/gitLabFileContent", methods=["GET"])
 @from_query({"repo_url":         fields.Str(required=True, data_key="gitUrl"),
              "repo_auth_key":    fields.Str(required=True, data_key="gitCredentialKey"),
              "repo_folder_path": fields.Str(required=True, data_key="gitFolderPath"),

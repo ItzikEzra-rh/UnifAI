@@ -23,7 +23,7 @@ interface PropTypes {
   projectFormDetails: ProjectFormDetails;
   triggerOpen: boolean;
   checked: string[];
-  setChecked: React.Dispatch<React.SetStateAction<string[]>>;
+  setChecked: any;
   loading: boolean;
   setLoading: (loading: boolean) => void;
 }
@@ -31,7 +31,7 @@ interface PropTypes {
 interface TreeItemData {
   children?: TreeItemData[];
   disabled: boolean;
-  label: string | JSX.Element;
+  label: string;
   path: string;
   value: string;
 }
@@ -44,11 +44,11 @@ interface TestItem {
 interface TreeNodeProps {
   node: TreeItemData;
   checked: string[];
-  setChecked: React.Dispatch<React.SetStateAction<string[]>>;
+  setChecked: (checked: string[]) => void;
   selectedNodeLabel: string;
-  setSelectedNodeLabel: (selectedNodeLabel: any) => void;
-  selectedNodeContent: any;
-  setSelectedNodeContent: (selectedNodeContent: any) => void;
+  setSelectedNodeLabel: (selectedNodeLabel: string) => void;
+  selectedNodeContent: string;
+  setSelectedNodeContent: (selectedNodeContent: string) => void;
   testContentOpen: boolean;
   setTestContentOpen: (testContentOpen: boolean) => void;
   projectFormDetails: ProjectFormDetails;
@@ -140,20 +140,8 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ c
  * - `gitBranchName`: The branch name in the Git repository.
  */
 
-const TreeNode: React.FC<TreeNodeProps> = React.memo(({
-                                                        node,
-                                                        checked,
-                                                        setChecked,
-                                                        selectedNodeLabel,
-                                                        setSelectedNodeLabel,
-                                                        selectedNodeContent,
-                                                        setSelectedNodeContent,
-                                                        testContentOpen,
-                                                        setTestContentOpen,
-                                                        projectFormDetails,
-                                                      }) => {
+const TreeNode: React.FC<TreeNodeProps> = (({node, checked, setChecked, selectedNodeLabel, setSelectedNodeLabel, selectedNodeContent, setSelectedNodeContent, testContentOpen, setTestContentOpen, projectFormDetails,}) => {
   const { gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testsCodeFramework } = projectFormDetails;
-  
   
   const handleIconClick = () => {
     setTestContentOpen(false); 
@@ -162,7 +150,7 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
       return;
     } 
       
-      axios.get('/api/backend/fileContent', { params: { gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value } })
+      axios.get('/api/backend/gitLabFileContent', { params: { gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value } })
         .then((response) => {
           const { content } = response.data.result;
           setSelectedNodeContent(content);
@@ -185,11 +173,11 @@ const TreeNode: React.FC<TreeNodeProps> = React.memo(({
     const childrenValues = getAllChildren(node);
   
     if (isChecked) {
-      setChecked(prev => [...prev, ...childrenValues.filter((val) => !prev.includes(val))]);
-
+      setChecked([...checked, ...childrenValues.filter((val) => !checked.includes(val))]);
     } else {
-      setChecked((prev) => prev.filter((val) => !childrenValues.includes(val)));
+      setChecked(checked.filter((val) => !childrenValues.includes(val)));
     }
+    
   };
   
 
