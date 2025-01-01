@@ -1,9 +1,11 @@
 import logging
 import os
+import json
 from flask import request, Blueprint
 from flask_cors import cross_origin
 from flask import jsonify, Response
 from webargs import fields
+from bson import json_util
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
 from providers.backend import get_test_content_from_gitlab, list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
@@ -255,10 +257,10 @@ def retrieve_inference_counter_per_dedicated_model(model_id):
 def retrieve_inference_counter_per_all_models():
     try:
         # Retrieve the counter representing 'inference usage' per all models under MongoDB collection
-        result = retrieve_inference_counter_all()
+        result = json.loads(json_util.dumps(retrieve_inference_counter_all()))
 
         # Return success response
-        return jsonify({"status": "success", "response": str(result)}), 201
+        return jsonify({"status": "success", "response": result}), 201
 
     except Exception as e:
         # Log the error and return error response

@@ -124,6 +124,11 @@
     rabbitmq_ip: "{{ RABBITMQ_IP }}"
     mongo_port: "{{ MONGO_PORT }}"
     mongo_ip: "{{ MONGO_IP }}"
+    reviewer_model_id: "{{ REVIEWER_MODEL_HF_ID }}"
+    reviewer_max_generation_length: "{{ REVIEWER_MAX_GENERATION_LENGTH }}"
+    reviewer_max_context_length: "{{ REVIEWER_MAX_CONTEXT_LENGTH }}"
+    reviewer_batch_size: "{{ REVIEWER_BATCH_SIZE }}"
+    reviewer_score_threshold: "{{ REVIEWER_SCORE_THRESHOLD }}"
 
   tasks:
     - name: Pull Reviewer image
@@ -144,7 +149,19 @@
 
     - name: Run Reviewer container
       command: >
-        podman run -d --name {{ reviewer_container_name }} --net=host -e RABBITMQ_PORT={{ rabbitmq_port }} -e RABBITMQ_IP={{ rabbitmq_ip }} -e MONGODB_PORT={{ mongo_port }} -e MONGODB_IP={{ mongo_ip }} {{ reviewer_image_name }} reviewer
+        podman run -d \
+            --name {{ reviewer_container_name }} \
+            --net=host \
+            -e RABBITMQ_PORT={{ rabbitmq_port }} \
+            -e RABBITMQ_IP={{ rabbitmq_ip }} \
+            -e MONGODB_PORT={{ mongo_port }} \
+            -e MONGODB_IP={{ mongo_ip }} \
+            -e REVIEWER_MODEL_HF_ID={{ reviewer_model_id }} \
+            -e REVIEWER_MAX_GENERATION_LENGTH={{ reviewer_max_generation_length }} \
+            -e REVIEWER_MAX_CONTEXT_LENGTH={{ reviewer_max_context_length }} \
+            -e REVIEWER_BATCH_SIZE={{ reviewer_batch_size }} \
+            -e REVIEWER_SCORE_THRESHOLD={{ reviewer_score_threshold }} \
+            {{ reviewer_image_name }} reviewer
 
 ################################################################################################
 - name: Deploy Prompt Lab Submitter Container
@@ -160,6 +177,14 @@
     mongo_ip: "{{ MONGO_IP }}"
     input_json_path: "{{ INPUT_JSON_PATH }}"
     output_data_dir_path: "{{ OUTPUT_DATA_DIR_PATH }}"
+    prompt_lab_model_hf_id: "{{ PROMPT_LAB_MODEL_HF_ID }}"
+    prompt_lab_max_generation_length: "{{ PROMPT_LAB_MAX_GENERATION_LENGTH }}"
+    prompt_lab_max_context_length: "{{ PROMPT_LAB_MAX_CONTEXT_LENGTH }}"
+    prompt_lab_batch_size: "{{ PROMPT_LAB_BATCH_SIZE }}"
+    queue_target_size: "{{ QUEUE_TARGET_SIZE }}"
+    template_name: "{{ TEMPLATE_NAME }}"
+    template_agent: "{{ TEMPLATE_AGENT }}"
+    template_type: "{{ TEMPLATE_TYPE }}"
 
   tasks:
     - name: Pull Prompt Lab image
@@ -186,7 +211,27 @@
 
     - name: Run Prompt Lab container
       command: >
-        podman run -d --name {{ prompt_lab_submitter_container_name }} --net=host -e RABBITMQ_PORT={{ rabbitmq_port }} -e RABBITMQ_IP={{ rabbitmq_ip }} -e MONGODB_PORT={{ mongo_port }} -e MONGODB_IP={{ mongo_ip }} -e INPUT_JSON_PATH={{ input_json_path }} -e OUTPUT_DATA_DIR_PATH={{ output_data_dir_path }} -v /home/instruct/{{ input_json_path }}:/app/repo/prompt_lab/{{ input_json_path }}:z -v /home/instruct/{{ output_data_dir_path }}:/app/repo/prompt_lab/data:z {{ prompt_lab_image_name }} prompt_submiter
+        podman run -d \
+            --name {{ prompt_lab_submitter_container_name }} \
+            --net=host \
+            -e RABBITMQ_PORT={{ rabbitmq_port }} \
+            -e RABBITMQ_IP={{ rabbitmq_ip }} \
+            -e MONGODB_PORT={{ mongo_port }} \
+            -e MONGODB_IP={{ mongo_ip }} \
+            -e INPUT_JSON_PATH={{ input_json_path }} \
+            -e OUTPUT_DATA_DIR_PATH={{ output_data_dir_path }} \
+            -e PROMPT_LAB_MODEL_HF_ID={{ prompt_lab_model_hf_id }} \
+            -e PROMPT_LAB_MAX_GENERATION_LENGTH={{ prompt_lab_max_generation_length }} \
+            -e PROMPT_LAB_MAX_CONTEXT_LENGTH={{ prompt_lab_max_context_length }} \
+            -e PROMPT_LAB_BATCH_SIZE={{ prompt_lab_batch_size }} \
+            -e QUEUE_TARGET_SIZE={{ queue_target_size }} \
+            -e TEMPLATE_NAME={{ template_name }} \
+            -e TEMPLATE_AGENT={{ template_agent }} \
+            -e TEMPLATE_TYPE={{ template_type }} \
+            -v /home/instruct/{{ input_json_path }}:/app/repo/prompt_lab/{{ input_json_path }}:z \
+            -v /home/instruct/{{ output_data_dir_path }}:/app/repo/prompt_lab/data:z \
+            -v /home/instruct/{{ template_name }}:/app/repo/prompt_lab/{{ template_name }}:z \
+            {{ prompt_lab_image_name }} prompt_submiter
 
 ################################################################################################
 - name: Deploy Prompt Lab Dispatcher Container
@@ -202,6 +247,15 @@
     mongo_ip: "{{ MONGO_IP }}"
     output_data_dir_path: "{{ OUTPUT_DATA_DIR_PATH }}"
     input_json_path: "{{ INPUT_JSON_PATH }}"
+    prompt_lab_model_hf_id: "{{ PROMPT_LAB_MODEL_HF_ID }}"
+    prompt_lab_max_generation_length: "{{ PROMPT_LAB_MAX_GENERATION_LENGTH }}"
+    prompt_lab_max_context_length: "{{ PROMPT_LAB_MAX_CONTEXT_LENGTH }}"
+    prompt_lab_batch_size: "{{ PROMPT_LAB_BATCH_SIZE }}"
+    queue_target_size: "{{ QUEUE_TARGET_SIZE }}"
+    template_name: "{{ TEMPLATE_NAME }}"
+    template_agent: "{{ TEMPLATE_AGENT }}"
+    template_type: "{{ TEMPLATE_TYPE }}"
+
   tasks:
     - name: Pull Prompt Lab image
       command: >
@@ -227,7 +281,27 @@
 
     - name: Run Prompt Lab container
       command: >
-        podman run -d --name {{ prompt_lab_dispatcher_container_name }} --net=host -e RABBITMQ_PORT={{ rabbitmq_port }} -e RABBITMQ_IP={{ rabbitmq_ip }} -e MONGODB_PORT={{ mongo_port }} -e MONGODB_IP={{ mongo_ip }} -e INPUT_JSON_PATH={{ input_json_path }} -e OUTPUT_DATA_DIR_PATH={{ output_data_dir_path }}  -v /home/instruct/{{ input_json_path }}:/app/repo/prompt_lab/{{ input_json_path }}:z -v /home/instruct/{{ output_data_dir_path }}:/app/repo/prompt_lab/data:z {{ prompt_lab_image_name }} prompt_dispatcher
+        podman run -d \
+            --name {{ prompt_lab_dispatcher_container_name }} \
+            --net=host \
+            -e RABBITMQ_PORT={{ rabbitmq_port }} \
+            -e RABBITMQ_IP={{ rabbitmq_ip }} \
+            -e MONGODB_PORT={{ mongo_port }} \
+            -e MONGODB_IP={{ mongo_ip }} \
+            -e INPUT_JSON_PATH={{ input_json_path }} \
+            -e OUTPUT_DATA_DIR_PATH={{ output_data_dir_path }} \
+            -e PROMPT_LAB_MODEL_HF_ID={{ prompt_lab_model_hf_id }} \
+            -e PROMPT_LAB_MAX_GENERATION_LENGTH={{ prompt_lab_max_generation_length }} \
+            -e PROMPT_LAB_MAX_CONTEXT_LENGTH={{ prompt_lab_max_context_length }} \
+            -e PROMPT_LAB_BATCH_SIZE={{ prompt_lab_batch_size }} \
+            -e QUEUE_TARGET_SIZE={{ queue_target_size }} \
+            -e TEMPLATE_NAME={{ template_name }} \
+            -e TEMPLATE_AGENT={{ template_agent }} \
+            -e TEMPLATE_TYPE={{ template_type }} \
+            -v /home/instruct/{{ input_json_path }}:/app/repo/prompt_lab/{{ input_json_path }}:z \
+            -v /home/instruct/{{ output_data_dir_path }}:/app/repo/prompt_lab/data:z \
+            {{ prompt_lab_image_name }} prompt_dispatcher
+
 
 ################################################################################################
 - name: Deploy Prompt Lab Dispatcher Worker
@@ -243,6 +317,15 @@
     mongo_ip: "{{ MONGO_IP }}"
     output_data_dir_path: "{{ OUTPUT_DATA_DIR_PATH }}"
     input_json_path: "{{ INPUT_JSON_PATH }}"
+    prompt_lab_model_hf_id: "{{ PROMPT_LAB_MODEL_HF_ID }}"
+    prompt_lab_max_generation_length: "{{ PROMPT_LAB_MAX_GENERATION_LENGTH }}"
+    prompt_lab_max_context_length: "{{ PROMPT_LAB_MAX_CONTEXT_LENGTH }}"
+    prompt_lab_batch_size: "{{ PROMPT_LAB_BATCH_SIZE }}"
+    queue_target_size: "{{ QUEUE_TARGET_SIZE }}"
+    template_name: "{{ TEMPLATE_NAME }}"
+    template_agent: "{{ TEMPLATE_AGENT }}"
+    template_type: "{{ TEMPLATE_TYPE }}"
+
 
   tasks:
     - name: Pull Prompt Lab image
@@ -263,4 +346,23 @@
 
     - name: Run Prompt Lab container
       command: >
-        podman run -d --name {{ prompt_lab_worker_container_name }} --net=host -e RABBITMQ_PORT={{ rabbitmq_port }} -e RABBITMQ_IP={{ rabbitmq_ip }} -e MONGODB_PORT={{ mongo_port }} -e MONGODB_IP={{ mongo_ip }} -e INPUT_JSON_PATH={{ input_json_path }} -e OUTPUT_DATA_DIR_PATH={{ output_data_dir_path }}  -v /home/instruct/{{ input_json_path }}:/app/repo/prompt_lab/{{ input_json_path }}:z -v /home/instruct/{{ output_data_dir_path }}:/app/repo/prompt_lab/data:z  {{ prompt_lab_image_name }} prompt_processor
+        podman run -d \
+            --name {{ prompt_lab_worker_container_name }} \
+            --net=host \
+            -e RABBITMQ_PORT={{ rabbitmq_port }} \
+            -e RABBITMQ_IP={{ rabbitmq_ip }} \
+            -e MONGODB_PORT={{ mongo_port }} \
+            -e MONGODB_IP={{ mongo_ip }} \
+            -e INPUT_JSON_PATH={{ input_json_path }} \
+            -e OUTPUT_DATA_DIR_PATH={{ output_data_dir_path }} \
+            -e PROMPT_LAB_MODEL_HF_ID={{ prompt_lab_model_hf_id }} \
+            -e PROMPT_LAB_MAX_GENERATION_LENGTH={{ prompt_lab_max_generation_length }} \
+            -e PROMPT_LAB_MAX_CONTEXT_LENGTH={{ prompt_lab_max_context_length }} \
+            -e PROMPT_LAB_BATCH_SIZE={{ prompt_lab_batch_size }} \
+            -e QUEUE_TARGET_SIZE={{ queue_target_size }} \
+            -e TEMPLATE_NAME={{ template_name }} \
+            -e TEMPLATE_AGENT={{ template_agent }} \
+            -e TEMPLATE_TYPE={{ template_type }} \
+            -v /home/instruct/{{ input_json_path }}:/app/repo/prompt_lab/{{ input_json_path }}:z \
+            -v /home/instruct/{{ output_data_dir_path }}:/app/repo/prompt_lab/data:z \
+            {{ prompt_lab_image_name }} prompt_processor
