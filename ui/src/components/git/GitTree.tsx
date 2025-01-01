@@ -23,7 +23,7 @@ interface PropTypes {
   projectFormDetails: ProjectFormDetails;
   triggerOpen: boolean;
   checked: string[];
-  setChecked: any;
+  setChecked: (checked: string[]) => void;
   loading: boolean;
   setLoading: (loading: boolean) => void;
 }
@@ -220,7 +220,7 @@ const TreeNode: React.FC<TreeNodeProps> = (({node, checked, setChecked, selected
           projectFormDetails={projectFormDetails}
         />
           {childNode.label == selectedNodeLabel  && testContentOpen &&
-          ( selectedNodeContent ? <div className="code-visualizer-tree">
+          ( selectedNodeContent ? <div className="code-visualizer">
             <SyntaxHighlighter language={testsCodeFramework} style={github}>
                 {selectedNodeContent}
             </SyntaxHighlighter>
