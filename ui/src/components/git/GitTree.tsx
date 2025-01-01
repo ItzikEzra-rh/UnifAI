@@ -150,18 +150,17 @@ const TreeNode: React.FC<TreeNodeProps> = (({node, checked, setChecked, selected
       return;
     } 
       
-      axios.get('/api/backend/gitLabFileContent', { params: { gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value } })
-        .then((response) => {
-          const { content } = response.data.result;
-          setSelectedNodeContent(content);
-        })
-        .catch((error) => {
-          console.error('Error fetching test details:', error);
-        });
-  
-      setSelectedNodeLabel(node.label);
-      setTestContentOpen(true);
-    
+    axios.get('/api/backend/gitLabFileContent', { params: { gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value } })
+      .then((response) => {
+        const { content } = response.data.result;
+        setSelectedNodeContent(content);
+      })
+      .catch((error) => {
+        console.error('Error fetching test details:', error);
+      });
+
+    setSelectedNodeLabel(node.label);
+    setTestContentOpen(true);
   };
   
   const handleCheckboxChange = (node: TreeItemData, isChecked: boolean) => {
@@ -232,8 +231,7 @@ const TreeNode: React.FC<TreeNodeProps> = (({node, checked, setChecked, selected
         </>
       ))}
     </TreeItem>
-    
-      </>
+    </>
   );
 });
 
