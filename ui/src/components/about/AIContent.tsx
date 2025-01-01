@@ -2,7 +2,7 @@ import { Box, Card, CardContent, Typography } from '@mui/material';
 import RedHatAI from '../../assets/RedHatAI.png';
 import GenieLogoOrigin from '../../assets/GenieLogoOrigin.png';
 
-const AiContent = () => {
+const AIContent = () => {
     return (
         <Card className='info'>
             <CardContent sx={{marginLeft: 8, marginRight: 8}}>
@@ -76,26 +76,21 @@ const AiContent = () => {
                             <br></br>
                             • Impacts training speed and memory usage.
                         </div>
-                    6. <b>Validation Split</b>
-                        <br></br>
-                        <div style={{marginLeft: 30}}>
-                            • Defines the proportion of data used to evaluate the model’s performance during training, ensuring it generalizes well to unseen data.
-                        </div>
-                    7. <b>Temperature</b>
+                    6. <b>Temperature</b>
                         <br></br>
                         <div style={{marginLeft: 30}}>
                             • Controls the randomness of the AI's output.
                             <br></br>
                             • A higher temperature produces more diverse and creative responses, while a lower value makes responses more deterministic.
                         </div>
-                    8. <b>Save Steps</b>
+                    7. <b>Save Steps</b>
                         <br></br>
                         <div style={{marginLeft: 30}}>
                             • Determines how often the model saves its progress during training.
                             <br></br>
                             • Frequent saves ensure minimal data loss in case of interruptions.
                         </div>
-                    9. <b>Warmup Steps</b>
+                    8. <b>Warmup Steps</b>
                         <br></br>
                         <div style={{marginLeft: 30}}>
                             • A specified number of steps at the beginning of training where the learning rate gradually increases.
@@ -124,7 +119,6 @@ const AiContent = () => {
                         </div>
                     </div>
                 </Typography>
-                <br></br><br></br>
                 <Box display="flex" alignItems="center">
                     <Typography variant="body1" sx={{ width: '60%', marginRight: 2, fontSize: 18 }}>
                     <Typography variant="h5" component="h5">
@@ -138,7 +132,7 @@ const AiContent = () => {
                         <img
                         src={GenieLogoOrigin}
                         alt="Genie Logo Origin"
-                        style={{ width: '30%', height: 'auto' }}
+                        style={{ width: '80%', height: 'auto' }}
                         />
                     </div>
                 </Box>
@@ -147,4 +141,4 @@ const AiContent = () => {
     );
   }
 
-  export default AiContent;
+  export default AIContent;
