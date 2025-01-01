@@ -2,7 +2,6 @@ import logging
 import os
 import json
 from flask import request, Blueprint
-from flask_cors import cross_origin
 from flask import jsonify, Response
 from webargs import fields
 from bson import json_util
