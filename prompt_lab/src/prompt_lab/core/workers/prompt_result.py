@@ -4,7 +4,7 @@ from policies import PassSkipPolicy, FailSkipPolicy, CompositeSkipPolicy
 from utils.celery.celery import send_task
 
 
-class PromptDispatch:
+class PromptResult:
 
     def __init__(
             self,
@@ -33,3 +33,4 @@ class PromptDispatch:
             send_task(self.prompt_query_task_name,
                       celery_queue=self.prompts_queue_name,
                       batch=self.fail_batch.to_dict())
+

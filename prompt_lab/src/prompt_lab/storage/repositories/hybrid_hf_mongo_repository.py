@@ -43,34 +43,78 @@ class HybridHFMongoRepository(DataRepository):
         self.progress_handler = progress_handler
         self.exporter = exporter or HFExporter()
 
-    # Required interface
-    def load_data(self) -> Iterator[Dict[str, Any]]:
+    # input handler
+    def load_input_data(self) -> Iterator[Dict[str, Any]]:
         return self.input_handler.read_data()
 
     def get_input_size(self) -> int:
         return self.input_handler.get_size()
 
-    def input_load_data(self) -> Iterator[Dict[str, Any]]:
-        return self.processed_handler.read_data()
+    # processed_handler
+    def save_processed_data(self, data: List[Dict[str, Any]]) -> None:
+        """
+        Save processed data to the MongoDB collection. Ensures that the `uuid` field
+        is used as the `_id` for uniqueness.
 
+        :param data: A list of dictionaries representing the records to save.
+        """
+        if not data:
+            return
+
+        # Transform records to use `uuid` as `_id`
+        transformed_data = [{**record, "_id": record["uuid"]} for record in data]
+
+        try:
+            self.processed_handler.append_records(transformed_data)
+        except Exception as e:
+            # Handle duplicate key error or log as needed
+            print(f"Error while inserting records: {e}")
+
+    def load_processed_data_uuids(self) -> Set[str]:
+        """
+        Load and return a set of processed UUIDs from the progress handler.
+
+        :return: A set of UUID strings that have been processed.
+        """
+        # Use projection to fetch only the uuid field
+        progress_processed_uuid = {
+            uuid_obj["uuid"] for uuid_obj in self.progress_handler.read_data(projection={"uuid": 1, "_id": 0})
+        }
+        return progress_processed_uuid
+
+    def load_processed_data(self) -> List[Dict[str, Any]]:
+        return [data for data in self.progress_handler.read_data()]
+
+    # skip handler
     def load_skipped_data(self) -> Iterator[Dict[str, Any]]:
         return self.skipped_handler.read_data()
-
-    def save_one_processed_data(self, data: Dict[str, Any]) -> None:
-        self.processed_handler.append_record(data)
-
-    def save_processed_data(self, data: List[Dict[str, Any]]) -> None:
-        self.processed_handler.append_records(data)
 
     def save_skipped_data(self, data: Dict[str, Any]) -> None:
         self.skipped_handler.append_record(data)
 
-    def save_progress(self, data: List[Dict[str, Any]]) -> None:
-        self.progress_handler.append_records(data)
+    # progress handler
+    def get_progress_data(self, progress_id: str) -> Dict[str, Any]:
+        """
+        Retrieve progress data by ID.
+        """
+        cursor = self.progress_handler.read_data(query={"_id": progress_id})
+        return next(cursor, {})
 
-    def load_progress(self) -> Set[str]:
-        progress_processed_uuid = {uuid_obj["uuid"] for uuid_obj in self.progress_handler.read_data()}
-        return progress_processed_uuid
+    def save_progress_data(self, progress_id: str, data: Dict[str, Any]) -> None:
+        """
+        Save or overwrite progress data by ID.
+        """
+        self.progress_handler.update_record(
+            query={"_id": progress_id}, update={"$set": data}, upsert=True
+        )
+
+    def increment_progress(self, progress_id: str, key: str, amount: int) -> None:
+        """
+        Increment a specific progress key for a given progress ID.
+        """
+        self.progress_handler.update_record(
+            query={"_id": progress_id}, update={"$inc": {key: amount}}
+        )
 
     def close(self) -> None:
         self.input_handler.close()

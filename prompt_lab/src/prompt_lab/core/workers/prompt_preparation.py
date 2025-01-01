@@ -7,7 +7,7 @@ from utils.tokenizer import TokenizerUtils
 import time
 
 
-class PromptEnqueue:
+class PromptPreparation:
     """
     Handles the enqueuing of prompts into a processing queue.
 

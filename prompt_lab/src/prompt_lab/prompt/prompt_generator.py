@@ -15,8 +15,10 @@ class PromptGenerator:
 
     def __iter__(self):
         """Iterate over generated Prompt objects."""
+        num_of_elements = self.repository.get_input_size()
+
         for element_data in tqdm(self.repository.input_load_data(),
-                                 total=self.repository.get_input_size(),
+                                 total=num_of_elements,
                                  desc="Processing elements"):
             for prompt in self._generate_prompts(element_data):
                 yield prompt

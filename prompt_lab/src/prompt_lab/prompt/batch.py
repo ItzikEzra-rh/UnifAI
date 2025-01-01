@@ -46,3 +46,6 @@ class Batch:
 
     def has_prompts(self) -> bool:
         return len(self.prompts) > 0
+
+    def prompts_count(self):
+        return len(self.prompts)

@@ -17,6 +17,10 @@ class HFExporter:
     This class handles exporting a list of records (dicts) to a local Parquet file
     and optionally uploading to Hugging Face.
     """
+    records: List[Dict[str, Any]]
+    repo_id: str
+    local_parquet_path: str
+    token: str = None
 
     def export_records_to_hf(
             self,

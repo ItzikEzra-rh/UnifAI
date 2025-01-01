@@ -30,6 +30,7 @@ class Prompt:
     token_count: int = 0
     retry_count: int = 0
     failed: bool = False
+    review_failed: bool = False  # TODO important for the tracker to know in the end the num processed
     skip_reason: str = None
 
     def set_skip_reason(self, reason: str) -> None:
