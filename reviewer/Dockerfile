@@ -3,6 +3,7 @@ FROM registry.access.redhat.com/ubi9/ubi
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app/repo/reviewer
 
 # Install system dependencies
@@ -19,3 +20,6 @@ RUN pip install --upgrade pip && pip install -r /app/repo/reviewer/requirements.
 
 # Set entrypoint
 ENTRYPOINT ["/app/repo/reviewer/start-service.sh"]
+
+# Default command (can be overridden)
+CMD ["*"]

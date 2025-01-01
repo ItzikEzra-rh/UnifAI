@@ -1,18 +1,11 @@
 {
-  "storage_type": "file",
-  "input": {
-    "file_path": "/home/instruct/workflows.json"
-  },
-  "output": {
-    "directory": "data/"
-  },
   "model_config": {
-    "tokenizer_path": "oodeh/serverless-workflows-readme-r16-a16-epoch10",
-    "model_name": "oodeh/serverless-workflows-readme-r16-a16-epoch10",
+    "tokenizer_path": "${REVIEWER_MODEL_HF_ID}",
+    "model_name": "${REVIEWER_MODEL_HF_ID}",
     "api_url": "http://0.0.0.0:8000/v1/completions",
-    "max_generation_length": 4096,
-    "max_context_length": 16384,
-    "batch_size": 8
+    "max_generation_length": ${REVIEWER_MAX_GENERATION_LENGTH},
+    "max_context_length": ${REVIEWER_MAX_CONTEXT_LENGTH},
+    "batch_size": ${REVIEWER_BATCH_SIZE}
   },
   "rabbitmq": {
     "port": ${RABBITMQ_PORT},
@@ -22,7 +15,7 @@
     "port": ${MONGODB_PORT},
     "url": "mongodb://${MONGODB_IP}:{port}"
   },
-  "templates": {
-    "project_path": "config/project_config.json"
+  "general": {
+    "score_threshold": ${REVIEWER_SCORE_THRESHOLD}
   }
 }
