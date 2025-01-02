@@ -655,58 +655,60 @@ const ChatComponent: React.FC = () => {
   const data = React.useMemo(() => selectedModel ? [selectedModel] : [], [selectedModel]);
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
 
-  Prism.languages.robot = {
-    'comment': {
-      pattern: /^ *#.*$/m,
-      greedy: true
-    },
-    'variable': {
-      pattern: /(\$\{[^\}]+\}|\@{[^\}]+\}|\&{[^\}]+\})/,
-      greedy: true
-    },
-    'keyword': {
-      pattern: /^(?:\*{3}\s*(?:Settings?|Variables?|Test Cases?|Keywords?)\s*\*{3}|[A-Z][\w\s]+(?= {2,}))/m,
-      greedy: true
-    },
-    'builtin': {
-      pattern: /^(?:Library|Resource|Variables|Documentation|Suite Setup|Suite Teardown|Test Setup|Test Teardown|Setup|Teardown|Template|Timeout|Arguments|Return|[A-Z]\w+(?= {2,}))/m,
-      greedy: true
-    },
-    'string': {
-      pattern: /("[^"]*"|'[^']*')/,
-      greedy: true
-    },
-    'number': {
-      pattern: /\b\d+(\.\d+)?\b/,
-      greedy: true
-    },
-    'operator': {
-      pattern: /(\.\.\.|=|!=|<|<=|>|>=|\b(?:and|or|not)\b)/,
-      greedy: true
-    },
-    'punctuation': {
-      pattern: /[.,:]/,
-      greedy: true
-    }
-  };
-
+  const titleRegex = /^### (.*)/; // Matches lines starting with "###"
+  const boldTextRegex = /\*\*(.*?)\*\*/g; // Matches **bold** text
+  const ReformatText = (text: string) => {
+    const lines = text.split('\n'); 
+    let formattedText = '';
+    let insideCodeBlock = false; 
+    let currentLanguage = '';
+    let codeBuffer = '';
   
-const ReformatText = (text: string) => {
-  // Replace code blocks first
-  const codeBlockRegex = /```(.*?)\n([\s\S]*?)```/g; // Matches ```lang\ncode``` format
-  let formattedText = text.replace(codeBlockRegex, (match, lang, code) => {
-    const language = Prism.languages[lang] || Prism.languages.javascript; // Default to JavaScript
-    const highlightedCode = Prism.highlight(code.trim(), language, lang);
-    return `<pre class="language-${lang}"><code>${highlightedCode}</code></pre>`;
-  });
-
-  // Replace bold text (**bold**) next
-  const boldTextRegex = /\*\*(.*?)\*\*/g; // Matches **bold**
-  formattedText = formattedText.replace(boldTextRegex, '<strong>$1</strong>');
-
-  return formattedText;
-};
-
+    for (const line of lines) {
+      if (line.startsWith('```')) {
+        if (insideCodeBlock) {
+          // Closing code block after printing inside of it up until now
+          const language = Prism.languages[currentLanguage] || Prism.languages.javascript;
+          const highlightedCode = Prism.highlight(codeBuffer.trim(), language, currentLanguage);
+          formattedText += `${highlightedCode}</code></pre>\n`;
+          insideCodeBlock = false;
+          codeBuffer = ''; 
+        } else {
+          // Opening code block after printing non-code lines up until now
+          currentLanguage = line.slice(3).trim(); // Extract language (if any) after ```
+          formattedText += `<pre class="language-${currentLanguage}"><code>`;
+          insideCodeBlock = true;
+        }
+      } else if (insideCodeBlock) {
+        // Append raw code directly inside the pre/code block
+        codeBuffer += `${line}\n`;
+      } else {
+        // Handle non-code lines, we can add here any other ideas we have to make our responses nicer looking
+        switch (true) {
+          case titleRegex.test(line):
+            const titleText = line.replace(titleRegex, '$1').trim();
+            formattedText += `<h3>${titleText}</h3>\n`;
+            break;
+          case boldTextRegex.test(line):
+            formattedText += line.replace(boldTextRegex, '<strong>$1</strong>') + '\n';
+            break;
+          default:
+            formattedText += line + '\n';
+            break;
+        }
+      }
+    }
+  
+    // If the text ends inside an unclosed code block, close it
+    if (insideCodeBlock) {
+      const language = Prism.languages[currentLanguage] || Prism.languages.javascript;
+      const highlightedCode = Prism.highlight(codeBuffer.trim(), language, currentLanguage);
+      formattedText += `${highlightedCode}</code></pre>\n`; 
+    }
+  
+    return formattedText;
+  };
+  
 
   return (
     <div className="chat-container-wrapper">
