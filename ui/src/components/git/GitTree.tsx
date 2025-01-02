@@ -1,17 +1,26 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Button, CircularProgress } from '@mui/material';
+import { Box, Button, CircularProgress, IconButton, Checkbox } from '@mui/material';
 import axios from '../../http/axiosConfig';
-import CheckboxTree from 'react-checkbox-tree';
 import ButtonGroup from '@mui/material/ButtonGroup';
-import CollapseIcon from '@mui/icons-material/Remove'; 
+import CollapseIcon from '@mui/icons-material/Remove';
 import ExpandIcon from '@mui/icons-material/Add'; 
+import VisibilityIcon from '@mui/icons-material/Visibility'; 
+import FolderIcon from '@mui/icons-material/Folder';
+import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';  
 import "./GitTree.css";
+import SyntaxHighlighter from 'react-syntax-highlighter';
+import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
-interface PropTypes {
+interface ProjectFormDetails {
   gitUrl: string;
   gitCredentialKey: string;
   gitBranchName: string;
   gitFolderPath: string;
+  testsCodeFramework: string;
+}
+
+interface PropTypes {
+  projectFormDetails: ProjectFormDetails;
   triggerOpen: boolean;
   checked: string[];
   setChecked: (checked: string[]) => void;
@@ -19,8 +28,8 @@ interface PropTypes {
   setLoading: (loading: boolean) => void;
 }
 
-interface TreeItem {
-  children: TreeItem[];
+interface TreeItemData {
+  children?: TreeItemData[];
   disabled: boolean;
   label: string;
   path: string;
@@ -30,6 +39,19 @@ interface TreeItem {
 interface TestItem {
   file: string;
   in_db: string;
+}
+
+interface TreeNodeProps {
+  node: TreeItemData;
+  checked: string[];
+  setChecked: (checked: string[]) => void;
+  selectedNodeLabel: string;
+  setSelectedNodeLabel: (selectedNodeLabel: string) => void;
+  selectedNodeContent: string;
+  setSelectedNodeContent: (selectedNodeContent: string) => void;
+  testContentOpen: boolean;
+  setTestContentOpen: (testContentOpen: boolean) => void;
+  projectFormDetails: ProjectFormDetails;
 }
 
 export function stringContainsSpace(item: string) {
@@ -96,13 +118,141 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ c
     </ButtonGroup>
 );
 
-const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName, gitFolderPath, triggerOpen, checked, setChecked, loading, setLoading }) => {
+/**
+ * TreeNode Component
+ * 
+ * This component renders a single node in a hierarchical tree view. It supports both folder and file nodes. 
+ * - For folder nodes, it displays a folder icon and allows expansion to show child nodes.
+ * - For file nodes, it displays a visibility icon that, when clicked, fetches the content of the file via an API call and displays it in a modal.
+ * 
+ * It also includes a checkbox for selecting nodes. When checked, all descendant nodes (if any) are included in the `checked` state. 
+ * The component is recursively rendered for child nodes, enabling deep tree structures.
+ * 
+ * Props:
+ * - `node`: The data representing the current tree node, including label, value, and children.
+ * - `checked`: Array of selected node values.
+ * - `setChecked`: Function to update the selected nodes state.
+ * - `setSelectedNodeLabel`: Function to set the label/content for the selected node in the modal.
+ * - `setModalOpen`: Function to control the visibility of the modal.
+ * - `gitUrl`: The URL of the Git repository.
+ * - `gitCredentialKey`: Credential key for accessing the Git repository.
+ * - `gitFolderPath`: Path to the folder within the Git repository.
+ * - `gitBranchName`: The branch name in the Git repository.
+ */
+
+const TreeNode: React.FC<TreeNodeProps> = (({node, checked, setChecked, selectedNodeLabel, setSelectedNodeLabel, selectedNodeContent, setSelectedNodeContent, testContentOpen, setTestContentOpen, projectFormDetails,}) => {
+  const { gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testsCodeFramework } = projectFormDetails;
+  
+  const handleIconClick = () => {
+    setTestContentOpen(false); 
+      setSelectedNodeContent('');
+    if (testContentOpen && selectedNodeLabel === node.label) {
+      return;
+    } 
+      
+    axios.get('/api/backend/gitLabFileContent', { params: { gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value } })
+      .then((response) => {
+        const { content } = response.data.result;
+        setSelectedNodeContent(content);
+      })
+      .catch((error) => {
+        console.error('Error fetching test details:', error);
+      });
+
+    setSelectedNodeLabel(node.label);
+    setTestContentOpen(true);
+  };
+  
+  const handleCheckboxChange = (node: TreeItemData, isChecked: boolean) => {
+    const getAllChildren = (node: TreeItemData): string[] => {
+      if (!node.children) return [node.value];
+      return node.children.flatMap(getAllChildren).concat(node.value);
+    };
+  
+    const childrenValues = getAllChildren(node);
+  
+    if (isChecked) {
+      setChecked([...checked, ...childrenValues.filter((val) => !checked.includes(val))]);
+    } else {
+      setChecked(checked.filter((val) => !childrenValues.includes(val)));
+    }
+    
+  };
+  
+
+  return (
+    <>
+    <TreeItem
+      key={node.value}
+      itemId={node.value}
+      label={
+        <Box sx={{height: '15px', display: 'flex', alignItems: 'center', padding: '2px 4px', fontSize: '1rem'}}>
+          <Checkbox
+            checked={checked.includes(node.value)}
+            disabled={node.disabled}
+            onChange={(event) => handleCheckboxChange(node, event.target.checked)}
+            sx={{ padding: '2px', marginRight: '4px' }}
+            size="small"
+          />
+          {node.children?.length && node.children?.length > 0 ? 
+            <FolderIcon fontSize='small' sx={{ marginRight: 0.5 }} /> : 
+            <IconButton onClick={handleIconClick} sx={{ marginRight: 1 }}>
+              <VisibilityIcon fontSize='small' sx={{ color: testContentOpen && selectedNodeLabel === node.label ? 'black' : 'grey' }}/>
+            </IconButton>
+          }
+          {node.label}
+        </Box>
+      }
+    >
+      {node.children?.map((childNode) => (
+        <>
+        <TreeNode
+          key={childNode.value}
+          node={childNode}
+          checked={checked}
+          setChecked={setChecked}
+          selectedNodeLabel={selectedNodeLabel}
+          setSelectedNodeLabel={setSelectedNodeLabel}
+          selectedNodeContent={selectedNodeContent}
+          setSelectedNodeContent={setSelectedNodeContent}
+          testContentOpen={testContentOpen}
+          setTestContentOpen={setTestContentOpen}
+          projectFormDetails={projectFormDetails}
+        />
+          {childNode.label == selectedNodeLabel  && testContentOpen &&
+          ( selectedNodeContent ? <div className="code-visualizer">
+            <SyntaxHighlighter language={testsCodeFramework} style={github}>
+                {selectedNodeContent}
+            </SyntaxHighlighter>
+        </div> : <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress sx={{ color: "red" }} />
+        </div>)}
+          
+        </>
+      ))}
+    </TreeItem>
+    </>
+  );
+});
+
+
+const GitForm: React.FC<PropTypes> = ({
+          projectFormDetails,
+          triggerOpen,
+          checked,
+          setChecked,
+          loading,
+          setLoading,
+        }) => {
+  const { gitUrl, gitCredentialKey, gitBranchName, gitFolderPath } = projectFormDetails;
   const [isOpen, setIsOpen] = useState(false);
-  const [error, setError] = useState(false);
   const [checkedDB, setCheckedDB] = useState<string[]>([]);
+  const [selectedNodeLabel, setSelectedNodeLabel] = useState("");
+  const [selectedNodeContent, setSelectedNodeContent] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
-  const [nodes, setNodes] = useState<TreeItem[]>([]);
+  const [nodes, setNodes] = useState<TreeItemData[]>([]);
   const [testsInDB, setTestsInDB] = useState<{ [key: string]: boolean }>({});
+  const [testContentOpen, setTestContentOpen] = useState(false);
 
   const getTestsTree = useCallback(() => {
     setLoading(true);
@@ -115,7 +265,8 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
       },
     }).then(response => buildTreeWrapper(response.data.result))
       .catch(() => setLoading(false));
-  }, [gitUrl, gitCredentialKey]);
+  }, [projectFormDetails]);
+
 
   const buildTreeWrapper = (testsList: TestItem[]) => {
     const paths: string[][] = [];
@@ -134,22 +285,6 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     setLoading(false);
   };
 
-  const onCheck = (checked: string[]) => {
-    setChecked(checked.filter(item => !isPathInDb(testsInDB, item)));
-  };
-
-//   const onResponse = (response: any) => {
-//     if (response.error) {
-//       getTestsTree();
-//     } else {
-//       close();
-//     }
-//   };
-
-//   const onError = () => {
-//     getTestsTree();
-//   };
-
   const open = () => {
     setLoading(true);
     setIsOpen(true);
@@ -157,12 +292,7 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     getTestsTree();
   };
 
-  const close = () => {
-    setIsOpen(false);
-  };
-
-  const collapseAll = () => setExpanded([]);
-  const accumulatePath = (nodes: TreeItem) => {
+  const accumulatePath = (nodes: TreeItemData) => {
     let tmpArr: string[] = [];
     if (nodes.children && nodes.children.length > 0) {
       tmpArr = Array.prototype.concat(...nodes.children.map(child => accumulatePath(child)));
@@ -182,22 +312,50 @@ const GitForm: React.FC<PropTypes> = ({ gitUrl, gitCredentialKey, gitBranchName,
     }
   }, [triggerOpen]);
 
+  const countSelectedTests = (nodes: TreeItemData[], checked: string[]): number => {
+    const countTests = (node: TreeItemData): number => {
+      if (!node.children) return checked.includes(node.value) ? 1 : 0;
+      return node.children.reduce((sum, child) => sum + countTests(child), 0);
+    };
+    return nodes.reduce((sum, node) => sum + countTests(node), 0);
+  };
+  
   return (
     <>
-      {loading ?
-      <div style={{ display: 'flex', justifyContent: 'center'}}>
-        <CircularProgress sx={{color: "red",}} />
-      </div> :
-      <div className="form-section">
-        <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
-        <CheckboxTree nodes={nodes}
-                      checked={checked}
-                      expanded={expanded}
-                      onCheck={(checkedItems) => setChecked(checkedItems)}
-                      onExpand={(expandedItems) => setExpanded(expandedItems)}
-        />
-        <div className="tests-selected">{checked.length} Tests Selected</div>
-      </div>}
+      {loading ? (
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <CircularProgress sx={{ color: "red" }} />
+        </div>
+      ) : (
+        <div className="form-section">
+          <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
+          <Box sx={{maxHeight: "400px", overflow: "auto", border: "1px solid #ccc", borderRadius: "4px"}}>
+            <SimpleTreeView
+              multiSelect
+              selectedItems={checked}
+              expandedItems={expanded}
+              onExpandedItemsChange={(event, nodeIds) => setExpanded(nodeIds)}
+            >
+              {nodes.map((node) => (
+                <TreeNode 
+                  key={node.value} 
+                  node={node} 
+                  checked={checked} 
+                  setChecked={setChecked} 
+                  selectedNodeLabel={selectedNodeLabel}
+                  setSelectedNodeLabel={setSelectedNodeLabel} 
+                  selectedNodeContent={selectedNodeContent}
+                  setSelectedNodeContent={setSelectedNodeContent}
+                  testContentOpen={testContentOpen}
+                  setTestContentOpen={setTestContentOpen}
+                  projectFormDetails={projectFormDetails}
+                />
+              ))}
+            </SimpleTreeView>
+          </Box>
+          <div className="tests-selected">{countSelectedTests(nodes, checked)} Tests Selected</div>
+        </div>
+      )}
     </>
   );
 };
