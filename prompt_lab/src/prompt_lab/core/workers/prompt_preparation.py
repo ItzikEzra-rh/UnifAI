@@ -3,6 +3,7 @@ from prompt import PromptGenerator, PromptMaxTokenSizeFailPolicy, PromptComposit
 from batch import BatchMaxPromptsNumberStrategy, BatchMaxTokenStrategy, BatchCompositeStrategy, Batch
 from utils.celery.celery import is_queue_full, send_task
 from utils.tokenizer import TokenizerUtils
+from storage import DataRepository
 import time
 
 
@@ -30,7 +31,7 @@ class PromptPreparation:
 
     def __init__(
             self,
-            repository,
+            repository: DataRepository,
             tokenizer: TokenizerUtils,
             queue_target_size: int,
             prompts_queue_name: str,
@@ -66,7 +67,7 @@ class PromptPreparation:
             ]))
 
         # Track processed prompts using UUIDs
-        self.processed_uuids = self.repository.load_pass_prompts_uuids()
+        self.processed_uuids = self.repository.load_processed_prompts_uuids()
 
         print("[PromptEnqueue] Initialized.")
 
@@ -84,6 +85,7 @@ class PromptPreparation:
             if prompt.uuid in self.processed_uuids:
                 # Skip already processed prompts
                 continue
+            self.repository.update_prompt_generation_counter()
 
             added = self.prepared_prompts_batch.add_prompt(prompt)
             if not added:

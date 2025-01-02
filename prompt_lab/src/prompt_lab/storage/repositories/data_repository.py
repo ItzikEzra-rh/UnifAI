@@ -39,10 +39,19 @@ class DataRepository(ABC):
         """Update the retry counter in the stats."""
         pass
 
+    @abstractmethod
+    def update_prompt_generation_counter(self, count: int = 1) -> None:
+        """Update the generation counter in the stats."""
+        pass
+
     # Output (Exporter) methods
     @abstractmethod
     def export(self) -> None:
         """Export processed data."""
+        pass
+
+    @abstractmethod
+    def load_processed_prompts_uuids(self) -> Set[str]:
         pass
 
     # Resource management
