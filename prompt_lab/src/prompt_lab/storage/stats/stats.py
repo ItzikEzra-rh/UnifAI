@@ -38,6 +38,10 @@ class Stats:
             # Load data from MongoDB into in-memory attributes
             self._progress_data.update(existing_data[0])
 
+        # Ensure prompts_generated is at least equal to prompts_processed
+        self._progress_data["prompts_generated"] = self._progress_data["prompts_processed"]
+        self._sync_to_mongo(keys=["prompts_generated"])
+
     def _sync_to_mongo(self, keys: list = None) -> None:
         """
         Synchronize specific keys or the entire in-memory state to MongoDB.
@@ -132,6 +136,14 @@ class Stats:
         :return: True if done, False otherwise.
         """
         return self._progress_data["prompts_generated"] == self._progress_data["prompts_processed"]
+
+    def get_number_of_elements(self) -> int:
+        """
+        Retrieve the current value of 'number_of_elements'.
+
+        :return: The value of 'number_of_elements'.
+        """
+        return self._progress_data["number_of_elements"]
 
     def close(self):
         """

@@ -40,8 +40,10 @@ class HybridHFMongoRepository(DataRepository):
         return self.input_handler.read_data()
 
     def get_input_size(self) -> int:
-        size = self.input_handler.get_size()
-        self.stats_handler.set_number_of_elements(size)
+        size = self.stats_handler.get_number_of_elements()
+        if not size:
+            size = self.input_handler.get_size()
+            self.stats_handler.set_number_of_elements(size)
         return size
 
     # processed_handler
