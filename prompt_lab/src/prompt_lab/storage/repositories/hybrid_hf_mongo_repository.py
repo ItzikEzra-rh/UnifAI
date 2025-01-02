@@ -9,8 +9,8 @@ from typing import Dict, Any, Iterator, Set, List
 from storage import (DataRepository,
                      HuggingFaceDataHandler,
                      MongoDataHandler,
-                     HFExporter)
-from storage.stats.stats import Stats
+                     HFExporter,
+                     Stats)
 
 
 class HybridHFMongoRepository(DataRepository):
@@ -40,6 +40,7 @@ class HybridHFMongoRepository(DataRepository):
         return self.input_handler.read_data()
 
     def get_input_size(self) -> int:
+        print("[HybridHFMongoRepository] getting number of elements.")
         size = self.stats_handler.get_number_of_elements()
         if not size:
             size = self.input_handler.get_size()
