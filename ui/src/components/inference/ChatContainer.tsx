@@ -21,6 +21,8 @@ import RatingModal from './RatingModal';
 import ChatHistory, { HistoryChat } from './ChatHistory';
 import { v4 as uuidv4 } from 'uuid';
 import '../../styles.css';
+import Prism from 'prismjs';
+import 'prismjs/themes/prism.css';
 
 interface FormData {
   project: string;
@@ -653,6 +655,59 @@ const ChatComponent: React.FC = () => {
   const data = React.useMemo(() => selectedModel ? [selectedModel] : [], [selectedModel]);
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
 
+  Prism.languages.robot = {
+    'comment': {
+      pattern: /^ *#.*$/m,
+      greedy: true
+    },
+    'variable': {
+      pattern: /(\$\{[^\}]+\}|\@{[^\}]+\}|\&{[^\}]+\})/,
+      greedy: true
+    },
+    'keyword': {
+      pattern: /^(?:\*{3}\s*(?:Settings?|Variables?|Test Cases?|Keywords?)\s*\*{3}|[A-Z][\w\s]+(?= {2,}))/m,
+      greedy: true
+    },
+    'builtin': {
+      pattern: /^(?:Library|Resource|Variables|Documentation|Suite Setup|Suite Teardown|Test Setup|Test Teardown|Setup|Teardown|Template|Timeout|Arguments|Return|[A-Z]\w+(?= {2,}))/m,
+      greedy: true
+    },
+    'string': {
+      pattern: /("[^"]*"|'[^']*')/,
+      greedy: true
+    },
+    'number': {
+      pattern: /\b\d+(\.\d+)?\b/,
+      greedy: true
+    },
+    'operator': {
+      pattern: /(\.\.\.|=|!=|<|<=|>|>=|\b(?:and|or|not)\b)/,
+      greedy: true
+    },
+    'punctuation': {
+      pattern: /[.,:]/,
+      greedy: true
+    }
+  };
+
+  
+const ReformatText = (text: string) => {
+  // Replace code blocks first
+  const codeBlockRegex = /```(.*?)\n([\s\S]*?)```/g; // Matches ```lang\ncode``` format
+  let formattedText = text.replace(codeBlockRegex, (match, lang, code) => {
+    const language = Prism.languages[lang] || Prism.languages.javascript; // Default to JavaScript
+    const highlightedCode = Prism.highlight(code.trim(), language, lang);
+    return `<pre class="language-${lang}"><code>${highlightedCode}</code></pre>`;
+  });
+
+  // Replace bold text (**bold**) next
+  const boldTextRegex = /\*\*(.*?)\*\*/g; // Matches **bold**
+  formattedText = formattedText.replace(boldTextRegex, '<strong>$1</strong>');
+
+  return formattedText;
+};
+
+
   return (
     <div className="chat-container-wrapper">
       {loadingModel ? (
@@ -698,7 +753,7 @@ const ChatComponent: React.FC = () => {
                     <div key={message.id} style={{ position: 'relative', paddingBottom: '40px' }}>
                       <Message
                         model={{
-                          message: message.text, // Ensure message is a string
+                          message: ReformatText(message.text), // Ensure message is a string
                           sentTime: 'just now',
                           sender: message.sender === 'user' ? 'You' : 'Bot',
                           direction: message.sender === 'user' ? 'outgoing' : 'incoming',
