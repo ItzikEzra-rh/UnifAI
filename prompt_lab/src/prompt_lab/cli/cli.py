@@ -47,8 +47,11 @@ def override_config(ctx, **overrides):
 @click.option('--fetch-prompts-queue-name', type=str, help="Queue name for prompts.")
 @click.option('--input-dataset-repo', type=str, help="Input dataset repository ID.")
 @click.option('--output-dataset-repo', type=str, help="Output dataset repository ID.")
-@click.option('--mongodb_ip', type=str, help="MongoDB IP for data handling.")
-@click.option('--mongodb_port', type=str, help="MongoDB Port for data handling.")
+@click.option('--mongodb-ip', type=str, help="MongoDB IP for data handling.", default="0.0.0.0")
+@click.option('--mongodb-port', type=str, help="MongoDB Port for data handling.", default="27017")
+@click.option('--templates-path', type=str, help="template path")
+@click.option('--templates-agent', type=str, help="template agent name")
+@click.option('--templates-type', type=str, help="template type")
 @click.option('--celery', is_flag=True, help="Run with Celery.")
 @click.pass_context
 def prepare(ctx, **kwargs):

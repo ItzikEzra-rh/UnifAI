@@ -17,7 +17,7 @@ def run_prepare():
                                max_generation_length=config.get("model_max_generation_length"))
 
     repository = HybridHFMongoRepository(
-        input_handler=HuggingFaceDataHandler(repo_id=config.get("input_dataset_repo"), split="train"),
+        input_handler=HuggingFaceDataHandler(repo_id=config.get("input_dataset_repo"), split="train", streaming=True),
         pass_handler=MongoDataHandler(
             uri=get_mongo_url(),
             db_name="promptLab",

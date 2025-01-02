@@ -9,8 +9,8 @@ from typing import Dict, Any, Iterator, Set, List
 from storage import (DataRepository,
                      HuggingFaceDataHandler,
                      MongoDataHandler,
-                     HFExporter,
-                     Stats)
+                     HFExporter)
+from storage.stats.stats import Stats
 
 
 class HybridHFMongoRepository(DataRepository):

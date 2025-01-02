@@ -1,6 +1,6 @@
 from jinja2 import Environment
-from config import config
 from utils.util import load_json_config
+from config import ConfigManager
 import os
 
 
@@ -41,14 +41,15 @@ class TemplateManager:
 
     @property
     def get_template_path(self):
+        config = ConfigManager()
         return (
             os.path.join(
-                config.get("templates.dir_path"),
-                config.get("templates.agent"),
-                f"{config.get('templates.type')}.json"
+                config.get("templates_dir_path"),
+                config.get("templates_agent"),
+                f"{config.get('templates_type')}.json"
             )
-            if not config.get("templates.path")
-            else config.get("templates.path")
+            if not config.get("templates_path")
+            else config.get("templates_path")
         )
 
     def get_template_system_message(self):

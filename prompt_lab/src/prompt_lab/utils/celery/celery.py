@@ -1,6 +1,7 @@
 from celery_app.init import celery
 from kombu import Connection
 from utils.util import get_rabbitmq_url
+import time
 
 
 def send_task(task_name, celery_queue, **kwargs):
@@ -38,11 +39,32 @@ def get_queue_length_rabbitmq(queue_name):
         return queue.qsize()
 
 
-def is_queue_full(queue_name, queue_target_size) -> bool:
-    """Check if the RabbitMQ queue is full."""
-    try:
-        queue_length = get_queue_length_rabbitmq(queue_name)
-        return queue_length >= queue_target_size
-    except Exception as e:
-        print(f"[Orchestrator] Error checking queue length: {e}")
-        return True
+def is_queue_full(queue_name, queue_target_size, max_retries=3, retry_delay=5) -> bool:
+    """
+    Check if the RabbitMQ queue is full with retry mechanism.
+
+    Args:
+        queue_name (str): The name of the RabbitMQ queue.
+        queue_target_size (int): The maximum allowed size of the queue.
+        max_retries (int): The maximum number of retries before failing.
+        retry_delay (int): Delay in seconds between retries.
+
+    Returns:
+        bool: True if the queue is full, False otherwise.
+
+    Raises:
+        Exception: If retries are exhausted and the operation fails.
+    """
+    retries = 0
+
+    while retries <= max_retries:
+        try:
+            queue_length = get_queue_length_rabbitmq(queue_name)
+            return queue_length >= queue_target_size
+        except Exception as e:
+            retries += 1
+            print(f"[Orchestrator] Error checking queue length (attempt {retries}/{max_retries}): {e}")
+            if retries > max_retries:
+                print("[Orchestrator] Max retries reached. Failing.")
+                raise  # Re-raise the last exception
+            time.sleep(retry_delay)

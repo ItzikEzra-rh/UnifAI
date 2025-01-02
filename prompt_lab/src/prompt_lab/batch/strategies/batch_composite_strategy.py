@@ -16,6 +16,6 @@ class BatchCompositeStrategy(BatchStrategy):
         Return True only if all strategies agree that the new_prompt can be added.
         """
         for strategy in self.strategies:
-            if not strategy.can_add_prompt(current_batch, new_prompt):
+            if not strategy.apply(current_batch, new_prompt):
                 return False
         return True

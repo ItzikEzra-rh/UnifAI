@@ -66,7 +66,7 @@ class PromptPreparation:
             ]))
 
         # Track processed prompts using UUIDs
-        self.processed_uuids = self.repository.load_progress()
+        self.processed_uuids = self.repository.load_pass_prompts_uuids()
 
         print("[PromptEnqueue] Initialized.")
 
@@ -100,10 +100,6 @@ class PromptPreparation:
         # Submit remaining prompts
         if self.prepared_prompts_batch.has_prompts():
             self._submit_current_batch()
-
-
-
-
 
     def _submit_current_batch(self):
         """

@@ -15,7 +15,6 @@ from typing import Any, Dict, Iterator, List
 from .data_handler import DataHandler
 from utils.util import (
     append_to_json_list,
-    append_multiple_to_json_list
 )
 
 
@@ -64,7 +63,8 @@ class JSONFileHandler(DataHandler):
         Append multiple records in one call, which is more efficient
         than appending them one by one.
         """
-        append_multiple_to_json_list(self.file_path, records)
+        pass
+        # append_multiple_to_json_list(self.file_path, records)
 
     def close(self) -> None:
         """

@@ -1,19 +1,19 @@
-from config.manager import config
+from config import ConfigManager
 import json
 import ijson
 import os
 
 
 def get_mongo_url():
-    path = config.get("mongodb.url")
-    port = config.get("mongodb.port")
-    return path.format(port=port)
+    ip = ConfigManager().get("mongodb_ip", "0.0.0.0")
+    port = ConfigManager().get("mongodb_port", "27017")
+    return f"mongodb://{ip}:{port}/"
 
 
 def get_rabbitmq_url():
-    path = config.get("rabbitmq.url")
-    port = config.get("rabbitmq.port")
-    return path.format(port=port)
+    ip = ConfigManager().get("rabbitmq_ip", "0.0.0.0")
+    port = ConfigManager().get("mongodb_port", "5673")
+    return f"amqp://{ip}:{port}/"
 
 
 def load_json_config(file_path):

@@ -1,5 +1,4 @@
 from typing import Dict, Any
-from storage import MongoDataHandler
 
 
 class Stats:
@@ -17,7 +16,7 @@ class Stats:
         "prompts_processed": 0,
     }
 
-    def __init__(self, statistics_handler: MongoDataHandler):
+    def __init__(self, statistics_handler):
         """
         :param statistics_handler: A MongoDataHandler instance for managing progress data.
         """

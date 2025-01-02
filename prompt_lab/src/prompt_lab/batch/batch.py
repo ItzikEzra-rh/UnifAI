@@ -1,8 +1,7 @@
 import copy
 from typing import List
-from prompt import Prompt
-from strategies import BatchCompositeStrategy
-from prompt import CompositePolicy
+from prompt import Prompt, PromptCompositePolicy
+from .strategies import BatchCompositeStrategy
 
 
 class Batch:
@@ -14,7 +13,7 @@ class Batch:
 
     def __init__(self,
                  batch_strategies: BatchCompositeStrategy = BatchCompositeStrategy([]),
-                 prompt_policies: CompositePolicy = CompositePolicy([])):
+                 prompt_policies: PromptCompositePolicy = PromptCompositePolicy([])):
         self.batch_strategies = batch_strategies
         self.prompt_policies = prompt_policies
         self.prompts: List[Prompt] = []

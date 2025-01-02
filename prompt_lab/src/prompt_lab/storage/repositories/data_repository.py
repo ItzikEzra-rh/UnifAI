@@ -16,42 +16,33 @@ class DataRepository(ABC):
         """Return the size of the input data."""
         pass
 
-    # Processed handler methods
+    # Processed (Pass) handler methods
     @abstractmethod
-    def save_processed_data(self, data: List[Dict[str, Any]]) -> None:
-        """Save the processed data."""
+    def save_pass_prompts(self, prompts: List[Dict[str, Any]]) -> None:
+        """Save processed (passed) prompts."""
         pass
 
     @abstractmethod
-    def load_processed_data_uuids(self) -> Set[str]:
-        """Load and return a set of processed UUIDs."""
+    def load_pass_prompts_uuids(self) -> Set[str]:
+        """Load and return a set of processed (passed) UUIDs."""
         pass
 
-    # Skipped handler methods
+    # Failed handler methods
     @abstractmethod
-    def load_skipped_data(self) -> Iterator[Dict[str, Any]]:
-        """Return the skipped data."""
+    def save_fail_prompts(self, prompts: List[Dict[str, Any]]) -> None:
+        """Save failed prompts."""
         pass
 
+    # Stats handler methods
     @abstractmethod
-    def save_skipped_data(self, data: Dict[str, Any]) -> None:
-        """Save the skipped data."""
+    def update_retry_counter(self, count: int) -> None:
+        """Update the retry counter in the stats."""
         pass
 
-    # Progress handler methods
+    # Output (Exporter) methods
     @abstractmethod
-    def get_progress_data(self, progress_id: str) -> Dict[str, Any]:
-        """Retrieve progress data by ID."""
-        pass
-
-    @abstractmethod
-    def save_progress_data(self, progress_id: str, data: Dict[str, Any]) -> None:
-        """Save or overwrite progress data by ID."""
-        pass
-
-    @abstractmethod
-    def increment_progress(self, progress_id: str, key: str, amount: int) -> None:
-        """Increment a specific progress key for a given progress ID."""
+    def export(self) -> None:
+        """Export processed data."""
         pass
 
     # Resource management
