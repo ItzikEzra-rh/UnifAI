@@ -19,3 +19,11 @@ class BatchCompositeStrategy(BatchStrategy):
             if not strategy.apply(current_batch, new_prompt):
                 return False
         return True
+
+    @property
+    def blocker(self) -> bool:
+        """Indicates whether the strategy is a blocker."""
+        return any(strategy.blocker for strategy in self.strategies)
+
+    def is_blocker(self, current_batch: List[Prompt], new_prompt: Prompt):
+        return any(strategy.is_blocker(current_batch, new_prompt) for strategy in self.strategies)

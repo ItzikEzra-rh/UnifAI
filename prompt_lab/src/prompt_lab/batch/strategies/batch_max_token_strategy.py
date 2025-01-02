@@ -19,3 +19,8 @@ class BatchMaxTokenStrategy(BatchStrategy):
             return False
 
         return True
+
+    @property
+    def blocker(self) -> bool:
+        """Indicates whether the strategy is a blocker."""
+        return True

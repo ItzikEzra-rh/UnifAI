@@ -18,3 +18,8 @@ class BatchMaxPromptsNumberStrategy(BatchStrategy):
         if len(current_batch) >= self.max_prompts:
             return False
         return True
+
+    @property
+    def blocker(self) -> bool:
+        """Indicates whether the strategy is a blocker."""
+        return True

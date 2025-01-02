@@ -11,3 +11,8 @@ class BatchPassPromptsStrategy(BatchStrategy):
             return True
 
         return False
+
+    @property
+    def blocker(self) -> bool:
+        """Indicates whether the strategy is a blocker."""
+        return False

@@ -14,3 +14,12 @@ class BatchStrategy(ABC):
         Return True if 'new_prompt' can be added to 'current_batch' without violating constraints.
         """
         pass
+
+    @abstractmethod
+    @property
+    def blocker(self) -> bool:
+        """Indicates whether the strategy is a blocker."""
+        pass
+
+    def is_blocker(self, current_batch: List[Prompt], new_prompt: Prompt):
+        return not self.apply(current_batch, new_prompt) and self.blocker

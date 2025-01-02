@@ -1,4 +1,3 @@
-import copy
 from typing import List
 from prompt import Prompt, PromptCompositePolicy
 from .strategies import BatchCompositeStrategy
@@ -7,41 +6,69 @@ from .strategies import BatchCompositeStrategy
 class Batch:
     """
     Maintains a list of Prompt objects.
-    Decides if it can add a Prompt using a BatchStrategy,
-    and defers skip logic to a SkipPolicy.
+    Decides if it can add a Prompt using BatchStrategies,
+    and apply Prompt Policies to prompts.
     """
 
-    def __init__(self,
-                 batch_strategies: BatchCompositeStrategy = BatchCompositeStrategy([]),
-                 prompt_policies: PromptCompositePolicy = PromptCompositePolicy([])):
+    def __init__(
+            self,
+            batch_strategies: BatchCompositeStrategy = BatchCompositeStrategy([]),
+            prompt_policies: PromptCompositePolicy = PromptCompositePolicy([]),
+    ):
         self.batch_strategies = batch_strategies
         self.prompt_policies = prompt_policies
         self.prompts: List[Prompt] = []
+        self._blocked = False
 
     def add_prompt(self, prompt: Prompt) -> bool:
         """
-        1) apply policies on prompt
-        2) apply batch strategies on new prompt
+        Adds a prompt to the batch if it passes policies and strategies.
+
+        - Applies policies to the prompt.
+        - Checks batch strategies for adding the prompt.
+        - If some strategy is a blocker and it didn't apply, then sets the batch to a blocked state.
         """
+        if self.is_blocked:
+            return False
+
         self.prompt_policies.apply(prompt)
+
         if self.batch_strategies.apply(self.prompts, prompt):
             self.prompts.append(prompt)
             return True
+
+        self._blocked = self.batch_strategies.is_blocker(self.prompts, prompt)
         return False
 
     def finalize_batch(self) -> List[Prompt]:
         """
-        Return a copy of the prompts for submission, then reset internally.
+        Finalizes and clears the batch, returning the prompts.
         """
-        finalized = copy.deepcopy(self.prompts)
-        self.prompts.clear()
+        finalized, self.prompts = self.prompts, []
+        self._blocked = False
         return finalized
 
-    def to_dict(self):
+    def to_dict(self) -> List[dict]:
+        """
+        Converts all prompts in the batch to a list of dictionaries.
+        """
         return [prompt.to_dict() for prompt in self.prompts]
 
     def has_prompts(self) -> bool:
-        return len(self.prompts) > 0
+        """
+        Checks if the batch contains any prompts.
+        """
+        return bool(self.prompts)
 
-    def prompts_count(self):
+    def prompts_count(self) -> int:
+        """
+        Returns the count of prompts in the batch.
+        """
         return len(self.prompts)
+
+    @property
+    def is_blocked(self) -> bool:
+        """
+        Indicates if the batch is currently blocked.
+        """
+        return self._blocked
