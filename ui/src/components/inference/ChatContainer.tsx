@@ -22,7 +22,7 @@ import ChatHistory, { HistoryChat } from './ChatHistory';
 import { v4 as uuidv4 } from 'uuid';
 import '../../styles.css';
 import Prism from 'prismjs';
-import 'prismjs/themes/prism.css';
+import 'prismjs/themes/prism-okaidia.css';
 
 interface FormData {
   project: string;
@@ -656,6 +656,7 @@ const ChatComponent: React.FC = () => {
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
 
   const titleRegex = /^### (.*)/; // Matches lines starting with "###"
+  const subTitleRegex = /^#### (.*)/; // Matches lines starting with "####"
   const boldTextRegex = /\*\*(.*?)\*\*/g; // Matches **bold** text
   const ReformatText = (text: string) => {
     const lines = text.split('\n'); 
@@ -687,7 +688,11 @@ const ChatComponent: React.FC = () => {
         switch (true) {
           case titleRegex.test(line):
             const titleText = line.replace(titleRegex, '$1').trim();
-            formattedText += `<h3>${titleText}</h3>\n`;
+            formattedText += `<h2>${titleText}</h2>\n`;
+            break;
+          case subTitleRegex.test(line):
+            const subTitleText = line.replace(subTitleRegex, '$1').trim();
+            formattedText += `<h3>${subTitleText}</h3>\n`;
             break;
           case boldTextRegex.test(line):
             formattedText += line.replace(boldTextRegex, '<strong>$1</strong>') + '\n';
