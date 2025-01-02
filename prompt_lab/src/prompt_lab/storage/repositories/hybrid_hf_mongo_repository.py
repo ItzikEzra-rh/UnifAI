@@ -1,5 +1,3 @@
-# hybrid_hf_mongo_repository.py
-
 """
 hybrid_hf_mongo_repository.py
 
@@ -11,7 +9,8 @@ from typing import Dict, Any, Iterator, Set, List
 from storage import (DataRepository,
                      HuggingFaceDataHandler,
                      MongoDataHandler,
-                     HFExporter)
+                     HFExporter,
+                     Stats)
 
 
 class HybridHFMongoRepository(DataRepository):
@@ -25,52 +24,45 @@ class HybridHFMongoRepository(DataRepository):
     def __init__(
             self,
             input_handler: HuggingFaceDataHandler,
-            processed_handler: MongoDataHandler,
-            skipped_handler: MongoDataHandler,
-            progress_handler: MongoDataHandler,
-            exporter: HFExporter = None
+            pass_handler: MongoDataHandler,
+            fail_handler: MongoDataHandler,
+            stats_handler: MongoDataHandler,
+            exporter: HFExporter
     ):
-        """
-        :param input_handler: HuggingFaceDataHandler for input.
-        :param processed_handler: MongoDataHandler for processed docs.
-        :param skipped_handler: MongoDataHandler for skipped docs.
-        :param progress_handler: MongoDataHandler for progress docs.
-        :param exporter: Optionally inject an HFExporter instance.
-        """
         self.input_handler = input_handler
-        self.processed_handler = processed_handler
-        self.skipped_handler = skipped_handler
-        self.progress_handler = progress_handler
-        self.exporter = exporter or HFExporter()
+        self.pass_handler = pass_handler
+        self.fail_handler = fail_handler
+        self.stats_handler = Stats(stats_handler)
+        self.exporter = exporter
 
     # input handler
     def load_input_data(self) -> Iterator[Dict[str, Any]]:
         return self.input_handler.read_data()
 
     def get_input_size(self) -> int:
-        return self.input_handler.get_size()
+        size = self.input_handler.get_size()
+        self.stats_handler.set_number_of_elements(size)
+        return size
 
     # processed_handler
-    def save_processed_data(self, data: List[Dict[str, Any]]) -> None:
+    def save_pass_prompts(self, prompts: List[Dict]) -> None:
         """
         Save processed data to the MongoDB collection. Ensures that the `uuid` field
         is used as the `_id` for uniqueness.
 
         :param data: A list of dictionaries representing the records to save.
         """
-        if not data:
-            return
-
         # Transform records to use `uuid` as `_id`
-        transformed_data = [{**record, "_id": record["uuid"]} for record in data]
+        transformed_data = [{**record, "_id": record["uuid"]} for record in prompts]
 
         try:
-            self.processed_handler.append_records(transformed_data)
+            self.pass_handler.append_records(transformed_data)
+            self.stats_handler.increment_prompts_pass(amount=len(prompts))
         except Exception as e:
             # Handle duplicate key error or log as needed
             print(f"Error while inserting records: {e}")
 
-    def load_processed_data_uuids(self) -> Set[str]:
+    def load_pass_prompts_uuids(self) -> Set[str]:
         """
         Load and return a set of processed UUIDs from the progress handler.
 
@@ -78,65 +70,31 @@ class HybridHFMongoRepository(DataRepository):
         """
         # Use projection to fetch only the uuid field
         progress_processed_uuid = {
-            uuid_obj["uuid"] for uuid_obj in self.progress_handler.read_data(projection={"uuid": 1, "_id": 0})
+            uuid_obj["uuid"] for uuid_obj in self.pass_handler.read_data(projection={"uuid": 1, "_id": 0})
         }
         return progress_processed_uuid
 
-    def load_processed_data(self) -> List[Dict[str, Any]]:
-        return [data for data in self.progress_handler.read_data()]
+    # fail handler
+    def save_fail_prompts(self, prompts: List[Dict]) -> None:
+        transformed_data = [{**record, "_id": record["uuid"]} for record in prompts]
+        try:
+            self.fail_handler.append_records(transformed_data)
+            self.stats_handler.increment_prompts_failed(amount=len(prompts))
+        except Exception as e:
+            # Handle duplicate key error or log as needed
+            print(f"Error while inserting records: {e}")
 
-    # skip handler
-    def load_skipped_data(self) -> Iterator[Dict[str, Any]]:
-        return self.skipped_handler.read_data()
+    # stats handler
+    def update_retry_counter(self, count: int):
+        self.stats_handler.increment_prompts_retried(count)
 
-    def save_skipped_data(self, data: Dict[str, Any]) -> None:
-        self.skipped_handler.append_record(data)
-
-    # progress handler
-    def get_progress_data(self, progress_id: str) -> Dict[str, Any]:
-        """
-        Retrieve progress data by ID.
-        """
-        cursor = self.progress_handler.read_data(query={"_id": progress_id})
-        return next(cursor, {})
-
-    def save_progress_data(self, progress_id: str, data: Dict[str, Any]) -> None:
-        """
-        Save or overwrite progress data by ID.
-        """
-        self.progress_handler.update_record(
-            query={"_id": progress_id}, update={"$set": data}, upsert=True
-        )
-
-    def increment_progress(self, progress_id: str, key: str, amount: int) -> None:
-        """
-        Increment a specific progress key for a given progress ID.
-        """
-        self.progress_handler.update_record(
-            query={"_id": progress_id}, update={"$inc": {key: amount}}
-        )
+    # output
+    def export(self):
+        if self.stats_handler.is_done():
+            self.exporter.export(self.pass_handler.read_data())
 
     def close(self) -> None:
         self.input_handler.close()
-        self.processed_handler.close()
-        self.skipped_handler.close()
-        self.progress_handler.close()
-        # The exporter doesn’t hold open resources by default, so no need to close it.
-
-    # Additional method for exporting
-    def export_processed_data_to_huggingface(
-            self,
-            repo_id: str,
-            local_parquet_path: str = "processed.parquet",
-            hf_token: str = None
-    ) -> None:
-        """
-        Gathers processed records from Mongo and delegates the export to HFExporter.
-        """
-        all_records = list(self.load_processed_data())
-        self.exporter.export_records_to_hf(
-            records=all_records,
-            repo_id=repo_id,
-            local_parquet_path=local_parquet_path,
-            token=hf_token
-        )
+        self.pass_handler.close()
+        self.fail_handler.close()
+        self.stats_handler.close()

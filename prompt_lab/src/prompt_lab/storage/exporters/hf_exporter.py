@@ -1,58 +1,80 @@
 """
 hf_exporter.py
 
-Responsible for taking a list of processed records, converting them to Parquet,
+Responsible for taking a generator of processed records, converting them to Parquet,
 and pushing them to Hugging Face. This is separate from the repository logic,
 adhering to SOLID principles.
 """
 
-import pyarrow as pa
-import pyarrow.parquet as pq
-from typing import List, Dict, Any
+from typing import Iterator, Dict, Any
 from datasets import Dataset
+import pandas as pd
+import tempfile
 
 
 class HFExporter:
     """
-    This class handles exporting a list of records (dicts) to a local Parquet file
-    and optionally uploading to Hugging Face.
+    This class handles exporting records from a generator to Hugging Face directly
+    while efficiently managing memory.
     """
-    records: List[Dict[str, Any]]
-    repo_id: str
-    local_parquet_path: str
-    token: str = None
 
-    def export_records_to_hf(
-            self,
-            records: List[Dict[str, Any]],
-            repo_id: str,
-            local_parquet_path: str,
-            token: str = None
-    ) -> None:
+    def __init__(self, repo_id: str, token: str = None, batch_size: int = 1000):
         """
-        Convert the given `records` to an Arrow table, write Parquet, and push to HF Hub.
+        Initialize the exporter with Hugging Face repository details.
 
-        :param records: A list of dictionaries representing processed data.
         :param repo_id: The Hugging Face dataset repo to push to (e.g., "user/my_dataset").
-        :param local_parquet_path: Path to write the Parquet file locally.
         :param token: Optional Hugging Face token for private repos.
+        :param batch_size: Number of records to process in a single batch.
         """
-        if not records:
-            print("No records to export.")
+        self.repo_id = repo_id
+        self.token = token
+        self.batch_size = batch_size
+
+    def export(self, record_generator: Iterator[Dict[str, Any]]) -> None:
+        """
+        Convert the given `record_generator` to batches and push to Hugging Face.
+
+        :param record_generator: A generator yielding dictionaries representing processed data.
+        """
+
+        def chunked_generator(generator, size):
+            """Yield chunks of data from a generator."""
+            chunk = []
+            for record in generator:
+                chunk.append(record)
+                if len(chunk) == size:
+                    yield chunk
+                    chunk = []
+            if chunk:
+                yield chunk
+
+        # Process records in chunks
+        full_dataset = None
+
+        for i, batch in enumerate(chunked_generator(record_generator, self.batch_size), 1):
+            print(f"Processing batch {i}...")
+            # Convert the batch to a Pandas DataFrame
+            df = pd.DataFrame(batch)
+
+            # Append to the dataset
+            dataset = Dataset.from_pandas(df)
+            if full_dataset is None:
+                full_dataset = dataset
+            else:
+                full_dataset = Dataset.from_pandas(
+                    pd.concat([full_dataset.to_pandas(), df], ignore_index=True)
+                )
+
+        if full_dataset is None:
+            print("No records to process.")
             return
 
-        # 1) Convert to Arrow table
-        all_keys = set()
-        for record in records:
-            all_keys.update(record.keys())
-        columns = {k: [doc.get(k) for doc in records] for k in all_keys}
-        table = pa.Table.from_pydict(columns)
+        # Use a temporary file for the Parquet dataset
+        with tempfile.NamedTemporaryFile(suffix=".parquet", delete=True) as tmp_file:
+            # Save to Parquet locally in the temp file
+            full_dataset.to_parquet(tmp_file.name)
+            print(f"Temporary dataset saved to {tmp_file.name}.")
 
-        # 2) Write to local Parquet
-        pq.write_table(table, local_parquet_path)
-        print(f"Saved {len(records)} records to {local_parquet_path}.")
-
-        # 3) Push to Hugging Face
-        ds = Dataset.from_parquet(local_parquet_path)
-        ds.push_to_hub(repo_id, token=token)
-        print(f"Successfully pushed dataset to https://huggingface.co/{repo_id}")
+            # Push to Hugging Face
+            full_dataset.push_to_hub(self.repo_id, token=self.token)
+            print(f"Successfully pushed dataset to https://huggingface.co/{self.repo_id}")

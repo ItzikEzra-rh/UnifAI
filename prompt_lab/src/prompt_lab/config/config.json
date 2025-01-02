@@ -1,52 +1,22 @@
 {
-  "storage_type": "file",
-  "input": {
-    "file_path": "${INPUT_JSON_PATH}"
-  },
-  "output": {
-    "directory": "${OUTPUT_DATA_DIR_PATH}"
-  },
-  "model_config": {
-    "tokenizer_path": "${PROMPT_LAB_MODEL_HF_ID}",
-    "model_name": "${PROMPT_LAB_MODEL_HF_ID}",
-    "api_url": "http://0.0.0.0:8000/v1/completions",
-    "max_generation_length": ${PROMPT_LAB_MAX_GENERATION_LENGTH},
-    "max_context_length": ${PROMPT_LAB_MAX_CONTEXT_LENGTH}
-  },
-  "prompt_lab": {
-    "batch_size": ${PROMPT_LAB_BATCH_SIZE},
-    "max_retry": ${MAX_RETRY},
-    "queues": {
-      "fetch_prompts_queue": {
-        "target_size": ${QUEUE_TARGET_SIZE},
-        "name": "prompts_process_queue"
-      }
-    }
-  },
-  "reviewer": {
-    "queues": {
-      "reviewer_passed_queue": {
-        "name": "reviewer_passed"
-      }
-    }
-  },
-  "rabbitmq": {
-    "port": ${RABBITMQ_PORT},
-    "url": "amqp://${RABBITMQ_IP}:{port}"
-  },
-  "mongodb": {
-    "port": ${MONGODB_PORT},
-    "url": "mongodb://${MONGODB_IP}:{port}"
-  },
-  "templates": {
-    "path": "${TEMPLATE_NAME}",
-    "dir_path": "projects_templates/",
-    "agent": "${TEMPLATE_AGENT}",
-    "type": "${TEMPLATE_TYPE}",
-    "usable_params": [
-      "project_id",
-      "project_repo",
-      "coding_language"
-    ]
-  }
+  "input_dataset_repo": "${INPUT_DATASET_REPO}",
+  "output_dataset_repo": "${OUTPUT_DATASET_REPO}",
+  "tokenizer_path": "${PROMPT_LAB_MODEL_HF_ID}",
+  "model_name": "${PROMPT_LAB_MODEL_HF_ID}",
+  "model_api_url": "http://0.0.0.0:8000/v1/completions",
+  "model_max_generation_length": "${PROMPT_LAB_MAX_GENERATION_LENGTH}",
+  "model_max_context_length": "${PROMPT_LAB_MAX_CONTEXT_LENGTH}",
+  "batch_size": "${PROMPT_LAB_BATCH_SIZE}",
+  "max_retry": "${MAX_RETRY}",
+  "fetch_prompts_queue_target_size": "${QUEUE_TARGET_SIZE}",
+  "fetch_prompts_queue_name": "prompts_process_queue",
+  "reviewed_prompts_queue_name": "reviewed",
+  "rabbitmq_port": "${RABBITMQ_PORT}",
+  "rabbitmq_ip": "${RABBITMQ_IP}",
+  "mongodb_port": "${MONGODB_PORT}",
+  "mongodb_ip": "${MONGODB_IP}",
+  "templates_path": "${TEMPLATE_NAME}",
+  "templates_dir_path": "projects_templates/",
+  "templates_agent": "${TEMPLATE_AGENT}",
+  "templates_type": "${TEMPLATE_TYPE}"
 }

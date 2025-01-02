@@ -30,15 +30,19 @@ class Prompt:
     token_count: int = 0
     retry_count: int = 0
     failed: bool = False
-    review_failed: bool = False  # TODO important for the tracker to know in the end the num processed
-    skip_reason: str = None
+    review_failed: bool = False
+    fail_reason: str = None
 
-    def set_skip_reason(self, reason: str) -> None:
-        self.skip_reason = reason
+    def set_fail_reason(self, reason: str) -> None:
+        self.fail_reason = reason
 
     @property
     def is_failed(self) -> bool:
         return self.failed
+
+    @property
+    def is_review_failed(self) -> bool:
+        return self.review_failed
 
     def to_dict(self) -> dict:
         """

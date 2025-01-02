@@ -1,6 +1,6 @@
 from typing import List
-from prompt import Prompt, Batch
-from policies import RetryPolicy, CompositeRetryPolicy, SkipPolicy, CompositeSkipPolicy
+from prompt import Prompt
+from batch import Batch
 from utils.tokenizer import TokenizerUtils
 
 
@@ -24,8 +24,6 @@ class PromptQuery:
     def __init__(
             self,
             llm_client,
-            retry_policies: List[RetryPolicy],
-            skip_policies: List[SkipPolicy],
             tokenizer: TokenizerUtils
     ):
         """
@@ -33,15 +31,11 @@ class PromptQuery:
 
         Args:
             llm_client: The LLM client used to send requests.
-            retry_policies (List[RetryPolicy]): List of retry policies to handle prompt retries.
-            skip_policies (List[SkipPolicy]): List of skip policies to manage prompt exclusions.
             tokenizer (TokenizerUtils): Utility for handling tokenization and token limits.
         """
         self.llm_client = llm_client
-        self.retry_policies = CompositeRetryPolicy(retry_policies)
-        self.skip_policies = CompositeSkipPolicy(skip_policies)
         self.tokenizer = tokenizer
-        self.batch = Batch(retry_policies=self.retry_policies, skip_policies=self.skip_policies)
+        self.batch = Batch()
 
         print("[PromptQuery] Initialized.")
 

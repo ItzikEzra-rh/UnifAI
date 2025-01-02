@@ -1,7 +1,6 @@
 from typing import List
-from prompt import Batch, PromptGenerator
-from policies import CompositeSkipPolicy, SkipPolicy
-from strategies import CompositeBatchStrategy, BatchStrategy
+from prompt import PromptGenerator, PromptMaxTokenSizeFailPolicy, PromptCompositePolicy
+from batch import BatchMaxPromptsNumberStrategy, BatchMaxTokenStrategy, BatchCompositeStrategy, Batch
 from utils.celery.celery import is_queue_full, send_task
 from utils.tokenizer import TokenizerUtils
 import time
@@ -33,10 +32,9 @@ class PromptPreparation:
             self,
             repository,
             tokenizer: TokenizerUtils,
-            batch_strategies: List[BatchStrategy],
-            skip_policies: List[SkipPolicy],
             queue_target_size: int,
             prompts_queue_name: str,
+            batch_size: int = 8,
             prompt_query_task_name: str = "fetch_prompts_batch"
     ):
         """
@@ -46,7 +44,7 @@ class PromptPreparation:
             repository: Data source for generating and tracking prompts.
             tokenizer (TokenizerUtils): Utility for handling tokenization constraints.
             batch_strategies (List[BatchStrategy]): List of strategies to control batch behavior.
-            skip_policies (List[SkipPolicy]): List of policies to determine prompt skipping.
+            fail_policies (List[SkipPolicy]): List of policies to determine prompt skipping.
             queue_target_size (int): Maximum queue size before submission pauses.
             prompts_queue_name (str): The name of the queue where prompts are submitted.
             prompt_query_task_name (str): Celery task name for batch submission. Default is "fetch_prompts_batch".
@@ -54,14 +52,18 @@ class PromptPreparation:
         self.repository = repository
         self.tokenizer = tokenizer
         self.prompt_query_task_name = prompt_query_task_name
-        self.batch_strategies = CompositeBatchStrategy(batch_strategies)
-        self.skip_policies = CompositeSkipPolicy(skip_policies)
+        self.batch_size = batch_size
 
         self.queue_target_size = queue_target_size
         self.prompts_queue_name = prompts_queue_name
 
         self.generator = PromptGenerator(self.repository, self.tokenizer)
-        self.batch = Batch(batch_strategies=self.batch_strategies, skip_policies=self.skip_policies)
+        self.prepared_prompts_batch = Batch(
+            batch_strategies=BatchCompositeStrategy([BatchMaxTokenStrategy(self.tokenizer.get_tokens_limit()),
+                                                     BatchMaxPromptsNumberStrategy(self.batch_size)]),
+            prompt_policies=PromptCompositePolicy([
+                PromptMaxTokenSizeFailPolicy(self.tokenizer.get_tokens_limit())
+            ]))
 
         # Track processed prompts using UUIDs
         self.processed_uuids = self.repository.load_progress()
@@ -83,19 +85,25 @@ class PromptPreparation:
                 # Skip already processed prompts
                 continue
 
-            added = self.batch.add_prompt(prompt)
+            added = self.prepared_prompts_batch.add_prompt(prompt)
             if not added:
                 # Submit the current batch if full
-                if self.batch.has_prompts():
+                if self.prepared_prompts_batch.has_prompts():
                     self._submit_current_batch()
 
-                # Recheck the prompt with skip policies
-                if not self.skip_policies.should_skip(prompt):
-                    self.batch.add_prompt(prompt)
+                # check if the batch that didn't apply to batch strategy failed, if not add to new batch
+                if not prompt.is_failed:
+                    self.prepared_prompts_batch.add_prompt(prompt)
+                else:
+                    self.repository.save_fail_prompts([prompt.to_dict()])
 
         # Submit remaining prompts
-        if self.batch.has_prompts():
+        if self.prepared_prompts_batch.has_prompts():
             self._submit_current_batch()
+
+
+
+
 
     def _submit_current_batch(self):
         """
@@ -106,8 +114,8 @@ class PromptPreparation:
             - Waiting if the queue is full and retrying periodically.
             - Sending the batch as a task to the Celery queue.
         """
-        finalized_prompts = self.batch.to_dict()
-        self.batch.finalize_batch()
+        finalized_prompts = self.prepared_prompts_batch.to_dict()
+        self.prepared_prompts_batch.finalize_batch()
 
         if not finalized_prompts:
             return

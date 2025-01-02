@@ -3,9 +3,20 @@ from pathlib import Path
 
 
 class ConfigManager:
-    def __init__(self, config_path):
+    _instance = None  # Class-level attribute to store the singleton instance
+
+    def __new__(cls, config_path="config/config.json"):
+        if cls._instance is None:
+            cls._instance = super(ConfigManager, cls).__new__(cls)
+            cls._instance._initialized = False
+        return cls._instance
+
+    def __init__(self, config_path="config/config.json"):
+        if self._initialized:  # Avoid reinitializing the singleton instance
+            return
         self.config_path = Path(config_path)
         self.config = self.load_config()
+        self._initialized = True
 
     def load_config(self):
         """
@@ -56,26 +67,3 @@ class ConfigManager:
         """
         for key, value in updates.items():
             self.set(key, value)
-
-    def validate(self):
-        """
-        Validate the configuration structure.
-        """
-        required_keys = [
-            "storage_type",
-            "input.file_path",
-            "output.directory",
-            "model_config.tokenizer_path",
-            "model_config.model_name",
-            "model_config.api_url",
-            "rabbitmq.url",
-            "mongodb.url",
-        ]
-        for key in required_keys:
-            if self.get(key) is None:
-                raise ValueError(f"Missing required configuration key: {key}")
-
-        print("Configuration is valid.")
-
-
-config = ConfigManager("config/config.json")

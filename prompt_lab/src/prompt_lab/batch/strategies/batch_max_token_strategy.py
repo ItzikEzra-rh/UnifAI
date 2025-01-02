@@ -3,7 +3,7 @@ from prompt import Prompt
 from .batch_strategy import BatchStrategy
 
 
-class MaxTokenBatchStrategy(BatchStrategy):
+class BatchMaxTokenStrategy(BatchStrategy):
     """
     Example strategy checking:
       - max total tokens in the batch
@@ -12,7 +12,7 @@ class MaxTokenBatchStrategy(BatchStrategy):
     def __init__(self, max_total_tokens: int):
         self.max_total_tokens = max_total_tokens
 
-    def can_add_prompt(self, current_batch: List[Prompt], new_prompt: Prompt) -> bool:
+    def apply(self, current_batch: List[Prompt], new_prompt: Prompt) -> bool:
         # check token limit
         current_sum = sum(p.token_count for p in current_batch)
         if current_sum + new_prompt.token_count > self.max_total_tokens:

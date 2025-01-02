@@ -16,6 +16,9 @@ class MongoDataHandler(DataHandler):
     read_data iterates over all documents in the collection.
     """
 
+    def append_to_object(self, key: str, val: Any) -> None:
+        pass
+
     def __init__(
             self,
             uri: str,

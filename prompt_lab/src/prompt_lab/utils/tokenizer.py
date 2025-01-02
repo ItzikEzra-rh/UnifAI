@@ -19,5 +19,5 @@ class TokenizerUtils:
         """Format chat messages for LLMs that support chat templates."""
         return self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
 
-    def get_toking_limit(self):
+    def get_tokens_limit(self):
         return self.max_context_length - self.max_generation_length

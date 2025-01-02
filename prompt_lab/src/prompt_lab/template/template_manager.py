@@ -8,6 +8,7 @@ class TemplateManager:
     """
     Manages templates and their conditions, ensuring correct data retrieval and filtering.
     """
+    PARAMS = ["project_id", "project_repo", "coding_language"]
 
     def __init__(self):
         self.project_config = load_json_config(self.get_template_path)
@@ -18,7 +19,7 @@ class TemplateManager:
     def _initialize_template_params(self):
         """Initialize and return template parameters from the project configuration."""
         params = {}
-        for param in config.get("templates.usable_params", []):
+        for param in self.PARAMS:
             val = self.project_config.get(param)
             if val:
                 params[param] = val

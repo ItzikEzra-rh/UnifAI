@@ -55,12 +55,5 @@ class DataHandler(ABC):
         """
         pass
 
-    def append_to_object(self, key: str, val: Any) -> None:
-        """
-        Optional: For JSON-like handlers to update a key-value pair in a top-level object.
-        By default, raises NotImplementedError.
-        """
-        raise NotImplementedError("Not applicable for this handler.")
-
     def get_size(self) -> int:
         pass

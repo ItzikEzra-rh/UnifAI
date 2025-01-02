@@ -1,8 +1,8 @@
 import copy
 from typing import List
 from prompt import Prompt
-from strategies import CompositeBatchStrategy
-from policies import CompositeRetryPolicy, CompositeSkipPolicy
+from strategies import BatchCompositeStrategy
+from prompt import CompositePolicy
 
 
 class Batch:
@@ -13,23 +13,20 @@ class Batch:
     """
 
     def __init__(self,
-                 batch_strategies: CompositeBatchStrategy = CompositeBatchStrategy([]),
-                 skip_policies: CompositeSkipPolicy = CompositeSkipPolicy([]),
-                 retry_policies: CompositeRetryPolicy = CompositeRetryPolicy([])):
+                 batch_strategies: BatchCompositeStrategy = BatchCompositeStrategy([]),
+                 prompt_policies: CompositePolicy = CompositePolicy([])):
         self.batch_strategies = batch_strategies
-        self.skip_policies = skip_policies
-        self.retry_policies = retry_policies
+        self.prompt_policies = prompt_policies
         self.prompts: List[Prompt] = []
 
     def add_prompt(self, prompt: Prompt) -> bool:
         """
-        1) Check if skip_policy wants to skip the prompt.
-        2) If not skipped, apply retry policy if exist
-        3) see if batch_strategy allows adding it.
+        1) apply policies on prompt
+        2) apply batch strategies on new prompt
         """
-        if not self.skip_policies.should_skip(prompt) and self.retry_policies.apply_retry(
-                prompt) and self.batch_strategies.can_add_prompt(current_batch=self.prompts, new_prompt=prompt):
-            self.add_prompt(prompt)
+        self.prompt_policies.apply(prompt)
+        if self.batch_strategies.apply(self.prompts, prompt):
+            self.prompts.append(prompt)
             return True
         return False
 

@@ -9,7 +9,7 @@ class BatchStrategy(ABC):
     """
 
     @abstractmethod
-    def can_add_prompt(self, current_batch: List[Prompt], new_prompt: Prompt) -> bool:
+    def apply(self, current_batch: List[Prompt], new_prompt: Prompt) -> bool:
         """
         Return True if 'new_prompt' can be added to 'current_batch' without violating constraints.
         """

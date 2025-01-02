@@ -20,6 +20,9 @@ from .repositories.data_repository import DataRepository
 from .repositories.hybrid_hf_mongo_repository import HybridHFMongoRepository
 from .repositories.file_data_repository import FileDataRepository
 
+# Stats
+from .stats.stats import Stats
+
 __all__ = [
     "DataHandler",
     "HuggingFaceDataHandler",
@@ -31,4 +34,5 @@ __all__ = [
     "DataRepository",
     "HybridHFMongoRepository",
     "FileDataRepository",
+    "Stats"
 ]
