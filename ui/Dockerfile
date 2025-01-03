@@ -5,10 +5,9 @@ RUN mkdir -p . $HOME/ui
 ADD . $HOME/ui
 WORKDIR $HOME/ui
 RUN cd $HOME/ui
-RUN cat $HOME/ui/package.json
-RUN npm install -g npm yarn
-RUN npm install -g @fontsource/red-hat-display
-RUN yarn install
+RUN npm install  -g npm yarn
+RUN npm install -g  @fontsource/red-hat-display universalify
+RUN npm install
 RUN npm run build
 RUN yarn global add serve
 CMD serve -s build
