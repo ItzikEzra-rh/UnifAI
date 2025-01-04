@@ -48,6 +48,10 @@ class ConfigManager:
                 return default
         return value
 
+    def get_as_int(self, key, default=None):
+        value = self.get(key, default)
+        return int(value) if value is not None else default
+
     def set(self, key, value):
         """
         Set a configuration value using dot notation.

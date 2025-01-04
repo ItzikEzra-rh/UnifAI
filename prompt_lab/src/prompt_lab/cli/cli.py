@@ -1,5 +1,5 @@
 import click
-from tasks import run_prepare, run_query, run_result
+from tasks import run_orbiter, run_landing, run_launchpad
 # from prompt_lab.utils.celery.celery import start_celery_worker
 from config import ConfigManager
 
@@ -54,7 +54,7 @@ def override_config(ctx, **overrides):
 @click.option('--templates-type', type=str, help="template type")
 @click.option('--celery', is_flag=True, help="Run with Celery.")
 @click.pass_context
-def prepare(ctx, **kwargs):
+def launchpad(ctx, **kwargs):
     """
     Prepare and enqueue prompts.
     """
@@ -64,14 +64,14 @@ def prepare(ctx, **kwargs):
         # start_celery_worker()
         pass
     else:
-        run_prepare()
+        run_launchpad()
 
 
 @cli.command()
 @click.option('--model-api-url', type=str, help="LLM API URL.")
 @click.option('--celery', is_flag=True, help="Run with Celery.")
 @click.pass_context
-def query(ctx, **kwargs):
+def orbiter(ctx, **kwargs):
     """
     Query the LLM with prepared prompts.
     """
@@ -81,7 +81,7 @@ def query(ctx, **kwargs):
         # start_celery_worker()
         pass
     else:
-        run_query(config)
+        run_orbiter(config)
 
 
 @cli.command()
@@ -98,7 +98,7 @@ def result(ctx, **kwargs):
         # start_celery_worker()
         pass
     else:
-        run_result(config)
+        run_landing(config)
 
 
 if __name__ == "__main__":

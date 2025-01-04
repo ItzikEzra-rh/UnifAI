@@ -4,7 +4,7 @@ from batch import Batch
 from utils.tokenizer import TokenizerUtils
 
 
-class PromptQuery:
+class PromptOrbiter:
     """
     Handles the process of querying an LLM with a batch of prompts.
 

@@ -4,7 +4,7 @@ from batch import Batch, BatchCompositeStrategy, BatchRetryPromptsStrategy, Batc
 from utils.celery.celery import send_task
 
 
-class PromptResult:
+class PromptLanding:
 
     def __init__(
             self,

@@ -1,7 +1,7 @@
-from .tasks import run_prepare, run_result, run_query
+from .tasks import run_landing, run_launchpad, run_orbiter
 
 __all__ = [
-    run_prepare,
-    run_query,
-    run_result
+    run_landing,
+    run_launchpad,
+    run_orbiter
 ]

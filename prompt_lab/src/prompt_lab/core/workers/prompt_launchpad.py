@@ -1,5 +1,4 @@
 import time
-from typing import List
 from prompt import PromptGenerator, PromptMaxTokenSizeFailPolicy, PromptCompositePolicy
 from batch import BatchMaxPromptsNumberStrategy, BatchMaxTokenStrategy, BatchCompositeStrategy, Batch
 from utils.celery.celery import is_queue_full, send_task
@@ -7,7 +6,7 @@ from utils.tokenizer import TokenizerUtils
 from storage import DataRepository
 
 
-class PromptPreparation:
+class PromptLaunchpad:
     """
     Handles the enqueuing of prompts into a processing queue.
     """
@@ -62,7 +61,7 @@ class PromptPreparation:
 
         # Submit remaining prompts
         if self.prepared_prompts_batch.has_prompts():
-            self._submit_current_batch()
+            self._submit_batch()
 
     def _process_prompt(self, prompt) -> bool:
         """
@@ -78,8 +77,8 @@ class PromptPreparation:
             return True
 
         # Handle blocked batch
-        if self.prepared_prompts_batch.has_prompts() and self.prepared_prompts_batch.is_blocked:
-            self._submit_current_batch()
+        if self.prepared_prompts_batch.is_blocked:
+            self._submit_batch()
 
         # Handle failed prompts
         if prompt.is_failed:
@@ -89,7 +88,7 @@ class PromptPreparation:
         # Retry adding to a new batch
         return self.prepared_prompts_batch.add_prompt(prompt)
 
-    def _submit_current_batch(self):
+    def _submit_batch(self):
         """
         Finalize and submit the current batch of prompts.
         """
