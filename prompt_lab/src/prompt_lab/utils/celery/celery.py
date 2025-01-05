@@ -62,6 +62,7 @@ def is_queue_full(queue_name, queue_target_size, max_retries=3, retry_delay=5) -
     while retries <= max_retries:
         try:
             queue_length = get_queue_length_rabbitmq(queue_name)
+            # print(f"queue_length: {queue_length}  queue_target_size: {queue_target_size} ")
             return queue_length >= queue_target_size
         except Exception as e:
             retries += 1

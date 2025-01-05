@@ -57,10 +57,10 @@ def run_launchpad():
     PromptLaunchpad(
         repository=repository,
         tokenizer=tokenizer,
-        orbiter_task_name=config.get_as_int("orbiter_task_name"),
+        orbiter_task_name=config.get("orbiter_task_name"),
         orbiter_queue_name=config.get("orbiter_queue_name"),
-        orbiter_queue_target_size=config.get("orbiter_queue_target_size"),
-        batch_size=int(config.get_as_int("batch_size")),
+        orbiter_queue_target_size=config.get_as_int("orbiter_queue_target_size"),
+        batch_size=config.get_as_int("batch_size"),
     ).run()
 
 
@@ -73,7 +73,7 @@ def run_orbiter(batch: List[dict]):
     llm_client = VLLMClient(
         api_url=config.get("model_api_url"),
         model_name=config.get("model_name"),
-        max_context_length=config.get("model_max_context_length")
+        max_context_length=config.get_as_int("model_max_context_length")
     )
 
     PromptOrbiter(
@@ -98,7 +98,7 @@ def run_landing():
         repository=repository,
         orbiter_queue_name=config.get("orbiter_queue_name"),
         orbiter_task_name=config.get("orbiter_task_name"),
-        max_retry=int(config.get("max_retry")),
+        max_retry=config.get_as_int("max_retry"),
     )
 
     batch = []  # Replace with the actual batch input

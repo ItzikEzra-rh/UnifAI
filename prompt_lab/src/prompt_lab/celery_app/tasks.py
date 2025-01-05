@@ -3,10 +3,10 @@ from tasks import run_orbiter, run_landing
 
 
 @CeleryApp().app.task()
-def run_orbiter(batch):
+def orbiter(batch):
     run_orbiter(batch)
 
 
 @CeleryApp().app.task()
-def run_landing():
+def landing():
     run_landing()

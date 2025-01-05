@@ -72,24 +72,25 @@ def common_options(command):
 
 def handle_task(task_function, ctx: click.Context, kwargs: Dict[str, Any], queue_key: Optional[str] = None) -> None:
     """Common handler for CLI tasks."""
-    try:
-        cli_context: CliContext = ctx.obj['CLI_CONTEXT']
-        config = cli_context.update_config(kwargs)
+    # try:
+    cli_context: CliContext = ctx.obj['CLI_CONTEXT']
+    config = cli_context.update_config(kwargs)
 
-        if kwargs.get("celery"):
-            logger.info(f"Starting Celery worker for queue: {config.get(queue_key)}")
-            start_celery_worker(queue_name=config.get(queue_key))
-        else:
-            logger.info(f"Starting task: {task_function.__name__}")
-            task_function()
-    except Exception as e:
-        logger.error(f"Task failed: {e}")
-        raise click.ClickException(str(e))
+    if kwargs.get("celery"):
+        logger.info(f"Starting Celery worker for queue: {config.get(queue_key)}")
+        start_celery_worker(queue_name=config.get(queue_key))
+    else:
+        logger.info(f"Starting task: {task_function.__name__}")
+        task_function()
+    # except Exception as e:
+    #     logger.error(f"Task failed: {e}")
+    #     raise click.ClickException(str(e))
 
 
 @cli.command()
 @common_options
 @click.option('--tokenizer-path', help="Tokenizer repository ID.")
+@click.option('--templates-path', help="Template path.")
 @click.option('--model-max-context-length', type=int, help="Maximum context length for the model.")
 @click.option('--model-max-generation-length', type=int, help="Maximum generation length for the model.")
 @click.option('--batch-size', type=int, help="Batch size for prompts.")
@@ -97,6 +98,7 @@ def handle_task(task_function, ctx: click.Context, kwargs: Dict[str, Any], queue
 @click.option('--orbiter-task-name', help="Orbiter task name.")
 @click.option('--orbiter-queue-target-size', help="Orbiter queue target size.")
 @click.option('--input-dataset-repo', help="Input dataset repository ID.")
+@click.option('--input-dataset-file-name', help="Input dataset file name in the repo.")
 @click.option('--output-dataset-repo', help="Output dataset repository ID.")
 @click.pass_context
 def launchpad(ctx: click.Context, **kwargs: Any) -> None:
@@ -108,6 +110,8 @@ def launchpad(ctx: click.Context, **kwargs: Any) -> None:
 @common_options
 @click.option('--tokenizer-path', help="Tokenizer repository ID.")
 @click.option('--model-max-context-length', type=int, help="Maximum context length for the model.")
+@click.option('--model-max-generation-length', type=int, help="Maximum generation length for the model.")
+@click.option('--model-name', help="model name.")
 @click.option('--model-api-url', help="LLM API URL.")
 @click.option('--reviewer-queue-name', help="Reviewer queue name.")
 @click.option('--reviewer-task-name', help="Reviewer task name.")
