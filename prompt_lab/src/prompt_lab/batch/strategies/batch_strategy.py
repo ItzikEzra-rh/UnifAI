@@ -15,8 +15,8 @@ class BatchStrategy(ABC):
         """
         pass
 
-    @abstractmethod
     @property
+    @abstractmethod
     def blocker(self) -> bool:
         """Indicates whether the strategy is a blocker."""
         pass

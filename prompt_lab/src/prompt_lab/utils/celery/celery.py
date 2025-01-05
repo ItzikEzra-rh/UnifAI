@@ -1,13 +1,13 @@
-from celery_app.init import celery
+from celery_app import CeleryApp
 from kombu import Connection
 from utils.util import get_rabbitmq_url
 import time
 
 
 def send_task(task_name, celery_queue, **kwargs):
-    celery.send_task(f"celery_app.tasks.{task_name}",
-                     kwargs=kwargs,
-                     queue=celery_queue)
+    CeleryApp().app.send_task(f"celery_app.tasks.{task_name}",
+                              kwargs=kwargs,
+                              queue=celery_queue)
 
 
 def is_celery_queue_empty(queue_name: str) -> bool:
@@ -20,7 +20,7 @@ def is_celery_queue_empty(queue_name: str) -> bool:
     Returns:
         bool: True if the queue is empty, False otherwise.
     """
-    inspect = celery.control.inspect()
+    inspect = CeleryApp().app.control.inspect()
     # Check reserved tasks
     reserved_tasks = inspect.reserved()
 

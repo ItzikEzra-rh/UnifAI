@@ -1,6 +1,5 @@
 from config import ConfigManager
 import json
-import ijson
 import os
 
 
