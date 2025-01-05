@@ -12,7 +12,6 @@ import click
 from tasks import run_orbiter, run_landing, run_launchpad
 from config import ConfigManager
 
-
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,
@@ -128,6 +127,7 @@ def celery_worker_callback(ctx: click.Context, param: click.Parameter, value: bo
 @click.option('--fetch-prompts-queue-target-size', type=int, help="Queue target size.")
 @click.option('--fetch-prompts-queue-name', help="Queue name for prompts.")
 @click.option('--input-dataset-repo', help="Input dataset repository ID.")
+@click.option('--input-dataset-file-name', default=None, help="Input dataset file name")
 @click.option('--output-dataset-repo', help="Output dataset repository ID.")
 @click.option('--templates-path', help="Template path")
 @click.option('--templates-agent', help="Template agent name")

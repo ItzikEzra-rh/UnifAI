@@ -22,6 +22,7 @@ class HuggingFaceDataHandler(DataHandler):
             self,
             repo_id: str,
             split: str = "train",
+            file_name: str = "",
             streaming: bool = False,
             token: str = None,
             buffer_size: int = 100
@@ -34,18 +35,28 @@ class HuggingFaceDataHandler(DataHandler):
         :param buffer_size: Number of records to buffer before merging into the dataset.
         """
         self.repo_id = repo_id
+        self.file_name = file_name
         self.split = split
         self.streaming = streaming
         self.token = token
         self.buffer_size = buffer_size
         self._buffer: List[Dict[str, Any]] = []
         self.size = 0
-        dataset = load_dataset(
-            repo_id,
-            split=split,
-            streaming=streaming,
-            use_auth_token=token
-        )
+        if file_name:
+            dataset = load_dataset(
+                self.repo_id,
+                data_files=file_name,
+                split=split,
+                streaming=streaming,
+                use_auth_token=token
+            )
+        else:
+            dataset = load_dataset(
+                repo_id,
+                split=split,
+                streaming=streaming,
+                use_auth_token=token
+            )
         if isinstance(dataset, DatasetDict):
             self._dataset = dataset[self.split]
         else:
