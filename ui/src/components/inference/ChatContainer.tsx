@@ -655,18 +655,21 @@ const ChatComponent: React.FC = () => {
   const data = React.useMemo(() => selectedModel ? [selectedModel] : [], [selectedModel]);
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
 
-  const titleRegex = /^### (.*)/; // Matches lines starting with "###"
-  const subTitleRegex = /^#### (.*)/; // Matches lines starting with "####"
-  const boldTextRegex = /\*\*(.*?)\*\*/g; // Matches **bold** text
   const ReformatText = (text: string) => {
+    const regularText = (line: string, type: RegExp, style: string) => {
+      return line.replace(type, (_, text) => `<${style}>${text}</${style}>` ) + '\n';
+    }
+
+    const CODE = '```'
+    const TITLE = /^### (.*)/
+    const SUBTITLE = /^#### (.*)/
+    const BOLD = /\*\*(.*?)\*\*/g
+
     const lines = text.split('\n'); 
-    let formattedText = '';
-    let insideCodeBlock = false; 
-    let currentLanguage = '';
-    let codeBuffer = '';
+    let [formattedText, insideCodeBlock, currentLanguage, codeBuffer] = ['', false, '', ''];
   
     for (const line of lines) {
-      if (line.startsWith('```')) {
+      if (line.startsWith(CODE)) {
         if (insideCodeBlock) {
           // Closing code block after printing inside of it up until now
           const language = Prism.languages[currentLanguage] || Prism.languages.javascript;
@@ -686,16 +689,14 @@ const ChatComponent: React.FC = () => {
       } else {
         // Handle non-code lines, we can add here any other ideas we have to make our responses nicer looking
         switch (true) {
-          case titleRegex.test(line):
-            const titleText = line.replace(titleRegex, '$1').trim();
-            formattedText += `<h2>${titleText}</h2>\n`;
+          case TITLE.test(line):
+            formattedText += regularText(line, TITLE, 'h2') 
             break;
-          case subTitleRegex.test(line):
-            const subTitleText = line.replace(subTitleRegex, '$1').trim();
-            formattedText += `<h3>${subTitleText}</h3>\n`;
+          case SUBTITLE.test(line):
+            formattedText += regularText(line, SUBTITLE, 'h3') 
             break;
-          case boldTextRegex.test(line):
-            formattedText += line.replace(boldTextRegex, '<strong>$1</strong>') + '\n';
+          case BOLD.test(line):
+            formattedText += regularText(line, BOLD, 'strong') 
             break;
           default:
             formattedText += line + '\n';
