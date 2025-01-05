@@ -9,18 +9,19 @@ class PromptLanding:
     def __init__(
             self,
             repository,
-            prompts_queue_name,
+            orbiter_queue_name,
+            orbiter_task_name="run_orbiter",
             max_retry=3
     ):
         self.repository = repository
         self.max_retry = max_retry
-        self.prompts_queue_name = prompts_queue_name
+        self.orbiter_queue_name = orbiter_queue_name
+        self.orbiter_task_name = orbiter_task_name
         self.retry_batch = Batch(batch_strategies=BatchCompositeStrategy([BatchRetryPromptsStrategy()]),
                                  prompt_policies=PromptCompositePolicy([PromptRetryPolicy(self.max_retry),
                                                                         PromptReviewFailRetry(self.max_retry)]))
         self.pass_batch = Batch(batch_strategies=BatchCompositeStrategy([BatchPassPromptsStrategy()]))
         self.fail_batch = Batch()
-        self.prompt_query_task_name: str = "fetch_prompts_batch"
 
         print("[PromptDispatch] Initialized.")
 
@@ -36,8 +37,8 @@ class PromptLanding:
 
         if self.retry_batch.has_prompts():
             self.repository.update_retry_counter(self.retry_batch.prompts_count())
-            send_task(self.prompt_query_task_name,
-                      celery_queue=self.prompts_queue_name,
+            send_task(self.orbiter_task_name,
+                      celery_queue=self.orbiter_queue_name,
                       batch=self.retry_batch.to_dict())
 
         self.repository.export()

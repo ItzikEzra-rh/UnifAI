@@ -55,7 +55,7 @@ class PromptFormatter:
 
         base_id = element_data.get("uuid", "") + group_name + category_name
         prompt_uuid = hashlib.md5(base_id.encode()).hexdigest()
-
+        # print(f"generated prompt token size:{self.tokenizer.count_tokens(formatted_prompt)}")
         return Prompt(
             uuid=prompt_uuid,
             formatted_prompt=formatted_prompt,

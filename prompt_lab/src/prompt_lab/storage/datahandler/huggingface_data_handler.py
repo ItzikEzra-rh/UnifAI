@@ -42,6 +42,7 @@ class HuggingFaceDataHandler(DataHandler):
         self.buffer_size = buffer_size
         self._buffer: List[Dict[str, Any]] = []
         self.size = 0
+        print(file_name)
         if file_name:
             dataset = load_dataset(
                 self.repo_id,

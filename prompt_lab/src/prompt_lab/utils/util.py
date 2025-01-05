@@ -11,7 +11,7 @@ def get_mongo_url():
 
 def get_rabbitmq_url():
     ip = ConfigManager().get("rabbitmq_ip", "0.0.0.0")
-    port = ConfigManager().get("mongodb_port", "5673")
+    port = ConfigManager().get("rabbitmq_port", "5673")
     return f"amqp://{ip}:{port}/"
 
 

@@ -1,4 +1,6 @@
 from celery_app import CeleryApp
+from celery import worker
+import sys
 from kombu import Connection
 from utils.util import get_rabbitmq_url
 import time
@@ -68,3 +70,33 @@ def is_queue_full(queue_name, queue_target_size, max_retries=3, retry_delay=5) -
                 print("[Orchestrator] Max retries reached. Failing.")
                 raise  # Re-raise the last exception
             time.sleep(retry_delay)
+
+
+def start_celery_worker(queue_name, loglevel="info", prefetch_count=1, concurrency=1):
+    """
+    Start a Celery worker programmatically.
+
+    Args:
+        queue_name (str): The name of the queue to listen on.
+        loglevel (str): Logging level for the Celery worker.
+        prefetch_count (int): The number of tasks a worker can prefetch. Default is 1.
+        concurrency (int): The number of worker processes/threads. Default is 1.
+    """
+    # Create a Celery app instance
+    app = CeleryApp().app
+
+    # Set concurrency and prefetch count in the Celery configuration
+    app.conf.worker_prefetch_multiplier = prefetch_count
+    app.conf.worker_concurrency = concurrency
+
+    # Start the worker
+    try:
+        print(f"Starting Celery worker listening on queue: {queue_name}")
+        print(f"Prefetch count: {prefetch_count}, Concurrency: {concurrency}")
+
+        # No need to predefine the queue; Celery will handle it dynamically
+        worker_instance = worker.WorkController(app=app, loglevel=loglevel, queues=[queue_name])
+        worker_instance.start()
+    except KeyboardInterrupt:
+        print("Worker stopped manually.")
+        sys.exit(0)

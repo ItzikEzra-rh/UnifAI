@@ -40,11 +40,12 @@ class Batch:
         self._blocked = self.batch_strategies.is_blocker(self.prompts, prompt)
         return False
 
-    def finalize_batch(self) -> List[Prompt]:
+    def finalize_batch(self) -> List[dict]:
         """
         Finalizes and clears the batch, returning the prompts.
         """
-        finalized, self.prompts = self.prompts, []
+        finalized = self.to_dict()
+        self.prompts.clear()
         self._blocked = False
         return finalized
 
@@ -65,6 +66,12 @@ class Batch:
         Returns the count of prompts in the batch.
         """
         return len(self.prompts)
+
+    def batch_token_size(self) -> int:
+        """
+        Returns the batch token size
+        """
+        return sum([prompt.token_count for prompt in self.prompts])
 
     @property
     def is_blocked(self) -> bool:
