@@ -3,6 +3,7 @@ import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
 import click
+import traceback
 from tasks import run_orbiter, run_landing, run_launchpad
 from config import ConfigManager
 from utils.celery.celery import start_celery_worker
@@ -72,19 +73,22 @@ def common_options(command):
 
 def handle_task(task_function, ctx: click.Context, kwargs: Dict[str, Any], queue_key: Optional[str] = None) -> None:
     """Common handler for CLI tasks."""
-    # try:
-    cli_context: CliContext = ctx.obj['CLI_CONTEXT']
-    config = cli_context.update_config(kwargs)
+    try:
+        cli_context: CliContext = ctx.obj['CLI_CONTEXT']
+        config = cli_context.update_config(kwargs)
 
-    if kwargs.get("celery"):
-        logger.info(f"Starting Celery worker for queue: {config.get(queue_key)}")
-        start_celery_worker(queue_name=config.get(queue_key))
-    else:
-        logger.info(f"Starting task: {task_function.__name__}")
-        task_function()
-    # except Exception as e:
-    #     logger.error(f"Task failed: {e}")
-    #     raise click.ClickException(str(e))
+        if kwargs.get("celery"):
+            logger.info(f"Starting Celery worker for queue: {config.get(queue_key)}")
+            start_celery_worker(queue_name=config.get(queue_key))
+        else:
+            logger.info(f"Starting task: {task_function.__name__}")
+            task_function()
+    except Exception as e:
+        logger.error("An error occurred during task execution.")
+        logger.error(f"Exception: {e}")
+        logger.error("Traceback:")
+        logger.error(traceback.format_exc())  # Logs the full stack trace
+        raise click.ClickException(f"Task failed: {e}")
 
 
 @cli.command()
