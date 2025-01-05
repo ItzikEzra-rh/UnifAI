@@ -94,7 +94,7 @@ class MetaDataExtractor:
         
         # Common action verbs (expanded list)
         common_actions = {
-            'add', 'remove', 'get', 'set', 'create', 'delete', 'update', 
+            'add', 'remove', 'reboot', 'restart', 'replace', 'replacement', 'get', 'set', 'create', 
             'process', 'validate', 'verify', 'check', 'start', 'stop', 'scale',
             'wait', 'send', 'receive', 'build', 'parse', 'convert',
             'initialize', 'handle', 'execute', 'run', 'test', 'load',
@@ -102,7 +102,8 @@ class MetaDataExtractor:
             'push', 'pull', 'merge', 'split', 'clean', 'copy',
             'move', 'find', 'search', 'sort', 'filter', 'map',
             'deploy', 'configure', 'install', 'uninstall', 'import',
-            'export', 'print', 'log', 'debug', 'compile', 'link'
+            'export', 'print', 'log', 'debug', 'compile', 'link',
+            'delete', 'update'
         }
         
         # If the word is in our common actions list, it's likely a pure action

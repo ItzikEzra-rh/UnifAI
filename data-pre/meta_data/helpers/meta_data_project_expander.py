@@ -1,27 +1,35 @@
 from collections import defaultdict
 from .meta_data_extractor import MetaDataExtractor
 from be_utils.db.db import mongo, Collections, db
+from be_utils.utils import time_execution
 
 class MetaDataProjectExpander:
-    def __init__(self, parsed_elements, project_name, project_repo_path, project_programming_languages = []):
+    def __init__(self, parsed_elements, project_name, project_repo_path, naming_mapping = {}, built_in_keys = [], exclude_types = [], project_programming_languages = []):
         self.parsed_elements = parsed_elements
         self.project_name = project_name
         self.project_repo_path = project_repo_path
+        self.naming_mapping = naming_mapping 
+        self.built_in_keys = built_in_keys
+        self.exclude_types = exclude_types 
         self.project_programming_languages = project_programming_languages
 
+    @time_execution
     def add_metadata(self):
         """
         Add metadata to each object in the parsed objects list.
         """
-        for element in self.parsed_elements:
-            element_name = element.get("name", "")
-            element_code = element.get("code", "")
+        required_parsed_elements = filter(lambda ele: not ele["element_type"] in self.exclude_types, self.parsed_elements)
+        for element in required_parsed_elements:
             metadata = defaultdict(list)
 
-            metadata["project_name"] = self.project_name
-            metadata["type"] = element.get("element_type", "")
-            metadata["id"] = MetaDataExtractor.extract_test_id(element_name)
-            metadata["location"] = element.get("file_location", "")
+            for key in self.built_in_keys: 
+                metadata[self.naming_mapping[key]] = element.get(key, "")
+
+            element_name = element.get("name", "")
+            element_code = element.get("code", "")
+            # element_name = element.get("additional_data", {}).get("name", "") + element.get("additional_data", {}).get("documentation", "") 
+
+            # metadata["id"] = MetaDataExtractor.extract_test_id(element_name)
 
             combined_text = element_name + " " + element_code
             metadata["action"] = MetaDataExtractor.extract_actions(combined_text)

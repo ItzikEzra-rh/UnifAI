@@ -26,22 +26,31 @@ def read_file(file_path):
 
 def main():
     # Path to the JSON file containing parsed objects
-    file_path = os.path.join(os.path.dirname(__file__), "kubevirt_replicaset.json")
+    # file_path = os.path.join(os.path.dirname(__file__), "kubevirt_replicaset.json")
+    # file_path = os.path.join(os.path.dirname(__file__), "NCS_Mapping.json")
+    file_path = os.path.join(os.path.dirname(__file__), "kubevirt_Mapping.json")
     parsed_elements = read_file(file_path)
 
     project_meta_expander = MetaDataProjectExpander(
         parsed_elements=parsed_elements,
         project_name="kubevirt",
         project_repo_path="https://github.com/kubevirt/kubevirt",
+        naming_mapping = {'element_type': 'type', 'file_location': 'location', 'project_name': 'project_name'},
+        built_in_keys = ['element_type', 'file_location', 'project_name'],
+        exclude_types = ['File'],
         project_programming_languages=["Go"]
     )
 
     # Add metadata to each parsed element & Add the entire elements to the DB
-    project_meta_expander.add_metadata()
+    # project_meta_expander.add_metadata()
     # project_meta_expander.add_to_db()
 
     query_meta_expander = MetaDataQueryExpander(
-        query="Please create a test case that create ReplicaSet & should update and verify readyReplicas once VMIs are up",
+        # query="Please create a test case that create ReplicaSet & should update and verify readyReplicas once VMIs are up",
+        query = "Please write a test case that checking the number of replicaset",
+        # query = "Provide a code that use master replace",
+        # query = "Provide a code that deploy security hardening",
+        # query = "Provide a code that creates a persistentvolume",
         project_name="kubevirt",
         model_name="default_model",
         model_id="model_id_123"
@@ -55,8 +64,11 @@ def main():
     best_match = meta_data_retreiver.best_match()
 
     # Serialize the best_match list properly, including ObjectId handling
-    best_match_serialized = json.loads(json_util.dumps(best_match))
-    # print("Best Match Elements:", json.dumps(best_match_serialized, indent=4))
+    best_match_top_relevant_keys = map(lambda ele: {'type': ele['element_type'], 'name': ele['name'], 'code': ele['code']} ,best_match)
+    # best_match_top_relevant_keys = map(lambda ele: {'type': ele['type'], 'name': ele.get("additional_data", {}).get("name", ""),
+    #                                                 'location': ele['file_location'], 'metdata': ele['metadata']} ,best_match)
+    best_match_serialized = json.loads(json_util.dumps(best_match_top_relevant_keys))
+    print("Best Match Elements:", json.dumps(best_match_serialized, indent=4))
     print("Best Match Elements Length:", len(best_match_serialized))
 
 if __name__ == "__main__":

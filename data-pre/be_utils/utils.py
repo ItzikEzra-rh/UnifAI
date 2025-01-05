@@ -16,8 +16,23 @@ from pathlib import Path
 import logging
 from logging.handlers import RotatingFileHandler
 from bson.json_util import dumps, RELAXED_JSON_OPTIONS
+from functools import wraps
+from datetime import timedelta
 from flask import Response
 
+
+def time_execution(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = func(*args, **kwargs)
+        end_time = time.time()
+        
+        total_time = timedelta(seconds=end_time - start_time)
+        print(f"Total time execution of the method {func.__name__}: {total_time}")
+        return result
+    
+    return wrapper
 
 def composed(*decs):
     def deco(f):
