@@ -715,6 +715,17 @@ const ChatComponent: React.FC = () => {
     return formattedText;
   };
   
+  const isLlamaModel = () => {
+    // currently only supporting text conventions of the llama models
+    const finetunedSteps = selectedModel?.finetuneSteps;
+    if (finetunedSteps && finetunedSteps.length > 0) {
+      const baseModel = finetunedSteps[0]['base_model'];
+      if (baseModel) {
+        return baseModel.toLowerCase().includes('llama');
+      }
+    return false
+    }
+  }
 
   return (
     <div className="chat-container-wrapper">
@@ -761,7 +772,7 @@ const ChatComponent: React.FC = () => {
                     <div key={message.id} style={{ position: 'relative', paddingBottom: '40px' }}>
                       <Message
                         model={{
-                          message: ReformatText(message.text), // Ensure message is a string
+                          message: isLlamaModel() ? ReformatText(message.text) : message.text, 
                           sentTime: 'just now',
                           sender: message.sender === 'user' ? 'You' : 'Bot',
                           direction: message.sender === 'user' ? 'outgoing' : 'incoming',
