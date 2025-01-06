@@ -107,6 +107,9 @@ class HybridHFMongoRepository(DataRepository):
     def update_prompt_generation_counter(self, count: int = 1):
         self.stats_handler.increment_prompts_generated(count)
 
+    def sync_prompts_generated_with_processed(self):
+        self.stats_handler.sync_prompts_generated_with_processed()
+
     # output
     def export(self):
         if self.stats_handler.is_done():

@@ -28,9 +28,6 @@ class Batch:
         - Checks batch strategies for adding the prompt.
         - If some strategy is a blocker and it didn't apply, then sets the batch to a blocked state.
         """
-        if self.is_blocked:
-            return False
-
         self.prompt_policies.apply(prompt)
 
         if self.batch_strategies.apply(self.prompts, prompt):

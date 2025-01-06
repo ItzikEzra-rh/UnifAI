@@ -51,6 +51,8 @@ class PromptLaunchpad:
         """
         Process prompts, apply policies and strategies, and enqueue them for submission.
         """
+        self.repository.sync_prompts_generated_with_processed()
+
         for prompt in self.generator:
             if prompt.uuid in self.processed_uuids:
                 continue  # Skip already processed prompts
@@ -93,10 +95,10 @@ class PromptLaunchpad:
         """
         Finalize and submit the current batch of prompts.
         """
-        logger.info(f"batch prompt count {self.prepared_prompts_batch.prompts_count()}")
-        logger.info(f"batch token count {self.prepared_prompts_batch.batch_token_size()}")
         if not self.prepared_prompts_batch.has_prompts():
             return
+        logger.info(f"batch prompt count {self.prepared_prompts_batch.prompts_count()}")
+        logger.info(f"batch token count {self.prepared_prompts_batch.batch_token_size()}")
 
         finalized_prompts = self.prepared_prompts_batch.finalize_batch()
 
@@ -109,4 +111,5 @@ class PromptLaunchpad:
             celery_queue=self.orbiter_queue_name,
             batch=finalized_prompts,
         )
-        logger.info(f"[PromptPreparation] Submitted {len(finalized_prompts)} prompts to queue {self.orbiter_queue_name}.")
+        logger.info(
+            f"[PromptPreparation] Submitted {len(finalized_prompts)} prompts to queue {self.orbiter_queue_name}.")

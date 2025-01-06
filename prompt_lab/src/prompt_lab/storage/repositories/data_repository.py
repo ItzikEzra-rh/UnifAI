@@ -44,6 +44,11 @@ class DataRepository(ABC):
         """Update the generation counter in the stats."""
         pass
 
+    @abstractmethod
+    def sync_prompts_generated_with_processed(self) -> None:
+        """sync prompts generated with processed."""
+        pass
+
     # Output (Exporter) methods
     @abstractmethod
     def export(self) -> None:

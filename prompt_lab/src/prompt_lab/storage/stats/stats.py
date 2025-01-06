@@ -44,6 +44,18 @@ class Stats:
         if key not in self.DEFAULT_VALUES:
             raise ValueError(f"Invalid progress key: {key}")
 
+    def sync_prompts_generated_with_processed(self) -> None:
+        """
+        Sync `prompts_generated` to be equal to `prompts_processed` in the database.
+        """
+        progress_data = self.get_stats()  # Retrieve the current progress data
+        prompts_processed = progress_data.get("prompts_processed", 0)
+
+        self.statistics_handler.update_record(
+            query={"_id": self.DEFAULT_PROGRESS_ID},
+            update={"$set": {"prompts_generated": prompts_processed}}
+        )
+
     def increment(self, key: str, amount: int = 1) -> None:
         """
         Increment a specific progress key directly in the database.
