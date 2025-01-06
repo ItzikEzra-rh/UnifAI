@@ -11,6 +11,7 @@ from storage import (DataRepository,
                      MongoDataHandler,
                      HFExporter,
                      Stats)
+from utils import logger
 
 
 class HybridHFMongoRepository(DataRepository):
@@ -40,7 +41,7 @@ class HybridHFMongoRepository(DataRepository):
         return self.input_handler.read_data()
 
     def get_input_size(self) -> int:
-        print("[HybridHFMongoRepository] getting number of elements.")
+        logger.info("[HybridHFMongoRepository] getting number of elements.")
         size = self.stats_handler.get_number_of_elements()
         if not size:
             size = self.input_handler.get_size()
@@ -63,7 +64,7 @@ class HybridHFMongoRepository(DataRepository):
             self.stats_handler.increment_prompts_pass(amount=len(prompts))
         except Exception as e:
             # Handle duplicate key error or log as needed
-            print(f"Error while inserting records: {e}")
+            logger.error(f"Error while inserting records: {e}")
 
     def load_pass_prompts_uuids(self) -> Set[str]:
         """
@@ -85,7 +86,7 @@ class HybridHFMongoRepository(DataRepository):
             self.stats_handler.increment_prompts_failed(amount=len(prompts))
         except Exception as e:
             # Handle duplicate key error or log as needed
-            print(f"Error while inserting records: {e}")
+            logger.error(f"Error while inserting records: {e}")
 
     def load_fail_prompts_uuids(self) -> Set[str]:
         """
@@ -109,6 +110,7 @@ class HybridHFMongoRepository(DataRepository):
     # output
     def export(self):
         if self.stats_handler.is_done():
+            logger.info("All prompts processed - exporting data...")
             self.exporter.export(self.pass_handler.read_data())
 
     def load_processed_prompts_uuids(self) -> Set[str]:

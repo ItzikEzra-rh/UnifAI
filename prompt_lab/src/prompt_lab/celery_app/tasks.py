@@ -8,5 +8,5 @@ def orbiter(batch):
 
 
 @CeleryApp().app.task()
-def landing():
-    run_landing()
+def landing(batch):
+    run_landing(batch)

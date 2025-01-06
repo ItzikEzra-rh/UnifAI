@@ -21,7 +21,6 @@ class Stats:
         :param statistics_handler: A MongoDataHandler instance for managing progress data.
         """
         self.statistics_handler = statistics_handler
-        self._progress_data = self.DEFAULT_VALUES.copy()
         self._initialize_progress_data()
 
     def _initialize_progress_data(self) -> None:
@@ -33,28 +32,7 @@ class Stats:
         ))
         if not existing_data:
             # Initialize in MongoDB
-            self.statistics_handler.append_record({"_id": self.DEFAULT_PROGRESS_ID, **self._progress_data})
-        else:
-            # Load data from MongoDB into in-memory attributes
-            self._progress_data.update(existing_data[0])
-
-        # Ensure prompts_generated is at least equal to prompts_processed
-        self._progress_data["prompts_generated"] = self._progress_data["prompts_processed"]
-        self._sync_to_mongo(keys=["prompts_generated"])
-
-    def _sync_to_mongo(self, keys: list = None) -> None:
-        """
-        Synchronize specific keys or the entire in-memory state to MongoDB.
-
-        :param keys: List of keys to sync. If None, sync all keys.
-        """
-        if keys is None:
-            update_data = self._progress_data
-        else:
-            update_data = {key: self._progress_data[key] for key in keys if key in self._progress_data}
-        self.statistics_handler.update_record(
-            query={"_id": self.DEFAULT_PROGRESS_ID}, update={"$set": update_data}
-        )
+            self.statistics_handler.append_record({"_id": self.DEFAULT_PROGRESS_ID, **self.DEFAULT_VALUES})
 
     def _validate_key(self, key: str) -> None:
         """
@@ -68,40 +46,53 @@ class Stats:
 
     def increment(self, key: str, amount: int = 1) -> None:
         """
-        Increment a specific progress key.
+        Increment a specific progress key directly in the database.
 
         :param key: The key to increment.
         :param amount: The amount to increment by.
         """
         self._validate_key(key)
-        self._progress_data[key] += amount
-        self._sync_to_mongo(keys=[key])
+        self.statistics_handler.update_record(
+            query={"_id": self.DEFAULT_PROGRESS_ID},
+            update={"$inc": {key: amount}}
+        )
 
     def set_value(self, key: str, value: int) -> None:
         """
-        Set a specific progress key to a specific value.
+        Set a specific progress key to a specific value directly in the database.
 
         :param key: The key to set.
         :param value: The value to set the key to.
         """
         self._validate_key(key)
-        self._progress_data[key] = value
-        self._sync_to_mongo(keys=[key])
+        self.statistics_handler.update_record(
+            query={"_id": self.DEFAULT_PROGRESS_ID},
+            update={"$set": {key: value}}
+        )
 
     def get_stats(self) -> Dict[str, Any]:
         """
-        Retrieve the current progress data.
+        Retrieve the current progress data directly from the database.
 
         :return: A dictionary of progress data.
         """
-        return self._progress_data.copy()
+        progress_data = list(self.statistics_handler.read_data(
+            query={"_id": self.DEFAULT_PROGRESS_ID}
+        ))  # Convert the generator to a list
+
+        if not progress_data:
+            raise RuntimeError("Progress data not found in the database.")
+
+        return progress_data[0]  # Return the first record
 
     def reset_progress(self) -> None:
         """
-        Reset all progress values to their default state.
+        Reset all progress values to their default state directly in the database.
         """
-        self._progress_data = self.DEFAULT_VALUES.copy()
-        self._sync_to_mongo()
+        self.statistics_handler.update_record(
+            query={"_id": self.DEFAULT_PROGRESS_ID},
+            update={"$set": self.DEFAULT_VALUES}
+        )
 
     def increment_with_processed(self, key: str, amount: int = 1) -> None:
         """
@@ -133,17 +124,21 @@ class Stats:
         """
         Check if all generated prompts have been processed.
 
+        This queries the database to ensure the latest data is used.
+
         :return: True if done, False otherwise.
         """
-        return self._progress_data["prompts_generated"] == self._progress_data["prompts_processed"]
+        progress_data = self.get_stats()
+        return progress_data.get("prompts_generated", 0) == progress_data.get("prompts_processed", 0)
 
     def get_number_of_elements(self) -> int:
         """
-        Retrieve the current value of 'number_of_elements'.
+        Retrieve the current value of 'number_of_elements' directly from the database.
 
         :return: The value of 'number_of_elements'.
         """
-        return self._progress_data["number_of_elements"]
+        progress_data = self.get_stats()
+        return progress_data.get("number_of_elements", 0)
 
     def close(self):
         """

@@ -52,6 +52,10 @@ class ConfigManager:
         value = self.get(key, default)
         return int(value) if value is not None else default
 
+    def get_as_bool(self, key, default=None):
+        value = self.get(key, default)
+        return bool(value) if value is not None else default
+
     def set(self, key, value):
         """
         Set a configuration value using dot notation.

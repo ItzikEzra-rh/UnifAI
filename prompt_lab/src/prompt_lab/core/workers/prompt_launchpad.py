@@ -4,6 +4,7 @@ from batch import BatchMaxPromptsNumberStrategy, BatchMaxTokenStrategy, BatchCom
 from utils.celery.celery import is_queue_full, send_task
 from utils.tokenizer import TokenizerUtils
 from storage import DataRepository
+from utils import logger
 
 
 class PromptLaunchpad:
@@ -44,7 +45,7 @@ class PromptLaunchpad:
         )
         self.processed_uuids = self.repository.load_processed_prompts_uuids()
 
-        print("[PromptPreparation] Initialized.")
+        logger.info("[PromptPreparation] Initialized.")
 
     def run(self):
         """
@@ -92,15 +93,15 @@ class PromptLaunchpad:
         """
         Finalize and submit the current batch of prompts.
         """
-        print(f"batch prompt count {self.prepared_prompts_batch.prompts_count()}")
-        print(f"batch token count {self.prepared_prompts_batch.batch_token_size()}")
+        logger.info(f"batch prompt count {self.prepared_prompts_batch.prompts_count()}")
+        logger.info(f"batch token count {self.prepared_prompts_batch.batch_token_size()}")
         if not self.prepared_prompts_batch.has_prompts():
             return
 
         finalized_prompts = self.prepared_prompts_batch.finalize_batch()
 
         while is_queue_full(queue_name=self.orbiter_queue_name, queue_target_size=self.orbiter_queue_target_size):
-            # print(f"[PromptPreparation] Queue full. Retrying in 5 seconds...")
+            logger.debug(f"[PromptPreparation] Queue full. Retrying in 5 seconds...")
             time.sleep(5)
 
         send_task(
@@ -108,4 +109,4 @@ class PromptLaunchpad:
             celery_queue=self.orbiter_queue_name,
             batch=finalized_prompts,
         )
-        print(f"[PromptPreparation] Submitted {len(finalized_prompts)} prompts to queue {self.orbiter_queue_name}.")
+        logger.info(f"[PromptPreparation] Submitted {len(finalized_prompts)} prompts to queue {self.orbiter_queue_name}.")

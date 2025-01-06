@@ -35,11 +35,13 @@ def initialize_repository(config, pass_handler, fail_handler, stats_handler):
             file_name=config.get("input_dataset_file_name"),
             split="train",
             streaming=True
-        ),
+        ) if config.get("input_dataset_repo") else None,
         pass_handler=pass_handler,
         fail_handler=fail_handler,
         stats_handler=stats_handler,
-        exporter=HFExporter(repo_id=config.get("output_dataset_repo")),
+        exporter=HFExporter(repo_id=config.get("output_dataset_repo"),
+                            file_name=config.get("output_dataset_file_name")
+                            )
     )
 
 
@@ -80,11 +82,14 @@ def run_orbiter(batch: List[dict]):
         llm_client=llm_client,
         tokenizer=tokenizer,
         review_queue_name=config.get("reviewer_queue_name"),
-        reviewer_task_name=config.get("reviewer_task_name")
+        reviewer_task_name=config.get("reviewer_task_name"),
+        reviewed_prompts_queue_name=config.get("reviewed_prompts_queue_name"),
+        landing_task_name=config.get("landing_task_name"),
+        reviewer=config.get_as_bool("reviewer")
     ).run(batch)
 
 
-def run_landing():
+def run_landing(batch: List[dict]):
     """
     Run the 'result' command logic.
     """
@@ -94,12 +99,9 @@ def run_landing():
     pass_handler, fail_handler, stats_handler = initialize_mongo_handlers(mongo_uri, db_name)
     repository = initialize_repository(config, pass_handler, fail_handler, stats_handler)
 
-    result_processor = PromptLanding(
+    PromptLanding(
         repository=repository,
         orbiter_queue_name=config.get("orbiter_queue_name"),
         orbiter_task_name=config.get("orbiter_task_name"),
         max_retry=config.get_as_int("max_retry"),
-    )
-
-    batch = []  # Replace with the actual batch input
-    result_processor.run(batch)
+    ).run(batch)

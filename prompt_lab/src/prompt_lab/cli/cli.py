@@ -1,5 +1,4 @@
 import os
-import logging
 from pathlib import Path
 from typing import Dict, Any, Optional
 import click
@@ -7,13 +6,7 @@ import traceback
 from tasks import run_orbiter, run_landing, run_launchpad
 from config import ConfigManager
 from utils.celery.celery import start_celery_worker
-
-# Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+from utils import logger, Logger_instance
 
 
 class CliContext:
@@ -49,9 +42,20 @@ class CliContext:
     help="Path to the configuration file.",
     show_default=True
 )
+@click.option(
+    '--log-level',
+    default="info",
+    show_default=True,
+    type=click.Choice(['debug', 'info', 'warning', 'error', 'critical'], case_sensitive=False),
+    help="Set the logging level."
+)
 @click.pass_context
-def cli(ctx: click.Context, config_path: str) -> None:
+def cli(ctx: click.Context, config_path: str, log_level: str) -> None:
     """CLI for managing project tasks and configurations."""
+    # Set up the logging level globally
+    Logger_instance.update_log_level(log_level)
+
+    # Initialize CLI context
     config_path = os.getenv('APP_CONFIG_PATH', config_path)
     ctx.ensure_object(dict)
     ctx.obj['CLI_CONTEXT'] = CliContext(config_path)
@@ -79,7 +83,7 @@ def handle_task(task_function, ctx: click.Context, kwargs: Dict[str, Any], queue
 
         if kwargs.get("celery"):
             logger.info(f"Starting Celery worker for queue: {config.get(queue_key)}")
-            start_celery_worker(queue_name=config.get(queue_key))
+            start_celery_worker(queue_name=config.get(queue_key), worker_name=task_function.__name__)
         else:
             logger.info(f"Starting task: {task_function.__name__}")
             task_function()
@@ -103,7 +107,6 @@ def handle_task(task_function, ctx: click.Context, kwargs: Dict[str, Any], queue
 @click.option('--orbiter-queue-target-size', help="Orbiter queue target size.")
 @click.option('--input-dataset-repo', help="Input dataset repository ID.")
 @click.option('--input-dataset-file-name', help="Input dataset file name in the repo.")
-@click.option('--output-dataset-repo', help="Output dataset repository ID.")
 @click.pass_context
 def launchpad(ctx: click.Context, **kwargs: Any) -> None:
     """Prepare and enqueue prompts for processing."""
@@ -119,7 +122,10 @@ def launchpad(ctx: click.Context, **kwargs: Any) -> None:
 @click.option('--model-api-url', help="LLM API URL.")
 @click.option('--reviewer-queue-name', help="Reviewer queue name.")
 @click.option('--reviewer-task-name', help="Reviewer task name.")
+@click.option('--reviewed-prompts-queue-name', help="Reviewed prompts queue name.")
+@click.option('--landing-task-name', help="Landing task name.")
 @click.option('--orbiter-queue-name', help="Orbiter queue name.")
+@click.option('--reviewer', is_flag=True, help="Run with Reviewer.")
 @click.pass_context
 def orbiter(ctx: click.Context, **kwargs: Any) -> None:
     """Query the LLM with prepared prompts."""
@@ -132,6 +138,9 @@ def orbiter(ctx: click.Context, **kwargs: Any) -> None:
 @click.option('--reviewed-prompts-queue-name', help="Reviewed prompts queue name.")
 @click.option('--orbiter-queue-name', help="Orbiter queue name.")
 @click.option('--orbiter-task-name', help="Orbiter task name.")
+@click.option('--output-dataset-repo', help="Output dataset repository ID.")
+@click.option('--output-dataset-file-name', help="Output dataset File name in the repo.")
+@click.option('--input-dataset-repo', default="", help="Input dataset repository ID.")
 @click.pass_context
 def landing(ctx: click.Context, **kwargs: Any) -> None:
     """Process and manage the results of LLM queries."""

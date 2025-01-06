@@ -1,5 +1,6 @@
 from .prompt_policy import PromptPolicy
 from prompt import Prompt
+from utils import logger
 
 
 class PromptMaxTokenSizeFailPolicy(PromptPolicy):
@@ -14,6 +15,7 @@ class PromptMaxTokenSizeFailPolicy(PromptPolicy):
         if prompt.token_count > self.max_token_limit:
             prompt.failed = True
             prompt.set_fail_reason("MaxTokenSizeFailPolicy")
-            print(f"[MaxTokenSizeFailPolicy] failed prompt due to token size {prompt.token_count}, uuid: {prompt.uuid}")
+            logger.info(
+                f"[MaxTokenSizeFailPolicy] failed prompt due to token size {prompt.token_count}, uuid: {prompt.uuid}")
             return True
         return False

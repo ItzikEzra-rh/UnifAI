@@ -2,6 +2,7 @@ from typing import List
 from prompt import Prompt, PromptReviewFailRetry, PromptRetryPolicy, PromptCompositePolicy
 from batch import Batch, BatchCompositeStrategy, BatchRetryPromptsStrategy, BatchPassPromptsStrategy
 from utils.celery.celery import send_task
+from utils import logger
 
 
 class PromptLanding:
@@ -38,7 +39,7 @@ class PromptLanding:
         self.pass_batch = Batch(batch_strategies=BatchCompositeStrategy([BatchPassPromptsStrategy()]))
         self.fail_batch = Batch()
 
-        print("[PromptLanding] Initialized.")
+        logger.info("[PromptLanding] Initialized.")
 
     def run(self, batch: List[dict]):
         """
@@ -50,6 +51,7 @@ class PromptLanding:
         # Convert dictionaries to Prompt objects
         prompts = [Prompt.from_dict(**prompt) for prompt in batch]
 
+        logger.info(f"[PromptLanding] processing {len(prompts)} prompts.")
         # Classify prompts into respective batches
         for prompt in prompts:
             (self.retry_batch.add_prompt(prompt) or
@@ -58,14 +60,17 @@ class PromptLanding:
 
         # Handle pass batch: Save successful prompts
         if self.pass_batch.has_prompts():
+            logger.info(f"[PromptLanding] passed prompts: {self.pass_batch.prompts_count()}.")
             self.repository.save_pass_prompts(self.pass_batch.to_dict())
 
         # Handle fail batch: Save failed prompts
         if self.fail_batch.has_prompts():
-            self.repository.save_fail_prompts(self.pass_batch.to_dict())
+            logger.info(f"[PromptLanding] failed prompts: {self.fail_batch.prompts_count()}.")
+            self.repository.save_fail_prompts(self.fail_batch.to_dict())
 
         # Handle retry batch: Update retry counters and re-queue prompts
         if self.retry_batch.has_prompts():
+            logger.info(f"[PromptLanding] retry prompts: {self.retry_batch.prompts_count()}.")
             self.repository.update_retry_counter(self.retry_batch.prompts_count())
             send_task(
                 self.orbiter_task_name,

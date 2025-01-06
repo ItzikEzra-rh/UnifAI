@@ -1,5 +1,6 @@
 from .prompt_policy import PromptPolicy
 from prompt import Prompt
+from utils import logger
 
 
 class PromptRetryPolicy(PromptPolicy):
@@ -15,7 +16,7 @@ class PromptRetryPolicy(PromptPolicy):
         if prompt.is_review_failed and prompt.retry_count <= self.max_retries:
             prompt.retry_count += 1
             prompt.shuffle_user_input()
-            print(f"[RetryPolicy] Retrying prompt {prompt.uuid} (attempt {prompt.retry_count}/{self.max_retries})")
+            logger.info(f"[RetryPolicy] Retrying prompt {prompt.uuid} (attempt {prompt.retry_count}/{self.max_retries})")
             return True
         else:
             return False

@@ -1,5 +1,6 @@
 from .prompt_policy import PromptPolicy
 from prompt import Prompt
+from utils import logger
 
 
 class PromptReviewFailRetry(PromptPolicy):
@@ -11,7 +12,7 @@ class PromptReviewFailRetry(PromptPolicy):
         if prompt.review_failed and prompt.retry_count > self.max_retry:
             prompt.failed = True
             prompt.set_fail_reason("PromptFailRetry")
-            print(
+            logger.info(
                 f"[PromptReviewFailRetry] Failed prompt due to max retry {prompt.retry_count}/{self.max_retry} exceeded: {prompt.uuid}")
             return True
         return False
