@@ -21,6 +21,8 @@ import RatingModal from './RatingModal';
 import ChatHistory, { HistoryChat } from './ChatHistory';
 import { v4 as uuidv4 } from 'uuid';
 import '../../styles.css';
+import Prism from 'prismjs';
+import 'prismjs/themes/prism-okaidia.css';
 
 interface FormData {
   project: string;
@@ -653,6 +655,78 @@ const ChatComponent: React.FC = () => {
   const data = React.useMemo(() => selectedModel ? [selectedModel] : [], [selectedModel]);
   const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
 
+  const ReformatText = (text: string) => {
+    const regularText = (line: string, type: RegExp, style: string) => {
+      return line.replace(type, (_, text) => `<${style}>${text}</${style}>` ) + '\n';
+    }
+
+    const CODE = '```'
+    const TITLE = /^### (.*)/
+    const SUBTITLE = /^#### (.*)/
+    const BOLD = /\*\*(.*?)\*\*/g
+
+    const lines = text.split('\n'); 
+    let [formattedText, insideCodeBlock, currentLanguage, codeBuffer] = ['', false, '', ''];
+  
+    for (const line of lines) {
+      if (line.startsWith(CODE)) {
+        if (insideCodeBlock) {
+          // Closing code block after printing inside of it up until now
+          const language = Prism.languages[currentLanguage] || Prism.languages.javascript;
+          const highlightedCode = Prism.highlight(codeBuffer.trim(), language, currentLanguage);
+          formattedText += `${highlightedCode}</code></pre>\n`;
+          insideCodeBlock = false;
+          codeBuffer = ''; 
+        } else {
+          // Opening code block after printing non-code lines up until now
+          currentLanguage = line.slice(3).trim(); // Extract language (if any) after ```
+          formattedText += `<pre class="language-${currentLanguage}"><code>`;
+          insideCodeBlock = true;
+        }
+      } else if (insideCodeBlock) {
+        // Append raw code directly inside the pre/code block
+        codeBuffer += `${line}\n`;
+      } else {
+        // Handle non-code lines, we can add here any other ideas we have to make our responses nicer looking
+        switch (true) {
+          case TITLE.test(line):
+            formattedText += regularText(line, TITLE, 'h2') 
+            break;
+          case SUBTITLE.test(line):
+            formattedText += regularText(line, SUBTITLE, 'h3') 
+            break;
+          case BOLD.test(line):
+            formattedText += regularText(line, BOLD, 'strong') 
+            break;
+          default:
+            formattedText += line + '\n';
+            break;
+        }
+      }
+    }
+  
+    // If the text ends inside an unclosed code block, close it
+    if (insideCodeBlock) {
+      const language = Prism.languages[currentLanguage] || Prism.languages.javascript;
+      const highlightedCode = Prism.highlight(codeBuffer.trim(), language, currentLanguage);
+      formattedText += `${highlightedCode}</code></pre>\n`; 
+    }
+  
+    return formattedText;
+  };
+  
+  const isLlamaModel = () => {
+    // currently only supporting text conventions of the llama models
+    const finetunedSteps = selectedModel?.finetuneSteps;
+    if (finetunedSteps && finetunedSteps.length > 0) {
+      const baseModel = finetunedSteps[0]['base_model'];
+      if (baseModel) {
+        return baseModel.toLowerCase().includes('llama');
+      }
+    return false
+    }
+  }
+
   return (
     <div className="chat-container-wrapper">
       {loadingModel ? (
@@ -698,7 +772,7 @@ const ChatComponent: React.FC = () => {
                     <div key={message.id} style={{ position: 'relative', paddingBottom: '40px' }}>
                       <Message
                         model={{
-                          message: message.text, // Ensure message is a string
+                          message: isLlamaModel() ? ReformatText(message.text) : message.text, 
                           sentTime: 'just now',
                           sender: message.sender === 'user' ? 'You' : 'Bot',
                           direction: message.sender === 'user' ? 'outgoing' : 'incoming',
