@@ -5,7 +5,7 @@ from ..prompt import Prompt
 
 class PromptCompositePolicy(PromptPolicy):
     """
-    A composite skip policy that applies multiple SkipPolicy instances.
+    A composite policy that applies multiple SkipPolicy instances.
     """
 
     def __init__(self, policies: List[PromptPolicy]):
@@ -16,6 +16,5 @@ class PromptCompositePolicy(PromptPolicy):
         Return True if any policy decides the prompt should be skipped.
         """
         for policy in self.policies:
-            if policy.apply(prompt):
-                return True
-        return False
+            policy.apply(prompt)
+        return True
