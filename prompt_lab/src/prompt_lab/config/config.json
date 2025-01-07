@@ -16,7 +16,7 @@
   "reviewer_queue_name": "reviewer_queue",
   "reviewed_prompts_queue_name": "reviewed_queue",
   "reviewer_task_name": "fetch_prompt_lab_generated_objects",
-  "reviewer": false,
+  "reviewer": "${REVIEWER}",
   "landing_task_name": "landing",
   "rabbitmq_port": "${RABBITMQ_PORT}",
   "rabbitmq_ip": "${RABBITMQ_IP}",

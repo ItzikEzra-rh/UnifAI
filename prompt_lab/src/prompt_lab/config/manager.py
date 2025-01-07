@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 
@@ -16,6 +17,7 @@ class ConfigManager:
             return
         self.config_path = Path(config_path) if config_path else self.get_config_path()
         self.config = self.load_config()
+        self.substitute_env_variables()
         self._initialized = True
 
     def load_config(self):
@@ -34,6 +36,23 @@ class ConfigManager:
         """
         with self.config_path.open("w") as f:
             json.dump(self.config, f, indent=4)
+
+    def substitute_env_variables(self):
+        """
+        Substitute environment variables in the configuration values.
+        """
+
+        def substitute(value):
+            if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
+                env_var = value[2:-1]
+                return os.getenv(env_var, value)  # Replace with env value or keep original
+            if isinstance(value, dict):
+                return {k: substitute(v) for k, v in value.items()}
+            if isinstance(value, list):
+                return [substitute(v) for v in value]
+            return value
+
+        self.config = substitute(self.config)
 
     def get(self, key, default=None):
         """

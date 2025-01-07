@@ -3,7 +3,7 @@ FROM registry.access.redhat.com/ubi9/ubi
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-WORKDIR /app/repo/prompt_lab
+WORKDIR /app/repo
 
 # Install system dependencies
 RUN dnf update -y && \
@@ -11,11 +11,10 @@ RUN dnf update -y && \
     dnf clean all
 
 # Add application source code
-COPY . /app/repo/prompt_lab
-RUN chmod 755 /app/repo/prompt_lab/start-service.sh
+COPY . /app/repo
 
-# Install Python dependencies
-RUN pip install --upgrade pip && pip install -r /app/repo/prompt_lab/requirements.txt
+# Install Python dependencies and setup the package
+RUN pip install --upgrade pip && pip install .
 
-# Set entrypoint
-ENTRYPOINT ["/app/repo/prompt_lab/start-service.sh"]
+# Set entrypoint for the CLI
+ENTRYPOINT ["promptlab"]
