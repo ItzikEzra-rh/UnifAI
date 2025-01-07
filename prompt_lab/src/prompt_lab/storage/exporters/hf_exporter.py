@@ -13,7 +13,8 @@ class HFExporter:
     Supports uploading datasets in chunks and optionally naming the file in the repository.
     """
 
-    def __init__(self, repo_id: str, file_name: str = None, token: str = None, batch_size: int = 1000):
+    def __init__(self, repo_id: str, file_name: str = None, token: str = None, batch_size: int = 1000,
+                 export_format: str = "json"):
         """
         Initialize the HFExporter.
 
@@ -22,6 +23,7 @@ class HFExporter:
             file_name (str, optional): File name for the dataset in the repository.
             token (str, optional): Authentication token for Hugging Face.
             batch_size (int, optional): Number of records to process in each batch. Defaults to 1000.
+            export_format (str, optional): Format for exporting the dataset ("parquet" or "json"). Defaults to "parquet".
         """
         self.repo_id = repo_id
         self.file_name = file_name
@@ -29,6 +31,9 @@ class HFExporter:
         if not self.token:
             raise RuntimeError("No Hugging Face token found. Please login with `huggingface-cli login`.")
         self.batch_size = batch_size
+        self.export_format = export_format.lower()
+        if self.export_format not in ["parquet", "json"]:
+            raise ValueError("export_format must be either 'parquet' or 'json'.")
         self.api = HfApi()
 
     def _chunked_generator(self, generator: Iterator[Dict[str, Any]], size: int):
@@ -50,34 +55,38 @@ class HFExporter:
 
     def _save_to_tempfile(self, dataset: Dataset) -> str:
         """
-        Save the dataset to a temporary Parquet file.
+        Save the dataset to a temporary file in the specified format.
 
         Args:
             dataset (Dataset): The Hugging Face dataset to save.
 
         Returns:
-            str: Path to the temporary Parquet file.
+            str: Path to the temporary file.
         """
-        temp_file = tempfile.NamedTemporaryFile(suffix=".parquet", delete=False)
-        dataset.to_parquet(temp_file.name)
+        temp_file = tempfile.NamedTemporaryFile(suffix=f".{self.export_format}", delete=False)
+
+        if self.export_format == "parquet":
+            dataset.to_parquet(temp_file.name)
+        elif self.export_format == "json":
+            dataset.to_json(temp_file.name)
+
         logger.debug(f"Dataset saved locally to {temp_file.name}.")
         return temp_file.name
 
     def _upload_to_hub(self, file_path: str):
         """
-        Upload the Parquet file to the Hugging Face Hub.
+        Upload the file to the Hugging Face Hub.
 
         Args:
-            file_path (str): Path to the Parquet file.
+            file_path (str): Path to the file.
         """
         if not self.file_name:
             raise ValueError("file_name must be specified to upload the file to the repository with its extension.")
 
         # Ensure the file name has the correct extension
-        if not self.file_name.endswith(".parquet"):
-            self.file_name += ".parquet"
+        if not self.file_name.endswith(f".{self.export_format}"):
+            self.file_name += f".{self.export_format}"
 
-        logger.info(f"token: {self.token}")
         logger.info(f"Uploading dataset to {self.repo_id} with file name: {self.file_name}.")
 
         # Upload the file to the repository
