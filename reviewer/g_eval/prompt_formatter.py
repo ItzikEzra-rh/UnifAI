@@ -26,8 +26,8 @@ class GEvalPromptFormatter:
             element_type=element.get("element_type", "unknown"),
             # name=original_data.get("name", "unnamed"),
             input_context=input_context,
-            question=element.get("input", "No input provided."),
-            provided_output=element.get("output", "No output provided."),
+            question=element.get("input_text", "No input provided."),
+            provided_output=element.get("output_text", "No output provided."),
             validation_question=element.get("validation", "No validation question provided.")
         )
         

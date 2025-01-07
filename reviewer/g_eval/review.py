@@ -10,9 +10,9 @@ async def process_elements(elements):
     try: 
         await eval_system.process_elements(elements)
 
-        send_task(task_name="process_passed_prompts",
-                  data=eval_system.passed_elements,
-                  celery_queue='reviewer_passed')
+        send_task(task_name="landing",
+                  data=eval_system.passed_elements + eval_system.failed_elements,
+                  celery_queue='reviewed_queue')
 
         # send_task(task_name="fetch_reviewer_failed_generated_objects",
         #           data=self.failed_elements,
