@@ -23,7 +23,7 @@ class Prompt:
     group: str
     category: str
     questions: list
-    validation: dict
+    validation: str
     input_text: str
     original_data: dict
     output_text: str = ""
