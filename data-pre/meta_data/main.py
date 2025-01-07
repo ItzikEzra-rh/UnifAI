@@ -35,9 +35,9 @@ def main():
         parsed_elements=parsed_elements,
         project_name="kubevirt",
         project_repo_path="https://github.com/kubevirt/kubevirt",
-        naming_mapping = {'element_type': 'type', 'file_location': 'location', 'project_name': 'project_name'},
-        built_in_keys = ['element_type', 'file_location', 'project_name'],
-        exclude_types = ['File'],
+        naming_mapping ={'element_type': 'type', 'file_location': 'location', 'project_name': 'project_name'},
+        built_in_keys =['element_type', 'file_location', 'project_name'],
+        exclude_types =['File'],
         project_programming_languages=["Go"]
     )
 
@@ -65,8 +65,10 @@ def main():
 
     # Serialize the best_match list properly, including ObjectId handling
     best_match_top_relevant_keys = map(lambda ele: {'type': ele['element_type'], 'name': ele['name'], 'code': ele['code']} ,best_match)
+
     # best_match_top_relevant_keys = map(lambda ele: {'type': ele['type'], 'name': ele.get("additional_data", {}).get("name", ""),
     #                                                 'location': ele['file_location'], 'metdata': ele['metadata']} ,best_match)
+    
     best_match_serialized = json.loads(json_util.dumps(best_match_top_relevant_keys))
     print("Best Match Elements:", json.dumps(best_match_serialized, indent=4))
     print("Best Match Elements Length:", len(best_match_serialized))
