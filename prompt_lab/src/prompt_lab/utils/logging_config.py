@@ -13,7 +13,7 @@ class Logger:
     def _initialize_logger(self):
         """Set up the logger configuration."""
         self.logger = logging.getLogger("PromptLab")
-        if not self.logger.hasHandlers():  # Prevent duplicate handlers
+        if not self.logger.handlers:  # Ensure handlers are not duplicated
             self.logger.setLevel(logging.INFO)
 
             # Create a console handler
@@ -26,6 +26,9 @@ class Logger:
             )
             handler.setFormatter(formatter)
             self.logger.addHandler(handler)
+
+            # Suppress propagation to the root logger to avoid duplication
+            self.logger.propagate = False
 
     def get_logger(self):
         """Provide access to the singleton logger."""
