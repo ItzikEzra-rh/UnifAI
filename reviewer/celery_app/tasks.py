@@ -7,13 +7,16 @@ from utils.celery.celery import send_task
 import traceback
 import asyncio
 
+
 @celery.task()
-def fetch_prompt_lab_generated_objects(data):
-    asyncio.run(process_elements(data))
+def fetch_prompt_lab_generated_objects(batch):
+    asyncio.run(process_elements(batch))
+
 
 @celery.task()
 def fetch_reviewer_passed_generated_objects(data):
     save_elements(data)
+
 
 @celery.task()
 def fetch_reviewer_failed_generated_objects(data):

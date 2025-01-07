@@ -77,6 +77,8 @@ class PromptLanding:
                 celery_queue=self.orbiter_queue_name,
                 batch=self.retry_batch.to_dict()
             )
+            logger.info(
+                f"[PromptLanding] Submitted {self.retry_batch.prompts_count()} retry prompts to queue {self.orbiter_queue_name}.")
 
         # Export repository state
         self.repository.export()
