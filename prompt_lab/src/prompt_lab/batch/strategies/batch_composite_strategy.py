@@ -1,6 +1,6 @@
 from typing import List
 from .batch_strategy import BatchStrategy
-from prompt import Prompt
+from prompt_lab.prompt import Prompt
 
 
 class BatchCompositeStrategy(BatchStrategy):

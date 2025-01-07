@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from prompt import Prompt
+from prompt_lab.prompt import Prompt
 from typing import List
 
 

@@ -1,6 +1,6 @@
 from typing import List
 from .prompt_policy import PromptPolicy
-from prompt import Prompt
+from ..prompt import Prompt
 
 
 class PromptCompositePolicy(PromptPolicy):

@@ -1,10 +1,10 @@
 import time
-from prompt import PromptGenerator, PromptMaxTokenSizeFailPolicy, PromptCompositePolicy
-from batch import BatchMaxPromptsNumberStrategy, BatchMaxTokenStrategy, BatchCompositeStrategy, Batch
-from utils.celery.celery import is_queue_full, send_task
-from utils.tokenizer import TokenizerUtils
-from storage import DataRepository
-from utils import logger
+from prompt_lab.prompt import PromptGenerator, PromptMaxTokenSizeFailPolicy, PromptCompositePolicy
+from prompt_lab.batch import BatchMaxPromptsNumberStrategy, BatchMaxTokenStrategy, BatchCompositeStrategy, Batch
+from prompt_lab.utils.celery.celery import is_queue_full, send_task
+from prompt_lab.utils.tokenizer import TokenizerUtils
+from prompt_lab.storage import DataRepository
+from prompt_lab.utils import logger
 
 
 class PromptLaunchpad:

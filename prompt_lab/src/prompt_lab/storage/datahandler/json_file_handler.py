@@ -13,7 +13,7 @@ import json
 from typing import Any, Dict, Iterator, List
 
 from .data_handler import DataHandler
-from utils.util import (
+from prompt_lab.utils.util import (
     append_to_json_list,
 )
 

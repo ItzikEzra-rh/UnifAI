@@ -1,4 +1,4 @@
-from template import TemplateManager
+from prompt_lab.template import TemplateManager
 from .prompt_formatter import PromptFormatter
 from tqdm import tqdm
 

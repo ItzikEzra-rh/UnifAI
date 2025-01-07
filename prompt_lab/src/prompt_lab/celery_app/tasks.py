@@ -1,5 +1,5 @@
-from celery_app import CeleryApp
-from tasks import run_orbiter, run_landing
+from prompt_lab.celery_app import CeleryApp
+from prompt_lab.tasks import run_orbiter, run_landing
 
 
 @CeleryApp().app.task()

@@ -1,5 +1,5 @@
 from typing import List
-from prompt import Prompt
+from prompt_lab.prompt import Prompt
 from .batch_strategy import BatchStrategy
 
 

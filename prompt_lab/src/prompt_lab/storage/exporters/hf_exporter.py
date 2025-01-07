@@ -4,7 +4,7 @@ from huggingface_hub import HfApi, HfFolder
 import pandas as pd
 from datasets import Dataset
 import tempfile
-from utils import logger
+from prompt_lab.utils import logger
 
 
 class HFExporter:

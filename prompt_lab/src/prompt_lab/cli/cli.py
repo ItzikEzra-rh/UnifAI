@@ -3,10 +3,10 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import click
 import traceback
-from tasks import run_orbiter, run_landing, run_launchpad
-from config import ConfigManager
-from utils.celery.celery import start_celery_worker
-from utils import logger, Logger_instance
+from prompt_lab.tasks import run_orbiter, run_landing, run_launchpad
+from prompt_lab.config import ConfigManager
+from prompt_lab.utils.celery.celery import start_celery_worker
+from prompt_lab.utils import logger, Logger_instance
 
 
 class CliContext:
@@ -38,7 +38,7 @@ class CliContext:
 @click.option(
     '--config-path',
     type=click.Path(exists=False),
-    default="config/config.json",
+    default=ConfigManager.get_config_path(),
     help="Path to the configuration file.",
     show_default=True
 )

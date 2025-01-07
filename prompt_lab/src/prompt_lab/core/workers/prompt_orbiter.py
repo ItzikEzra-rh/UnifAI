@@ -1,8 +1,8 @@
 from typing import List
-from prompt import Prompt
-from batch import Batch
-from utils import TokenizerUtils, logger
-from utils.celery.celery import send_task
+from prompt_lab.prompt import Prompt
+from prompt_lab.batch import Batch
+from prompt_lab.utils import TokenizerUtils, logger
+from prompt_lab.utils.celery.celery import send_task
 
 
 class PromptOrbiter:

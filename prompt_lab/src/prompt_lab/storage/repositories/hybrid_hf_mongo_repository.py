@@ -6,12 +6,12 @@ and defers export logic to an HFExporter.
 """
 
 from typing import Dict, Any, Iterator, Set, List
-from storage import (DataRepository,
-                     HuggingFaceDataHandler,
-                     MongoDataHandler,
-                     HFExporter,
-                     Stats)
-from utils import logger
+from ...storage import (DataRepository,
+                        HuggingFaceDataHandler,
+                        MongoDataHandler,
+                        HFExporter,
+                        Stats)
+from prompt_lab.utils import logger
 
 
 class HybridHFMongoRepository(DataRepository):

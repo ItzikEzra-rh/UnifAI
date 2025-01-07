@@ -1,5 +1,5 @@
 from typing import List
-from prompt import Prompt, PromptCompositePolicy
+from prompt_lab.prompt import Prompt, PromptCompositePolicy
 from .strategies import BatchCompositeStrategy
 
 

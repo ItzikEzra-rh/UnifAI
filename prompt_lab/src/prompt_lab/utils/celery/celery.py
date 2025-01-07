@@ -1,14 +1,15 @@
-from celery_app import CeleryApp
 from celery import worker
 import sys
 from kombu import Connection
-from utils.util import get_rabbitmq_url
-from utils import logger
 import time
+from ..util import get_rabbitmq_url
+from ..logging_config import logger
+from prompt_lab.celery_app import CeleryApp
 
 
 def send_task(task_name, celery_queue, **kwargs):
-    CeleryApp().app.send_task(f"celery_app.tasks.{task_name}",
+    CeleryApp().app.send_task(f"prompt_lab.celery_app.tasks.{task_name}",
+                              # TODO make a function in CeleryApp to get the tasks path
                               kwargs=kwargs,
                               queue=celery_queue)
 

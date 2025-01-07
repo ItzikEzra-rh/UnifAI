@@ -1,6 +1,7 @@
-from config import ConfigManager
+from prompt_lab.config import ConfigManager
 import json
 import os
+from pathlib import Path
 
 
 def get_mongo_url():
@@ -72,3 +73,18 @@ def sort_nested_dict(data):
     elif isinstance(data, list):
         return sorted(sort_nested_dict(x) for x in data)
     return data
+
+
+def get_root_dir() -> Path:
+    """
+    Get the root directory of the project dynamically.
+
+    Returns:
+        Path: The root directory of the project.
+    """
+    # Resolve the directory containing this file
+    current_file = Path(__file__).resolve()
+    # Navigate up to the project root (adjust number of parents based on your structure)
+    root_dir = current_file.parents[1]
+
+    return root_dir

@@ -1,6 +1,6 @@
 from .prompt_policy import PromptPolicy
-from prompt import Prompt
-from utils import logger
+from ..prompt import Prompt
+from prompt_lab.utils import logger
 
 
 class PromptMaxTokenSizeFailPolicy(PromptPolicy):

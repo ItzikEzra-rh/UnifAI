@@ -1,8 +1,8 @@
 from typing import List
-from prompt import Prompt, PromptReviewFailRetry, PromptRetryPolicy, PromptCompositePolicy
-from batch import Batch, BatchCompositeStrategy, BatchRetryPromptsStrategy, BatchPassPromptsStrategy
-from utils.celery.celery import send_task
-from utils import logger
+from prompt_lab.prompt import Prompt, PromptReviewFailRetry, PromptRetryPolicy, PromptCompositePolicy
+from prompt_lab.batch import Batch, BatchCompositeStrategy, BatchRetryPromptsStrategy, BatchPassPromptsStrategy
+from prompt_lab.utils.celery.celery import send_task
+from prompt_lab.utils import logger
 
 
 class PromptLanding:

@@ -1,9 +1,9 @@
-from core import PromptLaunchpad, PromptOrbiter, PromptLanding
-from config import ConfigManager
-from utils import TokenizerUtils
-from utils.util import get_mongo_url
-from storage import HybridHFMongoRepository, HuggingFaceDataHandler, MongoDataHandler, HFExporter
-from llm_client import VLLMClient
+from prompt_lab.core import PromptLaunchpad, PromptOrbiter, PromptLanding
+from prompt_lab.config import ConfigManager
+from prompt_lab.utils import TokenizerUtils
+from prompt_lab.utils.util import get_mongo_url
+from prompt_lab.storage import HybridHFMongoRepository, HuggingFaceDataHandler, MongoDataHandler, HFExporter
+from prompt_lab.llm_client import VLLMClient
 from typing import List
 
 

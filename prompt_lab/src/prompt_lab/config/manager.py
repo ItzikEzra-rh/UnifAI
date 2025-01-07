@@ -5,16 +5,16 @@ from pathlib import Path
 class ConfigManager:
     _instance = None  # Class-level attribute to store the singleton instance
 
-    def __new__(cls, config_path="config/config.json"):
+    def __new__(cls, config_path=None):
         if cls._instance is None:
             cls._instance = super(ConfigManager, cls).__new__(cls)
             cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self, config_path="config/config.json"):
+    def __init__(self, config_path=None):
         if self._initialized:  # Avoid reinitializing the singleton instance
             return
-        self.config_path = Path(config_path)
+        self.config_path = Path(config_path) if config_path else self.get_config_path()
         self.config = self.load_config()
         self._initialized = True
 
@@ -75,3 +75,25 @@ class ConfigManager:
         """
         for key, value in updates.items():
             self.set(key, value)
+
+    @classmethod
+    def get_config_path(cls):
+        """
+        Get the path to the config.json file in the project.
+
+        Returns:
+            Path: The absolute path to the config.json file.
+
+        Raises:
+            FileNotFoundError: If config.json does not exist.
+        """
+        current_file = Path(__file__).resolve()
+
+        config_dir = current_file.parents[0]
+        config_file_path = config_dir / "config.json"
+
+        # Check if the file exists
+        if not config_file_path.exists():
+            raise FileNotFoundError(f"config.json not found at {config_file_path}")
+
+        return str(config_file_path)

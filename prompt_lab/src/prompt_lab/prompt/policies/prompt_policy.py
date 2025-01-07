@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from prompt import Prompt
+from ..prompt import Prompt
 
 
 class PromptPolicy(ABC):

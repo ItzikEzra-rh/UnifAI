@@ -1,6 +1,7 @@
 from jinja2 import Environment
-from utils.util import load_json_config
-from config import ConfigManager
+from prompt_lab.utils.util import load_json_config
+from prompt_lab.config import ConfigManager
+from prompt_lab.utils.util import get_root_dir
 import os
 
 
@@ -44,6 +45,7 @@ class TemplateManager:
         config = ConfigManager()
         return (
             os.path.join(
+                str(get_root_dir()),
                 config.get("templates_dir_path"),
                 config.get("templates_agent"),
                 f"{config.get('templates_type')}.json"

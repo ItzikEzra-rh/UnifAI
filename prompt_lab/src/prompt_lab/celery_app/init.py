@@ -2,7 +2,7 @@
 Module for importing non-configured flask extensions
 """
 from celery import Celery
-from utils.util import get_mongo_url, get_rabbitmq_url
+from prompt_lab.utils.util import get_mongo_url, get_rabbitmq_url
 
 
 class CeleryApp:
@@ -25,7 +25,7 @@ class CeleryApp:
             BROKER_USER='genie',
             BROKER_PASSWORD='genie123',
             backend=get_mongo_url(),
-            include=['celery_app.tasks']
+            include=['prompt_lab.celery_app.tasks']  # Fully qualified path
         )
 
     @property

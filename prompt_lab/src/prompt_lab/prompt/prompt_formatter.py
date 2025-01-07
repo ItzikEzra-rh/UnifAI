@@ -1,10 +1,10 @@
 import hashlib
 import copy
 import string
-from prompt import Prompt
-from template import TemplateManager
+from .prompt import Prompt
+from prompt_lab.template import TemplateManager
 import random
-from utils import logger
+from prompt_lab.utils import logger
 
 
 class PromptFormatter:

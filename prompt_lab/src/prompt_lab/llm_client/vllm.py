@@ -1,5 +1,4 @@
-from llm_client.client import LLMClient
-from utils.tokenizer import TokenizerUtils
+from prompt_lab.llm_client.client import LLMClient
 import requests
 
 

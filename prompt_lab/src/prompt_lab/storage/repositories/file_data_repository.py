@@ -5,8 +5,8 @@ Implements FileDataRepository, which uses JSONFileHandler for
 input, processed, skipped, and progress data in local JSON files.
 """
 from typing import Dict, Any, Iterator
-from storage import (DataRepository,
-                     JSONFileHandler)
+from ...storage import (DataRepository,
+                        JSONFileHandler)
 
 
 class FileDataRepository(DataRepository):
