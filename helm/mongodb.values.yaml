@@ -1,0 +1,9 @@
+# Default values for mongodb.
+
+nameOverride: ""
+fullnameOverride: "mongodb"
+## Additional labels for Deployment or StatefulSet
+customLabels: {}
+## Additional annotations for Deployment or StatefulSet
+customAnnotations: {}
+securityContext: {}
