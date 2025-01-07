@@ -3,7 +3,7 @@ FROM registry.access.redhat.com/ubi9/ubi
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-WORKDIR /app/repo
+WORKDIR /app/
 
 # Install system dependencies
 RUN dnf update -y && \
@@ -11,7 +11,7 @@ RUN dnf update -y && \
     dnf clean all
 
 # Add application source code
-COPY . /app/repo
+COPY . /app/
 
 # Install Python dependencies and setup the package
 RUN pip install --upgrade pip && pip install .
