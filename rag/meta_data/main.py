@@ -38,8 +38,7 @@ def read_file(file_path):
         print(f"Error: Failed to decode JSON from file at {file_path}")
         sys.exit(1)
 
-
-def main():
+def add_project_metadata():
     # Path to the JSON file containing parsed objects
     file_path = os.path.join(os.path.dirname(__file__), "kubevirt_Mapping.json")
     file_path = "/home/cloud-user/Playground/TAG_Files/kubevirt_Mapping.json"
@@ -56,8 +55,11 @@ def main():
     )
 
     # Add metadata to each parsed element & Add the entire elements to the DB
-    # project_meta_expander.add_metadata()
-    # project_meta_expander.add_to_db()
+    project_meta_expander.add_metadata()
+    project_meta_expander.add_to_db()
+
+def main():
+    # add_project_metadata()
 
     query_meta_expander = MetaDataQueryExpander(
         # query="Please create a test case that create ReplicaSet & should update and verify readyReplicas once VMIs are up",
