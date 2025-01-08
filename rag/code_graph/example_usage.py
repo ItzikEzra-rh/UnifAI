@@ -31,14 +31,14 @@ def format_context_for_llm(context: Dict[str, FunctionContext]) -> str:
 
 if __name__ == "__main__":
     # Initialize with both Python and Go support
-    extractor = CodeContextExtractor("/home/cloud-user/Projects/AI-TC-s-Generator/data-pre/code_graph/playground", languages=["python", "go"])
+    extractor = CodeContextExtractor("~/Playground/TAG_Files", languages=["python", "go"])
     extractor.parse_repository()
     
     # Simulate keyword search results
     top_k_functions = [
-        ("getExpectedPodName", "/home/cloud-user/Projects/AI-TC-s-Generator/data-pre/code_graph/playground/vm_test.go"),
-        ("waitForResourceDeletion", "/home/cloud-user/Projects/AI-TC-s-Generator/data-pre/code_graph/playground/vm_test.go"),
-        ("dump_documents", "/home/cloud-user/Projects/AI-TC-s-Generator/data-pre/code_graph/playground/db.py")
+        ("getExpectedPodName", "~/Playground/TAG_Files/vm_test.go"),
+        ("waitForResourceDeletion", "~/Playground/TAG_Files/vm_test.go"),
+        ("dump_documents", "~/Playground/TAG_Files/db.py")
     ]
     
     # Get context

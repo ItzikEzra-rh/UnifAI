@@ -7,10 +7,14 @@ import os
 
 from code_graph.language_parsers.language_parser import FunctionContext, LanguageParser
 class GoParser(LanguageParser):
+    def __init__(self):
+        super().__init__()
+        self.generate_go_parser()
+
     def get_file_pattern(self) -> str:
         return "*.go"
-
-    def parse_file(self, file_path: Path) -> List[Tuple[str, FunctionContext]]:
+    
+    def generate_go_parser(self):
         # Use go/ast through command line tool
         go_parser_code = """
 package main
@@ -82,7 +86,8 @@ func main() {
             f.write(go_parser_code)
         
         subprocess.run(["go", "build", "-o", "goparser", "temp_parser.go"])
-        
+
+    def parse_file(self, file_path: Path) -> List[Tuple[str, FunctionContext]]:
         # Run the parser
         result = subprocess.run(["./goparser", str(file_path)], 
                               capture_output=True, text=True)
