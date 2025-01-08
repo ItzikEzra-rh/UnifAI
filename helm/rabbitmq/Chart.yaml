@@ -8,12 +8,12 @@ annotations:
   licenses: Apache-2.0
 apiVersion: v2
 appVersion: 4.0.5
-dependencies:
-- name: common
-  repository: oci://registry-1.docker.io/bitnamicharts
-  tags:
-  - bitnami-common
-  version: 2.x.x
+#dependencies:
+#- name: common
+#  repository: oci://registry-1.docker.io/bitnamicharts
+#  tags:
+#  - bitnami-common
+#  version: 2.x.x
 description: RabbitMQ is an open source general-purpose message broker that is designed
   for consistent, highly-available messaging scenarios (both synchronous and asynchronous).
 home: https://bitnami.com

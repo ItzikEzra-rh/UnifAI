@@ -108,7 +108,7 @@ image:
 nameOverride: ""
 ## @param fullnameOverride String to fully override rabbitmq.fullname template
 ##
-fullnameOverride: ""
+fullnameOverride: "rabbitmq"
 ## @param namespaceOverride String to fully override common.names.namespace
 ##
 namespaceOverride: ""

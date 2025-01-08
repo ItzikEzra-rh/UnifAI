@@ -1,13 +1,18 @@
+#podman run -dt -v .:/helm/charts -v ~/.kube/:/helm/.kube --name helmfile ghcr.io/helmfile/helmfile:latest bash
+
+helmDefaults:
+    createNamespace: false
+    wait: true
+  
 releases:
   - name: genie-rabbitmq
     namespace: tag-ai--gzhou-nb
     chart: ./rabbitmq
-    wait: true
     values:
       - "./rabbitmq.values.yaml"
   - name: genie-mongodb
     namespace: tag-ai--gzhou-nb
-    chart: ./database
+    chart: ./mongodb
     wait: true
     values:
       - "./mongodb.values.yaml"
