@@ -1,4 +1,4 @@
-from be_utils.db.db import mongo, Collections, db
+from rag.be_utils.db.db import mongo, Collections, db
 
 class MetaDataRetriever:
     @mongo

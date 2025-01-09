@@ -31,14 +31,15 @@ def format_context_for_llm(context: Dict[str, FunctionContext]) -> str:
 
 if __name__ == "__main__":
     # Initialize with both Python and Go support
-    extractor = CodeContextExtractor("~/Playground/TAG_Files", languages=["python", "go"])
+    extractor = CodeContextExtractor("/home/cloud-user/Playground/TAG_Files", languages=["python", "go"])
     extractor.parse_repository()
     
     # Simulate keyword search results
     top_k_functions = [
-        ("getExpectedPodName", "~/Playground/TAG_Files/vm_test.go"),
-        ("waitForResourceDeletion", "~/Playground/TAG_Files/vm_test.go"),
-        ("dump_documents", "~/Playground/TAG_Files/db.py")
+        ("getExpectedPodName", "/home/cloud-user/Playground/TAG_Files/vm_test.go"),
+        ("waitForResourceDeletion", "/home/cloud-user/Playground/TAG_Files/vm_test.go"),
+        ("[test_id:3161]should carry vm.template.spec.annotations to VMI and ignore vm ones", "/home/cloud-user/Playground/TAG_Files/vm_test.go"),
+        ("dump_documents", "/home/cloud-user/Playground/TAG_Files/db.py")
     ]
     
     # Get context
