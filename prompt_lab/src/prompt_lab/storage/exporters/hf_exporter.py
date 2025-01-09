@@ -98,10 +98,12 @@ class HFExporter:
             token=self.token,
             commit_message=f"Upload {self.file_name}",
         )
+        url = f"https://huggingface.co/datasets/{self.repo_id}/blob/main/{self.file_name}"
         logger.info(
-            f"Dataset uploaded to https://huggingface.co/datasets/{self.repo_id}/blob/main/{self.file_name}")
+            f"Dataset uploaded to {url}")
+        return url
 
-    def export(self, record_generator: Iterator[Dict[str, Any]]) -> None:
+    def export(self, record_generator: Iterator[Dict[str, Any]]) -> str:
         """
         Export records from a generator to the Hugging Face Hub.
 
@@ -125,11 +127,11 @@ class HFExporter:
 
         if full_dataset is None:
             logger.info("No records to export.")
-            return
+            return ""
 
         temp_file_path = self._save_to_tempfile(full_dataset)
         try:
-            self._upload_to_hub(temp_file_path)
+            return self._upload_to_hub(temp_file_path)
         finally:
             logger.debug(f"Cleaning up temporary file: {temp_file_path}")
             os.remove(temp_file_path)  # Correctly use os.remove

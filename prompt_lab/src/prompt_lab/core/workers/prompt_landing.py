@@ -3,6 +3,7 @@ from prompt_lab.prompt import Prompt, PromptReviewFailRetry, PromptRetryPolicy, 
 from prompt_lab.batch import Batch, BatchCompositeStrategy, BatchRetryPromptsStrategy, BatchPassPromptsStrategy
 from prompt_lab.utils.celery.celery import send_task
 from prompt_lab.utils import logger
+from tqdm import tqdm
 
 
 class PromptLanding:
@@ -40,6 +41,16 @@ class PromptLanding:
         self.fail_batch = Batch()
 
         logger.info("[PromptLanding] Initialized.")
+
+    def refresh_progress_bar(self):
+        processed = self.repository.get_processed_num()
+        total = self.repository.get_prompts_size()
+        progress_bar = tqdm(total=total, desc="Processing Prompts", unit="prompt")
+
+        # Update progress bar
+        progress_bar.n = processed
+        progress_bar.total = total
+        progress_bar.refresh()
 
     def run(self, batch: List[dict]):
         """
@@ -79,6 +90,8 @@ class PromptLanding:
             )
             logger.info(
                 f"[PromptLanding] Submitted {self.retry_batch.prompts_count()} retry prompts to queue {self.orbiter_queue_name}.")
+
+        self.refresh_progress_bar()
 
         # Export repository state
         self.repository.export()

@@ -5,6 +5,7 @@ from prompt_lab.utils.celery.celery import is_queue_full, send_task
 from prompt_lab.utils.tokenizer import TokenizerUtils
 from prompt_lab.storage import DataRepository
 from prompt_lab.utils import logger
+from tqdm import tqdm
 
 
 class PromptLaunchpad:
@@ -43,28 +44,29 @@ class PromptLaunchpad:
                 [PromptMaxTokenSizeFailPolicy(self.tokenizer.get_tokens_limit())]
             ),
         )
-        self.processed_uuids = self.repository.load_processed_prompts_uuids()
+        self.processed_uuids = self.repository.load_prompts_uuids()
 
-        logger.info("[PromptPreparation] Initialized.")
+        logger.info("[PromptLaunchpad] Initialized.")
 
     def run(self):
         """
         Process prompts, apply policies and strategies, and enqueue them for submission.
         """
-        self.repository.sync_prompts_generated_with_processed()
+        self.generator.set_number_of_elements_and_prompts()
 
-        for prompt in self.generator:
-            print(prompt.uuid)
+        for prompt in tqdm(self.generator,
+                           total=self.repository.get_prompts_size(),
+                           desc="Processing Prompts"):
             if prompt.uuid in self.processed_uuids:
                 continue  # Skip already processed prompts
-
-            self.repository.update_prompt_generation_counter()
 
             if self._process_prompt(prompt):
                 continue
 
         # Submit remaining prompts
         if self.prepared_prompts_batch.has_prompts():
+            logger.info(
+                f"[PromptPreparation] submitting batch with the remaining {self.prepared_prompts_batch.prompts_count()} prompts.")
             self._submit_batch()
 
     def _process_prompt(self, prompt) -> bool:
@@ -98,8 +100,8 @@ class PromptLaunchpad:
         """
         if not self.prepared_prompts_batch.has_prompts():
             return
-        logger.info(f"batch prompt count {self.prepared_prompts_batch.prompts_count()}")
-        logger.info(f"batch token count {self.prepared_prompts_batch.batch_token_size()}")
+        logger.debug(f"batch prompt count {self.prepared_prompts_batch.prompts_count()}")
+        logger.debug(f"batch token count {self.prepared_prompts_batch.batch_token_size()}")
 
         finalized_prompts = self.prepared_prompts_batch.finalize_batch()
 
@@ -112,5 +114,5 @@ class PromptLaunchpad:
             celery_queue=self.orbiter_queue_name,
             batch=finalized_prompts,
         )
-        logger.info(
+        logger.debug(
             f"[PromptPreparation] Submitted {len(finalized_prompts)} prompts to queue {self.orbiter_queue_name}.")

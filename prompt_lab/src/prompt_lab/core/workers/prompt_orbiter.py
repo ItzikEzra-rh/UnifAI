@@ -49,7 +49,7 @@ class PromptOrbiter:
         self.reviewer = reviewer
         self.batch = Batch()
 
-        logger.info("[PromptQuery] Initialized.")
+        logger.info("[PromptOrbiter] Initialized.")
 
     def run(self, batch: List[dict]):
         """
@@ -68,7 +68,7 @@ class PromptOrbiter:
         Returns:
             Batch: The batch object containing processed prompts with their responses.
         """
-        logger.info(f"Received batch of size {len(batch)}.")
+        logger.info(f"[PromptOrbiter] Received batch of size {len(batch)}.")
         for prompt_dict in batch:
             prompt = Prompt.from_dict(**prompt_dict)
             self.batch.add_prompt(prompt)
@@ -90,4 +90,4 @@ class PromptOrbiter:
             batch=finalized_prompts,
         )
         logger.info(
-            f"[PromptPreparation] Submitted {len(finalized_prompts)} prompts to queue {send_queue_name},task {send_task_name}.")
+            f"[PromptOrbiter] Submitted {len(finalized_prompts)} prompts to queue {send_queue_name},task {send_task_name}.")

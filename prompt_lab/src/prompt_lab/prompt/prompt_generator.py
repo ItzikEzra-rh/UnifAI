@@ -1,6 +1,6 @@
 from prompt_lab.template import TemplateManager
 from .prompt_formatter import PromptFormatter
-from tqdm import tqdm
+from prompt_lab.utils import logger
 
 
 class PromptGenerator:
@@ -15,13 +15,26 @@ class PromptGenerator:
 
     def __iter__(self):
         """Iterate over generated Prompt objects."""
-        num_of_elements = self.repository.get_input_size()
-
-        for element_data in tqdm(self.repository.load_input_data(),
-                                 total=num_of_elements,
-                                 desc="Processing elements"):
+        for element_data in self.repository.load_input_data():
             for prompt in self._generate_prompts(element_data):
                 yield prompt
+
+    def set_number_of_elements_and_prompts(self):
+        logger.info("getting prompts and elements count...")
+        elements_count = self.repository.get_elements_size()
+        prompts_count = self.repository.get_prompts_size()
+
+        if not elements_count and not prompts_count:
+            logger.info("[PromptGenerator] prompts and elements count are not initialized, reading repo to init.")
+            for element_data in self.repository.load_input_data():
+                for _ in self._generate_prompts(element_data):
+                    prompts_count += 1
+                elements_count += 1
+            self.repository.set_elements_size(elements_count)
+            self.repository.set_prompts_size(prompts_count)
+
+        logger.info(f"elements count: {elements_count}.")
+        logger.info(f"prompts count: {prompts_count}.")
 
     def create_prompts(self, element_data):
         """Generate and return a list of Prompt objects for a given element."""

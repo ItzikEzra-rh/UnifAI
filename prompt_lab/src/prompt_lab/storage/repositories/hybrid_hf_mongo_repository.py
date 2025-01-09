@@ -11,6 +11,7 @@ from ...storage import (DataRepository,
                         MongoDataHandler,
                         HFExporter,
                         Stats)
+from pymongo import errors
 from prompt_lab.utils import logger
 
 
@@ -25,14 +26,12 @@ class HybridHFMongoRepository(DataRepository):
     def __init__(
             self,
             input_handler: HuggingFaceDataHandler,
-            pass_handler: MongoDataHandler,
-            fail_handler: MongoDataHandler,
+            processed_handler: MongoDataHandler,
             stats_handler: MongoDataHandler,
             exporter: HFExporter
     ):
         self.input_handler = input_handler
-        self.pass_handler = pass_handler
-        self.fail_handler = fail_handler
+        self.processed_handler = processed_handler
         self.stats_handler = Stats(stats_handler)
         self.exporter = exporter
 
@@ -40,33 +39,39 @@ class HybridHFMongoRepository(DataRepository):
     def load_input_data(self) -> Iterator[Dict[str, Any]]:
         return self.input_handler.read_data()
 
-    def get_input_size(self) -> int:
-        logger.info("[HybridHFMongoRepository] getting number of elements.")
-        size = self.stats_handler.get_number_of_elements()
-        if not size:
-            size = self.input_handler.get_size()
-            self.stats_handler.set_number_of_elements(size)
-        return size
-
-    # processed_handler
-    def save_pass_prompts(self, prompts: List[Dict]) -> None:
+    # processed handler
+    def save_prompts(self, prompts: List[Dict[str, Any]], increment_callback: callable) -> None:
         """
-        Save processed data to the MongoDB collection. Ensures that the `uuid` field
-        is used as the `_id` for uniqueness.
+        Save data to the MongoDB collection with error handling for duplicate keys.
 
-        :param data: A list of dictionaries representing the records to save.
+        :param prompts: A list of dictionaries representing the records to save.
+        :param increment_callback: A callback to increment the appropriate stats counter.
         """
         # Transform records to use `uuid` as `_id`
         transformed_data = [{**record, "_id": record["uuid"]} for record in prompts]
 
-        try:
-            self.pass_handler.append_records(transformed_data)
-            self.stats_handler.increment_prompts_pass(amount=len(prompts))
-        except Exception as e:
-            # Handle duplicate key error or log as needed
-            logger.error(f"Error while inserting records: {e}")
+        for record in transformed_data:
+            try:
+                self.processed_handler.append_record(record)
+                increment_callback()
+            except errors.DuplicateKeyError as e:
+                logger.error(f"DuplicateKeyError for uuid {record['uuid']} in processed collection: {e}")
 
-    def load_pass_prompts_uuids(self) -> Set[str]:
+    def save_pass_prompts(self, prompts: List[Dict[str, Any]]) -> None:
+        """
+        Save processed pass prompts.
+        """
+        self.save_prompts(prompts=prompts,
+                          increment_callback=self.stats_handler.increment_prompts_pass)
+
+    def save_fail_prompts(self, prompts: List[Dict[str, Any]]) -> None:
+        """
+        Save processed fail prompts.
+        """
+        self.save_prompts(prompts=prompts,
+                          increment_callback=self.stats_handler.increment_prompts_failed)
+
+    def load_prompts_uuids(self) -> Set[str]:
         """
         Load and return a set of processed UUIDs from the progress handler.
 
@@ -74,31 +79,9 @@ class HybridHFMongoRepository(DataRepository):
         """
         # Use projection to fetch only the uuid field
         pass_processed_uuid = {
-            uuid_obj["uuid"] for uuid_obj in self.pass_handler.read_data(projection={"uuid": 1, "_id": 0})
+            uuid_obj["uuid"] for uuid_obj in self.processed_handler.read_data(projection={"uuid": 1, "_id": 0})
         }
         return pass_processed_uuid
-
-    # fail handler
-    def save_fail_prompts(self, prompts: List[Dict]) -> None:
-        transformed_data = [{**record, "_id": record["uuid"]} for record in prompts]
-        try:
-            self.fail_handler.append_records(transformed_data)
-            self.stats_handler.increment_prompts_failed(amount=len(prompts))
-        except Exception as e:
-            # Handle duplicate key error or log as needed
-            logger.error(f"Error while inserting records: {e}")
-
-    def load_fail_prompts_uuids(self) -> Set[str]:
-        """
-        Load and return a set of processed UUIDs from the progress handler.
-
-        :return: A set of UUID strings that have been processed.
-        """
-        # Use projection to fetch only the uuid field
-        fail_processed_uuid = {
-            uuid_obj["uuid"] for uuid_obj in self.fail_handler.read_data(projection={"uuid": 1, "_id": 0})
-        }
-        return fail_processed_uuid
 
     # stats handler
     def update_retry_counter(self, count: int):
@@ -107,20 +90,36 @@ class HybridHFMongoRepository(DataRepository):
     def update_prompt_generation_counter(self, count: int = 1):
         self.stats_handler.increment_prompts_generated(count)
 
-    def sync_prompts_generated_with_processed(self):
-        self.stats_handler.sync_prompts_generated_with_processed()
+    def get_elements_size(self) -> int:
+        logger.info("[HybridHFMongoRepository] getting number of elements.")
+        return self.stats_handler.get_number_of_elements()
+
+    def set_elements_size(self, size) -> None:
+        self.stats_handler.set_number_of_elements(size)
+
+    def get_prompts_size(self) -> int:
+        logger.info("[HybridHFMongoRepository] getting number of prompts.")
+        return self.stats_handler.get_number_of_prompts()
+
+    def get_processed_num(self) -> int:
+        return self.stats_handler.get_processed_num()
+
+    def set_prompts_size(self, size) -> None:
+        self.stats_handler.set_number_of_prompts(size)
 
     # output
     def export(self):
-        if self.stats_handler.is_done():
+        if self.stats_handler.is_done() and not self.stats_handler.is_exported():
             logger.info("All prompts processed - exporting data...")
-            self.exporter.export(self.pass_handler.read_data())
 
-    def load_processed_prompts_uuids(self) -> Set[str]:
-        return self.load_fail_prompts_uuids().union(self.load_pass_prompts_uuids())
+            # Define a query to filter for documents where "failed" is False
+            query = {"failed": False}
+
+            # Retrieve the filtered data and pass it to the exporter
+            url = self.exporter.export(self.processed_handler.read_data(query=query))
+            self.stats_handler.set_exported(url)
 
     def close(self) -> None:
         self.input_handler.close()
-        self.pass_handler.close()
-        self.fail_handler.close()
+        self.processed_handler.close()
         self.stats_handler.close()

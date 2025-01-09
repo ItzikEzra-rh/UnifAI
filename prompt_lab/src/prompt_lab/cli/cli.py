@@ -33,6 +33,9 @@ class CliContext:
         logger.debug(f"Updated configuration with: {filtered_overrides}")
         return self.config_manager.config
 
+    def get_config_manager(self) -> ConfigManager:
+        return self.config_manager
+
 
 @click.group()
 @click.option(
@@ -68,6 +71,10 @@ def common_options(command):
         click.option('--mongodb-port', default="27017", show_default=True, help="MongoDB Port for data handling."),
         click.option('--rabbitmq-ip', default="0.0.0.0", show_default=True, help="RabbitMQ IP for messaging."),
         click.option('--rabbitmq-port', default="5672", show_default=True, help="RabbitMQ Port for messaging."),
+        click.option('--celery-worker-concurrency', default=1, show_default=True,
+                     help="Number of Celery concurrency worker."),
+        click.option('--celery-worker-prefetch-count', default=4, show_default=True,
+                     help="Number of Celery worker prefetch count."),
         click.option('--celery', is_flag=True, help="Run with Celery worker.")
     ]
     for option in reversed(options):
@@ -79,11 +86,15 @@ def handle_task(task_function, ctx: click.Context, kwargs: Dict[str, Any], queue
     """Common handler for CLI tasks."""
     try:
         cli_context: CliContext = ctx.obj['CLI_CONTEXT']
-        config = cli_context.update_config(kwargs)
+        cli_context.update_config(kwargs)
+        config = cli_context.get_config_manager()
 
         if kwargs.get("celery"):
             logger.info(f"Starting Celery worker for queue: {config.get(queue_key)}")
-            start_celery_worker(queue_name=config.get(queue_key), worker_name=task_function.__name__)
+            start_celery_worker(queue_name=config.get(queue_key),
+                                worker_name=task_function.__name__,
+                                concurrency=config.get_as_int("celery_worker_concurrency"),
+                                prefetch_count=config.get_as_int("celery_worker_prefetch_count"))
         else:
             logger.info(f"Starting task: {task_function.__name__}")
             task_function()

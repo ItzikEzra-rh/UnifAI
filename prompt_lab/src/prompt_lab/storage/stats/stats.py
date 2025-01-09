@@ -9,11 +9,12 @@ class Stats:
     DEFAULT_PROGRESS_ID = "progress_data"
     DEFAULT_VALUES = {
         "number_of_elements": 0,
-        "prompts_generated": 0,
+        "number_of_prompts": 0,
         "prompts_retried": 0,
         "prompts_failed": 0,
         "prompts_pass": 0,
         "prompts_processed": 0,
+        "exported": "",
     }
 
     def __init__(self, statistics_handler):
@@ -132,6 +133,12 @@ class Stats:
     def set_number_of_elements(self, value: int) -> None:
         self.set_value("number_of_elements", value)
 
+    def set_number_of_prompts(self, value: int) -> None:
+        self.set_value("number_of_prompts", value)
+
+    def set_exported(self, url) -> None:
+        self.set_value("exported", url)
+
     def is_done(self) -> bool:
         """
         Check if all generated prompts have been processed.
@@ -141,7 +148,10 @@ class Stats:
         :return: True if done, False otherwise.
         """
         progress_data = self.get_stats()
-        return progress_data.get("prompts_generated", 0) == progress_data.get("prompts_processed", 0)
+        number_of_prompts = progress_data.get("number_of_prompts", 0)
+        prompts_processed = progress_data.get("prompts_processed", 0)
+
+        return number_of_prompts == prompts_processed and number_of_prompts != 0
 
     def get_number_of_elements(self) -> int:
         """
@@ -151,6 +161,28 @@ class Stats:
         """
         progress_data = self.get_stats()
         return progress_data.get("number_of_elements", 0)
+
+    def get_number_of_prompts(self) -> int:
+        """
+        Retrieve the current value of 'number_of_prompts' directly from the database.
+
+        :return: The value of 'number_of_prompts'.
+        """
+        progress_data = self.get_stats()
+        return progress_data.get("number_of_prompts", 0)
+
+    def get_processed_num(self) -> int:
+        """
+        Retrieve the current value of 'prompts_processed' directly from the database.
+
+        :return: The value of 'prompts_processed'.
+        """
+        progress_data = self.get_stats()
+        return progress_data.get("prompts_processed", 0)
+
+    def is_exported(self) -> bool:
+        progress_data = self.get_stats()
+        return bool(progress_data.get("exported", ""))
 
     def close(self):
         """

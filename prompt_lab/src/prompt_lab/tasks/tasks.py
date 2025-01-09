@@ -7,7 +7,7 @@ from prompt_lab.llm_client import VLLMClient
 from typing import List
 
 
-def initialize_tokenizer():
+def initialize_config_and_tokenizer():
     """Initialize and return configuration and tokenizer."""
     config = ConfigManager()
     tokenizer = TokenizerUtils(
@@ -15,46 +15,36 @@ def initialize_tokenizer():
         max_context_length=config.get("model_max_context_length"),
         max_generation_length=config.get("model_max_generation_length"),
     )
-    return tokenizer
+    return config, tokenizer
 
 
-def initialize_mongo_handlers(mongo_uri, db_name):
-    """Initialize and return MongoDB data handlers."""
-    return (
-        MongoDataHandler(uri=mongo_uri, db_name=db_name, collection_name="passedPrompts"),
-        MongoDataHandler(uri=mongo_uri, db_name=db_name, collection_name="failedPrompts"),
-        MongoDataHandler(uri=mongo_uri, db_name=db_name, collection_name="statistics"),
-    )
+def initialize_mongo_handlers_and_repository(config, db_name):
+    """Initialize MongoDB data handlers and repository."""
+    mongo_uri = get_mongo_url()
+    processed_handler = MongoDataHandler(uri=mongo_uri, db_name=db_name, collection_name="processedPrompts")
+    stats_handler = MongoDataHandler(uri=mongo_uri, db_name=db_name, collection_name="statistics")
 
-
-def initialize_repository(config, pass_handler, fail_handler, stats_handler):
-    """Initialize and return the repository."""
-    return HybridHFMongoRepository(
+    repository = HybridHFMongoRepository(
         input_handler=HuggingFaceDataHandler(
             repo_id=config.get("input_dataset_repo"),
             file_name=config.get("input_dataset_file_name"),
             split="train",
             streaming=True
         ) if config.get("input_dataset_repo") else None,
-        pass_handler=pass_handler,
-        fail_handler=fail_handler,
+        processed_handler=processed_handler,
         stats_handler=stats_handler,
-        exporter=HFExporter(repo_id=config.get("output_dataset_repo"),
-                            file_name=config.get("output_dataset_file_name")
-                            )
+        exporter=HFExporter(
+            repo_id=config.get("output_dataset_repo"),
+            file_name=config.get("output_dataset_file_name")
+        )
     )
+    return repository
 
 
 def run_launchpad():
-    """
-    Run the 'prepare' command logic.
-    """
-    config = ConfigManager()
-    tokenizer = initialize_tokenizer()
-    mongo_uri = get_mongo_url()
-    db_name = "promptLab"
-    pass_handler, fail_handler, stats_handler = initialize_mongo_handlers(mongo_uri, db_name)
-    repository = initialize_repository(config, pass_handler, fail_handler, stats_handler)
+    """Run the 'launchpad' command logic."""
+    config, tokenizer = initialize_config_and_tokenizer()
+    repository = initialize_mongo_handlers_and_repository(config, db_name="promptLab")
 
     PromptLaunchpad(
         repository=repository,
@@ -67,11 +57,9 @@ def run_launchpad():
 
 
 def run_orbiter(batch: List[dict]):
-    """
-    Run the 'query' command logic.
-    """
-    config = ConfigManager()
-    tokenizer = initialize_tokenizer()
+    """Run the 'orbiter' command logic."""
+    config, tokenizer = initialize_config_and_tokenizer()
+
     llm_client = VLLMClient(
         api_url=config.get("model_api_url"),
         model_name=config.get("model_name"),
@@ -90,14 +78,9 @@ def run_orbiter(batch: List[dict]):
 
 
 def run_landing(batch: List[dict]):
-    """
-    Run the 'result' command logic.
-    """
-    config = ConfigManager()
-    mongo_uri = get_mongo_url()
-    db_name = "promptLab"
-    pass_handler, fail_handler, stats_handler = initialize_mongo_handlers(mongo_uri, db_name)
-    repository = initialize_repository(config, pass_handler, fail_handler, stats_handler)
+    """Run the 'landing' command logic."""
+    config, _ = initialize_config_and_tokenizer()
+    repository = initialize_mongo_handlers_and_repository(config, db_name="promptLab")
 
     PromptLanding(
         repository=repository,

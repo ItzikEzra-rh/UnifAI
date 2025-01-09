@@ -11,23 +11,12 @@ class DataRepository(ABC):
         """Return the main data input in a streaming/iterative fashion."""
         pass
 
-    @abstractmethod
-    def get_input_size(self) -> int:
-        """Return the size of the input data."""
-        pass
-
-    # Processed (Pass) handler methods
+    # Processed handler methods
     @abstractmethod
     def save_pass_prompts(self, prompts: List[Dict[str, Any]]) -> None:
         """Save processed (passed) prompts."""
         pass
 
-    @abstractmethod
-    def load_pass_prompts_uuids(self) -> Set[str]:
-        """Load and return a set of processed (passed) UUIDs."""
-        pass
-
-    # Failed handler methods
     @abstractmethod
     def save_fail_prompts(self, prompts: List[Dict[str, Any]]) -> None:
         """Save failed prompts."""
@@ -45,8 +34,23 @@ class DataRepository(ABC):
         pass
 
     @abstractmethod
-    def sync_prompts_generated_with_processed(self) -> None:
-        """sync prompts generated with processed."""
+    def get_elements_size(self) -> int:
+        pass
+
+    @abstractmethod
+    def set_elements_size(self, size) -> None:
+        pass
+
+    @abstractmethod
+    def get_prompts_size(self) -> int:
+        pass
+
+    @abstractmethod
+    def get_processed_num(self) -> int:
+        pass
+
+    @abstractmethod
+    def set_prompts_size(self, size) -> None:
         pass
 
     # Output (Exporter) methods
@@ -56,7 +60,7 @@ class DataRepository(ABC):
         pass
 
     @abstractmethod
-    def load_processed_prompts_uuids(self) -> Set[str]:
+    def load_prompts_uuids(self) -> Set[str]:
         pass
 
     # Resource management
