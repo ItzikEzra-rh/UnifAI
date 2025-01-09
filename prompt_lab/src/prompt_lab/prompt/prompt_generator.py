@@ -1,6 +1,7 @@
 from prompt_lab.template import TemplateManager
 from .prompt_formatter import PromptFormatter
 from prompt_lab.utils import logger
+import copy
 
 
 class PromptGenerator:
@@ -46,7 +47,7 @@ class PromptGenerator:
         if not element_type:
             return
 
-        templates = self.template_manager.get_questions(element_type)
+        templates = copy.deepcopy(self.template_manager.get_questions(element_type))
 
         for group_name, categories in templates.items():
             for category_name, template_config in categories.items():
