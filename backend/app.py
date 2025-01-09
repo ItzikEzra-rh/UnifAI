@@ -1,3 +1,9 @@
+import os
+import sys
+
+# Add the parent directory of 'backend' (the root of the project) to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from endpoints import register_all_endpoints
 from flask import Flask
 from flask_cors import CORS
@@ -5,7 +11,6 @@ from config.configParams import config_params
 from be_utils.db.flaks_db import register_mongo
 from be_utils.utils import init_flask_logger
 from endpoints.request_rules import RequestRules
-import os
 
 # Init FLASK
 app = Flask(__name__)
