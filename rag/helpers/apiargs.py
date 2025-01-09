@@ -86,36 +86,3 @@ class Validators:
             if not value:
                 return True
             return super(Validators.EmptyOrContainsOnly, self).__call__(value)
-
-
-class Fields:
-    """
-    Shorthand for common fields usage.
-    """
-
-    # a required string parameter. also validates string value is not empty
-    String = partial(fields.Str,
-                     required=True,
-                     validate=Validators.non_empty_string)
-
-    Project = partial(fields.Str,
-                      validate=Validators.non_empty_string)
-
-
-    # required string field, validation that it is a Jenkins job status
-    JenkinsStatus = partial(String,
-                            validate=validate.OneOf(["SUCCESS", "FAILURE", "UNSTABLE", "ABORTED"],
-                                                    error="Status must be one of {choices}"))
-
-    # required string field, validation is of the form of mongo db doc id
-    DocId = partial(String,
-                    validate=[
-                        validate.Regexp(r"^[a-f\d]{24}$",
-                                        re.IGNORECASE, error="Invalid document ID")])
-
-    StringOrNone = partial(fields.Str,
-                           required=False,
-                           allow_none=True,
-                           missing=None)
-
-    HMNotificationItem = partial(fields.Dict, missing={'is_healthy': None, 'display': None})
