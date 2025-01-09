@@ -93,10 +93,11 @@ class GEvalQASystem:
                 self._log_evaluation(evaluation)
             except Exception as e:
                 logger.error(f"Error processing element: {e}")
-                self.failed_elements.append({
-                    "element": element,
-                    "error": str(e)
-                })
+                raise e
+                # self.failed_elements.append({
+                #     "element": element,
+                #     "error": str(e)
+                # })
 
     def _categorize_evaluation(self, evaluation: Dict[str, Any]) -> None:
         """Categorize evaluation results as passed or failed."""
