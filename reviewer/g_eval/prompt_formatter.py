@@ -18,8 +18,8 @@ class GEvalPromptFormatter:
             f"{original_data.get('package', 'No package information')}\n\n"
             f"{original_data.get('imports', 'No imports')}\n\n"
             f"{original_data.get('global_vars', 'No global variables')}\n\n"
-            f"Code for {element['element_type']} {original_data.get('name', 'unnamed')}: \n"
-            f"```go\n{original_data.get('code', 'No code provided')}\n```\n\n"
+            f"Code for {element['element_type']} {original_data.get('name', 'unnamed')}:\n"
+            f"{original_data.get('code', 'No code provided')}\n\n"
         )
         
         context = criterion.format_prompt(
