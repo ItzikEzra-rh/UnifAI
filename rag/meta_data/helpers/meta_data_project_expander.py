@@ -1,7 +1,7 @@
 from collections import defaultdict
 from .meta_data_extractor import MetaDataExtractor
-from be_utils.db.db import mongo, Collections, db
-from be_utils.utils import time_execution
+from rag.be_utils.db.db import mongo, Collections, db
+from rag.be_utils.utils import time_execution
 
 class MetaDataProjectExpander:
     def __init__(self, parsed_elements, project_name, project_repo_path, naming_mapping = {}, built_in_keys = [], exclude_types = [], project_programming_languages = []):

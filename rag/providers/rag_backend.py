@@ -2,8 +2,26 @@ from rag.be_utils.db.db import mongo, Collections, db
 import sys
 import json
 import os
+import re
+from bson import json_util
 
 from rag.meta_data.helpers.meta_data_project_expander import MetaDataProjectExpander
+from rag.meta_data.helpers.meta_data_retriever import MetaDataRetriever
+from rag.meta_data.helpers.meta_data_query_expander import MetaDataQueryExpander
+
+def name_to_path_tuple_generator(data):
+    result = []
+    for item in data:
+        name = item.get("name")
+        location = item.get("location", "")
+
+        # Extract location using regex
+        match = re.search(r"File Location:\s*(.+)", location)
+        if match:
+            file_location = match.group(1).strip()
+            result.append((name, file_location))
+
+    return result
 
 def read_file(file_path):
     """
@@ -38,28 +56,21 @@ def parsed_elements_metadata_expansion(parsed_elements_location, project_name, p
     project_meta_expander.add_metadata()
     project_meta_expander.add_to_db()
 
-# @mongo
-# def insert_new_prompt(model_id, training_name, prompt_entire_text, prompt_user_latest_text, prompt_llm_latest_text, prompt_name):
-#     """inserting new llm prompt response to the database
+def query_meta_data_retrieval(text, project_name, model_name, model_id):
+    query_meta_expander = MetaDataQueryExpander(
+        query=text,
+        project_name=project_name,
+        model_name=model_name,
+        model_id=model_id
+    )
 
-#     :param str model_id:
-#     :param str training_name:
-#     :param str prompt_entire_text: 
-#     :param str prompt_user_latest_text: 
-#     :param str prompt_llm_latest_text: 
-#     :param str prompt_name:
-#     :return:
-#     """
-#     # Generate a unique identifier
-#     unique_id = str(uuid.uuid4())
+    # Extract metadata for the query
+    query_metadata = query_meta_expander.extract_metadata()
 
-#     result = Collections.by_name('prompts').insert_one({'modelId': model_id,
-#                                                         'uniqueId': unique_id,
-#                                                         'trainingName': training_name,
-#                                                         'promptText': prompt_entire_text,
-#                                                         'promptUserLatestText': prompt_user_latest_text,
-#                                                         'promptLLMLatestText': prompt_llm_latest_text,
-#                                                         'promptName': prompt_name,
-#                                                         'comment': ''})
-#     return result
+    meta_data_retreiver = MetaDataRetriever(query_metadata=query_metadata)
+    best_match = meta_data_retreiver.best_match()
 
+    # Serialize the best_match list properly, including ObjectId handling
+    best_match_top_relevant_keys = map(lambda ele: {'type': ele['element_type'], 'name': ele['name'], 'location': ele['file_location']} ,best_match)    
+    best_match_serialized = json.loads(json_util.dumps(best_match_top_relevant_keys))
+    return name_to_path_tuple_generator(best_match_serialized)

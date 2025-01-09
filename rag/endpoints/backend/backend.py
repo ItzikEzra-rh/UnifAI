@@ -5,7 +5,7 @@ from flask import jsonify, Response
 from webargs import fields
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
-from rag.providers.rag_backend import parsed_elements_metadata_expansion
+from rag.providers.rag_backend import parsed_elements_metadata_expansion, query_meta_data_retrieval
 
 rag_bp = Blueprint("rag", __name__)
 
@@ -36,3 +36,22 @@ def register_new_project(parsed_elements_location, project_name, project_repo_pa
     """
     parsed_elements_metadata_expansion(parsed_elements_location, project_name, project_repo_path, naming_mapping, built_in_keys, exclude_types, project_programming_languages)
     return json_response({"result": "metadata added successfully for each of the parsed elements\n"})
+
+@rag_bp.route("/queryRetrieval", methods=["GET"])
+@from_body({"text":                           fields.Str(missing='', data_key="text"),
+            "project_name":                   fields.Str(missing='', data_key="projectName"),
+            "model_name":                     fields.Str(missing='', data_key="modelName"),
+            "model_id":                       fields.Str(missing='', data_key="modelId"),
+})
+def query_retrieval(text, project_name, model_name, model_id):
+    """retrieving best matched elements baed on the user query for specific project
+
+    :param str text: user query for the LLM
+    :param str project_name:
+    :param str project_repo_path: git repository link of the dedicated project
+    :param str model_name: current model name which being served by VLLM
+    :param str model_id: current model id which being served by VLLM
+    :return:
+    """
+    best_match = query_meta_data_retrieval(text, project_name, model_name, model_id)
+    return json_response({"result": best_match})

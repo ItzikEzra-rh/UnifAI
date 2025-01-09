@@ -18,6 +18,9 @@ class FunctionContext:
     source_code: str
     language: str
     package_name: Optional[str] = None  # Particularly useful for Go
+    is_test: bool = False
+    test_type: Optional[str] = None  # "test", "describe", or "it"
+    test_parent: Optional[str] = None  # parent Describe block for It blocks
 
 class LanguageParser(ABC):
     @abstractmethod

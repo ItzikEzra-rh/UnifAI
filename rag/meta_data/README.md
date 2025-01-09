@@ -33,3 +33,33 @@ This class focuses on:
 
 ---
 By leveraging these classes, the `meta_data` project ensures that parsed objects are enriched with highly relevant metadata, improving the accuracy and efficiency of data retrieval and project-specific analysis.
+
+## API examples:
+1) curl -X GET "http://BE_IP:BE_PORT/api/rag/registerNewProject" -H "Content-Type: application/json" -d '{
+           "parsedElementsLocation": "/home/cloud-user/Playground/TAG_Files/kubevirt_replicaset.json",
+           "projectName": "kubevirt",
+           "projectRepoPath": "https://github.com/kubevirt/kubevirt",
+           "namingMapping": {
+               "element_type": "type",
+               "file_location": "location",
+               "project_name": "project_name"
+           },
+           "builtInKeys": [
+               "element_type",
+               "file_location",
+               "project_name"
+           ],
+           "excludeTypes": [
+               "File"
+           ],
+           "projectProgrammingLanguages": [
+               "Go"
+           ]
+     }'
+
+2) curl -X GET "http://BE_IP:BE_PORT/api/rag/queryRetrieval" -H "Content-Type: application/json" -d '{
+           "text": "Please write a test case that checking the number of replicaset",
+           "projectName": "kubevirt",
+           "modelName": "default_model",
+           "modelId": "model_id_123"
+}'
