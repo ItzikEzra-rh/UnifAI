@@ -69,7 +69,7 @@ class MongoDataHandler(DataHandler):
         Insert multiple records at once for efficiency.
         """
         if records:
-            self.collection.insert_many(records)
+            self.collection.insert_many(records, ordered=False)
 
     def update_record(self, query: Dict[str, Any], update: Dict[str, Any], upsert: bool = False) -> None:
         """

@@ -54,6 +54,7 @@ class PromptLaunchpad:
         self.repository.sync_prompts_generated_with_processed()
 
         for prompt in self.generator:
+            print(prompt.uuid)
             if prompt.uuid in self.processed_uuids:
                 continue  # Skip already processed prompts
 

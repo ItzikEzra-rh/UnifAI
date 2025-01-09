@@ -32,6 +32,8 @@ class CeleryApp:
 
         # Configure Celery logging to use the application's logger
         self.celery_app.conf.update(
+            task_acks_late=True,  # Acknowledge only after task completion
+            task_reject_on_worker_lost=True,  # Requeue tasks if the worker crashes
             worker_hijack_root_logger=False,  # Prevent Celery from hijacking the root logger
             worker_log_format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             worker_task_log_format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
