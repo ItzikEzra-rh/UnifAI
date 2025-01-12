@@ -5,7 +5,7 @@ import { FaFileAlt, FaEdit, FaTrash } from 'react-icons/fa';
 import axios from '../../http/axiosConfig';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
-import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css'; // Import Quill styles
 import '../../styles.css';
@@ -37,7 +37,7 @@ const CodeSection: React.FC<CodeSectionProps> = ({ title, content }) => (
     <Typography variant="h6" style={{ fontFamily: "ui-monospace" }} gutterBottom>
       {title}
     </Typography>
-    <SyntaxHighlighter className="code-visualizer" language="python" style={github}>
+    <SyntaxHighlighter className="code-visualizer" language="python" style={atomOneDark}>
       {content || ''}
     </SyntaxHighlighter>
   </div>

@@ -8,7 +8,7 @@ import { FormField, FormDropdown, FormCheckbox, FormFileUpload } from '../shared
 import { Box, Button, Step, StepContent, Stepper } from '@mui/material'; 
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
-import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import GitForm from '../git/GitTree';
 import SuccessMessage from '../shared/SuccessMessage'
 import '../../styles.css';
@@ -48,7 +48,7 @@ const ProjectForm: React.FC = () => {
     const [isSecondTabValid, setIsSecondTabValid] = useState(false);
     const [isThirdTabValid, setIsThirdTabValid] = useState(false);
     const [gitLoading, setGitLoading] = useState(false);
-    const [formSubmitted, setFormSubmitted] = useState(true);
+    const [formSubmitted, setFormSubmitted] = useState(false);
 
     // Existing state for checked items
     const [checked, setChecked] = useState<string[]>([]);
@@ -217,7 +217,7 @@ const ProjectForm: React.FC = () => {
                 <FormFileUpload name="parserFile" label="Upload Parser File" control={control} errors={errors} onFileUpload={handleFileUpload} />
                 {uploadedCode && (
                     <div className="code-visualizer">
-                        <SyntaxHighlighter language="python" style={github}>
+                        <SyntaxHighlighter language="python" style={atomOneDark}>
                             {uploadedCode}
                         </SyntaxHighlighter>
                     </div>)}

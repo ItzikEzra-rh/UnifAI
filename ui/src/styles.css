@@ -407,14 +407,11 @@ body, html, #root {
 }
 
 .code-visualizer {
-  background-color: #73706f !important;
   margin: 10px;
-  padding: 10px;
-  border-radius: 4px;
-  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  word-wrap: break-word;
+  border-radius: 4px !important;
+  width: 96%;
+  display: flex !important;
+  max-height: 50vh;
 }
 
 .project-name {
