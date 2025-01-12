@@ -19,5 +19,5 @@ setup(
             "promptlab=prompt_lab.cli.cli:cli",  # CLI entry point
         ],
     },
-    python_requires=">=3.11",
+    python_requires=">=3.9",
 )
