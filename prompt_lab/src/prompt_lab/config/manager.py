@@ -45,7 +45,7 @@ class ConfigManager:
         def substitute(value):
             if isinstance(value, str) and value.startswith("${") and value.endswith("}"):
                 env_var = value[2:-1]
-                return os.getenv(env_var, value)  # Replace with env value or keep original
+                return os.getenv(env_var)  # Replace with env value or keep original
             if isinstance(value, dict):
                 return {k: substitute(v) for k, v in value.items()}
             if isinstance(value, list):
