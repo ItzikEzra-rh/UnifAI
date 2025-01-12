@@ -5,7 +5,7 @@
   "output-dataset-file-name": "${OUTPUT_DATASET_FILE_NAME}",
   "tokenizer_path": "${PROMPT_LAB_MODEL_HF_ID}",
   "model_name": "${PROMPT_LAB_MODEL_HF_ID}",
-  "model_api_url": "http://0.0.0.0:8000/v1/completions",
+  "model_api_url": "${MODEL_API_URL}",
   "model_max_generation_length": "${PROMPT_LAB_MAX_GENERATION_LENGTH}",
   "model_max_context_length": "${PROMPT_LAB_MAX_CONTEXT_LENGTH}",
   "batch_size": "${PROMPT_LAB_BATCH_SIZE}",
