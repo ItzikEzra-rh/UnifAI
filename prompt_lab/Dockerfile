@@ -12,7 +12,7 @@ RUN dnf update -y && \
 
 # Add application source code
 COPY . /app/
-RUN ls -R /app/
+
 # Create a virtual environment and activate it
 RUN python3 -m venv /venv && \
     /venv/bin/pip install --upgrade pip && \
