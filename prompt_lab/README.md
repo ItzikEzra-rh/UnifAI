@@ -1,7 +1,7 @@
 # PromptLab CLI
 
 ## Overview
-PromptLab is a Command-Line Interface (CLI) tool for managing Prompt Lab operations, such as preparing prompts, querying a Large Language Model (LLM), and processing the results. It uses `Click` for command management, allowing various configurations and tasks.
+PromptLab is a Command-Line Interface (CLI) tool for managing Prompt Lab operations, such as preparing prompts, querying a Large Language Model (LLM), and processing the results.
 
 ---
 
