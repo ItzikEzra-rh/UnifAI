@@ -14,7 +14,7 @@ const SuccessMessage: React.FC = () => {
         padding: '50px',
         borderRadius: '8px',
         textAlign: 'center',
-        height: '20vh', // Full height to ensure it covers the entire screen
+        height: '85%', 
       }}
     >
       <CheckCircleIcon sx={{ fontSize: 100, color: 'white', fill: 'green !important'  }} />

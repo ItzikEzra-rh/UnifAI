@@ -48,7 +48,7 @@ const ProjectForm: React.FC = () => {
     const [isSecondTabValid, setIsSecondTabValid] = useState(false);
     const [isThirdTabValid, setIsThirdTabValid] = useState(false);
     const [gitLoading, setGitLoading] = useState(false);
-    const [formSubmitted, setFormSubmitted] = useState(false);
+    const [formSubmitted, setFormSubmitted] = useState(true);
 
     // Existing state for checked items
     const [checked, setChecked] = useState<string[]>([]);
@@ -142,10 +142,10 @@ const ProjectForm: React.FC = () => {
     };
 
     return (
+    <>     
+    {formSubmitted ? 
+      <SuccessMessage /> : 
       <Box className="form-container">
-      {formSubmitted ? (
-        <SuccessMessage />
-      ) : (
         <Stepper activeStep={activeStep} orientation="vertical">
           <Step>
             <CustomStepLabel StepIconComponent={(props) => <CustomStepIcon {...props} />}>
@@ -233,8 +233,8 @@ const ProjectForm: React.FC = () => {
             </StepContent>
           </Step>
         </Stepper>
-      )}
-    </Box>
+      </Box>}
+    </>
     );
 };
 
