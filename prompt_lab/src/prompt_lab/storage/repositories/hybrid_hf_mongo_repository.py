@@ -6,11 +6,10 @@ and defers export logic to an HFExporter.
 """
 
 from typing import Dict, Any, Iterator, Set, List
-from ...storage import (DataRepository,
-                        HuggingFaceDataHandler,
-                        MongoDataHandler,
-                        HFExporter,
-                        Stats)
+from .data_repository import DataRepository
+from ..datahandler import HuggingFaceDataHandler, MongoDataHandler
+from ..exporters import HFExporter
+from ..stats import Stats
 from pymongo import errors
 from prompt_lab.utils import logger
 

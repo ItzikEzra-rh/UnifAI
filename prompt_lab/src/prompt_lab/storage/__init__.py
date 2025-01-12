@@ -17,9 +17,11 @@ from .exporters.hf_exporter import HFExporter
 
 # Repositories
 from .repositories.data_repository import DataRepository
-from .stats.stats import Stats
 from .repositories.hybrid_hf_mongo_repository import HybridHFMongoRepository
 from .repositories.file_data_repository import FileDataRepository
+
+# Stats
+from .stats.stats import Stats
 
 __all__ = [
     "DataHandler",
