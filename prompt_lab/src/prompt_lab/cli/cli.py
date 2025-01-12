@@ -110,6 +110,8 @@ def handle_task(task_function, ctx: click.Context, kwargs: Dict[str, Any], queue
 @common_options
 @click.option('--tokenizer-path', help="Tokenizer repository ID.")
 @click.option('--templates-path', help="Template path.")
+@click.option('--templates-agent', help="Template agent [TAG/DeepCode/..].")
+@click.option('--templates-type', help="Template type [goGinko/typescript/..].")
 @click.option('--model-max-context-length', type=int, help="Maximum context length for the model.")
 @click.option('--model-max-generation-length', type=int, help="Maximum generation length for the model.")
 @click.option('--batch-size', type=int, help="Batch size for prompts.")
