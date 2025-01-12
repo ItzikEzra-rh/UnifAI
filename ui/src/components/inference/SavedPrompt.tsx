@@ -37,7 +37,7 @@ const CodeSection: React.FC<CodeSectionProps> = ({ title, content }) => (
     <Typography variant="h6" style={{ fontFamily: "ui-monospace" }} gutterBottom>
       {title}
     </Typography>
-    <SyntaxHighlighter language="python" style={github}>
+    <SyntaxHighlighter className="code-visualizer" language="python" style={github}>
       {content || ''}
     </SyntaxHighlighter>
   </div>
@@ -296,7 +296,7 @@ const SavedPrompts: React.FC = () => {
             p: 4,
           }}
         >
-          <div className="code-visualizer">
+          <div >
             <CodeSection title="User Question" content={questionPart} />
             <CodeSection title="LLM Answer" content={answerPart} />
             <CodeSection title="Entire Chat" content={selectedPrompt || ''} />
