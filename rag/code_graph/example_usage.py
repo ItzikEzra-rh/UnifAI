@@ -31,18 +31,20 @@ def format_context_for_llm(context: Dict[str, FunctionContext]) -> str:
 
 if __name__ == "__main__":
     # Initialize with both Python and Go support
-    extractor = CodeContextExtractor("/home/cloud-user/Playground/TAG_Files", languages=["python", "go"])
+    extractor = CodeContextExtractor(project_name="TAG_Files", repo_path="/home/cloud-user/Playground/TAG_Files", languages=["python", "go"], project_repo_path="https://github.com/kubevirt/kubevirt")
     extractor.parse_repository()
+    extractor.upload_to_db()
     
     # Simulate keyword search results
     top_k_functions = [
-        ("getExpectedPodName", "/home/cloud-user/Playground/TAG_Files/vm_test.go"),
-        ("waitForResourceDeletion", "/home/cloud-user/Playground/TAG_Files/vm_test.go"),
-        ("[test_id:3161]should carry vm.template.spec.annotations to VMI and ignore vm ones", "/home/cloud-user/Playground/TAG_Files/vm_test.go"),
-        ("dump_documents", "/home/cloud-user/Playground/TAG_Files/db.py")
+        ("getExpectedPodName", "vm_test.go"),
+        ("waitForResourceDeletion", "vm_test.go"),
+        ("[test_id:3161]should carry vm.template.spec.annotations to VMI and ignore vm ones", "vm_test.go"),
+        ("dump_documents", "db.py")
     ]
     
     # Get context
+    # extractor = CodeContextExtractor(project_name="TAG_Files")
     context = extractor.get_context_for_functions(top_k_functions)
     
     # Format for LLM

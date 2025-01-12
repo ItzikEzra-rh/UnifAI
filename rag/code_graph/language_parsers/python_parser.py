@@ -5,9 +5,13 @@ import networkx as nx
 import subprocess
 import json
 import os
-from code_graph.language_parsers.language_parser import FunctionContext, LanguageParser
+from rag.code_graph.language_parsers.language_parser import FunctionContext, LanguageParser
 
 class PythonParser(LanguageParser):
+    def __init__(self, project_name: str):
+        super().__init__()
+        self.project_name = project_name
+
     def get_file_pattern(self) -> str:
         return "*.py"
 
@@ -16,19 +20,21 @@ class PythonParser(LanguageParser):
             content = f.read()
             tree = ast.parse(content)
 
-        visitor = PythonFunctionVisitor(file_path, content)
+        realtive_file_path = str(Path(*file_path.parts[file_path.parts.index(self.project_name) + 1:]))
+        visitor = PythonFunctionVisitor(file_path, realtive_file_path, content)
         visitor.visit(tree)
         return visitor.get_functions()
 
 class PythonFunctionVisitor(ast.NodeVisitor):
-    def __init__(self, file_path: Path, source: str):
+    def __init__(self, file_path: Path, realtive_file_path: str, source: str):
         self.file_path = file_path
+        self.realtive_file_path = realtive_file_path
         self.source = source
         self.functions: Dict[str, FunctionContext] = {}
         self.current_function = None
 
     def visit_FunctionDef(self, node):
-        qualified_name = f"{self.file_path}:{node.name}"
+        qualified_name = f"{self.realtive_file_path}:{node.name}"
         self.current_function = qualified_name
 
         # Extract function signature
@@ -51,7 +57,7 @@ class PythonFunctionVisitor(ast.NodeVisitor):
 
         self.functions[qualified_name] = FunctionContext(
             name=node.name,
-            file_path=str(self.file_path),
+            file_path=self.realtive_file_path,
             signature=signature,
             calls=[],
             called_by=[],

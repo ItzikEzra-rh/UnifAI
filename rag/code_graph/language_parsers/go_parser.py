@@ -5,10 +5,11 @@ import subprocess
 import json
 import os
 
-from code_graph.language_parsers.language_parser import FunctionContext, LanguageParser
+from rag.code_graph.language_parsers.language_parser import FunctionContext, LanguageParser
 class GoParser(LanguageParser):
-    def __init__(self):
+    def __init__(self, project_name: str):
         super().__init__()
+        self.project_name = project_name
         self.generate_go_parser()
 
     def get_file_pattern(self) -> str:
@@ -172,11 +173,12 @@ func main() {
         parsed_functions = []
         
         for func_info in functions_info:
-            qualified_name = f"{file_path}:{func_info['name']}"
+            realtive_file_path = str(Path(*file_path.parts[file_path.parts.index(self.project_name) + 1:]))
+            qualified_name = f"{realtive_file_path}:{func_info['name']}"
             # print(f"Qualified_name: {qualified_name}")
             context = FunctionContext(
                 name=func_info['name'],
-                file_path=str(file_path),
+                file_path=realtive_file_path,
                 signature=func_info['signature'],
                 calls=func_info['calls'],
                 called_by=[],

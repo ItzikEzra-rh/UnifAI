@@ -1,22 +1,26 @@
 
 from typing import Dict, List, Tuple
 from pathlib import Path
+from dataclasses import asdict
 import networkx as nx
 import matplotlib.pyplot as plt
-from code_graph.language_parsers.language_parser import FunctionContext, LanguageParser
-from code_graph.language_parsers.go_parser import GoParser
-from code_graph.language_parsers.python_parser import PythonParser
+from rag.code_graph.language_parsers.language_parser import FunctionContext, LanguageParser
+from rag.code_graph.language_parsers.go_parser import GoParser
+from rag.code_graph.language_parsers.python_parser import PythonParser
+from be_utils.db.db import mongo, Collections, db
 
 class CodeContextExtractor:
-    def __init__(self, repo_path: str, languages: List[str]):
+    def __init__(self, project_name: str, repo_path: str = '', languages: List[str] = [], project_repo_path: str = ''):
+        self.project_name = project_name
         self.repo_path = Path(repo_path)
+        self.project_repo_path = project_repo_path
         self.function_graph = nx.DiGraph()
         self.function_contexts: Dict[str, FunctionContext] = {}
         
         # Initialize language parsers
         self.parsers: Dict[str, LanguageParser] = {
-            'python': PythonParser(),
-            'go': GoParser()
+            'python': PythonParser(project_name=self.project_name),
+            'go': GoParser(project_name=self.project_name)
         }
         
         # Validate requested languages
@@ -49,6 +53,62 @@ class CodeContextExtractor:
 
         # Update called_by relationships
         self._update_caller_relationships()
+    
+    @mongo
+    def upload_to_db(self):
+        elements_mapping = []
+        for location, element_mapping in self.function_contexts.items():
+            db_element_general_details = {
+                "project_name": self.project_name,
+                "project_repo_path": self.project_repo_path,
+            }
+
+            # Convert the dataclass to a dictionary before merging
+            db_element_mapping = {**db_element_general_details,**asdict(element_mapping)}
+            elements_mapping.append(db_element_mapping)
+
+        Collections.by_name('code_graph').insert_many(elements_mapping)
+
+    def function_contexts_dict_builder(self):
+        """
+        Converts a list of dictionaries into a dict where the file_path (from hidden keys) 
+        is used as the key, and the rest of the key-value pairs form the value.
+
+        Args:
+            objects (list): List of dictionaries with keys including '_id', 'project_name',
+                            'project_repo_path', and others.
+
+        Returns:
+            dict: A dictionary with file_path as the key and the rest of the keys/values as the value.
+        """
+        result = {}
+        elements = list(Collections.by_name('code_graph').find({"project_name": self.project_name}))
+
+        for obj in elements:
+            # Extract the file_path from the object's hidden keys
+            file_path = obj.get("file_path")
+            element_name = obj.get("name", "")
+            
+            if not file_path:
+                raise KeyError("Missing 'file_path' key in one of the objects.")
+            
+            # Create a new dictionary excluding the 'file_path'
+            filtered_obj = {key: value for key, value in obj.items() if key != "_id" and key != "project_name" and key != "project_repo_path"}
+            func_context = FunctionContext(**filtered_obj)
+            
+            # Assign the rest of the object to the file_path key
+            qualified_name = file_path + ':' +  element_name
+            result[qualified_name] = func_context
+
+            self.function_graph.add_node(qualified_name)
+                    
+            # Add edges for function calls
+            for call in func_context.calls:
+                self.function_graph.add_edge(qualified_name, call)
+
+        # Update called_by relationships
+        self._update_caller_relationships()
+        return result 
 
     def _update_caller_relationships(self):
         """Update the called_by lists for all functions based on the graph."""
@@ -74,7 +134,7 @@ class CodeContextExtractor:
         # print("Nodes:", self.function_graph.nodes())
         # print("Edges:", self.function_graph.edges())
         
-
+    @mongo
     def get_context_for_functions(self, function_names: List[Tuple[str, str]]) -> Dict[str, FunctionContext]:
         """
         Get context for specified functions and their immediate neighbors.
@@ -83,20 +143,21 @@ class CodeContextExtractor:
             function_names: List of (function_name, file_path) tuples from keyword search
         """
         context = {}
+        retreived_function_contexts = self.function_contexts if self.function_contexts else self.function_contexts_dict_builder()
         
         for func_name, file_path in function_names:
             qualified_name = f"{file_path}:{func_name}"
             
-            if qualified_name in self.function_contexts:
+            if qualified_name in retreived_function_contexts:
                 # Get the main function context
-                context[qualified_name] = self.function_contexts[qualified_name]
+                context[qualified_name] = retreived_function_contexts[qualified_name]
 
                 # Get immediate neighbors
                 neighbors = list(self.function_graph.predecessors(qualified_name))
                 neighbors.extend(self.function_graph.successors(qualified_name))
                 
                 for neighbor in neighbors:
-                    if neighbor in self.function_contexts:
-                        context[neighbor] = self.function_contexts[neighbor]
+                    if neighbor in retreived_function_contexts:
+                        context[neighbor] = retreived_function_contexts[neighbor]
         
         return context

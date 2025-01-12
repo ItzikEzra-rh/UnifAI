@@ -5,7 +5,7 @@ from flask import jsonify, Response
 from webargs import fields
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
-from rag.providers.rag_backend import parsed_elements_metadata_expansion, query_meta_data_retrieval
+from rag.providers.rag_backend import parsed_elements_metadata_expansion, query_meta_data_retrieval, project_graph_expansion, meta_data_to_graph_retrieval
 
 rag_bp = Blueprint("rag", __name__)
 
@@ -55,3 +55,33 @@ def query_retrieval(text, project_name, model_name, model_id):
     """
     best_match = query_meta_data_retrieval(text, project_name, model_name, model_id)
     return json_response({"result": best_match})
+
+@rag_bp.route("/registerProjectGraph", methods=["GET"])
+@from_body({"repo_location":      fields.Str(missing='', data_key="repoLocation"),
+            "project_name":       fields.Str(missing='', data_key="projectName"),
+            "project_repo_path":  fields.Str(missing='', data_key="projectRepoPath"),            
+            "repo_languages":     fields.List(fields.Str(), missing=["go", "python"], data_key="repoLanguages"),
+})
+def register_project_graph(repo_location, project_name, project_repo_path, repo_languages):
+    """map new project parsed elements with relevant metdata, add all of the expanded elements to new DB collection
+
+    :param str repo_location: representing the path where the repo is cloned 
+    :param str project_name:
+    :param str project_repo_path: git repository link of the dedicated project
+    :param list repo_languages: what are all the programming languages being used in the repo
+    :return:
+    """
+    project_graph_expansion(repo_location, project_name, project_repo_path, repo_languages)
+    return json_response({"result": "graph represention for each code element in the project added successfully\n"})
+
+@rag_bp.route("/metadataRetrieval", methods=["GET"])
+@from_body({"project_name":       fields.Str(missing='', data_key="projectName"),
+            "relevant_metadata":  fields.List(fields.Tuple((fields.Str(), fields.Str())), missing=[], data_key="relevantMetadata")})
+def meta_data_retrieval(project_name, relevant_metadata):
+    """retrieving best matched graph elements baed on the provided metadata
+
+    :param list relevant_metadata: tuples of relevant metadata containing element names with there relative path in the repository
+    :return:
+    """
+    llm_context = meta_data_to_graph_retrieval(project_name, relevant_metadata)
+    return json_response({"result": llm_context})

@@ -4,10 +4,38 @@ import json
 import os
 import re
 from bson import json_util
+from typing import Dict
 
 from rag.meta_data.helpers.meta_data_project_expander import MetaDataProjectExpander
 from rag.meta_data.helpers.meta_data_retriever import MetaDataRetriever
 from rag.meta_data.helpers.meta_data_query_expander import MetaDataQueryExpander
+from rag.code_graph.code_context_extractor import CodeContextExtractor
+from rag.code_graph.language_parsers.language_parser import FunctionContext
+
+def format_context_for_llm(context: Dict[str, FunctionContext]) -> str:
+    """Format the context in a way that's suitable for LLM input."""
+    sections = []
+    
+    # Group functions by language
+    by_language = {}
+    for func in context.values():
+        by_language.setdefault(func.language, []).append(func)
+    
+    for language, functions in by_language.items():
+        sections.append(f"\n=== {language.upper()} Functions ===\n")
+        
+        for func in functions:
+            sections.append(
+                f"Function: {func.name}\n"
+                f"File: {func.file_path}\n"
+                f"{'Package: ' + func.package_name + chr(10) if func.package_name else ''}"
+                f"Signature: {func.signature}\n"
+                f"Calls: {', '.join(func.calls)}\n"
+                f"Called by: {', '.join(func.called_by)}\n"
+                f"Source:\n{func.source_code}\n"
+            )
+    
+    return "\n".join(sections)
 
 def name_to_path_tuple_generator(data):
     result = []
@@ -74,3 +102,20 @@ def query_meta_data_retrieval(text, project_name, model_name, model_id):
     best_match_top_relevant_keys = map(lambda ele: {'type': ele['element_type'], 'name': ele['name'], 'location': ele['file_location']} ,best_match)    
     best_match_serialized = json.loads(json_util.dumps(best_match_top_relevant_keys))
     return name_to_path_tuple_generator(best_match_serialized)
+
+def project_graph_expansion(repo_location, project_name, project_repo_path, repo_languages):
+    extractor = CodeContextExtractor(project_name=project_name, repo_path=repo_location, languages=repo_languages, project_repo_path=project_repo_path)
+    
+    # Retrieve graph representation to each code section & Add the entire graph elements to the DB
+    extractor.parse_repository()
+    extractor.upload_to_db()
+
+def meta_data_to_graph_retrieval(project_name, relevant_metadata):
+    extractor = CodeContextExtractor(project_name=project_name)
+    
+    # Get context
+    context = extractor.get_context_for_functions(relevant_metadata)
+    
+    # Format for LLM
+    llm_context = format_context_for_llm(context)
+    return llm_context
