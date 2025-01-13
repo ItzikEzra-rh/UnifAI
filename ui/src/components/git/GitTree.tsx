@@ -221,8 +221,7 @@ const TreeNode: React.FC<TreeNodeProps> = (({node, checked, setChecked, selected
         />
           {childNode.label == selectedNodeLabel  && testContentOpen &&
           ( selectedNodeContent ? 
-            <SyntaxHighlighter className="code-visualizer" language="python" style={atomOneDark} 
-            codeTagProps={{ className: 'code-segment' }}>
+            <SyntaxHighlighter className="code-visualizer" language="python" style={atomOneDark}>
                 {selectedNodeContent}
             </SyntaxHighlighter> :
             <div style={{ display: 'flex', justifyContent: 'center' }}>
