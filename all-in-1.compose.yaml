@@ -1,7 +1,7 @@
 version: "3.6"
 
-#include:
-  #- vllm.compose.yaml
+include:
+  - vllm.compose.yaml
 
 networks:
   genie-network:
@@ -53,9 +53,7 @@ services:
       - "8443:443"
     container_name: llm-be
     environment:
-      - HUGGING_FACE_HUB_TOKEN=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
-      - HF_TOKEN=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
-    #entrypoint: ["sleep", "infinity"]
+      - HUGGING_FACE_HUB_TOKEN=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
     deploy:
       resources:
         reservations:
@@ -70,4 +68,3 @@ services:
 
 volumes:
   mongo_data:
-  model-v:
