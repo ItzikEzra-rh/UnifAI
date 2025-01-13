@@ -8,17 +8,9 @@ RUN dnf update -y && \
 
 # Upgrade pip and install virtualenv
 RUN pip3 install --upgrade pip virtualenv
-#WORKDIR /root
+
 # Create and activate a virtual environment
 RUN virtualenv venv
-# Activate the virtual environment and install torch and other required Python packages
-#RUN /bin/bash -c "source venv/bin/activate && \
-#    pip install --upgrade pip && \
-#    pip install torch==2.3.0 transformers==4.38 && \
-#    pip install --upgrade --force-reinstall --no-cache-dir torch==2.3.0 triton --index-url https://download.pytorch.org/whl/cu121 && \
-#    pip install git+https://github.com/unslothai/unsloth.git#egg=unsloth[colab-new] && \
-#    pip install -U xformers --index-url https://download.pytorch.org/whl/cu121 && \
-#    pip install --no-deps 'trl<0.9.0' peft accelerate bitsandbytes"
 
 ADD . .
 RUN /bin/bash -c "source venv/bin/activate &&  pip install -r requirementsBE.txt"
@@ -36,4 +28,3 @@ ADD . .
 RUN ln -s /usr/local/cuda-12.6/targets/x86_64-linux/lib/stubs/libcuda.so /usr/lib/libcuda.so
 ENV TOKENIZERS_PARALLELISM=true BACKEND_ENV=development
 CMD ["/bin/bash", "-c", "source venv/bin/activate && python app.py"]
-
