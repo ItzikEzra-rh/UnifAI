@@ -12,8 +12,8 @@ def initialize_config_and_tokenizer():
     config = ConfigManager()
     tokenizer = TokenizerUtils(
         tokenizer_path=config.get("tokenizer_path"),
-        max_context_length=config.get("model_max_context_length"),
-        max_generation_length=config.get("model_max_generation_length"),
+        max_context_length=config.get_as_int("model_max_context_length"),
+        max_generation_length=config.get_as_int("model_max_generation_length"),
     )
     return config, tokenizer
 
