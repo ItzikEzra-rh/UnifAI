@@ -67,10 +67,10 @@ def cli(ctx: click.Context, config_path: str, log_level: str) -> None:
 def common_options(command):
     """Decorator for common CLI options."""
     options = [
-        click.option('--mongodb-ip', default="0.0.0.0", show_default=True, help="MongoDB IP for data handling."),
-        click.option('--mongodb-port', default="27017", show_default=True, help="MongoDB Port for data handling."),
-        click.option('--rabbitmq-ip', default="0.0.0.0", show_default=True, help="RabbitMQ IP for messaging."),
-        click.option('--rabbitmq-port', default="5672", show_default=True, help="RabbitMQ Port for messaging."),
+        click.option('--mongodb-ip', help="MongoDB IP for data handling."),
+        click.option('--mongodb-port', help="MongoDB Port for data handling."),
+        click.option('--rabbitmq-ip', help="RabbitMQ IP for messaging."),
+        click.option('--rabbitmq-port', help="RabbitMQ Port for messaging."),
         click.option('--celery-worker-concurrency', default=1, show_default=True,
                      help="Number of Celery concurrency worker."),
         click.option('--celery-worker-prefetch-count', default=4, show_default=True,
@@ -153,7 +153,7 @@ def orbiter(ctx: click.Context, **kwargs: Any) -> None:
 @click.option('--orbiter-task-name', help="Orbiter task name.")
 @click.option('--output-dataset-repo', help="Output dataset repository ID.")
 @click.option('--output-dataset-file-name', help="Output dataset File name in the repo.")
-@click.option('--input-dataset-repo', default="", help="Input dataset repository ID.")
+@click.option('--input-dataset-repo', help="Input dataset repository ID.")
 @click.pass_context
 def landing(ctx: click.Context, **kwargs: Any) -> None:
     """Process and manage the results of LLM queries."""
