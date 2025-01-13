@@ -13,6 +13,10 @@ resources:
     memory: 16Gi
     # -- Number of gpus used
     nvidia.com/gpu: 1
+service:
+  type: ClusterIP
+  port: 8080
+
 env:
    - name: HF_TOKEN
      value: "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"

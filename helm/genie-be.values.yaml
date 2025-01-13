@@ -3,6 +3,3 @@ image:
    repository: images.paas.redhat.com/genie/backend
    tag: 2024.12.16
    pullPolicy: Always
-service:
-   type: NodePort
-   http_nodeport: 32036

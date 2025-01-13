@@ -5,17 +5,9 @@ metadata:
   labels:
     {{- include "genie-be.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.service.type }}
   ports:
-          #- port: {{ .Values.service.port }}
-    - port: 80
-      nodePort: {{ .Values.service.socket_nodeport }}
-      targetPort: 5001
-      protocol: TCP
-      name: httpsocket
     - port: 8080
-      nodePort: {{ .Values.service.http_nodeport }}
-      targetPort: 5050
+      targetPort: 8080
       protocol: TCP
       name: http
 

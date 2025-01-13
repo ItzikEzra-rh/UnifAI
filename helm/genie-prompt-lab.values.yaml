@@ -1,7 +1,7 @@
 replicaCount: 1
 image:
    repository: images.paas.redhat.com/genie/prompt_lab
-   tag: 2024.12.23
+   tag: 2025.01.13
    pullPolicy: Always
 hf_token: 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
 command: prompt_processor
