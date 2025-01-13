@@ -1,0 +1,26 @@
+replicaCount: 1
+image:
+   repository: images.paas.redhat.com/genie/llm-backend 
+   tag: 2025.01.13
+   pullPolicy: Always
+service:
+   type: NodePort
+   http_nodeport: 32036
+resources:
+  limits:
+    cpu: 4
+    # -- CPU memory configuration
+    memory: 16Gi
+    # -- Number of gpus used
+    nvidia.com/gpu: 1
+env:
+   - name: HF_TOKEN
+     value: "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"
+   - name: VLLM_CONFIG_ROOT
+     value: '/tmp/usage'
+   - name: HF_HOME
+     value: '/tmp/'
+   - name: BACKEND_ENV
+     value: "production"
+
+
