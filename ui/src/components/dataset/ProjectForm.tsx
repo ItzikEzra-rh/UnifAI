@@ -216,11 +216,10 @@ const ProjectForm: React.FC = () => {
                 <FormCheckbox name="datasetGradingUpgrade" label="Dataset Quality Upgrade" control={control} errors={errors} />
                 <FormFileUpload name="parserFile" label="Upload Parser File" control={control} errors={errors} onFileUpload={handleFileUpload} />
                 {uploadedCode && (
-                    <div className="code-visualizer">
-                        <SyntaxHighlighter language="python" style={atomOneDark}>
-                            {uploadedCode}
-                        </SyntaxHighlighter>
-                    </div>)}
+                  <SyntaxHighlighter className="code-visualizer" language="python" style={atomOneDark}>
+                      {uploadedCode}
+                  </SyntaxHighlighter>
+                )}
                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
                   <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
                     Back
