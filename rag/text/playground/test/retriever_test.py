@@ -1,4 +1,4 @@
-from rag_processor import RAGProcessor
+from rag.text.rag_processor import RAGProcessor
 from retriever.rag_retriever import RAGRetriever
 from db.vector_db import DBConfig, VectorDB
 from chunking.text_chunker import TextChunker
@@ -20,7 +20,7 @@ config = DBConfig(
     port=5432
 )
 
-chunker = TextChunker(max_chunk_size=512)
+chunker = TextChunker(max_chunk_size=128)
 embeddings_generator = EmbeddingsGenerator()
 vector_db = VectorDB(config)
 vector_db.initialize_db()
@@ -28,25 +28,28 @@ vector_db.initialize_db()
 # Initialize RAG processor
 processor = RAGProcessor(chunker, embeddings_generator, vector_db)
 
-# # Process a file
-# processor_start_time = time.time()
-# processor.process_file(
-#     file_path="/home/cloud-user/Projects/playGround/tree-sitter-playground/docs/football.txt",
-#     metadata={"project": "AIM", "version": "1.0"}
-# )
+# Process a file
+processor_start_time = time.time()
+processor.process_file(
+    file_path="/home/cloud-user/Projects/playGround/tree-sitter-playground/docs/AIM.txt",
+    metadata={"project": "AIM", "version": "1.0"}
+)
 
-# processor_end_time = time.time()
-# processor_execution_time = processor_end_time - processor_start_time
-# print("FINISHED: RAGProcessor: processor")
-# print(f"Function 'RAGProcessor: processor' executed in {processor_execution_time:.4f} seconds")
+processor_end_time = time.time()
+processor_execution_time = processor_end_time - processor_start_time
+print("FINISHED: RAGProcessor: processor")
+print(f"Function 'RAGProcessor: processor' executed in {processor_execution_time:.4f} seconds")
 
-# Active it when not process a file:
-processor.vector_db.build_faiss_index()
+# # Active it when not process a file:
+# processor.vector_db.build_faiss_index()
 
 retriever_start_time = time.time()
 retriever = RAGRetriever(processor.vector_db)
-query = "Tell me about 2019 Asian Cup final?"
-relevant_context = retriever.retrieve_relevant_context(query, k=1)
+# query = "Tell me about 2019 Asian Cup final?"
+# query = "What is football?"
+# query = "What are the statistics in stats collector used in AIM?"
+query = "What is AIM?"
+relevant_context = retriever.retrieve_relevant_context(query, k=5)
 
 retriever_end_time = time.time()
 retriever_execution_time = retriever_end_time - retriever_start_time
