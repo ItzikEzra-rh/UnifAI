@@ -31,7 +31,7 @@ class MetaDataProjectExpander:
 
             # metadata["id"] = MetaDataExtractor.extract_test_id(element_name)
 
-            combined_text = element_name + " " + element_code
+            combined_text = f"{element_name} {element_code}"
             metadata["action"] = MetaDataExtractor.extract_actions(combined_text)
             metadata["k8s_terms"] = MetaDataExtractor.extract_k8s_terms(combined_text)
             metadata["resources"] = MetaDataExtractor.extract_resources(element_code)

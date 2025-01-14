@@ -16,7 +16,9 @@ class CodeContextExtractor:
         self.project_repo_path = project_repo_path
         self.function_graph = nx.DiGraph()
         self.function_contexts: Dict[str, FunctionContext] = {}
-        
+        self.init_parsers(languages)
+
+    def init_parsers(self, languages: List[str]):
         # Initialize language parsers
         self.parsers: Dict[str, LanguageParser] = {
             'python': PythonParser(project_name=self.project_name),
@@ -97,7 +99,7 @@ class CodeContextExtractor:
             func_context = FunctionContext(**filtered_obj)
             
             # Assign the rest of the object to the file_path key
-            qualified_name = file_path + ':' +  element_name
+            qualified_name = f"{file_path} : {element_name}"
             result[qualified_name] = func_context
 
             self.function_graph.add_node(qualified_name)

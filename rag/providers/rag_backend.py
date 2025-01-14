@@ -28,7 +28,7 @@ def format_context_for_llm(context: Dict[str, FunctionContext]) -> str:
             sections.append(
                 f"Function: {func.name}\n"
                 f"File: {func.file_path}\n"
-                f"{'Package: ' + func.package_name + chr(10) if func.package_name else ''}"
+                f"Package: {func.package_name} {chr(10) if func.package_name else ''}"
                 f"Signature: {func.signature}\n"
                 f"Calls: {', '.join(func.calls)}\n"
                 f"Called by: {', '.join(func.called_by)}\n"
