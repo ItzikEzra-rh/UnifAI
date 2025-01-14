@@ -7,14 +7,12 @@ from utils.celery.celery import send_task
 import traceback
 import asyncio
 
-@celery.task()
-def fetch_prompt_lab_generated_objects(data):
-    asyncio.run(process_elements(data))
 
-@celery.task()
-def fetch_reviewer_passed_generated_objects(data):
-    save_elements(data)
-
-@celery.task()
-def fetch_reviewer_failed_generated_objects(data):
-    pass
+@celery.task(bind=True, max_retries=16, default_retry_delay=30)  # 8 minutes
+def fetch_prompt_lab_generated_objects(self, batch):
+    try:
+        asyncio.run(process_elements(batch))
+    except Exception as e:
+        # Log the exception and retry the task
+        print(f"fetch_prompt_lab_generated_objects task failed: {e}. Retrying...")
+        raise self.retry(exc=e)

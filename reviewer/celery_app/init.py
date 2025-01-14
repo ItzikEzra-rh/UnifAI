@@ -16,6 +16,10 @@ def make_celery():
                         BROKER_PASSWORD='genie123',
                         backend=get_mongo_url(),
                         include=['celery_app.tasks'])
+    celery_app.conf.update(
+        task_acks_late=True,  # Acknowledge only after task completion
+        task_reject_on_worker_lost=True,  # Requeue tasks if the worker crashes
+    )
     return celery_app
 
 
