@@ -75,7 +75,8 @@ class VLLMModelLoader(AbstractModelLoader):
             self.chat_manager.max_new_tokens = max_new_tokens
 
         # Add user prompt to chat history (token limit check is handled by ChatManager)
-        self.chat_manager.add_message("user", prompt, session_id)
+        for role, role_text in prompt.items():
+            self.chat_manager.add_message(role, role_text, session_id)
 
         # Call OpenAI API with the entire chat history and enable streaming
         response = client.chat.completions.create(
