@@ -37,11 +37,11 @@ def load_model(model_id):
         return res
 
 
-def inference(prompt, temperature, max_new_tokens=4096, session_id=""):
+def inference(messages, temperature, max_new_tokens=4096, session_id=""):
     model = AbstractModelLoader.model_loader
     if not model:
         raise ValueError("No model loaded. Please load a model first.")
-    return model.infer(prompt, temperature, max_new_tokens=max_new_tokens, session_id=session_id)
+    return model.infer(messages, temperature, max_new_tokens=max_new_tokens, session_id=session_id)
 
 
 def stop_inference(session_id):

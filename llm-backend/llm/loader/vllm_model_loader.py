@@ -57,7 +57,7 @@ class VLLMModelLoader(AbstractModelLoader):
         print("vLLM server did not start within the timeout period.")
         return False
 
-    def infer(self, prompt, temperature, max_new_tokens=None, session_id=" "):
+    def infer(self, messages, temperature, max_new_tokens=None, session_id=" "):
         """Send a prompt to the model and stream the response."""
         self.stop_event[session_id] = threading.Event()
         self.stop_event[session_id].clear()  # Clear any previous stop event
@@ -75,8 +75,8 @@ class VLLMModelLoader(AbstractModelLoader):
             self.chat_manager.max_new_tokens = max_new_tokens
 
         # Add user prompt to chat history (token limit check is handled by ChatManager)
-        for role, role_text in prompt.items():
-            self.chat_manager.add_message(role, role_text, session_id)
+        for message in messages:
+            self.chat_manager.add_message(message["role"], message["content"], session_id)
 
         # Call OpenAI API with the entire chat history and enable streaming
         response = client.chat.completions.create(

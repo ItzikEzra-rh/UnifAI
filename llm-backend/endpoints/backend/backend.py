@@ -43,13 +43,13 @@ def inference(prompt, temperature=None, session_id=""):
 
 @backend_bp.route("/inference", methods=["POST"])
 @from_body({
-    "prompt": fields.Dict(data_key="prompt", required=True),
+    "messages": fields.List(data_key="messages", required=True),
     "temperature": fields.Str(data_key="temperature", required=False, default=None),
     "session_id": fields.Str(data_key="sessionId", required=False, default="N/A"),
     "max_gen_len": fields.Str(data_key="maxGenLen", required=False, default="4096"),
 })
-def inference_post(prompt, temperature, session_id, max_gen_len):
-    return Response(llm_provider.inference(prompt,
+def inference_post(messages, temperature, session_id, max_gen_len):
+    return Response(llm_provider.inference(messages,
                                            temperature,
                                            max_new_tokens=max_gen_len,
                                            session_id=session_id),
