@@ -2,7 +2,7 @@
 __pycache__/
 *.py[cod]
 *$py.class
-
+.idea
 # Virtual environment
 venv/
 .venv/
@@ -30,10 +30,9 @@ share/python-wheels/
 .installed.cfg
 *.egg
 MANIFEST
-
+.idea/*
 # Docker
 *.tar
-Dockerfile
 install_docker_gpu.sh
 
 # Unit test / coverage reports
@@ -48,7 +47,7 @@ cover/
 
 # Jupyter Notebook
 .ipynb_checkpoints
-
+*.iml
 # Environments
 .env
 .envrc

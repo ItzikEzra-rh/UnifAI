@@ -9,3 +9,6 @@ webargs
 flask_pymongo
 pandas
 requests
+networkx
+spacy
+lsof

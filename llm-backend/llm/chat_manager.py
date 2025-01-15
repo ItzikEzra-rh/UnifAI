@@ -10,14 +10,16 @@ class ChatManager:
 
     def add_message(self, role, content, session_id):
         """Add a message to the chat history and update the token count for the specific session."""
-        tokens = self.count_tokens(content)
+        tokens = self.count_tokens(self.tokenizer.apply_chat_template([{"role": role, "content": content}],
+                                                                      tokenize=False,
+                                                                      add_generation_prompt=True))
 
         if session_id not in self.chat_history:
             self.chat_history[session_id] = []
             self.total_tokens[session_id] = 0  # Initialize token count for new session
 
         self.chat_history[session_id].append({"role": role, "content": content})
-        self.total_tokens[session_id] += tokens + self.TOKEN_DELTA_PER_MESSAGE
+        self.total_tokens[session_id] += tokens
         self.print_in_box(
             f"Token size now after adding to chat for session {session_id}: {self.total_tokens[session_id]}")
 
@@ -40,7 +42,10 @@ class ChatManager:
                 break
 
             oldest_message = self.chat_history[session_id][0]
-            message_tokens = self.count_tokens(oldest_message["content"]) + self.TOKEN_DELTA_PER_MESSAGE
+            message_tokens = self.count_tokens(self.tokenizer.apply_chat_template(
+                [{"role": oldest_message["role"], "content": oldest_message["content"]}],
+                tokenize=False,
+                add_generation_prompt=True))
 
             if self.total_tokens[session_id] - message_tokens >= max_allowed_tokens:
                 self.chat_history[session_id].pop(0)

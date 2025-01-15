@@ -3,19 +3,23 @@ FROM registry.access.redhat.com/ubi9/ubi
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
-WORKDIR /app/repo/prompt_lab
+WORKDIR /app/
 
-# Install system dependencies
+# Install system dependencies, including a C compiler
 RUN dnf update -y && \
-    dnf install -y python3-pip python3-devel kernel-devel wget which numactl && \
+    dnf install -y python3-pip python3-devel kernel-devel wget which numactl gcc gcc-c++ make && \
     dnf clean all
 
 # Add application source code
-COPY . /app/repo/prompt_lab
-RUN chmod 755 /app/repo/prompt_lab/start-service.sh
+COPY . /app/
 
-# Install Python dependencies
-RUN pip install --upgrade pip && pip install -r /app/repo/prompt_lab/requirements.txt
+# Create a virtual environment and activate it
+RUN python3 -m venv /venv && \
+    /venv/bin/pip install --upgrade pip && \
+    /venv/bin/pip install .
 
-# Set entrypoint
-ENTRYPOINT ["/app/repo/prompt_lab/start-service.sh"]
+# Update PATH to use the virtual environment
+ENV PATH="/venv/bin:$PATH"
+
+# Set entrypoint for the CLI
+ENTRYPOINT ["promptlab"]
