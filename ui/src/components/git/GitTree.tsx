@@ -112,7 +112,7 @@ export function isPathInDb(dbList: {[key: string]: boolean}, node: string) {
 }
 
 const TreeButtons: React.FC<{ collapse: () => void; expand: () => void; checked: boolean; onCheckboxChange: () => void }> = ({ collapse, expand, checked, onCheckboxChange }) => (
-    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
     <FormControlLabel
       control={<Checkbox checked={checked} onChange={onCheckboxChange} />}
       label={checked ? 'Deselect All' : 'Select All'} // The label text
@@ -121,7 +121,7 @@ const TreeButtons: React.FC<{ collapse: () => void; expand: () => void; checked:
       <Button title="Collapse all" onClick={collapse} startIcon={<CollapseIcon />} className='tree-button' />
       <Button title="Expand all" onClick={expand} startIcon={<ExpandIcon />} className='tree-button' />
     </ButtonGroup>
-    </div>
+  </div>
 );
 
 /**
