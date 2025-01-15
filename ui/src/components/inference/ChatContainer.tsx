@@ -186,6 +186,7 @@ const ChatComponent: React.FC = () => {
   const [messageIsRated, setMessageIsRated] = useState<{ [key: number]: boolean }>({});
 
   const [historyChats, setHistoryChats] = useState<HistoryChat[]>([]);
+  const [pastChats, setPastChats] = useState<any>(null);
   const [currentChatId, setCurrentChatId] = useState<string>('current');
 
   const temperatureTooltip = `In LLM inference, temperature controls response randomness \n\n.
@@ -235,6 +236,20 @@ const ChatComponent: React.FC = () => {
             setLoadingModel(false); // Ensure loading state is false as the model is already loaded
           }
         }
+
+        const chatsResponse = await axiosLLM.get<ModelData[]>('/api/backend/getChats');
+        const historyChats: ModelData[] = chatsResponse.data.map((item: any) => ({
+          modelId: item._id,
+          modelName: item.name,
+          trainingName: item.name,
+          modelMaxSeqLen: item.context_length,
+          modelType: item.model_type,
+          project: item.project,
+          checkpoint: item?.checkpoint,
+          finetuneSteps: item?.finetune_steps,
+          promptTemplate: item?.prompt_template,
+        }));
+        setPastChats(historyChats);
       } catch (error) {
         console.error('Error fetching model data:', error);
       }

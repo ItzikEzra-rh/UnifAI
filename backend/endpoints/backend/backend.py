@@ -264,3 +264,40 @@ def retrieve_inference_counter_per_all_models():
         # Log the error and return error response
         logging.error(f"Error retreive the counter of all models: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
+    
+    
+@backend_bp.route("/getChats", methods=["GET"])
+@from_body({
+    "model_id":        fields.Str(required=True, data_key="modelId")
+})
+def get_chat_history_per_model(model_id):
+    try:
+        # Retrieve the counter representing 'inference usage' per all models under MongoDB collection
+        result = json.loads(json_util.dumps(retrieve_inference_counter_all()))
+
+        # Return success response
+        return jsonify({"status": "success", "response": result}), 201
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error retreive the counter of all models: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+@backend_bp.route("/saveChats", methods=["POST"])
+@from_body({
+    "model_id":        fields.Str(required=True, data_key="modelId"),
+    "session_id":      fields.Str(required=True, data_key="sessionId"),
+    "chat":            fields.List(fields.List(), required=True, data_key="chat")
+})
+def get_chat_history_per_model(model_id, session_id, chat):
+    try:
+        # Retrieve the counter representing 'inference usage' per all models under MongoDB collection
+        result = json.loads(json_util.dumps(retrieve_inference_counter_all()))
+
+        # Return success response
+        return jsonify({"status": "success", "response": result}), 201
+
+    except Exception as e:
+        # Log the error and return error response
+        logging.error(f"Error retreive the counter of all models: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
