@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Button, CircularProgress, IconButton, Checkbox } from '@mui/material';
+import { Box, Button, CircularProgress, IconButton, Checkbox, FormControlLabel } from '@mui/material';
 import axios from '../../http/axiosConfig';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import CollapseIcon from '@mui/icons-material/Remove';
@@ -111,11 +111,17 @@ export function isPathInDb(dbList: {[key: string]: boolean}, node: string) {
     return dbList[node.substring(1)];
 }
 
-const TreeButtons: React.FC<{ collapse: () => void; expand: () => void }> = ({ collapse, expand }) => (
-    <ButtonGroup variant="outlined" size="small">
-      <Button title="collapse all" onClick={collapse} startIcon={<CollapseIcon />} />
-      <Button title="expand all" onClick={expand} startIcon={<ExpandIcon />} />
+const TreeButtons: React.FC<{ collapse: () => void; expand: () => void; checked: boolean; onCheckboxChange: () => void }> = ({ collapse, expand, checked, onCheckboxChange }) => (
+    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+    <FormControlLabel
+      control={<Checkbox checked={checked} onChange={onCheckboxChange} />}
+      label={checked ? 'Deselect All' : 'Select All'} // The label text
+    />
+    <ButtonGroup>
+      <Button title="Collapse all" onClick={collapse} startIcon={<CollapseIcon />} className='tree-button' />
+      <Button title="Expand all" onClick={expand} startIcon={<ExpandIcon />} className='tree-button' />
     </ButtonGroup>
+    </div>
 );
 
 /**
@@ -247,6 +253,7 @@ const GitForm: React.FC<PropTypes> = ({
   const { gitUrl, gitCredentialKey, gitBranchName, gitFolderPath } = projectFormDetails;
   const [isOpen, setIsOpen] = useState(false);
   const [checkedDB, setCheckedDB] = useState<string[]>([]);
+  const [checkboxChecked, setCheckboxChecked] = useState(false);
   const [selectedNodeLabel, setSelectedNodeLabel] = useState("");
   const [selectedNodeContent, setSelectedNodeContent] = useState("");
   const [expanded, setExpanded] = useState<string[]>([]);
@@ -306,6 +313,16 @@ const GitForm: React.FC<PropTypes> = ({
     setExpanded(Array.prototype.concat(...nodes.map(item => accumulatePath(item))));
   };
 
+  const onCheckboxChange = () => {
+    setCheckboxChecked(!checkboxChecked);
+    if (checkboxChecked) {
+      setChecked([]);
+    } else {
+      const checkedValues = nodes.map(item => accumulatePath(item)).flat();
+      setChecked(checkedValues)
+    }
+  }
+
   useEffect(() => {
     if (triggerOpen) {
       open();
@@ -328,7 +345,7 @@ const GitForm: React.FC<PropTypes> = ({
         </div>
       ) : (
         <div className="form-section">
-          <TreeButtons collapse={() => setExpanded([])} expand={expandAll} />
+          <TreeButtons collapse={() => setExpanded([])} expand={expandAll} checked={checkboxChecked} onCheckboxChange={onCheckboxChange} />
           <Box sx={{maxHeight: "400px", overflow: "auto", border: "1px solid #ccc", borderRadius: "4px"}}>
             <SimpleTreeView
               multiSelect
