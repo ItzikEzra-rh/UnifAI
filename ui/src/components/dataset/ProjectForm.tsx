@@ -8,7 +8,7 @@ import { FormField, FormDropdown, FormCheckbox, FormFileUpload } from '../shared
 import { Box, Button, Step, StepContent, Stepper } from '@mui/material'; 
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
-import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import GitForm from '../git/GitTree';
 import SuccessMessage from '../shared/SuccessMessage'
 import '../../styles.css';
@@ -142,10 +142,10 @@ const ProjectForm: React.FC = () => {
     };
 
     return (
+    <>     
+    {formSubmitted ? 
+      <SuccessMessage /> : 
       <Box className="form-container">
-      {formSubmitted ? (
-        <SuccessMessage />
-      ) : (
         <Stepper activeStep={activeStep} orientation="vertical">
           <Step>
             <CustomStepLabel StepIconComponent={(props) => <CustomStepIcon {...props} />}>
@@ -216,11 +216,10 @@ const ProjectForm: React.FC = () => {
                 <FormCheckbox name="datasetGradingUpgrade" label="Dataset Quality Upgrade" control={control} errors={errors} />
                 <FormFileUpload name="parserFile" label="Upload Parser File" control={control} errors={errors} onFileUpload={handleFileUpload} />
                 {uploadedCode && (
-                    <div className="code-visualizer">
-                        <SyntaxHighlighter language="python" style={github}>
-                            {uploadedCode}
-                        </SyntaxHighlighter>
-                    </div>)}
+                  <SyntaxHighlighter className="code-visualizer" language="python" style={atomOneDark}>
+                      {uploadedCode}
+                  </SyntaxHighlighter>
+                )}
                 <div style={{display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '10px'}}>
                   <Button type="button" variant="contained" className="end-button" onClick={handleBackClick}>
                     Back
@@ -233,8 +232,8 @@ const ProjectForm: React.FC = () => {
             </StepContent>
           </Step>
         </Stepper>
-      )}
-    </Box>
+      </Box>}
+    </>
     );
 };
 
