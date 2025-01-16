@@ -1,1 +1,2 @@
 include src/prompt_lab/config/config.json
+recursive-include src/ *.json

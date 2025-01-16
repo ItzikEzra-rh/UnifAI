@@ -2,7 +2,7 @@
   "model_config": {
     "tokenizer_path": "${REVIEWER_MODEL_HF_ID}",
     "model_name": "${REVIEWER_MODEL_HF_ID}",
-    "api_url": "http://0.0.0.0:8000/v1/completions",
+    "api_url": "http://$VLLM_IP:$VLLM_PORT/v1/completions",
     "max_generation_length": ${REVIEWER_MAX_GENERATION_LENGTH},
     "max_context_length": ${REVIEWER_MAX_CONTEXT_LENGTH},
     "batch_size": ${REVIEWER_BATCH_SIZE}
