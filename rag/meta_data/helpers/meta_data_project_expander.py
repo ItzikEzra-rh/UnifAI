@@ -13,6 +13,7 @@ class MetaDataProjectExpander:
         self.built_in_keys = built_in_keys
         self.exclude_types = exclude_types 
         self.project_programming_languages = project_programming_languages
+        self.required_parsed_elements = list(filter(lambda ele: not ele["element_type"] in self.exclude_types, self.parsed_elements))
 
         # Registeration of different extractors expected to be handled from __init__ file of the MetaDataExtractor class
         MetaDataExtractorBase.register_extractor("kubevirt", KubevirtMetaDataExtractor)
@@ -22,8 +23,7 @@ class MetaDataProjectExpander:
         """
         Add metadata to each object in the parsed objects list.
         """
-        required_parsed_elements = filter(lambda ele: not ele["element_type"] in self.exclude_types, self.parsed_elements)
-        for element in required_parsed_elements:
+        for element in self.required_parsed_elements:
             metadata = defaultdict(list)
 
             for key in self.built_in_keys: 
@@ -48,4 +48,4 @@ class MetaDataProjectExpander:
         """
         Placeholder for adding parsed objects to the database.
         """
-        result = Collections.by_name('parsed_objects').insert_many(self.parsed_elements)
+        result = Collections.by_name('parsed_objects').insert_many(self.required_parsed_elements)

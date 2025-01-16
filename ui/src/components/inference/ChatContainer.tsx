@@ -366,9 +366,44 @@ const ChatComponent: React.FC = () => {
         setMessages([]);
       }
 
-      const queryParams = new URLSearchParams({ prompt: formattedText, temperature: temperature.toString(), sessionId: sessionId }).toString();
-      const response = await fetch(`${AXIOS_LLM_IP}/api/backend/inference?${queryParams}`, {
-        method: 'GET',
+      let additionalContext = ""
+      // If current loaded model support RAG we should enrich the LLM with relevant context
+      if (selectedModel?.isRagEnabled) {
+        const queryRetrievalpayload = {
+          text: formattedText,
+          projectName: selectedModel?.project,
+          modelName: selectedModel?.modelName,
+          modelId: selectedModel?.modelId
+        }
+
+        const queryRetrievalResponse = await axiosBE.get('/api/rag/queryRetrieval', { params: queryRetrievalpayload });
+        const relevantCodeSnippetts = queryRetrievalResponse.data.result
+
+        const metadataRetrievalpayload = {
+          relevantMetadata: relevantCodeSnippetts,
+          projectName: selectedModel?.project,
+        }
+
+        const metadataRetrievalResponse = await axiosBE.post('/api/rag/metadataRetrieval', metadataRetrievalpayload)
+        additionalContext = metadataRetrievalResponse.data.result
+      }
+
+      const promptMessages = [{"role": "system",  "content": `Please answer the question in the context of ${selectedModel?.project}`},
+                              {"role": "context", "content": `${additionalContext}`},
+                              {"role": "user",    "content": `${formattedText}`}]
+      
+      const inferencePayload = {
+        messages: promptMessages,
+        temperature: temperature.toString(),
+        sessionId: sessionId
+      }
+
+      const response = await fetch(`${AXIOS_LLM_IP}/api/backend/inference`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json', // Specify that you're sending JSON
+        },
+        body: JSON.stringify(inferencePayload),
       });
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);

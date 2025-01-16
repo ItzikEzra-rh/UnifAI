@@ -151,7 +151,9 @@ class CodeContextExtractor:
         retreived_function_contexts = self.function_contexts if self.function_contexts else self.function_contexts_dict_builder()
         
         for func_name, file_path in function_names:
-            qualified_name = f"{file_path}:{func_name}"
+            file_path_element = Path(file_path)
+            realtive_file_path = str(Path(*file_path_element.parts[file_path_element.parts.index(self.project_name) + 1:]))
+            qualified_name = f"{realtive_file_path}:{func_name}"
             
             if qualified_name in retreived_function_contexts:
                 # Get the main function context
