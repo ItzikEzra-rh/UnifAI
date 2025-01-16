@@ -40,7 +40,7 @@ global:
 
 
   # (int) Max retries, when prompt failed.
-  max_retry: 3
+  max_retry: 
 
   # Hugging Face model identifier for the model to be used. 
   # user can use different Model , one for prompt and other for reviewer.
