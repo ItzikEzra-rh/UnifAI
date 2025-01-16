@@ -18,7 +18,7 @@ The deployment includes the following components:
 ![Alt text](./diagram.png)
 
 ## deployment steps:
-Before starting the deployment process, ensure you update the `values.yaml` file with your specific configuration requirements, including service ports, storage settings, and resource limits.
+Before starting the deployment process, ensure you update the `values.yaml` file with your specific configuration requirements.
 
 ### Steps:
 
@@ -37,6 +37,13 @@ Monitor the deployment with:
 helm status <deployment_name>
 kubectl get pods
 ```
+## Deployment flow
+
+You can verify the operation as follows:
+
+- Check the logs in the Launchpad pod ,Search for the log entry:
+  "Process completed successfully."
+- Validate that the generated JSON file has been uploaded to the specified repository on Huggingface.
 
 ## Cleanup
 
