@@ -7,6 +7,7 @@ import NewChat from './NewChat.png';
 import UnloadModal from './UnloadModal.png'; 
 import ViewHeadlineIcon from '@mui/icons-material/ViewHeadline';
 import { ChatMessage } from "./ChatContainer";
+import { title } from "process";
 
 interface ChatSidebarProps {
   drawerOpen: boolean;
@@ -33,26 +34,49 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
   };
     
   const ChatToolTip = ({ data }: { data: ModelData[] }) => {
+    const columnMap = [
+      {title: "Model Name", value: "modelName"},
+      {title: "Training Name", value: "trainingName"},
+      {title: "Model Max Seq Len", value: "modelMaxSeqLen"}
+    ]
+
     return (
       <div className="chat-tooltip">
         {data.map((row, index) => (
           <div key={index}>
-            <div>
-              <strong>Model Name: </strong>
-              {row.modelName || 'N/A'}
-            </div>
-            <div>
-              <strong>Training Name: </strong>
-              {row.trainingName || 'N/A'}
-            </div>
-            <div>
-              <strong>Model Max Seq Len: </strong>
-              {row.modelMaxSeqLen || 'N/A'}
-            </div>
+            {columnMap.map((column, colIndex) => (
+              <div key={colIndex}>
+                <strong>{column.title}: </strong> {(row as any)[column.value] || 'N/A'}
+              </div>
+            ))}
           </div>
         ))}
       </div>
     );
+  };
+
+  const TemperatureTool = () => {
+    return (
+      <div className="temp-slider">
+        <Tooltip title={temperatureTooltip} arrow placement="top">
+          <Typography id="temperature-slider" variant="caption" gutterBottom style={{ cursor: 'help' }}>
+            Temperature: {temperature.toFixed(1)}
+          </Typography>
+        </Tooltip>
+        <Slider
+          value={temperature}
+          onChange={handleTemperatureChange}
+          aria-labelledby="temperature-slider"
+          valueLabelDisplay="auto"
+          sx={{color: "red"}}
+          step={0.1}
+          marks
+          min={0}
+          max={2}
+          size="small"
+        />
+      </div>
+    )
   };
 
   const temperatureTooltip = `In LLM inference, temperature controls response randomness \n\n.
@@ -67,7 +91,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
         <ViewHeadlineIcon sx={{ color: 'red' }} />
       </IconButton>
       <Drawer className="drawer" variant="persistent" open={drawerOpen} onClose={toggleDrawer}>
-        <div style={{ boxSizing: 'border-box', margin: '10px' }}>
+        <div style={{ boxSizing: 'border-box' }}>
           <div className="chat-top-buttons">
             <IconButton onClick={toggleDrawer} title="Close Sidebar" sx={{ alignSelf: 'flex-start' }}>
               <ViewHeadlineIcon sx={{ color: 'red' }} />
@@ -82,34 +106,22 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
             </Box>
           </div>
           <Divider orientation="horizontal" flexItem />
-          <ChatToolTip data={data}/>
-          <Divider orientation="horizontal" flexItem />
-          <div className="temp-slider">
-            <Tooltip title={temperatureTooltip} arrow placement="top">
-              <Typography id="temperature-slider" variant="caption" gutterBottom style={{ cursor: 'help' }}>
-                Temperature: {temperature.toFixed(1)}
-              </Typography>
-            </Tooltip>
-            <Slider
-              value={temperature}
-              onChange={handleTemperatureChange}
-              aria-labelledby="temperature-slider"
-              valueLabelDisplay="auto"
-              sx={{color: "red"}}
-              step={0.1}
-              marks
-              min={0}
-              max={2}
-              size="small"
-            />
+          <div className="inner-drawer">
+            <ChatToolTip data={data}/>
           </div>
           <Divider orientation="horizontal" flexItem />
-          <ChatHistory
-            isStreaming={isStreaming}
-            onChatSelect={handleChatSelect}
-            currentChatId={currentChatId}
-            historyChats={historyChats}
-          />
+          <div className="inner-drawer">
+            <TemperatureTool />
+          </div>
+          <Divider orientation="horizontal" flexItem />
+          <div className="inner-drawer">
+            <ChatHistory
+              isStreaming={isStreaming}
+              onChatSelect={handleChatSelect}
+              currentChatId={currentChatId}
+              historyChats={historyChats}
+            />
+          </div>
         </div>
       </Drawer>
     </div>
