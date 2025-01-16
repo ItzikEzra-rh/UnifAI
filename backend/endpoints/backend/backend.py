@@ -3,17 +3,23 @@ import os
 import json
 from flask import request, Blueprint
 from flask import jsonify, Response
+from marshmallow import Schema
 from webargs import fields
 from bson import json_util
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
-from providers.backend import get_test_content_from_gitlab, list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
-                              insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating
+from providers.backend import get_chat_history, get_test_content_from_gitlab, list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
+                              insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating, update_chat_history, update_current_chat_history
 from providers.backend import list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
                               insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating, delete_prompt, add_inference_counter_per_each_model, \
                               retrieve_inference_counter, retrieve_inference_counter_all
 
 backend_bp = Blueprint("backend", __name__)
+
+class MessageSchema(Schema):
+    role = fields.Str(required=True)  # The sender of the message, either 'user' or 'bot'
+    content = fields.Str(required=True)  # The actual content of the message
+
 
 @backend_bp.route("/", methods=["GET"])
 def sanity_check():
@@ -266,6 +272,21 @@ def retrieve_inference_counter_per_all_models():
         return jsonify({"status": "error", "message": str(e)}), 500
     
     
+@backend_bp.route("/updateCurrentChat", methods=["POST"])
+@from_body({
+    "model_id":        fields.Str(required=True, data_key="modelId"),
+    "session_id":      fields.Str(required=True, data_key="sessionId"),
+    "chat":            fields.List(fields.Nested(MessageSchema), required=True, data_key="chat")
+})
+def update_current_chat(model_id, session_id, chat):
+    try:
+        result = update_current_chat_history(model_id, session_id, chat)
+        return jsonify({"status": "success", "response": result}), 201
+
+    except Exception as e:
+        logging.error(f"Error retreive the counter of all models: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
 @backend_bp.route("/getChats", methods=["GET"])
 @from_body({
     "model_id":        fields.Str(required=True, data_key="modelId")
@@ -273,26 +294,7 @@ def retrieve_inference_counter_per_all_models():
 def get_chat_history_per_model(model_id):
     try:
         # Retrieve the counter representing 'inference usage' per all models under MongoDB collection
-        result = json.loads(json_util.dumps(retrieve_inference_counter_all()))
-
-        # Return success response
-        return jsonify({"status": "success", "response": result}), 201
-
-    except Exception as e:
-        # Log the error and return error response
-        logging.error(f"Error retreive the counter of all models: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-    
-@backend_bp.route("/saveChats", methods=["POST"])
-@from_body({
-    "model_id":        fields.Str(required=True, data_key="modelId"),
-    "session_id":      fields.Str(required=True, data_key="sessionId"),
-    "chat":            fields.List(fields.List(), required=True, data_key="chat")
-})
-def get_chat_history_per_model(model_id, session_id, chat):
-    try:
-        # Retrieve the counter representing 'inference usage' per all models under MongoDB collection
-        result = json.loads(json_util.dumps(retrieve_inference_counter_all()))
+        result = get_chat_history(model_id)
 
         # Return success response
         return jsonify({"status": "success", "response": result}), 201

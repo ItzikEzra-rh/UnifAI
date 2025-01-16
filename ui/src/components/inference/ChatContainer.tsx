@@ -236,7 +236,7 @@ const ChatComponent: React.FC = () => {
             setLoadingModel(false); // Ensure loading state is false as the model is already loaded
           }
         }
-
+        
         const chatsResponse = await axiosLLM.get<ModelData[]>('/api/backend/getChats');
         const historyChats: ModelData[] = chatsResponse.data.map((item: any) => ({
           modelId: item._id,
@@ -263,6 +263,26 @@ const ChatComponent: React.FC = () => {
       axiosLLM.get('/api/backend/clearChatHistory', { params: { sessionId: sessionIdRef.current } });
     };
   }, []);
+
+  const updateCurrentChat = async (messages: ChatMessage[], sessionId: string, modelId: string | any) => {
+    try {
+      const formattedMessages = messages.map((message) => ({
+        role: message.sender === 'user' ? 'user' : 'assistant',
+        content: message.text,
+      }));
+  
+      const payload = {
+        sessionId,
+        modelId,
+        chat: formattedMessages,
+      };
+      console.log('Payload:', payload);
+      await axiosBE.post('/api/backend/updateCurrentChat', payload);
+      console.log('Chat updated successfully');
+    } catch (error) {
+      console.error('Error updating chat:', error);
+    }
+  };
 
   const unloadModel = () => {
     handleStop();
@@ -428,6 +448,7 @@ const ChatComponent: React.FC = () => {
 
             lastMessage.text = outputText.trim();
           }
+          updateCurrentChat(updatedMessages, sessionId, selectedModel?.modelId); // Update the chat in the DB
           return updatedMessages;
         });
       }
@@ -462,10 +483,14 @@ const ChatComponent: React.FC = () => {
       sender: 'user',
     };
 
-    setMessages([...messages, userMessage]);
+    setMessages((prevMessages) => {
+      const updatedMessages = [...prevMessages, userMessage];
+      updateCurrentChat(updatedMessages, sessionId, selectedModel.modelId); // Update the chat in the DB
+      return updatedMessages;
+    });
+  
     setIsStreaming(true);
-
-    sendQuestion(text)
+    sendQuestion(text);
   };
 
   const handleSaveClick = (userLatestMessage: string, promptLatestMessage: string) => {

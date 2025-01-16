@@ -1,3 +1,4 @@
+from pymongo import ReturnDocument
 from be_utils.gitlab import GitlabAPI
 from be_utils.db.db import mongo, Collections, db
 import uuid
@@ -204,3 +205,46 @@ def retrieve_inference_counter_all():
     """
     result = Collections.by_name('models').find()
     return list(result)
+
+@mongo
+def get_chat_history(model_id):
+    """
+    :return:
+    """
+    result = Collections.by_name('chatHistory').find({'modelId': model_id})
+    return list(result)
+
+@mongo
+def update_chat_history(model_id, session_id, chat):
+    """
+    :return:
+    """
+    result = Collections.by_name('chatHistory').insert_one({'modelId': model_id, 'sessionId': session_id, 'chat': chat})
+    return list(result)
+
+@mongo
+def update_current_chat_history(model_id, session_id, chat):
+    """
+    This function updates the chat history for a given model and session.
+    If a chat history exists, it updates it; otherwise, it creates a new record.
+    """
+    chat_history = Collections.by_name('chatHistory')
+    existing_chat = chat_history.find_one({"model_id": model_id, "session_id": session_id})
+    
+    if existing_chat:
+        # If a chat history exists, update it
+        result = chat_history.update_one(
+            {"model_id": model_id, "session_id": session_id}, 
+            {"$set": {"chat": chat}} 
+        )
+        print(f"Updated chat history for session: {session_id}.")
+    else:
+        # If this is the first messages in this session, create a new one
+        result = chat_history.insert_one({
+            "model_id": model_id,
+            "session_id": session_id,
+            "chat": chat
+        })
+        print(f"Created new chat history: {result.inserted_id}")
+
+    return result
