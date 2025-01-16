@@ -9,7 +9,7 @@ import FolderIcon from '@mui/icons-material/Folder';
 import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';  
 import "./GitTree.css";
 import SyntaxHighlighter from 'react-syntax-highlighter';
-import { github } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
 interface ProjectFormDetails {
   gitUrl: string;
@@ -220,14 +220,13 @@ const TreeNode: React.FC<TreeNodeProps> = (({node, checked, setChecked, selected
           projectFormDetails={projectFormDetails}
         />
           {childNode.label == selectedNodeLabel  && testContentOpen &&
-          ( selectedNodeContent ? <div className="code-visualizer">
-            <SyntaxHighlighter language={testsCodeFramework} style={github}>
+          ( selectedNodeContent ? 
+            <SyntaxHighlighter className="code-visualizer" language="python" style={atomOneDark}>
                 {selectedNodeContent}
-            </SyntaxHighlighter>
-        </div> : <div style={{ display: 'flex', justifyContent: 'center' }}>
-          <CircularProgress sx={{ color: "red" }} />
-        </div>)}
-          
+            </SyntaxHighlighter> :
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <CircularProgress sx={{ color: "red" }} />
+            </div>)}
         </>
       ))}
     </TreeItem>
