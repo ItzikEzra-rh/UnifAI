@@ -3,15 +3,13 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from '@chatscope/chat-ui-kit-react';
 import { useForm } from 'react-hook-form';
-import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography, Box } from '@mui/material';
+import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography, Box, Drawer, Divider } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
 import StarIcon from '@mui/icons-material/Star';
 import AutorenewIcon from '@mui/icons-material/Replay';
 import { FormDropdown } from '../shared/FormFields';
-import { Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel } from '@mui/material';
-import { useTable, useSortBy, Column } from 'react-table';
 import { ModelData } from '../types/constants'
 import ReactLoading from 'react-loading';
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
@@ -23,6 +21,7 @@ import { v4 as uuidv4 } from 'uuid';
 import '../../styles.css';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism-okaidia.css';
+import { ChatSidebar } from './ChatSidebar';
 
 interface FormData {
   project: string;
@@ -187,12 +186,6 @@ const ChatComponent: React.FC = () => {
 
   const [historyChats, setHistoryChats] = useState<HistoryChat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string>('current');
-
-  const temperatureTooltip = `In LLM inference, temperature controls response randomness \n\n.
-  Low temperature (e.g., 0.1): Yields more focused, predictable outputs by favoring the most likely tokens, ideal for accuracy\n.
-  High temperature (e.g., 1.0+): Promotes diversity and creativity by allowing less common tokens, good for generating varied content. However, very high values may lead to incoherence\n.
-  Temperature 1.0: Provides balanced responses based on token probabilities without added randomness\n.
-  In short, lower temperatures yield precise outputs, while higher temperatures add creativity and variation.`;
 
   useEffect(() => {
     // Check if there's already a session_id in sessionStorage
@@ -594,67 +587,13 @@ const ChatComponent: React.FC = () => {
     }
   };
 
-  const columns: Column<ModelData>[] = React.useMemo(
-    () => [
-      { Header: 'Model Name', accessor: 'modelName' },
-      { Header: 'Training Name', accessor: 'trainingName' },
-      { Header: 'Model Max Seq Len', accessor: 'modelMaxSeqLen' },
-    ],
-    []
-  );
+  
 
-  const ChatToolTip = () =>
-    <Table {...getTableProps()} className="table-chat-container">
-      <TableHead>
-        {headerGroups.map(headerGroup => (
-          <TableRow {...headerGroup.getHeaderGroupProps()}>
-            {headerGroup.headers.map((column: any) => (
-              <TableCell {...column.getHeaderProps(column.getSortByToggleProps())} sx={{ borderRight: '1px solid #ddd' }}>
-                <TableSortLabel
-                  active={column.isSorted}
-                  direction={column.isSortedDesc ? 'desc' : 'asc'}
-                >
-                  {column.render('Header')}
-                </TableSortLabel>
-              </TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableHead>
-      <TableBody {...getTableBodyProps()}>
-        {rows.map(row => {
-          prepareRow(row);
-          return (
-            <TableRow {...row.getRowProps()}>
-              {row.cells.map(cell => (
-                <TableCell
-                  {...cell.getCellProps()}
-                  className="table-cell"
-                  sx={{ borderRight: '1px solid #ddd' }}
-                  onMouseEnter={(e) => {
-                    const columnIndex = cell.column.id;
-                    const cells = document.querySelectorAll(`td[data-column-id="${columnIndex}"]`);
-                    cells.forEach(cell => (cell as HTMLElement).style.backgroundColor = 'rgba(46, 120, 199, 0.2)');
-                  }}
-                  onMouseLeave={(e) => {
-                    const columnIndex = cell.column.id;
-                    const cells = document.querySelectorAll(`td[data-column-id="${columnIndex}"]`);
-                    cells.forEach(cell => (cell as HTMLElement).style.backgroundColor = '');
-                  }}
-                  data-column-id={cell.column.id}
-                >
-                  {cell.render('Cell')}
-                </TableCell>
-              ))}
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-
-  const data = React.useMemo(() => selectedModel ? [selectedModel] : [], [selectedModel]);
-  const { getTableProps, getTableBodyProps, headerGroups, rows, prepareRow } = useTable({ columns, data }, useSortBy);
-
+  
+  const data = React.useMemo(() => (selectedModel ? [selectedModel] : []), [selectedModel]);
+  
+  
+  
   const ReformatText = (text: string) => {
     const regularText = (line: string, type: RegExp, style: string) => {
       return line.replace(type, (_, text) => `<${style}>${text}</${style}>` ) + '\n';
@@ -732,40 +671,19 @@ const ChatComponent: React.FC = () => {
       {loadingModel ? (
         <LoadingOverlay />
       ) : selectedModel ? (
-        <>
-          {/* Custom section for displaying model information */}
-          <div className="chat-top-buttons">
-            <div className="temp-slider">
-              <Tooltip title={temperatureTooltip} arrow placement="top">
-                <Typography id="temperature-slider" variant="caption" gutterBottom style={{ cursor: 'help' }}>
-                  Temperature: {temperature.toFixed(1)}
-                </Typography>
-              </Tooltip>
-              <Slider
-                value={temperature}
-                onChange={handleTemperatureChange}
-                aria-labelledby="temperature-slider"
-                valueLabelDisplay="auto"
-                sx={{color: "red"}}
-                step={0.1}
-                marks
-                min={0}
-                max={2}
-                size="small"
-              />
-            </div>
-            <Button variant="contained" className='end-button' onClick={clearChat} disabled={isStreaming} >
-              Start New Chat
-            </Button>
-            <Button variant="contained" className='end-button' onClick={unloadModel} >
-              Unload Model
-            </Button>
-          </div>
-          <>
-            <ChatToolTip />
-          </>
-          <div style={{position: 'relative', maxHeight: '80%', height: '100%', display: 'flex', gap: '16px'}}>
-            <MainContainer style={{padding: '10px', marginTop: '20px', flexGrow: 1}}>
+        <div style={{height: '100%', display: 'flex', flexDirection: 'row'}}>
+          <ChatSidebar 
+            data={data} 
+            temperature={temperature} 
+            handleTemperatureChange={handleTemperatureChange}
+            clearChat={clearChat}
+            unloadModel={unloadModel}
+            isStreaming={isStreaming}
+            handleChatSelect={handleChatSelect}
+            currentChatId={currentChatId}
+            historyChats={historyChats}
+          />
+            <MainContainer style={{height: '99%', padding: '10px', flexGrow: 1}}>
               <ChatContainer>
                 <MessageList>
                   {messages.map((message, idx) => (
@@ -835,12 +753,6 @@ const ChatComponent: React.FC = () => {
                 />
               </ChatContainer>
             </MainContainer>
-            <ChatHistory
-              isStreaming={isStreaming}
-              onChatSelect={handleChatSelect}
-              currentChatId={currentChatId}
-              historyChats={historyChats}
-            />
             <RatingModal
               open={isRatingModalOpen}
               onClose={handleRatingModalClose}
@@ -863,7 +775,7 @@ const ChatComponent: React.FC = () => {
               </DialogActions>
             </Dialog>
           </div>
-        </>) : (<ModelSelection models={models} onSelectModel={handleModelSelect} />)
+       ) : (<ModelSelection models={models} onSelectModel={handleModelSelect} />)
       }
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar />
     </div>
