@@ -661,11 +661,11 @@ const ChatComponent: React.FC = () => {
   }
 
   return (
-    <div className="chat-container-wrapper">
+    <>
       {loadingModel ? (
         <LoadingOverlay />
       ) : selectedModel ? (
-        <div style={{height: '100%', display: 'flex', flexDirection: 'row'}}>
+        <div className="chat-container-wrapper">
           <ChatSidebar 
             drawerOpen={drawerOpen}
             setDrawerOpen={setDrawerOpen}
@@ -773,10 +773,12 @@ const ChatComponent: React.FC = () => {
             </DialogActions>
           </Dialog>
         </div>
-       ) : (<ModelSelection models={models} onSelectModel={handleModelSelect} />)
-      }
-      <ToastContainer position="top-right" autoClose={5000} hideProgressBar />
-    </div>
+       ) : (
+        <div className="model-selection-wrapper">
+          <ModelSelection models={models} onSelectModel={handleModelSelect} />
+        </div>
+      )} <ToastContainer position="top-right" autoClose={5000} hideProgressBar />
+    </>
   );
 };
 

@@ -464,12 +464,19 @@ body, html, #root {
   z-index: 1000;
 }
 
+.model-selection-wrapper {
+  height: calc(100% - 10px);
+  border: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+}
+
 .chat-container-wrapper {
   height: calc(100% - 10px);
   border: 1px solid #ccc;
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 .chat-top-buttons {
