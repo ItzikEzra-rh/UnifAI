@@ -8,6 +8,7 @@ from rag.code_graph.language_parsers.language_parser import FunctionContext, Lan
 from rag.code_graph.language_parsers.go_parser import GoParser
 from rag.code_graph.language_parsers.python_parser import PythonParser
 from be_utils.db.db import mongo, Collections, db
+from rag.be_utils.utils import time_execution
 
 class CodeContextExtractor:
     def __init__(self, project_name: str, repo_path: str = '', languages: List[str] = [], project_repo_path: str = ''):
@@ -99,17 +100,18 @@ class CodeContextExtractor:
             func_context = FunctionContext(**filtered_obj)
             
             # Assign the rest of the object to the file_path key
-            qualified_name = f"{file_path} : {element_name}"
+            qualified_name = f"{file_path}:{element_name}"
             result[qualified_name] = func_context
 
-            self.function_graph.add_node(qualified_name)
+        #TODO: Section below is commented out till we will leverage graph relationships logic into the context enrichment
+        #     self.function_graph.add_node(qualified_name)
                     
-            # Add edges for function calls
-            for call in func_context.calls:
-                self.function_graph.add_edge(qualified_name, call)
+        #     # Add edges for function calls
+        #     for call in func_context.calls:
+        #         self.function_graph.add_edge(qualified_name, call)
 
-        # Update called_by relationships
-        self._update_caller_relationships()
+        # # Update called_by relationships
+        # self._update_caller_relationships()
         return result 
 
     def _update_caller_relationships(self):
@@ -136,6 +138,7 @@ class CodeContextExtractor:
         # print("Nodes:", self.function_graph.nodes())
         # print("Edges:", self.function_graph.edges())
         
+    @time_execution
     @mongo
     def get_context_for_functions(self, function_names: List[Tuple[str, str]]) -> Dict[str, FunctionContext]:
         """
@@ -154,12 +157,13 @@ class CodeContextExtractor:
                 # Get the main function context
                 context[qualified_name] = retreived_function_contexts[qualified_name]
 
+                #TODO: Section below is commented out till we will leverage graph relationships logic into the context enrichment
                 # Get immediate neighbors
-                neighbors = list(self.function_graph.predecessors(qualified_name))
-                neighbors.extend(self.function_graph.successors(qualified_name))
+                # neighbors = list(self.function_graph.predecessors(qualified_name))
+                # neighbors.extend(self.function_graph.successors(qualified_name))
                 
-                for neighbor in neighbors:
-                    if neighbor in retreived_function_contexts:
-                        context[neighbor] = retreived_function_contexts[neighbor]
+                # for neighbor in neighbors:
+                #     if neighbor in retreived_function_contexts:
+                #         context[neighbor] = retreived_function_contexts[neighbor]
         
         return context
