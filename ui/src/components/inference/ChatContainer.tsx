@@ -679,7 +679,7 @@ const ChatComponent: React.FC = () => {
             currentChatId={currentChatId}
             historyChats={historyChats}
           />
-          <MainContainer style={{width: drawerOpen ? '90%' : '100%', marginLeft: drawerOpen ? '13%' : '0%'}}>
+          <MainContainer style={{width: drawerOpen ? '90%' : '100%', marginLeft: drawerOpen ? '13%' : '0%', padding: '10px'}}>
             <ChatContainer>
               <MessageList>
                 {messages.map((message, idx) => (
