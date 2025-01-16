@@ -28,7 +28,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
   console.log(isStreaming)
   console.log(historyChats)
   return (
-    <Paper elevation={3} sx={{ width: '20%', marginTop: '20px', height: '100%', display: 'flex', flexDirection: 'column',}}>
+    <Paper elevation={3} sx={{ width: '95%', marginTop: '10px',display: 'flex', flexDirection: 'column',}}>
       <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
         <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <HistoryIcon /> Chat History
