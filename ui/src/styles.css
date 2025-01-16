@@ -471,7 +471,7 @@ body, html, #root {
 }
 
 .chat-top-buttons {
-  width: 100%;
+  width: 108%;
   display: flex;
   justify-content: space-between;
 }
@@ -479,6 +479,7 @@ body, html, #root {
 .temp-slider {
   display: flex;
   width: 100%;
+  margin-top: '10px';
   flex-direction: column;
   align-items: center;
   border: 0px;

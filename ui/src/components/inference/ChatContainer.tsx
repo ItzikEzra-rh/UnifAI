@@ -666,6 +666,8 @@ const ChatComponent: React.FC = () => {
     }
   }
 
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
   return (
     <div className="chat-container-wrapper">
       {loadingModel ? (
@@ -673,6 +675,8 @@ const ChatComponent: React.FC = () => {
       ) : selectedModel ? (
         <div style={{height: '100%', display: 'flex', flexDirection: 'row'}}>
           <ChatSidebar 
+          drawerOpen={drawerOpen}
+          setDrawerOpen={setDrawerOpen}
             data={data} 
             temperature={temperature} 
             handleTemperatureChange={handleTemperatureChange}
@@ -683,7 +687,13 @@ const ChatComponent: React.FC = () => {
             currentChatId={currentChatId}
             historyChats={historyChats}
           />
-            <MainContainer style={{height: '99%', padding: '10px', flexGrow: 1}}>
+            {/* <MainContainer style={{height: '99%', padding: '10px', flexGrow: 1}}> */}
+            {/* <MainContainer style={{width: '70%', alignSelf: 'flex-end'}}> */}
+            <MainContainer style={{
+              width: drawerOpen ? '90%' : '100%', // 70% when the drawer is open, 100% when closed
+              marginLeft: drawerOpen ? '8%' : '0%', // Adjust alignment
+              transition: 'width 0.3s ease', // Smooth transition for the width change
+            }}>
               <ChatContainer>
                 <MessageList>
                   {messages.map((message, idx) => (

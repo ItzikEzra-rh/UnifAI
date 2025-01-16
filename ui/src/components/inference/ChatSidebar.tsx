@@ -8,6 +8,8 @@ import HistoryIcon from '@mui/icons-material/History';
 import ViewHeadlineIcon from '@mui/icons-material/ViewHeadline';
 
 interface ChatSidebarProps {
+  drawerOpen: boolean;
+  setDrawerOpen: any;
   data: any;
   temperature: any;
   handleTemperatureChange: any;
@@ -21,9 +23,9 @@ interface ChatSidebarProps {
 
 
 
-export const ChatSidebar: React.FC<ChatSidebarProps> = ({ data, temperature, 
+export const ChatSidebar: React.FC<ChatSidebarProps> = ({ drawerOpen, setDrawerOpen, data, temperature, 
     handleTemperatureChange, clearChat, unloadModel, isStreaming, handleChatSelect, currentChatId, historyChats}) => {
-      const [drawerOpen, setDrawerOpen] = useState(false);
+      
 
       const toggleDrawer = () => {
         setDrawerOpen(!drawerOpen);
@@ -51,6 +53,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ data, temperature,
                 width: '88%',
                 marginTop: '10px',
                 padding: '16px',
+                marginBottom: '10px',
                 fontSize: '13px',
                 border: '1px solid #ddd',
                 borderRadius: '8px',
@@ -85,7 +88,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ data, temperature,
     
     return (
       <div>
-  <IconButton onClick={toggleDrawer} title="Open Sidebar">
+  <IconButton onClick={toggleDrawer} title="Open Sidebar" sx={{ alignItems: 'center' }}>
         <ViewHeadlineIcon sx={{ color: 'red' }} />
       </IconButton>
     <Drawer
@@ -107,7 +110,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ data, temperature,
               >
         <div style={{ padding: '16px',  gap: '16px' }}>
           <div className="chat-top-buttons">
-          <IconButton onClick={toggleDrawer} title="Close Sidebar" sx={{ alignSelf: 'flex-start' }}>
+            <IconButton onClick={toggleDrawer} title="Close Sidebar" sx={{ alignSelf: 'flex-start' }}>
               <ViewHeadlineIcon sx={{ color: 'red' }} />
             </IconButton>
 
