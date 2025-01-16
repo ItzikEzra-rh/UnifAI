@@ -3,11 +3,10 @@ import { useTable, useSortBy, Column } from 'react-table';
 import ChatHistory, { HistoryChat } from "./ChatHistory"
 import { ModelData } from "../types/constants";
 import React from "react";
-import NewChat from './NewChat.png'; 
-import UnloadModal from './UnloadModal.png'; 
+import NewChat from '../../assets/NewChat.png'; 
+import UnloadModal from '../../assets/UnloadModal.png'; 
 import ViewHeadlineIcon from '@mui/icons-material/ViewHeadline';
 import { ChatMessage } from "./ChatContainer";
-import { title } from "process";
 
 interface ChatSidebarProps {
   drawerOpen: boolean;

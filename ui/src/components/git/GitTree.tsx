@@ -313,13 +313,8 @@ const GitForm: React.FC<PropTypes> = ({
   };
 
   const onCheckboxChange = () => {
-    setCheckboxChecked(!checkboxChecked);
-    if (checkboxChecked) {
-      setChecked([]);
-    } else {
-      const checkedValues = nodes.map(item => accumulatePath(item)).flat();
-      setChecked(checkedValues)
-    }
+    setCheckboxChecked(prevStatusCheckboxChecked => !prevStatusCheckboxChecked);
+    setChecked(checkboxChecked ? [] : nodes.map(item => accumulatePath(item)).flat())
   }
 
   useEffect(() => {
