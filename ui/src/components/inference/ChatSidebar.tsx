@@ -89,7 +89,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
       <IconButton onClick={toggleDrawer} title="Open Sidebar" sx={{ alignItems: 'center' }}>
         <ViewHeadlineIcon sx={{ color: 'red' }} />
       </IconButton>
-      <Drawer className="drawer" variant="persistent" open={drawerOpen} onClose={toggleDrawer}>
+      <Drawer className="drawer" variant="persistent" open={drawerOpen} >
         <div style={{ boxSizing: 'border-box' }}>
           <div className="chat-top-buttons">
             <IconButton onClick={toggleDrawer} title="Close Sidebar" sx={{ alignSelf: 'flex-start' }}>

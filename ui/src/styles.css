@@ -464,12 +464,19 @@ body, html, #root {
   z-index: 1000;
 }
 
+.model-selection-wrapper {
+  height: calc(100% - 10px);
+  border: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+}
+
 .chat-container-wrapper {
   height: calc(100% - 10px);
   border: 1px solid #ccc;
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 .chat-top-buttons {
@@ -513,8 +520,7 @@ body, html, #root {
 }
 
 .drawer .MuiDrawer-paper {
-  width: 15%;
-  
+  width: 17%;
   box-sizing: border-box;
   overflow-y: auto;
 }
@@ -615,9 +621,8 @@ body, html, #root {
   color: #8d8c8c;
 }
 
-.cs-main-container,
-.cs-chat-container .cs-message-input {
-border: 0px;
+.cs-message-input {
+  height: 10%;
 }
 
 .cs-message--incoming .cs-message__content,
@@ -633,12 +638,12 @@ border: 0px;
 .ps__rail-y:hover,
 .ps .ps__rail-y:hover,
 .ps__rail-y {
-  background-color: #e0e0e0d5;
+  background-color: #e0e0e0;
 }
 
 .cs-message-input__content-editor,
 .cs-message-input--disabled .cs-message-input__content-editor-wrapper {
-  background-color:#e0e0e0d5;
+  background-color:#e0e0e0;
 }
 
 .cs-message--outgoing .cs-message__content {
