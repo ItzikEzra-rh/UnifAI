@@ -171,6 +171,7 @@ const ChatComponent: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [models, setModels] = useState<ModelData[]>([]);
   const [selectedModel, setSelectedModel] = useState<ModelData | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
   const [loadingModel, setLoadingModel] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
@@ -658,8 +659,6 @@ const ChatComponent: React.FC = () => {
     return false
     }
   }
-
-  const [drawerOpen, setDrawerOpen] = useState(false);
 
   return (
     <div className="chat-container-wrapper">

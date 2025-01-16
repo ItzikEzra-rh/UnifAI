@@ -26,7 +26,7 @@ export interface HistoryChat {
 
 const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, currentChatId, historyChats }) => {
   return (
-    <Paper elevation={3} sx={{ width: '90%', marginTop: '20px', display: 'flex', flexDirection: 'column',}}>
+    <Paper elevation={3} sx={{ width: '90%', marginTop: '10px',display: 'flex', flexDirection: 'column',}}>
       <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
         <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <HistoryIcon /> Recent Chats

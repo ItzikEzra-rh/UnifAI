@@ -485,6 +485,8 @@ body, html, #root {
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center; /* Vertically center the items (if the height is set) */
+  text-align: center;
 }
 
 .chat-tooltip {
@@ -510,7 +512,7 @@ body, html, #root {
 .drawer .MuiDrawer-paper {
   width: 15%;
   box-sizing: border-box;
-  overflow: visible;
+  overflow-y: scroll;
 }
 
 
