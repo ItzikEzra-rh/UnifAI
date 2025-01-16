@@ -238,6 +238,7 @@ def update_current_chat_history(model_id, session_id, chat):
             {"$set": {"chat": chat}} 
         )
         print(f"Updated chat history for session: {session_id}.")
+        print("Update result:", result.modified_count)
     else:
         # If this is the first messages in this session, create a new one
         result = chat_history.insert_one({
@@ -245,6 +246,5 @@ def update_current_chat_history(model_id, session_id, chat):
             "session_id": session_id,
             "chat": chat
         })
-        print(f"Created new chat history: {result.inserted_id}")
-
-    return result
+        print(f"Created new chat history for session: {session_id}")
+    return {"acknowledged": result.acknowledged, "result": result.raw_result}

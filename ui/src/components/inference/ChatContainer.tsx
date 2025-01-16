@@ -322,6 +322,13 @@ const ChatComponent: React.FC = () => {
       handleRecentChatSelect()
       addRecentChat()
       const response = await axiosLLM.get('/api/backend/clearChatHistory', { params: { sessionId: sessionId } });
+      
+      // Create a new session_id for the mongoDB chat history
+      const newSessionId = uuidv4();
+      sessionStorage.setItem('session_id', newSessionId);
+      setSessionId(newSessionId);
+      sessionIdRef.current = newSessionId;
+
       setMessages([]);
       setCurrentChatId('current');
     } catch (error) {

@@ -281,7 +281,7 @@ def retrieve_inference_counter_per_all_models():
 def update_current_chat(model_id, session_id, chat):
     try:
         result = update_current_chat_history(model_id, session_id, chat)
-        return jsonify({"status": "success", "response": result}), 201
+        return {"status": "success", "response": result}
 
     except Exception as e:
         logging.error(f"Error retreive the counter of all models: {e}")
