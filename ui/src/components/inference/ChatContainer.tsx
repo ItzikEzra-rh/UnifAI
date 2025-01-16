@@ -687,12 +687,9 @@ const ChatComponent: React.FC = () => {
             currentChatId={currentChatId}
             historyChats={historyChats}
           />
-            {/* <MainContainer style={{height: '99%', padding: '10px', flexGrow: 1}}> */}
-            {/* <MainContainer style={{width: '70%', alignSelf: 'flex-end'}}> */}
             <MainContainer style={{
-              width: drawerOpen ? '90%' : '100%', // 70% when the drawer is open, 100% when closed
-              marginLeft: drawerOpen ? '8%' : '0%', // Adjust alignment
-              transition: 'width 0.3s ease', // Smooth transition for the width change
+              width: drawerOpen ? '90%' : '100%', 
+              marginLeft: drawerOpen ? '13%' : '0%', 
             }}>
               <ChatContainer>
                 <MessageList>

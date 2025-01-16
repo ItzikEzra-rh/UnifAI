@@ -3,6 +3,7 @@ import { useTable, useSortBy, Column } from 'react-table';
 import ChatHistory from "./ChatHistory"
 import { ModelData } from "../types/constants";
 import React, { useState } from "react";
+import MyCustomIcon from './myCustomIcon.png'; // Import your custom SVG icon
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import HistoryIcon from '@mui/icons-material/History';
 import ViewHeadlineIcon from '@mui/icons-material/ViewHeadline';
@@ -50,9 +51,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ drawerOpen, setDrawerO
         return (
           <div
             style={{
-                width: '88%',
+                width: '90%',
                 marginTop: '10px',
-                padding: '16px',
+                padding: '10px',
                 marginBottom: '10px',
                 fontSize: '13px',
                 border: '1px solid #ddd',
@@ -102,13 +103,13 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ drawerOpen, setDrawerO
                     position: 'absolute'
                 },
                 '& .MuiDrawer-paper': {
-                  width: '10%', 
+                  width: '15%', 
                   boxSizing: 'border-box',
                   overflow: 'visible'
                 },
                 }}
               >
-        <div style={{ padding: '16px',  gap: '16px' }}>
+        <div style={{ boxSizing: 'border-box', margin: '10px' }}>
           <div className="chat-top-buttons">
             <IconButton onClick={toggleDrawer} title="Close Sidebar" sx={{ alignSelf: 'flex-start' }}>
               <ViewHeadlineIcon sx={{ color: 'red' }} />
@@ -116,20 +117,17 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({ drawerOpen, setDrawerO
 
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', }}>
             <IconButton title="Start New Chat" onClick={clearChat} disabled={isStreaming}>
-              <OpenInNewIcon sx={{ color: 'red' }} />
+            <img 
+              src={MyCustomIcon}
+              alt="custom icon" 
+              style={{ width: 24, height: 24 }} // Use the style prop here
+            />
+              {/* <OpenInNewIcon sx={{ color: 'red' }} /> */}
             </IconButton>
             <IconButton title="Unload Model" onClick={unloadModel}>
               <HistoryIcon sx={{ color: 'red' }} />
             </IconButton>
           </Box>
-          {/* <div className="chat-top-buttons">
-          <Button variant="contained" className='end-button' onClick={clearChat} disabled={isStreaming} >
-              Start New Chat
-            </Button>
-            <Button variant="contained" className='end-button' onClick={unloadModel} >
-              Unload Model
-            </Button>
-            </div> */}
             </div>
           <Divider orientation="vertical" flexItem />
           <ChatToolTip />
