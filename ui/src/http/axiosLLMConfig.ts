@@ -5,7 +5,7 @@ export const AXIOS_LLM_IP= 'http://genie-llm-be:8080'
 
 const axiosInstance = axios.create({
   //baseURL: 'http://instructlab.jf42w.sandbox1115.opentlc.com:443',
-  baseURL: 'http://genie-llm-be:8080'
+  baseURL: 'http://genie-llm-be:8080',
   timeout: 300000, // 300 seconds
 });
 
