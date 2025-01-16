@@ -1,0 +1,144 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-{{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.global.orbiter_replica }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      securityContext:
+        runAsUser: 1004200000
+      
+      initContainers:
+      - name: validate-vllm-orbiter-readiness
+        image: registry.redhat.io/openshift4/ose-cli
+        env:
+        - name: KUBECONFIG
+          value: /tmp/kubeconfig
+        - name: TOKEN
+          value: {{.Values.global.access_token}}
+        - name: NAMESPACE
+          value: {{.Values.global.namespace}}
+        - name: RELEASE_NAME
+          value: {{.Release.Name}}
+
+        command:
+        - sh
+        - -c
+        - |
+          set -e;        
+          echo "============================================";
+          echo "  validate Orbiter Vllm Pool readiness...           ";
+          echo "============================================";
+          echo "namespace: $NAMESPACE"
+          echo "kube path: $KUBECONFIG"
+          echo "token : $TOKEN"
+          
+          oc login --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT \
+          --token=$TOKEN --insecure-skip-tls-verify=true
+          oc project $NAMESPACE
+
+          while true; do
+            VLLM_DEPLOYMENT_STATUS=$(oc get deployment $RELEASE_NAME-vllm-orbiter -o jsonpath="{.status.readyReplicas}");
+            VLLM_REPLICAS=$(oc get deployment $RELEASE_NAME-vllm-orbiter -o jsonpath="{.spec.replicas}");
+            if [ "$VLLM_DEPLOYMENT_STATUS" != "$VLLM_REPLICAS" ]; then
+              echo "Waiting for Vllm-orbiter deployment to be ready: $VLLM_DEPLOYMENT_STATUS / $VLLM_REPLICAS";
+              sleep 30;
+            else
+              echo "Vllm-orbiter deployment is ready: $VLLM_DEPLOYMENT_STATUS / $VLLM_REPLICAS";
+              break;
+            fi;
+          done;
+
+      - name: wait-for-services
+        image: quay.io/quay/busybox:latest
+        command: 
+        - sh
+        - -c
+        - |
+          echo "Waiting for RabbitMQ, MongoDB & Vllm services...";
+          #sleep 120
+          while ! nc -z ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT; do
+            echo "Waiting for RabbitMQ service...";
+            sleep 5;
+          done;
+          echo "RabbitMQ is up!";
+          while ! nc -z ${{ .Release.Name | upper }}_MONGODB_SERVICE_HOST ${{ .Release.Name | upper }}_MONGODB_SERVICE_PORT; do
+            echo "Waiting for MongoDB service...";
+            sleep 5;
+          done;
+          echo "MongoDB is up!";
+          while ! nc -z ${{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_HOST ${{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_PORT; do
+            echo "Waiting for Vllm-orbiter service...";
+            sleep 5;
+          done;
+          echo "Vllm-orbiter service is up!";
+          
+      containers:        
+      - name: {{ .Chart.Name }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+        command: 
+        - sh
+        - -c
+        - |
+          promptlab orbiter --celery --reviewer --celery-worker-concurrency {{.Values.celery_worker_concurrency}} --celery-worker-prefetch-count {{.Values.celery_worker_prefetch_count}}
+
+        #command: [ "/bin/bash", "-c", "--" ]
+        #args: [ "while true; do sleep 3000000; done;" ]
+
+        env:
+        - name: HF_HOME
+          value: "/tmp/.cache"  
+        - name: HF_TOKEN
+          value: "{{.Values.global.hf_token}}"
+        - name: PROMPT_LAB_MODEL_HF_ID
+          value: "{{.Values.global.orbiter_model_hf_id}}"
+        - name: PROMPT_LAB_MAX_GENERATION_LENGTH
+          value: "{{.Values.global.max_generation_length}}"
+        - name: PROMPT_LAB_MAX_CONTEXT_LENGTH
+          value: "{{.Values.global.max_context_length}}"
+        - name: CELERY_WORKER_CONCURRENCY
+          value: "{{.Values.celery_worker_concurrency}}"
+        - name: CELERY_WORKER_PREFETCH_COUNT
+          value: "{{.Values.celery_worker_prefetch_count}}"
+        
+
+        - name: RABBITMQ_IP
+          value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST)
+        - name: RABBITMQ_PORT
+          value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT)
+        - name: MONGODB_IP
+          value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_HOST)
+        - name: MONGODB_PORT
+          value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_PORT)
+        - name: VLLM_IP
+          value: $({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_HOST)
+        - name: VLLM_PORT
+          value: $({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_PORT)
+        - name: MODEL_API_URL
+          value: "http://$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_HOST):$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_PORT)/v1/completions"
+
+
+        resources:
+          requests:
+            memory: {{.Values.resources.requests.memory}}
+            cpu: {{.Values.resources.requests.cpu}}
+          limits:
+            memory: {{.Values.resources.limits.memory}}
+            cpu: {{.Values.resources.limits.cpu}}
+
+      securityContext:
+        runAsUser: 1004200000
+        seccompProfile:
+          type: RuntimeDefault

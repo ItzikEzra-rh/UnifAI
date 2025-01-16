@@ -1,0 +1,169 @@
+global:
+  
+  # Namespace where the Helm chart will deploy the application resources.
+  namespace: tag-ai--yhabushi-nb
+
+  # (int) number of prompt-vllm's serving orbiters
+  vllm_orbiter_replica: 3
+
+  # (int) number of reviewer-vllm's serving reviewer
+  vllm_reviewer_replica: 1
+
+  # (int) number of orbiter to work against prompt-vllm pool
+  orbiter_replica: 4
+
+  # (int) number of reviewer to work against reviewer-vllm pool
+  reviewer_replica: 1
+ 
+  # Access token for authenticating with a secure API or system.
+  # i use our secret for tag-ai scope
+  access_token: "eyJhbGciOiJSUzI1NiIsImtpZCI6IkRDVkN1cFI0WlFkZUZVdl91QmZ2bXpHaVRhaUI1V2N1eEQ5cXNPZXdRZ28ifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJ0YWctYWktLWNvbmZpZyIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJ0ZW5hbnRhY2Nlc3MtdGFnLXBpcGVsaW5lLWRlcGxveW1lbnQtdG9rZW4iLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoidGVuYW50YWNjZXNzLXRhZy1waXBlbGluZS1kZXBsb3ltZW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiNzg2M2RiOWQtYzYzNy00NjU5LTk0NzgtNWIzMmQ1YzMzODJjIiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OnRhZy1haS0tY29uZmlnOnRlbmFudGFjY2Vzcy10YWctcGlwZWxpbmUtZGVwbG95bWVudCJ9.YECNdShN8yVlnw1Jk-WOx7NO9IKSm4hZXfls4slQslRlEfRvmmywiG0qDI_lOfRWV7dWqkYZa9o5YYldoCKrlR35yZn-aqTyN_aMXRcjebBW58PFyZ2kswMJ38o-c1W7nuqnEPbGPgkzfmdZVme26u1kFqkDu4qCG8qV8JhQW9o9kupjyAX_gAIwKKY2WOxBaKCgzMcjy6DKqpgs507FSaMrH5pKr5J2Fd74FsH4HwT5cQUKW_RUzcAN1UKl4mxXqS322da99sKBos7OmDMfNbmZUuKGDGF_99kO6LQFW1TuofqaDj5JzWgwXpej-mLj5eOXChsY-IxBNeqyReqTuufLttSFwcmVkADIZPZcAFWE4DSlJCTiAF_osxFk-5ggY2pc_ibIR4HOW3LR4D0MDCY6i_o5WH_HplRzmWKP3Q1fZ2jInlaDCVBMEYWqrG6OHqnTjOkblk6BXmvJLHWO_anHscqzfufasaEB2d9jX4-AK0h3eoeq6zBrTnSouL_5c9gAc1D_DrOykjB1ViH526hzOfiAgVxm4xxRZyCsWCWOEX_4OWxNknBRfmlBp4MQSMmDbOYDq9bPrcPSL9EZZ3KwaYYRb_eoCqSzh_Ls073HUq2YcyNSYdL5IzSKo056CZDMJeOG9XgYTgF7TfwrexZmqBdeIhPja3AoYidZY9M"
+  
+  # Hugging Face API token for accessing models and resources.
+  hf_token: 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
+
+  # Huggingface repository file drop location.
+  output_dataset_repo:  oodeh/MTA-tests 
+  output_dataset_file_name: output
+
+  # Huggingface repository and file to consume.
+  input_dataset_repo: oodeh/MTA-tests
+  input_dataset_file_name: flattened_data.json #input_8_elements_16_prompts.json
+
+
+  # (int) Max retries 
+  max_retry: 3
+
+  # Hugging Face model identifier for the model to be used. 
+  orbiter_model_hf_id: meta-llama/Llama-3.1-8B-Instruct
+  reviewer_model_hf_id: meta-llama/Llama-3.1-8B-Instruct
+
+
+  # (int) Maximum number of tokens that the model can generate in a single response.
+  max_generation_length: 4096
+  
+  # (int) Maximum number of tokens the model can process in a single context.
+  max_context_length: 16384
+
+  # (float) control the amount of GPU memory allocated for the model value between 0.0.-1.0
+  gpu_memory_utilization: 0.88
+
+  # (int): Maximum number of prompts allowed in a single batch.
+  batch_size: 4
+
+  # (int) Maximum number of prompts per batch.
+  queue_target_size: 2
+  
+  #(PromptLab) project_config related.
+  template_name: ""
+  template_type: "typescript"
+  template_agent: "TAG"
+
+  #(Reviewer) Threshold for filtering or scoring responses.
+  score_treshold: 85.0
+  
+vllm:
+  image:
+    repository: images.paas.redhat.com/genie/vllm-openai
+    tag: "latest"
+    pullPolicy: IfNotPresent  
+  resources:
+    requests:
+      memory:  "16Gi"   
+      cpu: "2"
+      gpu: 1    
+    limits:
+      memory: "16Gi"   
+      cpu: "2"
+      gpu: 1 
+  service:
+    type: ClusterIP
+    port: 8000
+
+
+orbiter:
+  celery_worker_concurrency: 4
+  celery_worker_prefetch_count: 2
+  image:
+    repository: images.paas.redhat.com/genie/prompt_lab
+    tag: "latest"
+    pullPolicy: Always
+  resources:
+    requests:
+      memory: "2Gi"     
+      cpu: "2"       
+    limits:
+      memory: "2Gi"     
+      cpu: "2"          
+
+control:
+  landing:
+    #replicaCount: 1
+    celery_worker_concurrency: 1
+    celery_worker_prefetch_count: 1
+    image:
+      repository: images.paas.redhat.com/genie/prompt_lab 
+      tag: "latest"
+      pullPolicy: Always
+
+  launchpad:
+    #replicaCount: 1
+    image:
+      repository: images.paas.redhat.com/genie/prompt_lab
+      tag: "latest"
+      pullPolicy: Always
+
+  resources:
+    requests:
+      memory: "1Gi"     
+      cpu: "1"       
+    limits:
+      memory: "1Gi"     
+      cpu: "1"   
+
+reviewer:
+  image:
+    repository: images.paas.redhat.com/genie/reviewer
+    tag: "latest"
+    pullPolicy: Always
+  resources:
+    requests:
+      memory: "2Gi"     
+      cpu: "2"       
+    limits:
+      memory: "2Gi"     
+      cpu: "2"   
+
+misc:
+  resources:
+    requests:
+      memory: "1Gi"     
+      cpu: "1"       
+    limits:
+      memory: "1Gi"     
+      cpu: "1"   
+  mongodb:
+    #replicaCount: 1
+    image:
+      repository: mongo
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    service:
+      name: mongodb
+      type: ClusterIP
+      port: 27017
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: "aws-ebs"
+  rabbitmq:
+    #replicaCount: 1
+    image:
+      repository: images.paas.redhat.com/genie/rabbitmq
+      tag: "latest"
+      pullPolicy: Always
+    service:
+      name: rabbitmq
+      type: ClusterIP
+      port: 5672
+      managementPort: 15672

@@ -1,0 +1,23 @@
+global:
+  namespace: ""
+  orbiter_replica: 
+
+  orbiter_model_hf_id: ""
+  max_context_length: ""
+  max_generation_length: ""
+
+celery_worker_concurrency: 
+celery_worker_prefetch_count: 
+
+resources:
+  requests:
+    memory:   
+    cpu:      
+  limits:
+    memory:     
+    cpu:  
+
+image:
+  repository: 
+  tag: 
+  pullPolicy: 

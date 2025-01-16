@@ -1,0 +1,39 @@
+global:
+  namespace: 
+
+  vllm_orbiter_replica: 
+  vllm_reviewer_replica:
+
+  orbiter_model_hf_id:
+  reviewer_model_hf_id:
+
+  access_token:
+  max_context_length:
+  gpu_memory_utilization:
+
+image:
+  repository: 
+  tag: 
+  pullPolicy: 
+
+resources:
+  requests:
+    memory:     
+    cpu:     
+  limits:
+    memory:    
+    cpu:  
+
+service:
+  type:
+  port: 
+# service:
+#   prompt:
+#     service:
+#       type:          
+#       port: 
+
+#   reviewer:
+#     service:
+#       type:          
+#       port:  

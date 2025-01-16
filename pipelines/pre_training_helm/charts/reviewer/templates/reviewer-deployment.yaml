@@ -1,0 +1,133 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-{{ .Chart.Name }}
+  namespace: {{.Values.global.namespace}}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.global.reviewer_replica }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      securityContext:
+        runAsUser: 1004200000
+      
+      initContainers:
+      - name: validate-vllm-reviewer-readiness
+        image: registry.redhat.io/openshift4/ose-cli
+        env:
+        - name: KUBECONFIG
+          value: /tmp/kubeconfig
+        - name: TOKEN
+          value: {{.Values.global.access_token}}
+        - name: NAMESPACE
+          value: {{.Values.global.namespace}}
+        - name: RELEASE_NAME
+          value: {{.Release.Name}}
+
+        command:
+        - sh
+        - -c
+        - |
+          set -e;        
+          echo "============================================";
+          echo "  Checking Vllm-reviewer serve Reviewer readiness...  ";
+          echo "============================================";
+          echo "namespace: $NAMESPACE"
+          echo "kube path: $KUBECONFIG"
+          echo "token : $TOKEN"
+
+          oc login --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT \
+          --token=$TOKEN --insecure-skip-tls-verify=true
+          oc project $NAMESPACE
+
+          while true; do
+            VLLM_DEPLOYMENT_STATUS=$(oc get deployment $RELEASE_NAME-vllm-reviewer -o jsonpath="{.status.readyReplicas}");
+            VLLM_REPLICAS=$(oc get deployment $RELEASE_NAME-vllm-reviewer -o jsonpath="{.spec.replicas}");
+            if [ "$VLLM_DEPLOYMENT_STATUS" != "$VLLM_REPLICAS" ]; then
+              echo "Waiting for Vllm-reviewer deployment to be ready: $VLLM_DEPLOYMENT_STATUS / $VLLM_REPLICAS";
+              sleep 30;
+            else
+              echo "Vllm-reviewer deployment is ready: $VLLM_DEPLOYMENT_STATUS / $VLLM_REPLICAS";
+              break;
+            fi;
+          done;
+
+      - name: wait-for-services
+        image: quay.io/quay/busybox:latest
+        command: 
+        - sh
+        - -c
+        - |
+          echo "Waiting for RabbitMQ, MongoDB & Vllm services...";
+          #sleep 120
+          while ! nc -z ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT; do
+            echo "Waiting for RabbitMQ service...";
+            sleep 5;
+          done;
+          echo "RabbitMQ is up!";
+          while ! nc -z ${{ .Release.Name | upper }}_MONGODB_SERVICE_HOST ${{ .Release.Name | upper }}_MONGODB_SERVICE_PORT; do
+            echo "Waiting for MongoDB service...";
+            sleep 5;
+          done;
+          echo "MongoDB is up!";
+          while ! nc -z ${{ .Release.Name | upper }}_VLLM_REVIEWER_SVC_SERVICE_HOST ${{ .Release.Name | upper }}_VLLM_REVIEWER_SVC_SERVICE_PORT; do
+            echo "Waiting for Vllm-reviewer...";
+            sleep 5;
+          done;
+          echo "Vllm-reviewer service is up!";
+             
+      containers:    
+      - name: {{ .Chart.Name }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }} 
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        #command: [ "/bin/bash", "-c", "--" ]
+        #args: [ "while true; do sleep 30; done;" ]
+        args: ["reviewer"]
+        env:
+        - name: TRANSFORMERS_CACHE
+          value: "/tmp"
+        - name: HF_TOKEN
+          value: "{{.Values.global.hf_token}}"
+        - name: REVIEWER_MODEL_HF_ID
+          value: "{{.Values.global.reviewer_model_hf_id}}"
+        - name: REVIEWER_MAX_GENERATION_LENGTH
+          value: "{{.Values.global.max_generation_length}}"
+        - name: REVIEWER_MAX_CONTEXT_LENGTH
+          value:  "{{.Values.global.max_context_length}}"
+        - name: REVIEWER_BATCH_SIZE
+          value:  "{{.Values.global.batch_size}}"
+        - name: REVIEWER_SCORE_THRESHOLD 
+          value:  "{{.Values.global.score_treshold}}"
+
+        - name: RABBITMQ_IP
+          value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST)
+        - name: RABBITMQ_PORT
+          value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT)
+        - name: MONGODB_IP
+          value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_HOST)
+        - name: MONGODB_PORT
+          value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_PORT)
+        - name: VLLM_IP
+          value: $({{ .Release.Name | upper }}_VLLM_REVIEWER_SVC_SERVICE_HOST)
+        - name: VLLM_PORT
+          value: $({{ .Release.Name | upper }}_VLLM_REVIEWER_SVC_SERVICE_PORT)
+
+        resources:
+          requests:
+            memory: {{.Values.resources.requests.memory}}
+            cpu: {{.Values.resources.requests.cpu}}
+          limits:
+            memory: {{.Values.resources.limits.memory}}
+            cpu: {{.Values.resources.limits.cpu}}
+
+      securityContext:
+        runAsUser: 1004200000
+        seccompProfile:
+          type: RuntimeDefault

@@ -1,0 +1,186 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-{{ .Chart.Name }}
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      securityContext:
+        runAsUser: 1004200000
+      
+      initContainers:
+      - name: wait-for-reviewer-orbiter
+        image: registry.redhat.io/openshift4/ose-cli
+        env:
+        - name: KUBECONFIG
+          value: /tmp/kubeconfig
+        - name: TOKEN
+          value: {{.Values.global.access_token}}
+        - name: NAMESPACE
+          value: {{.Values.global.namespace}}
+        - name: RELEASE_NAME
+          value: {{.Release.Name}}
+
+        command:
+        - sh
+        - -c
+        - |
+          set -e;
+          echo "namespace: $NAMESPACE"
+          echo "kube path: $KUBECONFIG"
+          echo "token : $TOKEN"
+
+          oc login --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT \
+          --token=$TOKEN --insecure-skip-tls-verify=true
+          oc project $NAMESPACE
+
+          echo "=============================================";
+          echo "  Checking Reviewers/Orbiter readiness...    ";
+          echo "=============================================";
+          while true; do
+            REVIEWER_DEPLOYMENT_STATUS=$(oc  get deployment $RELEASE_NAME-reviewer -o jsonpath="{.status.readyReplicas}");
+            REVIEWER_REPLICAS=$(oc get deployment $RELEASE_NAME-reviewer -o jsonpath="{.spec.replicas}");
+            if [ "$REVIEWER_DEPLOYMENT_STATUS" != "$REVIEWER_REPLICAS" ]; then
+              echo "Waiting for Reviewer deployment to be ready: $REVIEWER_DEPLOYMENT_STATUS / $REVIEWER_REPLICAS";
+              sleep 30;
+            else
+              echo "Reviewer deployment is ready: $REVIEWER_DEPLOYMENT_STATUS / $REVIEWER_REPLICAS";
+              break;
+            fi;
+          done;
+          echo "Checking Workers readiness...";
+          while true; do
+            WORKER_DEPLOYMENT_STATUS=$(oc  get deployment $RELEASE_NAME-orbiter -o jsonpath="{.status.readyReplicas}");
+            WORKER_REPLICAS=$(oc get deployment $RELEASE_NAME-orbiter -o jsonpath="{.spec.replicas}");
+            if [ "$WORKER_DEPLOYMENT_STATUS" != "$WORKER_REPLICAS" ]; then
+              echo "Waiting for Orbiter deployment to be ready: $WORKER_DEPLOYMENT_STATUS / $WORKER_REPLICAS";
+              sleep 30;
+            else
+              echo "Orbiter deployment is ready: $WORKER_DEPLOYMENT_STATUS / $WORKER_REPLICAS";
+              break;
+            fi;
+          done;
+          echo "=============================================";
+
+
+      containers:
+      - name: {{ .Chart.Name }}-landing
+        image: {{ .Values.landing.image.repository }}:{{ .Values.landing.image.tag }}
+        imagePullPolicy: {{ .Values.landing.image.pullPolicy }}
+  
+        command: 
+        - bash
+        - -c
+        - |
+          promptlab landing --celery --celery-worker-concurrency {{.Values.landing.celery_worker_concurrency}} --celery-worker-prefetch-count {{.Values.landing.celery_worker_prefetch_count}}
+         
+        #command: [ "/bin/bash", "-c", "--" ]
+        #args: [ "while true; do sleep 3000000; done;" ]
+
+        env:
+        - name: MAX_RETRY
+          value: "{{.Values.global.max_retry}}"
+        - name: OUTPUT_DATASET_REPO
+          value: "{{.Values.global.output_dataset_repo}}"
+        - name: OUTPUT_DATASET_FILE_NAME
+          value: "{{.Values.global.output_dataset_file_name}}"
+        
+        - name: HF_HOME
+          value: "/tmp/.cache"  
+        - name: HF_TOKEN
+          value: "{{.Values.global.hf_token}}"
+        - name: PROMPT_LAB_MODEL_HF_ID
+          value: "{{.Values.global.orbiter_model_hf_id}}"
+        - name: RABBITMQ_IP
+          value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST)
+        - name: MONGODB_IP
+          value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_HOST)
+        - name: RABBITMQ_PORT
+          value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT)
+        - name: MONGODB_PORT
+          value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_PORT)
+          
+        - name: CELERY_WORKER_CONCURRENCY
+          value: "{{.Values.landing.celery_worker_concurrency}}"
+        - name: CELERY_WORKER_PREFETCH_COUNT
+          value: "{{.Values.landing.celery_worker_prefetch_count}}"
+
+        resources:
+          requests:
+            memory: {{.Values.resources.requests.memory}}
+            cpu: {{.Values.resources.requests.cpu}}
+          limits:
+            memory: {{.Values.resources.limits.memory}}
+            cpu: {{.Values.resources.limits.cpu}}          
+
+      - name: {{ .Chart.Name }}-launchpad
+        image: {{ .Values.launchpad.image.repository }}:{{ .Values.launchpad.image.tag }}
+        imagePullPolicy: {{ .Values.launchpad.image.pullPolicy }}
+        command: 
+        - bash
+        - -c
+        - |
+          promptlab launchpad
+          echo "Process completed successfully."
+          sleep infinity
+
+        #command: [ "/bin/bash", "-c", "--" ]
+        #args: [ "while true; do sleep 3000000; done;" ]
+
+        env:
+        - name: HF_HOME
+          value: "/tmp/.cache"     
+        - name: HF_TOKEN
+          value: "{{.Values.global.hf_token}}"
+        - name: PROMPT_LAB_MODEL_HF_ID
+          value: "{{.Values.global.orbiter_model_hf_id}}"
+        - name: PROMPT_LAB_MAX_GENERATION_LENGTH
+          value: "{{.Values.global.max_generation_length}}"
+        - name: PROMPT_LAB_MAX_CONTEXT_LENGTH
+          value: "{{.Values.global.max_context_length}}"
+        - name: PROMPT_LAB_BATCH_SIZE
+          value: "{{.Values.global.batch_size}}"
+        - name: QUEUE_TARGET_SIZE
+          value: "{{.Values.global.queue_target_size}}"
+        - name: TEMPLATE_AGENT
+          value: "{{.Values.global.template_agent}}"
+        - name: TEMPLATE_NAME
+          value: "{{.Values.global.template_name}}"
+        - name: TEMPLATE_TYPE
+          value: "{{.Values.global.template_type}}"
+        - name: INPUT_DATASET_REPO
+          value: "{{.Values.global.input_dataset_repo}}"
+        - name: INPUT_DATASET_FILE_NAME
+          value: "{{.Values.global.input_dataset_file_name}}"
+
+        - name: RABBITMQ_IP
+          value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST)
+        - name: MONGODB_IP
+          value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_HOST)
+        - name: RABBITMQ_PORT
+          value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT)
+        - name: MONGODB_PORT
+          value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_PORT)
+
+        resources:
+          requests:
+            memory: {{.Values.resources.requests.memory}}
+            cpu: {{.Values.resources.requests.cpu}}
+          limits:
+            memory: {{.Values.resources.limits.memory}}
+            cpu: {{.Values.resources.limits.cpu}}
+
+      securityContext:
+        runAsUser: 1004200000
+        seccompProfile:
+          type: RuntimeDefault

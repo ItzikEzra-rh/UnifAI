@@ -1,0 +1,104 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-{{ .Chart.Name }}-orbiter
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Chart.Name }}-orbiter
+spec:
+  replicas: {{ .Values.global.vllm_orbiter_replica}}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}-orbiter
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}-orbiter
+    spec:
+      
+      initContainers:
+
+      - name: wait-for-services
+        image: quay.io/quay/busybox:latest
+        command: 
+        - sh
+        - -c
+        - |
+          echo "Waiting for RabbitMQ and MongoDB...";
+          #sleep 120
+          while ! nc -z ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT; do
+            echo "Waiting for RabbitMQ...";
+            sleep 5;
+          done;
+          echo "RabbitMQ is up!";
+          while ! nc -z ${{ .Release.Name | upper }}_MONGODB_SERVICE_HOST ${{ .Release.Name | upper }}_MONGODB_SERVICE_PORT; do
+            echo "Waiting for MongoDB...";
+            sleep 5;
+          done;
+          echo "MongoDB is up!";
+
+      containers:
+      - name: {{ .Chart.Name }}-orbiter
+        image: "{{.Values.image.repository}}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        #command: [ "/bin/bash", "-c", "--" ]
+        #args: [ "while true; do sleep 3000000; done;" ]
+        args: [
+              "--model", "{{.Values.global.orbiter_model_hf_id}}",
+              "--max_model_len={{.Values.global.max_context_length}}",
+              "--gpu_memory_utilization={{.Values.global.gpu_memory_utilization}}"
+            ]
+        env:
+        - name: TRANSFORMERS_CACHE
+          value: "/tmp/.cache"
+        - name: HF_HOME
+          value: "/tmp/.cache"   
+        - name: VLLM_CONFIG_ROOT
+          value: "/tmp/.cache"     
+        - name: VLLM_CACHE_ROOT
+          value: "/tmp/.cache"                    
+        - name: HUGGING_FACE_HUB_TOKEN
+          value: "{{.Values.global.hf_token}}"
+        - name: PROMPT_LAB_MODEL_HF_ID
+          value: "{{.Values.global.orbiter_model_hf_id}}"
+
+        resources:
+          requests:
+            memory: {{.Values.resources.requests.memory}} 
+            cpu: {{.Values.resources.requests.cpu}}
+            nvidia.com/gpu: {{.Values.resources.requests.gpu}}
+          limits:
+            memory: {{.Values.resources.requests.memory}}
+            cpu: {{.Values.resources.requests.cpu}}
+            nvidia.com/gpu: {{.Values.resources.requests.gpu}}
+          
+        ports:
+          - containerPort: 8000
+        
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 240
+          periodSeconds: 15
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+            scheme: HTTP
+          initialDelaySeconds: 240
+          periodSeconds: 15
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 5
+
+
+      securityContext:
+        runAsUser: 1004200000
+        seccompProfile:
+          type: RuntimeDefault
