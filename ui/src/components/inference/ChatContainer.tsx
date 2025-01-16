@@ -16,7 +16,7 @@ import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
 import axiosLLM, { AXIOS_LLM_IP } from '../../http/axiosLLMConfig';
 import axiosBE from '../../http/axiosConfig'
 import RatingModal from './RatingModal';
-import ChatHistory, { HistoryChat } from './ChatHistory';
+import { HistoryChat } from './ChatHistory';
 import { v4 as uuidv4 } from 'uuid';
 import '../../styles.css';
 import Prism from 'prismjs';
@@ -33,7 +33,7 @@ interface ModelSelectionProps {
   onSelectModel: (model: ModelData) => void;
 }
 
-interface ChatMessage {
+export interface ChatMessage {
   id: string;
   text: string;
   sender: 'user' | 'bot';
@@ -310,9 +310,7 @@ const ChatComponent: React.FC = () => {
     }
   };
 
-  const handleTemperatureChange = (event: Event, newValue: number | number[]) => {
-    setTemperature(newValue as number);
-  };
+  
 
   const handleModelSelect = async (selectedModel: ModelData) => {
     if (selectedModel) {
@@ -587,12 +585,7 @@ const ChatComponent: React.FC = () => {
     }
   };
 
-  
-
-  
   const data = React.useMemo(() => (selectedModel ? [selectedModel] : []), [selectedModel]);
-  
-  
   
   const ReformatText = (text: string) => {
     const regularText = (line: string, type: RegExp, style: string) => {
@@ -675,35 +668,32 @@ const ChatComponent: React.FC = () => {
       ) : selectedModel ? (
         <div style={{height: '100%', display: 'flex', flexDirection: 'row'}}>
           <ChatSidebar 
-          drawerOpen={drawerOpen}
-          setDrawerOpen={setDrawerOpen}
+            drawerOpen={drawerOpen}
+            setDrawerOpen={setDrawerOpen}
             data={data} 
             temperature={temperature} 
-            handleTemperatureChange={handleTemperatureChange}
+            setTemperature={setTemperature}
+            isStreaming={isStreaming}
             clearChat={clearChat}
             unloadModel={unloadModel}
-            isStreaming={isStreaming}
             handleChatSelect={handleChatSelect}
             currentChatId={currentChatId}
             historyChats={historyChats}
           />
-            <MainContainer style={{
-              width: drawerOpen ? '90%' : '100%', 
-              marginLeft: drawerOpen ? '13%' : '0%', 
-            }}>
-              <ChatContainer>
-                <MessageList>
-                  {messages.map((message, idx) => (
-                    <div key={message.id} style={{ position: 'relative', paddingBottom: '40px' }}>
-                      <Message
-                        model={{
-                          message: isLlamaModel() ? ReformatText(message.text) : message.text, 
-                          sentTime: 'just now',
-                          sender: message.sender === 'user' ? 'You' : 'Bot',
-                          direction: message.sender === 'user' ? 'outgoing' : 'incoming',
-                          position: getPosition(idx, message.sender),
-                        }}
-                      />
+          <MainContainer style={{width: drawerOpen ? '90%' : '100%', marginLeft: drawerOpen ? '13%' : '0%'}}>
+            <ChatContainer>
+              <MessageList>
+                {messages.map((message, idx) => (
+                  <div key={message.id} style={{ position: 'relative', paddingBottom: '40px' }}>
+                    <Message
+                      model={{
+                        message: isLlamaModel() ? ReformatText(message.text) : message.text, 
+                        sentTime: 'just now',
+                        sender: message.sender === 'user' ? 'You' : 'Bot',
+                        direction: message.sender === 'user' ? 'outgoing' : 'incoming',
+                        position: getPosition(idx, message.sender),
+                      }}
+                    />
                       {message.sender === 'bot' && (
                         <div style={{ position: 'absolute', bottom: '5px', left: '5px', display: 'flex', gap: '5px' }}>
                           <Tooltip title="Copy">
@@ -746,43 +736,44 @@ const ChatComponent: React.FC = () => {
                             </IconButton>
                           </Tooltip>
                         </div>
-                      )}
-                    </div>
-                  ))}
-                </MessageList>
-                <MessageInput placeholder="Type your message here..." onSend={handleSend} disabled={loadingModel || isStreaming}
-                  attachButton={false}
-                  onPaste={(event) => {
-                    event.preventDefault();
-                    // Get plain text from clipboard
-                    const text = event.clipboardData.getData('text/plain');
-                    document.execCommand('insertText', false, text);
-                  }}
-                />
-              </ChatContainer>
-            </MainContainer>
-            <RatingModal
-              open={isRatingModalOpen}
-              onClose={handleRatingModalClose}
-              onSave={handleRatingSave}
-              initialRating={currentRatingIdx !== -1 ? messageRatings[currentRatingIdx]?.rating ?? 0 : 0}
-              initialRatingText={currentRatingIdx !== -1 ? messageRatings[currentRatingIdx]?.ratingText ?? '' : ''}
-            />
-            <Dialog open={isModalOpen}
-              onClose={handleModalClose}
-              PaperProps={{
-                style: { width: '50%', margin: '0 auto' }, // Custom width set to 50% and centered horizontally
-              }}>
-              <DialogTitle>Save Prompt</DialogTitle>
-              <DialogContent>
-                <TextField autoFocus margin="dense" label="Prompt Name" type="text" fullWidth variant="standard" value={promptName} onChange={handlePromptNameChange} />
-              </DialogContent>
-              <DialogActions>
-                <Button onClick={handleModalClose} sx={{color: "black"}}>Cancel</Button>
-                <Button onClick={handleSavePrompt} color="primary">Save</Button>
-              </DialogActions>
-            </Dialog>
-          </div>
+                      )
+                    }
+                  </div>
+                ))}
+              </MessageList>
+              <MessageInput placeholder="Type your message here..." onSend={handleSend} disabled={loadingModel || isStreaming}
+                attachButton={false}
+                onPaste={(event) => {
+                  event.preventDefault();
+                  // Get plain text from clipboard
+                  const text = event.clipboardData.getData('text/plain');
+                  document.execCommand('insertText', false, text);
+                }}
+              />
+            </ChatContainer>
+          </MainContainer>
+          <RatingModal
+            open={isRatingModalOpen}
+            onClose={handleRatingModalClose}
+            onSave={handleRatingSave}
+            initialRating={currentRatingIdx !== -1 ? messageRatings[currentRatingIdx]?.rating ?? 0 : 0}
+            initialRatingText={currentRatingIdx !== -1 ? messageRatings[currentRatingIdx]?.ratingText ?? '' : ''}
+          />
+          <Dialog open={isModalOpen}
+            onClose={handleModalClose}
+            PaperProps={{
+              style: { width: '50%', margin: '0 auto' }, // Custom width set to 50% and centered horizontally
+            }}>
+            <DialogTitle>Save Prompt</DialogTitle>
+            <DialogContent>
+              <TextField autoFocus margin="dense" label="Prompt Name" type="text" fullWidth variant="standard" value={promptName} onChange={handlePromptNameChange} />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleModalClose} sx={{color: "black"}}>Cancel</Button>
+              <Button onClick={handleSavePrompt} color="primary">Save</Button>
+            </DialogActions>
+          </Dialog>
+        </div>
        ) : (<ModelSelection models={models} onSelectModel={handleModelSelect} />)
       }
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar />

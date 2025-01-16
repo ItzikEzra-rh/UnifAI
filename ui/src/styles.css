@@ -480,11 +480,39 @@ body, html, #root {
 }
 
 .temp-slider {
+  margin-top: 10px;
   width: 90%;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
+
+.chat-tooltip {
+  width: 90%;
+  margin-top: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+  font-size: 13px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.drawer {
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer .MuiPaper-root {
+  position: absolute;
+}
+
+.drawer .MuiDrawer-paper {
+  width: 15%;
+  box-sizing: border-box;
+  overflow: visible;
+}
+
 
 .statistics-graphs {
   display: flex;
