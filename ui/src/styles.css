@@ -204,10 +204,13 @@ body, html, #root {
   display: none;
 }
 
-
+.chat-top-buttons .end-button {
+  background-color: red;
+  width: 45%;
+  font-size: 12px;
+}
 
 .end-button,
-.chat-top-buttons .end-button,
 .form-container .end-button,
 .form-section .end-button,
 .form-bottom-button .end-button,
@@ -231,6 +234,22 @@ body, html, #root {
 .form-bottom-button .end-button:disabled,
 .toolbar-buttons .end-button:disabled {
   background-color: #9a9595;
+}
+
+.form-section .tree-button {
+  color: black;
+  border-color: black;
+  min-width: 0;
+  padding: 4px; 
+}
+
+.form-section .tree-button .MuiButton-startIcon {
+  margin: 0px; 
+}
+
+.form-section .tree-button:hover {
+  background-color: #f5f5f5; 
+  border-color: black; 
 }
 
 .form-tabs {
@@ -259,7 +278,7 @@ body, html, #root {
   padding: 20px;
   border-radius: 5px;
   box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
-  width: 90%;  
+  width: 98%;  
 }
 
 .form-section.disabled {
@@ -326,7 +345,7 @@ body, html, #root {
 
 .forms-table,
 .table-chat-container {
-  width: 100%;
+  width: 95%;
   height: 5vh;
   border-collapse: collapse;
 }
@@ -360,7 +379,7 @@ body, html, #root {
 }
 
 .table-chat-container {
-  margin-top: 6vh;
+  margin-top: 10px;
 }
 
 .table-cell {
@@ -448,29 +467,56 @@ body, html, #root {
 .chat-container-wrapper {
   height: calc(100% - 10px);
   border: 1px solid #ccc;
-  padding: 10px;
   position: relative;
   display: flex;
   flex-direction: column;
 }
 
 .chat-top-buttons {
-  height: 5vh;
-  position: absolute;
-  top: 10px;
-  right: 0;
   width: 100%;
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding-right: 20px;
+  justify-content: space-between;
 }
 
 .temp-slider {
+  margin-top: 10px;
+  width: 90%;
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 150px;
+}
+
+.chat-tooltip {
+  width: 90%;
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding: 8px;
+  font-size: 13px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.drawer {
+  display: flex;
+  flex-direction: column;
+}
+
+.drawer .inner-drawer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.drawer .MuiPaper-root {
+  position: absolute;
+}
+
+.drawer .MuiDrawer-paper {
+  width: 15%;
+  
+  box-sizing: border-box;
+  overflow-y: auto;
 }
 
 .statistics-graphs {
