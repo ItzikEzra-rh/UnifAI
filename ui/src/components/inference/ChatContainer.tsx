@@ -754,6 +754,7 @@ const ChatComponent: React.FC = () => {
                   ))}
                 </MessageList>
                 <MessageInput placeholder="Type your message here..." onSend={handleSend} disabled={loadingModel || isStreaming}
+                  attachButton={false}
                   onPaste={(event) => {
                     event.preventDefault();
                     // Get plain text from clipboard
@@ -780,7 +781,7 @@ const ChatComponent: React.FC = () => {
                 <TextField autoFocus margin="dense" label="Prompt Name" type="text" fullWidth variant="standard" value={promptName} onChange={handlePromptNameChange} />
               </DialogContent>
               <DialogActions>
-                <Button onClick={handleModalClose} color="secondary">Cancel</Button>
+                <Button onClick={handleModalClose} sx={{color: "black"}}>Cancel</Button>
                 <Button onClick={handleSavePrompt} color="primary">Save</Button>
               </DialogActions>
             </Dialog>

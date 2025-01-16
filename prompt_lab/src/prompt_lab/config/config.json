@@ -2,7 +2,7 @@
   "input_dataset_repo": "${INPUT_DATASET_REPO}",
   "input_dataset_file_name": "${INPUT_DATASET_FILE_NAME}",
   "output_dataset_repo": "${OUTPUT_DATASET_REPO}",
-  "output-dataset-file-name": "${OUTPUT_DATASET_FILE_NAME}",
+  "output_dataset_file_name": "${OUTPUT_DATASET_FILE_NAME}",
   "tokenizer_path": "${PROMPT_LAB_MODEL_HF_ID}",
   "model_name": "${PROMPT_LAB_MODEL_HF_ID}",
   "model_api_url": "${MODEL_API_URL}",

@@ -94,7 +94,7 @@ const RatingModal: React.FC<RatingModalProps> = ({open, onClose, onSave, initial
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={onClose} color="secondary">Cancel</Button>
+        <Button onClick={onClose} sx={{color: "black"}}>Cancel</Button>
         <Button onClick={handleSave} color="primary" disabled={selectedRating === 0}>
           Save
         </Button>
