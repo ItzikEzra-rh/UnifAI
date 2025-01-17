@@ -30,59 +30,47 @@ spec:
           value: {{.Values.global.namespace}}
         - name: RELEASE_NAME
           value: {{.Release.Name}}
+        - name: CHART_NAME
+          value: vllm-{{ .Chart.Name }}
 
         command:
         - sh
         - -c
-        - |
-          set -e;        
-          echo "============================================";
-          echo "  Checking Vllm-reviewer serve Reviewer readiness...  ";
-          echo "============================================";
-          echo "namespace: $NAMESPACE"
-          echo "kube path: $KUBECONFIG"
-          echo "token : $TOKEN"
-
-          oc login --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT \
-          --token=$TOKEN --insecure-skip-tls-verify=true
-          oc project $NAMESPACE
-
-          while true; do
-            VLLM_DEPLOYMENT_STATUS=$(oc get deployment $RELEASE_NAME-vllm-reviewer -o jsonpath="{.status.readyReplicas}");
-            VLLM_REPLICAS=$(oc get deployment $RELEASE_NAME-vllm-reviewer -o jsonpath="{.spec.replicas}");
-            if [ "$VLLM_DEPLOYMENT_STATUS" != "$VLLM_REPLICAS" ]; then
-              echo "Waiting for Vllm-reviewer deployment to be ready: $VLLM_DEPLOYMENT_STATUS / $VLLM_REPLICAS";
-              sleep 30;
-            else
-              echo "Vllm-reviewer deployment is ready: $VLLM_DEPLOYMENT_STATUS / $VLLM_REPLICAS";
-              break;
-            fi;
-          done;
+        - |    
+          cp /config/wait-for-deployment.sh /tmp/wait-for-deployment.sh
+          chmod +x /tmp/wait-for-deployment.sh
+          /tmp/wait-for-deployment.sh $CHART_NAME
+        volumeMounts:
+          - name: {{ .Release.Name }}-wait-for-deployment
+            mountPath: /config
 
       - name: wait-for-services
         image: quay.io/quay/busybox:latest
+        env:
+        - name: RELEASE_NAME
+          value: {{.Release.Name | upper}}
+        - name: CHART_NAME
+          value: {{ .Chart.Name | upper}}
         command: 
         - sh
         - -c
         - |
-          echo "Waiting for RabbitMQ, MongoDB & Vllm services...";
-          #sleep 120
-          while ! nc -z ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT; do
-            echo "Waiting for RabbitMQ service...";
-            sleep 5;
-          done;
-          echo "RabbitMQ is up!";
-          while ! nc -z ${{ .Release.Name | upper }}_MONGODB_SERVICE_HOST ${{ .Release.Name | upper }}_MONGODB_SERVICE_PORT; do
-            echo "Waiting for MongoDB service...";
-            sleep 5;
-          done;
-          echo "MongoDB is up!";
-          while ! nc -z ${{ .Release.Name | upper }}_VLLM_REVIEWER_SVC_SERVICE_HOST ${{ .Release.Name | upper }}_VLLM_REVIEWER_SVC_SERVICE_PORT; do
-            echo "Waiting for Vllm-reviewer...";
-            sleep 5;
-          done;
-          echo "Vllm-reviewer service is up!";
-             
+          cp /config/wait-for-services.sh /tmp/wait-for-services.sh
+          chmod +x /tmp/wait-for-services.sh
+          /tmp/wait-for-services.sh
+
+        volumeMounts:
+          - name: {{ .Release.Name }}-wait-for-services
+            mountPath: /config
+
+      volumes:
+      - name: {{ .Release.Name }}-wait-for-deployment
+        configMap:
+          name: {{ .Release.Name }}-wait-for-deployment
+      - name: {{ .Release.Name }}-wait-for-services
+        configMap:
+          name: {{ .Release.Name }}-wait-for-services
+
       containers:    
       - name: {{ .Chart.Name }}
         image: {{ .Values.image.repository }}:{{ .Values.image.tag }} 

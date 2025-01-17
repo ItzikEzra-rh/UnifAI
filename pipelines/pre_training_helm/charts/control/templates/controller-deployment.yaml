@@ -19,6 +19,26 @@ spec:
         runAsUser: 1004200000
       
       initContainers:
+      - name: wait-for-services
+        image: quay.io/quay/busybox:latest
+        env:
+        - name: RELEASE_NAME
+          value: {{.Release.Name| upper}}
+        - name: CHART_NAME
+          value: {{ .Chart.Name | upper }}
+
+        command: 
+        - sh
+        - -c
+        - |
+          cp /config/wait-for-services.sh /tmp/wait-for-services.sh
+          chmod +x /tmp/wait-for-services.sh
+          /tmp/wait-for-services.sh
+
+        volumeMounts:
+          - name: {{ .Release.Name }}-wait-for-services
+            mountPath: /config
+
       - name: wait-for-reviewer-orbiter
         image: registry.redhat.io/openshift4/ose-cli
         env:
@@ -34,44 +54,22 @@ spec:
         command:
         - sh
         - -c
-        - |
-          set -e;
-          echo "namespace: $NAMESPACE"
-          echo "kube path: $KUBECONFIG"
-          echo "token : $TOKEN"
-
-          oc login --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT \
-          --token=$TOKEN --insecure-skip-tls-verify=true
-          oc project $NAMESPACE
-
-          echo "=============================================";
-          echo "  Checking Reviewers/Orbiter readiness...    ";
-          echo "=============================================";
-          while true; do
-            REVIEWER_DEPLOYMENT_STATUS=$(oc  get deployment $RELEASE_NAME-reviewer -o jsonpath="{.status.readyReplicas}");
-            REVIEWER_REPLICAS=$(oc get deployment $RELEASE_NAME-reviewer -o jsonpath="{.spec.replicas}");
-            if [ "$REVIEWER_DEPLOYMENT_STATUS" != "$REVIEWER_REPLICAS" ]; then
-              echo "Waiting for Reviewer deployment to be ready: $REVIEWER_DEPLOYMENT_STATUS / $REVIEWER_REPLICAS";
-              sleep 30;
-            else
-              echo "Reviewer deployment is ready: $REVIEWER_DEPLOYMENT_STATUS / $REVIEWER_REPLICAS";
-              break;
-            fi;
-          done;
-          echo "Checking Workers readiness...";
-          while true; do
-            WORKER_DEPLOYMENT_STATUS=$(oc  get deployment $RELEASE_NAME-orbiter -o jsonpath="{.status.readyReplicas}");
-            WORKER_REPLICAS=$(oc get deployment $RELEASE_NAME-orbiter -o jsonpath="{.spec.replicas}");
-            if [ "$WORKER_DEPLOYMENT_STATUS" != "$WORKER_REPLICAS" ]; then
-              echo "Waiting for Orbiter deployment to be ready: $WORKER_DEPLOYMENT_STATUS / $WORKER_REPLICAS";
-              sleep 30;
-            else
-              echo "Orbiter deployment is ready: $WORKER_DEPLOYMENT_STATUS / $WORKER_REPLICAS";
-              break;
-            fi;
-          done;
-          echo "=============================================";
-
+        - |    
+          cp /config/wait-for-deployment.sh /tmp/wait-for-deployment.sh
+          chmod +x /tmp/wait-for-deployment.sh
+          /tmp/wait-for-deployment.sh orbiter
+          /tmp/wait-for-deployment.sh reviewer
+        volumeMounts:
+          - name: {{ .Release.Name }}-wait-for-deployment
+            mountPath: /config
+      
+      volumes:
+      - name: {{ .Release.Name }}-wait-for-deployment
+        configMap:
+          name: {{ .Release.Name }}-wait-for-deployment
+      - name: {{ .Release.Name }}-wait-for-services
+        configMap:
+          name: {{ .Release.Name }}-wait-for-services
 
       containers:
       - name: {{ .Chart.Name }}-landing

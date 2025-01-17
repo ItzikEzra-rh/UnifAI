@@ -17,25 +17,23 @@ spec:
     spec:
       
       initContainers:
-
       - name: wait-for-services
         image: quay.io/quay/busybox:latest
         command: 
         - sh
         - -c
         - |
-          echo "Waiting for RabbitMQ and MongoDB...";
-          #sleep 120
-          while ! nc -z ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT; do
-            echo "Waiting for RabbitMQ...";
-            sleep 5;
-          done;
-          echo "RabbitMQ is up!";
-          while ! nc -z ${{ .Release.Name | upper }}_MONGODB_SERVICE_HOST ${{ .Release.Name | upper }}_MONGODB_SERVICE_PORT; do
-            echo "Waiting for MongoDB...";
-            sleep 5;
-          done;
-          echo "MongoDB is up!";
+          cp /config/wait-for-services.sh /tmp/wait-for-services.sh
+          chmod +x /tmp/wait-for-services.sh
+          /tmp/wait-for-services.sh
+
+        volumeMounts:
+          - name: {{ .Release.Name }}-wait-for-services
+            mountPath: /config
+      volumes:
+      - name: {{ .Release.Name }}-wait-for-services  
+        configMap:
+          name: {{ .Release.Name }}-wait-for-services
 
       containers:
       - name: {{ .Chart.Name }}-reviewer

@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-wait-for-deployment
+  namespace: {{ .Values.global.namespace }}
+data:
+  wait-for-deployment.sh: |
+    CHART_NAME=$1
+    echo "==============================================================";
+    echo " Waiting for $CHART_NAME deployment status to become ready...  "
+    echo "==============================================================";
+    echo "namespace: $NAMESPACE"
+    echo "kube path: $KUBECONFIG"
+    echo "token : $TOKEN"
+
+    oc login --server=https://$KUBERNETES_SERVICE_HOST:$KUBERNETES_SERVICE_PORT \
+    --token=$TOKEN --insecure-skip-tls-verify=true
+    oc project $NAMESPACE
+
+    while true; do
+      DEPLOYMENT_STATUS=$(oc get deployment $RELEASE_NAME-$CHART_NAME -o jsonpath="{.status.readyReplicas}");
+      REPLICAS=$(oc get deployment $RELEASE_NAME-$CHART_NAME -o jsonpath="{.spec.replicas}");
+      if [ "$DEPLOYMENT_STATUS" != "$REPLICAS" ]; then
+        echo "Waiting for $RELEASE_NAME-$CHART_NAME deployment to be ready: $DEPLOYMENT_STATUS / $REPLICAS";
+        sleep 30;
+      else
+        echo "$RELEASE_NAME-$CHART_NAME deployment is ready: $DEPLOYMENT_STATUS / $REPLICAS";
+        break;
+      fi;
+    done;
