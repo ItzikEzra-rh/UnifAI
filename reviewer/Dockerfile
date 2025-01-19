@@ -8,8 +8,8 @@ WORKDIR /app/repo/reviewer
 
 # Install system dependencies
 RUN dnf update -y && \
-    dnf install -y python3-pip python3-devel kernel-devel wget which numactl gettext nc \
-    && dnf clean all
+    dnf install -y python3-pip python3-devel kernel-devel wget which numactl && \
+    dnf clean all
 
 # Copy application source code
 COPY . /app/repo/reviewer

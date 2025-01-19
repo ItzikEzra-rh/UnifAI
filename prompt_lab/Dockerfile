@@ -7,8 +7,8 @@ WORKDIR /app/
 
 # Install system dependencies, including a C compiler
 RUN dnf update -y && \
-    dnf install -y python3-pip  python3-devel kernel-devel wget which numactl gcc gcc-c++ make gettext nc\
-    && dnf clean all
+    dnf install -y python3-pip python3-devel kernel-devel wget which numactl gcc gcc-c++ make && \
+    dnf clean all
 
 # Add application source code
 COPY . /app/
