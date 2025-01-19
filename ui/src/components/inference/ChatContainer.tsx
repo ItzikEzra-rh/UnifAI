@@ -22,6 +22,7 @@ import '../../styles.css';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism-okaidia.css';
 import { ChatSidebar } from './ChatSidebar';
+import moment from 'moment';
 
 interface FormData {
   project: string;
@@ -252,12 +253,14 @@ const ChatComponent: React.FC = () => {
         role: message.sender === 'user' ? 'user' : 'assistant',
         content: message.text,
       }));
+      const timestamp = new Date();
 
+      
       const payload = {
         id: `chat-${historyChats.length + 1}`,
         name: `Chat ${historyChats.length + 1}`,
-        timestamp: new Date().toISOString(),
-        messages: [...messages], // Save a copy of current messages
+        timestamp: moment().format('MMM DD, YYYY, hh:mm A'),
+        messages: [...messages], 
         firstMessage: truncatedMessage,
         sessionId: sessionId,
         modelId: modelId,
