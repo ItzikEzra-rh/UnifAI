@@ -221,10 +221,7 @@ const ChatComponent: React.FC = () => {
           const loadedModel = transformedData.find(model => model.modelId === loadedModelId);
           if (loadedModel) {
             setSelectedModel(loadedModel);
-            const queryPayload = {
-              modelId: loadedModel.modelId,
-            }
-            const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: queryPayload });
+            const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: loadedModel.modelId} });
             setHistoryChats(loadedModelChatsResponse.data.response)
             setLoadingModel(false); // Ensure loading state is false as the model is already loaded
           }
@@ -275,37 +272,28 @@ const ChatComponent: React.FC = () => {
     setMessages([]);
   };
 
-  const handleRecentChatSelect = () => {
-    // Handle the case once user press on 'Start new chat' & certain 'Recent Chat Item' where currently selected, therefore we should update the messages array of the selected 'Recent Chat Item'
-    // Handle the case once user moving between chat histories, we should update the chat that he just moved from with up to date data
-    if (messages.length > 0 && currentChatId != "current") {
-      const currentHistory = historyChats.map(chat => chat.sessionId == currentChatId && chat.messages.length !== messages.length ? { ...chat, messages: [...messages], timestamp: new Date().toLocaleString() } : chat)
-      setHistoryChats(currentHistory)
-    }
-  }
+  // const addRecentChat = () => {
+  //   if (messages.length > 0 && currentChatId == "current") {
+  //     const firstUserMessage = messages.find(msg => msg.sender === 'user')?.text || 'New conversation';
+  //     const truncatedMessage = firstUserMessage.length > 40 ? `${firstUserMessage.substring(0, 37)}...` : firstUserMessage;
 
-  const addRecentChat = () => {
-    if (messages.length > 0 && currentChatId == "current") {
-      const firstUserMessage = messages.find(msg => msg.sender === 'user')?.text || 'New conversation';
-      const truncatedMessage = firstUserMessage.length > 40 ? `${firstUserMessage.substring(0, 37)}...` : firstUserMessage;
+  //     const newHistoryChat: HistoryChat = {
+  //       sessionId: sessionId,
+  //       timestamp: new Date().toLocaleString(),
+  //       messages: [...messages], // Save a copy of current messages
+  //       firstMessage: truncatedMessage,
+  //     };
 
-      const newHistoryChat: HistoryChat = {
-        sessionId: sessionId,
-        timestamp: new Date().toLocaleString(),
-        messages: [...messages], // Save a copy of current messages
-        firstMessage: truncatedMessage,
-      };
-
-      setHistoryChats(prevHistory => [newHistoryChat, ...prevHistory]);
-    }
-  }
+  //     setHistoryChats(prevHistory => [newHistoryChat, ...prevHistory]);
+  //   }
+  // }
 
   const clearChat = async () => {
     try {
-      handleRecentChatSelect()
-      addRecentChat()
+      // addRecentChat()
       const response = await axiosLLM.get('/api/backend/clearChatHistory', { params: { sessionId: sessionId } });
-      
+      const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: selectedModel?.modelId} });
+      setHistoryChats(loadedModelChatsResponse.data.response)
       // Create a new session_id for the mongoDB chat history
       const newSessionId = uuidv4();
       sessionStorage.setItem('session_id', newSessionId);
@@ -331,11 +319,12 @@ const ChatComponent: React.FC = () => {
         sessionId: sessionId,
         chat: newMessages,
       })
+      const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: selectedModel?.modelId} });
+      setHistoryChats(loadedModelChatsResponse.data.response)
       // Load selected chat messages
       setMessages(chatMessages);
       setCurrentChatId(chatId);
-      handleRecentChatSelect()
-      addRecentChat()
+      // addRecentChat()
     } catch (error) {
       console.error('Error loading chat history:', error);
       toast.error('An error occurred while loading the chat history.');
