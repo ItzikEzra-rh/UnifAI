@@ -1,22 +1,29 @@
 from tree_sitter import Language, Parser
 
 class TreeSitterParser:
-    def __init__(self, language_path, language_name, file_path, realtive_path):
+    def __init__(self, language_path, language_name, file_path, realtive_path, project_name):
         self.language = Language(language_path, language_name)
         self.parser = Parser()
         self.parser.set_language(self.language)
         self.file_path = file_path
         self.realtive_path = realtive_path
+        self.project_name= project_name
 
     @staticmethod
-    def create_parser(file_path, realtive_path=None):
+    def create_parser(file_path, realtive_path=None, project_name=""):
         from .robot_parser import RobotParser
         from .go_parser import GoParser
+        from .type_script_parser import TypeScriptParser
         
         if file_path.endswith('.robot'):
-            return RobotParser(file_path=file_path, realtive_path=realtive_path)
+            return RobotParser(file_path=file_path, realtive_path=realtive_path, project_name=project_name)
         elif file_path.endswith('.go'):
-            return GoParser(file_path=file_path, realtive_path=realtive_path)
+            return GoParser(file_path=file_path, realtive_path=realtive_path, project_name=project_name)
+        elif file_path.endswith('.ts') or file_path.endswith('.tsx'):
+            return TypeScriptParser(file_path=file_path, realtive_path=realtive_path, project_name=project_name)
+        # TODO: Need to implement parser for TSX (GENIE-86/https://issues.redhat.com/browse/GENIE-86)
+        # elif file_path.endswith('.tsx'):
+        #     return TypeScriptCompiledParser(file_path=file_path, realtive_path=realtive_path, project_name=project_name)
         else:
             raise ValueError(f"Unsupported file extension for: {file_path}")
 
