@@ -214,8 +214,7 @@ def get_chat_history(model_id):
     :return:
     """
     result = Collections.by_name('chatHistory').find({'modelId': model_id}, 
-            {'_id': 0, 'id': 1, 'name': 1, 'timestamp': 1,  'firstMessage': 1, 'messages': 1, 'sessionId': 1})
-    print(result)
+            {'_id': 0, 'sessionId': 1, 'timestamp': 1,  'firstMessage': 1, 'messages': 1})
     return list(result) if result else []
 
 @mongo
@@ -228,7 +227,7 @@ def update_current_chat_history(session_id, timestamp, messages, first_message, 
 
     if existing_chat:
         # If a chat history exists, update it
-        result = Collections.by_name('chatHistory').update_one({"modelId": model_id, "sessionId": session_id}, {"$set": {"messages": messages}})
+        result = Collections.by_name('chatHistory').update_one({"modelId": model_id, "sessionId": session_id}, {"$set": {"messages": messages, "timestamp": timestamp}})
         return result.modified_count
     else:
         # If this is the first messages in this session, create a new one

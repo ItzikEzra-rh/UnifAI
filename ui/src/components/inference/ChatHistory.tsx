@@ -4,6 +4,7 @@ import { Paper, Typography, List, ListItem, ListItemButton, ListItemText, ListIt
 import MessageIcon from '@mui/icons-material/Message';
 import HistoryIcon from '@mui/icons-material/History';
 import DeleteIcon from '@mui/icons-material/Delete';
+import moment from 'moment';
 
 interface ChatMessage {
   id: string;
@@ -56,6 +57,12 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
     setSelectedFirstMessage(null); // Clear the selected first message
   };
 
+  const sortedChats = historyChats.sort((a, b) => {
+    const dateA: Date = moment(a.timestamp, 'MMM DD, YYYY, hh:mm A').toDate();
+    const dateB: Date = moment(b.timestamp, 'MMM DD, YYYY, hh:mm A').toDate();
+    return dateB.getTime() - dateA.getTime(); // Compare using timestamps
+  });
+
   return (
     <Paper elevation={3} sx={{ width: '95%', marginTop: '10px', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
@@ -65,7 +72,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
       </Box>
 
       <List sx={{ overflow: 'auto', flexGrow: 1 }}>
-        {historyChats.map((chat, index) => (
+        {sortedChats.map((chat, index) => (
           <React.Fragment key={index}>
             <ListItem disablePadding>
               <ListItemButton

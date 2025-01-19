@@ -273,7 +273,6 @@ def retrieve_inference_counter_per_all_models():
         return jsonify({"status": "error", "message": str(e)}), 500
     
     
-
 @backend_bp.route("/getChats", methods=["GET"])
 @from_query({
     "model_id":        fields.Str(required=True, data_key="modelId")
@@ -285,8 +284,7 @@ def get_chat_history_per_model(model_id):
         return jsonify({"status": "success", "response": result}), 201
 
     except Exception as e:
-        # Log the error and return error response
-        logging.error(f"Error retreive the counter of all models: {e}")
+        logging.error(f"Error retreiving the chats for model: {model_id}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 @backend_bp.route("/updateCurrentChat", methods=["POST"])
@@ -303,7 +301,7 @@ def update_current_chat(session_id, timestamp, messages, first_message, model_id
         return {"status": "success", "result": result}
 
     except Exception as e:
-        logging.error(f"Error retreive the counter of all models: {e}")
+        logging.error(f"Error updating the chat for session: {session_id}")
         return jsonify({"status": "error", "message": str(e)}), 500
     
 @backend_bp.route("/deleteChatSession", methods=["GET"])

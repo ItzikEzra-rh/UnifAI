@@ -3,7 +3,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from '@chatscope/chat-ui-kit-react';
 import { useForm } from 'react-hook-form';
-import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography, Box, Drawer, Divider } from '@mui/material';
+import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Box } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
@@ -244,13 +244,6 @@ const ChatComponent: React.FC = () => {
     try {
       const firstUserMessage = messages.find(msg => msg.sender === 'user')?.text || 'New conversation';
       const truncatedMessage = firstUserMessage.length > 40 ? `${firstUserMessage.substring(0, 37)}...` : firstUserMessage;
-
-      const formattedMessages = messages.map((message) => ({
-        role: message.sender === 'user' ? 'user' : 'assistant',
-        content: message.text,
-      }));
-      const timestamp = new Date();
-
       
       const payload = {
         sessionId: sessionId,
@@ -272,28 +265,12 @@ const ChatComponent: React.FC = () => {
     setMessages([]);
   };
 
-  // const addRecentChat = () => {
-  //   if (messages.length > 0 && currentChatId == "current") {
-  //     const firstUserMessage = messages.find(msg => msg.sender === 'user')?.text || 'New conversation';
-  //     const truncatedMessage = firstUserMessage.length > 40 ? `${firstUserMessage.substring(0, 37)}...` : firstUserMessage;
-
-  //     const newHistoryChat: HistoryChat = {
-  //       sessionId: sessionId,
-  //       timestamp: new Date().toLocaleString(),
-  //       messages: [...messages], // Save a copy of current messages
-  //       firstMessage: truncatedMessage,
-  //     };
-
-  //     setHistoryChats(prevHistory => [newHistoryChat, ...prevHistory]);
-  //   }
-  // }
-
   const clearChat = async () => {
     try {
-      // addRecentChat()
       const response = await axiosLLM.get('/api/backend/clearChatHistory', { params: { sessionId: sessionId } });
       const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: selectedModel?.modelId} });
       setHistoryChats(loadedModelChatsResponse.data.response)
+      
       // Create a new session_id for the mongoDB chat history
       const newSessionId = uuidv4();
       sessionStorage.setItem('session_id', newSessionId);
@@ -314,17 +291,17 @@ const ChatComponent: React.FC = () => {
         params: { sessionId: sessionId }
       });
       
-      const newMessages = chatMessages.map(({ id, text, sender }) => ({ content: text, role: sender === 'bot' ? 'assistant' : sender }));
+      const newMessages = chatMessages.map(({ text, sender }) => ({ content: text, role: sender === 'bot' ? 'assistant' : sender }));
       await axiosLLM.post('/api/backend/loadChatContext', {
         sessionId: sessionId,
         chat: newMessages,
       })
       const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: selectedModel?.modelId} });
       setHistoryChats(loadedModelChatsResponse.data.response)
+
       // Load selected chat messages
       setMessages(chatMessages);
       setCurrentChatId(chatId);
-      // addRecentChat()
     } catch (error) {
       console.error('Error loading chat history:', error);
       toast.error('An error occurred while loading the chat history.');
@@ -756,11 +733,11 @@ const ChatComponent: React.FC = () => {
                     />
                       {message.sender === 'bot' && (
                         <div style={{ position: 'absolute', bottom: '5px', left: '5px', display: 'flex', gap: '5px' }}>
-                          {/* <Tooltip title="Copy">
+                          <Tooltip title="Copy">
                             <IconButton onClick={() => copyToClipboard(message.text)} size="small" disabled>
                               <ContentCopyIcon />
                             </IconButton>
-                          </Tooltip> */}
+                          </Tooltip>
                           {isStreaming && (
                             <Tooltip title="Stop">
                               <IconButton onClick={handleStop} size="small">
