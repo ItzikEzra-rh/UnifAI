@@ -367,6 +367,9 @@ const ChatComponent: React.FC = () => {
       }
 
       let additionalContext = ""
+      let promptMessages = [{"role": "system",  "content": `Please answer the question in the context of ${selectedModel?.project}`},
+                            {"role": "user",    "content": `${formattedText}`}]
+
       // If current loaded model support RAG we should enrich the LLM with relevant context
       if (selectedModel?.isRagEnabled) {
         const queryRetrievalpayload = {
@@ -386,11 +389,8 @@ const ChatComponent: React.FC = () => {
 
         const metadataRetrievalResponse = await axiosBE.post('/api/rag/metadataRetrieval', metadataRetrievalpayload)
         additionalContext = metadataRetrievalResponse.data.result
-      }
-
-      const promptMessages = [{"role": "system",  "content": `Please answer the question in the context of ${selectedModel?.project}`},
-                              {"role": "context", "content": `${additionalContext}`},
-                              {"role": "user",    "content": `${formattedText}`}]
+        promptMessages = [...promptMessages, {"role": "context", "content": `${additionalContext}`}]   
+      }                         
       
       const inferencePayload = {
         messages: promptMessages,
