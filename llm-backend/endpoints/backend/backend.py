@@ -25,10 +25,11 @@ def register_trained_model(hf_url, quantized):
 
 @backend_bp.route("/loadModel", methods=["GET"])
 @from_query({
-    "model_id": fields.Str(data_key="modelId", required=True)
+    "model_id": fields.Str(data_key="modelId", required=True),
+    "context_length": fields.Str(data_key="contextLength", missing=None)
 })
-def load_model(model_id):
-    return jsonify(llm_provider.load_model(model_id))
+def load_model(model_id, context_length):
+    return jsonify(llm_provider.load_model(model_id, context_length))
 
 
 @backend_bp.route("/inference", methods=["GET"])

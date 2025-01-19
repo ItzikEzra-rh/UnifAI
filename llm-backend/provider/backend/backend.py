@@ -9,7 +9,7 @@ def register_trained_model(hf_url, quantized):
     return RegisterModel().register_model(hf_url, quantized)
 
 
-def load_model(model_id):
+def load_model(model_id, context_length):
     if AbstractModelLoader.model_loader:
         return "There is already a loaded model, please unload the model first."
     if AbstractModelLoader.is_model_loading:
@@ -23,7 +23,7 @@ def load_model(model_id):
 
         base_model = model_info.get('base_model', 'Unknown')
         project = model_info.get('project', 'Unknown')
-        context_length = model_info.get('context_length', 0)
+        context_length = context_length if context_length else model_info.get('context_length')
         model_type = model_info.get('model_type', 'Unknown')
         checkpoint = model_info.get('checkpoint', "")
         huggingface_url = model_info.get('huggingface_url', 'Unknown')
