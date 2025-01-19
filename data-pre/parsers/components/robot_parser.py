@@ -2,14 +2,14 @@ import re
 import os
 from .tree_sitter_parser import TreeSitterParser
 
-ROBOT_LANGUAGE_PATH = '/home/cloud-user/Projects/playGround/tree-sitter-playground/robot-odai.so'
+ROBOT_LANGUAGE_PATH = '/home/cloud-user/Projects/playGround/tree-sitter-playground/so_files/robot-eric.so'
 # ROBOT_FILE_PATH = '/home/cloud-user/Projects/Robot-POC-InstructLab/fullTests/6003_Scale_in_out_worker_node_after_failed_scale_out.robot'
 # ROBOT_FILE_PATH =  '/home/cloud-user/Projects/Robot-POC-InstructLab/24.0/4022_Add_Rsyslog_rule_and_Delete_Rsyslog_rule.robot'
 ROBOT_FILE_PATH =  '/home/cloud-user/Projects/Robot-POC-InstructLab/24.0/8103_Zabbix_server_is_running_in_all_manage_nodes.robot'
 
 class RobotParser(TreeSitterParser):
-    def __init__(self, language_path=ROBOT_LANGUAGE_PATH, language_name='robot', file_path=ROBOT_FILE_PATH, realtive_path=ROBOT_FILE_PATH):
-        super().__init__(language_path, language_name, file_path, realtive_path)
+    def __init__(self, language_path=ROBOT_LANGUAGE_PATH, language_name='robot', file_path=ROBOT_FILE_PATH, realtive_path=ROBOT_FILE_PATH, project_name=""):
+        super().__init__(language_path, language_name, file_path, realtive_path, project_name)
         self.test_cases = []
 
     def get_main_section_node(self, root_node, section_name):
@@ -903,6 +903,7 @@ class RobotParser(TreeSitterParser):
                 name = ""
                 documentation = ""
                 type_mapping = {}
+                code = ""
 
                 def type_mapping_insertion(keyword_text):
                     if keyword_text in keywords_mapping:
@@ -977,7 +978,8 @@ class RobotParser(TreeSitterParser):
                     "calls": type_mapping,  # The new keyword mappings per definition
                     "imports_file_locations": imports_file_locations,  # Mapped resource imports
                     "file_location": self.realtive_path,
-                    "type": type,  # Either 'Test_Case' or 'Keyword'
+                    "element_type": type,  # Either 'Test_Case' or 'Keyword'
+                    "project_name": self.project_name
                 }
 
             definitions = []
@@ -1090,12 +1092,13 @@ class RobotParser(TreeSitterParser):
 
         def extract_entire_code(node, content, file_type):
             """Helper function to extract entire robot code."""
-            return [{
+            return {
                 "code": content,
                 "imports_file_locations": map_imports_file_locations(),  # Mapped resource imports
                 "file_location": self.realtive_path,
-                "type": file_type,  # Either 'Test' or 'Resource'
-            }]
+                "element_type": file_type,  # Either 'Test' or 'Resource'
+                "project_name": self.project_name
+            }
 
         root_node, content = self.get_root_node()
         file_type = "Test" if self.get_main_section_node(root_node, 'test_cases_section') else "Resource"
