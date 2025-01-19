@@ -10,7 +10,6 @@ class GoParser(LanguageParser):
     def __init__(self, project_name: str):
         super().__init__()
         self.project_name = project_name
-        self.compile_go_parser()
 
     def get_file_pattern(self) -> str:
         return "*.go"
@@ -19,12 +18,12 @@ class GoParser(LanguageParser):
         subprocess.run(["go", "build", "-o", "goparser", "../rag/code_graph/language_parsers/go_parser.go"])
 
     def parse_file(self, file_path: Path) -> List[Tuple[str, FunctionContext]]:
+        self.compile_go_parser()
         # Run the parser
         result = subprocess.run(["./goparser", str(file_path)], 
                               capture_output=True, text=True)
         
         # Clean up
-        os.remove("temp_parser.go")
         os.remove("goparser")
         
         functions_info = json.loads(result.stdout)

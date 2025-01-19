@@ -38,6 +38,7 @@ export interface ModelData {
         end_tag: string;
         user_tag: string;
     };
+    isRagEnabled?: boolean,
     // numTests: string,
     // dataSize: string,
 }

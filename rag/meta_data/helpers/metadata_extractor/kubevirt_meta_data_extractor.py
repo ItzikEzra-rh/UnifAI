@@ -1,23 +1,25 @@
+from typing import List
 import re
 import spacy
-from typing import List, Set
+from .meta_data_extractor import MetaDataExtractorBase
 
 # Load spaCy's small English model for NLP
 nlp = spacy.load("en_core_web_sm")
 
-K8S_TERMS = [
-    "namespace", "volume", "deployment", "pod", "service", "configmap",
-    "secret", "auto_scaler", "ingress", "container", "persistentvolume",
-    "statefulset", "daemonset", "replicaset", "node", "scheduler", "controller"
-]
+class KubevirtMetaDataExtractor(MetaDataExtractorBase):
+    K8S_TERMS = [
+        "namespace", "volume", "deployment", "pod", "service", "configmap",
+        "secret", "auto_scaler", "ingress", "container", "persistentvolume",
+        "statefulset", "daemonset", "replicaset", "node", "scheduler", "controller"
+    ]
 
-K8S_RESOURCES = [
-    "VirtualMachineInstance", "VMI", "Pod", "Service", "Ingress", "ConfigMap",
-    "Deployment", "StatefulSet", "DaemonSet", "Secret", "PersistentVolumeClaim",
-    "PersistentVolume", "ReplicaSet", "Node", "Controller", "Scheduler"
-]
+    K8S_RESOURCES = [
+        "VirtualMachineInstance", "VMI", "Pod", "Service", "Ingress", "ConfigMap",
+        "Deployment", "StatefulSet", "DaemonSet", "Secret", "PersistentVolumeClaim",
+        "PersistentVolume", "ReplicaSet", "Node", "Controller", "Scheduler"
+    ]
 
-class MetaDataExtractor:
+    @staticmethod
     def is_technical_term(word: str) -> bool:
         """
         Identifies technical terms, abbreviations, and compound technical words.
@@ -37,7 +39,7 @@ class MetaDataExtractor:
             'auth',     # authentication related
             'sys',      # system related
         ]
-        
+
         # Check if word starts with technical prefixes
         word_lower = word.lower()
         for prefix in technical_prefixes:
@@ -56,19 +58,15 @@ class MetaDataExtractor:
             r'^[a-z]+-[a-z]+$',   # hyphenated terms
         ]
         
-        for pattern in technical_patterns:
-            if re.match(pattern, word):
-                return True
-                
-        return False
+        return any(re.match(pattern, word) for pattern in technical_patterns)
 
+    @staticmethod
     def is_pure_action_word(word: str) -> bool:
         """
         Checks if a word is a pure action verb by validating its structure.
         Returns False for compound words or technical terms.
         """
-        # First check if it's a technical term
-        if MetaDataExtractor.is_technical_term(word):
+        if KubevirtMetaDataExtractor.is_technical_term(word):
             return False
             
         # Common technical suffixes to filter out
@@ -82,19 +80,17 @@ class MetaDataExtractor:
             r'.*manager$',       # matches 'statemanager'
             r'.*factory$',       # matches 'objectfactory'
         ]
-        
+
         # Check if word contains any technical patterns
-        for pattern in technical_suffixes:
-            if re.match(pattern, word.lower()):
-                return False
+        if any(re.match(pattern, word.lower()) for pattern in technical_suffixes):
+            return False
         
         # Check if the word is too long (likely a compound word)
         if len(word) > 15:
             return False
         
-        # Common action verbs (expanded list)
         common_actions = {
-            'add', 'remove', 'reboot', 'restart', 'replace', 'replacement', 'get', 'set', 'create', 
+            'add', 'remove', 'reboot', 'restart', 'replace', 'replacement', 
             'process', 'validate', 'verify', 'check', 'start', 'stop', 'scale',
             'wait', 'send', 'receive', 'build', 'parse', 'convert',
             'initialize', 'handle', 'execute', 'run', 'test', 'load',
@@ -103,22 +99,18 @@ class MetaDataExtractor:
             'move', 'find', 'search', 'sort', 'filter', 'map',
             'deploy', 'configure', 'install', 'uninstall', 'import',
             'export', 'print', 'log', 'debug', 'compile', 'link',
-            'delete', 'update'
+            'delete', 'update', 'get', 'set', 'create'
         }
         
         # If the word is in our common actions list, it's likely a pure action
-        if word.lower() in common_actions:
-            return True
-            
-        return False
+        return word.lower() in common_actions
 
-    @staticmethod
-    def extract_actions(text: str) -> List[str]:
+    def extract_actions(self, text: str) -> List[str]:
         """
         Extracts meaningful actions (verbs) from the code by focusing on concise lemmatized verbs.
         Filters out compound terms, technical jargon, and non-action words.
         """
-        actions: Set[str] = set()
+        actions = set()
         doc = nlp(text)
         
         for token in doc:
@@ -129,31 +121,23 @@ class MetaDataExtractor:
                 
                 lemma = token.lemma_.lower()
                 # Additional check for minimum word length and pure action validation
-                if len(lemma) >= 3 and MetaDataExtractor.is_pure_action_word(lemma):
+                if len(lemma) >= 3 and self.is_pure_action_word(lemma):
                     actions.add(lemma)
         
         return sorted(list(actions))
 
-    @staticmethod
-    def extract_k8s_terms(text):
-        """
-        Match predefined K8S_TERMS in the text.
-        """
-        terms_found = [term for term in K8S_TERMS if term.lower() in text.lower()]
+    def extract_k8s_terms(self, text: str) -> List[str]:
+        """Match predefined K8S_TERMS in the text."""
+        terms_found = [term for term in self.K8S_TERMS if term.lower() in text.lower()]
         return list(set(terms_found))
 
-    @staticmethod
-    def extract_resources(text):
-        """
-        Extract Kubernetes-related resources from the given text.
-        """
-        resources = [resource for resource in K8S_RESOURCES if resource.lower() in text.lower()]
+    def extract_resources(self, text: str) -> List[str]:
+        """Extract Kubernetes-related resources from the text."""
+        resources = [resource for resource in self.K8S_RESOURCES if resource.lower() in text.lower()]
         return list(set(resources))
 
     @staticmethod
-    def extract_test_id(name):
-        """
-        Extract test ID from the name string using regex.
-        """
+    def extract_test_id(name: str) -> str:
+        """Extract test ID from the name string."""
         test_id_match = re.search(r"\[test_id:(\d+)]", name)
         return test_id_match.group(1) if test_id_match else None

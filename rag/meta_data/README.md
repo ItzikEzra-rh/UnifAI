@@ -57,9 +57,11 @@ By leveraging these classes, the `meta_data` project ensures that parsed objects
            ]
      }'
 
-2) curl -X GET "http://BE_IP:BE_PORT/api/rag/queryRetrieval" -H "Content-Type: application/json" -d '{
+2) V1: curl -X GET "http://BE_IP:BE_PORT/api/rag/queryRetrieval" -H "Content-Type: application/json" -d '{
            "text": "Please write a test case that checking the number of replicaset",
            "projectName": "kubevirt",
            "modelName": "default_model",
            "modelId": "model_id_123"
 }'
+  
+  V2 (latest): curl -X GET "http://127.0.0.1:13456/api/rag/queryRetrieval?text=Please%20write%20a%20test%20case%20that%20creating%20namespace%20with%203%20pods&projectName=kubevirt&modelName=default_model&modelId=model_id_123" -H "Content-Type: application/json"
