@@ -1,6 +1,6 @@
 apiVersion: v2
 name: orbiter
-description: A Helm chart for Kubernetes
+description: Orbiter chart will create a Pods communicate prompts with VLLM service.
 
 type: application
 version: 0.1.0
