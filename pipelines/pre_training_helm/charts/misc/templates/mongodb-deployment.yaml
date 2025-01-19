@@ -16,9 +16,6 @@ spec:
         app: mongodb
     spec:
       securityContext:
-        runAsUser: 1004200000
-        runAsGroup: 1004200000
-        fsGroup: 1004200000
         seccompProfile:
           type: RuntimeDefault
       containers:
@@ -59,6 +56,5 @@ spec:
             claimName: {{ .Release.Name }}-mongodb-pvc
           
       securityContext:
-        runAsUser: 1004200000
         seccompProfile:
           type: RuntimeDefault

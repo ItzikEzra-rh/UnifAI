@@ -16,7 +16,6 @@ spec:
         app: {{ .Chart.Name }}
     spec:
       securityContext:
-        runAsUser: 1004200000
       
       initContainers:
       - name: validate-vllm-orbiter-readiness
@@ -127,6 +126,5 @@ spec:
             cpu: {{.Values.resources.limits.cpu}}
 
       securityContext:
-        runAsUser: 1004200000
         seccompProfile:
           type: RuntimeDefault

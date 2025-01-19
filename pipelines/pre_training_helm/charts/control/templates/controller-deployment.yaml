@@ -15,8 +15,6 @@ spec:
       labels:
         app: {{ .Chart.Name }}
     spec:
-      securityContext:
-        runAsUser: 1004200000
       
       initContainers:
       - name: wait-for-services
@@ -188,6 +186,5 @@ spec:
             cpu: {{.Values.resources.limits.cpu}}
 
       securityContext:
-        runAsUser: 1004200000
         seccompProfile:
           type: RuntimeDefault
