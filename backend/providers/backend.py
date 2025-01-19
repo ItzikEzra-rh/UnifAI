@@ -213,8 +213,10 @@ def get_chat_history(model_id):
     """
     :return:
     """
-    result = Collections.by_name('chatHistory').find({'modelId': model_id}, {'_id': 0, 'modelId': 1, 'sessionId': 1, 'chat': 1})
-    return list(result)
+    result = Collections.by_name('chatHistory').find({'modelId': model_id}, 
+            {'_id': 0, 'id': 1, 'name': 1, 'timestamp': 1,  'firstMessage': 1, 'messages': 1, 'sessionId': 1})
+    print(result)
+    return list(result) if result else []
 
 @mongo
 def update_chat_history(model_id, session_id, chat):
@@ -225,7 +227,7 @@ def update_chat_history(model_id, session_id, chat):
     return list(result)
 
 @mongo
-def update_current_chat_history(model_id, session_id, chat):
+def update_current_chat_history(id, name, timestamp, messages, first_message, model_id, session_id):
     """
     This function updates the chat history for a given model and session.
     If a chat history exists, it updates it; otherwise, it creates a new record.
@@ -234,10 +236,11 @@ def update_current_chat_history(model_id, session_id, chat):
 
     if existing_chat:
         # If a chat history exists, update it
-        result = Collections.by_name('chatHistory').update_one({"modelId": model_id, "sessionId": session_id}, {"$set": {"chat": chat}})
-        print(f"Updated chat history for session: {session_id}.")
+        result = Collections.by_name('chatHistory').update_one({"modelId": model_id, "sessionId": session_id}, {"$set": {"messages": messages}})
+        return result.modified_count
     else:
         # If this is the first messages in this session, create a new one
-        result = Collections.by_name('chatHistory').insert_one({"modelId": model_id, "sessionId": session_id, "chat": chat})
-        print(f"Created new chat history for session: {session_id}")
-    return result
+        result = Collections.by_name('chatHistory').insert_one(
+            {"id": id, "name": name, "timestamp": timestamp, "messages": messages,
+             "firstMessage": first_message, "modelId": model_id, "sessionId": session_id})
+        return result.inserted_id

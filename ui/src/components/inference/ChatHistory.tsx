@@ -22,9 +22,12 @@ export interface HistoryChat {
   timestamp: string;
   messages: ChatMessage[];
   firstMessage: string;
+  sessionId: string;
 }
 
 const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, currentChatId, historyChats }) => {
+  console.log(historyChats);
+  
   return (
     <Paper elevation={3} sx={{ width: '95%', marginTop: '10px',display: 'flex', flexDirection: 'column',}}>
       <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
@@ -40,7 +43,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
               <ListItemButton
                 selected={currentChatId === chat.id}
                 disabled={isStreaming}
-                onClick={() => onChatSelect(chat.id, chat.messages)}
+                onClick={() => onChatSelect(chat.sessionId, chat.messages)}
                 sx={{
                   '&.Mui-selected': {
                     backgroundColor: 'rgba(25, 118, 210, 0.08)',

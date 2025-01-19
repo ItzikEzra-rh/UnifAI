@@ -17,8 +17,9 @@ from providers.backend import list_of_files_from_gitlab, insert_new_form, insert
 backend_bp = Blueprint("backend", __name__)
 
 class MessageSchema(Schema):
-    role = fields.Str(required=True)  # The sender of the message, either 'user' or 'bot'
-    content = fields.Str(required=True)  # The actual content of the message
+    id = fields.Str(required=True)  # The unique identifier of the message
+    sender = fields.Str(required=True)  # The sender of the message, either 'user' or 'bot'
+    text = fields.Str(required=True)  # The actual content of the message
 
 
 @backend_bp.route("/", methods=["GET"])
@@ -274,14 +275,19 @@ def retrieve_inference_counter_per_all_models():
     
 @backend_bp.route("/updateCurrentChat", methods=["POST"])
 @from_body({
+    "id":              fields.Str(required=True, data_key="id"),
+    "name":            fields.Str(required=True, data_key="name"),
+    "timestamp":       fields.Str(required=True, data_key="timestamp"),
+    "messages":        fields.List(fields.Nested(MessageSchema), required=True, data_key="messages"),
+    "first_message":   fields.Str(required=True, data_key="firstMessage"),
     "model_id":        fields.Str(required=True, data_key="modelId"),
     "session_id":      fields.Str(required=True, data_key="sessionId"),
-    "chat":            fields.List(fields.Nested(MessageSchema), required=True, data_key="chat")
+    
 })
-def update_current_chat(model_id, session_id, chat):
+def update_current_chat(id, name, timestamp, messages, first_message, model_id, session_id):
     try:
-        result = update_current_chat_history(model_id, session_id, chat)
-        return jsonify({"status": "success", "inserted_id": str(result.modified_count)})
+        result = update_current_chat_history(id, name, timestamp, messages, first_message, model_id, session_id)
+        return {"status": "success", "result": result}
 
     except Exception as e:
         logging.error(f"Error retreive the counter of all models: {e}")

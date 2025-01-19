@@ -186,7 +186,6 @@ const ChatComponent: React.FC = () => {
   const [messageIsRated, setMessageIsRated] = useState<{ [key: number]: boolean }>({});
 
   const [historyChats, setHistoryChats] = useState<HistoryChat[]>([]);
-  const [pastChats, setPastChats] = useState<any>(null);
   const [currentChatId, setCurrentChatId] = useState<string>('current');
 
   useEffect(() => {
@@ -226,7 +225,7 @@ const ChatComponent: React.FC = () => {
             }
             const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: queryPayload });
             console.log(loadedModelChatsResponse)
-            // setPastChats(historyChats);
+            setHistoryChats(loadedModelChatsResponse.data.response)
             setLoadingModel(false); // Ensure loading state is false as the model is already loaded
           }
         }
@@ -246,15 +245,23 @@ const ChatComponent: React.FC = () => {
 
   const updateCurrentChat = async (messages: ChatMessage[], sessionId: string, modelId: string | any) => {
     try {
+      const firstUserMessage = messages.find(msg => msg.sender === 'user')?.text || 'New conversation';
+      const truncatedMessage = firstUserMessage.length > 40 ? `${firstUserMessage.substring(0, 37)}...` : firstUserMessage;
+
       const formattedMessages = messages.map((message) => ({
         role: message.sender === 'user' ? 'user' : 'assistant',
         content: message.text,
       }));
+
       const payload = {
-        sessionId,
-        modelId,
-        chat: formattedMessages,
-      };
+        id: `chat-${historyChats.length + 1}`,
+        name: `Chat ${historyChats.length + 1}`,
+        timestamp: new Date().toISOString(),
+        messages: [...messages], // Save a copy of current messages
+        firstMessage: truncatedMessage,
+        sessionId: sessionId,
+        modelId: modelId,
+      }
       await axiosBE.post('/api/backend/updateCurrentChat', payload);
     } catch (error) {
       console.error('Error updating chat:', error);
@@ -287,7 +294,8 @@ const ChatComponent: React.FC = () => {
         name: `Chat ${historyChats.length + 1}`,
         timestamp: new Date().toLocaleString(),
         messages: [...messages], // Save a copy of current messages
-        firstMessage: truncatedMessage
+        firstMessage: truncatedMessage,
+        sessionId: sessionId
       };
 
       setHistoryChats(prevHistory => [newHistoryChat, ...prevHistory]);
@@ -319,7 +327,7 @@ const ChatComponent: React.FC = () => {
       await axiosLLM.get('/api/backend/clearChatHistory', {
         params: { sessionId: sessionId }
       });
-
+      
       const newMessages = chatMessages.map(({ id, text, sender }) => ({ content: text, role: sender === 'bot' ? 'assistant' : sender }));
       await axiosLLM.post('/api/backend/loadChatContext', {
         sessionId: sessionId,
@@ -414,8 +422,7 @@ const ChatComponent: React.FC = () => {
         temperature: temperature.toString(),
         sessionId: sessionId
       }
-      console.log("???")
-      console.log(inferencePayload)
+
       const response = await fetch(`${AXIOS_LLM_IP}/api/backend/inference`, {
         method: 'POST',
         headers: {
@@ -423,7 +430,7 @@ const ChatComponent: React.FC = () => {
         },
         body: JSON.stringify(inferencePayload),
       });
-      console.log("!!")
+
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       if (!response.body) throw new Error('ReadableStream not supported!');
       
@@ -467,7 +474,6 @@ const ChatComponent: React.FC = () => {
             lastMessage.text = outputText.trim();
           }
           updateCurrentChat(updatedMessages, sessionId, selectedModel?.modelId); // Update the chat in the DB
-          console.log("did i get here?")
           return updatedMessages;
         });
       }
@@ -762,11 +768,11 @@ const ChatComponent: React.FC = () => {
                     />
                       {message.sender === 'bot' && (
                         <div style={{ position: 'absolute', bottom: '5px', left: '5px', display: 'flex', gap: '5px' }}>
-                          <Tooltip title="Copy">
+                          {/* <Tooltip title="Copy">
                             <IconButton onClick={() => copyToClipboard(message.text)} size="small" disabled>
                               <ContentCopyIcon />
                             </IconButton>
-                          </Tooltip>
+                          </Tooltip> */}
                           {isStreaming && (
                             <Tooltip title="Stop">
                               <IconButton onClick={handleStop} size="small">
