@@ -206,7 +206,8 @@ def print_objects(target_dict):
         print(f"Documentation: {value['documentation']}")
         print("-" * 40)
 
-robot_folder = '/home/cloud-user/Projects/ods-ci'
+# robot_folder = '/home/cloud-user/Projects/ods-ci'
+robot_folder = '/home/cloud-user/Projects/Robot-POC-InstructLab/24.0'
 suffixes = [".resource", ".robot"]  # List of suffixes to search for
 robot_files = get_robot_file_paths_with_suffixes(robot_folder, suffixes)
 robot_file_keywords_mapping = {}
@@ -261,7 +262,8 @@ KEYWORD_NAMES --> list of objects, each object is:
     {keyword: {"file_location": "Relative path", "documentation": KEYWORD_documentation}}
 """
 
-robot_folder = '/home/cloud-user/Projects/ods-ci'
+# robot_folder = '/home/cloud-user/Projects/ods-ci'
+robot_folder = '/home/cloud-user/Projects/Robot-POC-InstructLab/24.0'
 suffixes = [".robot"]  # List of suffixes to search for
 robot_files = get_robot_file_paths_with_suffixes(robot_folder, suffixes)
 
@@ -283,8 +285,8 @@ error_paths = []
 # robot_files = ["/home/cloud-user/Projects/ods-ci/ods_ci/tasks/Resources/Provisioning/Hive/provision.robot"]
 # Loop through the robot files
 for path in robot_files:
-    robot_parser = TreeSitterParser.create_parser(file_path=path)
-    robot_parser.add_end_to_if_statements(robot_parser.file_path)    
+    robot_parser = TreeSitterParser.create_parser(file_path=path, project_name= "NCS")
+    # robot_parser.add_end_to_if_statements(robot_parser.file_path)    
     node, _ = robot_parser.get_root_node()
     
     # Check if the node contains an error
@@ -312,18 +314,26 @@ full_file_path = "/home/cloud-user/Projects/ods-ci/ods_ci/tasks/Resources/Provis
 robot_files_internal_functions_mapping = []
 counter = 0
 
-# for path in robot_files:
-#     realtive_file_path = path.replace("/home/cloud-user/Projects/ods-ci/", "", 1)
-#     robot_parser = RobotParser(file_path=path, realtive_path=realtive_file_path)
-#     robot_entire_file_mapping = robot_parser.enitre_file_parsing(robot_file_names_mapping)    
-#     robot_file_internal_functions_mapping = robot_parser.get_full_internal_calls_list(robot_file_keywords_mapping, robot_file_libraries_mapping)
-#     robot_file_mapping = robot_entire_file_mapping + robot_file_internal_functions_mapping
-#     counter+= len(robot_file_mapping)
-#     try:
-#         robot_files_internal_functions_mapping.append(robot_file_mapping)
-#     except (TypeError, ValueError) as e:
-#         print(f"Failed to update with: {e}")
+for path in robot_files:
+    # realtive_file_path = path.replace("/home/cloud-user/Projects/ods-ci/", "", 1)
+    realtive_file_path = path.replace("/home/cloud-user/Projects/Robot-POC-InstructLab/", "", 1)
+    robot_parser = RobotParser(file_path=path, realtive_path=realtive_file_path)
+    robot_entire_file_mapping = [robot_parser.enitre_file_parsing(robot_file_names_mapping)]    
+    robot_file_internal_functions_mapping = robot_parser.get_full_internal_calls_list(robot_file_keywords_mapping, robot_file_libraries_mapping)
+    robot_entire_file_mapping.extend(robot_file_internal_functions_mapping)
+    counter+= len(robot_entire_file_mapping)
+    try:
+        robot_files_internal_functions_mapping.append(robot_entire_file_mapping)
+    except (TypeError, ValueError) as e:
+        print(f"Failed to update with: {e}")
 
-# json_formatted_str = json.dumps(robot_files_internal_functions_mapping, indent=2)
-# write_to_file(json_formatted_str, filename='RHOAI_Files_Mapping.txt')
+robot_files_internal_functions_mapping_flatten = []
+
+for internal_list in robot_files_internal_functions_mapping:
+    for obj in internal_list:
+        robot_files_internal_functions_mapping_flatten.append(obj)
+         
+json_formatted_str = json.dumps(robot_files_internal_functions_mapping_flatten, indent=2)
+# write_to_file(json_formatted_str, filename='RHOAI_Files_Mapping.json')
+write_to_file(json_formatted_str, filename='NCS_Files_Mapping.json')
 print(counter)
