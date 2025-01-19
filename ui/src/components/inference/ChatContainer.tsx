@@ -191,16 +191,9 @@ const ChatComponent: React.FC = () => {
 
   useEffect(() => {
     // Check if there's already a session_id in sessionStorage
-    let currentSessionId = sessionStorage.getItem('session_id') ?? uuidv4();
-
-    if (!sessionStorage.getItem('session_id')) {
-      // Store the new session_id in sessionStorage if it was newly generated
-      sessionStorage.setItem('session_id', currentSessionId);
-    }
-
-    setSessionId(currentSessionId);
-    sessionIdRef.current = currentSessionId; // Update ref immediately
-
+    const newSessionId = uuidv4();
+    setSessionId(newSessionId);
+    sessionIdRef.current = newSessionId;
 
     // Fetch available models on component mount
     const fetchModelsAndCheckLoadedModel = async () => {
@@ -228,11 +221,12 @@ const ChatComponent: React.FC = () => {
           const loadedModel = transformedData.find(model => model.modelId === loadedModelId);
           if (loadedModel) {
             setSelectedModel(loadedModel);
-            console.log("going to axios now")
-            const loadedModelChatsResponse = await axiosLLM.get('/api/backend/getChats', { params: { modelId: loadedModel } });
+            const queryPayload = {
+              modelId: loadedModel.modelId,
+            }
+            const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: queryPayload });
             console.log(loadedModelChatsResponse)
             // setPastChats(historyChats);
-            // const loadedModelChats = loadedModelChatsResponse.data;
             setLoadingModel(false); // Ensure loading state is false as the model is already loaded
           }
         }
@@ -508,8 +502,12 @@ const ChatComponent: React.FC = () => {
       sender: 'user',
     };
 
-    setMessages([...messages, userMessage]);
-  
+    setMessages((prevMessages) => {
+      const updatedMessages = [...prevMessages, userMessage];
+      updateCurrentChat(updatedMessages, sessionId, selectedModel.modelId); // Update the chat in the DB
+      return updatedMessages;
+    });
+
     setIsStreaming(true);
     sendQuestion(text);
   };

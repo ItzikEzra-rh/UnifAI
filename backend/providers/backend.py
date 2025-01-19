@@ -213,8 +213,7 @@ def get_chat_history(model_id):
     """
     :return:
     """
-    result = Collections.by_name('chatHistory').find({'modelId': model_id})
-    print(result)
+    result = Collections.by_name('chatHistory').find({'modelId': model_id}, {'_id': 0, 'modelId': 1, 'sessionId': 1, 'chat': 1})
     return list(result)
 
 @mongo

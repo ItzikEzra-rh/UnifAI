@@ -288,16 +288,13 @@ def update_current_chat(model_id, session_id, chat):
         return jsonify({"status": "error", "message": str(e)}), 500
     
 @backend_bp.route("/getChats", methods=["GET"])
-@from_body({
+@from_query({
     "model_id":        fields.Str(required=True, data_key="modelId")
 })
 def get_chat_history_per_model(model_id):
     try:
-        # Retrieve the counter representing 'inference usage' per all models under MongoDB collection
-        print(model_id)
+        # Retrieve the chats saved in the DB for the current model
         result = get_chat_history(model_id)
-
-        # Return success response
         return jsonify({"status": "success", "response": result}), 201
 
     except Exception as e:
