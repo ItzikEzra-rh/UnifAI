@@ -55,8 +55,11 @@ spec:
           value: "/tmp/.cache"     
         - name: VLLM_CACHE_ROOT
           value: "/tmp/.cache"                    
-        - name: HUGGING_FACE_HUB_TOKEN
-          value: "{{.Values.global.hf_token}}"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: "{{.Values.global.hf_token}}"
+              key: token
         - name: REVIEWER_MODEL_HF_ID
           value: "{{.Values.global.reviewer_model_hf_id}}"
 

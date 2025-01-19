@@ -96,7 +96,10 @@ spec:
         - name: HF_HOME
           value: "/tmp/.cache"  
         - name: HF_TOKEN
-          value: "{{.Values.global.hf_token}}"
+          valueFrom:
+            secretKeyRef:
+              name: "{{.Values.global.hf_token}}"
+              key: token
         - name: PROMPT_LAB_MODEL_HF_ID
           value: "{{.Values.global.orbiter_model_hf_id}}"
         - name: RABBITMQ_IP
@@ -139,7 +142,10 @@ spec:
         - name: HF_HOME
           value: "/tmp/.cache"     
         - name: HF_TOKEN
-          value: "{{.Values.global.hf_token}}"
+          valueFrom:
+            secretKeyRef:
+              name: "{{.Values.global.hf_token}}"
+              key: token
         - name: PROMPT_LAB_MODEL_HF_ID
           value: "{{.Values.global.orbiter_model_hf_id}}"
         - name: PROMPT_LAB_MAX_GENERATION_LENGTH

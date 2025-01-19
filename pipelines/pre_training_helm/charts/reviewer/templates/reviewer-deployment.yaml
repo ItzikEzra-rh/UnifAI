@@ -82,7 +82,10 @@ spec:
         - name: TRANSFORMERS_CACHE
           value: "/tmp"
         - name: HF_TOKEN
-          value: "{{.Values.global.hf_token}}"
+          valueFrom:
+            secretKeyRef:
+              name: "{{.Values.global.hf_token}}"
+              key: token
         - name: REVIEWER_MODEL_HF_ID
           value: "{{.Values.global.reviewer_model_hf_id}}"
         - name: REVIEWER_MAX_GENERATION_LENGTH

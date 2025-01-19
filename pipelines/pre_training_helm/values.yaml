@@ -4,13 +4,13 @@ global:
   namespace: tag-ai--yhabushi-nb
 
   # (int) number of prompt-vllm's serving orbiters
-  vllm_orbiter_replica: 3
+  vllm_orbiter_replica: 1
 
   # (int) number of reviewer-vllm's serving reviewer
   vllm_reviewer_replica: 1
 
   # (int) number of orbiter to work against prompt-vllm pool
-  orbiter_replica: 4
+  orbiter_replica: 1
 
   # (int) number of reviewer to work against reviewer-vllm pool
   reviewer_replica: 1
@@ -20,15 +20,16 @@ global:
   access_token: "eyJhbGciOiJSUzI1NiIsImtpZCI6IkRDVkN1cFI0WlFkZUZVdl91QmZ2bXpHaVRhaUI1V2N1eEQ5cXNPZXdRZ28ifQ.eyJpc3MiOiJrdWJlcm5ldGVzL3NlcnZpY2VhY2NvdW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9uYW1lc3BhY2UiOiJ0YWctYWktLWNvbmZpZyIsImt1YmVybmV0ZXMuaW8vc2VydmljZWFjY291bnQvc2VjcmV0Lm5hbWUiOiJ0ZW5hbnRhY2Nlc3MtdGFnLXBpcGVsaW5lLWRlcGxveW1lbnQtdG9rZW4iLCJrdWJlcm5ldGVzLmlvL3NlcnZpY2VhY2NvdW50L3NlcnZpY2UtYWNjb3VudC5uYW1lIjoidGVuYW50YWNjZXNzLXRhZy1waXBlbGluZS1kZXBsb3ltZW50Iiwia3ViZXJuZXRlcy5pby9zZXJ2aWNlYWNjb3VudC9zZXJ2aWNlLWFjY291bnQudWlkIjoiNzg2M2RiOWQtYzYzNy00NjU5LTk0NzgtNWIzMmQ1YzMzODJjIiwic3ViIjoic3lzdGVtOnNlcnZpY2VhY2NvdW50OnRhZy1haS0tY29uZmlnOnRlbmFudGFjY2Vzcy10YWctcGlwZWxpbmUtZGVwbG95bWVudCJ9.YECNdShN8yVlnw1Jk-WOx7NO9IKSm4hZXfls4slQslRlEfRvmmywiG0qDI_lOfRWV7dWqkYZa9o5YYldoCKrlR35yZn-aqTyN_aMXRcjebBW58PFyZ2kswMJ38o-c1W7nuqnEPbGPgkzfmdZVme26u1kFqkDu4qCG8qV8JhQW9o9kupjyAX_gAIwKKY2WOxBaKCgzMcjy6DKqpgs507FSaMrH5pKr5J2Fd74FsH4HwT5cQUKW_RUzcAN1UKl4mxXqS322da99sKBos7OmDMfNbmZUuKGDGF_99kO6LQFW1TuofqaDj5JzWgwXpej-mLj5eOXChsY-IxBNeqyReqTuufLttSFwcmVkADIZPZcAFWE4DSlJCTiAF_osxFk-5ggY2pc_ibIR4HOW3LR4D0MDCY6i_o5WH_HplRzmWKP3Q1fZ2jInlaDCVBMEYWqrG6OHqnTjOkblk6BXmvJLHWO_anHscqzfufasaEB2d9jX4-AK0h3eoeq6zBrTnSouL_5c9gAc1D_DrOykjB1ViH526hzOfiAgVxm4xxRZyCsWCWOEX_4OWxNknBRfmlBp4MQSMmDbOYDq9bPrcPSL9EZZ3KwaYYRb_eoCqSzh_Ls073HUq2YcyNSYdL5IzSKo056CZDMJeOG9XgYTgF7TfwrexZmqBdeIhPja3AoYidZY9M"
   
   # Hugging Face API token for accessing models and resources.
-  hf_token: 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
+  # please make sure to have a pre defined secret exist in the namespace.
+  hf_token: huggingface-token-secret
 
   # Huggingface repository file drop location.
-  output_dataset_repo:  oodeh/MTA-tests 
+  output_dataset_repo: oodeh/mta_tests_parsed
   output_dataset_file_name: output
 
   # Huggingface repository and file to consume.
-  input_dataset_repo: oodeh/MTA-tests
-  input_dataset_file_name: flattened_data.json #input_8_elements_16_prompts.json
+  input_dataset_repo: oodeh/mta_tests_parsed
+  input_dataset_file_name: input_8_elements_16_prompts.json
 
 
   # (int) Max retries 

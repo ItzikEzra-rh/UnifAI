@@ -24,6 +24,7 @@ global:
   access_token: 
 
   # Hugging Face API token for accessing models and resources.
+  # please make sure to have a pre defined secret exist in the namespace.
   hf_token:
 
   # Huggingface repository and file to consume.
