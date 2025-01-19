@@ -54,19 +54,19 @@
         "function_full_code": {
           "questions": [
             {
-              "question": "For the context of {project_id} project,### Task: Analyze Repository Structure and Dependencies\\n\\nHere are the contents of the repository:\\n\\n**{element_type}: `{file_location}``**\\n```{coding_language}\\n/*\\n{imports}\\n*/\\n{code}",
+              "question": "In the context of {project_id} project,### Task: Analyze Function Implementation and Dependencies\\n\\nHere is the function from the repository:\\n\\n**Function: `{file_location}`**\\n```{coding_language}\\n/*\\n{imports}\\n*/\\n{code}",
               "validation": "Does the answer analyze the dependencies used in `{element_type}` at `{file_location}`? Does it explain the structure of `{element_type}`?"
             },
             {
-              "question": "For the context of {project_id} project,### Task: Analyze Repository Structure and Dependencies\\n\\nHere are the contents of the repository:\\n\\n**{element_type}: `{file_location}`**\\n```{coding_language}\\n/*\\n{imports}\\n*/\\n{code}",
+              "question": "In the context of {project_id} project,### Task: Analyze Repository Structure and Dependencies\\n\\nHere are the contents of the repository:\\n\\n**{element_type}: `{file_location}`**\\n```{coding_language}\\n/*\\n{imports}\\n*/\\n{code}",
               "validation": "Does the answer identify and explain all the dependencies used in `{element_type}` at `{file_location}`?"
             },
             {
-              "question": "For the context of {project_id} project,### Task: Analyze Repository Structure and Dependencies\\n\\nHere are the contents of the repository:\\n\\n**{element_type}: `{file_location}`**\\n```{coding_language}\\n/*\\n{imports}\\n*/\\n{code}",
+              "question": "In the context of {project_id} project,### Task: Analyze Repository Structure and Dependencies\\n\\nHere are the contents of the repository:\\n\\n**{element_type}: `{file_location}`**\\n```{coding_language}\\n/*\\n{imports}\\n*/\\n{code}",
               "validation": "Does the answer assess the relevance and necessity of the dependencies used in `{element_type}` at `{file_location}`?"
             },
             {
-              "question": "For the context of {project_id} project,### Task: Analyze Repository Structure and Dependencies\\n\\nHere are the contents of the repository:\\n\\n**{element_type}: `{file_location}`**\\n```{coding_language}\\n/*\\n{imports}\\n*/\\n{code}",
+              "question": "In the context of {project_id} project,### Task: Analyze Repository Structure and Dependencies\\n\\nHere are the contents of the repository:\\n\\n**{element_type}: `{file_location}`**\\n```{coding_language}\\n/*\\n{imports}\\n*/\\n{code}",
               "validation": "Does the answer evaluate the dependencies in `{element_type}` at `{file_location}`?"
             }
           ],
