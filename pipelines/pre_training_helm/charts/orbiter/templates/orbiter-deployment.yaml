@@ -111,10 +111,6 @@ spec:
           value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_HOST)
         - name: MONGODB_PORT
           value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_PORT)
-        - name: VLLM_IP
-          value: $({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_HOST)
-        - name: VLLM_PORT
-          value: $({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_PORT)
         - name: MODEL_API_URL
           value: "http://$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_HOST):$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_PORT)/v1/completions"
 
