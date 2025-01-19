@@ -1,3 +1,5 @@
+import json
+from flask import jsonify
 from pymongo import ReturnDocument
 from be_utils.gitlab import GitlabAPI
 from be_utils.db.db import mongo, Collections, db
@@ -212,6 +214,7 @@ def get_chat_history(model_id):
     :return:
     """
     result = Collections.by_name('chatHistory').find({'modelId': model_id})
+    print(result)
     return list(result)
 
 @mongo
@@ -228,23 +231,14 @@ def update_current_chat_history(model_id, session_id, chat):
     This function updates the chat history for a given model and session.
     If a chat history exists, it updates it; otherwise, it creates a new record.
     """
-    chat_history = Collections.by_name('chatHistory')
-    existing_chat = chat_history.find_one({"model_id": model_id, "session_id": session_id})
-    
+    existing_chat = Collections.by_name('chatHistory').find_one({"sessionId": session_id})
+
     if existing_chat:
         # If a chat history exists, update it
-        result = chat_history.update_one(
-            {"model_id": model_id, "session_id": session_id}, 
-            {"$set": {"chat": chat}} 
-        )
+        result = Collections.by_name('chatHistory').update_one({"modelId": model_id, "sessionId": session_id}, {"$set": {"chat": chat}})
         print(f"Updated chat history for session: {session_id}.")
-        print("Update result:", result.modified_count)
     else:
         # If this is the first messages in this session, create a new one
-        result = chat_history.insert_one({
-            "model_id": model_id,
-            "session_id": session_id,
-            "chat": chat
-        })
+        result = Collections.by_name('chatHistory').insert_one({"modelId": model_id, "sessionId": session_id, "chat": chat})
         print(f"Created new chat history for session: {session_id}")
-    return {"acknowledged": result.acknowledged, "result": result.raw_result}
+    return result

@@ -201,6 +201,7 @@ const ChatComponent: React.FC = () => {
     setSessionId(currentSessionId);
     sessionIdRef.current = currentSessionId; // Update ref immediately
 
+
     // Fetch available models on component mount
     const fetchModelsAndCheckLoadedModel = async () => {
       try {
@@ -227,23 +228,14 @@ const ChatComponent: React.FC = () => {
           const loadedModel = transformedData.find(model => model.modelId === loadedModelId);
           if (loadedModel) {
             setSelectedModel(loadedModel);
+            console.log("going to axios now")
+            const loadedModelChatsResponse = await axiosLLM.get('/api/backend/getChats', { params: { modelId: loadedModel } });
+            console.log(loadedModelChatsResponse)
+            // setPastChats(historyChats);
+            // const loadedModelChats = loadedModelChatsResponse.data;
             setLoadingModel(false); // Ensure loading state is false as the model is already loaded
           }
         }
-        
-        const chatsResponse = await axiosLLM.get<ModelData[]>('/api/backend/getChats');
-        const historyChats: ModelData[] = chatsResponse.data.map((item: any) => ({
-          modelId: item._id,
-          modelName: item.name,
-          trainingName: item.name,
-          modelMaxSeqLen: item.context_length,
-          modelType: item.model_type,
-          project: item.project,
-          checkpoint: item?.checkpoint,
-          finetuneSteps: item?.finetune_steps,
-          promptTemplate: item?.prompt_template,
-        }));
-        setPastChats(historyChats);
       } catch (error) {
         console.error('Error fetching model data:', error);
       }
@@ -264,15 +256,12 @@ const ChatComponent: React.FC = () => {
         role: message.sender === 'user' ? 'user' : 'assistant',
         content: message.text,
       }));
-  
       const payload = {
         sessionId,
         modelId,
         chat: formattedMessages,
       };
-      console.log('Payload:', payload);
       await axiosBE.post('/api/backend/updateCurrentChat', payload);
-      console.log('Chat updated successfully');
     } catch (error) {
       console.error('Error updating chat:', error);
     }
@@ -431,7 +420,8 @@ const ChatComponent: React.FC = () => {
         temperature: temperature.toString(),
         sessionId: sessionId
       }
-
+      console.log("???")
+      console.log(inferencePayload)
       const response = await fetch(`${AXIOS_LLM_IP}/api/backend/inference`, {
         method: 'POST',
         headers: {
@@ -439,7 +429,7 @@ const ChatComponent: React.FC = () => {
         },
         body: JSON.stringify(inferencePayload),
       });
-
+      console.log("!!")
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       if (!response.body) throw new Error('ReadableStream not supported!');
       
@@ -483,6 +473,7 @@ const ChatComponent: React.FC = () => {
             lastMessage.text = outputText.trim();
           }
           updateCurrentChat(updatedMessages, sessionId, selectedModel?.modelId); // Update the chat in the DB
+          console.log("did i get here?")
           return updatedMessages;
         });
       }
@@ -517,11 +508,7 @@ const ChatComponent: React.FC = () => {
       sender: 'user',
     };
 
-    setMessages((prevMessages) => {
-      const updatedMessages = [...prevMessages, userMessage];
-      updateCurrentChat(updatedMessages, sessionId, selectedModel.modelId); // Update the chat in the DB
-      return updatedMessages;
-    });
+    setMessages([...messages, userMessage]);
   
     setIsStreaming(true);
     sendQuestion(text);

@@ -281,7 +281,7 @@ def retrieve_inference_counter_per_all_models():
 def update_current_chat(model_id, session_id, chat):
     try:
         result = update_current_chat_history(model_id, session_id, chat)
-        return {"status": "success", "response": result}
+        return jsonify({"status": "success", "inserted_id": str(result.modified_count)})
 
     except Exception as e:
         logging.error(f"Error retreive the counter of all models: {e}")
@@ -294,6 +294,7 @@ def update_current_chat(model_id, session_id, chat):
 def get_chat_history_per_model(model_id):
     try:
         # Retrieve the counter representing 'inference usage' per all models under MongoDB collection
+        print(model_id)
         result = get_chat_history(model_id)
 
         # Return success response
