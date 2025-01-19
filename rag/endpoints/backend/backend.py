@@ -38,7 +38,7 @@ def register_new_project(parsed_elements_location, project_name, project_repo_pa
     return json_response({"result": "metadata added successfully for each of the parsed elements\n"})
 
 @rag_bp.route("/queryRetrieval", methods=["GET"])
-@from_body({"text":                           fields.Str(missing='', data_key="text"),
+@from_query({"text":                          fields.Str(missing='', data_key="text"),
             "project_name":                   fields.Str(missing='', data_key="projectName"),
             "model_name":                     fields.Str(missing='', data_key="modelName"),
             "model_id":                       fields.Str(missing='', data_key="modelId"),
@@ -74,7 +74,7 @@ def register_project_graph(repo_location, project_name, project_repo_path, repo_
     project_graph_expansion(repo_location, project_name, project_repo_path, repo_languages)
     return json_response({"result": "graph represention for each code element in the project added successfully\n"})
 
-@rag_bp.route("/metadataRetrieval", methods=["GET"])
+@rag_bp.route("/metadataRetrieval", methods=["POST"])
 @from_body({"project_name":       fields.Str(missing='', data_key="projectName"),
             "relevant_metadata":  fields.List(fields.Tuple((fields.Str(), fields.Str())), missing=[], data_key="relevantMetadata")})
 def meta_data_retrieval(project_name, relevant_metadata):
