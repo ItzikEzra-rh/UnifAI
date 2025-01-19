@@ -132,7 +132,10 @@ spec:
         - -c
         - |
           promptlab launchpad
-          echo "Process completed successfully."
+          echo "==================================================================================="
+          echo "  Process completed successfully!                                                  "
+          echo "  Make sure a JSON file uploaded to your repository before removing the deployment "
+          echo "==================================================================================="
           sleep infinity
 
         #command: [ "/bin/bash", "-c", "--" ]
