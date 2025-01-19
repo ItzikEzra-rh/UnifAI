@@ -225,7 +225,6 @@ const ChatComponent: React.FC = () => {
               modelId: loadedModel.modelId,
             }
             const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: queryPayload });
-            console.log(loadedModelChatsResponse)
             setHistoryChats(loadedModelChatsResponse.data.response)
             setLoadingModel(false); // Ensure loading state is false as the model is already loaded
           }
@@ -257,12 +256,10 @@ const ChatComponent: React.FC = () => {
 
       
       const payload = {
-        id: `chat-${historyChats.length + 1}`,
-        name: `Chat ${historyChats.length + 1}`,
+        sessionId: sessionId,
         timestamp: moment().format('MMM DD, YYYY, hh:mm A'),
         messages: [...messages], 
         firstMessage: truncatedMessage,
-        sessionId: sessionId,
         modelId: modelId,
       }
       await axiosBE.post('/api/backend/updateCurrentChat', payload);
@@ -282,7 +279,7 @@ const ChatComponent: React.FC = () => {
     // Handle the case once user press on 'Start new chat' & certain 'Recent Chat Item' where currently selected, therefore we should update the messages array of the selected 'Recent Chat Item'
     // Handle the case once user moving between chat histories, we should update the chat that he just moved from with up to date data
     if (messages.length > 0 && currentChatId != "current") {
-      const currentHistory = historyChats.map(chat => chat.id == currentChatId && chat.messages.length !== messages.length ? { ...chat, messages: [...messages], timestamp: new Date().toLocaleString() } : chat)
+      const currentHistory = historyChats.map(chat => chat.sessionId == currentChatId && chat.messages.length !== messages.length ? { ...chat, messages: [...messages], timestamp: new Date().toLocaleString() } : chat)
       setHistoryChats(currentHistory)
     }
   }
@@ -293,12 +290,10 @@ const ChatComponent: React.FC = () => {
       const truncatedMessage = firstUserMessage.length > 40 ? `${firstUserMessage.substring(0, 37)}...` : firstUserMessage;
 
       const newHistoryChat: HistoryChat = {
-        id: `chat-${historyChats.length + 1}`,
-        name: `Chat ${historyChats.length + 1}`,
+        sessionId: sessionId,
         timestamp: new Date().toLocaleString(),
         messages: [...messages], // Save a copy of current messages
         firstMessage: truncatedMessage,
-        sessionId: sessionId
       };
 
       setHistoryChats(prevHistory => [newHistoryChat, ...prevHistory]);
@@ -754,6 +749,7 @@ const ChatComponent: React.FC = () => {
             handleChatSelect={handleChatSelect}
             currentChatId={currentChatId}
             historyChats={historyChats}
+            setHistoryChats={setHistoryChats}
           />
           <MainContainer style={{marginLeft: drawerOpen ? '15%' : '0%', flexGrow: 1}}>
             <ChatContainer>

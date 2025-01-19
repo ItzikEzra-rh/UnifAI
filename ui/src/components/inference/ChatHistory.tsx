@@ -1,35 +1,63 @@
-import React from 'react';
-import { Paper, Typography, List, ListItem, ListItemButton, ListItemText, ListItemIcon, Divider, Box} from '@mui/material';
+import React, { useState } from 'react';
+import axiosBE from '../../http/axiosConfig';
+import { Paper, Typography, List, ListItem, ListItemButton, ListItemText, ListItemIcon, Divider, Box, ListItemSecondaryAction, IconButton, Dialog, DialogActions, DialogContent, DialogTitle, Button } from '@mui/material';
 import MessageIcon from '@mui/icons-material/Message';
 import HistoryIcon from '@mui/icons-material/History';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 interface ChatMessage {
-    id: string;
-    text: string;
-    sender: 'user' | 'bot';
-  }
+  id: string;
+  text: string;
+  sender: 'user' | 'bot';
+}
 
 interface ChatHistoryProps {
   isStreaming: boolean;
   onChatSelect: (chatId: string, messages: ChatMessage[]) => void;
   currentChatId: string;
   historyChats: HistoryChat[];
+  setHistoryChats: (historyChats: HistoryChat[]) => void;
 }
 
 export interface HistoryChat {
-  id: string;
-  name: string;
+  sessionId: string;
   timestamp: string;
   messages: ChatMessage[];
   firstMessage: string;
-  sessionId: string;
 }
 
-const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, currentChatId, historyChats }) => {
-  console.log(historyChats);
-  
+const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, currentChatId, historyChats, setHistoryChats }) => {
+  const [openModal, setOpenModal] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
+  const [selectedFirstMessage, setSelectedFirstMessage] = useState<string | null>(null);
+
+  const deleteSession = async (sessionId: string) => {
+    try {
+      const response = await axiosBE.get('/deleteSession', { params: { sessionId } });
+      console.log('Session deleted:', response.data);
+      
+      // Optionally, remove the deleted session from the state
+      setHistoryChats(historyChats.filter((chat) => chat.sessionId !== sessionId));
+      setOpenModal(false); // Close the modal after successful deletion
+    } catch (error) {
+      console.error('Error deleting session:', error);
+    }
+  };
+
+  const handleDeleteClick = (sessionId: string, firstMessage: string) => {
+    setSelectedSessionId(sessionId);
+    setSelectedFirstMessage(firstMessage);
+    setOpenModal(true); // Open the confirmation modal
+  };
+
+  const handleCloseModal = () => {
+    setOpenModal(false);
+    setSelectedSessionId(null); // Clear the selected session ID
+    setSelectedFirstMessage(null); // Clear the selected first message
+  };
+
   return (
-    <Paper elevation={3} sx={{ width: '95%', marginTop: '10px',display: 'flex', flexDirection: 'column',}}>
+    <Paper elevation={3} sx={{ width: '95%', marginTop: '10px', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
         <Typography variant="h6" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
           <HistoryIcon /> Chat History
@@ -38,10 +66,10 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
 
       <List sx={{ overflow: 'auto', flexGrow: 1 }}>
         {historyChats.map((chat, index) => (
-          <React.Fragment key={chat.id}>
+          <React.Fragment key={index}>
             <ListItem disablePadding>
               <ListItemButton
-                selected={currentChatId === chat.id}
+                selected={currentChatId === chat.sessionId}
                 disabled={isStreaming}
                 onClick={() => onChatSelect(chat.sessionId, chat.messages)}
                 sx={{
@@ -54,12 +82,9 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
                   <MessageIcon />
                 </ListItemIcon>
                 <ListItemText
-                  primary={chat.name}
+                  primary={chat.firstMessage}
                   secondary={
                     <React.Fragment>
-                      <Typography component="span" variant="body2" color="text.primary" sx={{ display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
-                        {chat.firstMessage}
-                      </Typography>
                       <Typography component="span" variant="caption" color="text.secondary">
                         {chat.timestamp}
                       </Typography>
@@ -67,19 +92,51 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
                   }
                 />
               </ListItemButton>
+              <ListItemSecondaryAction>
+                <IconButton
+                  edge="end"
+                  aria-label="delete"
+                  onClick={() => handleDeleteClick(chat.sessionId, chat.firstMessage)}
+                >
+                  <DeleteIcon />
+                </IconButton>
+              </ListItemSecondaryAction>
             </ListItem>
             {index < historyChats.length - 1 && <Divider />}
           </React.Fragment>
         ))}
         {historyChats.length === 0 && (
           <ListItem>
-            <ListItemText 
+            <ListItemText
               primary="No chat history yet"
               sx={{ textAlign: 'center', color: 'text.secondary' }}
             />
           </ListItem>
         )}
       </List>
+
+      {/* Confirmation Modal */}
+      <Dialog open={openModal} onClose={handleCloseModal}>
+        <DialogTitle>Are you sure you want to delete this chat?</DialogTitle>
+        <DialogContent>
+          <Typography> You selected the chat starting with "{selectedFirstMessage}"</Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseModal} sx={{color: 'black'}}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (selectedSessionId) {
+                deleteSession(selectedSessionId);
+              }
+            }}
+            color="primary"
+          >
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Paper>
   );
 };
