@@ -43,7 +43,7 @@ class PromptGenerator:
 
     def _generate_prompts(self, element_data):
         """Core logic for generating prompts from element data."""
-        element_type = element_data.get("element_type").lower()
+        element_type = element_data.get("element_type")
         if not element_type:
             return
 
