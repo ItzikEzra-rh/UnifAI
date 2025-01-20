@@ -19,7 +19,7 @@ RUN /bin/bash -c "source venv/bin/activate &&  pip install -r requirementsBE.txt
 FROM docker.io/nvidia/cuda:12.6.0-cudnn-runtime-ubi9
 RUN dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
 RUN dnf update -y && \
-    dnf install -y git cuda-toolkit python3-devel
+    dnf install -y git cuda-toolkit python3-devel vim iputils telnet
 RUN dnf clean all
 #WORKDIR /root
 COPY --from=base venv venv

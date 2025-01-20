@@ -4,6 +4,9 @@ FROM registry.access.redhat.com/ubi9/python-39
 ADD . $HOME
 WORKDIR $HOME
 RUN mkdir $HOME/venv
+
+# update rpms and install debugging tools
+RUN dnf update -y && dnf install -y vim iputils telnet && dnf clean all
 # Upgrade pip and install virtualenv
 RUN pip3 install --upgrade pip virtualenv
 
