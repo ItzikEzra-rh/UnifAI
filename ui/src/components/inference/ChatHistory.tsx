@@ -28,7 +28,7 @@ export interface HistoryChat {
 }
 
 const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, currentChatId, historyChats, setHistoryChats }) => {
-  const [openModal, setOpenModal] = useState(false);
+  const [deleteConfirmationModal, setDeleteConfirmationModal] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedFirstMessage, setSelectedFirstMessage] = useState<string | null>(null);
 
@@ -36,7 +36,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
     try {
       const response = await axiosBE.post('/api/backend/deleteChatSession', {sessionId: selectedSessionId});
       setHistoryChats(historyChats.filter((chat) => chat.sessionId !== sessionId));
-      setOpenModal(false); 
+      setDeleteConfirmationModal(false); 
     } catch (error) {
       console.error('Error deleting session:', error);
     }
@@ -45,11 +45,11 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
   const handleDeleteClick = (sessionId: string, firstMessage: string) => {
     setSelectedSessionId(sessionId);
     setSelectedFirstMessage(firstMessage);
-    setOpenModal(true); 
+    setDeleteConfirmationModal(true); 
   };
 
   const handleCloseModal = () => {
-    setOpenModal(false);
+    setDeleteConfirmationModal(false);
     setSelectedSessionId(null); 
     setSelectedFirstMessage(null); 
   };
@@ -114,7 +114,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
       </List>
 
       {/* Delete confirmation Modal */}
-      <Dialog open={openModal} onClose={handleCloseModal}>
+      <Dialog open={deleteConfirmationModal} onClose={handleCloseModal}>
         <DialogTitle>Are you sure you want to delete this chat?</DialogTitle>
         <DialogContent>
           <Typography> You selected the chat starting with "{selectedFirstMessage}"</Typography>
