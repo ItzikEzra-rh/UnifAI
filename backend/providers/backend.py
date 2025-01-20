@@ -214,38 +214,23 @@ def get_chat_history(model_id):
     :param str model_id:
     :return List containing chat history:
     """
-    result = Collections.by_name('chatHistory').find({'modelId': model_id}, 
-            {'_id': 0, 'sessionId': 1, 'latestTimestamp': 1,  'firstMessage': 1, 'messages': 1}
-            ).sort({'latestTimestamp': -1})
-    return list(result) if result else []
+    result = Collections.by_name('chatHistory').find({'modelId': model_id}, {'_id': 0}).sort({'latestTimestamp': -1})
+    return list(result)
 
 @mongo
 def update_current_chat_history(session_id, messages, first_message, model_id):
     """
-    This function updates the chat history for a given model and session.
+    Updates the chat history for a given model and session.
     If a chat history exists, it updates it; otherwise, it creates a new record.
     """
-    existing_chat = Collections.by_name('chatHistory').find_one({"modelId": model_id, "sessionId": session_id})
+    result = Collections.by_name('chatHistory').update_one({"modelId": model_id, "sessionId": session_id},
+        {"$set": {"messages": messages}, "$setOnInsert": {"firstMessage": first_message, "modelId": model_id},
+        "$currentDate": {"latestTimestamp": True}}, upsert=True)
+    return str(result.upserted_id) if result.upserted_id else result.modified_count
 
-    if existing_chat:
-        # If a chat history exists, update it
-        result = Collections.by_name('chatHistory').update_one(
-            {"modelId": model_id, "sessionId": session_id}, 
-            {"$set": {"messages": messages}, "$currentDate": {"latestTimestamp": True}})
-        return result.modified_count
-    else:
-        # If this is the first messages in this session, create a new one
-        result = Collections.by_name('chatHistory').insert_one(
-            {"sessionId": session_id, "messages": messages, "firstMessage": first_message, "modelId": model_id})
-        # Update the newly inserted document's timestamp using $currentDate
-        Collections.by_name('chatHistory').update_one(
-            {"_id": result.inserted_id},
-            {"$currentDate": {"latestTimestamp": True}}
-        )
-        return str(result.inserted_id)
 
 @mongo
-def deleted_session_from_chat_history(session_id):
+def delete_session_from_chat_history(session_id):
     """
     This function deletes the chat history of a given session.
     """

@@ -3,24 +3,18 @@ import os
 import json
 from flask import request, Blueprint
 from flask import jsonify, Response
-from marshmallow import Schema
 from webargs import fields
 from bson import json_util
+from backend.endpoints.schemas import MessageSchema
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
-from providers.backend import deleted_session_from_chat_history, get_chat_history, get_test_content_from_gitlab, list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
+from providers.backend import delete_session_from_chat_history, get_chat_history, get_test_content_from_gitlab, list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
                               insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating, update_current_chat_history
 from providers.backend import list_of_files_from_gitlab, insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
                               insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating, delete_prompt, add_inference_counter_per_each_model, \
                               retrieve_inference_counter, retrieve_inference_counter_all
 
 backend_bp = Blueprint("backend", __name__)
-
-class MessageSchema(Schema):
-    id = fields.Str(required=True)  # The unique identifier of the message
-    sender = fields.Str(required=True)  # The sender of the message, either 'user' or 'bot'
-    text = fields.Str(required=True)  # The actual content of the message
-
 
 @backend_bp.route("/", methods=["GET"])
 def sanity_check():
@@ -309,7 +303,7 @@ def update_current_chat(session_id, messages, first_message, model_id):
 })
 def delete_chat_session(session_id):
     try:
-        result = deleted_session_from_chat_history(session_id)
+        result = delete_session_from_chat_history(session_id)
         return {"status": "success", "result": result}
 
     except Exception as e:

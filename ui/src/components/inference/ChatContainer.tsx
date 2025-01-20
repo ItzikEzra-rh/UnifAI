@@ -188,48 +188,51 @@ const ChatComponent: React.FC = () => {
   const [historyChats, setHistoryChats] = useState<HistoryChat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string>('current');
 
-  const fetchModelsAndCheckLoadedModel = async () => {
-    // Fetch the model and its chat history on component mount 
-    try {
-      // Fetch available models
-      const modelsResponse = await axiosLLM.get<ModelData[]>('/api/backend/getModels');
-      const transformedData: ModelData[] = modelsResponse.data.map((item: any) => ({
-        modelId: item._id,
-        modelName: item.name,
-        trainingName: item.name,
-        modelMaxSeqLen: item.context_length,
-        modelType: item.model_type,
-        project: item.project,
-        checkpoint: item?.checkpoint,
-        finetuneSteps: item?.finetune_steps,
-        promptTemplate: item?.prompt_template,
-      }));
-      setModels(transformedData);
+  const getChatHistory = async (modelId: string) => {
+    const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
+    setHistoryChats(loadedModelChatsResponse.data.response)
+  }
 
-      // Check for loaded model
-      const loadedModelResponse = await axiosLLM.get<string | null>('/api/backend/getLoadedModel');
-      const loadedModelId = loadedModelResponse.data;
-
-      if (loadedModelId) {
-        const loadedModel = transformedData.find(model => model.modelId === loadedModelId);
-        if (loadedModel) {
-          setSelectedModel(loadedModel);
-          // Retrieve the chat history for the loaded model
-          const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: loadedModel.modelId} });
-          setHistoryChats(loadedModelChatsResponse.data.response)
-          setLoadingModel(false); // Ensure loading state is false as the model is already loaded
-        }
-      }
-    } catch (error) {
-      console.error('Error fetching model data:', error);
-    }
-  };
 
   useEffect(() => {
-    // Check if there's already a session_id in sessionStorage
     const newSessionId = uuidv4();
     setSessionId(newSessionId);
     sessionIdRef.current = newSessionId;
+
+    const fetchModelsAndCheckLoadedModel = async () => {
+      // Fetch the model and its chat history on component mount 
+      try {
+        // Fetch available models
+        const modelsResponse = await axiosLLM.get<ModelData[]>('/api/backend/getModels');
+        const transformedData: ModelData[] = modelsResponse.data.map((item: any) => ({
+          modelId: item._id,
+          modelName: item.name,
+          trainingName: item.name,
+          modelMaxSeqLen: item.context_length,
+          modelType: item.model_type,
+          project: item.project,
+          checkpoint: item?.checkpoint,
+          finetuneSteps: item?.finetune_steps,
+          promptTemplate: item?.prompt_template,
+        }));
+        setModels(transformedData);
+  
+        // Check for loaded model
+        const loadedModelResponse = await axiosLLM.get<string | null>('/api/backend/getLoadedModel');
+        const loadedModelId = loadedModelResponse.data;
+  
+        if (loadedModelId) {
+          const loadedModel = transformedData.find(model => model.modelId === loadedModelId);
+          if (loadedModel) {
+            setSelectedModel(loadedModel);
+            getChatHistory(loadedModel.modelId)
+            setLoadingModel(false); // Ensure loading state is false as the model is already loaded
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching model data:', error);
+      }
+    };
 
     fetchModelsAndCheckLoadedModel();
 
@@ -242,10 +245,8 @@ const ChatComponent: React.FC = () => {
 
   useEffect(() => {
     // when a new session is loaded or when a new model is loaded, call for fetching model and chat history
-    if (!loadingModel) {
-      fetchModelsAndCheckLoadedModel()
-    }
-  }, [sessionId, loadingModel])
+    if (!loadingModel && selectedModel) { getChatHistory(selectedModel.modelId) }
+  }, [loadingModel, selectedModel, sessionId])
 
  
   const updateCurrentChat = async (messages: ChatMessage[], sessionId: string, modelId: string | any) => {
@@ -262,8 +263,8 @@ const ChatComponent: React.FC = () => {
       await axiosBE.post('/api/backend/updateCurrentChat', payload);
 
       // Update the chat history component live (add a new chat to the list / move an old chat up when resumed)
-      const result = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
-      setHistoryChats(result.data.response)
+      // const result = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
+      // setHistoryChats(result.data.response)
     } catch (error) {
       console.error('Error updating chat:', error);
     }
