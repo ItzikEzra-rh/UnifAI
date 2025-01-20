@@ -44,7 +44,7 @@ spec:
             value: "localhost,127.0.0.1,kibana-kibana"
 {{- end }}
           - name: BACKEND_ENV
-            value: "development"
+            value: "production"
          #command: ["/usr/bin/sleep"]
          #          args: ["infinity"]
           

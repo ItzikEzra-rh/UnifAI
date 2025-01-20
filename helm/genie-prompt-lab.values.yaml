@@ -5,6 +5,7 @@ image:
    pullPolicy: Always
 hf_token: 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
 command: prompt_processor
+HF_HOME: "/tmp/"
 HF_TOKEN: "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"
 
 RABBITMQ_IP: "rabbitmq"

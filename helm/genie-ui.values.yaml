@@ -1,6 +1,6 @@
 image:
    repository: images.paas.redhat.com/genie/ui
-   tag: latest 
+   tag: 2025.01.16
 networkPolicy:
   ## Ingress and Egress policies
    ingress: 

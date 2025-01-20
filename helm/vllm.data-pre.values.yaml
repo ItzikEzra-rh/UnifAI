@@ -1,14 +1,10 @@
 replicaCount: 2
 # Change this if you want to serve another model
-model: mistralai/Mistral-7B-Instruct-v0.1
+model: meta-llama/Llama-3.1-8B-Instruct
 gpuMemoryUtilization: "0.90"
 maxModelLen: 16384
   #maxModelLen: 32768
-EXTRA_ARGS: 
-  - --quantization 
-  - bitsandbytes 
-  - --load-format 
-  - bitsandbytes"
+EXTRA_ARGS: " --quantization bitsandbytes --load-format bitsandbytes"
   #value: --kv-cache-dtype=auto --enable-prefix-caching --max-num-batched-tokens=16384
 resources:
   limits:
@@ -64,8 +60,8 @@ nodeSelector: {}
 #  E.g. for GCP L4 cloud.google.com/gke-accelerator: nvidia-l4
 
 image:
-  #repository: substratusai/vllm
-  repository: images.paas.redhat.com/genie/vllm/vllm-openai
+  repository: substratusai/vllm
+    #repository: docker.io/vllm/vllm-openai
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: "latest"

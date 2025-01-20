@@ -7,3 +7,7 @@ customLabels: {}
 ## Additional annotations for Deployment or StatefulSet
 customAnnotations: {}
 securityContext: {}
+image:
+  registry: "images.paas.redhat.com/genie"
+  repository: "mongo"
+

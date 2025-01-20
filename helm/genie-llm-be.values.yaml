@@ -26,5 +26,3 @@ env:
      value: '/tmp/'
    - name: BACKEND_ENV
      value: "production"
-
-

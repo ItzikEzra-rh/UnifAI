@@ -1,5 +1,5 @@
 replicaCount: 1
 image:
    repository: images.paas.redhat.com/genie/backend
-   tag: 2024.12.16
+   tag: 2025.01.14
    pullPolicy: Always

@@ -37,7 +37,8 @@ spec:
           #args: ["run", "dev", "--host"]
           ports:
             - name: http
-              containerPort: 8080
+              #containerPort: 8080
+              containerPort: 3000
               protocol: TCP
               #livenessProbe:
               #httpGet:
