@@ -1,4 +1,4 @@
-replicaCount: 2
+replicaCount: 1
 # Change this if you want to serve another model
 model: mistralai/Mistral-7B-Instruct-v0.1
 gpuMemoryUtilization: "0.90"
@@ -8,7 +8,7 @@ EXTRA_ARGS:
   - --quantization 
   - bitsandbytes 
   - --load-format 
-  - bitsandbytes"
+  - bitsandbytes
   #value: --kv-cache-dtype=auto --enable-prefix-caching --max-num-batched-tokens=16384
 resources:
   limits:

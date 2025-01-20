@@ -2,7 +2,7 @@
 
 helmDefaults:
     createNamespace: false
-#    wait: true
+    wait: false
   
 releases:
   - name: genie-rabbitmq
@@ -16,6 +16,7 @@ releases:
     wait: true
     values:
       - "./mongodb.values.yaml"
+
   - name: genie-vllm
     namespace: tag-ai--gzhou-nb
     chart: ./vllm
@@ -29,15 +30,25 @@ releases:
     wait: true
     values:
       - "./genie-ui.values.yaml"
+    needs:
+      - genie-be
+
   - name: genie-be
     namespace: tag-ai--gzhou-nb
     chart: ./genie-be
     wait: true
     values:
       - "genie-be.values.yaml"
+    needs:
+      - genie-mongodb
+      - genie-rabbitmq
+
   - name: genie-llm-be
     namespace: tag-ai--gzhou-nb
     chart: ./genie-llm-be
     wait: true
     values:
       - "genie-llm-be.values.yaml"
+    needs:
+      - genie-mongodb
+      - genie-rabbitmq

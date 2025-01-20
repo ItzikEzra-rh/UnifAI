@@ -41,10 +41,10 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           #command: ['sleep', 'infinity'] # debug only
           args:   [
-          '--served-model-name',
-          {{ .Values.model }},
+          '--model',
+          '{{ .Values.model }}',
           {{- range .Values.EXTRA_ARGS }}
-          {{ . }}
+          '{{ . }}',
           {{- end }}
           ]
           ports:
