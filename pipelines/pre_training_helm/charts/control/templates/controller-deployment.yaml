@@ -74,22 +74,21 @@ spec:
         image: {{ .Values.landing.image.repository }}:{{ .Values.landing.image.tag }}
         imagePullPolicy: {{ .Values.landing.image.pullPolicy }}
   
-        command: 
-        - bash
-        - -c
-        - |
-          promptlab landing --celery --celery-worker-concurrency {{.Values.landing.celery_worker_concurrency}} --celery-worker-prefetch-count {{.Values.landing.celery_worker_prefetch_count}}
-         
+        args: [
+          {{- range .Values.landing.args }}
+          '{{ . }}',
+          {{- end }}
+          ]
+
+
         #command: [ "/bin/bash", "-c", "--" ]
         #args: [ "while true; do sleep 3000000; done;" ]
 
         env:
-        - name: MAX_RETRY
-          value: "{{.Values.global.max_retry}}"
-        - name: OUTPUT_DATASET_REPO
-          value: "{{.Values.global.output_dataset_repo}}"
-        - name: OUTPUT_DATASET_FILE_NAME
-          value: "{{.Values.global.output_dataset_file_name}}"
+        {{- range $key, $value := .Values.global.promptlab_env }}
+        - name: "{{ $key }}"
+          value: "{{ $value }}"
+        {{- end }}
         
         - name: HF_HOME
           value: "/tmp/.cache"  
@@ -98,8 +97,7 @@ spec:
             secretKeyRef:
               name: "{{.Values.global.hf_token}}"
               key: token
-        - name: PROMPT_LAB_MODEL_HF_ID
-          value: "{{.Values.global.orbiter_model_hf_id}}"
+
         - name: RABBITMQ_IP
           value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST)
         - name: MONGODB_IP
@@ -147,26 +145,11 @@ spec:
             secretKeyRef:
               name: "{{.Values.global.hf_token}}"
               key: token
-        - name: PROMPT_LAB_MODEL_HF_ID
-          value: "{{.Values.global.orbiter_model_hf_id}}"
-        - name: PROMPT_LAB_MAX_GENERATION_LENGTH
-          value: "{{.Values.global.max_generation_length}}"
-        - name: PROMPT_LAB_MAX_CONTEXT_LENGTH
-          value: "{{.Values.global.max_context_length}}"
-        - name: PROMPT_LAB_BATCH_SIZE
-          value: "{{.Values.global.batch_size}}"
-        - name: QUEUE_TARGET_SIZE
-          value: "{{.Values.global.queue_target_size}}"
-        - name: TEMPLATE_AGENT
-          value: "{{.Values.global.template_agent}}"
-        - name: TEMPLATE_NAME
-          value: "{{.Values.global.template_name}}"
-        - name: TEMPLATE_TYPE
-          value: "{{.Values.global.template_type}}"
-        - name: INPUT_DATASET_REPO
-          value: "{{.Values.global.input_dataset_repo}}"
-        - name: INPUT_DATASET_FILE_NAME
-          value: "{{.Values.global.input_dataset_file_name}}"
+
+        {{- range $key, $value := .Values.global.promptlab_env }}
+        - name: "{{ $key }}"
+          value: "{{ $value }}"
+        {{- end }}
 
         - name: RABBITMQ_IP
           value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST)

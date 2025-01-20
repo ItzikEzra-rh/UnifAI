@@ -76,11 +76,11 @@ spec:
         image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
         imagePullPolicy: {{ .Values.image.pullPolicy }}
 
-        command: 
-        - sh
-        - -c
-        - |
-          promptlab orbiter --celery --reviewer --celery-worker-concurrency {{.Values.celery_worker_concurrency}} --celery-worker-prefetch-count {{.Values.celery_worker_prefetch_count}}
+        args: [
+          {{- range .Values.args }}
+          '{{ . }}',
+          {{- end }}
+          ]
 
         #command: [ "/bin/bash", "-c", "--" ]
         #args: [ "while true; do sleep 3000000; done;" ]
@@ -93,16 +93,10 @@ spec:
             secretKeyRef:
               name: "{{.Values.global.hf_token}}"
               key: token
-        - name: PROMPT_LAB_MODEL_HF_ID
-          value: "{{.Values.global.orbiter_model_hf_id}}"
-        - name: PROMPT_LAB_MAX_GENERATION_LENGTH
-          value: "{{.Values.global.max_generation_length}}"
-        - name: PROMPT_LAB_MAX_CONTEXT_LENGTH
-          value: "{{.Values.global.max_context_length}}"
-        - name: CELERY_WORKER_CONCURRENCY
-          value: "{{.Values.celery_worker_concurrency}}"
-        - name: CELERY_WORKER_PREFETCH_COUNT
-          value: "{{.Values.celery_worker_prefetch_count}}"
+        {{- range $key, $value := .Values.global.promptlab_env }}
+        - name: "{{ $key }}"
+          value: "{{ $value }}"
+        {{- end }}
         
 
         - name: RABBITMQ_IP

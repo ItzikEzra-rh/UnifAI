@@ -76,7 +76,12 @@ spec:
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         #command: [ "/bin/bash", "-c", "--" ]
         #args: [ "while true; do sleep 30; done;" ]
-        args: ["reviewer"]
+        args: [
+          {{- range .Values.args }}
+          '{{ . }}',
+          {{- end }}
+          ]
+          
         env:
         - name: TRANSFORMERS_CACHE
           value: "/tmp"
@@ -85,16 +90,10 @@ spec:
             secretKeyRef:
               name: "{{.Values.global.hf_token}}"
               key: token
-        - name: REVIEWER_MODEL_HF_ID
-          value: "{{.Values.global.reviewer_model_hf_id}}"
-        - name: REVIEWER_MAX_GENERATION_LENGTH
-          value: "{{.Values.global.max_generation_length}}"
-        - name: REVIEWER_MAX_CONTEXT_LENGTH
-          value:  "{{.Values.global.max_context_length}}"
-        - name: REVIEWER_BATCH_SIZE
-          value:  "{{.Values.global.batch_size}}"
-        - name: REVIEWER_SCORE_THRESHOLD 
-          value:  "{{.Values.global.score_treshold}}"
+        {{- range $key, $value := .Values.global.reviewer_env }}
+        - name: "{{ $key }}"
+          value: "{{ $value }}"
+        {{- end }}
 
         - name: RABBITMQ_IP
           value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST)

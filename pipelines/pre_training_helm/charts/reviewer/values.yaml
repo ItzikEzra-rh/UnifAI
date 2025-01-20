@@ -1,13 +1,9 @@
 global:
   namespace: 
-  reviewer_replica: 
-  model_hf_id: 
-  max_generation_length: ""
-  max_context_length: ""
-  gpu_memory_utilization: ""
-  batch_size: ""
-  score_treshold: ""
+  reviewer_replica:
+  reviewer_env:
 
+args:
 image:
   repository: 
   tag: 

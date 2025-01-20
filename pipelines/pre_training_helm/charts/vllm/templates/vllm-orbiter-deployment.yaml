@@ -43,9 +43,10 @@ spec:
         #args: [ "while true; do sleep 3000000; done;" ]
         args: [
               "--model", "{{.Values.global.orbiter_model_hf_id}}",
-              "--max_model_len={{.Values.global.max_context_length}}",
-              "--gpu_memory_utilization={{.Values.global.gpu_memory_utilization}}"
-            ]
+              {{- range .Values.global.vllm_orbiter_args }}
+              '{{ . }}',
+              {{- end }}
+           ]
         env:
         - name: TRANSFORMERS_CACHE
           value: "/tmp/.cache"
@@ -60,8 +61,6 @@ spec:
             secretKeyRef:
               name: "{{.Values.global.hf_token}}"
               key: token
-        - name: PROMPT_LAB_MODEL_HF_ID
-          value: "{{.Values.global.orbiter_model_hf_id}}"
 
         resources:
           requests:

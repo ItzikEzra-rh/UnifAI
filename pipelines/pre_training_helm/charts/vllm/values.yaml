@@ -7,9 +7,8 @@ global:
   orbiter_model_hf_id:
   reviewer_model_hf_id:
 
-  access_token:
-  max_context_length:
-  gpu_memory_utilization:
+  vllm_orbiter_args:
+  vllm_reviewer_args:
 
 image:
   repository: 
@@ -27,13 +26,3 @@ resources:
 service:
   type:
   port: 
-# service:
-#   prompt:
-#     service:
-#       type:          
-#       port: 
-
-#   reviewer:
-#     service:
-#       type:          
-#       port:  
