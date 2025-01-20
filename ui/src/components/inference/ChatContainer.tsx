@@ -22,7 +22,6 @@ import '../../styles.css';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism-okaidia.css';
 import { ChatSidebar } from './ChatSidebar';
-import moment from 'moment';
 
 interface FormData {
   project: string;
@@ -189,8 +188,8 @@ const ChatComponent: React.FC = () => {
   const [historyChats, setHistoryChats] = useState<HistoryChat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string>('current');
 
-  // Fetch available models on component mount
   const fetchModelsAndCheckLoadedModel = async () => {
+    // Fetch the model and its chat history on component mount 
     try {
       // Fetch available models
       const modelsResponse = await axiosLLM.get<ModelData[]>('/api/backend/getModels');
@@ -215,6 +214,7 @@ const ChatComponent: React.FC = () => {
         const loadedModel = transformedData.find(model => model.modelId === loadedModelId);
         if (loadedModel) {
           setSelectedModel(loadedModel);
+          // Retrieve the chat history for the loaded model
           const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: loadedModel.modelId} });
           setHistoryChats(loadedModelChatsResponse.data.response)
           setLoadingModel(false); // Ensure loading state is false as the model is already loaded
@@ -241,6 +241,7 @@ const ChatComponent: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // when a new session is loaded or when a new model is loaded, call for fetching model and chat history
     if (!loadingModel) {
       fetchModelsAndCheckLoadedModel()
     }
@@ -279,9 +280,7 @@ const ChatComponent: React.FC = () => {
   const clearChat = async () => {
     try {
       await axiosLLM.get('/api/backend/clearChatHistory', { params: { sessionId: sessionId } });
-      const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: selectedModel?.modelId} });
-      setHistoryChats(loadedModelChatsResponse.data.response)
-      
+
       // Create a new session_id for the mongoDB chat history
       const newSessionId = uuidv4();
       sessionStorage.setItem('session_id', newSessionId);
@@ -307,9 +306,6 @@ const ChatComponent: React.FC = () => {
         sessionId: sessionId,
         chat: newMessages,
       })
-
-      const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: selectedModel?.modelId} });
-      setHistoryChats(loadedModelChatsResponse.data.response)
 
       // Load selected chat messages
       setMessages(chatMessages);

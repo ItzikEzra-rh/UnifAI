@@ -211,10 +211,12 @@ def retrieve_inference_counter_all():
 @mongo
 def get_chat_history(model_id):
     """
-    :return:
+    :param str model_id:
+    :return List containing chat history:
     """
     result = Collections.by_name('chatHistory').find({'modelId': model_id}, 
-            {'_id': 0, 'sessionId': 1, 'latestTimestamp': 1,  'firstMessage': 1, 'messages': 1}).sort({'latestTimestamp': -1})
+            {'_id': 0, 'sessionId': 1, 'latestTimestamp': 1,  'firstMessage': 1, 'messages': 1}
+            ).sort({'latestTimestamp': -1})
     return list(result) if result else []
 
 @mongo
@@ -227,17 +229,14 @@ def update_current_chat_history(session_id, messages, first_message, model_id):
 
     if existing_chat:
         # If a chat history exists, update it
-        result = Collections.by_name('chatHistory').update_one({"modelId": model_id, "sessionId": session_id}, {"$set": {"messages": messages}, "$currentDate": {"latestTimestamp": True}})
+        result = Collections.by_name('chatHistory').update_one(
+            {"modelId": model_id, "sessionId": session_id}, 
+            {"$set": {"messages": messages}, "$currentDate": {"latestTimestamp": True}})
         return result.modified_count
     else:
         # If this is the first messages in this session, create a new one
         result = Collections.by_name('chatHistory').insert_one(
-            {"sessionId": session_id,
-                "messages": messages,
-                "firstMessage": first_message,
-                "modelId": model_id,
-            }
-        )
+            {"sessionId": session_id, "messages": messages, "firstMessage": first_message, "modelId": model_id})
         # Update the newly inserted document's timestamp using $currentDate
         Collections.by_name('chatHistory').update_one(
             {"_id": result.inserted_id},
@@ -248,9 +247,7 @@ def update_current_chat_history(session_id, messages, first_message, model_id):
 @mongo
 def deleted_session_from_chat_history(session_id):
     """
-    This function updates the chat history for a given model and session.
-    If a chat history exists, it updates it; otherwise, it creates a new record.
+    This function deletes the chat history of a given session.
     """
-    
     result = Collections.by_name('chatHistory').delete_one({"sessionId": session_id})
     return result.deleted_count
