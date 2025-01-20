@@ -1,11 +1,12 @@
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from collections import defaultdict
 from transformers import AutoTokenizer
 from datasets import load_dataset
 from tqdm import tqdm
 
 # Load the tokenizer
-tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-Coder-3B-Instruct")
+tokenizer = AutoTokenizer.from_pretrained("meta-llama/Llama-3.1-8B-Instruct")
+
 
 def tokenize_length(text, tokenizer):
     """Get the token length of a given text using the provided tokenizer."""
@@ -13,11 +14,13 @@ def tokenize_length(text, tokenizer):
     tokens = tokenizer.encode(text, truncation=False)
     return len(tokens)
 
+
 def analyze_context_lengths(
-        dataset_name,
+        repo_name,
+        file_name,
         dataset_split="train",
-        input_key="input",
-        output_key="output",
+        input_key="input_text",
+        output_key="output_text",
         bins=None,
         output_image="token_length_distribution.png"
 ):
@@ -26,7 +29,8 @@ def analyze_context_lengths(
     This version uses the tokenizer's apply_chat_template method to format the conversation.
 
     Args:
-        dataset_name (str): Name of the Hugging Face dataset.
+        repo_name (str): Name of the Hugging Face repo.
+        file_name (str): Name of the Hugging Face dataset.
         dataset_split (str): Split of the dataset to analyze (default: 'train').
         input_key (str): Key for the user input field in the dataset.
         output_key (str): Key for the assistant output field in the dataset.
@@ -43,8 +47,8 @@ def analyze_context_lengths(
         bins = [64, 128, 256, 512, 1024, 2048, 4096, 8192]
 
     # Load the dataset
-    print(f"Loading dataset '{dataset_name}' split '{dataset_split}'...")
-    dataset = load_dataset(dataset_name, split=dataset_split)
+    print(f"Loading dataset '{repo_name}' file {file_name} split '{dataset_split}'...")
+    dataset = load_dataset(repo_name, data_files=file_name, split=dataset_split)
 
     total_elements = len(dataset)
     token_counts = []
@@ -110,16 +114,16 @@ def analyze_context_lengths(
     }
 
     # Create and save histogram
-    plt.figure(figsize=(10, 6))
-    plt.hist(token_counts, bins=30, edgecolor='black', alpha=0.7)
-    plt.title("Token Length Distribution (Chat Format)")
-    plt.xlabel("Token Length")
-    plt.ylabel("Frequency")
-    plt.grid(axis='y', alpha=0.75)
-    plt.tight_layout()
-    plt.savefig(output_image)
-    plt.close()
-    print(f"Histogram saved as {output_image}")
+    # plt.figure(figsize=(10, 6))
+    # plt.hist(token_counts, bins=30, edgecolor='black', alpha=0.7)
+    # plt.title("Token Length Distribution (Chat Format)")
+    # plt.xlabel("Token Length")
+    # plt.ylabel("Frequency")
+    # plt.grid(axis='y', alpha=0.75)
+    # plt.tight_layout()
+    # plt.savefig(output_image)
+    # plt.close()
+    # print(f"Histogram saved as {output_image}")
 
     # Print summary table
     print("\nToken Length Distribution by Bins:")
@@ -134,16 +138,19 @@ def analyze_context_lengths(
 
     return results
 
+
 # Example usage:
 # Adjust the dataset name, split, and keys as needed
-bins = [64, 128, 256, 512, 1024, 2048, 4096, 8192]
-dataset_name = "oodeh/MTA-project"  # Replace with your dataset
+bins = [64, 128, 256, 512, 1024, 2048, 4096, 4500, 5000, 5200, 5400, 5800, 7000, 8192]
+repo_name = "oodeh/MTA-tests"  # Replace with your dataset
+file_name = "tackle2_ui_prompt_lab_dev.json"
 dataset_split = "train"
-input_key = "input"
-output_key = "output"
+input_key = "input_text"
+output_key = "output_text"
 
 analysis_results = analyze_context_lengths(
-    dataset_name,
+    repo_name=repo_name,
+    file_name=file_name,
     dataset_split=dataset_split,
     input_key=input_key,
     output_key=output_key,

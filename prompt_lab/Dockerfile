@@ -18,6 +18,8 @@ RUN python3 -m venv /venv && \
     /venv/bin/pip install --upgrade pip && \
     /venv/bin/pip install .
 
+RUN chmod -R 777 /app/ /venv
+
 # Update PATH to use the virtual environment
 ENV PATH="/venv/bin:$PATH"
 
