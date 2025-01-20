@@ -446,7 +446,6 @@ const ChatComponent: React.FC = () => {
 
             lastMessage.text = outputText.trim();
           }
-          updateCurrentChat(updatedMessages, sessionId, selectedModel?.modelId); // Update the chat in the DB
           return updatedMessages;
         });
       }
@@ -462,6 +461,12 @@ const ChatComponent: React.FC = () => {
       ]);
     } finally {
       setIsStreaming(false);
+      // To prevent calling the update current chat while messages are still streaming, and to get the correct
+      // state of messages, we use prevMessages after the last setMessages function is called during that streaming
+      setMessages((prevMessages) => {
+        updateCurrentChat(prevMessages, sessionId, selectedModel?.modelId)
+        return prevMessages
+      })      
     }
   }
 
