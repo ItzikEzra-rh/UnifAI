@@ -34,7 +34,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
 
   const deleteSession = async (sessionId: string) => {
     try {
-      const response = await axiosBE.get('/deleteSession', { params: { sessionId } });
+      const response = await axiosBE.post('/api/backend/deleteChatSession', {sessionId: selectedSessionId});
       console.log('Session deleted:', response.data);
       
       // Optionally, remove the deleted session from the state
@@ -58,8 +58,8 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
   };
 
   const sortedChats = historyChats.sort((a, b) => {
-    const dateA: Date = moment(a.timestamp, 'MMM DD, YYYY, hh:mm A').toDate();
-    const dateB: Date = moment(b.timestamp, 'MMM DD, YYYY, hh:mm A').toDate();
+    const dateA: Date = moment(a.timestamp, 'MMM DD, YYYY, hh:mm:ss A').toDate();
+    const dateB: Date = moment(b.timestamp, 'MMM DD, YYYY, hh:mm:ss A').toDate();
     return dateB.getTime() - dateA.getTime(); // Compare using timestamps
   });
 

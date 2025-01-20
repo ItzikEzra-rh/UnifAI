@@ -189,47 +189,47 @@ const ChatComponent: React.FC = () => {
   const [historyChats, setHistoryChats] = useState<HistoryChat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string>('current');
 
+  // Fetch available models on component mount
+  const fetchModelsAndCheckLoadedModel = async () => {
+    try {
+      // Fetch available models
+      const modelsResponse = await axiosLLM.get<ModelData[]>('/api/backend/getModels');
+      const transformedData: ModelData[] = modelsResponse.data.map((item: any) => ({
+        modelId: item._id,
+        modelName: item.name,
+        trainingName: item.name,
+        modelMaxSeqLen: item.context_length,
+        modelType: item.model_type,
+        project: item.project,
+        checkpoint: item?.checkpoint,
+        finetuneSteps: item?.finetune_steps,
+        promptTemplate: item?.prompt_template,
+      }));
+      setModels(transformedData);
+
+      // Check for loaded model
+      const loadedModelResponse = await axiosLLM.get<string | null>('/api/backend/getLoadedModel');
+      const loadedModelId = loadedModelResponse.data;
+
+      if (loadedModelId) {
+        const loadedModel = transformedData.find(model => model.modelId === loadedModelId);
+        if (loadedModel) {
+          setSelectedModel(loadedModel);
+          const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: loadedModel.modelId} });
+          setHistoryChats(loadedModelChatsResponse.data.response)
+          setLoadingModel(false); // Ensure loading state is false as the model is already loaded
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching model data:', error);
+    }
+  };
+
   useEffect(() => {
     // Check if there's already a session_id in sessionStorage
     const newSessionId = uuidv4();
     setSessionId(newSessionId);
     sessionIdRef.current = newSessionId;
-
-    // Fetch available models on component mount
-    const fetchModelsAndCheckLoadedModel = async () => {
-      try {
-        // Fetch available models
-        const modelsResponse = await axiosLLM.get<ModelData[]>('/api/backend/getModels');
-        const transformedData: ModelData[] = modelsResponse.data.map((item: any) => ({
-          modelId: item._id,
-          modelName: item.name,
-          trainingName: item.name,
-          modelMaxSeqLen: item.context_length,
-          modelType: item.model_type,
-          project: item.project,
-          checkpoint: item?.checkpoint,
-          finetuneSteps: item?.finetune_steps,
-          promptTemplate: item?.prompt_template,
-        }));
-        setModels(transformedData);
-
-        // Check for loaded model
-        const loadedModelResponse = await axiosLLM.get<string | null>('/api/backend/getLoadedModel');
-        const loadedModelId = loadedModelResponse.data;
-
-        if (loadedModelId) {
-          const loadedModel = transformedData.find(model => model.modelId === loadedModelId);
-          if (loadedModel) {
-            setSelectedModel(loadedModel);
-            const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: loadedModel.modelId} });
-            setHistoryChats(loadedModelChatsResponse.data.response)
-            setLoadingModel(false); // Ensure loading state is false as the model is already loaded
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching model data:', error);
-      }
-    };
 
     fetchModelsAndCheckLoadedModel();
 
@@ -240,6 +240,11 @@ const ChatComponent: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    fetchModelsAndCheckLoadedModel()
+  }, [sessionId])
+
+ 
   const updateCurrentChat = async (messages: ChatMessage[], sessionId: string, modelId: string | any) => {
     try {
       const firstUserMessage = messages.find(msg => msg.sender === 'user')?.text || 'New conversation';
@@ -247,7 +252,7 @@ const ChatComponent: React.FC = () => {
       
       const payload = {
         sessionId: sessionId,
-        timestamp: moment().format('MMM DD, YYYY, hh:mm A'),
+        timestamp: moment().format('MMM DD, YYYY, hh:mm:ss A'),
         messages: [...messages], 
         firstMessage: truncatedMessage,
         modelId: modelId,
@@ -290,7 +295,7 @@ const ChatComponent: React.FC = () => {
       await axiosLLM.get('/api/backend/clearChatHistory', {
         params: { sessionId: sessionId }
       });
-      
+      setSessionId(chatId)
       const newMessages = chatMessages.map(({ text, sender }) => ({ content: text, role: sender === 'bot' ? 'assistant' : sender }));
       await axiosLLM.post('/api/backend/loadChatContext', {
         sessionId: sessionId,

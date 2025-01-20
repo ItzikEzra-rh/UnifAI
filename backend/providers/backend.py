@@ -223,7 +223,7 @@ def update_current_chat_history(session_id, timestamp, messages, first_message, 
     This function updates the chat history for a given model and session.
     If a chat history exists, it updates it; otherwise, it creates a new record.
     """
-    existing_chat = Collections.by_name('chatHistory').find_one({"sessionId": session_id})
+    existing_chat = Collections.by_name('chatHistory').find_one({"modelId": model_id, "sessionId": session_id})
 
     if existing_chat:
         # If a chat history exists, update it
@@ -234,7 +234,7 @@ def update_current_chat_history(session_id, timestamp, messages, first_message, 
         result = Collections.by_name('chatHistory').insert_one(
             {"sessionId": session_id, "timestamp": timestamp, "messages": messages,
              "firstMessage": first_message, "modelId": model_id})
-        return result.inserted_id
+        return str(result.inserted_id)
 
 @mongo
 def deleted_session_from_chat_history(session_id):

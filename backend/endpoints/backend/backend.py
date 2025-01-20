@@ -281,7 +281,7 @@ def get_chat_history_per_model(model_id):
     try:
         # Retrieve the chats saved in the DB for the current model
         result = get_chat_history(model_id)
-        return jsonify({"status": "success", "response": result}), 201
+        return jsonify({"status": "success", "response": result}), 200
 
     except Exception as e:
         logging.error(f"Error retreiving the chats for model: {model_id}")
@@ -304,9 +304,9 @@ def update_current_chat(session_id, timestamp, messages, first_message, model_id
         logging.error(f"Error updating the chat for session: {session_id}")
         return jsonify({"status": "error", "message": str(e)}), 500
     
-@backend_bp.route("/deleteChatSession", methods=["GET"])
-@from_query({
-    "session_id":        fields.Str(required=True, data_key="sessionId")
+@backend_bp.route("/deleteChatSession", methods=["POST"])
+@from_body({
+    "session_id":       fields.Str(required=True, data_key="sessionId"),
 })
 def delete_chat_session(session_id):
     try:
