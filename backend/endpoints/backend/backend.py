@@ -290,14 +290,13 @@ def get_chat_history_per_model(model_id):
 @backend_bp.route("/updateCurrentChat", methods=["POST"])
 @from_body({
     "session_id":      fields.Str(required=True, data_key="sessionId"),
-    "timestamp":       fields.Str(required=True, data_key="timestamp"),
     "messages":        fields.List(fields.Nested(MessageSchema), required=True, data_key="messages"),
     "first_message":   fields.Str(required=True, data_key="firstMessage"),
     "model_id":        fields.Str(required=True, data_key="modelId"),
 })
-def update_current_chat(session_id, timestamp, messages, first_message, model_id):
+def update_current_chat(session_id, messages, first_message, model_id):
     try:
-        result = update_current_chat_history(session_id, timestamp, messages, first_message, model_id)
+        result = update_current_chat_history(session_id, messages, first_message, model_id)
         return {"status": "success", "result": result}
 
     except Exception as e:

@@ -241,8 +241,10 @@ const ChatComponent: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    fetchModelsAndCheckLoadedModel()
-  }, [sessionId])
+    if (!loadingModel) {
+      fetchModelsAndCheckLoadedModel()
+    }
+  }, [sessionId, loadingModel])
 
  
   const updateCurrentChat = async (messages: ChatMessage[], sessionId: string, modelId: string | any) => {
@@ -252,12 +254,15 @@ const ChatComponent: React.FC = () => {
       
       const payload = {
         sessionId: sessionId,
-        timestamp: moment().format('MMM DD, YYYY, hh:mm:ss A'),
         messages: [...messages], 
         firstMessage: truncatedMessage,
         modelId: modelId,
       }
       await axiosBE.post('/api/backend/updateCurrentChat', payload);
+
+      // Update the chat history component live (add a new chat to the list / move an old chat up when resumed)
+      const result = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
+      setHistoryChats(result.data.response)
     } catch (error) {
       console.error('Error updating chat:', error);
     }
@@ -267,12 +272,13 @@ const ChatComponent: React.FC = () => {
     handleStop();
     handleUnLoad()
     setSelectedModel(null);
+    setHistoryChats([])
     setMessages([]);
   };
 
   const clearChat = async () => {
     try {
-      const response = await axiosLLM.get('/api/backend/clearChatHistory', { params: { sessionId: sessionId } });
+      await axiosLLM.get('/api/backend/clearChatHistory', { params: { sessionId: sessionId } });
       const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: selectedModel?.modelId} });
       setHistoryChats(loadedModelChatsResponse.data.response)
       
@@ -301,6 +307,7 @@ const ChatComponent: React.FC = () => {
         sessionId: sessionId,
         chat: newMessages,
       })
+
       const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: selectedModel?.modelId} });
       setHistoryChats(loadedModelChatsResponse.data.response)
 

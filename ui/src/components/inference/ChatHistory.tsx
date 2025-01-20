@@ -22,7 +22,7 @@ interface ChatHistoryProps {
 
 export interface HistoryChat {
   sessionId: string;
-  timestamp: string;
+  latestTimestamp: string;
   messages: ChatMessage[];
   firstMessage: string;
 }
@@ -35,11 +35,8 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
   const deleteSession = async (sessionId: string) => {
     try {
       const response = await axiosBE.post('/api/backend/deleteChatSession', {sessionId: selectedSessionId});
-      console.log('Session deleted:', response.data);
-      
-      // Optionally, remove the deleted session from the state
       setHistoryChats(historyChats.filter((chat) => chat.sessionId !== sessionId));
-      setOpenModal(false); // Close the modal after successful deletion
+      setOpenModal(false); 
     } catch (error) {
       console.error('Error deleting session:', error);
     }
@@ -48,20 +45,14 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
   const handleDeleteClick = (sessionId: string, firstMessage: string) => {
     setSelectedSessionId(sessionId);
     setSelectedFirstMessage(firstMessage);
-    setOpenModal(true); // Open the confirmation modal
+    setOpenModal(true); 
   };
 
   const handleCloseModal = () => {
     setOpenModal(false);
-    setSelectedSessionId(null); // Clear the selected session ID
-    setSelectedFirstMessage(null); // Clear the selected first message
+    setSelectedSessionId(null); 
+    setSelectedFirstMessage(null); 
   };
-
-  const sortedChats = historyChats.sort((a, b) => {
-    const dateA: Date = moment(a.timestamp, 'MMM DD, YYYY, hh:mm:ss A').toDate();
-    const dateB: Date = moment(b.timestamp, 'MMM DD, YYYY, hh:mm:ss A').toDate();
-    return dateB.getTime() - dateA.getTime(); // Compare using timestamps
-  });
 
   return (
     <Paper elevation={3} sx={{ width: '95%', marginTop: '10px', display: 'flex', flexDirection: 'column' }}>
@@ -72,7 +63,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
       </Box>
 
       <List sx={{ overflow: 'auto', flexGrow: 1 }}>
-        {sortedChats.map((chat, index) => (
+        {historyChats.map((chat, index) => (
           <React.Fragment key={index}>
             <ListItem disablePadding>
               <ListItemButton
@@ -93,7 +84,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
                   secondary={
                     <React.Fragment>
                       <Typography component="span" variant="caption" color="text.secondary">
-                        {chat.timestamp}
+                        {moment(chat.latestTimestamp).format('DD/MM/YYYY HH:mm:ss')}
                       </Typography>
                     </React.Fragment>
                   }
@@ -122,7 +113,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
         )}
       </List>
 
-      {/* Confirmation Modal */}
+      {/* Delete confirmation Modal */}
       <Dialog open={openModal} onClose={handleCloseModal}>
         <DialogTitle>Are you sure you want to delete this chat?</DialogTitle>
         <DialogContent>
@@ -133,11 +124,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
             Cancel
           </Button>
           <Button
-            onClick={() => {
-              if (selectedSessionId) {
-                deleteSession(selectedSessionId);
-              }
-            }}
+            onClick={() => {if (selectedSessionId) { deleteSession(selectedSessionId); }}}
             color="primary"
           >
             Delete
