@@ -3,7 +3,7 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import { MainContainer, ChatContainer, MessageList, Message, MessageInput } from '@chatscope/chat-ui-kit-react';
 import { useForm } from 'react-hook-form';
-import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Slider, Typography, Box, Drawer, Divider } from '@mui/material';
+import { Button, IconButton, Tooltip, Stepper, Step, StepButton, Dialog, DialogActions, DialogContent, DialogTitle, TextField, Box } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
@@ -188,20 +188,19 @@ const ChatComponent: React.FC = () => {
   const [historyChats, setHistoryChats] = useState<HistoryChat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string>('current');
 
+  const getChatHistory = async (modelId: string) => {
+    const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
+    setHistoryChats(loadedModelChatsResponse.data.response)
+  }
+
+
   useEffect(() => {
-    // Check if there's already a session_id in sessionStorage
-    let currentSessionId = sessionStorage.getItem('session_id') ?? uuidv4();
+    const newSessionId = uuidv4();
+    setSessionId(newSessionId);
+    sessionIdRef.current = newSessionId;
 
-    if (!sessionStorage.getItem('session_id')) {
-      // Store the new session_id in sessionStorage if it was newly generated
-      sessionStorage.setItem('session_id', currentSessionId);
-    }
-
-    setSessionId(currentSessionId);
-    sessionIdRef.current = currentSessionId; // Update ref immediately
-
-    // Fetch available models on component mount
     const fetchModelsAndCheckLoadedModel = async () => {
+      // Fetch the model and its chat history on component mount 
       try {
         // Fetch available models
         const modelsResponse = await axiosLLM.get<ModelData[]>('/api/backend/getModels');
@@ -217,15 +216,16 @@ const ChatComponent: React.FC = () => {
           promptTemplate: item?.prompt_template,
         }));
         setModels(transformedData);
-
+  
         // Check for loaded model
         const loadedModelResponse = await axiosLLM.get<string | null>('/api/backend/getLoadedModel');
         const loadedModelId = loadedModelResponse.data;
-
+  
         if (loadedModelId) {
           const loadedModel = transformedData.find(model => model.modelId === loadedModelId);
           if (loadedModel) {
             setSelectedModel(loadedModel);
+            getChatHistory(loadedModel.modelId)
             setLoadingModel(false); // Ensure loading state is false as the model is already loaded
           }
         }
@@ -243,44 +243,51 @@ const ChatComponent: React.FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    // when a new session is loaded or when a new model is loaded, call for fetching model and chat history
+    if (!loadingModel && selectedModel) { getChatHistory(selectedModel.modelId) }
+  }, [loadingModel, selectedModel, sessionId])
+
+ 
+  const updateCurrentChat = async (messages: ChatMessage[], sessionId: string, modelId: string | any) => {
+    try {
+      const firstUserMessage = messages.find(msg => msg.sender === 'user')?.text || 'New conversation';
+      const truncatedMessage = firstUserMessage.length > 40 ? `${firstUserMessage.substring(0, 37)}...` : firstUserMessage;
+      
+      const payload = {
+        sessionId: sessionId,
+        messages: [...messages], 
+        firstMessage: truncatedMessage,
+        modelId: modelId,
+      }
+      await axiosBE.post('/api/backend/updateCurrentChat', payload);
+
+      // Update the chat history component live (add a new chat to the list / move an old chat up when resumed)
+      // const result = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
+      // setHistoryChats(result.data.response)
+    } catch (error) {
+      console.error('Error updating chat:', error);
+    }
+  };
+
   const unloadModel = () => {
     handleStop();
     handleUnLoad()
     setSelectedModel(null);
+    setHistoryChats([])
     setMessages([]);
   };
 
-  const handleRecentChatSelect = () => {
-    // Handle the case once user press on 'Start new chat' & certain 'Recent Chat Item' where currently selected, therefore we should update the messages array of the selected 'Recent Chat Item'
-    // Handle the case once user moving between chat histories, we should update the chat that he just moved from with up to date data
-    if (messages.length > 0 && currentChatId != "current") {
-      const currentHistory = historyChats.map(chat => chat.id == currentChatId && chat.messages.length !== messages.length ? { ...chat, messages: [...messages], timestamp: new Date().toLocaleString() } : chat)
-      setHistoryChats(currentHistory)
-    }
-  }
-
-  const addRecentChat = () => {
-    if (messages.length > 0 && currentChatId == "current") {
-      const firstUserMessage = messages.find(msg => msg.sender === 'user')?.text || 'New conversation';
-      const truncatedMessage = firstUserMessage.length > 40 ? `${firstUserMessage.substring(0, 37)}...` : firstUserMessage;
-
-      const newHistoryChat: HistoryChat = {
-        id: `chat-${historyChats.length + 1}`,
-        name: `Chat ${historyChats.length + 1}`,
-        timestamp: new Date().toLocaleString(),
-        messages: [...messages], // Save a copy of current messages
-        firstMessage: truncatedMessage
-      };
-
-      setHistoryChats(prevHistory => [newHistoryChat, ...prevHistory]);
-    }
-  }
-
   const clearChat = async () => {
     try {
-      handleRecentChatSelect()
-      addRecentChat()
-      const response = await axiosLLM.get('/api/backend/clearChatHistory', { params: { sessionId: sessionId } });
+      await axiosLLM.get('/api/backend/clearChatHistory', { params: { sessionId: sessionId } });
+
+      // Create a new session_id for the mongoDB chat history
+      const newSessionId = uuidv4();
+      sessionStorage.setItem('session_id', newSessionId);
+      setSessionId(newSessionId);
+      sessionIdRef.current = newSessionId;
+
       setMessages([]);
       setCurrentChatId('current');
     } catch (error) {
@@ -294,17 +301,16 @@ const ChatComponent: React.FC = () => {
       await axiosLLM.get('/api/backend/clearChatHistory', {
         params: { sessionId: sessionId }
       });
-
-      const newMessages = chatMessages.map(({ id, text, sender }) => ({ content: text, role: sender === 'bot' ? 'assistant' : sender }));
+      setSessionId(chatId)
+      const newMessages = chatMessages.map(({ text, sender }) => ({ content: text, role: sender === 'bot' ? 'assistant' : sender }));
       await axiosLLM.post('/api/backend/loadChatContext', {
         sessionId: sessionId,
         chat: newMessages,
       })
+
       // Load selected chat messages
       setMessages(chatMessages);
       setCurrentChatId(chatId);
-      handleRecentChatSelect()
-      addRecentChat()
     } catch (error) {
       console.error('Error loading chat history:', error);
       toast.error('An error occurred while loading the chat history.');
@@ -440,6 +446,7 @@ const ChatComponent: React.FC = () => {
 
             lastMessage.text = outputText.trim();
           }
+          updateCurrentChat(updatedMessages, sessionId, selectedModel?.modelId); // Update the chat in the DB
           return updatedMessages;
         });
       }
@@ -474,10 +481,14 @@ const ChatComponent: React.FC = () => {
       sender: 'user',
     };
 
-    setMessages([...messages, userMessage]);
-    setIsStreaming(true);
+    setMessages((prevMessages) => {
+      const updatedMessages = [...prevMessages, userMessage];
+      updateCurrentChat(updatedMessages, sessionId, selectedModel.modelId); // Update the chat in the DB
+      return updatedMessages;
+    });
 
-    sendQuestion(text)
+    setIsStreaming(true);
+    sendQuestion(text);
   };
 
   const handleSaveClick = (userLatestMessage: string, promptLatestMessage: string) => {
@@ -713,6 +724,7 @@ const ChatComponent: React.FC = () => {
             handleChatSelect={handleChatSelect}
             currentChatId={currentChatId}
             historyChats={historyChats}
+            setHistoryChats={setHistoryChats}
           />
           <MainContainer style={{marginLeft: drawerOpen ? '15%' : '0%', flexGrow: 1}}>
             <ChatContainer>
