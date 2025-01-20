@@ -57,7 +57,6 @@ spec:
               - sh
               - -c
               - |
-                #exit 0
                   curl -X POST "http://localhost:{{ .Values.port }}/v1/completions" \
                   --fail --max-time 5 -H "Content-Type: application/json" \
                   -d '{"prompt": "Hi there", "max_tokens": 5, "model": "{{ include "vllm.usedModelName" . }}"}'
@@ -71,7 +70,6 @@ spec:
               - sh
               - -c
               - |
-                #exit 0
                 curl -X POST "http://localhost:{{ .Values.port }}/v1/completions" \
                   --fail --max-time 5 -H "Content-Type: application/json" \
                   -d '{"prompt": "Hi there", "max_tokens": 5, "model": "{{ include "vllm.usedModelName" . }}"}'
@@ -81,9 +79,9 @@ spec:
             {{- toYaml .Values.resources | nindent 12 }}
           env:
             - name: HF_TOKEN
-              value: "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"
+              value: {{ .Values.HF_TOKEN }}
             - name: VLLM_CONFIG_ROOT
-              value: '/tmp/usage'
+              value: {{ .Values.VLLM_CONFIG_ROOT }}
             - name: VLLM_PORT
               value: {{ .Values.port | quote }}
             - name: PORT 
@@ -91,7 +89,7 @@ spec:
             - name: MODEL
               value: {{ .Values.model | quote }}
             - name: HF_HOME
-              value: '/tmp/'
+              value: {{ .Values.HF_HOME }}
             {{- if .Values.servedModelName }}
             - name: SERVED_MODEL_NAME
               value: {{ .Values.servedModelName | quote }}

@@ -1,3 +1,7 @@
+HF_TOKEN: "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"
+VLLM_CONFIG_ROOT: '/tmp/usage'
+HF_HOME: '/tmp/'
+
 replicaCount: 1
 # Change this if you want to serve another model
 model: mistralai/Mistral-7B-Instruct-v0.1
