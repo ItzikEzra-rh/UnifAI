@@ -1,4 +1,4 @@
-from be_utils.db.db import mongo, Collections, db
+from be_utils.db.db import mongo, Collections
 
 @mongo
 def get_chat_history(model_id):

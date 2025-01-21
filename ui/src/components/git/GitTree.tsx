@@ -156,7 +156,7 @@ const TreeNode: React.FC<TreeNodeProps> = (({node, checked, setChecked, selected
       return;
     } 
       
-    axios.get('/api/backend/gitLabFileContent', { params: { gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value } })
+    axios.get('/api/git/gitLabFileContent', { params: { gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, testPath: node.value } })
       .then((response) => {
         const { content } = response.data.result;
         setSelectedNodeContent(content);
@@ -262,7 +262,7 @@ const GitForm: React.FC<PropTypes> = ({
 
   const getTestsTree = useCallback(() => {
     setLoading(true);
-    axios.get('/api/backend/files', {
+    axios.get('/api/git/files', {
       params: {
         gitUrl,
         gitCredentialKey,
