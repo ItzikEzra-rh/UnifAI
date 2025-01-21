@@ -6,8 +6,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from components.robot_parser import RobotParser
 from components.tree_sitter_parser import TreeSitterParser
 
-GO_FOLDER = '/home/cloud-user/Projects/tag-integration-with-oadp/oadp-operator'
-GO_PROJECT_NAME = 'oadp-operator'
+GO_FOLDER = '/home/cloud-user/Projects/tag-integration-with-migration-planner/migration-planner'
+AGENT_NAME = '(DEEP_CODE)'
+GO_PROJECT_NAME = 'migration-planner'
 GO_SUFFIXES = [".go"]
 
 def write_to_file(my_list, filename="TC's_mapping_list.txt"):
@@ -105,7 +106,7 @@ for path in go_files:
         print(f"Failed to update with: {e}")
 
 json_formatted_str = json.dumps(project_files_mapping, indent=2)
-write_to_file(json_formatted_str, filename=f'{GO_PROJECT_NAME}_Mapping.json')
+write_to_file(json_formatted_str, filename=f'{GO_PROJECT_NAME}_Mapping {AGENT_NAME}.json')
 print(f"Number Of Parsed Files: {counter}")
 
 # print(f"Parsed Json: \n {json_formatted_str}")
