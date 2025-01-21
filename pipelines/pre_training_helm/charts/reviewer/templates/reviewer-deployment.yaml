@@ -1,0 +1,93 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-{{ .Chart.Name }}
+  namespace: {{.Values.global.namespace}}
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.global.reviewer_replica }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      securityContext:
+      
+      initContainers:
+
+      - name: wait-for-services
+        image: registry.access.redhat.com/ubi8/ubi-minimal:latest
+        env:
+        - name: RELEASE_NAME
+          value: {{.Release.Name | upper}}
+        - name: CHART_NAME
+          value: {{ .Chart.Name }}
+        command: 
+        - sh
+        - -c
+        - "/mnt/config/wait-for-services.sh"
+
+        volumeMounts:
+          - name: {{ .Release.Name }}-wait-for-services
+            mountPath: /mnt/config
+            readOnly: true
+
+      volumes:
+      - name: {{ .Release.Name }}-wait-for-services
+        configMap:
+          name: {{ .Release.Name }}-wait-for-services
+          defaultMode: 0755
+
+      containers:    
+      - name: {{ .Chart.Name }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }} 
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        #command: [ "/bin/bash", "-c", "--" ]
+        #args: [ "while true; do sleep 30; done;" ]
+        args: [
+          {{- range .Values.args }}
+          '{{ . }}',
+          {{- end }}
+          ]
+          
+        env:
+        - name: TRANSFORMERS_CACHE
+          value: "/tmp"
+        - name: HF_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: "{{.Values.global.hf_token}}"
+              key: token
+        {{- range $key, $value := .Values.global.reviewer_env }}
+        - name: "{{ $key }}"
+          value: "{{ $value }}"
+        {{- end }}
+
+        - name: RABBITMQ_IP
+          value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST)
+        - name: RABBITMQ_PORT
+          value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT)
+        - name: MONGODB_IP
+          value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_HOST)
+        - name: MONGODB_PORT
+          value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_PORT)
+        - name: VLLM_IP
+          value: $({{ .Release.Name | upper }}_VLLM_REVIEWER_SVC_SERVICE_HOST)
+        - name: VLLM_PORT
+          value: $({{ .Release.Name | upper }}_VLLM_REVIEWER_SVC_SERVICE_PORT)
+
+        resources:
+          requests:
+            memory: {{.Values.resources.requests.memory}}
+            cpu: {{.Values.resources.requests.cpu}}
+          limits:
+            memory: {{.Values.resources.limits.memory}}
+            cpu: {{.Values.resources.limits.cpu}}
+
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault

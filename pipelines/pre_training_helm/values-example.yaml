@@ -1,0 +1,196 @@
+global:
+  
+  # Namespace where the Helm chart will deploy the application resources.
+  namespace: tag-ai--yhabushi-nb
+
+  # (int) number of prompt-vllm's serving orbiters
+  vllm_orbiter_replica: 3
+
+  # (int) number of reviewer-vllm's serving reviewer
+  vllm_reviewer_replica: 1
+
+  # (int) number of orbiter to work against prompt-vllm pool
+  orbiter_replica: 3
+
+  # (int) number of reviewer to work against reviewer-vllm pool
+  reviewer_replica: 1
+ 
+  # Hugging Face API token for accessing models and resources.
+  # please make sure to have a pre defined secret exist in the namespace.
+  hf_token: huggingface-token-secret
+
+  # Hugging Face model identifier for the model to be used. 
+  orbiter_model_hf_id: Qwen/Qwen2.5-Coder-7B-Instruct
+  reviewer_model_hf_id: meta-llama/Llama-3.1-8B-Instruct
+
+  # args for vllm startup  
+  vllm_orbiter_args:
+  - --max_model_len
+  - 16000
+  - --gpu_memory_utilization
+  - 0.88
+
+  # args for vllm startup  
+  vllm_reviewer_args:
+  - --max_model_len
+  - 16000
+  - --gpu_memory_utilization
+  - 0.88
+  
+  # List of envaironment variables for Reviewer Pods.
+  reviewer_env:
+    REVIEWER_MODEL_HF_ID: "meta-llama/Llama-3.1-8B-Instruct"
+    # (int) Maximum number of tokens that the model can generate in a single response.
+    REVIEWER_MAX_GENERATION_LENGTH: 2048
+    # (int) Maximum number of tokens the model can process in a single contex
+    REVIEWER_MAX_CONTEXT_LENGTH: 16000
+    # (int): Maximum number of prompts allowed in a single batch.
+    REVIEWER_BATCH_SIZE:  8
+    #(Reviewer) Threshold for filtering or scoring responses.
+    REVIEWER_SCORE_THRESHOLD:  75.0
+
+  # List of envaironment variables for prompt_lab Pods ( env will be distributed on all modules: orbiter, launchpad and landing).
+  promptlab_env:
+    PROMPT_LAB_MODEL_HF_ID: "Qwen/Qwen2.5-Coder-7B-Instruct"
+    # (int) Maximum number of tokens that the model can generate in a single response.
+    PROMPT_LAB_MAX_GENERATION_LENGTH: 2048
+    # (int) Maximum number of tokens the model can process in a single contex
+    PROMPT_LAB_MAX_CONTEXT_LENGTH: 16000
+    # (int): Maximum number of prompts allowed in a single batch.
+    PROMPT_LAB_BATCH_SIZE: 8
+    # (int) Maximum number of prompts per batch.
+    QUEUE_TARGET_SIZE: 16
+    #(PromptLab) project_config related.
+    TEMPLATE_AGENT: "DeepCode"
+    TEMPLATE_NAME: 
+    TEMPLATE_TYPE: "typescript"
+    # (int) Max retries, when prompt failed.
+    MAX_RETRY: 3
+    # Huggingface repository and file to consume.
+    INPUT_DATASET_REPO: oodeh/MTA-tests
+    INPUT_DATASET_FILE_NAME: tackle2_ui.json
+    # Huggingface repository file drop location.
+    OUTPUT_DATASET_REPO: oodeh/MTA-tests
+    OUTPUT_DATASET_FILE_NAME: output_tackle2_ui_prompt_lab
+
+  
+vllm:
+  image:
+    repository: images.paas.redhat.com/genie/vllm-openai
+    tag: "latest"
+    pullPolicy: IfNotPresent  
+  resources:
+    requests:
+      memory:  "16Gi"   
+      cpu: "2"
+      gpu: 1    
+    limits:
+      memory: "16Gi"   
+      cpu: "2"
+      gpu: 1 
+  service:
+    type: ClusterIP
+    port: 8000
+
+
+orbiter:
+  args:
+  - orbiter
+  - --celery
+  - --reviewer
+  - --celery-worker-concurrency
+  - 4
+  - --celery-worker-prefetch-count
+  - 2
+  
+  image:
+    repository: images.paas.redhat.com/genie/prompt_lab
+    tag: "2025.01.20"
+    pullPolicy: Always
+  resources:
+    requests:
+      memory: "2Gi"     
+      cpu: "2"       
+    limits:
+      memory: "2Gi"     
+      cpu: "2"          
+
+control:
+  landing:
+    args:
+    - landing
+    - --celery
+    - --celery-worker-concurrency
+    - 1
+    - --celery-worker-prefetch-count
+    - 1
+  
+    #replicaCount: 1
+    celery_worker_concurrency: 1
+    celery_worker_prefetch_count: 1
+    image:
+      repository: images.paas.redhat.com/genie/prompt_lab 
+      tag: "2025.01.20"
+      pullPolicy: Always
+
+  launchpad:
+    image:
+      repository: images.paas.redhat.com/genie/prompt_lab
+      tag: "2025.01.20"
+      pullPolicy: Always
+
+  resources:
+    requests:
+      memory: "1Gi"     
+      cpu: "1"       
+    limits:
+      memory: "1Gi"     
+      cpu: "1"   
+
+reviewer:
+  args:
+  - reviewer
+
+  image:
+    repository: images.paas.redhat.com/genie/reviewer
+    tag: "2025.01.19"
+    pullPolicy: Always
+  resources:
+    requests:
+      memory: "2Gi"     
+      cpu: "2"       
+    limits:
+      memory: "2Gi"     
+      cpu: "2"   
+
+misc:
+  resources:
+    requests:
+      memory: "1Gi"     
+      cpu: "1"       
+    limits:
+      memory: "1Gi"     
+      cpu: "1"   
+  mongodb:
+    image:
+      repository: mongo
+      tag: "latest"
+      pullPolicy: IfNotPresent
+    service:
+      name: mongodb
+      type: ClusterIP
+      port: 27017
+    persistence:
+      enabled: true
+      size: 8Gi
+      storageClass: "aws-ebs"
+  rabbitmq:
+    image:
+      repository: images.paas.redhat.com/genie/rabbitmq
+      tag: "latest"
+      pullPolicy: Always
+    service:
+      name: rabbitmq
+      type: ClusterIP
+      port: 5672
+      managementPort: 15672

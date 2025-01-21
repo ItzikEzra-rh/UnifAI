@@ -1,0 +1,18 @@
+global:
+  namespace: 
+  reviewer_replica:
+  reviewer_env:
+
+args:
+image:
+  repository: 
+  tag: 
+  pullPolicy: 
+
+resources:
+  requests:
+    memory:     
+    cpu:     
+  limits:
+    memory:     
+    cpu:   

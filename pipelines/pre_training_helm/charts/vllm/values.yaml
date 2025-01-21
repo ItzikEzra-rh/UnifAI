@@ -1,0 +1,28 @@
+global:
+  namespace: 
+
+  vllm_orbiter_replica: 
+  vllm_reviewer_replica:
+
+  orbiter_model_hf_id:
+  reviewer_model_hf_id:
+
+  vllm_orbiter_args:
+  vllm_reviewer_args:
+
+image:
+  repository: 
+  tag: 
+  pullPolicy: 
+
+resources:
+  requests:
+    memory:     
+    cpu:     
+  limits:
+    memory:    
+    cpu:  
+
+service:
+  type:
+  port: 

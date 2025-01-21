@@ -1,0 +1,19 @@
+global:
+  namespace: 
+  orbiter_replica:
+  promptlab_env: 
+
+args:
+
+resources:
+  requests:
+    memory:   
+    cpu:      
+  limits:
+    memory:     
+    cpu:  
+
+image:
+  repository: 
+  tag: 
+  pullPolicy: 

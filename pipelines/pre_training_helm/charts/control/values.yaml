@@ -1,0 +1,28 @@
+global:
+  namespace: 
+  promptlab_env:
+
+    
+landing:
+  args:
+  replicaCount: 1
+  celery_worker_concurrency: 
+  celery_worker_prefetch_count:
+  image:
+    repository: 
+    tag: 
+    pullPolicy: 
+launchpad:
+  replicaCount: 1
+  image:
+    repository: 
+    tag: 
+    pullPolicy: 
+
+resources:
+  requests:
+    memory:  
+    cpu:     
+  limits:
+    memory:     
+    cpu:  

@@ -7,7 +7,7 @@ WORKDIR /app/
 
 # Install system dependencies, including a C compiler
 RUN dnf update -y && \
-    dnf install -y python3-pip python3-devel kernel-devel wget which numactl gcc gcc-c++ make && \
+    dnf install -y python3-pip python3-devel kernel-devel wget which numactl gcc gcc-c++ make gettext && \
     dnf clean all
 
 # Add application source code
@@ -17,6 +17,8 @@ COPY . /app/
 RUN python3 -m venv /venv && \
     /venv/bin/pip install --upgrade pip && \
     /venv/bin/pip install .
+
+RUN chmod -R 777 /app/ /venv
 
 # Update PATH to use the virtual environment
 ENV PATH="/venv/bin:$PATH"

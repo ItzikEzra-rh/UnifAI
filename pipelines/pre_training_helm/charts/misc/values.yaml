@@ -1,0 +1,41 @@
+global:
+  namespace: 
+  model_hf_id:
+  hf_token:
+
+resources:
+  requests:
+    memory:   
+    cpu:      
+  limits:
+    memory:     
+    cpu:   
+
+mongodb:
+  replicaCount: 
+  image:
+    repository: 
+    tag: 
+    pullPolicy: 
+  service:
+    name: 
+    type: 
+    port: 
+  persistence:
+    enabled: 
+    size: 
+    storageClass: 
+
+rabbitmq:
+  replicaCount: 
+  image:
+    repository: 
+    tag: 
+    pullPolicy: 
+  service:
+    name: 
+    type: 
+    port: 
+    managementPort: 
+  #user_name: 
+  #password: 
