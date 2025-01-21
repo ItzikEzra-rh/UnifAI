@@ -6,8 +6,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from components.robot_parser import RobotParser
 from components.tree_sitter_parser import TreeSitterParser
 
-GO_FOLDER = '/home/cloud-user/Projects/tag-integration-with-oadp/oadp-e2e-qe'
-GO_PROJECT_NAME = 'oadp-e2e-qe'
+GO_FOLDER = '/home/cloud-user/Projects/tag-integration-with-oadp/oadp-operator'
+GO_PROJECT_NAME = 'oadp-operator'
 GO_SUFFIXES = [".go"]
 
 def write_to_file(my_list, filename="TC's_mapping_list.txt"):
@@ -91,7 +91,7 @@ counter = 0
 
 for path in go_files:
     print(f"Current path:{path}")
-    realtive_file_path = path.replace("/home/cloud-user/Projects/tag-integration-with-oadp/oadp-e2e-qe/", "", 1)
+    realtive_file_path = path.replace(f"{GO_FOLDER}/", "", 1)
     tree_sitter_parser = TreeSitterParser.create_parser(file_path=path, realtive_path=realtive_file_path, project_name=GO_PROJECT_NAME)
     project_entire_file_mapping = [tree_sitter_parser.enitre_file_parsing(project_file_names_mapping)]
     project_file_functions_mapping = tree_sitter_parser.functions_parsing()
