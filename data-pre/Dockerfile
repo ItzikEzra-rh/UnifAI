@@ -10,7 +10,7 @@ RUN git clone https://github.com/Hubro/tree-sitter-robot.git
 FROM  registry.access.redhat.com/ubi9/nodejs-18-minimal
 #install debugging tools 
 USER root
-RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
+RUN microdnf update -y && dnf install -y vim less iputils telnet && dnf clean all
 USER 1001
 
 COPY --from=base /usr/local/bin/tree-sitter /usr/local/bin/tree-sitter
