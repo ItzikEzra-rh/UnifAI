@@ -8,7 +8,6 @@ RUN git clone https://github.com/Hubro/tree-sitter-robot.git
 
 
 FROM  registry.access.redhat.com/ubi9/nodejs-18-minimal
-RUN dnf update -y && dnf install -y vim iputils telnet && dnf clean all
 
 COPY --from=base /usr/local/bin/tree-sitter /usr/local/bin/tree-sitter
 COPY --from=base --chown=1001:1001 /tmp/tree-sitter-robot $HOME/tree-sitter-robot

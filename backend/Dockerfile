@@ -6,7 +6,9 @@ WORKDIR $HOME
 RUN mkdir $HOME/venv
 
 # update rpms and install debugging tools
-RUN dnf update -y && dnf install -y vim iputils telnet && dnf clean all
+USER root
+RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
+USER 1001
 # Upgrade pip and install virtualenv
 RUN pip3 install --upgrade pip virtualenv
 
