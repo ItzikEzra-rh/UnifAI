@@ -1,0 +1,155 @@
+{
+  "project_id": "",
+  "project_repo": "",
+  "coding_language": "go",
+  "prompt_lab_system_message": "",
+  "prompt_system_message": "",
+  "context_template": "",
+  "element_templates": {
+    "function": {
+      "Repository Code": {
+        "Repository structure": {
+          "questions": [
+            {
+              "question": "Here is the {element_type} from the repository {project_repo}:\\n\\n** {element_type}: `{file_location}`**\\n```{coding_language}\\n/*\\n{imports}\\n*/\\n\\n{code}\\n\\n describe the {element_type} location within the repository.",
+              "validation": "Is the location of the {element_type} in the repository accurately described?"
+            }
+          ]
+        }
+      },
+      "Code Summary": {
+        "Code purpose": {
+          "questions": [
+            {
+              "question": "What is the purpose of `{element_type}` `{name}` in `{file_location}`? Provide a detailed explanation of its responsibilities and significance.",
+              "validation": "Is the explanation comprehensive and clear about the purpose, responsibilities, and significance of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "Exploring the key objectives of `{element_type}` `{name}` in `{file_location}`: Provide a detailed explanation of its responsibilities and importance.",
+              "validation": "Is the explanation comprehensive and clear about the key objectives, responsibilities, and importance of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "Analyzing the role of `{element_type}` `{name}` in `{file_location}`: Provide a detailed explanation of its responsibilities and relevance.",
+              "validation": "Is the explanation comprehensive and clear about the role, responsibilities, and relevance of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "What is the significance of `{element_type}` `{name}` in `{file_location}`? Provide a detailed explanation of its purpose and responsibilities.",
+              "validation": "Is the explanation comprehensive and clear about the significance, purpose, and responsibilities of `{element_type}` `{name}` in `{file_location}`?"
+            }
+          ]
+        },
+        "Code Logic": {
+          "questions": [
+            {
+              "question": "What is the core logic implemented in `{element_type}` `{name}` in `{file_location}`? Provide a detailed explanation of its key operations.",
+              "validation": "Is the explanation clear and accurate about the core logic and key operations of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "Analyzing the decision-making process in `{element_type}` `{name}` in `{file_location}`: Provide a detailed explanation of its conditional logic and flow.",
+              "validation": "Is the explanation comprehensive and clear about the decision-making process and conditional logic of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "Exploring the algorithm in `{element_type}` `{name}` in `{file_location}`: Provide a detailed breakdown of the steps involved in its execution.",
+              "validation": "Is the explanation clear and comprehensive about the algorithm and execution steps of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "What is the sequence of operations in `{element_type}` `{name}` in `{file_location}`? Provide a detailed summary of its logical flow.",
+              "validation": "Is the explanation clear and accurate about the sequence of operations and logical flow of `{element_type}` `{name}` in `{file_location}`?"
+            }
+          ]
+        }
+      },
+      "Code Dependencies": {
+        "Calls": {
+          "questions": [
+            {
+              "question": "What calls does `{element_type}` `{name}` in `{file_location}` make? List the calls and explain their purpose.",
+              "validation": "Does the explanation  list the calls made by `{element_type}` `{name}` in `{file_location}` and clarify their purpose?"
+            },
+            {
+              "question": "What is the purpose of the calls made by `{element_type}` `{name}` in `{file_location}`? List the calls and describe how they contribute to its functionality.",
+              "validation": "Does the explanation list the calls made by `{element_type}` `{name}` in `{file_location}` and explain their contribution to its functionality?"
+            },
+            {
+              "question": "What are the key function or method calls implemented in `{element_type}` `{name}` in `{file_location}`? List them and describe how they are executed.",
+              "validation": "Does the explanation list the key function or method calls in `{element_type}` `{name}` in `{file_location}` and explain their execution?"
+            },
+            {
+              "question": "How do the calls made by `{element_type}` `{name}` in `{file_location}` interact with other parts of the codebase? List the calls and describe their interactions.",
+              "validation": "Does the explanation list the calls in `{element_type}` `{name}` in `{file_location}` and describe their interactions with the codebase?"
+            },
+            {
+              "question": "What sequence of calls does `{element_type}` `{name}` in `{file_location}` execute? List the calls and explain how they relate to the function's behavior.",
+              "validation": "Does the explanation list the sequence of calls in `{element_type}` `{name}` in `{file_location}` and clarify their relation to its behavior?"
+            }
+          ]
+        },
+        "Imports": {
+          "questions": [
+            {
+              "question": "What imports does `{element_type}` `{name}` in `{file_location}` use? List the imports and explain their purpose.",
+              "validation": "Does the explanation accurately list the imports used by `{element_type}` `{name}` in `{file_location}` and clarify their purpose?"
+            },
+            {
+              "question": "How do the imports used in `{element_type}` `{name}` in `{file_location}` contribute to its functionality? List the imports and describe their roles.",
+              "validation": "Does the explanation clearly list the imports in `{element_type}` `{name}` in `{file_location}` and explain their contribution to its functionality?"
+            },
+            {
+              "question": "What are the specific imports required by `{element_type}` `{name}` in `{file_location}`? List them and describe how they are utilized.",
+              "validation": "Does the explanation comprehensively list the specific imports required by `{element_type}` `{name}` in `{file_location}` and explain their usage?"
+            },
+            {
+              "question": "What role do the imports in `{element_type}` `{name}` in `{file_location}` play in enabling its operations? List the imports and explain their impact.",
+              "validation": "Does the explanation clearly list the imports in `{element_type}` `{name}` in `{file_location}` and describe their impact on the operations?"
+            },
+            {
+              "question": "What dependencies are introduced through the imports in `{element_type}` `{name}` in `{file_location}`? List the imports and explain their significance.",
+              "validation": "Does the explanation accurately list the dependencies introduced by the imports in `{element_type}` `{name}` in `{file_location}` and explain their significance?"
+            }
+          ],
+          "condition": "{{ element.imports != '' }}"
+        }
+      },
+      "_comment": "in Code Dependencies we use only graph dependency of calling 1 level depth, code usage is how to use the function with the right import, we dont have calle functions in graph Dependencies, structs also we a caller in the graph",
+      "Code usage": {
+        "Function Integration": {
+          "questions": [
+            {
+              "question": "How can `{element_type}` `{name}` in `{file_location}` be correctly imported and used in another file? Provide an example.",
+              "validation": "Does the explanation clearly describe how to import and use `{element_type}` `{name}` in `{file_location}` with a valid example?"
+            },
+            {
+              "question": "What are the steps required to use `{element_type}` `{name}` in `{file_location}` in another context? Include the import statement and usage example.",
+              "validation": "Does the explanation accurately detail the steps for importing and using `{element_type}` `{name}` in `{file_location}` with an example?"
+            },
+            {
+              "question": "What is the correct way to import `{element_type}` `{name}` from `{file_location}` and call it with appropriate parameters? Provide an example.",
+              "validation": "Does the explanation provide a clear and correct way to import and call `{element_type}` `{name}` from `{file_location}` with an example?"
+            },
+            {
+              "question": "How should `{element_type}` `{name}` in `{file_location}` be used in a different module or package? Include a detailed explanation of the import and usage.",
+              "validation": "Does the explanation include a clear import statement and usage details for `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "What is the proper syntax to import `{element_type}` `{name}` from `{file_location}` and utilize its functionality? Provide an example usage.",
+              "validation": "Does the explanation provide the proper syntax to import `{element_type}` `{name}` from `{file_location}` and include an example of its usage?"
+            }
+          ]
+        }
+      }
+    },
+    "file": {
+      "Repository Code": {},
+      "Code Summary": {},
+      "Code Dependencies": {},
+      "_comment": "normal Dependencies of the function, 1 level",
+      "Code usage": {},
+      "_comment2": "to make example of usage of things defined in the files which are not functions, and how to use them from other file"
+    },
+    "package": {
+      "Repository Code": {},
+      "Code Dependencies": {},
+      "Code summary": {}
+    }
+  }
+}
