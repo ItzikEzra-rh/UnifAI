@@ -6,6 +6,10 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from components.robot_parser import RobotParser
 from components.tree_sitter_parser import TreeSitterParser
 
+GO_FOLDER = '/home/cloud-user/Projects/tag-integration-with-oadp/oadp-operator'
+GO_PROJECT_NAME = 'oadp-operator'
+GO_SUFFIXES = [".go"]
+
 def write_to_file(my_list, filename="TC's_mapping_list.txt"):
     # Write each item of the list to a new line in the file
     with open(filename, "w") as file:
@@ -55,36 +59,31 @@ def extract_unique_words(paths):
     
     return unique_words
 
-go_folder = '/home/cloud-user/Projects/tag-integration-with-cnv/kubevirt/tests'
-go_suffixes = [".go"]
-go_files = get_file_paths_with_suffixes(go_folder, go_suffixes)
+def parser_error_counter(go_files):
+    # Initialize a counter and a list for paths
+    error_count = 0
+    error_paths = []
+
+    # Loop through all the files
+    for path in go_files:
+        tree_sitter_parser = TreeSitterParser.create_parser(file_path=path)
+        node, _ = tree_sitter_parser.get_root_node()
+        
+        # Check if the node contains an error
+        if tree_sitter_parser.is_error_node(node):
+            error_count += 1
+            error_paths.append(path)
+
+    # Print the total count and the paths with errors
+    print(f"Total number of files with errors: {error_count}")
+    print("Paths with errors:")
+    for error_path in error_paths:
+        print(error_path)
+
+go_files = get_file_paths_with_suffixes(GO_FOLDER, GO_SUFFIXES)
 print(f'GO_FILES len: {len(go_files)}')
 
-# Example usage
-realtive_paths = [path.replace("/home/cloud-user/Projects/tag-integration-with-cnv/kubevirt/", "", 1) for path in go_files]
-result = extract_unique_words(realtive_paths)
-
 #########################################################################################################
-
-# Initialize a counter and a list for paths
-error_count = 0
-error_paths = []
-
-# # Loop through all the files
-# for path in go_files:
-#     tree_sitter_parser = TreeSitterParser.create_parser(file_path=path)
-#     node, _ = tree_sitter_parser.get_root_node()
-    
-#     # Check if the node contains an error
-#     if tree_sitter_parser.is_error_node(node):
-#         error_count += 1
-#         error_paths.append(path)
-
-# # Print the total count and the paths with errors
-# print(f"Total number of files with errors: {error_count}")
-# print("Paths with errors:")
-# for error_path in error_paths:
-#     print(error_path)
 
 project_file_names_mapping = {}
 project_files_mapping = []
@@ -92,8 +91,8 @@ counter = 0
 
 for path in go_files:
     print(f"Current path:{path}")
-    realtive_file_path = path.replace("/home/cloud-user/Projects/tag-integration-with-cnv/kubevirt/", "", 1)
-    tree_sitter_parser = TreeSitterParser.create_parser(file_path=path, realtive_path=realtive_file_path, project_name="kubevirt")
+    realtive_file_path = path.replace(f"{GO_FOLDER}/", "", 1)
+    tree_sitter_parser = TreeSitterParser.create_parser(file_path=path, realtive_path=realtive_file_path, project_name=GO_PROJECT_NAME)
     project_entire_file_mapping = [tree_sitter_parser.enitre_file_parsing(project_file_names_mapping)]
     project_file_functions_mapping = tree_sitter_parser.functions_parsing()
     project_file_tests_mapping = tree_sitter_parser.test_parsing()
@@ -106,6 +105,11 @@ for path in go_files:
         print(f"Failed to update with: {e}")
 
 json_formatted_str = json.dumps(project_files_mapping, indent=2)
-write_to_file(json_formatted_str, filename='kubevirt_Mapping.json')
+write_to_file(json_formatted_str, filename=f'{GO_PROJECT_NAME}_Mapping.json')
 print(f"Number Of Parsed Files: {counter}")
+
 # print(f"Parsed Json: \n {json_formatted_str}")
+
+# Example usage
+# realtive_paths = [path.replace("/home/cloud-user/Projects/tag-integration-with-cnv/kubevirt/", "", 1) for path in go_files]
+# result = extract_unique_words(realtive_paths)
