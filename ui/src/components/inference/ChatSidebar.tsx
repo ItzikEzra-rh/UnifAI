@@ -12,6 +12,7 @@ interface ChatSidebarProps {
   drawerOpen: boolean;
   setDrawerOpen: (drawerOpen: boolean) => void;
   data: ModelData[];
+  modelId: string;
   temperature: number;
   setTemperature: (temperature: number) => void;
   isStreaming: boolean;
@@ -23,7 +24,7 @@ interface ChatSidebarProps {
   setHistoryChats: (historyChats: HistoryChat[]) => void;
 }
 
-export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOpen, data, temperature, setTemperature, 
+export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOpen, data, modelId, temperature, setTemperature, 
                                                         isStreaming, clearChat, unloadModel, handleChatSelect, currentChatId, historyChats, setHistoryChats}) => {
   const handleTemperatureChange = (event: Event, newValue: number | number[]) => {
     setTemperature(newValue as number);
@@ -116,6 +117,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
           <Divider orientation="horizontal" flexItem />
           <div className="inner-drawer">
             <ChatHistory
+              modelId={modelId}
               isStreaming={isStreaming}
               onChatSelect={handleChatSelect}
               currentChatId={currentChatId}

@@ -14,6 +14,7 @@ interface ChatMessage {
 }
 
 interface ChatHistoryProps {
+  modelId: string;
   isStreaming: boolean;
   onChatSelect: (chatId: string, messages: ChatMessage[]) => void;
   currentChatId: string;
@@ -29,7 +30,7 @@ export interface HistoryChat {
   title?: string;
 }
 
-const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, currentChatId, historyChats, setHistoryChats }) => {
+const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatSelect, currentChatId, historyChats, setHistoryChats }) => {
   const [deleteConfirmationModal, setDeleteConfirmationModal] = useState(false);
   const [editTitleModal, setEditTitleModal] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
@@ -58,10 +59,12 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
     setSelectedTitle(null); 
   };
 
-  const renameSession = async (sessionId: string) => {
+  const renameSession = async () => {
     try {
       const response = await axiosBE.post('/api/backend/renameSession', {sessionId: selectedSessionId, title: newChatTitle});
       // setHistoryChats(historyChats.filter((chat) => chat.sessionId !== sessionId));
+      const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
+      setHistoryChats(loadedModelChatsResponse.data.response)
       setEditTitleModal(false); 
     } catch (error) {
       console.error('Error deleting session:', error);
@@ -190,7 +193,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
           Cancel
         </Button>
         <Button
-            onClick={() => {if (selectedSessionId) { renameSession(selectedSessionId) }}}
+            onClick={() => {if (selectedSessionId) { renameSession() }}}
             color="primary"
           >
           Rename

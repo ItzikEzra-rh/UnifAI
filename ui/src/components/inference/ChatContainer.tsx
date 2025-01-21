@@ -721,6 +721,7 @@ const ChatComponent: React.FC = () => {
             drawerOpen={drawerOpen}
             setDrawerOpen={setDrawerOpen}
             data={data} 
+            modelId={selectedModel.modelId}
             temperature={temperature} 
             setTemperature={setTemperature}
             isStreaming={isStreaming}
