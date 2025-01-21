@@ -1,5 +1,11 @@
 #FROM  registry.access.redhat.com/ubi9/nodejs-18-minimal as build
 FROM  registry.access.redhat.com/ubi9/nodejs-22 as build
+
+#Install debugging tools
+USER root
+RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
+USER 1001
+
 WORKDIR $HOME
 RUN mkdir -p . $HOME/ui
 ADD . $HOME/ui
