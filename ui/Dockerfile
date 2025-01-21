@@ -1,10 +1,5 @@
 #FROM  registry.access.redhat.com/ubi9/nodejs-18-minimal as build
 FROM  registry.access.redhat.com/ubi9/nodejs-22 as build
-
-#Install debugging tools
-USER root
-RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
-USER 1001
 WORKDIR $HOME
 RUN mkdir -p . $HOME/ui
 ADD . $HOME/ui
@@ -19,6 +14,11 @@ CMD serve -s build
 # Stage 2: Serve the built app with Nginx
 
 FROM registry.access.redhat.com/ubi9/nginx-120
+#Install debugging tools
+USER root
+RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
+USER 1001
+
 COPY --from=build $HOME/ui/build $HOME
 EXPOSE 8080
 HEALTHCHECK CMD curl --fail http://localhost:8080 || exit 1
