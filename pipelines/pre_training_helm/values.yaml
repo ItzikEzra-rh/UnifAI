@@ -1,79 +1,88 @@
 global:
-  
+
+# ====================================================================================
+# User-Customizable Values Section
+# Below are the values we can safely modify to customize your Dataset Generation deployment 
+# ====================================================================================
   # Namespace where the Helm chart will deploy the application resources.
-  namespace: tag-ai--yhabushi-nb
+  namespace: 
 
   # (int) number of prompt-vllm's serving orbiters
-  vllm_orbiter_replica: 3
+  vllm_orbiter_replica: 
 
   # (int) number of reviewer-vllm's serving reviewer
-  vllm_reviewer_replica: 1
+  vllm_reviewer_replica: 
 
   # (int) number of orbiter to work against prompt-vllm pool
-  orbiter_replica: 3
+  orbiter_replica: 
 
   # (int) number of reviewer to work against reviewer-vllm pool
-  reviewer_replica: 1
+  reviewer_replica: 
  
   # Hugging Face API token for accessing models and resources.
   # please make sure to have a pre defined secret exist in the namespace.
-  hf_token: huggingface-token-secret
+  hf_token: 
 
-  # Hugging Face model identifier for the model to be used. 
-  orbiter_model_hf_id: Qwen/Qwen2.5-Coder-7B-Instruct
-  reviewer_model_hf_id: meta-llama/Llama-3.1-8B-Instruct
+  # (str) Huggingface model identifier for the model to be used. 
+  orbiter_model_hf_id: 
+  reviewer_model_hf_id: 
 
-  # args for vllm startup  
+  # List of args for vllm-orbiter startup,example:
+  # - --max_model_len
+  # - 16000
+  # - --gpu_memory_utilization
+  # - 0.88
   vllm_orbiter_args:
-  - --max_model_len
-  - 16000
-  - --gpu_memory_utilization
-  - 0.88
 
-  # args for vllm startup  
+  # args for vllm-reviewer startup ( see vllm_orbiter_args example ) 
   vllm_reviewer_args:
-  - --max_model_len
-  - 16000
-  - --gpu_memory_utilization
-  - 0.88
-  
+
   # List of envaironment variables for Reviewer Pods.
   reviewer_env:
-    REVIEWER_MODEL_HF_ID: "meta-llama/Llama-3.1-8B-Instruct"
+    # (str) Model ID or name, ex: meta-llama/Llama-3.1-8B-Instruct
+    REVIEWER_MODEL_HF_ID: 
     # (int) Maximum number of tokens that the model can generate in a single response.
-    REVIEWER_MAX_GENERATION_LENGTH: 2048
+    REVIEWER_MAX_GENERATION_LENGTH: 
     # (int) Maximum number of tokens the model can process in a single contex
-    REVIEWER_MAX_CONTEXT_LENGTH: 16000
+    REVIEWER_MAX_CONTEXT_LENGTH: 
     # (int): Maximum number of prompts allowed in a single batch.
-    REVIEWER_BATCH_SIZE:  8
-    #(Reviewer) Threshold for filtering or scoring responses.
-    REVIEWER_SCORE_THRESHOLD:  75.0
+    REVIEWER_BATCH_SIZE: 
+    # (float) Threshold for filtering or scoring responses ex: 75.0
+    REVIEWER_SCORE_THRESHOLD: 
 
-  # List of envaironment variables for prompt_lab Pods ( env will be distributed on all modules: orbiter, launchpad and landing).
+  # List of envaironment variables for prompt_lab Pods 
+  #( env will be distributed on all modules: orbiter, launchpad and landing).
   promptlab_env:
-    PROMPT_LAB_MODEL_HF_ID: "Qwen/Qwen2.5-Coder-7B-Instruct"
+    # (str) Model ID or name, ex: meta-llama/Llama-3.1-8B-Instruct 
+    PROMPT_LAB_MODEL_HF_ID:
     # (int) Maximum number of tokens that the model can generate in a single response.
-    PROMPT_LAB_MAX_GENERATION_LENGTH: 2048
+    PROMPT_LAB_MAX_GENERATION_LENGTH: 
     # (int) Maximum number of tokens the model can process in a single contex
-    PROMPT_LAB_MAX_CONTEXT_LENGTH: 16000
+    PROMPT_LAB_MAX_CONTEXT_LENGTH: 
     # (int): Maximum number of prompts allowed in a single batch.
-    PROMPT_LAB_BATCH_SIZE: 8
+    PROMPT_LAB_BATCH_SIZE: 
     # (int) Maximum number of prompts per batch.
-    QUEUE_TARGET_SIZE: 16
-    #(PromptLab) project_config related.
-    TEMPLATE_AGENT: "DeepCode"
-    TEMPLATE_NAME: 
-    TEMPLATE_TYPE: "typescript"
+    QUEUE_TARGET_SIZE: 
+    # (str) project_config related ex: DeepCode
+    TEMPLATE_AGENT:
+    # (optional)
+    TEMPLATE_NAME:
+    # (str) project_config related ex: typescript
+    TEMPLATE_TYPE: 
     # (int) Max retries, when prompt failed.
-    MAX_RETRY: 3
-    # Huggingface repository and file to consume.
-    INPUT_DATASET_REPO: oodeh/mta_tests_parsed
-    INPUT_DATASET_FILE_NAME: input_8_elements_16_prompts.json
-    # Huggingface repository file drop location.
-    OUTPUT_DATASET_REPO: oodeh/mta_tests_parsed
-    OUTPUT_DATASET_FILE_NAME: output_8_elements_16_prompts
+    MAX_RETRY: 
+    # Huggingface repository and file to consume
+    INPUT_DATASET_REPO: 
+    INPUT_DATASET_FILE_NAME: 
+    # Huggingface repository file drop location
+    OUTPUT_DATASET_REPO:
+    OUTPUT_DATASET_FILE_NAME:
 
-  
+# ====================================================================================
+# DO NOT MODIFY ANYTHING BELOW THIS LINE
+# Changes made below this line may break the deployment or cause unexpected behavior.
+# ====================================================================================
+
 vllm:
   image:
     repository: images.paas.redhat.com/genie/vllm-openai
@@ -92,7 +101,6 @@ vllm:
     type: ClusterIP
     port: 8000
 
-
 orbiter:
   args:
   - orbiter
@@ -102,7 +110,7 @@ orbiter:
   - 4
   - --celery-worker-prefetch-count
   - 2
-  
+
   image:
     repository: images.paas.redhat.com/genie/prompt_lab
     tag: "2025.01.20"
@@ -113,7 +121,7 @@ orbiter:
       cpu: "2"       
     limits:
       memory: "2Gi"     
-      cpu: "2"          
+      cpu: "2" 
 
 control:
   landing:
@@ -194,3 +202,4 @@ misc:
       type: ClusterIP
       port: 5672
       managementPort: 15672
+	  
