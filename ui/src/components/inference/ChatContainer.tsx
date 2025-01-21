@@ -408,7 +408,7 @@ const ChatComponent: React.FC = () => {
       if (!response.body) throw new Error('ReadableStream not supported!');
       
       // Monitor each model (based on unique uuid) by checking how many times users leverage the latest for inference 
-      await axiosBE.post('/api/backend/addInferenceCounter', { modelId: selectedModel?.modelId, modelName: selectedModel?.modelName });
+      await axiosBE.post('/api/inference/addInferenceCounter', { modelId: selectedModel?.modelId, modelName: selectedModel?.modelName });
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
