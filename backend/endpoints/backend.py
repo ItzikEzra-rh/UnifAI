@@ -8,9 +8,9 @@ from bson import json_util
 from backend.endpoints.schemas import MessageSchema
 from helpers.apiargs import Fields, from_query, from_body
 from be_utils.utils import json_response
-from providers.backend import insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
+from providers.backend import insert_new_prompt, get_saved_prompts, \
                               insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating
-from providers.backend import insert_new_form, insert_new_prompt, get_forms, get_saved_prompts, \
+from providers.backend import insert_new_prompt, get_saved_prompts, \
                               insert_prompt_comment, insert_prompt_is_complete, insert_prompt_rating, delete_prompt, add_inference_counter_per_each_model, \
                               retrieve_inference_counter, retrieve_inference_counter_all
 
@@ -19,35 +19,6 @@ backend_bp = Blueprint("backend", __name__)
 @backend_bp.route("/", methods=["GET"])
 def sanity_check():
     return 'There is access to api backend'
-
-@backend_bp.route("/forms", methods=["POST"])
-@from_body({
-    "project_name":            fields.Str(required=True, data_key="projectName"),
-    "training_name":           fields.Str(required=True, data_key="trainingName"),
-    "git_url":                 fields.Str(required=True, data_key="gitUrl"),
-    "git_credential_key":      fields.Str(required=True, data_key="gitCredentialKey"),
-    "git_folder_path":         fields.Str(missing='', data_key="gitFolderPath"),
-    "git_branch_name":         fields.Str(required=True, data_key="gitBranchName"),
-    "base_model_name":         fields.Str(required=True, data_key="baseModelName"),
-    "tests_code_framework":    fields.Str(required=True, data_key="testsCodeFramework"),
-    "number_of_tests":         fields.Int(missing=None, data_key="numberOfTests"),
-    "expand_dataset_to":       fields.Str(missing=None, data_key="expandDatasetTo"),
-    "dataset_grading_upgrade": fields.Bool(missing=False, data_key="datasetGradingUpgrade"),
-})
-def insert_form(project_name, training_name, git_url, git_credential_key, git_folder_path, git_branch_name, base_model_name,
-                tests_code_framework, number_of_tests, expand_dataset_to, dataset_grading_upgrade):
-    try:
-        # Insert form data into MongoDB collection
-        result = insert_new_form(project_name, training_name, git_url, git_credential_key, git_folder_path, git_branch_name, base_model_name,
-                                 tests_code_framework, number_of_tests, expand_dataset_to, dataset_grading_upgrade)
-
-        # Return success response with inserted id
-        return jsonify({"status": "success", "inserted_id": str(result.inserted_id)}), 201
-
-    except Exception as e:
-        # Log the error and return error response
-        logging.error(f"Error saving form data: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
 
 @backend_bp.route("/savePrompt", methods=["POST"])
 @from_body({
@@ -70,21 +41,6 @@ def save_prompt(model_id, model_name, training_name, prompt_entire_text, prompt_
     except Exception as e:
         # Log the error and return error response
         logging.error(f"Error saving new prompt: {e}")
-        return jsonify({"status": "error", "message": str(e)}), 500
-
-
-@backend_bp.route("/retrieveForms", methods=["GET"])
-def retrieve_forms():
-    try:
-        # Insert LLM prompt into MongoDB collection
-        result = get_forms()
-
-        # Return success response with inserted id
-        return json_response({"result": result})
-
-    except Exception as e:
-        # Log the error and return error response
-        logging.error(f"Error retrieving existing forms: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
 

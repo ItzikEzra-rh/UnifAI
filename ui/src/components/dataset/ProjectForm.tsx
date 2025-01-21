@@ -95,7 +95,7 @@ const ProjectForm: React.FC = () => {
           const {projectName, trainingName, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, baseModelName, testsCodeFramework,
                  numberOfTests, expandDatasetTo, datasetGradingUpgrade, parserFile} = data;
 
-          await axios.post('/api/backend/forms', {projectName, trainingName, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, baseModelName, testsCodeFramework,
+          await axios.post('/api/forms/insertForm', {projectName, trainingName, gitUrl, gitCredentialKey, gitFolderPath, gitBranchName, baseModelName, testsCodeFramework,
             numberOfTests, expandDatasetTo, datasetGradingUpgrade});
           setFormSubmitted(true); // Set the state to true upon successful form submission
           console.log('Form submitted successfully:', data);
