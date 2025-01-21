@@ -61,10 +61,10 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
 
   const renameSession = async () => {
     try {
-      const response = await axiosBE.post('/api/backend/renameSession', {sessionId: selectedSessionId, title: newChatTitle});
-      // setHistoryChats(historyChats.filter((chat) => chat.sessionId !== sessionId));
+      await axiosBE.post('/api/backend/renameSession', {sessionId: selectedSessionId, title: newChatTitle});
       const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
       setHistoryChats(loadedModelChatsResponse.data.response)
+      setNewChatTitle(null)
       setEditTitleModal(false); 
     } catch (error) {
       console.error('Error deleting session:', error);
@@ -77,9 +77,9 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
   };
 
   const handleCloseEditModal = () => {
-    setDeleteConfirmationModal(false);
+    setEditTitleModal(false);
     setSelectedSessionId(null); 
-    setSelectedTitle(null); 
+    setNewChatTitle(null); 
   };
 
   return (
@@ -115,11 +115,10 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
                         title="Rename session"
                         size="small" 
                         edge="end" 
-                        onClick={() => handleEditClick(chat.sessionId)} // Pass chat ID or any other identifier
+                        onClick={() => handleEditClick(chat.sessionId)} 
                         aria-label="edit"
-                        style={{ marginLeft: 8 }} // Optional: Add spacing between text and icon
                       >
-                        <EditIcon fontSize="small" />
+                        <EditIcon fontSize="small" sx={{height: '15px'}}/>
                       </IconButton>
                     </React.Fragment>
                   }
