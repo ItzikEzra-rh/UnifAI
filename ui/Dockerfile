@@ -1,6 +1,7 @@
 #FROM  registry.access.redhat.com/ubi9/nodejs-18-minimal as build
 #FROM  registry.access.redhat.com/ubi9/nodejs-22-minimal as build
 FROM  registry.access.redhat.com/ubi9/nodejs-22 as build
+RUN dnf update -y && dnf install -y vim iputils telnet && dnf clean all
 WORKDIR $HOME
 RUN mkdir -p . $HOME/ui
 ADD . $HOME/ui
