@@ -1,3 +1,4 @@
+import re
 import os
 import uuid
 from .tree_sitter_parser import TreeSitterParser
@@ -76,7 +77,7 @@ class TypeScriptParser(TreeSitterParser):
                 "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
                 "name": os.path.basename(self.realtive_path),
-                "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
+                "imports": f"{used_imports}" if len(used_imports) > 0 else "",
                 "file_location": f"https://github.com/konveyor/{self.project_name}/{self.realtive_path}",
                 "code": content,
             }
@@ -146,6 +147,8 @@ class TypeScriptParser(TreeSitterParser):
                         
                         initializer = child.child_by_field_name("value")
                         func_code = initializer.text.decode("utf-8") if initializer else None
+                        #TODO: Below line is up to deisgn decision of prompt_lab templates (what is expected from the parser)
+                        #func_code = child.text.decode("utf-8")
             
             # If no valid name found, return None
             if not func_name:
@@ -160,7 +163,7 @@ class TypeScriptParser(TreeSitterParser):
                 "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
                 "name": func_name,
-                "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
+                "imports": f"{used_imports}" if len(used_imports) > 0 else "",
                 "file_location": f"https://github.com/konveyor/{self.project_name}/{self.realtive_path}",
                 "code": func_code,
                 "parent": parent_info or ""
@@ -272,7 +275,7 @@ class TypeScriptParser(TreeSitterParser):
                 "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
                 "name": test_name,
-                "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
+                "imports": f"{used_imports}" if len(used_imports) > 0 else "",
                 "file_location": f"https://github.com/konveyor/{self.project_name}/{self.realtive_path}",
                 "code": test_code,
             }
