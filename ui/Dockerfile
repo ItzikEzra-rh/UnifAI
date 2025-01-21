@@ -1,5 +1,4 @@
 #FROM  registry.access.redhat.com/ubi9/nodejs-18-minimal as build
-#FROM  registry.access.redhat.com/ubi9/nodejs-22-minimal as build
 FROM  registry.access.redhat.com/ubi9/nodejs-22 as build
 
 #Install debugging tools
@@ -17,3 +16,10 @@ RUN npm install
 RUN npm run build
 RUN yarn global add serve
 CMD serve -s build
+# Stage 2: Serve the built app with Nginx
+
+FROM registry.access.redhat.com/ubi9/nginx-120
+COPY --from=build $HOME/ui/build $HOME
+EXPOSE 8080
+HEALTHCHECK CMD curl --fail http://localhost:8080 || exit 1
+CMD ["nginx", "-g", "daemon off;"]
