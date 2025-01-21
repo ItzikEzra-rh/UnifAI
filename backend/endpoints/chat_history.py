@@ -1,10 +1,11 @@
 import logging
+from endpoints.schemas import MessageSchema
 from flask import Blueprint
-from backend.endpoints.schemas import MessageSchema
-from backend.providers.chat_history import delete_session_from_chat_history, get_chat_history, update_current_chat_history
-from helpers.apiargs import from_query, from_body
 from webargs import fields
+from helpers.apiargs import from_query, from_body
 from flask import jsonify
+from providers.chat_history import delete_session_from_chat_history, get_chat_history, update_current_chat_history
+
 
 chat_history_bp = Blueprint("chatHistory", __name__)
 

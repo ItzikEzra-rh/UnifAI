@@ -2,7 +2,7 @@ import logging
 from flask import Blueprint
 from backend.be_utils.utils import json_response
 from backend.providers.forms import get_forms, insert_new_form
-from helpers.apiargs import from_query, from_body
+from helpers.apiargs import from_body
 from webargs import fields
 from flask import jsonify
 
