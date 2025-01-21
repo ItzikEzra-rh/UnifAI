@@ -1,7 +1,7 @@
 image:
    repository: images.paas.redhat.com/genie/ui
    tag: 2025.01.16
-
+debug: true
 service:
   type: ClusterIP
 
