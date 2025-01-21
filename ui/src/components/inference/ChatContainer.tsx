@@ -535,7 +535,7 @@ const ChatComponent: React.FC = () => {
         promptLLMLastAnswerText: promptLLMLatestMessage,
         promptName: promptName,   // Name entered by the user
       };
-      await axiosBE.post('/api/backend/savePrompt', payload);
+      await axiosBE.post('/api/prompts/savePrompt', payload);
       console.log('Prompt saved successfully');
       handleModalClose(); // Close the modal after saving
     } catch (error) {
@@ -593,7 +593,7 @@ const ChatComponent: React.FC = () => {
         rating,
         ratingText
       };
-      await axiosBE.post('/api/backend/ratePrompt', payload);
+      await axiosBE.post('/api/prompts/ratePrompt', payload);
       console.log('Rate saved successfully');
     } catch (error) {
       console.error('Error rating prompt:', error);
