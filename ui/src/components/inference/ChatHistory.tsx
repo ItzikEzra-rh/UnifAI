@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import axiosBE from '../../http/axiosConfig';
-import { Paper, Typography, List, ListItem, ListItemButton, ListItemText, ListItemIcon, Divider, Box, ListItemSecondaryAction, IconButton, Dialog, DialogActions, DialogContent, DialogTitle, Button } from '@mui/material';
+import { Paper, Typography, List, ListItem, ListItemButton, ListItemText, ListItemIcon, Divider, Box, ListItemSecondaryAction, IconButton, Dialog, DialogActions, DialogContent, DialogTitle, Button, TextField } from '@mui/material';
 import MessageIcon from '@mui/icons-material/Message';
 import HistoryIcon from '@mui/icons-material/History';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import moment from 'moment';
 
 interface ChatMessage {
@@ -25,12 +26,15 @@ export interface HistoryChat {
   latestTimestamp: string;
   messages: ChatMessage[];
   firstMessage: string;
+  title?: string;
 }
 
 const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, currentChatId, historyChats, setHistoryChats }) => {
   const [deleteConfirmationModal, setDeleteConfirmationModal] = useState(false);
+  const [editTitleModal, setEditTitleModal] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
-  const [selectedFirstMessage, setSelectedFirstMessage] = useState<string | null>(null);
+  const [selectedTitle, setSelectedTitle] = useState<string | null>(null);
+  const [newChatTitle, setNewChatTitle] = useState<string | null>(null);
 
   const deleteSession = async (sessionId: string) => {
     try {
@@ -44,14 +48,35 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
 
   const handleDeleteClick = (sessionId: string, firstMessage: string) => {
     setSelectedSessionId(sessionId);
-    setSelectedFirstMessage(firstMessage);
+    setSelectedTitle(firstMessage);
     setDeleteConfirmationModal(true); 
   };
 
-  const handleCloseModal = () => {
+  const handleCloseDeleteModal = () => {
     setDeleteConfirmationModal(false);
     setSelectedSessionId(null); 
-    setSelectedFirstMessage(null); 
+    setSelectedTitle(null); 
+  };
+
+  const renameSession = async (sessionId: string) => {
+    try {
+      const response = await axiosBE.post('/api/backend/renameSession', {sessionId: selectedSessionId, title: newChatTitle});
+      // setHistoryChats(historyChats.filter((chat) => chat.sessionId !== sessionId));
+      setEditTitleModal(false); 
+    } catch (error) {
+      console.error('Error deleting session:', error);
+    }
+  };
+
+  const handleEditClick = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setEditTitleModal(true); 
+  };
+
+  const handleCloseEditModal = () => {
+    setDeleteConfirmationModal(false);
+    setSelectedSessionId(null); 
+    setSelectedTitle(null); 
   };
 
   return (
@@ -80,7 +105,21 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
                   <MessageIcon />
                 </ListItemIcon>
                 <ListItemText
-                  primary={chat.firstMessage}
+                  primary={
+                    <React.Fragment>
+                      {chat.title ? chat.title : chat.firstMessage}
+                      <IconButton 
+                        title="Rename session"
+                        size="small" 
+                        edge="end" 
+                        onClick={() => handleEditClick(chat.sessionId)} // Pass chat ID or any other identifier
+                        aria-label="edit"
+                        style={{ marginLeft: 8 }} // Optional: Add spacing between text and icon
+                      >
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    </React.Fragment>
+                  }
                   secondary={
                     <React.Fragment>
                       <Typography component="span" variant="caption" color="text.secondary">
@@ -92,6 +131,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
               </ListItemButton>
               <ListItemSecondaryAction>
                 <IconButton
+                  title="Delete session"
                   edge="end"
                   aria-label="delete"
                   onClick={() => handleDeleteClick(chat.sessionId, chat.firstMessage)}
@@ -114,13 +154,13 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
       </List>
 
       {/* Delete confirmation Modal */}
-      <Dialog open={deleteConfirmationModal} onClose={handleCloseModal}>
+      <Dialog open={deleteConfirmationModal} onClose={handleCloseDeleteModal}>
         <DialogTitle>Are you sure you want to delete this chat?</DialogTitle>
         <DialogContent>
-          <Typography> You selected the chat starting with "{selectedFirstMessage}"</Typography>
+          <Typography> You selected the chat starting with "{selectedTitle}"</Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleCloseModal} sx={{color: 'black'}}>
+          <Button onClick={handleCloseDeleteModal} sx={{color: 'black'}}>
             Cancel
           </Button>
           <Button
@@ -131,6 +171,32 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Edit title Modal */}
+      <Dialog open={editTitleModal} onClose={handleCloseEditModal}>
+        <DialogTitle>Rename the Selected Chat</DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth
+            label="New Chat Title"
+            value={newChatTitle}
+            onChange={(e) => setNewChatTitle(e.target.value)}
+            variant="outlined"
+            margin="dense"
+          />
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={handleCloseEditModal} sx={{ color: 'black' }}>
+          Cancel
+        </Button>
+        <Button
+            onClick={() => {if (selectedSessionId) { renameSession(selectedSessionId) }}}
+            color="primary"
+          >
+          Rename
+        </Button>
+      </DialogActions>
+    </Dialog>
     </Paper>
   );
 };
