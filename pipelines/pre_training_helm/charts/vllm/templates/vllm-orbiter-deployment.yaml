@@ -19,6 +19,11 @@ spec:
       initContainers:
       - name: wait-for-services
         image: registry.access.redhat.com/ubi8/ubi-minimal:latest
+        env:
+        - name: RELEASE_NAME
+          value: {{.Release.Name | upper}}
+        - name: CHART_NAME
+          value: {{ .Chart.Name }}
         command: 
         - sh
         - -c

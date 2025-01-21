@@ -18,7 +18,7 @@ data:
     done;
     echo "MongoDB service is up!"
 
-    if [ "$check_vllm" = "check_vllm" ]; then
+    if [ "$CHART_NAME" != "vllm" ]; then
 
       while [ "$(curl -s -o /dev/null -w "%{http_code}" http://{{ .Release.Name }}-vllm-reviewer-svc:8000/health)" != "200" ]; do
         echo "Waiting for Vllm-reviewer service to be ready...";

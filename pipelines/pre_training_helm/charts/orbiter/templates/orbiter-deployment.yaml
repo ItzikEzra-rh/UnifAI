@@ -24,10 +24,12 @@ spec:
         env:
         - name: RELEASE_NAME
           value: {{.Release.Name| upper}}
+        - name: CHART_NAME
+          value: {{ .Chart.Name }}
         command: 
         - sh
         - -c
-        - /mnt/config/wait-for-services.sh check_vllm
+        - "/mnt/config/wait-for-services.sh"
 
         volumeMounts:
           - name: {{ .Release.Name }}-wait-for-services
