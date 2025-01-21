@@ -18,7 +18,7 @@ spec:
       
       initContainers:
       - name: wait-for-services
-        image: quay.io/quay/busybox:latest
+        image: registry.access.redhat.com/ubi8/ubi-minimal:latest
         env:
         - name: RELEASE_NAME
           value: {{.Release.Name| upper}}
@@ -28,46 +28,18 @@ spec:
         command: 
         - sh
         - -c
-        - |
-          cp /config/wait-for-services.sh /tmp/wait-for-services.sh
-          chmod +x /tmp/wait-for-services.sh
-          /tmp/wait-for-services.sh
+        - /mnt/config/wait-for-services.sh check_vllm
 
         volumeMounts:
           - name: {{ .Release.Name }}-wait-for-services
-            mountPath: /config
-
-      - name: wait-for-reviewer-orbiter
-        image: registry.redhat.io/openshift4/ose-cli
-        env:
-        - name: KUBECONFIG
-          value: /tmp/kubeconfig
-        - name: TOKEN
-          value: {{.Values.global.access_token}}
-        - name: NAMESPACE
-          value: {{.Values.global.namespace}}
-        - name: RELEASE_NAME
-          value: {{.Release.Name}}
-
-        command:
-        - sh
-        - -c
-        - |    
-          cp /config/wait-for-deployment.sh /tmp/wait-for-deployment.sh
-          chmod +x /tmp/wait-for-deployment.sh
-          /tmp/wait-for-deployment.sh orbiter
-          /tmp/wait-for-deployment.sh reviewer
-        volumeMounts:
-          - name: {{ .Release.Name }}-wait-for-deployment
-            mountPath: /config
+            mountPath: /mnt/config
       
       volumes:
-      - name: {{ .Release.Name }}-wait-for-deployment
-        configMap:
-          name: {{ .Release.Name }}-wait-for-deployment
+
       - name: {{ .Release.Name }}-wait-for-services
         configMap:
           name: {{ .Release.Name }}-wait-for-services
+          defaultMode: 0755
 
       containers:
       - name: {{ .Chart.Name }}-landing

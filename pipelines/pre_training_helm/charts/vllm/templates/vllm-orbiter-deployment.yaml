@@ -18,22 +18,22 @@ spec:
       
       initContainers:
       - name: wait-for-services
-        image: quay.io/quay/busybox:latest
+        image: registry.access.redhat.com/ubi8/ubi-minimal:latest
         command: 
         - sh
         - -c
-        - |
-          cp /config/wait-for-services.sh /tmp/wait-for-services.sh
-          chmod +x /tmp/wait-for-services.sh
-          /tmp/wait-for-services.sh
+        - /mnt/config/wait-for-services.sh
 
         volumeMounts:
           - name: {{ .Release.Name }}-wait-for-services
-            mountPath: /config
+            mountPath: /mnt/config
+            readOnly: true
+
       volumes:
       - name: {{ .Release.Name }}-wait-for-services 
         configMap:
-          name: {{ .Release.Name }}-wait-for-services 
+          name: {{ .Release.Name }}-wait-for-services
+          defaultMode: 0755  
 
       containers:
       - name: {{ .Chart.Name }}-orbiter

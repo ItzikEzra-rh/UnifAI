@@ -5,30 +5,30 @@ metadata:
   namespace: {{ .Values.global.namespace }}
 data:
   wait-for-services.sh: |
-
-    while ! nc -z ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT; do
-    echo "Waiting for RabbitMQ service to be ready...";
+   
+    while [ "$(curl -s -o /dev/null -w "%{http_code}" -u genie:genie123 http://{{ .Release.Name }}-rabbitmq:15672/api/overview)" != "200" ]; do
+      echo "Waiting for RabbitMQ service to be ready...";
       sleep 5;
     done;
-    echo "RabbitMQ service ${{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST:${{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT is up!"
-
+    echo "RabbitMQ service is up!"
     
-    while ! nc -z ${{ .Release.Name | upper }}_MONGODB_SERVICE_HOST ${{ .Release.Name | upper }}_MONGODB_SERVICE_PORT; do
+    while [ "$(curl -s -o /dev/null -w "%{http_code}" http://{{ .Release.Name }}-mongodb:27017)" != "200" ]; do
       echo "Waiting for MongoDB service to be ready...";
       sleep 5;
     done;
-    echo "MongoDB service ${{ .Release.Name | upper }}_MONGODB_SERVICE_HOST:${{ .Release.Name | upper }}_MONGODB_SERVICE_PORT is up!"
+    echo "MongoDB service is up!"
 
-    if [ "$CHART_NAME" == "ORBITER" ] || [ "$CHART_NAME" == "REVIEWER" ]; then
-      SERVICE_URL="${RELEASE_NAME}_VLLM_${CHART_NAME}_SVC_SERVICE_HOST"
-      SERVICE_PORT="${RELEASE_NAME}_VLLM_${CHART_NAME}_SVC_SERVICE_PORT"
+    if [ "$check_vllm" = "check_vllm" ]; then
 
-      SERVICE_HOST=$(eval echo \$$SERVICE_URL)
-      SERVICE_PORT_VAL=$(eval echo \$$SERVICE_PORT)
-     
-      while ! nc -z $SERVICE_HOST $SERVICE_PORT_VAL; do
-          echo "waiting for http://$SERVICE_HOST:$SERVICE_PORT_VAL service..."
-          sleep 5
-      done
-      echo "VLLM service http://$SERVICE_HOST:$SERVICE_PORT_VAL is up!"
+      while [ "$(curl -s -o /dev/null -w "%{http_code}" http://{{ .Release.Name }}-vllm-reviewer-svc:8000/health)" != "200" ]; do
+        echo "Waiting for Vllm-reviewer service to be ready...";
+        sleep 20;
+      done;
+      echo "Vllm-reviewer service is up!"
+      
+      while [ "$(curl -s -o /dev/null -w "%{http_code}"  http://{{ .Release.Name }}-vllm-orbiter-svc:8000/health)" != "200" ]; do
+        echo "Waiting for Vllm-reviewer service to be ready...";
+        sleep 20;
+      done;
+      echo "Vllm-orbiter service is up!"
     fi
