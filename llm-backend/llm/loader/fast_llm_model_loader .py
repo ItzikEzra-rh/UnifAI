@@ -3,7 +3,7 @@ from threading import Thread, Event
 import torch
 from llm.hugging_face import HFTokenManager
 from llm.loader.model_loader import AbstractModelLoader
-from unsloth import FastLanguageModel
+# from unsloth import FastLanguageModel
 
 
 class CustomStoppingCriteria(StoppingCriteria):

@@ -20,10 +20,11 @@ interface ChatSidebarProps {
   handleChatSelect: (chatId: string, chatMessages: ChatMessage[]) => Promise<void>;
   currentChatId: string;
   historyChats: HistoryChat[];
+  setHistoryChats: (historyChats: HistoryChat[]) => void;
 }
 
 export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOpen, data, temperature, setTemperature, 
-                                                        isStreaming, clearChat, unloadModel, handleChatSelect, currentChatId, historyChats}) => {
+                                                        isStreaming, clearChat, unloadModel, handleChatSelect, currentChatId, historyChats, setHistoryChats}) => {
   const handleTemperatureChange = (event: Event, newValue: number | number[]) => {
     setTemperature(newValue as number);
   };
@@ -119,6 +120,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
               onChatSelect={handleChatSelect}
               currentChatId={currentChatId}
               historyChats={historyChats}
+              setHistoryChats={setHistoryChats}
             />
           </div>
         </div>

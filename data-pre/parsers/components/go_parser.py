@@ -7,8 +7,8 @@ GO_LANGUAGE_PATH = '/home/cloud-user/Projects/playGround/tree-sitter-playground/
 GO_FILE_PATH =  '/home/cloud-user/Projects/openshift-tests-private/test/extended/clusterinfrastructure/metrics.go'
 
 class GoParser(TreeSitterParser):
-    def __init__(self, language_path=GO_LANGUAGE_PATH, language_name='go', file_path=GO_FILE_PATH, realtive_path=GO_FILE_PATH):
-        super().__init__(language_path, language_name, file_path, realtive_path)
+    def __init__(self, language_path=GO_LANGUAGE_PATH, language_name='go', file_path=GO_FILE_PATH, realtive_path=GO_FILE_PATH, project_name=""):
+        super().__init__(language_path, language_name, file_path, realtive_path, project_name)
 
     def get_declaration_node(self, root_node, declaration_name):
         try:
@@ -85,12 +85,13 @@ class GoParser(TreeSitterParser):
             package_name = get_file_package(node)
             return {
                 "element_type": file_type,
+                "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
                 "name": os.path.basename(self.realtive_path),
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",  # Mapped resource imports
                 "structs": "",
                 "interfaces": "",
-                "file_location": f"File Location: github.com/openshift-kni/eco-gotests/{self.realtive_path}",
+                "file_location": f"File Location: github.com/kubevirt/{self.realtive_path}",
                 "code": content,
                 "global_vars": "",
                 "package": f"Package Name: {package_name}" if package_name else "",
@@ -166,12 +167,13 @@ class GoParser(TreeSitterParser):
                 global_vars = get_used_global_vars(func_code, global_vars)
                 function = {
                     "element_type": "function",
+                    "project_name": self.project_name,
                     "uuid": str(uuid.uuid4()),
                     "name": func_name,
                     "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
                     "structs": f"Structs Used: {used_structs}" if len(used_structs) > 0 else "",
                     "interfaces": f"Interfaces Used: {used_interfaces}" if len(used_interfaces) > 0 else "",
-                    "file_location": f"File Location: github.com/openshift-kni/eco-gotests/{self.realtive_path}",
+                    "file_location": f"File Location: github.com/kubevirt/{self.realtive_path}",
                     "code": func_code,
                     # "file_code": content,
                     "global_vars": f"Global Variables: {global_vars}" if len(global_vars) > 0 else "",
@@ -262,9 +264,9 @@ class GoParser(TreeSitterParser):
                     func_expr = current_node.child_by_field_name("function")
                     if func_expr:
                         func_name = func_expr.text.decode("utf-8")
-                        if func_name == "g.Describe" or func_name == "Describe":
+                        if func_name == "g.Describe" or func_name == "Describe" or re.fullmatch(r"\w*Describe(?!Table).*", func_name) or re.fullmatch(r"(?:.+\.)?SIG(?:\w+)?Describe", func_name) or func_name == "When":
                             describe_blocks.append(current_node)
-                        elif func_name == "g.It" or func_name == "It":
+                        elif func_name == "g.It" or func_name == "It" or func_name == "DescribeTable":
                             it_blocks.append(current_node)
                 
                 nodes_to_visit.extend(current_node.children)
@@ -301,12 +303,13 @@ class GoParser(TreeSitterParser):
             tags = extract_tags(describe_block)
             test = {
                 "element_type": "test",
+                "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
                 "name": test_name,
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
                 "structs": f"Structs Used: {used_structs}" if len(used_structs) > 0 else "",
                 "interfaces": f"Interfaces Used: {used_interfaces}" if len(used_interfaces) > 0 else "",
-                "file_location": f"File Location: github.com/openshift-kni/eco-gotests/{self.realtive_path}",
+                "file_location": f"File Location: github.com/kubevirt/{self.realtive_path}",
                 "code": test_code,
                 # "file_code": content,
                 "global_vars": f"Global Variables: {global_vars}" if len(global_vars) > 0 else "",
@@ -332,12 +335,13 @@ class GoParser(TreeSitterParser):
             used_imports = get_relevant_imports(test_case_code, all_imports)
             test_case = {
                 "element_type": "test case",
+                "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
                 "name": test_case_name,
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "" ,
                 "structs": "",
                 "interfaces": "",
-                "file_location": f"File Location: github.com/openshift-kni/eco-gotests/{self.realtive_path}",
+                "file_location": f"File Location: github.com/kubevirt/{self.realtive_path}",
                 "code": test_case_code,
                 # "file_code": content,
                 "global_vars": "",

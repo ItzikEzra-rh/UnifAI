@@ -1,7 +1,8 @@
 from collections import defaultdict
-from .meta_data_extractor import MetaDataExtractor
 from rag.be_utils.db.db import mongo, Collections, db
 from rag.be_utils.utils import time_execution
+from .metadata_extractor.meta_data_extractor import MetaDataExtractorBase
+from .metadata_extractor.kubevirt_meta_data_extractor import KubevirtMetaDataExtractor
 
 class MetaDataProjectExpander:
     def __init__(self, parsed_elements, project_name, project_repo_path, naming_mapping = {}, built_in_keys = [], exclude_types = [], project_programming_languages = []):
@@ -12,14 +13,17 @@ class MetaDataProjectExpander:
         self.built_in_keys = built_in_keys
         self.exclude_types = exclude_types 
         self.project_programming_languages = project_programming_languages
+        self.required_parsed_elements = list(filter(lambda ele: not ele["element_type"] in self.exclude_types, self.parsed_elements))
+
+        # Registeration of different extractors expected to be handled from __init__ file of the MetaDataExtractor class
+        MetaDataExtractorBase.register_extractor("kubevirt", KubevirtMetaDataExtractor)
 
     @time_execution
     def add_metadata(self):
         """
         Add metadata to each object in the parsed objects list.
         """
-        required_parsed_elements = filter(lambda ele: not ele["element_type"] in self.exclude_types, self.parsed_elements)
-        for element in required_parsed_elements:
+        for element in self.required_parsed_elements:
             metadata = defaultdict(list)
 
             for key in self.built_in_keys: 
@@ -29,12 +33,13 @@ class MetaDataProjectExpander:
             element_code = element.get("code", "")
             # element_name = element.get("additional_data", {}).get("name", "") + element.get("additional_data", {}).get("documentation", "") 
 
-            # metadata["id"] = MetaDataExtractor.extract_test_id(element_name)
+            extractor = MetaDataExtractorBase.create_extractor(self.project_name)
+            # metadata["id"] = extractor.extract_test_id(element_name)
 
             combined_text = f"{element_name} {element_code}"
-            metadata["action"] = MetaDataExtractor.extract_actions(combined_text)
-            metadata["k8s_terms"] = MetaDataExtractor.extract_k8s_terms(combined_text)
-            metadata["resources"] = MetaDataExtractor.extract_resources(element_code)
+            metadata["action"] = extractor.extract_actions(combined_text)
+            metadata["k8s_terms"] = extractor.extract_k8s_terms(combined_text)
+            metadata["resources"] = extractor.extract_resources(element_code)
 
             element["metadata"] = dict(metadata)
 
@@ -43,4 +48,4 @@ class MetaDataProjectExpander:
         """
         Placeholder for adding parsed objects to the database.
         """
-        result = Collections.by_name('parsed_objects').insert_many(self.parsed_elements)
+        result = Collections.by_name('parsed_objects').insert_many(self.required_parsed_elements)

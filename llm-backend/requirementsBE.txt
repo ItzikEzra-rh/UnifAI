@@ -8,3 +8,4 @@ uwsgi
 webargs
 flask_pymongo
 pandas
+vllm
