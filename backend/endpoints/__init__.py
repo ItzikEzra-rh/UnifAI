@@ -1,8 +1,15 @@
-from .backend import backend_blueprints
+from .backend import backend_bp
+from rag.endpoints.backend.backend import rag_bp
+from endpoints.chat_history import chat_history_bp
+
 
 def register_all_endpoints(app):
-    blueprints = backend_blueprints
+    backend_blueprints = [
+        {"bp": backend_bp, "parent": 'backend', "route": ''},
+        {"bp": rag_bp, "parent": 'rag', "route": ''},
+        {"bp": chat_history_bp, "parent": 'chatHistory', "route": ''}
+    ]
     
     # register all other blueprints in the app
-    for blueprint in blueprints:
+    for blueprint in backend_blueprints:
         app.register_blueprint(blueprint["bp"], url_prefix=f"/api/{blueprint['parent']}/{blueprint['route']}")

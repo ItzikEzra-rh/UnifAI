@@ -189,7 +189,7 @@ const ChatComponent: React.FC = () => {
   const [currentChatId, setCurrentChatId] = useState<string>('current');
 
   const getChatHistory = async (modelId: string) => {
-    const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
+    const loadedModelChatsResponse = await axiosBE.get('/api/chatHistory/getChats', { params: {modelId: modelId} });
     setHistoryChats(loadedModelChatsResponse.data.response)
   }
 
@@ -260,10 +260,10 @@ const ChatComponent: React.FC = () => {
         firstMessage: truncatedMessage,
         modelId: modelId,
       }
-      await axiosBE.post('/api/backend/updateCurrentChat', payload);
+      await axiosBE.post('/api/chatHistory/updateCurrentChat', payload);
 
       // Update the chat history component live (add a new chat to the list / move an old chat up when resumed)
-      // const result = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
+      // const result = await axiosBE.get('/api/chatHistory/getChats', { params: {modelId: modelId} });
       // setHistoryChats(result.data.response)
     } catch (error) {
       console.error('Error updating chat:', error);
