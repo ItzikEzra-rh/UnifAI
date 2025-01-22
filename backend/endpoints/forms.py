@@ -8,7 +8,7 @@ from flask import jsonify
 
 forms_bp = Blueprint("forms", __name__)
 
-@forms_bp.route("/insertForm", methods=["POST"])
+@forms_bp.route("/insert", methods=["POST"])
 @from_body({
     "project_name":            fields.Str(required=True, data_key="projectName"),
     "training_name":           fields.Str(required=True, data_key="trainingName"),
@@ -37,7 +37,7 @@ def insert_form(project_name, training_name, git_url, git_credential_key, git_fo
         logging.error(f"Error saving form data: {e}")
         return jsonify({"status": "error", "message": str(e)}), 500
     
-@forms_bp.route("/retrieveForms", methods=["GET"])
+@forms_bp.route("retrieve", methods=["GET"])
 def retrieve_forms():
     try:
         # Insert LLM prompt into MongoDB collection

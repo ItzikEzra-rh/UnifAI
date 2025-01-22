@@ -1,6 +1,5 @@
 from be_utils.db.db import mongo, Collections
 
-
 @mongo
 def add_inference_counter_per_each_model(model_id, model_name):
     """

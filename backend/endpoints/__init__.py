@@ -1,5 +1,5 @@
 from endpoints.rag import rag_bp
-from endpoints.chat_history import chat_history_bp
+from backend.endpoints.chat import chat_bp
 from endpoints.git import git_bp
 from endpoints.forms import forms_bp
 from endpoints.prompts import prompts_bp
@@ -9,7 +9,7 @@ from endpoints.inference import inference_bp
 def register_all_endpoints(app):
     backend_blueprints = [
         {"bp": rag_bp, "parent": 'rag', "route": ''},
-        {"bp": chat_history_bp, "parent": 'chatHistory', "route": ''},
+        {"bp": chat_bp, "parent": 'chat', "route": ''},
         {"bp": git_bp, "parent": 'git', "route": ''},
         {"bp": forms_bp, "parent": 'forms', "route": ''},
         {"bp": prompts_bp, "parent": 'prompts', "route": ''},

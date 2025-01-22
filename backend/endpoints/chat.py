@@ -4,12 +4,11 @@ from flask import Blueprint
 from webargs import fields
 from helpers.apiargs import from_query, from_body
 from flask import jsonify
-from providers.chat_history import delete_session_from_chat_history, get_chat_history, update_current_chat_history
+from backend.providers.chat import delete_session_from_chat_history, get_chat_history, update_current_chat_history
 
+chat_bp = Blueprint("chatHistory", __name__)
 
-chat_history_bp = Blueprint("chatHistory", __name__)
-
-@chat_history_bp.route("/getChats", methods=["GET"])
+@chat_bp.route("/getChats", methods=["GET"])
 @from_query({
     "model_id":        fields.Str(required=True, data_key="modelId")
 })
@@ -23,7 +22,7 @@ def get_chat_history_per_model(model_id):
         logging.error(f"Error retreiving the chats for model: {model_id}")
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@chat_history_bp.route("/updateCurrentChat", methods=["POST"])
+@chat_bp.route("/updateCurrentChat", methods=["POST"])
 @from_body({
     "session_id":      fields.Str(required=True, data_key="sessionId"),
     "messages":        fields.List(fields.Nested(MessageSchema), required=True, data_key="messages"),
@@ -39,7 +38,7 @@ def update_current_chat(session_id, messages, first_message, model_id):
         logging.error(f"Error updating the chat for session: {session_id}")
         return jsonify({"status": "error", "message": str(e)}), 500
     
-@chat_history_bp.route("/deleteChatSession", methods=["POST"])
+@chat_bp.route("/deleteSession", methods=["POST"])
 @from_body({
     "session_id":       fields.Str(required=True, data_key="sessionId"),
 })
