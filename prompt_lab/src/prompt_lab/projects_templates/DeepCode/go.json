@@ -108,7 +108,33 @@
             }
           ],
           "condition": "{{ element.imports != '' }}"
+        },
+        "Structs": {
+          "questions": [
+            {
+              "question": "What structs does `{element_type}` `{name}` in `{file_location}` use? List the structs, show their code, and explain their purpose.",
+              "validation": "Does the explanation accurately list the structs used by `{element_type}` `{name}` in `{file_location}`, show their structure, and clarify their purpose?"
+            },
+            {
+              "question": "How do the structs used in `{element_type}` `{name}` in `{file_location}` contribute to its functionality? List the structs, show their code, and describe their roles.",
+              "validation": "Does the explanation clearly list the structs in `{element_type}` `{name}` in `{file_location}`, include their structure, and explain their contribution to its functionality?"
+            },
+            {
+              "question": "What is the structure or implementation of the structs used by `{element_type}` `{name}` in `{file_location}`? Provide the code of the structs and details about their fields and usage.",
+              "validation": "Does the explanation accurately describe the structure or implementation of the structs used by `{element_type}` `{name}` in `{file_location}`, including their fields and usage?"
+            },
+            {
+              "question": "How does `{element_type}` `{name}` in `{file_location}` interact with the structs it uses? Show the struct code and describe the interaction and its significance.",
+              "validation": "Does the explanation clearly describe how `{element_type}` `{name}` in `{file_location}` interacts with the structs, show their code, and explain the significance of this interaction?"
+            },
+            {
+              "question": "What role do the structs play in `{element_type}` `{name}` in `{file_location}`? Show the struct code and provide examples of how the structs are used within the function.",
+              "validation": "Does the explanation provide clear examples of how the structs are used in `{element_type}` `{name}` in `{file_location}`, include their code, and explain their roles?"
+            }
+          ],
+          "condition": "{{ element.structs != [] }}"
         }
+
       },
       "_comment": "in Code Dependencies we use only graph dependency of calling 1 level depth, code usage is how to use the function with the right import, we dont have calle functions in graph Dependencies, structs also we a caller in the graph",
       "Code usage": {
@@ -139,11 +165,136 @@
       }
     },
     "file": {
-      "Repository Code": {},
-      "Code Summary": {},
-      "Code Dependencies": {},
+      "Repository Code": {
+        "Repository structure": {
+          "questions": [
+            {
+              "question": "Here is the {element_type} from the repository {project_repo}:\\n\\n** {element_type}: `{file_location}`**\\n```{coding_language}\\n\\n{code}\\n```\\n\\n describe the {element_type} location within the repository.",
+              "validation": "Is the location of the {element_type} in the repository accurately described?"
+            }
+          ]
+        }
+      },
+      "Code Summary": {
+        "Code purpose": {
+          "questions": [
+            {
+              "question": "What is the purpose of `{element_type}` `{name}` in `{file_location}`? Provide a detailed explanation of its responsibilities and significance.",
+              "validation": "Is the explanation comprehensive and clear about the purpose, responsibilities, and significance of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "Exploring the key objectives of `{element_type}` `{name}` in `{file_location}`: Provide a detailed explanation of its responsibilities and importance.",
+              "validation": "Is the explanation comprehensive and clear about the key objectives, responsibilities, and importance of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "Analyzing the role of `{element_type}` `{name}` in `{file_location}`: Provide a detailed explanation of its responsibilities and relevance.",
+              "validation": "Is the explanation comprehensive and clear about the role, responsibilities, and relevance of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "What is the significance of `{element_type}` `{name}` in `{file_location}`? Provide a detailed explanation of its purpose and responsibilities.",
+              "validation": "Is the explanation comprehensive and clear about the significance, purpose, and responsibilities of `{element_type}` `{name}` in `{file_location}`?"
+            }
+          ]
+        },
+        "Code Logic": {
+          "questions": [
+            {
+              "question": "What is the core logic implemented in `{element_type}` `{name}` in `{file_location}`? Provide a detailed explanation of its key operations.",
+              "validation": "Is the explanation clear and accurate about the core logic and key operations of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "Analyzing the decision-making process in `{element_type}` `{name}` in `{file_location}`: Provide a detailed explanation of its conditional logic and flow.",
+              "validation": "Is the explanation comprehensive and clear about the decision-making process and conditional logic of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "Exploring the algorithm in `{element_type}` `{name}` in `{file_location}`: Provide a detailed breakdown of the steps involved in its execution.",
+              "validation": "Is the explanation clear and comprehensive about the algorithm and execution steps of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "What is the sequence of operations in `{element_type}` `{name}` in `{file_location}`? Provide a detailed summary of its logical flow.",
+              "validation": "Is the explanation clear and accurate about the sequence of operations and logical flow of `{element_type}` `{name}` in `{file_location}`?"
+            }
+          ]
+        }
+      },
+      "Code Dependencies": {
+        "Functions": {
+          "questions": [
+            {
+              "question": "What functions are used by `{element_type}` `{name}` in `{file_location}`? List the functions and explain their purpose.",
+              "validation": "Does the explanation accurately list the functions used by `{element_type}` `{name}` in `{file_location}` and clarify their purpose?"
+            },
+            {
+              "question": "How do the functions used in `{element_type}` `{name}` in `{file_location}` contribute to its functionality? List the functions and describe their roles.",
+              "validation": "Does the explanation clearly list the functions in `{element_type}` `{name}` in `{file_location}` and explain their contribution to its functionality?"
+            },
+            {
+              "question": "What specific functions are required by `{element_type}` `{name}` in `{file_location}`? List them and describe how they are utilized.",
+              "validation": "Does the explanation comprehensively list the specific functions required by `{element_type}` `{name}` in `{file_location}` and explain their usage?"
+            },
+            {
+              "question": "What role do the functions used in `{element_type}` `{name}` in `{file_location}` play in enabling its operations? List the functions and explain their impact.",
+              "validation": "Does the explanation clearly list the functions in `{element_type}` `{name}` in `{file_location}` and describe their impact on the operations?"
+            },
+            {
+              "question": "What dependencies are introduced through the functions used in `{element_type}` `{name}` in `{file_location}`? List the functions and explain their significance.",
+              "validation": "Does the explanation accurately list the dependencies introduced by the functions in `{element_type}` `{name}` in `{file_location}` and explain their significance?"
+            }
+          ]
+        },
+        "Imports": {
+          "questions": [
+            {
+              "question": "What imports are used in `{element_type}` `{name}` located at `{file_location}`? List the imports and explain their purpose.",
+              "validation": "Does the explanation accurately list the imports used in `{element_type}` `{name}` at `{file_location}` and clarify their purpose?"
+            },
+            {
+              "question": "How do the imports used in `{element_type}` `{name}` at `{file_location}` contribute to its functionality? List the imports and describe their roles.",
+              "validation": "Does the explanation clearly list the imports in `{element_type}` `{name}` at `{file_location}` and explain their contribution to its functionality?"
+            },
+            {
+              "question": "What specific imports are required by `{element_type}` `{name}` at `{file_location}`? List them and describe how they are utilized.",
+              "validation": "Does the explanation comprehensively list the specific imports required by `{element_type}` `{name}` at `{file_location}` and explain their usage?"
+            },
+            {
+              "question": "What role do the imports in `{element_type}` `{name}` at `{file_location}` play in enabling its operations? List the imports and explain their impact.",
+              "validation": "Does the explanation clearly list the imports in `{element_type}` `{name}` at `{file_location}` and describe their impact on its operations?"
+            },
+            {
+              "question": "What dependencies are introduced through the imports in `{element_type}` `{name}` at `{file_location}`? List the imports and explain their significance.",
+              "validation": "Does the explanation accurately list the dependencies introduced by the imports in `{element_type}` `{name}` at `{file_location}` and explain their significance?"
+            }
+          ]
+        }
+
+      },
       "_comment": "normal Dependencies of the function, 1 level",
-      "Code usage": {},
+      "Code usage": {
+        "Usage of Elements": {
+          "questions": [
+            {
+              "question": "How can the elements in `{name}` located at `{file_location}` be correctly imported and used in another file? Provide an example for each element.",
+              "validation": "Does the explanation clearly describe how to import and use the elements in `{name}` at `{file_location}` with examples for each?"
+            },
+            {
+              "question": "What are the steps required to use the elements from `{name}` located at `{file_location}` in another file? Include the import statements and example usage.",
+              "validation": "Does the explanation accurately detail the steps for importing and using the elements from `{name}` at `{file_location}` with clear examples?"
+            },
+            {
+              "question": "What is the proper syntax to import the elements from `{name}` at `{file_location}` into another module or package? Provide an example usage for each element.",
+              "validation": "Does the explanation provide the proper syntax to import the elements from `{name}` at `{file_location}` and include examples of their usage?"
+            },
+            {
+              "question": "How should the elements in `{name}` located at `{file_location}` be integrated into a different project or file? Include a detailed explanation of the import and example usage.",
+              "validation": "Does the explanation clearly describe how to integrate the elements in `{name}` at `{file_location}` into another project or file with examples?"
+            },
+            {
+              "question": "What dependencies or imports are required to use the elements in `{name}` located at `{file_location}` elsewhere? Provide the import statements and an example for each element.",
+              "validation": "Does the explanation clearly list the dependencies or imports needed for the elements in `{name}` at `{file_location}` and include examples of their usage?"
+            }
+          ]
+        }
+      },
       "_comment2": "to make example of usage of things defined in the files which are not functions, and how to use them from other file"
     },
     "package": {
