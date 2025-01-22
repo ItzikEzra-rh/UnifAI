@@ -86,7 +86,6 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
     }
   };
 
-
   return (
     <Paper elevation={3} sx={{ width: '95%', marginTop: '10px', display: 'flex', flexDirection: 'column' }}>
       <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
@@ -100,7 +99,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
           <React.Fragment key={index}>
             <ListItem disablePadding>
               <ListItemButton
-              className="custom-list-item-button"
+                className={`custom-list-item-button ${editingSessionId === chat.sessionId ? 'editing' : ''}`}
                 selected={currentChatId === chat.sessionId}
                 disabled={isStreaming}
                 onClick={() => onChatSelect(chat.sessionId, chat.messages)}

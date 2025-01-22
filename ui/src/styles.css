@@ -675,11 +675,13 @@ background-color: #e0e0e0d5;
   background-color: rgba(255, 99, 71, 0.3); 
 }
 
-.MuiListItemButton-root.custom-list-item-button.Mui-selected {
+.MuiListItemButton-root.custom-list-item-button.Mui-selected,
+.MuiListItemButton-root.custom-list-item-button.editing.Mui-selected,
+.MuiListItemButton-root.custom-list-item-button.Mui-selected:hover {
   background-color: rgba(93, 93, 93, 0.185);
 }
 
-.MuiListItemButton-root.custom-list-item-button.Mui-selected:hover {
-  background-color: rgba(93, 93, 93, 0.185);
+.MuiListItemButton-root.custom-list-item-button.Mui-focusVisible {
+  background-color: white;
 }
 
