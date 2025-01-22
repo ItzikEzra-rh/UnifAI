@@ -72,7 +72,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
   const handleEditSave = async () => {
     if (editingSessionId && tempTitle) {
       try {
-        await axiosBE.post('/api/backend/renameSession', { sessionId: editingSessionId, title: tempTitle });
+        await axiosBE.post('/api/chatHistory/renameSession', { sessionId: editingSessionId, title: tempTitle });
         const updatedChats = historyChats.map((chat) =>
           chat.sessionId === editingSessionId ? { ...chat, title: tempTitle } : chat
         );

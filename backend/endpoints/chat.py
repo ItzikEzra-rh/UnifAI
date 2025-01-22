@@ -51,3 +51,16 @@ def delete_chat_session(session_id):
         logging.error(f"Error deleting the chat session: {session_id}")
         return jsonify({"status": "error", "message": str(e)}), 500
     
+@chat_history_bp.route("/renameSession", methods=["POST"])
+@from_body({
+    "session_id":       fields.Str(required=True, data_key="sessionId"),
+    "title":            fields.Str(required=True, data_key="title")
+})
+def rename_chat_session(session_id, title):
+    try:
+        result = rename_title_of_chat_session(session_id, title)
+        return {"status": "success", "result": result}
+
+    except Exception as e:
+        logging.error(f"Error renaming the chat session: {session_id}")
+        return jsonify({"status": "error", "message": str(e)}), 500
