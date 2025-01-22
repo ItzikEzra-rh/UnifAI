@@ -32,10 +32,10 @@ export interface HistoryChat {
 
 const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatSelect, currentChatId, historyChats, setHistoryChats }) => {
   const [deleteConfirmationModal, setDeleteConfirmationModal] = useState(false);
-  const [editTitleModal, setEditTitleModal] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedTitle, setSelectedTitle] = useState<string | null>(null);
-  const [newChatTitle, setNewChatTitle] = useState<string | null>(null);
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [tempTitle, setTempTitle] = useState<string | null>(null);
 
   const deleteSession = async (sessionId: string) => {
     try {
@@ -59,28 +59,33 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
     setSelectedTitle(null); 
   };
 
-  const renameSession = async () => {
-    try {
-      await axiosBE.post('/api/backend/renameSession', {sessionId: selectedSessionId, title: newChatTitle});
-      const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
-      setHistoryChats(loadedModelChatsResponse.data.response)
-      setNewChatTitle(null)
-      setEditTitleModal(false); 
-    } catch (error) {
-      console.error('Error deleting session:', error);
+  const handleEditStart = (sessionId: string, currentTitle: string) => {
+    setEditingSessionId(sessionId);
+    setTempTitle(currentTitle);
+  };
+
+  const handleEditCancel = () => {
+    setEditingSessionId(null);
+    setTempTitle(null);
+  };
+
+  const handleEditSave = async () => {
+    if (editingSessionId && tempTitle) {
+      try {
+        await axiosBE.post('/api/backend/renameSession', { sessionId: editingSessionId, title: tempTitle });
+        const updatedChats = historyChats.map((chat) =>
+          chat.sessionId === editingSessionId ? { ...chat, title: tempTitle } : chat
+        );
+        setHistoryChats(updatedChats);
+      } catch (error) {
+        console.error('Error renaming session:', error);
+      } finally {
+        setEditingSessionId(null);
+        setTempTitle(null);
+      }
     }
   };
 
-  const handleEditClick = (sessionId: string) => {
-    setSelectedSessionId(sessionId);
-    setEditTitleModal(true); 
-  };
-
-  const handleCloseEditModal = () => {
-    setEditTitleModal(false);
-    setSelectedSessionId(null); 
-    setNewChatTitle(null); 
-  };
 
   return (
     <Paper elevation={3} sx={{ width: '95%', marginTop: '10px', display: 'flex', flexDirection: 'column' }}>
@@ -95,43 +100,61 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
           <React.Fragment key={index}>
             <ListItem disablePadding>
               <ListItemButton
+              className="custom-list-item-button"
                 selected={currentChatId === chat.sessionId}
                 disabled={isStreaming}
                 onClick={() => onChatSelect(chat.sessionId, chat.messages)}
-                sx={{
-                  '&.Mui-selected': {
-                    backgroundColor: 'rgba(25, 118, 210, 0.08)',
-                  },
-                }}
               >
                 <ListItemIcon>
                   <MessageIcon />
                 </ListItemIcon>
                 <ListItemText
                   primary={
-                    <React.Fragment>
-                      {chat.title ? chat.title : chat.firstMessage}
-                      <IconButton 
-                        title="Rename session"
-                        size="small" 
-                        edge="end" 
-                        onClick={() => handleEditClick(chat.sessionId)} 
-                        aria-label="edit"
-                      >
-                        <EditIcon fontSize="small" sx={{height: '15px'}}/>
-                      </IconButton>
-                    </React.Fragment>
-                  }
-                  secondary={
-                    <React.Fragment>
-                      <Typography component="span" variant="caption" color="text.secondary">
-                        {moment(chat.latestTimestamp).format('DD/MM/YYYY HH:mm:ss')}
-                      </Typography>
-                    </React.Fragment>
+                    editingSessionId === chat.sessionId ? (
+                      <TextField
+                      className='text-field-rename'
+                                value={tempTitle || ''}
+                                onChange={(e) => setTempTitle(e.target.value)}
+                                onBlur={() => handleEditCancel()} // Cancel if clicked outside
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') {
+                                    handleEditSave();
+                                  } else if (e.key === 'Escape') {
+                                    handleEditCancel();
+                                  }
+                                }}
+                                autoFocus
+                                size="small"
+                                variant="outlined"
+                                inputProps={{ maxLength: 60 }}
+                                helperText={`${tempTitle?.length || 0}/60 characters`}
+                                FormHelperTextProps={{
+                                  sx: { marginLeft: 0, marginTop: '4px', fontSize: '0.75rem' },
+                                }}
+                              />
+                                ) : (
+                                  <React.Fragment>
+                                  {chat.title ? chat.title : chat.firstMessage}
+                                  <IconButton
+                  title="Rename session"
+                  edge="end"
+                  aria-label="edit"
+                  onClick={() => handleEditStart(chat.sessionId, chat.title || chat.firstMessage)}
+                >
+                  <EditIcon fontSize="small" sx={{height: '15px'}}/>
+                </IconButton>
+                                </React.Fragment>
+                                )
+                              }
+                              secondary={
+                    <Typography component="span" variant="caption" color="text.secondary">
+                      {moment(chat.latestTimestamp).format('DD/MM/YYYY HH:mm:ss')}
+                    </Typography>
                   }
                 />
               </ListItemButton>
               <ListItemSecondaryAction>
+                
                 <IconButton
                   title="Delete session"
                   edge="end"
@@ -173,34 +196,6 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
           </Button>
         </DialogActions>
       </Dialog>
-
-      {/* Edit title Modal */}
-      <Dialog open={editTitleModal} onClose={handleCloseEditModal}>
-        <DialogTitle>Rename the Selected Chat</DialogTitle>
-        <DialogContent>
-          <TextField
-            fullWidth
-            label="New Chat Title"
-            value={newChatTitle}
-            onChange={(e) => setNewChatTitle(e.target.value)}
-            inputProps={{ maxLength: 60 }} 
-            helperText={`${newChatTitle? newChatTitle.length : 0}/60 characters`}
-            variant="outlined"
-            margin="dense"
-          />
-      </DialogContent>
-      <DialogActions>
-        <Button onClick={handleCloseEditModal} sx={{ color: 'black' }}>
-          Cancel
-        </Button>
-        <Button
-            onClick={() => {if (selectedSessionId) { renameSession() }}}
-            color="primary"
-          >
-          Rename
-        </Button>
-      </DialogActions>
-    </Dialog>
     </Paper>
   );
 };
