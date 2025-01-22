@@ -183,6 +183,8 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
             label="New Chat Title"
             value={newChatTitle}
             onChange={(e) => setNewChatTitle(e.target.value)}
+            inputProps={{ maxLength: 60 }} 
+            helperText={`${newChatTitle? newChatTitle.length : 0}/60 characters`}
             variant="outlined"
             margin="dense"
           />
