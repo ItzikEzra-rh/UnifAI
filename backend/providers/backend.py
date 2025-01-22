@@ -242,7 +242,7 @@ def delete_session_from_chat_history(session_id):
 @mongo
 def rename_title_of_chat_session(session_id, title):
     """
-    This function deletes the chat history of a given session.
+    This function renames the title of the selected session.
     """
     result = Collections.by_name('chatHistory').update_one({"sessionId": session_id}, {"$set": {"title": title}})
     return result.modified_count

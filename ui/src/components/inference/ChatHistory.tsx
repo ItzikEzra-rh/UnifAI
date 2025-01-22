@@ -112,54 +112,44 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
                   primary={
                     editingSessionId === chat.sessionId ? (
                       <TextField
-                      className='text-field-rename'
-                                value={tempTitle || ''}
-                                onChange={(e) => setTempTitle(e.target.value)}
-                                onBlur={() => handleEditCancel()} // Cancel if clicked outside
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    handleEditSave();
-                                  } else if (e.key === 'Escape') {
-                                    handleEditCancel();
-                                  }
-                                }}
-                                autoFocus
-                                size="small"
-                                variant="outlined"
-                                inputProps={{ maxLength: 60 }}
-                                helperText={`${tempTitle?.length || 0}/60 characters`}
-                                FormHelperTextProps={{
-                                  sx: { marginLeft: 0, marginTop: '4px', fontSize: '0.75rem' },
-                                }}
-                              />
-                                ) : (
-                                  <React.Fragment>
-                                  {chat.title ? chat.title : chat.firstMessage}
-                                  <IconButton
-                  title="Rename session"
-                  edge="end"
-                  aria-label="edit"
-                  onClick={() => handleEditStart(chat.sessionId, chat.title || chat.firstMessage)}
-                >
-                  <EditIcon fontSize="small" sx={{height: '15px'}}/>
-                </IconButton>
-                                </React.Fragment>
-                                )
-                              }
-                              secondary={
+                        className='text-field-rename'
+                        value={tempTitle || ''}
+                        onChange={(e) => setTempTitle(e.target.value)}
+                        onBlur={() => handleEditCancel()} 
+                        onKeyDown={(e) => {if (e.key === 'Enter') {handleEditSave()}
+                                          else if (e.key === 'Escape') {handleEditCancel()}}}
+                        autoFocus
+                        size="small"
+                        variant="outlined"
+                        inputProps={{ maxLength: 60 }}
+                        helperText={`${tempTitle?.length || 0}/60 characters`}
+                        FormHelperTextProps={{
+                          sx: { marginLeft: 0, marginTop: '4px', fontSize: '0.75rem' },
+                        }}
+                      /> ) : (
+                      <React.Fragment>
+                        {chat.title ? chat.title : chat.firstMessage}
+                        <IconButton
+                          title="Rename session"
+                          edge="end"
+                          aria-label="edit"
+                          onClick={() => handleEditStart(chat.sessionId, chat.title || chat.firstMessage)}
+                        >
+                          <EditIcon fontSize="small" sx={{height: '15px'}}/>
+                        </IconButton>
+                      </React.Fragment>)}
+                  secondary={
                     <Typography component="span" variant="caption" color="text.secondary">
                       {moment(chat.latestTimestamp).format('DD/MM/YYYY HH:mm:ss')}
-                    </Typography>
-                  }
+                    </Typography>}
                 />
               </ListItemButton>
               <ListItemSecondaryAction>
-                
                 <IconButton
                   title="Delete session"
                   edge="end"
                   aria-label="delete"
-                  onClick={() => handleDeleteClick(chat.sessionId, chat.firstMessage)}
+                  onClick={() => handleDeleteClick(chat.sessionId, chat.title || chat.firstMessage)}
                 >
                   <DeleteIcon />
                 </IconButton>
@@ -182,7 +172,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
       <Dialog open={deleteConfirmationModal} onClose={handleCloseDeleteModal}>
         <DialogTitle>Are you sure you want to delete this chat?</DialogTitle>
         <DialogContent>
-          <Typography> You selected the chat starting with "{selectedTitle}"</Typography>
+          <Typography> You selected the chat "{selectedTitle}"</Typography>
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDeleteModal} sx={{color: 'black'}}>
