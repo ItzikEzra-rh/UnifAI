@@ -8,7 +8,7 @@ from backend.providers.chat import delete_session_from_chat_history, get_chat_hi
 
 chat_bp = Blueprint("chatHistory", __name__)
 
-@chat_bp.route("/getChats", methods=["GET"])
+@chat_bp.route("/", methods=["GET"])
 @from_query({
     "model_id":        fields.Str(required=True, data_key="modelId")
 })
