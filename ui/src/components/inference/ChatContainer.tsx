@@ -44,11 +44,15 @@ interface RatingData {
   ratingText: string;
 }
 
-const LoadingOverlay: React.FC = () => (
+interface LoadingProps {
+  loadType: string;
+}
+
+const LoadingOverlay: React.FC<LoadingProps> = ({loadType}) => (
   <div className="loading-overlay">
     <ReactLoading type="bubbles" color="#000" height={100} width={100} />
     <h2 style={{ marginTop: '20px', fontSize: '1.5em', textAlign: 'center', color: '#000' }}>
-      Please be patient while we load the requested model. This process may take up to 2 minutes.
+      Please be patient while we {loadType} the requested model. This process may take up to 2 minutes.
     </h2>
   </div>
 );
@@ -174,6 +178,7 @@ const ChatComponent: React.FC = () => {
   const [drawerOpen, setDrawerOpen] = useState(true);
   const [isStreaming, setIsStreaming] = useState(false);
   const [loadingModel, setLoadingModel] = useState(false);
+  const [unloadingModel, setUnloadingModel] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [promptName, setPromptName] = useState<string>('');
   const [promptUserLatestMessage, setPromptUserLatestMessage] = useState<string>('');
@@ -602,10 +607,13 @@ const ChatComponent: React.FC = () => {
 
 
   const handleUnLoad = async () => {
+    setUnloadingModel(true);
     try {
       await axiosLLM.get('/api/backend/unloadModel');
     } catch (error) {
       console.error('Error stopping inference:', error);
+    } finally {
+      setUnloadingModel(false);
     }
   };
 
@@ -713,8 +721,8 @@ const ChatComponent: React.FC = () => {
 
   return (
     <>
-      {loadingModel ? (
-        <LoadingOverlay />
+      {loadingModel || unloadingModel ? (
+        <LoadingOverlay loadType={loadingModel ? "load" : "unload"} />
       ) : selectedModel ? (
         <div className="chat-container-wrapper">
           <ChatSidebar 
