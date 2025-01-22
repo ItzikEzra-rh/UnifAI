@@ -123,6 +123,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
                         variant="outlined"
                         inputProps={{ maxLength: 60 }}
                         helperText={`${tempTitle?.length || 0}/60 characters`}
+                        fullWidth
                         FormHelperTextProps={{
                           sx: { marginLeft: 0, marginTop: '4px', fontSize: '0.75rem' },
                         }}
