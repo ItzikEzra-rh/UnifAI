@@ -2,16 +2,8 @@
 - name: Deploy containers on VMs
   hosts: all
   gather_facts: no
-  vars:
-    rabbitmq_image: docker.io/library/rabbitmq:4.0-management
-    mongodb_image: docker.io/mongodb/mongodb-community-server:latest
-    registry_user: rh-ee-yhabushi
-    registry_password: oWbeT+YQOEcDPo+rVOsPqtFHBPV6fIZk/mkcMtpMWR4wxBPcR1P2t5IoJ+ChzkSZ
-    file_to_copy: /home/instruct/parser.json
-    rabbitmq_port: "{{ RABBITMQ_PORT }}"
-    hf_token: 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
-    model_name: meta-llama/Llama-3.1-8B-Instruct
-    max_model_len: 16384
+  vars_files:
+    - vars.yml
 
   tasks:
     - name: Install Hugging Face CLI
@@ -29,21 +21,6 @@
         name: vllm
         state: latest
       register: vllm_install
-
-    - name: Start VLLM server in a tmux session
-      shell: |
-        tmux new-session -d -s vllm_server "vllm serve {{ model_name }} --port 8000 --max-model-len {{ max_model_len }}"
-      register: vllm_server
-
-    - name: Verify VLLM server health endpoint
-      uri:
-        url: "http://0.0.0.0:8000/health"
-        return_content: no
-        status_code: 200
-      retries: 10
-      delay: 10
-      register: vllm_health_check
-      until: vllm_health_check.status == 200
 
     - name: RabbitMQ
       when: "'controller' in group_names"
@@ -82,7 +59,7 @@
 
         - name: Display RabbitMQ port check result
           debug:
-            msg: "RabbitMQ is up and listening on port 443"
+            msg: "RabbitMQ is up and listening on port {{ rabbitmq_port }}"
 
         - name: Add RabbitMQ user name
           command: >
@@ -93,19 +70,19 @@
             podman exec -d rabbitmq bash -c 'rabbitmqctl set_permissions -p / genie ".*" ".*" ".*"'
 
 
-    - name: MongoDB
-      block:
-        - name: Stop and remove MongoDB container if it exists
-          shell: |
-            if podman ps -a --format "{{ '{{ .Names }}' }}" | grep -w mongodb; then
-              podman stop mongodb && podman rm mongodb;
-            else
-              echo "MongoDB container does not exist.";
-            fi
+        - name: MongoDB
+          block:
+            - name: Stop and remove MongoDB container if it exists
+              shell: |
+                if podman ps -a --format "{{ '{{ .Names }}' }}" | grep -w mongodb; then
+                  podman stop mongodb && podman rm mongodb;
+                else
+                  echo "MongoDB container does not exist.";
+                fi
 
-        - name: Run MongoDB container
-          command: >
-            podman run --name mongodb -p 27017:27017 -d {{ mongodb_image }}
+            - name: Run MongoDB container
+              command: >
+                podman run --name mongodb -p {{mongo_port}}:27017 -d {{ mongodb_image }}
 
 
     - name: Log in to Quay on all VMs
@@ -116,21 +93,35 @@
 - name: Deploy Reviewer containers
   hosts: reviewers
   gather_facts: no
-  vars:
-    reviewer_image: quay.io/rh-ee-yhabushi/tag/reviewer:2024.12.12
-    reviewer_image_name: reviewer-service
-    reviewer_container_name: reviewer-celery
-    rabbitmq_port: "{{ RABBITMQ_PORT }}"
-    rabbitmq_ip: "{{ RABBITMQ_IP }}"
-    mongo_port: "{{ MONGO_PORT }}"
-    mongo_ip: "{{ MONGO_IP }}"
-    reviewer_model_id: "{{ REVIEWER_MODEL_HF_ID }}"
-    reviewer_max_generation_length: "{{ REVIEWER_MAX_GENERATION_LENGTH }}"
-    reviewer_max_context_length: "{{ REVIEWER_MAX_CONTEXT_LENGTH }}"
-    reviewer_batch_size: "{{ REVIEWER_BATCH_SIZE }}"
-    reviewer_score_threshold: "{{ REVIEWER_SCORE_THRESHOLD }}"
+  vars_files:
+    - vars.yml
 
   tasks:
+
+    - name: Kill tmux session 
+      shell: tmux kill-session -t vllm_server
+      ignore_errors: true
+
+    - name: Start tmux session
+      shell: |
+        tmux new-session -d -s vllm_server
+      register: tmux_session_started
+
+    - name: Send 'vllm serve' command to tmux session
+      shell: |
+        tmux send-keys -t vllm_server "vllm serve {{ reviewer_model_id }} --port 8000 --max-model-len {{ reviewer_max_context_length }}" C-m
+      when: tmux_session_started.changed
+
+    - name: Verify VLLM server health endpoint
+      uri:
+        url: "http://0.0.0.0:8000/health"
+        return_content: no
+        status_code: 200
+      retries: 24
+      delay: 10
+      register: vllm_health_check
+      until: vllm_health_check.status == 200
+
     - name: Pull Reviewer image
       command: >
         podman pull {{ reviewer_image }}
@@ -152,10 +143,13 @@
         podman run -d \
             --name {{ reviewer_container_name }} \
             --net=host \
+            -e HF_TOKEN={{ hf_token }} \
             -e RABBITMQ_PORT={{ rabbitmq_port }} \
             -e RABBITMQ_IP={{ rabbitmq_ip }} \
             -e MONGODB_PORT={{ mongo_port }} \
             -e MONGODB_IP={{ mongo_ip }} \
+            -e VLLM_IP=0.0.0.0 \
+            -e VLLM_PORT=8000 \
             -e REVIEWER_MODEL_HF_ID={{ reviewer_model_id }} \
             -e REVIEWER_MAX_GENERATION_LENGTH={{ reviewer_max_generation_length }} \
             -e REVIEWER_MAX_CONTEXT_LENGTH={{ reviewer_max_context_length }} \
@@ -164,29 +158,41 @@
             {{ reviewer_image_name }} reviewer
 
 ################################################################################################
-- name: Deploy Prompt Lab Submitter Container
-  hosts: prompt_lab_submitter
+- name: Deploy Prompt Lab Orbiter Worker
+  hosts: prompt_lab_orbiter
   gather_facts: no
   vars:
-    prompt_lab_image: quay.io/rh-ee-yhabushi/tag/prompt_lab:2024.12.12
     prompt_lab_image_name: promptlab-service
-    prompt_lab_submitter_container_name: promptlab-submitter
-    rabbitmq_port: "{{ RABBITMQ_PORT }}"
-    rabbitmq_ip: "{{ RABBITMQ_IP }}"
-    mongo_port: "{{ MONGO_PORT }}"
-    mongo_ip: "{{ MONGO_IP }}"
-    input_json_path: "{{ INPUT_JSON_PATH }}"
-    output_data_dir_path: "{{ OUTPUT_DATA_DIR_PATH }}"
-    prompt_lab_model_hf_id: "{{ PROMPT_LAB_MODEL_HF_ID }}"
-    prompt_lab_max_generation_length: "{{ PROMPT_LAB_MAX_GENERATION_LENGTH }}"
-    prompt_lab_max_context_length: "{{ PROMPT_LAB_MAX_CONTEXT_LENGTH }}"
-    prompt_lab_batch_size: "{{ PROMPT_LAB_BATCH_SIZE }}"
-    queue_target_size: "{{ QUEUE_TARGET_SIZE }}"
-    template_name: "{{ TEMPLATE_NAME }}"
-    template_agent: "{{ TEMPLATE_AGENT }}"
-    template_type: "{{ TEMPLATE_TYPE }}"
+    prompt_lab_orbiter_container_name: promptlab-orbiter
+  vars_files:
+    - vars.yml
 
   tasks:
+
+    - name: Kill tmux session 
+      shell: tmux kill-session -t vllm_server
+      ignore_errors: true
+
+    - name: Start tmux session
+      shell: |
+        tmux new-session -d -s vllm_server
+      register: tmux_session_started
+
+    - name: Send 'vllm serve' command to tmux session
+      shell: |
+        tmux send-keys -t vllm_server "vllm serve {{ prompt_lab_model_hf_id }} --port 8000 --max-model-len {{ prompt_lab_max_context_length }}" C-m
+      when: tmux_session_started.changed
+
+    - name: Verify VLLM server health endpoint
+      uri:
+        url: "http://0.0.0.0:8000/health"
+        return_content: no
+        status_code: 200
+      retries: 24
+      delay: 10
+      register: vllm_health_check
+      until: vllm_health_check.status == 200
+
     - name: Pull Prompt Lab image
       command: >
         podman pull {{ prompt_lab_image }}
@@ -197,29 +203,29 @@
 
     - name: Stop and remove promptlab container if it exists
       shell: |
-        if podman ps -a --format "{{ '{{ .Names }}' }}" | grep -w {{ prompt_lab_submitter_container_name }}; then
-          podman stop {{ prompt_lab_submitter_container_name }}  && podman rm {{ prompt_lab_submitter_container_name }};
+        if podman ps -a --format "{{ '{{ .Names }}' }}" | grep -w {{ prompt_lab_orbiter_container_name }}; then
+          podman stop {{ prompt_lab_orbiter_container_name }}  && podman rm {{ prompt_lab_orbiter_container_name }};
         else
-          echo "Promptlab submitter container does not exist.";
+          echo "Promptlab orbiter container does not exist.";
         fi
-
-    - name: create output dir
-      file:
-        path: "{{ output_data_dir_path }}"
-        state: directory
-        mode: '777'
 
     - name: Run Prompt Lab container
       command: >
         podman run -d \
-            --name {{ prompt_lab_submitter_container_name }} \
+            --name {{ prompt_lab_orbiter_container_name }} \
             --net=host \
+            -e HF_TOKEN={{ hf_token }} \
             -e RABBITMQ_PORT={{ rabbitmq_port }} \
             -e RABBITMQ_IP={{ rabbitmq_ip }} \
             -e MONGODB_PORT={{ mongo_port }} \
             -e MONGODB_IP={{ mongo_ip }} \
-            -e INPUT_JSON_PATH={{ input_json_path }} \
-            -e OUTPUT_DATA_DIR_PATH={{ output_data_dir_path }} \
+            -e VLLM_IP=0.0.0.0 \
+            -e VLLM_PORT=8000 \
+            -e MODEL_API_URL={{ model_api_url }} \
+            -e INPUT_DATASET_REPO={{ input_dataset_repo }} \
+            -e INPUT_DATASET_FILE_NAME={{ input_dataset_file_name }} \
+            -e OUTPUT_DATASET_REPO={{ output_dataset_repo }} \
+            -e OUTPUT_DATASET_FILE_NAME={{ output_dataset_file_name }} \
             -e PROMPT_LAB_MODEL_HF_ID={{ prompt_lab_model_hf_id }} \
             -e PROMPT_LAB_MAX_GENERATION_LENGTH={{ prompt_lab_max_generation_length }} \
             -e PROMPT_LAB_MAX_CONTEXT_LENGTH={{ prompt_lab_max_context_length }} \
@@ -228,36 +234,21 @@
             -e TEMPLATE_NAME={{ template_name }} \
             -e TEMPLATE_AGENT={{ template_agent }} \
             -e TEMPLATE_TYPE={{ template_type }} \
-            -v /home/instruct/{{ input_json_path }}:/app/repo/prompt_lab/{{ input_json_path }}:z \
-            -v /home/instruct/{{ output_data_dir_path }}:/app/repo/prompt_lab/data:z \
-            -v /home/instruct/{{ template_name }}:/app/repo/prompt_lab/{{ template_name }}:z \
-            {{ prompt_lab_image_name }} prompt_submiter
+            -e MAX_RETRY={{ max_retry }} \
+            {{ prompt_lab_image_name }} orbiter --celery --reviewer --celery-worker-concurrency 4 --celery-worker-prefetch-count 2
 
 ################################################################################################
 - name: Deploy Prompt Lab Dispatcher Container
-  hosts: prompt_lab_dispatcher
+  hosts: prompt_lab_landing
   gather_facts: no
   vars:
-    prompt_lab_image: quay.io/rh-ee-yhabushi/tag/prompt_lab:2024.12.12
     prompt_lab_image_name: promptlab-service
-    prompt_lab_dispatcher_container_name: promptlab-dispatcher
-    rabbitmq_port: "{{ RABBITMQ_PORT }}"
-    rabbitmq_ip: "{{ RABBITMQ_IP }}"
-    mongo_port: "{{ MONGO_PORT }}"
-    mongo_ip: "{{ MONGO_IP }}"
-    output_data_dir_path: "{{ OUTPUT_DATA_DIR_PATH }}"
-    input_json_path: "{{ INPUT_JSON_PATH }}"
-    prompt_lab_model_hf_id: "{{ PROMPT_LAB_MODEL_HF_ID }}"
-    prompt_lab_max_generation_length: "{{ PROMPT_LAB_MAX_GENERATION_LENGTH }}"
-    prompt_lab_max_context_length: "{{ PROMPT_LAB_MAX_CONTEXT_LENGTH }}"
-    prompt_lab_batch_size: "{{ PROMPT_LAB_BATCH_SIZE }}"
-    queue_target_size: "{{ QUEUE_TARGET_SIZE }}"
-    template_name: "{{ TEMPLATE_NAME }}"
-    template_agent: "{{ TEMPLATE_AGENT }}"
-    template_type: "{{ TEMPLATE_TYPE }}"
+    prompt_lab_landing_container_name: promptlab-landing
+  vars_files:
+    - vars.yml
 
   tasks:
-    - name: Pull Prompt Lab image
+    - name: Pull Promptlab image
       command: >
         podman pull {{ prompt_lab_image }}
 
@@ -267,66 +258,48 @@
 
     - name: Stop and remove promptlab container if it exists
       shell: |
-        if podman ps -a --format "{{ '{{ .Names }}' }}" | grep -w {{ prompt_lab_dispatcher_container_name }}; then
-          podman stop {{ prompt_lab_dispatcher_container_name }}  && podman rm {{ prompt_lab_dispatcher_container_name }};
+        if podman ps -a --format "{{ '{{ .Names }}' }}" | grep -w {{ prompt_lab_landing_container_name }}; then
+          podman stop {{ prompt_lab_landing_container_name }}  && podman rm {{ prompt_lab_landing_container_name }};
         else
-          echo "Promptlab dispatcher container does not exist.";
+          echo "Promptlab landing container does not exist.";
         fi
-
-    - name: create output dir
-      file:
-        path: "{{ output_data_dir_path }}"
-        state: directory
-        mode: '777'
 
     - name: Run Prompt Lab container
       command: >
         podman run -d \
-            --name {{ prompt_lab_dispatcher_container_name }} \
+            --name {{ prompt_lab_landing_container_name }} \
             --net=host \
+            -e HF_TOKEN={{ hf_token }} \
             -e RABBITMQ_PORT={{ rabbitmq_port }} \
             -e RABBITMQ_IP={{ rabbitmq_ip }} \
             -e MONGODB_PORT={{ mongo_port }} \
             -e MONGODB_IP={{ mongo_ip }} \
-            -e INPUT_JSON_PATH={{ input_json_path }} \
-            -e OUTPUT_DATA_DIR_PATH={{ output_data_dir_path }} \
+            -e INPUT_DATASET_REPO={{ input_dataset_repo }} \
+            -e INPUT_DATASET_FILE_NAME={{ input_dataset_file_name }} \
+            -e OUTPUT_DATASET_REPO={{ output_dataset_repo }} \
+            -e OUTPUT_DATASET_FILE_NAME={{ output_dataset_file_name }} \
             -e PROMPT_LAB_MODEL_HF_ID={{ prompt_lab_model_hf_id }} \
             -e PROMPT_LAB_MAX_GENERATION_LENGTH={{ prompt_lab_max_generation_length }} \
             -e PROMPT_LAB_MAX_CONTEXT_LENGTH={{ prompt_lab_max_context_length }} \
             -e PROMPT_LAB_BATCH_SIZE={{ prompt_lab_batch_size }} \
             -e QUEUE_TARGET_SIZE={{ queue_target_size }} \
+            -e MODEL_API_URL={{ model_api_url }} \
             -e TEMPLATE_NAME={{ template_name }} \
             -e TEMPLATE_AGENT={{ template_agent }} \
             -e TEMPLATE_TYPE={{ template_type }} \
-            -v /home/instruct/{{ input_json_path }}:/app/repo/prompt_lab/{{ input_json_path }}:z \
-            -v /home/instruct/{{ output_data_dir_path }}:/app/repo/prompt_lab/data:z \
-            {{ prompt_lab_image_name }} prompt_dispatcher
-
+            -e MAX_RETRY={{ max_retry }} \
+            {{ prompt_lab_image_name }} landing --celery
 
 ################################################################################################
-- name: Deploy Prompt Lab Dispatcher Worker
-  hosts: prompt_lab_worker
+- name: Deploy Prompt Lab Launchpad Container
+  hosts: prompt_lab_launchpad
   gather_facts: no
   vars:
-    prompt_lab_image: quay.io/rh-ee-yhabushi/tag/prompt_lab:2024.12.12
     prompt_lab_image_name: promptlab-service
-    prompt_lab_worker_container_name: promptlab-worker
-    rabbitmq_port: "{{ RABBITMQ_PORT }}"
-    rabbitmq_ip: "{{ RABBITMQ_IP }}"
-    mongo_port: "{{ MONGO_PORT }}"
-    mongo_ip: "{{ MONGO_IP }}"
-    output_data_dir_path: "{{ OUTPUT_DATA_DIR_PATH }}"
-    input_json_path: "{{ INPUT_JSON_PATH }}"
-    prompt_lab_model_hf_id: "{{ PROMPT_LAB_MODEL_HF_ID }}"
-    prompt_lab_max_generation_length: "{{ PROMPT_LAB_MAX_GENERATION_LENGTH }}"
-    prompt_lab_max_context_length: "{{ PROMPT_LAB_MAX_CONTEXT_LENGTH }}"
-    prompt_lab_batch_size: "{{ PROMPT_LAB_BATCH_SIZE }}"
-    queue_target_size: "{{ QUEUE_TARGET_SIZE }}"
-    template_name: "{{ TEMPLATE_NAME }}"
-    template_agent: "{{ TEMPLATE_AGENT }}"
-    template_type: "{{ TEMPLATE_TYPE }}"
-
-
+    prompt_lab_launchpad_container_name: promptlab-launchpad
+  vars_files:
+    - vars.yml
+    
   tasks:
     - name: Pull Prompt Lab image
       command: >
@@ -338,31 +311,34 @@
 
     - name: Stop and remove promptlab container if it exists
       shell: |
-        if podman ps -a --format "{{ '{{ .Names }}' }}" | grep -w {{ prompt_lab_worker_container_name }}; then
-          podman stop {{ prompt_lab_worker_container_name }}  && podman rm {{ prompt_lab_worker_container_name }};
+        if podman ps -a --format "{{ '{{ .Names }}' }}" | grep -w {{ prompt_lab_launchpad_container_name }}; then
+          podman stop {{ prompt_lab_launchpad_container_name }}  && podman rm {{ prompt_lab_launchpad_container_name }};
         else
-          echo "Promptlab worker container does not exist.";
+          echo "Promptlab launchpad container does not exist.";
         fi
 
-    - name: Run Prompt Lab container
+    - name: Run prompt_launchpad container
       command: >
         podman run -d \
-            --name {{ prompt_lab_worker_container_name }} \
+            --name {{ prompt_lab_launchpad_container_name }} \
             --net=host \
+            -e HF_TOKEN={{ hf_token }} \
             -e RABBITMQ_PORT={{ rabbitmq_port }} \
             -e RABBITMQ_IP={{ rabbitmq_ip }} \
             -e MONGODB_PORT={{ mongo_port }} \
             -e MONGODB_IP={{ mongo_ip }} \
-            -e INPUT_JSON_PATH={{ input_json_path }} \
-            -e OUTPUT_DATA_DIR_PATH={{ output_data_dir_path }} \
+            -e INPUT_DATASET_REPO={{ input_dataset_repo }} \
+            -e INPUT_DATASET_FILE_NAME={{ input_dataset_file_name }} \
+            -e OUTPUT_DATASET_REPO={{ output_dataset_repo }} \
+            -e OUTPUT_DATASET_FILE_NAME={{ output_dataset_file_name }} \
             -e PROMPT_LAB_MODEL_HF_ID={{ prompt_lab_model_hf_id }} \
             -e PROMPT_LAB_MAX_GENERATION_LENGTH={{ prompt_lab_max_generation_length }} \
             -e PROMPT_LAB_MAX_CONTEXT_LENGTH={{ prompt_lab_max_context_length }} \
             -e PROMPT_LAB_BATCH_SIZE={{ prompt_lab_batch_size }} \
             -e QUEUE_TARGET_SIZE={{ queue_target_size }} \
+            -e MODEL_API_URL={{ model_api_url }} \
             -e TEMPLATE_NAME={{ template_name }} \
             -e TEMPLATE_AGENT={{ template_agent }} \
             -e TEMPLATE_TYPE={{ template_type }} \
-            -v /home/instruct/{{ input_json_path }}:/app/repo/prompt_lab/{{ input_json_path }}:z \
-            -v /home/instruct/{{ output_data_dir_path }}:/app/repo/prompt_lab/data:z \
-            {{ prompt_lab_image_name }} prompt_processor
+            -e MAX_RETRY={{ max_retry }} \
+            {{ prompt_lab_image_name }} launchpad
