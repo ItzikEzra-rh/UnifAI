@@ -34,7 +34,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ isStreaming, onChatSelect, cu
 
   const deleteSession = async (sessionId: string) => {
     try {
-      const response = await axiosBE.post('/api/backend/deleteChatSession', {sessionId: selectedSessionId});
+      const response = await axiosBE.post('/api/chat/deleteSession', {sessionId: selectedSessionId});
       setHistoryChats(historyChats.filter((chat) => chat.sessionId !== sessionId));
       setDeleteConfirmationModal(false); 
     } catch (error) {

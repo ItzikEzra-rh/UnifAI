@@ -111,7 +111,7 @@ const SavedPrompts: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const response = await axios.get('/api/backend/retrievePrompt');
+        const response = await axios.get('/api/prompts/retrievePrompt');
         setData(response.data.result);
       } catch (error) {
         console.error('Error fetching saved prompts:', error);
@@ -174,7 +174,7 @@ const SavedPrompts: React.FC = () => {
   const handleSaveComment = async () => {
     if (commentData) {
       try {
-        await axios.post('/api/backend/savePromptComment', { modelId: commentData.modelId, uniqueId: commentData.uniqueId, comment: commentData.comment });
+        await axios.post('/api/prompts/savePromptComment', { modelId: commentData.modelId, uniqueId: commentData.uniqueId, comment: commentData.comment });
         // Update the data state with the new comment
         setData(prevData =>
           prevData.map(item => item.modelId === commentData.modelId && item.uniqueId === commentData.uniqueId ? { ...item, comment: commentData.comment } : item)
@@ -188,7 +188,7 @@ const SavedPrompts: React.FC = () => {
 
   const handleCompletedChange = async (modelId: string, uniqueId: string, completed: boolean) => {
     try {
-      await axios.post('/api/backend/markPromptAsComplete', {
+      await axios.post('/api/prompts/markPromptAsComplete', {
         modelId,
         uniqueId,
         completed
@@ -216,7 +216,7 @@ const SavedPrompts: React.FC = () => {
   const handleDeleteConfirm = async () => {
     if (promptToDelete) {
       try {
-        await axios.post('/api/backend/deletePrompt', {
+        await axios.post('/api/prompts/deletePrompt', {
           uniqueId: promptToDelete.uniqueId
         });
         

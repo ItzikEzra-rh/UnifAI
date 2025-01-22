@@ -1,7 +1,5 @@
-from rag.be_utils.db.db import mongo, Collections, db
 import sys
 import json
-import os
 import re
 from bson import json_util
 from typing import Dict

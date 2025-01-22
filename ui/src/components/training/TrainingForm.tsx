@@ -46,7 +46,7 @@ const TrainingForm: React.FC = () => {
   useEffect(() => {
     const fetchForms = async () => {
       try {
-        const response = await axios.get('/api/backend/retrieveForms');
+        const response = await axios.get('/api/forms/retrieve');
         const forms = response.data.result;
         const projectSet = new Set<string>();
         forms.forEach((form: { projectName: string; trainingName: string }) => {

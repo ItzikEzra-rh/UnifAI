@@ -189,7 +189,7 @@ const ChatComponent: React.FC = () => {
   const [currentChatId, setCurrentChatId] = useState<string>('current');
 
   const getChatHistory = async (modelId: string) => {
-    const loadedModelChatsResponse = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
+    const loadedModelChatsResponse = await axiosBE.get('/api/chat/', { params: {modelId: modelId} });
     setHistoryChats(loadedModelChatsResponse.data.response)
   }
 
@@ -260,10 +260,10 @@ const ChatComponent: React.FC = () => {
         firstMessage: truncatedMessage,
         modelId: modelId,
       }
-      await axiosBE.post('/api/backend/updateCurrentChat', payload);
+      await axiosBE.post('/api/chat/updateCurrentChat', payload);
 
       // Update the chat history component live (add a new chat to the list / move an old chat up when resumed)
-      // const result = await axiosBE.get('/api/backend/getChats', { params: {modelId: modelId} });
+      // const result = await axiosBE.get('/api/chat/', { params: {modelId: modelId} });
       // setHistoryChats(result.data.response)
     } catch (error) {
       console.error('Error updating chat:', error);
@@ -408,7 +408,7 @@ const ChatComponent: React.FC = () => {
       if (!response.body) throw new Error('ReadableStream not supported!');
       
       // Monitor each model (based on unique uuid) by checking how many times users leverage the latest for inference 
-      await axiosBE.post('/api/backend/addInferenceCounter', { modelId: selectedModel?.modelId, modelName: selectedModel?.modelName });
+      await axiosBE.post('/api/inference/addInferenceCounter', { modelId: selectedModel?.modelId, modelName: selectedModel?.modelName });
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
@@ -535,7 +535,7 @@ const ChatComponent: React.FC = () => {
         promptLLMLastAnswerText: promptLLMLatestMessage,
         promptName: promptName,   // Name entered by the user
       };
-      await axiosBE.post('/api/backend/savePrompt', payload);
+      await axiosBE.post('/api/prompts/savePrompt', payload);
       console.log('Prompt saved successfully');
       handleModalClose(); // Close the modal after saving
     } catch (error) {
@@ -593,7 +593,7 @@ const ChatComponent: React.FC = () => {
         rating,
         ratingText
       };
-      await axiosBE.post('/api/backend/ratePrompt', payload);
+      await axiosBE.post('/api/prompts/ratePrompt', payload);
       console.log('Rate saved successfully');
     } catch (error) {
       console.error('Error rating prompt:', error);
