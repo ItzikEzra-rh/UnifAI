@@ -197,7 +197,6 @@ const ChatComponent: React.FC = () => {
   useEffect(() => {
     const newSessionId = uuidv4();
     setSessionId(newSessionId);
-    sessionIdRef.current = newSessionId;
 
     const fetchModelsAndCheckLoadedModel = async () => {
       // Fetch the model and its chat history on component mount 
@@ -263,8 +262,12 @@ const ChatComponent: React.FC = () => {
       await axiosBE.post('/api/chat/updateCurrentChat', payload);
 
       // Update the chat history component live (add a new chat to the list / move an old chat up when resumed)
-      // const result = await axiosBE.get('/api/chat/', { params: {modelId: modelId} });
-      // setHistoryChats(result.data.response)
+      if (sessionId !== sessionIdRef.current) {
+        const loadedChatsResponse = await axiosBE.get('/api/chat/', { params: { modelId: modelId } });
+        setHistoryChats(loadedChatsResponse.data.response);
+      }
+      // Only update the sessionIdRef to the new sessionId after the update
+      sessionIdRef.current = sessionId;
     } catch (error) {
       console.error('Error updating chat:', error);
     }
@@ -286,7 +289,6 @@ const ChatComponent: React.FC = () => {
       const newSessionId = uuidv4();
       sessionStorage.setItem('session_id', newSessionId);
       setSessionId(newSessionId);
-      sessionIdRef.current = newSessionId;
 
       setMessages([]);
       setCurrentChatId('current');
