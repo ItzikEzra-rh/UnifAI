@@ -48,7 +48,7 @@ This is to install GENIE service to the openshift cluster. The installation is b
 
 ###Basic usage:
 ```bash
-podman run -dt -v .:/helm/charts -v ~/.kube/:/helm/.kube --name helmfile ghcr.io/helmfile/helmfile:latest bash
+podman run -dt --workdir /helm/charts -v .:/helm/charts -v ~/.kube/:/helm/.kube --name helmfile ghcr.io/helmfile/helmfile:latest bash
 podman exec -it helmfile bash
 cd /helm/charts
 #edit the value files if needed

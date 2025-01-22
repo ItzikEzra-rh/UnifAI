@@ -1,4 +1,4 @@
-#podman run -dt -v .:/helm/charts -v ~/.kube/:/helm/.kube --name helmfile ghcr.io/helmfile/helmfile:latest bash
+#podman run -dt --workdir /helm/charts -v .:/helm/charts -v ~/.kube/:/helm/.kube --name helmfile ghcr.io/helmfile/helmfile:latest bash
 
 helmDefaults:
     createNamespace: false
