@@ -4,7 +4,7 @@ from flask import Blueprint
 from webargs import fields
 from helpers.apiargs import from_query, from_body
 from flask import jsonify
-from backend.providers.chat import delete_session_from_chat_history, get_chat_history, update_current_chat_history
+from backend.providers.chat import delete_session_from_chat_history, get_chat_history, rename_title_of_chat_session, update_current_chat_history
 
 chat_bp = Blueprint("chatHistory", __name__)
 
@@ -51,7 +51,7 @@ def delete_chat_session(session_id):
         logging.error(f"Error deleting the chat session: {session_id}")
         return jsonify({"status": "error", "message": str(e)}), 500
     
-@chat_history_bp.route("/renameSession", methods=["POST"])
+@chat_bp.route("/renameSession", methods=["POST"])
 @from_body({
     "session_id":       fields.Str(required=True, data_key="sessionId"),
     "title":            fields.Str(required=True, data_key="title")
