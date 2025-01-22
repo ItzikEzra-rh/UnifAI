@@ -10,4 +10,22 @@ securityContext: {}
 image:
   registry: "images.paas.redhat.com/genie"
   repository: "mongo"
+storage:
+  ## Internal volume name and prefix of a created PVC
+  volumeName: "genie-mongodb-volume"
+  ## Alternative set requestedSize to define a size for a dynamically created PVC
+  requestedSize: 30G
+  ## Default access mode (ReadWriteOnce)
+  className: aws-ebs
+  accessModes:
+    - ReadWriteOnce
+  ## Additional storage annotations
+  annotations: 
+    kubernetes.io/reclaimPolicy: Delete
+  labels:
+    paas.redhat.com/appcode: TAG-001
+
+
+      
+
 
