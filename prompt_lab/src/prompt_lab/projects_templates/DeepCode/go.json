@@ -107,7 +107,7 @@
               "validation": "Does the explanation accurately list the dependencies introduced by the imports in `{element_type}` `{name}` in `{file_location}` and explain their significance?"
             }
           ],
-          "condition": "{{ element.imports != '' }}"
+          "condition": "{{ element.imports }}"
         },
         "Structs": {
           "questions": [
@@ -132,12 +132,10 @@
               "validation": "Does the explanation provide clear examples of how the structs are used in `{element_type}` `{name}` in `{file_location}`, include their code, and explain their roles?"
             }
           ],
-          "condition": "{{ element.structs != [] }}"
+          "condition": "{{ element.structs }}"
         }
-
       },
-      "_comment": "in Code Dependencies we use only graph dependency of calling 1 level depth, code usage is how to use the function with the right import, we dont have calle functions in graph Dependencies, structs also we a caller in the graph",
-      "Code usage": {
+      "Code Usage": {
         "Function Integration": {
           "questions": [
             {
@@ -162,6 +160,80 @@
             }
           ]
         }
+      },
+      "Code Errors": {
+        "Errors": {
+          "questions": [
+            {
+              "question": "What errors or exceptions can `{element_type}` `{name}` in `{file_location}` produce? Provide a detailed explanation with examples.",
+              "validation": "Does the explanation clearly identify the errors or exceptions that `{element_type}` `{name}` in `{file_location}` can produce, with examples?"
+            },
+            {
+              "question": "How does `{element_type}` `{name}` in `{file_location}` handle errors or exceptions? Provide examples of its error-handling mechanisms.",
+              "validation": "Does the explanation clearly describe how `{element_type}` `{name}` in `{file_location}` handles errors or exceptions, with examples?"
+            },
+            {
+              "question": "What are the edge cases in `{element_type}` `{name}` in `{file_location}`, and how are errors handled for those cases?",
+              "validation": "Does the explanation identify edge cases for `{element_type}` `{name}` in `{file_location}` and explain how errors are handled for those cases?"
+            },
+            {
+              "question": "What error messages or codes can `{element_type}` `{name}` in `{file_location}` generate? Provide examples of when they occur.",
+              "validation": "Does the explanation list the error messages or codes that `{element_type}` `{name}` in `{file_location}` can generate and provide examples of when they occur?"
+            },
+            {
+              "question": "How can the error-handling behavior of `{element_type}` `{name}` in `{file_location}` be tested? Provide an example of testing error scenarios.",
+              "validation": "Does the explanation provide clear steps to test the error-handling behavior of `{element_type}` `{name}` in `{file_location}`, with examples?"
+            }
+          ]
+        },
+        "Error Prevention": {
+          "questions": [
+            {
+              "question": "What mechanisms does `{element_type}` `{name}` in `{file_location}` implement to prevent errors? Provide examples.",
+              "validation": "Does the explanation clearly describe the mechanisms used in `{element_type}` `{name}` in `{file_location}` to prevent errors, with examples?"
+            },
+            {
+              "question": "What checks or safeguards are implemented in `{element_type}` `{name}` in `{file_location}` to ensure error-free execution? Provide examples.",
+              "validation": "Does the explanation clearly explain the checks or safeguards in `{element_type}` `{name}` in `{file_location}` to prevent errors, with examples?"
+            },
+            {
+              "question": "How does `{element_type}` `{name}` in `{file_location}` handle edge cases proactively to prevent errors? Provide examples of edge case handling.",
+              "validation": "Does the explanation describe how `{element_type}` `{name}` in `{file_location}` handles edge cases to prevent errors, with examples?"
+            },
+            {
+              "question": "What strategies does `{element_type}` `{name}` in `{file_location}` use to detect potential errors before execution? Provide examples.",
+              "validation": "Does the explanation describe the strategies used in `{element_type}` `{name}` in `{file_location}` to detect and prevent errors, with examples?"
+            }
+          ]
+        }
+
+      },
+      "Code Security": {
+        "Code Vulnerabilities": {
+          "questions": [
+            {
+              "question": "What are the possible security risks in `{element_type}` `{name}` located at `{file_location}`? Provide examples and explanations.",
+              "validation": "Does the explanation clearly identify the possible security risks in `{element_type}` `{name}` at `{file_location}` and provide examples?"
+            },
+            {
+              "question": "What vulnerabilities might be present in `{element_type}` `{name}` at `{file_location}` that could be exploited? Provide examples and explanations.",
+              "validation": "Does the explanation identify potential vulnerabilities in `{element_type}` `{name}` at `{file_location}` that could be exploited, with examples?"
+            },
+            {
+              "question": "Are there any weaknesses in `{element_type}` `{name}` at `{file_location}` that could lead to security issues? Provide examples and detailed explanations.",
+              "validation": "Does the explanation describe weaknesses in `{element_type}` `{name}` at `{file_location}` that could result in security issues, with examples?"
+            },
+            {
+              "question": "What potential security flaws exist in `{element_type}` `{name}` located at `{file_location}`? Provide examples and an explanation of their impact.",
+              "validation": "Does the explanation clearly identify potential security flaws in `{element_type}` `{name}` at `{file_location}` and explain their impact, with examples?"
+            },
+            {
+              "question": "Could `{element_type}` `{name}` in `{file_location}` introduce security vulnerabilities? If so, what are they? Provide examples and explanations.",
+              "validation": "Does the explanation identify whether `{element_type}` `{name}` at `{file_location}` could introduce security vulnerabilities, with examples and explanations?"
+            }
+          ]
+        }
+
       }
     },
     "file": {
@@ -266,9 +338,7 @@
             }
           ]
         }
-
       },
-      "_comment": "normal Dependencies of the function, 1 level",
       "Code usage": {
         "Usage of Elements": {
           "questions": [
@@ -295,12 +365,146 @@
           ]
         }
       },
-      "_comment2": "to make example of usage of things defined in the files which are not functions, and how to use them from other file"
+      "Code Security": {
+        "Code Vulnerabilities": {
+          "questions": [
+            {
+              "question": "What are the possible security risks in `{element_type}` `{name}` located at `{file_location}`? Provide examples and explanations.",
+              "validation": "Does the explanation clearly identify the possible security risks in `{element_type}` `{name}` at `{file_location}` and provide examples?"
+            },
+            {
+              "question": "What vulnerabilities might be present in `{element_type}` `{name}` at `{file_location}` that could be exploited? Provide examples and explanations.",
+              "validation": "Does the explanation identify potential vulnerabilities in `{element_type}` `{name}` at `{file_location}` that could be exploited, with examples?"
+            },
+            {
+              "question": "Are there any weaknesses in `{element_type}` `{name}` at `{file_location}` that could lead to security issues? Provide examples and detailed explanations.",
+              "validation": "Does the explanation describe weaknesses in `{element_type}` `{name}` at `{file_location}` that could result in security issues, with examples?"
+            },
+            {
+              "question": "What potential security flaws exist in `{element_type}` `{name}` located at `{file_location}`? Provide examples and an explanation of their impact.",
+              "validation": "Does the explanation clearly identify potential security flaws in `{element_type}` `{name}` at `{file_location}` and explain their impact, with examples?"
+            },
+            {
+              "question": "Could `{element_type}` `{name}` in `{file_location}` introduce security vulnerabilities? If so, what are they? Provide examples and explanations.",
+              "validation": "Does the explanation identify whether `{element_type}` `{name}` at `{file_location}` could introduce security vulnerabilities, with examples and explanations?"
+            }
+          ]
+        }
+
+      },
+      "Code Errors": {
+        "Errors": {
+          "questions": [
+            {
+              "question": "What errors or exceptions can `{element_type}` `{name}` in `{file_location}` produce? Provide a detailed explanation with examples.",
+              "validation": "Does the explanation clearly identify the errors or exceptions that `{element_type}` `{name}` in `{file_location}` can produce, with examples?"
+            },
+            {
+              "question": "How does `{element_type}` `{name}` in `{file_location}` handle errors or exceptions? Provide examples of its error-handling mechanisms.",
+              "validation": "Does the explanation clearly describe how `{element_type}` `{name}` in `{file_location}` handles errors or exceptions, with examples?"
+            },
+            {
+              "question": "What are the edge cases in `{element_type}` `{name}` in `{file_location}`, and how are errors handled for those cases?",
+              "validation": "Does the explanation identify edge cases for `{element_type}` `{name}` in `{file_location}` and explain how errors are handled for those cases?"
+            },
+            {
+              "question": "What error messages or codes can `{element_type}` `{name}` in `{file_location}` generate? Provide examples of when they occur.",
+              "validation": "Does the explanation list the error messages or codes that `{element_type}` `{name}` in `{file_location}` can generate and provide examples of when they occur?"
+            },
+            {
+              "question": "How can the error-handling behavior of `{element_type}` `{name}` in `{file_location}` be tested? Provide an example of testing error scenarios.",
+              "validation": "Does the explanation provide clear steps to test the error-handling behavior of `{element_type}` `{name}` in `{file_location}`, with examples?"
+            }
+          ]
+        },
+        "Error Prevention": {
+          "questions": [
+            {
+              "question": "What mechanisms does `{element_type}` `{name}` in `{file_location}` implement to prevent errors? Provide examples.",
+              "validation": "Does the explanation clearly describe the mechanisms used in `{element_type}` `{name}` in `{file_location}` to prevent errors, with examples?"
+            },
+            {
+              "question": "What checks or safeguards are implemented in `{element_type}` `{name}` in `{file_location}` to ensure error-free execution? Provide examples.",
+              "validation": "Does the explanation clearly explain the checks or safeguards in `{element_type}` `{name}` in `{file_location}` to prevent errors, with examples?"
+            },
+            {
+              "question": "How does `{element_type}` `{name}` in `{file_location}` handle edge cases proactively to prevent errors? Provide examples of edge case handling.",
+              "validation": "Does the explanation describe how `{element_type}` `{name}` in `{file_location}` handles edge cases to prevent errors, with examples?"
+            },
+            {
+              "question": "What strategies does `{element_type}` `{name}` in `{file_location}` use to detect potential errors before execution? Provide examples.",
+              "validation": "Does the explanation describe the strategies used in `{element_type}` `{name}` in `{file_location}` to detect and prevent errors, with examples?"
+            }
+          ]
+        }
+
+      }
     },
     "package": {
-      "Repository Code": {},
-      "Code Dependencies": {},
-      "Code summary": {}
+      "Repository Code": {
+        "Repository structure": {
+          "questions": [
+            {
+              "question": "Here is the {element_type} from the repository {project_repo}:\\n\\n** {element_type}: `{file_location}`**\\n{structs}\\n\\n{interfaces}\\n\\n{functions}  \\n describe the {element_type} location within the repository.",
+              "validation": "Is the location of the {element_type} in the repository accurately described?"
+            }
+          ]
+        }
+      },
+      "Code Dependencies": {
+        "elements": {
+          "questions": [
+            {
+              "question": "What are the dependencies of the package `{name}` in `{file_location}`? List and explain them.",
+              "validation": "Does the explanation clearly list and describe the dependencies of the package `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "What external dependencies does the package `{name}` in `{file_location}` rely on? Provide a brief explanation.",
+              "validation": "Does the explanation accurately identify and explain the external dependencies of the package `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "What modules or imports does the package `{name}` in `{file_location}` use? List and briefly describe their purpose.",
+              "validation": "Does the explanation clearly list the modules or imports used by the package `{name}` in `{file_location}` and describe their purpose?"
+            },
+            {
+              "question": "What are the key dependencies of the package `{name}` in `{file_location}`? Provide a simple list and explanation.",
+              "validation": "Does the explanation clearly identify the key dependencies of the package `{name}` in `{file_location}` and provide a brief explanation?"
+            },
+            {
+              "question": "What dependencies does the package `{name}` in `{file_location}` interact with? List them and explain their roles.",
+              "validation": "Does the explanation clearly list the dependencies that the package `{name}` in `{file_location}` interacts with and explain their roles?"
+            }
+          ],
+          "condition": "{{ element.structs or element.interfaces or element.functions] }}"
+        }
+      },
+      "Code usage": {
+        "Usage of Package Elements": {
+          "questions": [
+            {
+              "question": "How can the elements in the package `{name}` located at `{file_location}` be imported and used in another file or module? Provide examples of the import statements and usage.",
+              "validation": "Does the explanation clearly describe how to import the elements in the package `{name}` at `{file_location}` and provide examples of their usage?"
+            },
+            {
+              "question": "What is the correct way to import the elements from the package `{name}` in `{file_location}` and use them elsewhere? Provide examples of the syntax and usage.",
+              "validation": "Does the explanation clearly explain the correct way to import and use the elements in the package `{name}` at `{file_location}` with examples?"
+            },
+            {
+              "question": "How can the elements in `{name}` at `{file_location}` be utilized in another context or project? Include the import statements and usage examples.",
+              "validation": "Does the explanation provide clear steps to import and use the elements in `{name}` at `{file_location}` in another context with examples?"
+            },
+            {
+              "question": "What are the steps to import and use the elements in the package `{name}` at `{file_location}` from other files or modules? Provide examples.",
+              "validation": "Does the explanation provide detailed steps to import and use the elements in `{name}` at `{file_location}` and include examples?"
+            },
+            {
+              "question": "How can the elements defined in the package `{name}` at `{file_location}` be integrated into other parts of a codebase? Provide import statements and examples of their usage.",
+              "validation": "Does the explanation describe how to integrate the elements from `{name}` at `{file_location}` into other parts of a codebase and include usage examples?"
+            }
+          ],
+          "condition": "{{ element.structs or element.interfaces or element.functions] }}"
+        }
+      }
     }
   }
 }
