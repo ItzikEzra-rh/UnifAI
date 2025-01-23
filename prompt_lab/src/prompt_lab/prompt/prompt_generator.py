@@ -58,9 +58,11 @@ class PromptGenerator:
                 if not questions:
                     continue
 
+                context_exclude = template_config.get("context_exclude", [])
                 yield self.prompt_formatter.format_prompt(
                     element_data,
                     group_name,
                     category_name,
-                    questions
+                    questions,
+                    context_exclude
                 )

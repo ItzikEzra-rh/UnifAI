@@ -19,7 +19,7 @@ class PromptFormatter:
         self.system_message = self.template_manager.get_template_system_message()
         self.context_template = self.template_manager.get_template_context_message()
 
-    def render_context(self, element_data: dict) -> str:
+    def render_context(self, element_data: dict, context_exclude: []) -> str:
         """Render the context template using the provided element data."""
         template_params = self.template_manager.get_template_params()
         combined_data = {**copy.deepcopy(element_data), **template_params}
@@ -31,15 +31,16 @@ class PromptFormatter:
                 value = combined_data[placeholder]
                 if isinstance(value, str) and value.startswith(f"{placeholder}:"):
                     continue
-                combined_data[placeholder] = f"{placeholder}:\n{value}"
+                combined_data[placeholder] = f"{placeholder}:\n{value}" if placeholder not in context_exclude else ""
             else:
                 combined_data[placeholder] = ""
 
         return self.context_template.format(**combined_data)
 
-    def format_prompt(self, element_data: dict, group_name: str, category_name: str, questions: []) -> Prompt:
+    def format_prompt(self, element_data: dict, group_name: str, category_name: str, questions: [],
+                      context_exclude: []) -> Prompt:
         """Prepare a fully formatted Prompt object."""
-        context_text = self.render_context(element_data)
+        context_text = self.render_context(element_data, context_exclude)
         template_params = self.template_manager.get_template_params()
         for question in questions:
             question["question"] = question["question"].format(**{**element_data, **template_params})
@@ -50,8 +51,8 @@ class PromptFormatter:
         validation_text = question["validation"]
         formatted_prompt = self.tokenizer.format_chat_prompt([
             {"role": "system", "content": self.system_message},
-            {"role": "context", "content": context_text},
-            {"role": "user", "content": user_input}
+            # {"role": "context", "content": context_text}, ## in models like Qwen, the tokinizer doesnt support generic roles.
+            {"role": "user", "content": f"** context ** {context_text}\n\n** question **\n\n{user_input}"}
         ])
 
         base_id = element_data.get("uuid", "") + group_name + category_name

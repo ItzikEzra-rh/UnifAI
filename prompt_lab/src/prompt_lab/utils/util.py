@@ -5,14 +5,14 @@ from pathlib import Path
 
 
 def get_mongo_url():
-    ip = ConfigManager().get("mongodb_ip", "0.0.0.0")
-    port = ConfigManager().get("mongodb_port", "27017")
+    ip = ConfigManager().get("mongodb_ip", "0.0.0.0") or "0.0.0.0"
+    port = ConfigManager().get("mongodb_port", "27017") or "27017"
     return f"mongodb://{ip}:{port}/"
 
 
 def get_rabbitmq_url():
-    ip = ConfigManager().get("rabbitmq_ip", "0.0.0.0")
-    port = ConfigManager().get("rabbitmq_port", "5673")
+    ip = ConfigManager().get("rabbitmq_ip", "0.0.0.0") or "0.0.0.0"
+    port = ConfigManager().get("rabbitmq_port", "5672") or "5672"
     return f"amqp://{ip}:{port}/"
 
 
