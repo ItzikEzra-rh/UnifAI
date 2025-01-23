@@ -39,11 +39,8 @@ services:
     ports:
       - "8080:8080"
     container_name: be
-    #entrypoint: ["bash", "-lc", "sleep infinity"]
     networks:
       - genie-network
-    environment:
-      - BACKEND_ENV=development
 
 
   llm-be:
@@ -55,10 +52,8 @@ services:
     ports:
       - "8443:443"
     container_name: llm-be
-    #entrypoint: ["bash", "-lc", "sleep infinity"]
     environment:
       - HUGGING_FACE_HUB_TOKEN=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
-      - BACKEND_ENV=development
     deploy:
       resources:
         reservations:
