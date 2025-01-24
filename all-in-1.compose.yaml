@@ -30,6 +30,9 @@ services:
     container_name: ui
     networks:
       - genie-network
+    environment:
+      - BE_URL=be:8080
+      - LLM_BE_URL=llm-be:8443
 
   be:
     image: localhost/be:latest
@@ -39,6 +42,7 @@ services:
     ports:
       - "8080:8080"
     container_name: be
+    command: ['sleep','infinity']
     networks:
       - genie-network
 

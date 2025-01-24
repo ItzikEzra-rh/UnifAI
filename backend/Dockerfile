@@ -1,4 +1,5 @@
 # Use the specified Red Hat Universal Base Image 9 (UBI9)
+#FROM registry.access.redhat.com/ubi9/python-311
 FROM registry.access.redhat.com/ubi9/python-39
 
 ADD . $HOME
