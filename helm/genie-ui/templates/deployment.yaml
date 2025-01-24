@@ -37,7 +37,12 @@ spec:
           command: ["sleep"]
           args: ["infinity"]
           {{- end }}
-
+          env:
+          - name:  BE_URL
+            value: "{{ .Values.BE_URL}}"
+          - name:  LLM_BE_URL
+            value: "{{ .Values.LLM_BE_URL}}"
+  
           ports:
             - name: http
               #containerPort: 8080
