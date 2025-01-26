@@ -5,6 +5,11 @@ import subprocess
 import re
 from typing import List, Dict, Any\
 
+GO_FOLDER = '/home/cloud-user/Projects/tag-integration-with-oadp/oadp-e2e-qe'
+AGENT_NAME = '(PACKAGE_DEEPCODE)'
+GO_PROJECT_NAME = 'app-mig/oadp-e2e-qe'
+GO_FILE_PROJECT_NAME = 'oadp-e2e-qe'
+
 def write_to_file(my_list, filename="TC's_mapping_list.txt"):
     # Write each item of the list to a new line in the file
     with open(filename, "w") as file:
@@ -49,7 +54,9 @@ class GoParser:
             "functions": [],
         }
 
-        package_relative_repo_path = re.sub(r'^github\.com\/openshift\/assisted-service', '', package_name).lstrip('/')
+        # package_relative_repo_path = re.sub(r'^github\.com\/openshift\/assisted-service', '', package_name).lstrip('/')
+        # package_relative_repo_path = re.sub(r'^github\.com\/openshift\/oadp-operator', '', package_name).lstrip('/')
+        package_relative_repo_path = re.sub(r'^gitlab\.cee\.redhat\.com\/app-mig\/oadp-e2e-qe', '', package_name).lstrip('/')
         package_path = os.path.join(self.repo_path, package_relative_repo_path)
 
         # Extract data for the entire package
@@ -144,14 +151,14 @@ class GoParser:
 
 # Example usage
 if __name__ == "__main__":
-    project_name = "assisted-service"
-    repo_path = "/home/cloud-user/Projects/assisted-service"
+    project_name = GO_FILE_PROJECT_NAME
+    repo_path = GO_FOLDER
 
     parser = GoParser(project_name, repo_path)
     result = parser.run()
 
     json_formatted_str = json.dumps(result, indent=2)
-    write_to_file(json_formatted_str, filename='AssistedServicePackages.json')
+    write_to_file(json_formatted_str, filename=f'{GO_FILE_PROJECT_NAME}Packages.json')
 
 
 #############################################################################

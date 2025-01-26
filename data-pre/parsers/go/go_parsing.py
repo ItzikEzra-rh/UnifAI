@@ -6,9 +6,9 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from components.robot_parser import RobotParser
 from components.tree_sitter_parser import TreeSitterParser
 
-GO_FOLDER = '/home/cloud-user/Projects/tag-integration-with-migration-planner/migration-planner'
-AGENT_NAME = '(DEEP_CODE)'
-GO_PROJECT_NAME = 'migration-planner'
+GO_FOLDER = '/home/cloud-user/Projects/tag-integration-with-eco-go/eco-gotests'
+AGENT_NAME = '(TAG)'
+GO_PROJECT_NAME = 'eco-gotests'
 GO_SUFFIXES = [".go"]
 
 def write_to_file(my_list, filename="TC's_mapping_list.txt"):
@@ -16,17 +16,37 @@ def write_to_file(my_list, filename="TC's_mapping_list.txt"):
     with open(filename, "w") as file:
         file.write(my_list)
 
-def get_file_paths_with_suffixes(folder_path, suffixes):
+def get_file_paths_with_suffixes(folder_path, suffixes, ignore_folders=None, include_subfolders=None):
+    """
+    Get file paths with specific suffixes, while ignoring specific folders and allowing selective inclusion of subfolders.
+    The function ensures that if a folder matches ignore_folders, its subfolders specified in include_subfolders will still be traversed correctly.
+
+    :param folder_path: The root folder to search in.
+    :param suffixes: List of file suffixes to include (e.g., [".go"]).
+    :param ignore_folders: List of folder names (directly under folder_path) to ignore.
+    :param include_subfolders: List of specific subfolder paths to include.
+    :return: List of file paths matching the criteria.
+    """
     file_paths = []
+    ignore_folders = set(ignore_folders or [])
+    include_subfolders = set(include_subfolders or [])
 
     # Walk through the directory
     for root, dirs, files in os.walk(folder_path):
+        # Relative path of the current directory
+        rel_path = os.path.relpath(root, folder_path)
+
+        # Check if the current folder should be skipped
+        if any(rel_path == ignore or rel_path.startswith(f"{ignore}/") for ignore in ignore_folders):
+            # Allow traversal if explicitly in include_subfolders
+            if not any(include.startswith(rel_path) or rel_path.startswith(include) for include in include_subfolders):
+                dirs[:] = []  # Prevent recursion into this directory
+                continue
+
+        # Process files in the current directory
         for file in files:
-            # Check if the file matches the pattern 'STRING_TXT.robot/STRING_TXT.resource'
             if any(file.endswith(suffix) for suffix in suffixes):
-                # Construct the full file path
-                full_path = os.path.join(root, file)
-                file_paths.append(full_path)
+                file_paths.append(os.path.join(root, file))
 
     return file_paths
 
@@ -81,7 +101,11 @@ def parser_error_counter(go_files):
     for error_path in error_paths:
         print(error_path)
 
-go_files = get_file_paths_with_suffixes(GO_FOLDER, GO_SUFFIXES)
+go_files = get_file_paths_with_suffixes(
+    GO_FOLDER,
+    GO_SUFFIXES,
+    ignore_folders=["vendor"],
+    include_subfolders=["vendor/github.com/openshift-kni/eco-goinfra"])
 print(f'GO_FILES len: {len(go_files)}')
 
 #########################################################################################################
