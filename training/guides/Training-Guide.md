@@ -166,3 +166,5 @@ llamafactory-cli train \
     --disable_gradient_checkpointing False
 ```
 
+## LLM Training framework and overview session
+[Session video](https://drive.google.com/file/d/16FSwz422uMIGqbDvpIL7XWKjPoirT2wN/view)
