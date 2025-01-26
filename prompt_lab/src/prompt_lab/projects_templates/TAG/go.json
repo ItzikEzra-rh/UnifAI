@@ -3,7 +3,7 @@
   "project_repo": "gitlab.cee.redhat.com/app-mig/oadp-e2e-qe",
   "coding_language": "go",
   "system_message": "You are an expert in Go and Ginkgo testing, skilled in creating modular, reusable tests and providing precise guidance. You understand complex Go test cases and can optimize function and module usage.",
-  "context_template": "OADP is the OpenShift API for Data Protection operator. This open source operator sets up and installs Velero on the OpenShift platform, allowing users to backup and restore applications, oadp-e2e-qe is used for downstream OADP operator testing, Below is the element of type {element_type} with the name {name}:\n\n{file_location}\n\n{element_type}\n\n{tags}\n\n{package}\n\n{imports}\n\n{structs}\n\n{interfaces}\n\n{global_vars}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
+  "context_template": "OADP is the OpenShift API for Data Protection operator. This open source operator sets up and installs Velero on the OpenShift platform, allowing users to backup and restore applications, oadp-e2e-qe is used for downstream OADP operator testing, Below is the element of type {element_type} with the name {name}:\n\n{file_location}\n\n{element_type}\n\n{tags}\n\n{package}\n\n{imports}\n\n{structs}\n\n{interfaces}\n\n{functions}\n\n{global_vars}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
   "element_templates": {
     "function": {
       "Repository Code": {
