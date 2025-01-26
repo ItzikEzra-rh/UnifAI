@@ -91,7 +91,7 @@ class GoParser(TreeSitterParser):
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",  # Mapped resource imports
                 "structs": "",
                 "interfaces": "",
-                "file_location": f"File Location: github.com/kubevirt/{self.realtive_path}",
+                "file_location": f"File Location: github.com/{self.project_name}/{self.realtive_path}",
                 "code": content,
                 "global_vars": "",
                 "package": f"Package Name: {package_name}" if package_name else "",
@@ -99,7 +99,7 @@ class GoParser(TreeSitterParser):
             }
 
         root_node, content = self.get_root_node()
-        file_type = "File"
+        file_type = "file"
         return extract_entire_code(root_node, content, file_type)
     
     def functions_parsing(self):
@@ -173,7 +173,7 @@ class GoParser(TreeSitterParser):
                     "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
                     "structs": f"Structs Used: {used_structs}" if len(used_structs) > 0 else "",
                     "interfaces": f"Interfaces Used: {used_interfaces}" if len(used_interfaces) > 0 else "",
-                    "file_location": f"File Location: github.com/kubevirt/{self.realtive_path}",
+                    "file_location": f"File Location: github.com/{self.project_name}/{self.realtive_path}",
                     "code": func_code,
                     # "file_code": content,
                     "global_vars": f"Global Variables: {global_vars}" if len(global_vars) > 0 else "",
@@ -264,9 +264,9 @@ class GoParser(TreeSitterParser):
                     func_expr = current_node.child_by_field_name("function")
                     if func_expr:
                         func_name = func_expr.text.decode("utf-8")
-                        if func_name == "g.Describe" or func_name == "Describe" or re.fullmatch(r"\w*Describe(?!Table).*", func_name) or re.fullmatch(r"(?:.+\.)?SIG(?:\w+)?Describe", func_name) or func_name == "When":
+                        if func_name == "g.Describe" or func_name == "ginkgo.Describe" or func_name == "Describe" or re.fullmatch(r"\w*Describe(?!Table).*", func_name) or re.fullmatch(r"(?:.+\.)?SIG(?:\w+)?Describe", func_name) or func_name == "When":
                             describe_blocks.append(current_node)
-                        elif func_name == "g.It" or func_name == "It" or func_name == "DescribeTable":
+                        elif func_name == "g.It" or func_name == "It" or func_name == "DescribeTable" or func_name == "ginkgo.DescribeTable":
                             it_blocks.append(current_node)
                 
                 nodes_to_visit.extend(current_node.children)
@@ -309,7 +309,7 @@ class GoParser(TreeSitterParser):
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
                 "structs": f"Structs Used: {used_structs}" if len(used_structs) > 0 else "",
                 "interfaces": f"Interfaces Used: {used_interfaces}" if len(used_interfaces) > 0 else "",
-                "file_location": f"File Location: github.com/kubevirt/{self.realtive_path}",
+                "file_location": f"File Location: github.com/{self.project_name}/{self.realtive_path}",
                 "code": test_code,
                 # "file_code": content,
                 "global_vars": f"Global Variables: {global_vars}" if len(global_vars) > 0 else "",
@@ -341,7 +341,7 @@ class GoParser(TreeSitterParser):
                 "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "" ,
                 "structs": "",
                 "interfaces": "",
-                "file_location": f"File Location: github.com/kubevirt/{self.realtive_path}",
+                "file_location": f"File Location: github.com/{self.project_name}/{self.realtive_path}",
                 "code": test_case_code,
                 # "file_code": content,
                 "global_vars": "",
