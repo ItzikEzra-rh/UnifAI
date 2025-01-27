@@ -4,9 +4,9 @@ registry_user: rh-ee-yhabushi
 registry_password: oWbeT+YQOEcDPo+rVOsPqtFHBPV6fIZk/mkcMtpMWR4wxBPcR1P2t5IoJ+ChzkSZ
 hf_token: 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
 rabbitmq_port: 8002
-rabbitmq_ip: "instructlab.fp5g7.sandbox1786.opentlc.com"
+rabbitmq_ip: "instructlab.lxp9z.sandbox1767.opentlc.com"
 mongo_port: 8001
-mongo_ip: "instructlab.fp5g7.sandbox1786.opentlc.com"
+mongo_ip: "instructlab.lxp9z.sandbox1767.opentlc.com"
 
 
 #reviewer
@@ -21,7 +21,7 @@ reviewer_score_threshold: 75.0
 
 
 #prompt_lab
-prompt_lab_image: quay.io/rh-ee-yhabushi/tag/prompt_lab:2025.01.20
+prompt_lab_image: quay.io/rh-ee-yhabushi/tag/prompt_lab:latest
 input_dataset_repo: oodeh/mta_tests_parsed 
 input_dataset_file_name: input_8_elements_16_prompts.json
 output_dataset_repo: oodeh/mta_tests_parsed
@@ -36,3 +36,6 @@ template_name:
 template_agent: DeepCode
 template_type: typescript
 max_retry: 3
+templates_project_context": "The kubev2v/migration-planner project is a tool designed to simplify the migration of virtual machines (VMs) from traditional platforms like VMware to OpenShift Virtualization, a Kubernetes-based platform for managing both containerized and virtualized workloads. It leverages KubeVirt to enable running VMs in Kubernetes-native environments.\nThe tool is part of the Konveyor ecosystem, which includes tools like Forklift for workload modernization and migration. It provides features such as resource mapping, automated migration workflows, and a user-friendly UI for managing credentials, tracking connections, and configuring migrations. Built with Go and licensed under Apache-2.0, it integrates with Kubernetes APIs and tools like Multus for networking and storage.\nAs part of Red Hat's ecosystem, it serves as the upstream version of enterprise-grade migration tools for OpenShift, helping users transition VMware-based workloads to Kubernetes efficiently."
+project_id": "migration-planner"
+project_repo": "https://github.com/kubev2v/migration-planner"
