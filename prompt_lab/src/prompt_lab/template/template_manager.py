@@ -12,12 +12,26 @@ class TemplateManager:
     PARAMS = ["project_id", "project_repo", "coding_language"]
 
     def __init__(self):
+        self.config = ConfigManager()
         self.project_config = load_json_config(self.get_template_path)
+        self.__init_template_params()
         self.element_templates = self.project_config.get("element_templates", {})
-        self.template_used_params = self._initialize_template_params()
+        self.template_used_params = self._get_template_used_template_params()
         self.env = Environment()
 
-    def _initialize_template_params(self):
+    def __init_template_params(self):
+        project_context = self.config.get("templates_project_context", "")
+        project_id = self.config.get("project_id", "")
+        project_repo = self.config.get("project_repo", "")
+        if project_context:
+            self.project_config[
+                "context_template"] = f"""{project_context}, {self.project_config["context_template"]}"""
+        if project_id:
+            self.project_config["project_id"] = project_id
+        if project_repo:
+            self.project_config["project_repo"] = project_repo
+
+    def _get_template_used_template_params(self):
         """Initialize and return template parameters from the project configuration."""
         params = {}
         for param in self.PARAMS:

@@ -25,5 +25,8 @@
   "templates_path": "${TEMPLATE_NAME}",
   "templates_dir_path": "projects_templates/",
   "templates_agent": "${TEMPLATE_AGENT}",
-  "templates_type": "${TEMPLATE_TYPE}"
+  "templates_type": "${TEMPLATE_TYPE}",
+  "templates_project_context": "${TEMPLATE_PROJECT_CONTEXT}",
+  "project_id": "${PROJECT_ID}",
+  "project_repo": "${PROJECT_REPO}"
 }
