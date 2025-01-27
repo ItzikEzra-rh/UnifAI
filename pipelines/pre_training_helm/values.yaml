@@ -206,4 +206,3 @@ misc:
       type: ClusterIP
       port: 5672
       managementPort: 15672
-	  
