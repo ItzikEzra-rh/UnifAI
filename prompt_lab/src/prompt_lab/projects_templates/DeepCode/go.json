@@ -3,7 +3,7 @@
   "project_repo": "",
   "coding_language": "go",
   "system_message": "You are an expert in Go programming, skilled in analyzing and improving modular, efficient, and maintainable code. You excel in understanding complex Go codebases, optimizing function and module usage, and ensuring adherence to best practices for performance, scalability, and security.",
-  "context_template": "Below is the element of type {element_type} with the name {name}:\n\n{file_location}\n\n{element_type}\n\n{tags}\n\n{package}\n\n{imports}\n\n{structs}\n\n{interfaces}\n\n{functions}\n\n{global_vars}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
+  "context_template": "the {project_id} repository: {project_repo}.\nBelow is the element of type {element_type} with the name {name}:\n\n{file_location}\n\n{element_type}\n\n{tags}\n\n{package}\n\n{imports}\n\n{structs}\n\n{interfaces}\n\n{functions}\n\n{global_vars}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
   "element_templates": {
     "function": {
       "Repository Code": {
