@@ -639,7 +639,7 @@
               "validation": "Does the explanation clearly list the dependencies that the package `{name}` in `{file_location}` interacts with and explain their roles?"
             }
           ],
-          "condition": "{{ element.structs or element.interfaces or element.functions] }}"
+          "condition": "{{ element.structs or element.interfaces or element.functions }}"
         }
       },
       "Code usage": {
@@ -666,7 +666,7 @@
               "validation": "Does the explanation describe how to integrate the elements from `{name}` at `{file_location}` into other parts of a codebase and include usage examples?"
             }
           ],
-          "condition": "{{ element.structs or element.interfaces or element.functions] }}"
+          "condition": "{{ element.structs or element.interfaces or element.functions }}"
         }
       }
     }
