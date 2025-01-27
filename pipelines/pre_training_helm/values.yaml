@@ -78,6 +78,10 @@ global:
     OUTPUT_DATASET_REPO:
     OUTPUT_DATASET_FILE_NAME:
 
+    TEMPLATE_PROJECT_CONTEXT: "The kubev2v/migration-planner project is a tool designed to simplify the migration of virtual machines (VMs) from traditional platforms like VMware to OpenShift Virtualization, a Kubernetes-based platform for managing both containerized and virtualized workloads. It leverages KubeVirt to enable running VMs in Kubernetes-native environments.\nThe tool is part of the Konveyor ecosystem, which includes tools like Forklift for workload modernization and migration. It provides features such as resource mapping, automated migration workflows, and a user-friendly UI for managing credentials, tracking connections, and configuring migrations. Built with Go and licensed under Apache-2.0, it integrates with Kubernetes APIs and tools like Multus for networking and storage.\nAs part of Red Hat's ecosystem, it serves as the upstream version of enterprise-grade migration tools for OpenShift, helping users transition VMware-based workloads to Kubernetes efficiently."
+    PROJECT_ID: "migration-planner"
+    PROJECT_REPO: "https://github.com/kubev2v/migration-planner"
+
 # ====================================================================================
 # DO NOT MODIFY ANYTHING BELOW THIS LINE
 # Changes made below this line may break the deployment or cause unexpected behavior.
