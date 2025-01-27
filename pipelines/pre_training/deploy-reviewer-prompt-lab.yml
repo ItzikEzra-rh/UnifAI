@@ -237,7 +237,7 @@
             -e MAX_RETRY={{ max_retry }} \
             -e TEMPLATE_PROJECT_CONTEXT={{templates_project_context}} \
             -e PROJECT_ID={{project_id}} \
-            -e PROJECT_REPO ={{project_repo}} \
+            -e PROJECT_REPO={{project_repo}} \
             {{ prompt_lab_image_name }} orbiter --celery --reviewer --celery-worker-concurrency 4 --celery-worker-prefetch-count 2
 
 ################################################################################################
@@ -293,7 +293,7 @@
             -e MAX_RETRY={{ max_retry }} \
             -e TEMPLATE_PROJECT_CONTEXT={{templates_project_context}} \
             -e PROJECT_ID={{project_id}} \
-            -e PROJECT_REPO ={{project_repo}} \
+            -e PROJECT_REPO={{project_repo}} \
             {{ prompt_lab_image_name }} landing --celery
 
 ################################################################################################
@@ -349,5 +349,5 @@
             -e MAX_RETRY={{ max_retry }} \
             -e TEMPLATE_PROJECT_CONTEXT={{templates_project_context}} \
             -e PROJECT_ID={{project_id}} \
-            -e PROJECT_REPO ={{project_repo}} \
+            -e PROJECT_REPO={{project_repo}} \
             {{ prompt_lab_image_name }} launchpad
