@@ -313,7 +313,7 @@ class TypeScriptParser(TreeSitterParser):
         return tests
 
 """
-TODO: Need to support defailt imports
+TODO: Need to support default imports
 E.G. import * as commonView from "../../../views/common.view";
 
 TODO: Anonymous functions won't be parsed due to design decision, other functions definitions will be treated: 

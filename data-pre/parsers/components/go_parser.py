@@ -88,13 +88,13 @@ class GoParser(TreeSitterParser):
                 "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
                 "name": os.path.basename(self.realtive_path),
-                "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",  # Mapped resource imports
+                "imports": f"{used_imports}" if len(used_imports) > 0 else "",  # Mapped resource imports
                 "structs": "",
                 "interfaces": "",
-                "file_location": f"File Location: github.com/{self.project_name}/{self.realtive_path}",
+                "file_location": f"github.com/{self.project_name}/{self.realtive_path}",
                 "code": content,
                 "global_vars": "",
-                "package": f"Package Name: {package_name}" if package_name else "",
+                "package": f"{package_name}" if package_name else "",
                 "tags": ""
             }
 
@@ -170,14 +170,14 @@ class GoParser(TreeSitterParser):
                     "project_name": self.project_name,
                     "uuid": str(uuid.uuid4()),
                     "name": func_name,
-                    "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
-                    "structs": f"Structs Used: {used_structs}" if len(used_structs) > 0 else "",
-                    "interfaces": f"Interfaces Used: {used_interfaces}" if len(used_interfaces) > 0 else "",
-                    "file_location": f"File Location: github.com/{self.project_name}/{self.realtive_path}",
+                    "imports": f"{used_imports}" if len(used_imports) > 0 else "",
+                    "structs": f"{used_structs}" if len(used_structs) > 0 else "",
+                    "interfaces": f"{used_interfaces}" if len(used_interfaces) > 0 else "",
+                    "file_location": f"github.com/{self.project_name}/{self.realtive_path}",
                     "code": func_code,
                     # "file_code": content,
-                    "global_vars": f"Global Variables: {global_vars}" if len(global_vars) > 0 else "",
-                    "package": f"Package Name: {package_name}" if package_name else "",
+                    "global_vars": f"{global_vars}" if len(global_vars) > 0 else "",
+                    "package": f"{package_name}" if package_name else "",
                     "tags": ""
                 }
                 functions.append(function)
@@ -306,15 +306,15 @@ class GoParser(TreeSitterParser):
                 "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
                 "name": test_name,
-                "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
-                "structs": f"Structs Used: {used_structs}" if len(used_structs) > 0 else "",
-                "interfaces": f"Interfaces Used: {used_interfaces}" if len(used_interfaces) > 0 else "",
-                "file_location": f"File Location: github.com/{self.project_name}/{self.realtive_path}",
+                "imports": f"{used_imports}" if len(used_imports) > 0 else "",
+                "structs": f"{used_structs}" if len(used_structs) > 0 else "",
+                "interfaces": f"{used_interfaces}" if len(used_interfaces) > 0 else "",
+                "file_location": f"github.com/{self.project_name}/{self.realtive_path}",
                 "code": test_code,
                 # "file_code": content,
-                "global_vars": f"Global Variables: {global_vars}" if len(global_vars) > 0 else "",
-                "package": f"Package Name: {package_name}" if package_name else "",
-                "tags": f"Tags: {tags}" if len(tags) > 0 else ""
+                "global_vars": f"{global_vars}" if len(global_vars) > 0 else "",
+                "package": f"{package_name}" if package_name else "",
+                "tags": f"{tags}" if len(tags) > 0 else ""
             }
             
             tests.append(test)
@@ -338,10 +338,10 @@ class GoParser(TreeSitterParser):
                 "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
                 "name": test_case_name,
-                "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "" ,
+                "imports": f"{used_imports}" if len(used_imports) > 0 else "" ,
                 "structs": "",
                 "interfaces": "",
-                "file_location": f"File Location: github.com/{self.project_name}/{self.realtive_path}",
+                "file_location": f"github.com/{self.project_name}/{self.realtive_path}",
                 "code": test_case_code,
                 # "file_code": content,
                 "global_vars": "",

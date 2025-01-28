@@ -246,6 +246,26 @@ robot_file_libraries_mapping = {}
 robot_file_names_mapping = {}
 
 for path in robot_files:
+    robot_parser = RobotParser(file_path=path)
+    file_name, keywords_name_list = robot_parser.get_keywords_name_list()
+    realtive_file_name = path.replace(f"{ROBOT_FOLDER}/", "", 1)
+    last_string_in_file_name = realtive_file_name.split('/')[-1]
+
+    # if (last_string_in_file_name in robot_file_names_mapping):
+    #     print(f'Same suffix file name, already exist: {last_string_in_file_name}')
+    
+    robot_file_names_mapping.update({
+        f'{last_string_in_file_name}': realtive_file_name
+    })
+    add_to_dict(realtive_file_name, keywords_name_list, robot_file_keywords_mapping)
+
+    # Get the current library dictionary
+    current_libraries = robot_parser.get_libraries_name_list()
+
+    # Merge current_libraries into robot_file_libraries_mapping
+    robot_file_libraries_mapping.update(current_libraries)
+
+for path in robot_files:
     # realtive_file_path = path.replace("/home/cloud-user/Projects/ods-ci/", "", 1)
     realtive_file_path = path.replace(f"{ROBOT_FOLDER}/", "", 1)
     robot_parser = RobotParser(file_path=path, realtive_path=realtive_file_path, project_name=ROBOT_PROJECT_NAME)
@@ -264,9 +284,9 @@ for internal_list in robot_files_internal_functions_mapping:
     for obj in internal_list:
         robot_files_internal_functions_mapping_flatten.append(obj)
          
+robot_files_internal_functions_mapping_flatten = list(filter(lambda obj: obj["code"] != "" , robot_files_internal_functions_mapping_flatten))
 json_formatted_str = json.dumps(robot_files_internal_functions_mapping_flatten, indent=2)
 write_to_file(json_formatted_str, filename=f'{ROBOT_PROJECT_NAME}_Mapping {AGENT_NAME}.json')
-write_to_file(json_formatted_str, filename='NCS_Files_Mapping.json')
 print(f"Number Of Parsed Files: {counter}")
 
 # robot_file_internal_functions_mapping = {}

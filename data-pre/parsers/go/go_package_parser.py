@@ -5,10 +5,10 @@ import subprocess
 import re
 from typing import List, Dict, Any\
 
-GO_FOLDER = '/home/cloud-user/Projects/tag-integration-with-oadp/oadp-e2e-qe'
-AGENT_NAME = '(PACKAGE_DEEPCODE)'
-GO_PROJECT_NAME = 'app-mig/oadp-e2e-qe'
-GO_FILE_PROJECT_NAME = 'oadp-e2e-qe'
+GO_FOLDER = '/home/cloud-user/Projects/tag-integration-with-mpc/multi-platform-controller'
+AGENT_NAME = '(DEEP_CODE)'
+GO_PROJECT_NAME = 'konflux-ci/multi-platform-controller'
+GO_FILE_PROJECT_NAME = 'MPC'
 
 def write_to_file(my_list, filename="TC's_mapping_list.txt"):
     # Write each item of the list to a new line in the file
@@ -44,10 +44,10 @@ class GoParser:
     def analyze_package(self, package_name: str) -> Dict[str, Any]:
         """Analyze a single package to extract its structs, interfaces, and functions."""
         package_data = {
-            "element_type": "Package",
+            "element_type": "package",
             "project_name": self.project_name,
             "uuid": str(uuid.uuid4()),
-            "name": os.path.basename(package_name),
+            "name": f"{os.path.basename(package_name)}",
             "file_location": f"{package_name}",
             "structs": [],
             "interfaces": [],
@@ -56,11 +56,17 @@ class GoParser:
 
         # package_relative_repo_path = re.sub(r'^github\.com\/openshift\/assisted-service', '', package_name).lstrip('/')
         # package_relative_repo_path = re.sub(r'^github\.com\/openshift\/oadp-operator', '', package_name).lstrip('/')
-        package_relative_repo_path = re.sub(r'^gitlab\.cee\.redhat\.com\/app-mig\/oadp-e2e-qe', '', package_name).lstrip('/')
+        # package_relative_repo_path = re.sub(r'^gitlab\.cee\.redhat\.com\/app-mig\/oadp-e2e-qe', '', package_name).lstrip('/')
+        # package_relative_repo_path = re.sub(r'^github\.com\/kubev2v\/migration-planner', '', package_name).lstrip('/')
+        package_relative_repo_path = re.sub(r'^github\.com\/konflux-ci\/multi-platform-controller', '', package_name).lstrip('/')
         package_path = os.path.join(self.repo_path, package_relative_repo_path)
 
         # Extract data for the entire package
         self.extract_package_data(package_path, package_data)
+
+        package_data["structs"] = f"{package_data["structs"]}"
+        package_data["interfaces"] = f"{package_data["interfaces"]}"
+        package_data["functions"] = f"{package_data["functions"]}"
 
         return package_data
 
@@ -151,14 +157,14 @@ class GoParser:
 
 # Example usage
 if __name__ == "__main__":
-    project_name = GO_FILE_PROJECT_NAME
+    project_name = GO_PROJECT_NAME
     repo_path = GO_FOLDER
 
     parser = GoParser(project_name, repo_path)
     result = parser.run()
 
     json_formatted_str = json.dumps(result, indent=2)
-    write_to_file(json_formatted_str, filename=f'{GO_FILE_PROJECT_NAME}Packages.json')
+    write_to_file(json_formatted_str, filename=f'{GO_FILE_PROJECT_NAME}_Packages {AGENT_NAME}.json')
 
 
 #############################################################################

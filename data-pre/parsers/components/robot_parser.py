@@ -967,17 +967,13 @@ class RobotParser(TreeSitterParser):
 
                 return {
                     "code": code,
-                    "dependencies": {
-                        "settings": library_mapping,
-                        "variables": variables_mapping,
-                    },
-                    "additional_data": {
-                        "name": name,
-                        "documentation": documentation,
-                    },
-                    "calls": type_mapping,  # The new keyword mappings per definition
-                    "imports_file_locations": imports_file_locations,  # Mapped resource imports
-                    "file_location": self.realtive_path,
+                    "settings": f"{library_mapping}",
+                    "variables": f"{variables_mapping}",
+                    "name": f"{name}",
+                    "documentation": f"{documentation}",
+                    # "calls": type_mapping,  # The new keyword mappings per definition
+                    "imports_file_locations": f"{imports_file_locations}",  # Mapped resource imports
+                    "file_location": f"https://scm.cci.nokia.net/cia/automation-tests-ncs/24/{self.realtive_path}",
                     "element_type": type,  # Either 'Test_Case' or 'Keyword'
                     "project_name": self.project_name
                 }
@@ -990,13 +986,13 @@ class RobotParser(TreeSitterParser):
                 for child in test_cases_node.children:
                     if child.type == "test_case_definition":
                         # Test case definition
-                        definitions.append(extract_definitions(child, "Test_Case"))
+                        definitions.append(extract_definitions(child, "test_case"))
 
             if keywords_node:
                 for child in keywords_node.children:
                     if child.type == "keyword_definition":
                         # Keyword definition
-                        definitions.append(extract_definitions(child, "Keyword"))
+                        definitions.append(extract_definitions(child, "keyword"))
 
             return definitions
 
@@ -1094,12 +1090,13 @@ class RobotParser(TreeSitterParser):
             """Helper function to extract entire robot code."""
             return {
                 "code": content,
-                "imports_file_locations": map_imports_file_locations(),  # Mapped resource imports
-                "file_location": self.realtive_path,
+                "name": f"{self.realtive_path}",
+                "imports_file_locations": f"{map_imports_file_locations()}",  # Mapped resource imports
+                "file_location": f"https://scm.cci.nokia.net/cia/automation-tests-ncs/24/{self.realtive_path}",
                 "element_type": file_type,  # Either 'Test' or 'Resource'
                 "project_name": self.project_name
             }
 
         root_node, content = self.get_root_node()
-        file_type = "Test" if self.get_main_section_node(root_node, 'test_cases_section') else "Resource"
+        file_type = "test" if self.get_main_section_node(root_node, 'test_cases_section') else "resource"
         return extract_entire_code(root_node, content, file_type)
