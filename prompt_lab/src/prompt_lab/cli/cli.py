@@ -75,7 +75,8 @@ def common_options(command):
                      help="Number of Celery concurrency worker."),
         click.option('--celery-worker-prefetch-count', default=4, show_default=True,
                      help="Number of Celery worker prefetch count."),
-        click.option('--celery', is_flag=True, help="Run with Celery worker.")
+        click.option('--celery', is_flag=True, help="Run with Celery worker."),
+        click.option('--project-id', help="Project ID")
     ]
     for option in reversed(options):
         command = option(command)
@@ -120,6 +121,8 @@ def handle_task(task_function, ctx: click.Context, kwargs: Dict[str, Any], queue
 @click.option('--orbiter-queue-target-size', help="Orbiter queue target size.")
 @click.option('--input-dataset-repo', help="Input dataset repository ID.")
 @click.option('--input-dataset-file-name', help="Input dataset file name in the repo.")
+@click.option('--templates-project-context', help="Context of the project.")
+@click.option('--project-repo', help="Project repo url")
 @click.pass_context
 def launchpad(ctx: click.Context, **kwargs: Any) -> None:
     """Prepare and enqueue prompts for processing."""

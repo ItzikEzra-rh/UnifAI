@@ -1,6 +1,6 @@
 {
-  "project_id": "tackle2-ui",
-  "project_repo": "https://github.com/konveyor/tackle2-ui",
+  "project_id": "",
+  "project_repo": "",
   "coding_language": "typescript",
   "system_message": "You are an expert in TypeScript, skilled in designing modular, scalable, and reusable code. You provide precise guidance on solving complex problems, ensuring optimal use of TypeScript features such as types, interfaces, generics, and modules. You follow clear and consistent coding principles, enabling clean, maintainable, and efficient codebases.",
   "context_template": "the {project_id} repository: {project_repo}.\nBelow is the element details:\n\n{element_type}\n\n{name}\n\n{file_location}\n\n{imports}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
