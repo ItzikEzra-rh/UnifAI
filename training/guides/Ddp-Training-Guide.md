@@ -19,7 +19,7 @@ This guide explains how to run **finetuning** for an LLM model in **Distributed 
 
 Before proceeding, ensure you have:
 
-- **8 nodes** (servers or VMs) with GPUs and PyTorch installed.
+- **x nodes** (where x > 1)(servers or VMs) with GPUs and PyTorch installed.
 - **WireGuard** installed for secure communication between nodes.
 - Python 3.11 and necessary libraries installed.
 - Internet access for downloading model checkpoints and packages.
