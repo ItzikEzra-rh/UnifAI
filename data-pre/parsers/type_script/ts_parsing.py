@@ -5,10 +5,11 @@ import sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from components.tree_sitter_parser import TreeSitterParser
 
-TYPE_SCRIPT_FOLDER = '/home/cloud-user/Projects/tag-integration-with-migration-planner/migration-planner-ui'
+TYPE_SCRIPT_FOLDER = '/home/cloud-user/Projects/tag-integration-with-flight-control/flightctl-ui'
 AGENT_NAME = '(DEEP_CODE)'
-TYPE_SCRIPT_PROJECT_NAME = 'migration-planner-ui'
-TYPE_SCRIPT_SUFFIXES = [".ts", ".tsx"]
+TYPE_SCRIPT_PROJECT_NAME = 'flightctl/flightctl-ui'
+TYPE_SCRIPT_FILE_PROJECT_NAME = 'flightctl-ui'
+TYPE_SCRIPT_SUFFIXES = [".ts", ".tsx", ".js"]
 
 def write_to_file(my_list, filename="TC's_Mapping.txt"):
     # Write each item of the list to a new line in the file
@@ -51,7 +52,7 @@ for path in type_script_files:
         print(f"Failed to update with: {e}")
 
 json_formatted_str = json.dumps(project_files_mapping, indent=2)
-write_to_file(json_formatted_str, filename=f'{TYPE_SCRIPT_PROJECT_NAME}_Mapping {AGENT_NAME}.json')
+write_to_file(json_formatted_str, filename=f'{TYPE_SCRIPT_FILE_PROJECT_NAME}_Mapping{AGENT_NAME}.json')
 print(f"Number Of Parsed Files: {counter}")
 
 # print(json_formatted_str)

@@ -73,12 +73,12 @@ class TypeScriptParser(TreeSitterParser):
             """Helper function to extract entire typescript file code."""
             used_imports = self.get_all_imports(node)
             return {
-                "element_type": file_type,
+                "element_type": f"{file_type}",
                 "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
-                "name": os.path.basename(self.realtive_path),
+                "name": f"{os.path.basename(self.realtive_path)}",
                 "imports": f"{used_imports}" if len(used_imports) > 0 else "",
-                "file_location": f"https://github.com/konveyor/{self.project_name}/{self.realtive_path}",
+                "file_location": f"https://github.com/{self.project_name}/{self.realtive_path}",
                 "code": content,
             }
 
@@ -162,11 +162,11 @@ class TypeScriptParser(TreeSitterParser):
                 "element_type": "function",
                 "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
-                "name": func_name,
+                "name": f"{func_name}",
                 "imports": f"{used_imports}" if len(used_imports) > 0 else "",
-                "file_location": f"https://github.com/konveyor/{self.project_name}/{self.realtive_path}",
-                "code": func_code,
-                "parent": parent_info or ""
+                "file_location": f"https://github.com/{self.project_name}/{self.realtive_path}",
+                "code": f"{func_code}",
+                "parent": f"{parent_info}" or ""
             }
 
             return function_details
@@ -274,10 +274,10 @@ class TypeScriptParser(TreeSitterParser):
                 "element_type": "test",
                 "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
-                "name": test_name,
+                "name": f"{test_name}",
                 "imports": f"{used_imports}" if len(used_imports) > 0 else "",
-                "file_location": f"https://github.com/konveyor/{self.project_name}/{self.realtive_path}",
-                "code": test_code,
+                "file_location": f"https://github.com/{self.project_name}/{self.realtive_path}",
+                "code": f"{test_code}",
             }
             
             tests.append(test)
@@ -302,10 +302,10 @@ class TypeScriptParser(TreeSitterParser):
                 "element_type": "test case",
                 "project_name": self.project_name,
                 "uuid": str(uuid.uuid4()),
-                "name": test_case_name,
-                "imports": f"Imports Used: {used_imports}" if len(used_imports) > 0 else "",
-                "file_location": f"https://github.com/konveyor/{self.project_name}/{self.realtive_path}",
-                "code": test_case_code,
+                "name": f"{test_case_name}",
+                "imports": f"{used_imports}" if len(used_imports) > 0 else "",
+                "file_location": f"https://github.com/{self.project_name}/{self.realtive_path}",
+                "code": f"{test_case_code}",
             } 
             test_cases.append(test_case)
         

@@ -5,10 +5,12 @@ import subprocess
 import re
 from typing import List, Dict, Any\
 
-GO_FOLDER = '/home/cloud-user/Projects/tag-integration-with-mpc/multi-platform-controller'
-AGENT_NAME = '(DEEP_CODE)'
-GO_PROJECT_NAME = 'konflux-ci/multi-platform-controller'
-GO_FILE_PROJECT_NAME = 'MPC'
+# AGENT_NAME = '(DEEP_CODE)'
+AGENT_NAME = '(TAG)'
+
+GO_FOLDER = '/home/cloud-user/Projects/tag-integration-with-flight-control/flightctl'
+GO_PROJECT_NAME = 'flightctl/flightctl'
+GO_FILE_PROJECT_NAME = 'flightctl'
 
 def write_to_file(my_list, filename="TC's_mapping_list.txt"):
     # Write each item of the list to a new line in the file
@@ -63,11 +65,6 @@ class GoParser:
 
         # Extract data for the entire package
         self.extract_package_data(package_path, package_data)
-
-        package_data["structs"] = f"{package_data["structs"]}"
-        package_data["interfaces"] = f"{package_data["interfaces"]}"
-        package_data["functions"] = f"{package_data["functions"]}"
-
         return package_data
 
     def extract_package_data(self, package_path: str, package_data: Dict[str, Any]):
@@ -102,9 +99,9 @@ class GoParser:
                     }
                     
                     if kind == "struct":
-                        package_data["structs"].append(entry)
+                        package_data["structs"].append(f"{entry}")
                     else:
-                        package_data["interfaces"].append(entry)
+                        package_data["interfaces"].append(f"{entry}")
                 
                 pos = start_pos + (len(definition) if definition else 1)
             
@@ -149,11 +146,12 @@ class GoParser:
                 
                 # Clean up the signature
                 signature = re.sub(r'\s+', ' ', signature.strip())
-                
-                package_data["functions"].append({
+                function_entry = {
                     "name": name,
                     "signature": f"func {name}{signature}"
-                })
+                }
+
+                package_data["functions"].append(f"{function_entry}")
 
 # Example usage
 if __name__ == "__main__":
@@ -164,7 +162,7 @@ if __name__ == "__main__":
     result = parser.run()
 
     json_formatted_str = json.dumps(result, indent=2)
-    write_to_file(json_formatted_str, filename=f'{GO_FILE_PROJECT_NAME}_Packages {AGENT_NAME}.json')
+    write_to_file(json_formatted_str, filename=f'{GO_FILE_PROJECT_NAME}_Packages{AGENT_NAME}.json')
 
 
 #############################################################################
