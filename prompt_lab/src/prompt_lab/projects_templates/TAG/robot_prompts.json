@@ -1,0 +1,77 @@
+{
+  "project_id": "",
+  "project_repo": "",
+  "coding_language": "robot",
+  "system_message": "You are an expert in Robot Framework testing. You provide precise and optimized prompts for Robot Framework code. Your response consists solely of the prompt, with no additional explanations or comments.",
+  "context_template": "Below is the element of type {element_type} with the name {name}:\n\n{settings}\n\n{variables}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
+  "element_templates": {
+    "test": {
+      "Prompts": {
+        "Short Prompt (Concise & Direct)": {
+          "questions": [
+            {
+              "question": "Provide a concise, short and accurate prompt that precisely describes the {element_type}.",
+              "validation": ""
+            }
+          ]
+        },
+        "Detailed Prompt (Comprehensive & In-Depth)": {
+          "questions": [
+            {
+              "question": "Give a detailed explanation prompt of the {element_type}, including its purpose, key validation points, and expected outcomes.",
+              "validation": ""
+            }
+          ]
+        },
+        "Step-by-Step Prompt (Instructional)": {
+          "questions": [
+            {
+              "question": "Create a step-by-step prompt that guides through designing, implementing, and validating the {element_type}, covering setup, execution, and result verification.",
+              "validation": ""
+            }
+          ]
+        },
+        "Contextual Prompt (Situation-Based)": {
+          "questions": [
+            {
+              "question": "Craft a scenario-based prompt that outlines how the {element_type} is utilized in a real-world workflow, detailing its purpose, key steps, and expected results for verifying functionality within that context.",
+              "validation": ""
+            }
+          ]
+        },
+        "Instructional Prompt": {
+          "questions": [
+            {
+              "question": "Generate an instructional prompt that explains how to design, implement, and validate the {element_type}, covering environment setup, test steps, and outcome verification in a clear and concise manner.",
+              "validation": ""
+            }
+          ]
+        }
+      }
+    },
+    "test_case": {
+      "Prompts": {
+        "Test Case Generation Prompt": {
+          "questions": [
+            {
+              "question": "Provide a concise, short and accurate prompt that precisely describes the {element_type}.",
+              "validation": ""
+            }
+          ]
+        }
+      }
+    },
+    "keyword": {
+      "Prompts": {
+        "Keyword Generation Prompt": {
+          "questions": [
+            {
+              "question": "Provide a concise, short and accurate prompt that precisely describes the {element_type}.",
+              "validation": ""
+            }
+          ]
+        }
+      }
+    }
+  }
+}
