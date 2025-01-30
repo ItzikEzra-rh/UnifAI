@@ -2,7 +2,7 @@
   "project_id": "",
   "project_repo": "",
   "coding_language": "robot",
-  "system_message": "You are an expert in Robot Framework testing. You provide precise and optimized prompts for Robot Framework code. Your response consists solely of the prompt, with no additional explanations or comments.",
+  "system_message": "You are an expert in Robot Framework testing. You provide precise and optimized prompts for Robot Framework code. Your response consists solely of the prompt, with no additional explanations or comments or code.",
   "context_template": "Below is the element of type {element_type} with the name {name}:\n\n{settings}\n\n{variables}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
   "element_templates": {
     "test": {
@@ -34,7 +34,7 @@
         "Contextual Prompt (Situation-Based)": {
           "questions": [
             {
-              "question": "Craft a scenario-based prompt that outlines how the {element_type} is utilized in a real-world workflow, detailing its purpose, key steps, and expected results for verifying functionality within that context.",
+              "question": "Provide an accurate prompt that precisely describes the {element_type} in more human way.",
               "validation": ""
             }
           ]
