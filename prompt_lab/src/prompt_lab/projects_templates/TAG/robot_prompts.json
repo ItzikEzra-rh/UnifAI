@@ -34,7 +34,7 @@
         "Contextual Prompt (Situation-Based)": {
           "questions": [
             {
-              "question": "Provide a accurate prompt that precisely describes the {element_type} in more human way.",
+              "question": "Provide an accurate prompt that precisely describes the {element_type} in more human way.",
               "validation": ""
             }
           ]
