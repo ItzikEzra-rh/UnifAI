@@ -5,7 +5,8 @@ metadata:
   namespace: {{ .Values.global.namespace }}
 data:
   wait-for-services.sh: |
-   
+    export REVIEWER_NUM="{{.Values.global.vllm_reviewer_replica}}"
+
     while [ "$(curl -s -o /dev/null -w "%{http_code}" -u genie:genie123 http://{{ .Release.Name }}-rabbitmq:15672/api/overview)" != "200" ]; do
       echo "Waiting for RabbitMQ service to be ready...";
       sleep 5;
@@ -20,15 +21,19 @@ data:
 
     if [ "$CHART_NAME" != "vllm" ]; then
 
-      while [ "$(curl -s -o /dev/null -w "%{http_code}" http://{{ .Release.Name }}-vllm-reviewer-svc:8000/health)" != "200" ]; do
-        echo "Waiting for Vllm-reviewer service to be ready...";
-        sleep 20;
-      done;
-      echo "Vllm-reviewer service is up!"
-      
-      while [ "$(curl -s -o /dev/null -w "%{http_code}"  http://{{ .Release.Name }}-vllm-orbiter-svc:8000/health)" != "200" ]; do
-        echo "Waiting for Vllm-reviewer service to be ready...";
-        sleep 20;
-      done;
-      echo "Vllm-orbiter service is up!"
+        while [ "$(curl -s -o /dev/null -w "%{http_code}"  http://{{ .Release.Name }}-vllm-orbiter-svc:8000/health)" != "200" ]; do
+          echo "Waiting for Vllm-orbiter service to be ready...";
+          sleep 20;
+        done;
+        echo "Vllm-orbiter service is up!"
+
+        if [ "$REVIEWER_NUM" -gt 0 ]; then
+
+          while [ "$(curl -s -o /dev/null -w "%{http_code}" http://{{ .Release.Name }}-vllm-reviewer-svc:8000/health)" != "200" ]; do
+            echo "Waiting for Vllm-reviewer service to be ready...";
+            sleep 20;
+          done;
+          echo "Vllm-reviewer service is up!"
+          
+        fi
     fi
