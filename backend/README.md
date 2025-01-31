@@ -19,27 +19,19 @@ All application data, including dataset information and LLM prompt history, is s
 
 ### Prerequisites
 
-- Python 3.8 or above
-- Flask
-- MongoDB
+podman installed.
 
 ### Installation
 
-1. Clone the repository.
-2. Install dependencies:
-   ```bash
-    pip install -r requirementsBE.txt
+```bash
+#cd the root. (Note: NOT the backend folder. The backend container build need include parallel folder `rag` so the podman build need be at the parent folder, ie root of the repo)
+podman build --tag genie-backend.latest .
+```
 
 ### Running the Application
-To start the Flask application, run:
-
-bash
-python app.py
-This will start the server, making it available to handle requests from the GUI.
-
+```
+podman run --name backend genie-backend.latest
+```
 ### API Documentation
 Each API endpoint is documented with details on request methods, parameters, and example responses. Refer to the API documentation for a complete guide.
 
-### Learn More
-To learn more about Flask, visit the [Flask documentation](https://flask.palletsprojects.com/en/stable/).
-For MongoDB, see the [MongoDB documentation](https://www.mongodb.com/docs/).
