@@ -23,5 +23,6 @@ ADD be.conf /opt/app-root/etc/nginx.default.d/be.conf.template
 COPY --from=build $HOME/ui/build $HOME
 EXPOSE 8080
 HEALTHCHECK CMD curl --fail http://localhost:8080 || exit 1
+#RUN ln -sf /dev/stdout /var/log/nginx/access.log && ln -sf /dev/stderr /var/log/nginx/error.log 
 #CMD ["nginx", "-g", "daemon off;"]
 CMD ["/usr/bin/bash", "-c", "envsubst '$LLM_BE_URL $BE_URL' < /opt/app-root/etc/nginx.default.d/be.conf.template > /opt/app-root/etc/nginx.default.d/be.conf && nginx -g 'daemon off;'"]
