@@ -42,7 +42,9 @@ services:
     ports:
       - "8080:8080"
     container_name: be
-    command: ['sleep','infinity']
+#    command: ['sleep','infinity']
+    environment:
+       - BACKEND_ENV=PRODUCTION
     networks:
       - genie-network
 
