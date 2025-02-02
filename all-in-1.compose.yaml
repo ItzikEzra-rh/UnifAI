@@ -45,6 +45,7 @@ services:
 #    command: ['sleep','infinity']
     environment:
        - BACKEND_ENV=PRODUCTION
+       - MONGODB_HOST=mongodb
     networks:
       - genie-network
 

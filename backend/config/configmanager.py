@@ -18,7 +18,10 @@ class ConfigManager(object):
     @staticmethod
     def load_config(config_file_path):
         parser = ConfigParser()
-        parser.read(config_file_path)
+        with open(config_file_path, 'r') as cfg_file:
+               cfg_txt = os.path.expandvars(cfg_file.read())
+
+        parser.read_string(cfg_txt)
         return parser
 
     def get(self, section, key, default=None):
