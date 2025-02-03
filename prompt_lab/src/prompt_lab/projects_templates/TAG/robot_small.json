@@ -1,0 +1,165 @@
+{
+  "project_id": "",
+  "project_repo": "",
+  "coding_language": "robot",
+  "system_message": "You are an expert in Robot Framework testing. Provide guidance on creating, debugging, and optimizing test cases, designing reusable keywords, and integrating best practices for efficient and maintainable automation.",
+  "context_template": "the {project_id} repository: {project_repo}.\nBelow is the element of type {element_type} with the name {name}:\n\n{file_location}\n\n{settings}\n\n{variables}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
+  "element_templates": {
+    "test": {
+      "Repository Code": {
+        "Repository structure": {
+          "questions": [
+            {
+              "question": "Here is the {element_type} from the repository {project_repo}:\\n\\n** {element_type}: `{file_location}`**\\n```{coding_language}\\n\\n{settings}\\n{variables}\\n\\n{code}\\n\\n describe the {element_type} location within the repository.",
+              "validation": "Is the location of the {element_type} in the repository accurately described?"
+            }
+          ]
+        }
+      },
+      "Code Summary": {
+        "Code purpose": {
+          "questions": [
+            {
+              "question": "What is the purpose of `{element_type}` `{name}` in `{file_location}`? Provide a detailed explanation of its responsibilities and significance.",
+              "validation": "Is the explanation comprehensive and clear about the purpose, responsibilities, and significance of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "Exploring the key objectives of `{element_type}` `{name}` in `{file_location}`: Provide a detailed explanation of its responsibilities and importance.",
+              "validation": "Is the explanation comprehensive and clear about the key objectives, responsibilities, and importance of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "Analyzing the role of `{element_type}` `{name}` in `{file_location}`: Provide a detailed explanation of its responsibilities and relevance.",
+              "validation": "Is the explanation comprehensive and clear about the role, responsibilities, and relevance of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "What is the significance of `{element_type}` `{name}` in `{file_location}`? Provide a detailed explanation of its purpose and responsibilities.",
+              "validation": "Is the explanation comprehensive and clear about the significance, purpose, and responsibilities of `{element_type}` `{name}` in `{file_location}`?"
+            }
+          ]
+        },
+        "Code Logic": {
+          "questions": [
+            {
+              "question": "What is the core logic implemented in `{element_type}` `{name}` in `{file_location}`? Provide a detailed explanation of its key operations.",
+              "validation": "Is the explanation clear and accurate about the core logic and key operations of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "Analyzing the decision-making process in `{element_type}` `{name}` in `{file_location}`: Provide a detailed explanation of its conditional logic and flow.",
+              "validation": "Is the explanation comprehensive and clear about the decision-making process and conditional logic of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "Exploring the algorithm in `{element_type}` `{name}` in `{file_location}`: Provide a detailed breakdown of the steps involved in its execution.",
+              "validation": "Is the explanation clear and comprehensive about the algorithm and execution steps of `{element_type}` `{name}` in `{file_location}`?"
+            },
+            {
+              "question": "What is the sequence of operations in `{element_type}` `{name}` in `{file_location}`? Provide a detailed summary of its logical flow.",
+              "validation": "Is the explanation clear and accurate about the sequence of operations and logical flow of `{element_type}` `{name}` in `{file_location}`?"
+            }
+          ]
+        }
+      },
+      "Code Dependencies": {
+        "Calls": {
+          "questions": [
+            {
+              "question": "What calls does `{element_type}` `{name}` in `{file_location}` make? List the calls and explain their purpose.",
+              "validation": "Does the explanation  list the calls made by `{element_type}` `{name}` in `{file_location}` and clarify their purpose?"
+            },
+            {
+              "question": "What is the purpose of the calls made by `{element_type}` `{name}` in `{file_location}`? List the calls and describe how they contribute to its functionality.",
+              "validation": "Does the explanation list the calls made by `{element_type}` `{name}` in `{file_location}` and explain their contribution to its functionality?"
+            },
+            {
+              "question": "What are the key function or method calls implemented in `{element_type}` `{name}` in `{file_location}`? List them and describe how they are executed.",
+              "validation": "Does the explanation list the key function or method calls in `{element_type}` `{name}` in `{file_location}` and explain their execution?"
+            },
+            {
+              "question": "How do the calls made by `{element_type}` `{name}` in `{file_location}` interact with other parts of the codebase? List the calls and describe their interactions.",
+              "validation": "Does the explanation list the calls in `{element_type}` `{name}` in `{file_location}` and describe their interactions with the codebase?"
+            },
+            {
+              "question": "What sequence of calls does `{element_type}` `{name}` in `{file_location}` execute? List the calls and explain how they relate to the function's behavior.",
+              "validation": "Does the explanation list the sequence of calls in `{element_type}` `{name}` in `{file_location}` and clarify their relation to its behavior?"
+            }
+          ]
+        },
+        "Imports and Settings": {
+          "questions": [
+            {
+              "question": "What imports and settings does `{element_type}` `{name}` in `{file_location}` use? List the imports and explain their purpose.",
+              "validation": "Does the explanation accurately list the imports used by `{element_type}` `{name}` in `{file_location}` and clarify their purpose?"
+            },
+            {
+              "question": "How do the imports and settings  used in `{element_type}` `{name}` in `{file_location}` contribute to its functionality? List the imports and describe their roles.",
+              "validation": "Does the explanation clearly list the imports in `{element_type}` `{name}` in `{file_location}` and explain their contribution to its functionality?"
+            },
+            {
+              "question": "What are the specific imports and settings  required by `{element_type}` `{name}` in `{file_location}`? List them and describe how they are utilized.",
+              "validation": "Does the explanation comprehensively list the specific imports required by `{element_type}` `{name}` in `{file_location}` and explain their usage?"
+            },
+            {
+              "question": "What role do the imports and settings  in `{element_type}` `{name}` in `{file_location}` play in enabling its operations? List the imports and explain their impact.",
+              "validation": "Does the explanation clearly list the imports in `{element_type}` `{name}` in `{file_location}` and describe their impact on the operations?"
+            },
+            {
+              "question": "What dependencies are introduced through the imports and settings  in `{element_type}` `{name}` in `{file_location}`? List the imports and settings  and explain their significance.",
+              "validation": "Does the explanation accurately list the dependencies introduced by the imports in `{element_type}` `{name}` in `{file_location}` and explain their significance?"
+            }
+          ],
+          "condition": "{{ element.settings }}"
+        },
+        "Variables": {
+          "questions": [
+            {
+              "question": "What variables are defined in `{element_type}` `{name}` in `{file_location}`? List the variables and explain their purpose.",
+              "validation": "Does the explanation accurately list the variables defined in `{element_type}` `{name}` in `{file_location}` and clarify their purpose?"
+            },
+            {
+              "question": "How do the variables in `{element_type}` `{name}` in `{file_location}` contribute to its functionality? List the variables and describe their roles.",
+              "validation": "Does the explanation clearly list the variables in `{element_type}` `{name}` in `{file_location}` and explain their contribution to its functionality?"
+            },
+            {
+              "question": "What are the specific variables used by `{element_type}` `{name}` in `{file_location}`? List them and describe how they are utilized.",
+              "validation": "Does the explanation comprehensively list the specific variables used by `{element_type}` `{name}` in `{file_location}` and explain their usage?"
+            },
+            {
+              "question": "What role do the variables in `{element_type}` `{name}` in `{file_location}` play in enabling its operations? List the variables and explain their impact.",
+              "validation": "Does the explanation clearly list the variables in `{element_type}` `{name}` in `{file_location}` and describe their impact on the operations?"
+            },
+            {
+              "question": "What dependencies or interactions are introduced through the variables in `{element_type}` `{name}` in `{file_location}`? List the variables and explain their significance.",
+              "validation": "Does the explanation accurately list the dependencies or interactions introduced by the variables in `{element_type}` `{name}` in `{file_location}` and explain their significance?"
+            }
+          ],
+          "condition": "{{ element.variables }}"
+        }
+      },
+      "Code Usage": {
+        "Creating New Test Variants with Different Purposes": {
+          "questions": [
+            {
+              "question": "How can a new `{element_type}` be created that reuses some of the keywords and resources from `{name}` in `{file_location}`, but serves a different purpose? Provide a detailed explanation and example.",
+              "validation": "Does the explanation describe how to create a new `{element_type}` that uses selected keywords and resources from `{name}` in `{file_location}`, while fulfilling a different purpose, with a clear example?"
+            },
+            {
+              "question": "What are the steps to create a new `{element_type}` based on `{name}` in `{file_location}`, reusing specific keywords and resources but designed for a unique purpose? Include an example showing its implementation.",
+              "validation": "Does the explanation outline clear steps to create a new `{element_type}` using specific keywords and resources from `{name}` in `{file_location}`, for a distinct purpose, along with an example?"
+            },
+            {
+              "question": "What is the proper approach to design a new `{element_type}` that utilizes some of the keywords and resources of `{name}` from `{file_location}` for a different functionality? Provide an example.",
+              "validation": "Does the explanation include a proper approach to designing a new `{element_type}` that reuses specific keywords and resources from `{name}` in `{file_location}` for different functionality, with an illustrative example?"
+            },
+            {
+              "question": "How can specific keywords and resources from `{element_type}` `{name}` in `{file_location}` be adapted into a new `{element_type}` with a different purpose? Provide detailed steps and an example.",
+              "validation": "Does the explanation provide clear steps and an example for adapting specific keywords and resources from `{name}` in `{file_location}` into a new `{element_type}` designed for a different purpose?"
+            },
+            {
+              "question": "What is the correct method to create a new `{element_type}` that partially reuses the resources and settings of `{name}` from `{file_location}`, while targeting a distinct purpose? Provide an example to demonstrate.",
+              "validation": "Does the explanation provide a correct method to create a new `{element_type}` that reuses resources and settings from `{name}` in `{file_location}` for a different purpose, with a valid example?"
+            }
+          ]
+        }
+      }
+    }
+  }
+}
