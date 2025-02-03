@@ -4,8 +4,8 @@
 FROM registry.access.redhat.com/ubi9/python-39
 
 #ADD  --chown=1001:1001 . $HOME/backend
-ADD  --chown=1001:1001 ./backend $HOME/backend
-ADD  --chown=1001:1001 ./rag  $HOME/rag
+ADD  --chown=1001:1001 --chmod=777 ./backend $HOME/backend
+ADD  --chown=1001:1001 --chmod=777 ./rag  $HOME/rag
 WORKDIR $HOME/backend
 RUN mkdir $HOME/backend/venv
 
