@@ -34,17 +34,11 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           env:
-{{- if .Values.proxy}}
-          - name: http_proxy
-            value: "{{ .Values.proxy}}"
-          - name: https_proxy
-            value: "{{ .Values.proxy}}"
-          - name: no_proxy
-            #value: "localhost,127.0.0.1,redis-master,kibana-kibana,elasticsearch-master,lado-be"
-            value: "localhost,127.0.0.1,kibana-kibana"
-{{- end }}
           - name: BACKEND_ENV
             value: "production"
+          - name: MONGODB_HOST
+            value: {{ .Values.MONGODB_HOST }}
+
          #command: ["/usr/bin/sleep"]
          #          args: ["infinity"]
           

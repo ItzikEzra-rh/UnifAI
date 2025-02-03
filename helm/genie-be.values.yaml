@@ -1,3 +1,4 @@
+MONGODB_HOST: mongodb
 replicaCount: 1
 image:
    repository: images.paas.redhat.com/genie/backend

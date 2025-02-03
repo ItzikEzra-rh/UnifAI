@@ -17,12 +17,6 @@ releases:
     values:
       - "./mongodb.values.yaml"
 
-  - name: genie-vllm
-    namespace: tag-ai--gzhou-nb
-    chart: ./vllm
-    wait: true
-    values:
-      - "./vllm.values.yaml"
   - name: genie-ui
     namespace: tag-ai--gzhou-nb
     chart: ./genie-ui

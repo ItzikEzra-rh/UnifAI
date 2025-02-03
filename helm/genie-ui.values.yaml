@@ -2,7 +2,7 @@ BE_URL: genie-be:8080
 LLM_BE_URL: genie-llm-be:8080
 image:
    repository: images.paas.redhat.com/genie/ui
-   tag: 2025.01.24
+   tag: 2025.01.31
    #tag: 2025.01.21
    #repository: images.paas.redhat.com/genie/genie-ui
    #tag: testme
