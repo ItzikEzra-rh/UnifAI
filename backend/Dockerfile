@@ -7,6 +7,7 @@ FROM registry.access.redhat.com/ubi9/python-39
 ADD  --chown=1001:1001 --chmod=777 ./backend $HOME/backend
 ADD  --chown=1001:1001 --chmod=777 ./rag  $HOME/rag
 WORKDIR $HOME/backend
+RUN chmod 777 .
 RUN mkdir $HOME/backend/venv
 
 # update rpms and install debugging tools
