@@ -15,5 +15,6 @@
   export SERVICE_IP=$(kubectl get svc --namespace {{ .Release.Namespace }} {{ include "genie-ui.fullname" . }} --template "{{"{{ range (index .status.loadBalancer.ingress 0) }}{{.}}{{ end }}"}}")
   echo http://$SERVICE_IP:{{ .Values.service.port }}
 {{- else if contains "ClusterIP" .Values.service.type }}
-  echo The UI hostname is: $(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.host}" route {{ include "genie-ui.fullname" . }})
+  echo The UI hostname is: http://$(kubectl get --namespace {{ .Release.Namespace }} -o jsonpath="{.spec.host}" route {{ include "genie-ui.fullname" . }})
+
 {{- end }}

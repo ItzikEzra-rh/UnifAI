@@ -12,9 +12,9 @@ image:
    pullPolicy: Always
 resources:
   limits:
-    cpu: 4
+    cpu: 2
     # -- CPU memory configuration
-    memory: 16Gi
+    memory: 6Gi
     # -- Number of gpus used
     nvidia.com/gpu: 1
 service:
