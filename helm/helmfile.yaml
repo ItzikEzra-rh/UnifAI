@@ -5,11 +5,6 @@ helmDefaults:
     wait: false
   
 releases:
-  - name: genie-rabbitmq
-    namespace: tag-ai--gzhou-nb
-    chart: ./rabbitmq
-    values:
-      - "./rabbitmq.values.yaml"
   - name: genie-mongodb
     namespace: tag-ai--gzhou-nb
     chart: ./mongodb
@@ -35,7 +30,6 @@ releases:
       - "genie-be.values.yaml"
     needs:
       - genie-mongodb
-      - genie-rabbitmq
 
   - name: genie-llm-be
     namespace: tag-ai--gzhou-nb
@@ -45,4 +39,3 @@ releases:
       - "genie-llm-be.values.yaml"
     needs:
       - genie-mongodb
-      - genie-rabbitmq

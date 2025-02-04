@@ -29,11 +29,11 @@ This is to install GENIE service to the openshift cluster. The installation is b
 │                                        │    │                                   │       │                                
 │                                        │    │                                   │       │                                
 │                                        │    │                                   │       │     ┌──────────────────┐       
-│      ┌──────────┐     ┌──────────┐     │    │   ┌──────────┐     ┌──────────┐   │       │     │                  │       
-│      │          │     │          │     │    │   │          │     │          │   │       │     │                  │       
-│      │ RABBITMQ │     │  mongodb │     │    │   │ RABBITMQ │     │  mongodb │   │       │     │     HuggingFace  │       
-│      │          │     │          │     │    │   │          │     │          │   │       │     │                  │       
-│      └──────────┘     └──────────┘     │    │   └──────────┘     └──────────┘   │       │     └──────────────────┘       
+│      ┌──────────┐     ┌──────────┐     │    │                    ┌──────────┐   │       │     │                  │       
+│      │          │     │          │     │    │                    │          │   │       │     │                  │       
+│      │ RABBITMQ │     │  mongodb │     │    │                    │  mongodb │   │       │     │     HuggingFace  │       
+│      │          │     │          │     │    │                    │          │   │       │     │                  │       
+│      └──────────┘     └──────────┘     │    │                    └──────────┘   │       │     └──────────────────┘       
 │                                        │    │                                   │       │                                
 │                                        │    │                                   │       │                                
 └────────────────────────────────────────┘    └───────────────────────────────────┘       │                                
@@ -48,9 +48,10 @@ This is to install GENIE service to the openshift cluster. The installation is b
 
 ###Basic usage:
 ```bash
-podman run -dt --workdir /helm/charts -v .:/helm/charts -v ~/.kube/:/helm/.kube --name helmfile ghcr.io/helmfile/helmfile:latest bash
+# assume oc login is successful (ie. the kubeconfig files are stored under .kube
+podman run -dt --workdir /helm/charts/helm -v .:/helm/charts -v ~/.kube/:/helm/.kube --name helmfile ghcr.io/helmfile/helmfile:latest bash
 podman exec -it helmfile bash
-cd /helm/charts
+cd /helm/charts/helm # if you are not in this folder
 #edit the value files if needed
 helmfile apply
 kubectl get po # to check all the pods
@@ -61,7 +62,6 @@ genie-llm-be-6b57496477-xtw7h   1/1     Running   0          38h
 genie-ui-5cfdcb9c4b-tsj6d       1/1     Running   0          48m
 genie-vllm-56b8c658b6-dgvwb     1/1     Running   0          38h
 mongodb-0                       1/1     Running   0          14h
-rabbitmq-0                      1/1     Running   0          14h
 ```
 get the public-exposed UI FQDN
 ```

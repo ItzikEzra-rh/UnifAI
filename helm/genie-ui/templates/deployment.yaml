@@ -38,16 +38,41 @@ spec:
           args: ["infinity"]
           {{- end }}
           env:
-          - name:  BE_URL
-            value: "{{ .Values.BE_URL}}"
-          - name:  LLM_BE_URL
-            value: "{{ .Values.LLM_BE_URL}}"
+          {{- range $key, $value := .Values.env }}
+          - name: "{{ $key }}"
+            value: "{{ $value }}"
+          {{- end }}
   
           ports:
             - name: http
-              #containerPort: 8080
               containerPort: 8080
               protocol: TCP
+
+          {{- if not .Values.debug }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 5
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 5
+
+          {{- end }}
+
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}

@@ -37,19 +37,41 @@ spec:
           command: ["sleep"]
           args: ["infinity"]
           {{- end }}
-          env:
-          - name: BACKEND_ENV
-            value: "production"
-          - name: MONGODB_HOST
-            value: {{ .Values.MONGODB_HOST }}
 
-         #command: ["/usr/bin/sleep"]
-         #          args: ["infinity"]
-          
+          env:
+          {{- range $key, $value := .Values.env }}
+          - name: "{{ $key }}"
+            value: "{{ $value }}"
+          {{- end }}
+
           ports:
             - name: http
               containerPort: 8080
               protocol: TCP
+          {{- if not .Values.debug }}
+          readinessProbe:
+            httpGet:
+              path: /api/rag/
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 5
+
+          livenessProbe:
+            httpGet:
+              path: /api/rag/
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 5
+          {{- end }}
+
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
       {{- with .Values.nodeSelector }}
