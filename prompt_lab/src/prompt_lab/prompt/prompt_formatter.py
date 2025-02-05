@@ -51,8 +51,9 @@ class PromptFormatter:
         validation_text = question["validation"]
         formatted_prompt = self.tokenizer.format_chat_prompt([
             {"role": "system", "content": self.system_message},
-            # {"role": "context", "content": context_text}, ## in models like Qwen, the tokinizer doesnt support generic roles.
-            {"role": "user", "content": f"** context ** {context_text}\n\n** question **\n\n{user_input}"}
+            {"role": "context", "content": context_text},
+            # in models like Qwen, the tokinizer doesnt support generic roles.
+            {"role": "user", "content": user_input}
         ])
 
         base_id = element_data.get("uuid", "") + group_name + category_name

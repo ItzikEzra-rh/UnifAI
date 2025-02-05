@@ -2,7 +2,7 @@
   "project_id": "",
   "project_repo": "",
   "coding_language": "robot",
-  "system_message": "You are an expert in Robot Framework testing. You provide precise and optimized prompts for Robot Framework code. Your response consists solely of the prompt(as if you write a prompt to LLM to create something), in the format of create a, generate a, construct a ,..., with no additional explanations or comments or code.",
+  "system_message": "You are an expert in Robot Framework testing.",
   "context_template": "Below is the element of type {element_type} with:\n\n{settings}\n\n{variables}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
   "element_templates": {
     "test": {
@@ -10,48 +10,48 @@
         "Short Prompt (Concise & Direct)": {
           "questions": [
             {
-              "question": "Provide a concise, short, and accurate prompt that precisely describes the {element_type}.",
-              "validation": "Does the prompt clearly, concisely, and accurately describe the {element_type}?"
+              "question": "Formulate a user-like request that asks to create the described {element_type} without including any extra explanation or code.",
+              "validation": "Does the request accurately describe the {element_type} without unnecessary details?"
             }
           ]
         },
         "Detailed Prompt (Comprehensive & In-Depth)": {
           "questions": [
             {
-              "question": "Give a detailed explanation prompt of the {element_type}, including its purpose, key validation points, and expected outcomes.",
-              "validation": "Does the prompt thoroughly explain the {element_type}, covering its purpose, key validation points, and expected outcomes?"
+              "question": "Formulate a user-like request that asks to create the described {element_type}, covering its purpose, key validation points, and expected outcomes, without including any extra explanation or code.",
+              "validation": "Does the request thoroughly describe the {element_type} with its purpose, validation points, and expected outcomes?"
             }
           ]
         },
         "Step-by-Step Prompt (Instructional)": {
           "questions": [
             {
-              "question": "Create a step-by-step prompt that guides through designing, implementing, and validating the {element_type}, covering setup, execution, and result verification.",
-              "validation": "Does the prompt provide a clear, structured step-by-step guide for designing, implementing, and validating the {element_type}, including setup, execution, and result verification?"
+              "question": "Formulate a user-like request that asks to create the described {element_type}, including step-by-step guidance for designing, implementing, and validating it, without including any extra explanation or code.",
+              "validation": "Does the request provide clear step-by-step guidance for designing, implementing, and validating the {element_type}?"
             }
           ]
         },
-        "Step-by-Step short Prompt": {
+        "Step-by-Step Short Prompt": {
           "questions": [
             {
-              "question": "Create a concise and short step-by-step prompt that guides through implementing the {element_type}, covering setup, execution, and result verification.",
-              "validation": "Does the prompt provide a clear and concise step-by-step guide for implementing the {element_type}, ensuring it includes setup, execution, and result verification?"
+              "question": "Formulate a user-like request that asks to create the described {element_type} with a concise step-by-step guide, covering setup, execution, and result verification, without including any extra explanation or code.",
+              "validation": "Does the request include a concise step-by-step guide for setting up, executing, and verifying the {element_type}?"
             }
           ]
         },
         "Contextual Prompt (Situation-Based)": {
           "questions": [
             {
-              "question": "Provide an accurate prompt that precisely describes the {element_type} in a more human-like way.",
-              "validation": "Does the prompt describe the {element_type} in a natural, human-readable way while maintaining accuracy?"
+              "question": "Formulate a user-like request that asks to create the described {element_type} in a natural, human-readable way, without including any extra explanation or code.",
+              "validation": "Does the request sound natural and readable while accurately describing the {element_type}?"
             }
           ]
         },
         "Instructional Prompt": {
           "questions": [
             {
-              "question": "Generate an instructional prompt that explains how to design, implement, and validate the {element_type}, covering environment setup, test steps, and outcome verification in a clear and concise manner.",
-              "validation": "Does the prompt clearly instruct how to design, implement, and validate the {element_type}, ensuring it covers environment setup, test steps, and outcome verification concisely?"
+              "question": "Formulate a user-like request that asks to create the described {element_type}, including environment setup, test steps, and outcome verification, without including any extra explanation or code.",
+              "validation": "Does the request clearly outline environment setup, test steps, and outcome verification for the {element_type}?"
             }
           ]
         }
@@ -62,8 +62,8 @@
         "Test Case Generation Prompt": {
           "questions": [
             {
-              "question": "Provide a concise, short, and accurate prompt that precisely describes the {element_type}.",
-              "validation": "Does the prompt accurately and concisely describe the {element_type} without unnecessary details?"
+              "question": "Formulate a user-like request that asks to create the described {element_type} without including any extra explanation or code.",
+              "validation": "Does the request correctly specify the {element_type} without unnecessary details?"
             }
           ]
         }
@@ -74,8 +74,8 @@
         "Keyword Generation Prompt": {
           "questions": [
             {
-              "question": "Provide a concise, short, and accurate prompt that precisely describes the {element_type}.",
-              "validation": "Does the prompt clearly define the purpose and expected functionality of the {element_type}?"
+              "question": "Formulate a user-like request that asks to create the described {element_type} without including any extra explanation or code.",
+              "validation": "Does the request clearly specify the {element_type} in a concise and accurate manner?"
             }
           ]
         }
