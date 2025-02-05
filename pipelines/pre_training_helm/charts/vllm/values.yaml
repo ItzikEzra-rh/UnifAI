@@ -11,18 +11,20 @@ global:
   vllm_reviewer_args:
 
 image:
-  repository: 
-  tag: 
-  pullPolicy: 
+  repository: images.paas.redhat.com/genie/vllm-openai
+  tag: "latest"
+  pullPolicy: IfNotPresent  
 
 resources:
   requests:
-    memory:     
-    cpu:     
+    memory:  "46Gi"   
+    cpu: "2"
+    gpu: 1    
   limits:
-    memory:    
-    cpu:  
+    memory: "4Gi"   
+    cpu: "2"
+    gpu: 1  
 
 service:
-  type:
-  port: 
+  type: ClusterIP
+  port: 8000

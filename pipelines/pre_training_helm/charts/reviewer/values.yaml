@@ -4,15 +4,16 @@ global:
   reviewer_env:
 
 args:
-image:
-  repository: 
-  tag: 
-  pullPolicy: 
+- reviewer
 
+image:
+  repository: images.paas.redhat.com/genie/reviewer
+  tag: "latest"
+  pullPolicy: Always
 resources:
   requests:
-    memory:     
-    cpu:     
+    memory: "2Gi"     
+    cpu: "2"       
   limits:
-    memory:     
-    cpu:   
+    memory: "2Gi"     
+    cpu: "2"   
