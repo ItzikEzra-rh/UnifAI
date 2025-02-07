@@ -26,5 +26,5 @@ COPY --from=base venv venv
 
 ADD . .
 RUN ln -s /usr/local/cuda-12.6/targets/x86_64-linux/lib/stubs/libcuda.so /usr/lib/libcuda.so
-ENV TOKENIZERS_PARALLELISM=true BACKEND_ENV=development
+ENV TOKENIZERS_PARALLELISM=true BACKEND_ENV=production
 CMD ["/bin/bash", "-c", "source venv/bin/activate && python app.py"]
