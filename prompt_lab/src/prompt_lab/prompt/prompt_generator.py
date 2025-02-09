@@ -9,10 +9,10 @@ class PromptGenerator:
     Orchestrates the generation of prompts by combining TemplateManager and PromptFormatter.
     """
 
-    def __init__(self, repository, tokenizer):
+    def __init__(self, repository):
         self.repository = repository
         self.template_manager = TemplateManager()
-        self.prompt_formatter = PromptFormatter(self.template_manager, tokenizer)
+        self.prompt_formatter = PromptFormatter()
 
     def __iter__(self):
         """Iterate over generated Prompt objects."""
@@ -47,22 +47,12 @@ class PromptGenerator:
         if not element_type:
             return
 
-        templates = copy.deepcopy(self.template_manager.get_questions(element_type))
+        element_q_and_a = copy.deepcopy(self.template_manager.get_element_q_and_a(element_type=element_type))
 
-        for group_name, categories in templates.items():
-            for category_name, template_config in categories.items():
-                if not self.template_manager.is_condition_met(template_config.get("condition"), element_data):
-                    continue
+        for q_and_a in element_q_and_a:
+            if not self.template_manager.is_condition_met(q_and_a.get("condition"), element_data):
+                continue
 
-                questions = template_config.get("questions", [])
-                if not questions:
-                    continue
-
-                context_exclude = template_config.get("context_exclude", [])
-                yield self.prompt_formatter.format_prompt(
-                    element_data,
-                    group_name,
-                    category_name,
-                    questions,
-                    context_exclude
-                )
+            yield self.prompt_formatter.format_prompt(
+                element_data,
+                q_and_a)

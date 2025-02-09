@@ -1,0 +1,24 @@
+{
+  "project_id": "",
+  "project_repo": "",
+  "coding_language": "",
+  "training_system_message": "",
+  "seed_system_message": "",
+  "question_system_message": "",
+  "context": "",
+  "q_and_a": [
+    {
+      "name": "",
+      "seed_system_message": "{seed_system_message}",
+      "question_system_message": "{question_system_message}",
+      "context": "{context}",
+      "question_seed": "",
+      "question": [],
+      "answer": "",
+      "question_validation": "",
+      "response_validation": "",
+      "element_types": [],
+      "condition": ""
+    }
+  ]
+}

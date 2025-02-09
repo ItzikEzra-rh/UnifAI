@@ -32,7 +32,7 @@ class PromptLaunchpad:
         self.batch_size = batch_size
         self.orbiter_task_name = orbiter_task_name
 
-        self.generator = PromptGenerator(self.repository, self.tokenizer)
+        self.generator = PromptGenerator(self.repository)
         self.prepared_prompts_batch = Batch(
             batch_strategies=BatchCompositeStrategy(
                 [
