@@ -28,7 +28,8 @@ metadata:
   annotations:
     openshift.io/host.generated: "true"
 spec:
-  host: 
+  host:
+  path: /api/queues 
   port:
     targetPort: {{ .Values.rabbitmq.service.managementPort }}
   to:
