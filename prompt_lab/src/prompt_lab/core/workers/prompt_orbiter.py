@@ -1,5 +1,5 @@
 from typing import List
-from prompt_lab.prompt import Prompt
+from prompt_lab.prompt import Prompt, PromptCompositePolicy, PromptStatePolicy
 from prompt_lab.batch import Batch
 from prompt_lab.utils import TokenizerUtils, logger
 from prompt_lab.utils.celery.celery import send_task
@@ -47,7 +47,7 @@ class PromptOrbiter:
         self.reviewed_prompts_queue_name = reviewed_prompts_queue_name
         self.landing_task_name = landing_task_name
         self.reviewer = reviewer
-        self.batch = Batch()
+        self.batch = Batch(prompt_policies=PromptCompositePolicy([PromptStatePolicy(tokenizer=self.tokenizer)]))
 
         logger.info("[PromptOrbiter] Initialized.")
 
@@ -73,13 +73,22 @@ class PromptOrbiter:
             prompt = Prompt.from_dict(**prompt_dict)
             self.batch.add_prompt(prompt)
 
-        formatted_prompts = [prompt.formatted_prompt for prompt in self.batch.prompts]
+        formatted_prompts = [prompt.formatted_chat_prompt for prompt in self.batch.prompts]
         choices = self.llm_client.send_request(formatted_prompts, max_tokens=self.tokenizer.max_generation_length)
 
         # Process each response and update the prompts in the batch
         for prompt, choice in zip(self.batch.prompts, choices):
-            prompt.output_text = choice["text"]
-
+            prompt.current_answer = choice["text"]
+            print("*********************************QUESTION********************************************")
+            print()
+            print()
+            print(prompt.current_question)
+            print()
+            print("*********************************ANSWER********************************************")
+            print()
+            print(prompt.current_answer)
+            print()
+            print()
         finalized_prompts = self.batch.finalize_batch()
 
         send_queue_name = self.review_queue_name if self.reviewer else self.reviewed_prompts_queue_name

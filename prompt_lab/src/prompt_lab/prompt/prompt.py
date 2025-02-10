@@ -32,7 +32,7 @@ class Prompt:
     formatted_chat_prompt: str = ""
     question: str = ""  # final question
     validation: str = ""  # validation for the response of the question
-    current_system_message: str = ""
+    current_system_message: str = ""  # system message for the seed or for the question
     current_question: str = ""  # could change because it could be seed question or the question it self
     current_answer: str = ""  # it could be the question or the answer
     current_validation: str = ""
@@ -68,10 +68,10 @@ class Prompt:
         return cls(**kwargs)
 
     def is_question_generation_state(self):
-        return self.question_seed and not self.question_options
+        return self.question_seed and not self.question_options and not self.question
 
     def is_answer_generation_state(self):
-        return bool(self.question)
+        return bool(self.question or self.question_options) and not self.answer
 
     def export(self):
         """export format is only question and answer"""
