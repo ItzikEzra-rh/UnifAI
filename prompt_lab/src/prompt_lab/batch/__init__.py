@@ -11,6 +11,7 @@ from .strategies.batch_max_token_strategy import BatchMaxTokenStrategy
 from .strategies.batch_retry_prompts_strategy import BatchRetryPromptsStrategy
 from .strategies.batch_max_prompts_number_strategy import BatchMaxPromptsNumberStrategy
 from .strategies.batch_pass_prompts_strategy import BatchPassPromptsStrategy
+from .strategies.batch_answer_generation_strategy import AnswerGenerationStateStrategy
 
 __all__ = [
     "Batch",
@@ -20,4 +21,5 @@ __all__ = [
     "BatchRetryPromptsStrategy",
     "BatchMaxPromptsNumberStrategy",
     "BatchPassPromptsStrategy",
+    "AnswerGenerationStateStrategy",
 ]

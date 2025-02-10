@@ -18,10 +18,11 @@ class PromptStatePolicy(PromptPolicy):
         if prompt.is_question_generation_state():
             prompt.current_question = prompt.question_seed
             prompt.current_system_message = prompt.seed_system_message
-        elif prompt.is_answer_generation_state:
-            prompt.current_question = random.choice(prompt.question_options)
+        elif prompt.is_answer_generation_state():
+            prompt.current_question = random.choice(prompt.question_options) if prompt.question_options else prompt.question
             prompt.current_system_message = prompt.question_system_message
         else:
+            # TODO add a state if output exist and needs a question
             return False  # No changes needed
 
         prompt.formatted_chat_prompt = self.tokenizer.format_chat_prompt([

@@ -2,6 +2,7 @@ from prompt_lab.template import TemplateManager
 from .prompt_formatter import PromptFormatter
 from prompt_lab.utils import logger
 import copy
+import string
 
 
 class PromptGenerator:
@@ -12,7 +13,7 @@ class PromptGenerator:
     def __init__(self, repository):
         self.repository = repository
         self.template_manager = TemplateManager()
-        self.prompt_formatter = PromptFormatter()
+        self.prompt_formatter = PromptFormatter(self.template_manager)
 
     def __iter__(self):
         """Iterate over generated Prompt objects."""

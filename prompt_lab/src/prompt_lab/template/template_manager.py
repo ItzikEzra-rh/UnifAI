@@ -1,3 +1,5 @@
+import copy
+import string
 from jinja2 import Environment
 from prompt_lab.utils.util import load_json_config
 from prompt_lab.config import ConfigManager
@@ -14,7 +16,7 @@ class TemplateManager:
         self.config = ConfigManager()
         self.project_config = load_json_config(self.get_template_path)
         self.__init_template_params()
-        self.__substitute_values()
+        self.substitute_top_level_params()
         self.env = Environment()
 
     def __init_template_params(self):
@@ -22,20 +24,19 @@ class TemplateManager:
         project_id = self.config.get("project_id", "")
         project_repo = self.config.get("project_repo", "")
         if project_context:
-            self.project_config[
-                "context_template"] = f"""{project_context}, {self.project_config["context_template"]}"""
+            self.project_config["context"] = f"""{project_context}, {self.project_config["context"]}"""
         if project_id:
             self.project_config["project_id"] = project_id
         if project_repo:
             self.project_config["project_repo"] = project_repo
 
-    def __substitute_values(self):
+    def substitute_top_level_params(self):
         """Recursively substitutes string values in self.project_config using top-level parameters."""
         top_level_params = self.get_template_top_level_params()
 
         def substitute(item):
             if isinstance(item, str):
-                return item.format(**top_level_params)
+                return string.Template(item).safe_substitute(**top_level_params)
             elif isinstance(item, list):
                 return [substitute(i) for i in item]
             elif isinstance(item, dict):
@@ -60,11 +61,12 @@ class TemplateManager:
         Return a dict of all top-level keys whose values are scalar
         (string, number, boolean, or None), ignoring any lists or objects.
         """
-        return {
-            k: v
+        top_level_params = {
+            k: copy.deepcopy(v)
             for k, v in self.project_config.items()
             if not isinstance(v, (list, dict))
         }
+        return top_level_params
 
     @property
     def get_template_path(self):
