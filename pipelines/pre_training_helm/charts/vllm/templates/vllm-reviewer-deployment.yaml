@@ -15,6 +15,17 @@ spec:
       labels:
         app: {{ .Chart.Name }}-reviewer
     spec:
+
+      {{- if .Values.global.enable_toleration }}
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: tenant
+          operator: Equal
+          value: llmaas-a100
+          effect: NoSchedule
+      {{- end }}
       
       initContainers:
       - name: wait-for-services
@@ -53,6 +64,16 @@ spec:
               {{- end }}
             ]
         env:
+        - name: CUDA_VISIBLE_DEVICES
+        {{- if .Values.global.multiple_gpu_per_pod }}
+          value: "0,1"
+        {{- else }}
+          value: "0"
+        {{- end }}
+        - name: VLLM_ENGINE_USE_TCP
+          value: "1"
+        - name: NCCL_P2P_DISABLE
+          value: "1"  
         - name: TRANSFORMERS_CACHE
           value: "/tmp/.cache"
         - name: HF_HOME
@@ -71,11 +92,11 @@ spec:
           requests:
             memory: {{.Values.resources.requests.memory}} 
             cpu: {{.Values.resources.requests.cpu}}
-            nvidia.com/gpu: {{.Values.resources.requests.gpu}}
+            nvidia.com/gpu: {{.Values.global.number_of_gpu}}
           limits:
             memory: {{.Values.resources.requests.memory}}
             cpu: {{.Values.resources.requests.cpu}}
-            nvidia.com/gpu: {{.Values.resources.requests.gpu}}
+            nvidia.com/gpu: {{.Values.global.number_of_gpu}}
           
         ports:
           - containerPort: 8000
@@ -85,22 +106,34 @@ spec:
             path: /health
             port: 8000
             scheme: HTTP
-          initialDelaySeconds: 240
-          periodSeconds: 15
-          timeoutSeconds: 5
+          initialDelaySeconds: 360
+          periodSeconds: 20
+          timeoutSeconds: 30
           successThreshold: 1
-          failureThreshold: 5
+          failureThreshold: 20
 
         livenessProbe:
           httpGet:
             path: /health
             port: 8000
             scheme: HTTP
-          initialDelaySeconds: 240
-          periodSeconds: 15
-          timeoutSeconds: 5
+          initialDelaySeconds: 360
+          periodSeconds: 20
+          timeoutSeconds: 30
           successThreshold: 1
-          failureThreshold: 5
+          failureThreshold: 20
+
+      {{- if .Values.global.multiple_gpu_per_pod }}
+        volumeMounts:
+          - name: dshm
+            mountPath: /dev/shm
+
+      volumes:
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: "16Gi"
+      {{- end }}
 
 
       securityContext:

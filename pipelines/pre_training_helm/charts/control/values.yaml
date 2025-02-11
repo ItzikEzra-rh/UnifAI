@@ -26,7 +26,7 @@ launchpad:
 resources:
   requests:
     memory: "4Gi"     
-    cpu: "2"       
+    cpu: "1"       
   limits:
     memory: "4Gi"     
-    cpu: "2"   
+    cpu: "1"   

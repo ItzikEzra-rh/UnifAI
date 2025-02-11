@@ -1,7 +1,16 @@
 global:
   
   # Namespace where the Helm chart will deploy the application resources.
-  namespace: tag-ai--yhabushi-nb
+  namespace: tag-ai--runtime-int #tag-ai--yhabushi-nb
+
+  # enable toleration ( on production env in order to allocate A100 GPUs).
+  enable_toleration: true
+
+  # support multiple GPUs per Pod.
+  multiple_gpu_per_pod: false
+
+  # Number of GPU per vllm Pod.
+  number_of_gpu: 2
 
   # (int) number of prompt-vllm's serving orbiters
   vllm_orbiter_replica: 1

@@ -1,5 +1,9 @@
 global:
+
   namespace: 
+  enable_toleration: 
+  multiple_gpu_per_pod:
+  number_of_gpu: 
 
   vllm_orbiter_replica: 
   vllm_reviewer_replica:
@@ -17,13 +21,13 @@ image:
 
 resources:
   requests:
-    memory:  "46Gi"   
-    cpu: "2"
-    gpu: 1    
+    memory:  "6Gi"   
+    cpu: "1"
+    gpu:     
   limits:
-    memory: "4Gi"   
-    cpu: "2"
-    gpu: 1  
+    memory: "6Gi"   
+    cpu: "1"
+    gpu:   
 
 service:
   type: ClusterIP
