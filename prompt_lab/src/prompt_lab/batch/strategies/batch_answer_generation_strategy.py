@@ -1,6 +1,7 @@
 from typing import List
 from prompt_lab.prompt import Prompt
 from .batch_strategy import BatchStrategy
+from prompt_lab.utils import logger
 
 
 class AnswerGenerationStateStrategy(BatchStrategy):
@@ -12,9 +13,7 @@ class AnswerGenerationStateStrategy(BatchStrategy):
             not prompt.failed and prompt.is_answer_generation_state() for prompt in current_batch)
 
         if answer_generation_prompts and not new_prompt.failed and new_prompt.is_answer_generation_state():
-            print("AnswerGenerationStateStrategy succeeded")
             return True
-        print("AnswerGenerationStateStrategy failed")
         return False
 
     @property
