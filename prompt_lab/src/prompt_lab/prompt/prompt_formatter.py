@@ -52,7 +52,7 @@ class PromptFormatter:
         question = q_and_a.get("question")
         answer = q_and_a.get("answer")
         question_validation = q_and_a.get("question_validation")
-        response_validation = q_and_a.get("response_validation")
+        answer_validation = q_and_a.get("answer_validation")
         base_id = element_data.get("uuid", "") + name
         prompt_uuid = hashlib.md5(base_id.encode()).hexdigest()
         logger.debug(f"generated prompt with UUID {prompt_uuid}")
@@ -68,6 +68,6 @@ class PromptFormatter:
             question_options=question,
             answer=answer,
             question_validation=question_validation,
-            response_validation=response_validation,
+            answer_validation=answer_validation,
             original_data=copy.deepcopy(element_data)
         )
