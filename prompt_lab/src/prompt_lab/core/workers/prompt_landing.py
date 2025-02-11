@@ -67,12 +67,23 @@ class PromptLanding:
 
         prompt_count = batch.prompts_count()
         logger.info(f"[PromptLanding] {batch_label} prompts: {prompt_count}.")
-        self.repository.update_retry_counter(prompt_count)
+
+        # Define actions based on batch_label
+        batch_actions = {
+            "retry": lambda: self.repository.update_retry_counter(prompt_count),
+        }
+
+        # Execute associated action if exists
+        action = batch_actions.get(batch_label)
+        if action:
+            action()
+
         send_task(
             self.orbiter_task_name,
             celery_queue=self.orbiter_queue_name,
             batch=batch.to_dict()
         )
+
         logger.info(
             f"[PromptLanding] Submitted {prompt_count} {batch_label} prompts "
             f"to queue {self.orbiter_queue_name}."
