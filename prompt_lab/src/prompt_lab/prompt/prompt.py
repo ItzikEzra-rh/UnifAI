@@ -27,7 +27,7 @@ class Prompt:
     question_options: []
     answer: str  # final answer
     question_validation: str
-    response_validation: str
+    answer_validation: str
     original_data: dict
     formatted_chat_prompt: str = ""
     question: str = ""  # final question

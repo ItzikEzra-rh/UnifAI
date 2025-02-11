@@ -18,9 +18,11 @@ class PromptStatePolicy(PromptPolicy):
         if prompt.is_question_generation_state():
             prompt.current_question = prompt.question_seed
             prompt.current_system_message = prompt.seed_system_message
+            prompt.current_validation = prompt.question_validation
         elif prompt.is_answer_generation_state():
             prompt.current_question = random.choice(prompt.question_options) if prompt.question_options else prompt.question
             prompt.current_system_message = prompt.question_system_message
+            prompt.current_validation = prompt.answer_validation
         else:
             # TODO add a state if output exist and needs a question
             return False  # No changes needed
