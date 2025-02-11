@@ -1,6 +1,7 @@
 from typing import List
 from prompt_lab.prompt import Prompt
 from .batch_strategy import BatchStrategy
+from prompt_lab.utils import logger
 
 
 class BatchRetryPromptsStrategy(BatchStrategy):
@@ -10,11 +11,9 @@ class BatchRetryPromptsStrategy(BatchStrategy):
     """
 
     def apply(self, current_batch: List[Prompt], new_prompt: Prompt) -> bool:
-        # check token limit
         is_retry_prompts = all(prompt.is_review_failed and not prompt.failed for prompt in current_batch)
         if is_retry_prompts and new_prompt.is_review_failed and not new_prompt.failed:
             return True
-
         return False
 
     @property

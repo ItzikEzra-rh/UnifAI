@@ -10,7 +10,5 @@ class PromptAnswerGenerationPolicy(PromptPolicy):
         """Apply a retry policy for prompts in question/answer generation states."""
         if not prompt.failed and prompt.is_question_generation_state():
             prompt.question = prompt.current_answer
-            print("PromptAnswerGenerationPolicy succeeded")
             return True
-        print("PromptAnswerGenerationPolicy failed")
         return False

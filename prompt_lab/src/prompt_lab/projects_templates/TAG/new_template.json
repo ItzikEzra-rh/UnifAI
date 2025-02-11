@@ -8,19 +8,6 @@
   "context": "Below is the element of type ${element_type} with the name ${name}:\n\n${file_location}\n\n${element_type}\n\n${tags}\n\n${package}\n\n${imports}\n\n${structs}\n\n${interfaces}\n\n${global_vars}\n\n${code}\n\nUtilize the provided element details and code to address the user's question accurately.",
   "q_and_a": [
     {
-      "name": "describe the test",
-      "seed_system_message": "${seed_system_message}",
-      "question_system_message": "${question_system_message}",
-      "context": "${context}",
-      "question_seed": "",
-      "question": ["describe the ${element_type} for the ${code}."],
-      "answer": "",
-      "question_validation": "",
-      "answer_validation": "is the description describe the ${element_type}?",
-      "element_types": ["test"],
-      "condition": ""
-    },
-    {
       "name": "creating a 2 step",
       "seed_system_message": "${seed_system_message}",
       "question_system_message": "use the same logic and structure of the code as in the context",
@@ -30,7 +17,7 @@
       "answer": "",
       "question_validation": "does the question include step-by-step guidance for creating the ${element_type}? ",
       "answer_validation": "is the code similar to the ${element_type} code?",
-      "element_types": ["test"],
+      "element_types": ["test", "function"],
       "condition": ""
     }
   ]

@@ -16,7 +16,5 @@ class PromptPassPolicy(PromptPolicy):
         if not prompt.is_review_failed and not prompt.failed and prompt.is_answer_generation_state():
             prompt.question = prompt.current_question
             prompt.answer = prompt.current_answer
-            print("PromptPassPolicy succeeded")
             return True
-        print("PromptPassPolicy failed")
         return False
