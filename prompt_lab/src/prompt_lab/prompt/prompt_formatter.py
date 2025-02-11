@@ -45,7 +45,7 @@ class PromptFormatter:
         context = self.render_context(element_data, q_and_a.get("context"))
         q_and_a = self.substitute_q_and_a(q_and_a=q_and_a, element_data=element_data)
         name = q_and_a.get("name")
-        element_type = q_and_a.get("element_type")
+        element_type = element_data.get("element_type")
         seed_system_message = q_and_a.get("seed_system_message")
         question_system_message = q_and_a.get("question_system_message")
         question_seed = q_and_a.get("question_seed")
