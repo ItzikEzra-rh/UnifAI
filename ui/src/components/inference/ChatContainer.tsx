@@ -193,6 +193,8 @@ const ChatComponent: React.FC = () => {
   const [historyChats, setHistoryChats] = useState<HistoryChat[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string>('current');
 
+  const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
+
   const getChatHistory = async (modelId: string) => {
     const loadedModelChatsResponse = await axiosBE.get('/api/chat/', { params: {modelId: modelId} });
     setHistoryChats(loadedModelChatsResponse.data.response)
@@ -213,6 +215,7 @@ const ChatComponent: React.FC = () => {
           modelName: item.name,
           trainingName: item.name,
           modelMaxSeqLen: item.context_length,
+          hfRepoId: item.hf_repo_id,
           modelType: item.model_type,
           project: item.project,
           checkpoint: item?.checkpoint,
@@ -377,14 +380,14 @@ const ChatComponent: React.FC = () => {
 
       // If current loaded model support RAG we should enrich the LLM with relevant context
       if (selectedModel?.isRagEnabled) {
-        const queryRetrievalpayload = {
+        const queryRetrievalPayload = {
           text: formattedText,
           projectName: selectedModel?.project,
           modelName: selectedModel?.modelName,
           modelId: selectedModel?.modelId
         }
 
-        const queryRetrievalResponse = await axiosBE.get('/api/rag/queryRetrieval', { params: queryRetrievalpayload });
+        const queryRetrievalResponse = await axiosBE.get('/api/rag/queryRetrieval', { params: queryRetrievalPayload });
         const relevantCodeSnippetts = queryRetrievalResponse.data.result
 
         const metadataRetrievalpayload = {
@@ -395,7 +398,22 @@ const ChatComponent: React.FC = () => {
         const metadataRetrievalResponse = await axiosBE.post('/api/rag/metadataRetrieval', metadataRetrievalpayload)
         additionalContext = metadataRetrievalResponse.data.result
         promptMessages = [...promptMessages, {"role": "context", "content": `${additionalContext}`}]   
-      }                         
+      }
+      
+      // If current loaded model support PACKAGE USER SELECTION we should enrich the LLM with relevat context retrieved from those packages
+      if (selectedModel?.isPackageSelectionRagEnabled && messages.length == 0 && selectedPackages.length > 0) {
+        const queryRetrievalByPackagesNamesPayload = {
+          packagesList: selectedPackages,
+          projectName: selectedModel?.project,
+          tokenizerPath: selectedModel?.hfRepoId,
+          contextLength: selectedModel?.modelMaxSeqLen,
+          modelId: selectedModel?.modelId
+        }
+        
+        const metadataRetrievalResponse = await axiosBE.post('/api/rag/queryRetrievalByPackagesNames', queryRetrievalByPackagesNamesPayload)
+        additionalContext = metadataRetrievalResponse.data.result
+        promptMessages = [...promptMessages, {"role": "context", "content": `${additionalContext}`}]   
+      }
       
       const inferencePayload = {
         messages: promptMessages,
@@ -732,6 +750,7 @@ const ChatComponent: React.FC = () => {
             setDrawerOpen={setDrawerOpen}
             data={data} 
             modelId={selectedModel.modelId}
+            projectName={selectedModel.project}
             temperature={temperature} 
             setTemperature={setTemperature}
             isStreaming={isStreaming}
@@ -741,6 +760,7 @@ const ChatComponent: React.FC = () => {
             currentChatId={currentChatId}
             historyChats={historyChats}
             setHistoryChats={setHistoryChats}
+            setSelectedPackages={setSelectedPackages}
           />
           <MainContainer style={{marginLeft: drawerOpen ? '16%' : '0%', flexGrow: 1}}>
             <ChatContainer>
