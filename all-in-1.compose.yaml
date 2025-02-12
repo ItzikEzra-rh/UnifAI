@@ -42,7 +42,7 @@ services:
   be:
     image: localhost/be:latest
     build:
-      context: backend
+      context: ./
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
