@@ -141,12 +141,16 @@ class PromptOrbiter:
         # ANSI color codes
         GREEN = "\033[92m"
         BLUE = "\033[94m"
+        LIGHT_PURPLE = "\033[95m"
         RESET = "\033[0m"  # Reset color
 
         separator = "═" * 80  # Stylish separator
         question_header = f"{GREEN}🟢 QUESTION {RESET}".center(80, "═")
+        system_message_header = f"{LIGHT_PURPLE}🟢 SYSTEM {RESET}".center(80, "═")
         answer_header = f"{BLUE}🔵 ANSWER {RESET}".center(80, "═")
 
+        logger.info(f"\n{separator}\n{system_message_header}\n{separator}\n")
+        logger.info(f"{LIGHT_PURPLE}{prompt.current_system_message}{RESET}\n")
         logger.info(f"\n{separator}\n{question_header}\n{separator}\n")
         logger.info(f"{GREEN}{prompt.current_question}{RESET}\n")
         logger.info(f"\n{separator}\n{answer_header}\n{separator}\n")
