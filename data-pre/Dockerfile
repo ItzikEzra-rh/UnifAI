@@ -18,8 +18,8 @@ COPY --from=base --chown=1001:1001 /tmp/tree-sitter-robot $HOME/tree-sitter-robo
 WORKDIR $HOME
 
 RUN mkdir -p $HOME/.config/tree-sitter/ /tmp/workbed
-COPY grammar.js $HOME/tree-sitter-robot
-COPY config.json $HOME/.config/tree-sitter/
+COPY tree-sitter-binaries/grammar.js $HOME/tree-sitter-robot
+COPY tree-sitter-binaries/config.json $HOME/.config/tree-sitter/
 COPY  --chown=1001:1001 scan.robot.sh $HOME/
 RUN chmod +x  $HOME/scan.robot.sh
 WORKDIR $HOME/tree-sitter-robot
