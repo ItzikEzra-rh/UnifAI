@@ -15,8 +15,7 @@ This backend (BE) application is built with **Python** and based on the **Flask*
 
 All application data, including dataset information and LLM prompt history, is stored in **MongoDB**. This ensures data persistence and efficient data retrieval to support GUI functionalities.
 
-## Getting Started
-
+## Getting Started (for container installation, for localhost installation please see next section)
 ### Prerequisites
 
 podman installed.
@@ -32,6 +31,30 @@ podman build --tag genie-backend.latest .
 ```
 podman run --name backend -e 'MONGODB_HOST=mongodb' -e 'BACKEND_ENV=production' genie-backend.latest
 ```
+
+## Getting Started (for localhost installation)
+
+### Prerequisites
+
+- Python 3.8 or above
+- Flask
+- MongoDB
+
+### Installation
+
+1. Clone the repository.
+2. Install dependencies:
+```bash
+    pip install -r requirementsBE.txt
+```
+### Running the Application
+To start the Flask application, run:
+
+```bash
+python app.py
+```
+This will start the server, making it available to handle requests from the GUI.
+
 ### API Documentation
 Each API endpoint is documented with details on request methods, parameters, and example responses. Refer to the API documentation for a complete guide.
 
