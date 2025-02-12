@@ -30,7 +30,7 @@ podman build --tag genie-backend.latest .
 
 ### Running the Application
 ```
-podman run --name backend genie-backend.latest
+podman run --name backend -e 'MONGODB_HOST=mongodb' -e 'BACKEND_ENV=production' genie-backend.latest
 ```
 ### API Documentation
 Each API endpoint is documented with details on request methods, parameters, and example responses. Refer to the API documentation for a complete guide.
