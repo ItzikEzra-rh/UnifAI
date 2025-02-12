@@ -29,8 +29,8 @@ class PromptStatePolicy(PromptPolicy):
 
         prompt.formatted_chat_prompt = self.tokenizer.format_chat_prompt([
             {"role": "system", "content": prompt.current_system_message},
-            {"role": "context", "content": prompt.context},
-            {"role": "user", "content": prompt.current_question}
+            # {"role": "context", "content": prompt.context},
+            {"role": "user", "content": f"**context** {prompt.context} \n**user** {prompt.current_question}"}
         ])
         prompt.token_count = self.tokenizer.count_tokens(prompt.formatted_chat_prompt)
         return True

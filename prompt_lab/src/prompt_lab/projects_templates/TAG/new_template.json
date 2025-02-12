@@ -8,16 +8,42 @@
   "context": "Below is the element of type ${element_type} with the name ${name}:\n\n${file_location}\n\n${element_type}\n\n${tags}\n\n${package}\n\n${imports}\n\n${structs}\n\n${interfaces}\n\n${global_vars}\n\n${code}\n\nUtilize the provided element details and code to address the user's question accurately.",
   "q_and_a": [
     {
-      "name": "creating a 2 step",
-      "seed_system_message": "${seed_system_message}",
-      "question_system_message": "use the same logic and structure of the code as in the context",
+      "name": "short prompt 2 steps",
+      "seed_system_message": "the user-like request should mention it is about Go Ginko, use details from the context to formulate the user-like request.",
+      "question_system_message": "I am providing a piece of **GoLang code** using the **Ginkgo framework** for testing.\n\n1. **Start with a clear and simple description** of what the test is validating.\n2. **Provide an overview of the code**, explaining the purpose of each main component and how they work together.\n3. **Show the complete code as a whole**, including **imports and all other code sections**, without breaking it into sections.\n4. **You must add short comments** to the code.\n5. **Do not include any instructions** on how to execute the test.\n",
       "context": "${context}",
-      "question_seed": "Formulate a user-like request that asks to create the described ${element_type}, including step-by-step guidance for designing, implementing, and validating it, without including any extra explanation or code",
+      "question_seed": "Formulate a user-like request that asks to create the described ${element_type}. you must not include any extra explanation, code, imports or file location.",
       "question": [],
       "answer": "",
       "question_validation": "does the question include step-by-step guidance for creating the ${element_type}? ",
       "answer_validation": "is the code similar to the ${element_type} code?",
-      "element_types": ["test", "function"],
+      "element_types": ["test"],
+      "condition": ""
+    },
+    {
+      "name": "long prompt 2 steps",
+      "seed_system_message": "the user-like request should mention it is about Go Ginko, use details from the context to formulate the user-like request.",
+      "question_system_message": "I am providing a piece of **GoLang code** using the **Ginkgo framework** for testing.\n\n1. **Start with a clear and simple description** of what the test is validating.\n2. **Provide an overview of the code**, explaining the purpose of each main component and how they work together.\n3. **Show the complete code as a whole**, including **imports and all other code sections**, without breaking it into sections.\n4. **You must add short comments** to the code.\n5. **Do not include any instructions** on how to execute the test.\n",
+      "context": "${context}",
+      "question_seed": "Formulate a user-like request that asks to create the described ${element_type}, including step-by-step guidance for designing, implementing, and validating it. you must not include any extra explanation, code, imports or file location.",
+      "question": [],
+      "answer": "",
+      "question_validation": "does the question include step-by-step guidance for creating the ${element_type}? ",
+      "answer_validation": "is the code similar to the ${element_type} code?",
+      "element_types": ["test"],
+      "condition": ""
+    },
+    {
+      "name": "long prompt 2 steps - CoT",
+      "seed_system_message": "the user-like request should mention it is about Go Ginko, use details from the context to formulate the user-like request.",
+      "question_system_message": "I am providing a piece of **GoLang code** using the **Ginkgo framework** for testing.\n\n1. **Start with a clear and simple description** of what the test is validating.\n2. **Provide an overview of the code**, explaining the purpose of each main component and how they work together.\n3. **Include a detailed chain of thought explanation before the code segment**, capturing an engineer’s step-by-step thinking process while constructing the test. The explanation should follow this logical reasoning:  \n   - **\"First, I need to validate X, so I need a function that can do Y.\"**  \n   - **\"To achieve Y, I need to interact with Z, so I will use this function.\"**  \n   - **\"This function requires me to call A and B, so I need to import C and D.\"**  \n   - **\"Since the test needs to be structured properly, I will use Ginkgo's Describe and It blocks to logically separate setup, execution, and validation.\"**  \n   - **\"I need assertions to check that the expected behavior occurs, so I will use Expect from Gomega to enforce test correctness.\"**  \n   - **\"Logging will help debug failures, so I will include glog to output key information.\"**  \n   - **\"Now that I have the key components, I can structure my test with the correct functions and imports.\"**  \n4. **Show the complete code as a whole**, including **imports and all other code sections**, without breaking it into sections.\n5. **You must add short comments** to the code.\n6. **Do not include any instructions** on how to execute the test.\n",
+      "context": "${context}",
+      "question_seed": "Formulate a user-like request that asks to create the described ${element_type}, including step-by-step guidance for designing, implementing, and validating it. you must not include any extra explanation, code, imports or file location.",
+      "question": [],
+      "answer": "",
+      "question_validation": "does the question include step-by-step guidance for creating the ${element_type}? ",
+      "answer_validation": "is the code similar to the ${element_type} code?",
+      "element_types": ["test"],
       "condition": ""
     }
   ]
