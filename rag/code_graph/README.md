@@ -37,7 +37,7 @@ The primary goal of the `code_graph` component is to analyze code elements withi
            "projectName": "TAG_Files"
      }'
 
-3)  curl -X GET "http://127.0.0.1:13456/api/rag/queryRetrievalByPackagesNames" -H "Content-Type: application/json" -d '{
+3)  curl -X POST "http://127.0.0.1:13456/api/rag/queryRetrievalByPackagesNames" -H "Content-Type: application/json" -d '{
            "packagesList": ["schedule", "e2e"],
            "projectName": "oadp-e2e-qe",
            "tokenizerPath": "sfiresht/oadp-operator-tag-r16-a16-epoch2",
@@ -45,7 +45,7 @@ The primary goal of the `code_graph` component is to analyze code elements withi
            "modelId": "XX"
     }'
 
-4) curl -X GET "http://127.0.0.1:13456/api/rag/packagesNamesList" -H "Content-Type: application/json" -d '{
+4) curl -X POST "http://127.0.0.1:13456/api/rag/packagesNamesList" -H "Content-Type: application/json" -d '{
            "projectName": "kubevirt",
            "modelId": "XX"
     }'
