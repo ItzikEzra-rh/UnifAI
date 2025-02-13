@@ -3,7 +3,7 @@ from prompt_lab.config import ConfigManager
 from prompt_lab.utils import TokenizerUtils
 from prompt_lab.utils.util import get_mongo_url
 from prompt_lab.storage import HybridHFMongoRepository, HuggingFaceDataHandler, MongoDataHandler, HFExporter
-from prompt_lab.llm_client import VLLMClient
+from prompt_lab.llm import VLLMClient
 from typing import List
 
 
@@ -59,7 +59,7 @@ def run_launchpad():
 def run_orbiter(batch: List[dict]):
     """Run the 'orbiter' command logic."""
     config, tokenizer = initialize_config_and_tokenizer()
-
+    repository = initialize_mongo_handlers_and_repository(config, db_name="promptLab")
     llm_client = VLLMClient(
         api_url=config.get("model_api_url"),
         model_name=config.get("model_name"),
@@ -68,6 +68,7 @@ def run_orbiter(batch: List[dict]):
 
     PromptOrbiter(
         llm_client=llm_client,
+        repository=repository,
         tokenizer=tokenizer,
         review_queue_name=config.get("reviewer_queue_name"),
         reviewer_task_name=config.get("reviewer_task_name"),

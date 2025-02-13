@@ -13,3 +13,4 @@ celery-batches
 ijson
 transformers
 datasets
+openai
