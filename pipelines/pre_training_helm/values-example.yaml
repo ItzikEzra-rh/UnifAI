@@ -10,7 +10,7 @@ global:
   multiple_gpu_per_pod: false
 
   # Number of GPU per vllm Pod.
-  number_of_gpu: 2
+  number_of_gpu: 1
 
   # (int) number of prompt-vllm's serving orbiters
   vllm_orbiter_replica: 1

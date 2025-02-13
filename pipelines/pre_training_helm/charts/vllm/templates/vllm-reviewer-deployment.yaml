@@ -64,10 +64,13 @@ spec:
               {{- end }}
             ]
         env:
-        - name: CUDA_VISIBLE_DEVICES
         {{- if .Values.global.multiple_gpu_per_pod }}
+        - name: CUDA_VISIBLE_DEVICES
           value: "0,1"
+        - name: TRITON_CACHE_DIR
+          value: "/tmp/.triton"
         {{- else }}
+        - name: CUDA_VISIBLE_DEVICES
           value: "0"
         {{- end }}
         - name: VLLM_ENGINE_USE_TCP

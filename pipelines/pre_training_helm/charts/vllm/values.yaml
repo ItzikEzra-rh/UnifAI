@@ -22,11 +22,11 @@ image:
 resources:
   requests:
     memory:  "6Gi"   
-    cpu: "1"
+    cpu: "2"
     gpu:     
   limits:
     memory: "6Gi"   
-    cpu: "1"
+    cpu: "2"
     gpu:   
 
 service:

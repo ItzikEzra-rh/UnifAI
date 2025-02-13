@@ -134,11 +134,11 @@ spec:
 
         resources:
           requests:
-            memory: "1Gi"
-            cpu: "1"
+            memory: {{.Values.resources.requests.memory}}
+            cpu: {{.Values.resources.requests.cpu}}
           limits:
-            memory: "1Gi"
-            cpu: "1"
+            memory: {{.Values.resources.limits.memory}}
+            cpu: {{.Values.resources.limits.cpu}}  
 
       securityContext:
         seccompProfile:
