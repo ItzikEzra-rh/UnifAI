@@ -1,4 +1,4 @@
-from prompt_lab.llm_client.client import LLMClient
+from .client import LLMClient
 from openai import OpenAI
 import requests
 import os
