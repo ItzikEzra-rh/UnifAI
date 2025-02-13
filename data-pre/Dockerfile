@@ -10,7 +10,7 @@ RUN git clone https://github.com/Hubro/tree-sitter-robot.git
 FROM  registry.access.redhat.com/ubi9/nodejs-18-minimal
 #install debugging tools 
 USER root
-RUN microdnf update -y && microdnf install -y vim less iputils telnet && microdnf clean all
+RUN microdnf update -y && microdnf install -y vim less iputils && microdnf clean all
 USER 1001
 
 COPY --from=base /usr/local/bin/tree-sitter /usr/local/bin/tree-sitter
@@ -20,7 +20,7 @@ WORKDIR $HOME
 RUN mkdir -p $HOME/.config/tree-sitter/ /tmp/workbed
 COPY tree-sitter-binaries/grammar.js $HOME/tree-sitter-robot
 COPY tree-sitter-binaries/config.json $HOME/.config/tree-sitter/
-COPY  --chown=1001:1001 scan.robot.sh $HOME/
+COPY  --chown=1001:1001 tree-sitter-binaries/scan.robot.sh $HOME/
 RUN chmod +x  $HOME/scan.robot.sh
 WORKDIR $HOME/tree-sitter-robot
 RUN tree-sitter generate
