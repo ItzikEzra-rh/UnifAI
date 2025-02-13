@@ -2,7 +2,8 @@ from flask import Blueprint
 from webargs import fields
 from helpers.apiargs import from_query, from_body
 from be_utils.utils import json_response
-from backend.providers.rag import parsed_elements_metadata_expansion, query_meta_data_retrieval, project_graph_expansion, meta_data_to_graph_retrieval
+from backend.providers.rag import parsed_elements_metadata_expansion, query_meta_data_retrieval, project_graph_expansion, meta_data_to_graph_retrieval,\
+                                  get_context_by_packages, get_available_package_names_list_by_project
 
 rag_bp = Blueprint("rag", __name__)
 
@@ -51,6 +52,40 @@ def query_retrieval(text, project_name, model_name, model_id):
     :return:
     """
     best_match = query_meta_data_retrieval(text, project_name, model_name, model_id)
+    return json_response({"result": best_match})
+
+@rag_bp.route("/queryRetrievalByPackagesNames", methods=["POST"])
+@from_body({"packages_list":                 fields.List(fields.Str(), missing=[], data_key="packagesList"),
+            "project_name":                  fields.Str(missing='',   data_key="projectName"),
+            "model_id":                      fields.Str(missing='',   data_key="modelId"),
+            "tokenizer_path":                fields.Str(missing='',   data_key="tokenizerPath"),
+            "context_length":                fields.Int(missing=8192, data_key="contextLength"),
+})
+def context_enrichment_by_packages_selection(packages_list, project_name, model_id, tokenizer_path, context_length):
+    """retrieving best matched elements based on packages list attached to user selection for specific project
+
+    :param str packages_list: list of packages - selected by the user
+    :param str project_name: project name of the model which being served by VLLM
+    :param str model_id: model id which being served by VLLM
+    :param str tokenizer_path: 
+    :param str context_length: 
+    :return:
+    """
+    best_match = get_context_by_packages(packages_list, project_name, model_id, tokenizer_path, context_length)
+    return json_response({"result": best_match})
+
+@rag_bp.route("/packagesNamesList", methods=["POST"])
+@from_body({"project_name":                  fields.Str(missing='', data_key="projectName"),
+            "model_id":                      fields.Str(missing='', data_key="modelId"),
+})
+def get_avaliable_package_names_list(project_name, model_id):
+    """get the entire avaliable package list for specific project
+
+    :param str project_name: project name of the model which being served by VLLM
+    :param str model_id: model id which being served by VLLM
+    :return:
+    """
+    best_match = get_available_package_names_list_by_project(project_name, model_id)
     return json_response({"result": best_match})
 
 @rag_bp.route("/registerProjectGraph", methods=["GET"])

@@ -11,7 +11,7 @@ pandas
 requests
 networkx
 spacy
-lsof
+#lsof
 matplotlib
 
 # Should run from the venv: python -m spacy download en_core_web_sm

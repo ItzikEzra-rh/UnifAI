@@ -45,17 +45,19 @@ class CodeContextExtractor:
                     
                     for qualified_name, func_context in parsed_functions:
                         self.function_contexts[qualified_name] = func_context
-                        self.function_graph.add_node(qualified_name)
+                        #TODO: uncomment below code, when we are going to actual use the graph mapping advantages
+                        # self.function_graph.add_node(qualified_name)
                         
                         # Add edges for function calls
-                        for call in func_context.calls:
-                            self.function_graph.add_edge(qualified_name, call)
+                        # for call in func_context.calls:
+                        #     self.function_graph.add_edge(qualified_name, call)
                             
                 except Exception as e:
                     print(f"Error parsing {file_path}: {e}")
 
         # Update called_by relationships
-        self._update_caller_relationships()
+        #TODO: uncomment below code, when we are going to actual use the graph mapping advantages
+        # self._update_caller_relationships()
     
     @mongo
     def upload_to_db(self):
@@ -167,5 +169,25 @@ class CodeContextExtractor:
                 # for neighbor in neighbors:
                 #     if neighbor in retreived_function_contexts:
                 #         context[neighbor] = retreived_function_contexts[neighbor]
+        
+        return context
+
+    @time_execution
+    @mongo
+    def get_context_from_package_list(self, project_name: str, packages_list: List[str]) -> List[dict]:
+        """
+        Retrieves documents from the code_graph collection that match any package name in packages_list.
+        It selects only the required fields and returns them as a list. 
+        """
+        context = []
+        
+        # Query MongoDB for matching package names
+        query = {"project_name": project_name, "package_name": {"$in": packages_list}}
+        projection = {"file_path": 1, "signature": 1, "package_name": 1, "source_code": 1, "_id": 0}
+        
+        results = Collections.by_name('code_graph').find(query, projection)
+        
+        # Add matched documents to context list
+        context.extend(results)
         
         return context

@@ -1,23 +1,30 @@
-# Use the specified Red Hat Universal Base Image 9 (UBI9)
-FROM registry.access.redhat.com/ubi9/ubi
+### ---------------------------- stage 1
+FROM docker.io/nvidia/cuda:12.6.0-cudnn-runtime-ubi9 as base
 
 # Install necessary packages
+RUN dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
 RUN dnf update -y && \
-    dnf install -y python3-pip git && \
-    dnf clean all
+    dnf install -y python3-pip git cuda-toolkit  python3-devel
 
 # Upgrade pip and install virtualenv
 RUN pip3 install --upgrade pip virtualenv
 
 # Create and activate a virtual environment
-RUN virtualenv /opt/venv
+RUN virtualenv venv
 
-# Activate the virtual environment and install torch and other required Python packages
-RUN /bin/bash -c "source /opt/venv/bin/activate && \
-    pip install torch && \
-    pip install --upgrade pip && \
-    pip install git+https://github.com/unslothai/unsloth.git#egg=unsloth[colab-new] && \
-    pip install --no-deps 'xformers<0.0.27' 'trl<0.9.0' peft accelerate bitsandbytes"
+ADD . .
+RUN /bin/bash -c "source venv/bin/activate &&  pip install -r requirementsBE.txt"
 
-# Set the default command to activate the virtual environment and keep the container running
-CMD ["/bin/bash", "-c", "source /opt/venv/bin/activate && exec bash && sleep infinity"]
+### ---------------------------- stage 2
+FROM docker.io/nvidia/cuda:12.6.0-cudnn-runtime-ubi9
+RUN dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
+RUN dnf update -y && \
+    dnf install -y git cuda-toolkit python3-devel vim less iputils telnet
+RUN dnf clean all
+#WORKDIR /root
+COPY --from=base venv venv
+
+ADD . .
+RUN ln -s /usr/local/cuda-12.6/targets/x86_64-linux/lib/stubs/libcuda.so /usr/lib/libcuda.so
+ENV TOKENIZERS_PARALLELISM=true BACKEND_ENV=production
+CMD ["/bin/bash", "-c", "source venv/bin/activate && python app.py"]
