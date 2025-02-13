@@ -79,7 +79,7 @@ spec:
         - name: MONGODB_PORT
           value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_PORT)
         - name: MODEL_API_URL
-          value: "http://$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_HOST):$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_PORT)/v1/completions"
+          value: "http://$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_HOST):$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_PORT)"
 
 
         resources:

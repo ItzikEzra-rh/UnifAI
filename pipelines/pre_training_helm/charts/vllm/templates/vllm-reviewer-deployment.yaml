@@ -15,41 +15,25 @@ spec:
       labels:
         app: {{ .Chart.Name }}-reviewer
     spec:
-
-      {{- if .Values.global.enable_toleration }}
-      tolerations:
-        - key: nvidia.com/gpu
-          operator: Exists
-          effect: NoSchedule
-        - key: tenant
-          operator: Equal
-          value: llmaas-a100
-          effect: NoSchedule
-      {{- end }}
-      
+     
       initContainers:
       - name: wait-for-services
         image: images.paas.redhat.com/genie/ubi8:latest
         env:
         - name: RELEASE_NAME
-          value: {{.Release.Name | upper}}
+          value: {{.Release.Name| upper}}
         - name: CHART_NAME
           value: {{ .Chart.Name }}
+
         command: 
         - sh
         - -c
-        - /mnt/config/wait-for-services.sh
+        - "/mnt/config/wait-for-services.sh"
 
         volumeMounts:
           - name: {{ .Release.Name }}-wait-for-services
             mountPath: /mnt/config
-            readOnly: true
 
-      volumes:
-      - name: {{ .Release.Name }}-wait-for-services  
-        configMap:
-          name: {{ .Release.Name }}-wait-for-services
-          defaultMode: 0755
 
       containers:
       - name: {{ .Chart.Name }}-reviewer
@@ -109,7 +93,7 @@ spec:
             path: /health
             port: 8000
             scheme: HTTP
-          initialDelaySeconds: 360
+          initialDelaySeconds: 900
           periodSeconds: 20
           timeoutSeconds: 30
           successThreshold: 1
@@ -120,7 +104,7 @@ spec:
             path: /health
             port: 8000
             scheme: HTTP
-          initialDelaySeconds: 360
+          initialDelaySeconds: 900
           periodSeconds: 20
           timeoutSeconds: 30
           successThreshold: 1
@@ -130,14 +114,31 @@ spec:
         volumeMounts:
           - name: dshm
             mountPath: /dev/shm
+      {{- end }}
 
       volumes:
+        - name: {{ .Release.Name }}-wait-for-services
+          configMap:
+            name: {{ .Release.Name }}-wait-for-services
+            defaultMode: 0755
+
+      {{- if .Values.global.multiple_gpu_per_pod }}
         - name: dshm
           emptyDir:
             medium: Memory
             sizeLimit: "16Gi"
       {{- end }}
 
+      {{- if .Values.global.enable_toleration }}
+      tolerations:
+        - key: nvidia.com/gpu
+          operator: Exists
+          effect: NoSchedule
+        - key: tenant
+          operator: Equal
+          value: llmaas-a100
+          effect: NoSchedule
+      {{- end }}
 
       securityContext:
         seccompProfile:

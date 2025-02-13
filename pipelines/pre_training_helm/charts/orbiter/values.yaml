@@ -6,19 +6,18 @@ global:
 args:
 - orbiter
 - --celery
-- --reviewer
 - --celery-worker-concurrency
-- 4
+- 8
 - --celery-worker-prefetch-count
 - 2
-
+#- --reviewer
 resources:
   requests:
     memory: "2Gi"     
     cpu: "2"       
   limits:
-    memory: "2Gi"     
-    cpu: "2" 
+    memory: "4Gi"     
+    cpu: "4" 
 
 image:
   repository: images.paas.redhat.com/genie/prompt_lab
