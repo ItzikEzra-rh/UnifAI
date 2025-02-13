@@ -1,31 +1,31 @@
 from prompt_lab.llm_client.client import LLMClient
+from openai import OpenAI
 import requests
+import os
 
 
 class VLLMClient(LLMClient):
     def __init__(self, api_url, model_name, max_context_length):
         super().__init__(api_url, max_context_length)
         self.model_name = model_name
+        self.openai_api_key = "EMPTY"
+        self.openai_api_base = os.path.join(api_url, "v1")
+        self.client = OpenAI(
+            api_key=self.openai_api_key,
+            base_url=self.openai_api_base
+        )
 
     def send_request(self, prompts, max_tokens=None):
-        # Format prompts with tokenizer utility
         prompts = [prompts] if not isinstance(prompts, list) else prompts
+        stream = self.client.completions.create(
+            model=self.model_name,
+            prompt=prompts,  # Batch prompts
+            max_tokens=max_tokens,
+            temperature=0.3,
+            stream=True  # Enable streaming
+        )
 
-        # Prepare data for vllm
-        data = {
-            "model": self.model_name,
-            "prompt": prompts,
-            "max_tokens": max_tokens,
-            "temperature": 0.3,
-            # "frequency_penalty": 0.6,
-            # "presence_penalty": 0.4
-        }
-        # Send request
-        response = requests.post(self.api_url, json=data, headers={"Content-Type": "application/json"})
-        response.raise_for_status()
-
-        # Extract responses in order
-        return self.sort_choices(response.json())
+        return stream
 
     @staticmethod
     def sort_choices(response):

@@ -3,7 +3,7 @@ from prompt_lab.config import ConfigManager
 from prompt_lab.utils import TokenizerUtils
 from prompt_lab.utils.util import get_mongo_url
 from prompt_lab.storage import HybridHFMongoRepository, HuggingFaceDataHandler, MongoDataHandler, HFExporter
-from prompt_lab.llm_client import VLLMClient
+from prompt_lab.llm import VLLMClient
 from typing import List
 
 
