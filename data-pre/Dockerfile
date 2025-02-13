@@ -7,7 +7,7 @@ RUN wget https://github.com/tree-sitter/tree-sitter/releases/download/v0.24.3/tr
 RUN git clone https://github.com/Hubro/tree-sitter-robot.git
 
 
-FROM  registry.access.redhat.com/ubi9/nodejs-18-minimal
+FROM registry.access.redhat.com/ubi9/nodejs-22-minimal
 #install debugging tools 
 USER root
 RUN microdnf update -y && microdnf install -y vim less iputils && microdnf clean all
