@@ -45,6 +45,19 @@
       "answer_validation": "is the code similar to the ${element_type} code?",
       "element_types": ["test"],
       "condition": ""
+    },
+    {
+      "name": "test description",
+      "seed_system_message": "",
+      "question_system_message": "",
+      "context": "",
+      "question_seed": "",
+      "question": ["Describe the following ${element_type} code:\n```robot\n${code}"],
+      "answer": "",
+      "question_validation": "",
+      "answer_validation": "",
+      "element_types": ["test"],
+      "condition": ""
     }
   ]
 }
