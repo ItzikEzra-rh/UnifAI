@@ -33,7 +33,6 @@ MANIFEST
 .idea/*
 # Docker
 *.tar
-install_docker_gpu.sh
 
 # Unit test / coverage reports
 htmlcov/

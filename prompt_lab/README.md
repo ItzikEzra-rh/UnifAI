@@ -208,3 +208,19 @@ promptlab --config-path ./config.json launchpad
 
 This README should equip you with the knowledge to install, configure, and use PromptLab effectively. If you encounter any issues, feel free to reach out to the developer. Happy prompting! 😊
 
+=======
+INPUT_JSON_PATH
+OUTPUT_DATA_DIR_PATH
+RABBITMQ_PORT
+RABBITMQ_IP
+MONGODB_PORT
+MONGODB_IP
+PROMPT_LAB_MODEL_HF_ID
+PROMPT_LAB_MAX_GENERATION_LENGTH
+PROMPT_LAB_MAX_CONTEXT_LENGTH
+PROMPT_LAB_BATCH_SIZE
+QUEUE_TARGET_SIZE
+TEMPLATE_NAME
+TEMPLATE_AGENT
+TEMPLATE_TYPE
+```

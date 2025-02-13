@@ -1,7 +1,7 @@
 from bson.objectid import ObjectId
 from flask_pymongo import PyMongo as FlaskPyMongo
 from pymongo.collection import Collection
-from llm_be_config.configParams import config_params
+from config.configParams import config_params
 
 """
 Hold the database instance (of PyMongo).
