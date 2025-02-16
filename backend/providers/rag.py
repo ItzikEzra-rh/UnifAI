@@ -11,6 +11,7 @@ from rag.meta_data.helpers.meta_data_query_expander import MetaDataQueryExpander
 from rag.code_graph.code_context_extractor import CodeContextExtractor
 from rag.code_graph.language_parsers.language_parser import FunctionContext
 from rag.be_utils.db.db import mongo, Collections
+from rag.meta_data.helpers.metadata_extractor.eco_go_meta_data_extractor import EcogoMetaDataExtractor
 
 from prompt_lab.src.prompt_lab.utils.tokenizer import TokenizerUtils
 
@@ -175,7 +176,7 @@ def query_meta_data_retrieval(text, project_name, model_name, model_id):
     # Extract metadata for the query
     query_metadata = query_meta_expander.extract_metadata()
 
-    meta_data_retreiver = MetaDataRetriever(query_metadata=query_metadata)
+    meta_data_retreiver = MetaDataRetriever(query_metadata=query_metadata, project_name=project_name)
     best_match = meta_data_retreiver.best_match()
 
     # Serialize the best_match list properly, including ObjectId handling
@@ -196,6 +197,42 @@ def get_available_package_names_list_by_project(project_name: str, model_id: str
     package_names = {doc["package_name"] for doc in results if "package_name" in doc}
     
     return package_names
+
+
+@mongo
+def buzz_words_appearance_hash_table(project_name, model_name, model_id):
+    # Initialize a defaultdict for counting buzz words
+    buzz_word_counts = defaultdict(int)
+
+    # Iterate over all documents in the collection
+    for doc in Collections.by_name('parsed_objects').find(
+        {"metadata.project_name": project_name}, {"metadata.buzz_words": 1}
+    ):  # Fetch only the needed field
+        buzz_words = doc.get("metadata", {}).get("buzz_words", [])
+
+        if isinstance(buzz_words, list):  # Ensure it's a list
+            for word in buzz_words:
+                buzz_word_counts[word] += 1  # Increment count for each word
+
+    # Convert defaultdict to a regular dictionary
+    buzz_word_counts = dict(buzz_word_counts)
+
+    if project_name == "eco-gotests":
+        # Filter to keep only words from TOP_100_TERMS
+        top_terms = set(EcogoMetaDataExtractor.TOP_100_TERMS)
+
+        # Keep only words that exist in TOP_100_TERMS
+        buzz_word_counts = {word: count for word, count in buzz_word_counts.items() if word in top_terms}
+
+        # Ensure every term in TOP_100_TERMS exists in the dictionary, even if missing (set count to 0)
+        for term in top_terms:
+            if term not in buzz_word_counts:
+                buzz_word_counts[term] = 0
+
+    # Sort the dictionary by value in descending order while keeping the same structure
+    buzz_word_counts = dict(sorted(buzz_word_counts.items(), key=lambda item: item[1], reverse=True))
+
+    return buzz_word_counts
 
 def get_context_by_packages(packages_list, project_name, model_id, tokenizer_path, context_length):
     extractor = CodeContextExtractor(project_name=project_name)
