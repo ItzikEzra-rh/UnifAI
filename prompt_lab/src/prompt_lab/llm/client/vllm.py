@@ -22,6 +22,7 @@ class VLLMClient(LLMClient):
             prompt=prompts,  # Batch prompts
             max_tokens=max_tokens,
             temperature=0.3,
+            top_p=0.8,
             stream=True  # Enable streaming
         )
 
