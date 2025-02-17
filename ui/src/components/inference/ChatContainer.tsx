@@ -191,7 +191,6 @@ const ChatComponent: React.FC = () => {
   const [messageIsRated, setMessageIsRated] = useState<{ [key: number]: boolean }>({});
 
   const [historyChats, setHistoryChats] = useState<HistoryChat[]>([]);
-  const [currentChatId, setCurrentChatId] = useState<string>('current');
 
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
 
@@ -202,8 +201,10 @@ const ChatComponent: React.FC = () => {
 
 
   useEffect(() => {
-    const newSessionId = uuidv4();
-    setSessionId(newSessionId);
+    if (!sessionId) { // Only generate new sessionId if the useEffect is called upon first render
+      const newSessionId = uuidv4();
+      setSessionId(newSessionId);
+    }
 
     const fetchModelsAndCheckLoadedModel = async () => {
       // Fetch the model and its chat history on component mount 
@@ -245,8 +246,8 @@ const ChatComponent: React.FC = () => {
 
     return () => {
       // Stop inference on component unmount
-      axiosLLM.get('/api/backend/stopInference', { params: { sessionId: sessionIdRef.current } }).catch((error) => console.error('Error stopping inference:', error));
-      axiosLLM.get('/api/backend/clearChatHistory', { params: { sessionId: sessionIdRef.current } });
+      axiosLLM.get('/api/backend/stopInference', { params: { sessionId: sessionId } }).catch((error) => console.error('Error stopping inference:', error));
+      axiosLLM.get('/api/backend/clearChatHistory', { params: { sessionId: sessionId } });
     };
   }, []);
 
@@ -299,7 +300,6 @@ const ChatComponent: React.FC = () => {
       setSessionId(newSessionId);
 
       setMessages([]);
-      setCurrentChatId('current');
     } catch (error) {
       console.error('Error cleaning the chat:', error);
       toast.error('An error occurred while trying to clean the chat.');
@@ -320,7 +320,6 @@ const ChatComponent: React.FC = () => {
 
       // Load selected chat messages
       setMessages(chatMessages);
-      setCurrentChatId(chatId);
     } catch (error) {
       console.error('Error loading chat history:', error);
       toast.error('An error occurred while loading the chat history.');
@@ -749,15 +748,15 @@ const ChatComponent: React.FC = () => {
             drawerOpen={drawerOpen}
             setDrawerOpen={setDrawerOpen}
             data={data} 
-            modelId={selectedModel.modelId}
-            projectName={selectedModel.project}
+            selectedModel={selectedModel}
             temperature={temperature} 
             setTemperature={setTemperature}
             isStreaming={isStreaming}
             clearChat={clearChat}
             unloadModel={unloadModel}
+            unloadingModel={unloadingModel}
             handleChatSelect={handleChatSelect}
-            currentChatId={currentChatId}
+            currentSessionId={sessionId}
             historyChats={historyChats}
             setHistoryChats={setHistoryChats}
             setSelectedPackages={setSelectedPackages}

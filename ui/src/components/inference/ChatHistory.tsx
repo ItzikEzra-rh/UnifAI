@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import axiosBE from '../../http/axiosConfig';
 import { Paper, Typography, List, ListItem, ListItemButton, ListItemText, ListItemIcon, Divider, Box, ListItemSecondaryAction, IconButton, Dialog, DialogActions, DialogContent, DialogTitle, Button, TextField } from '@mui/material';
 import MessageIcon from '@mui/icons-material/Message';
@@ -17,9 +17,11 @@ interface ChatHistoryProps {
   modelId: string;
   isStreaming: boolean;
   onChatSelect: (chatId: string, messages: ChatMessage[]) => void;
-  currentChatId: string;
+  currentSessionId: string;
   historyChats: HistoryChat[];
   setHistoryChats: (historyChats: HistoryChat[]) => void;
+  clearChat: (sessionId: string) => void;
+  unloadingModel: boolean;
 }
 
 export interface HistoryChat {
@@ -30,7 +32,7 @@ export interface HistoryChat {
   title?: string;
 }
 
-const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatSelect, currentChatId, historyChats, setHistoryChats }) => {
+const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatSelect, currentSessionId, historyChats, setHistoryChats, clearChat, unloadingModel }) => {
   const [deleteConfirmationModal, setDeleteConfirmationModal] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [selectedTitle, setSelectedTitle] = useState<string | null>(null);
@@ -40,7 +42,10 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
   const deleteSession = async (sessionId: string) => {
     try {
       const response = await axiosBE.post('/api/chat/deleteSession', {sessionId: selectedSessionId});
-      setHistoryChats(historyChats.filter((chat) => chat.sessionId !== sessionId));
+      setHistoryChats(historyChats.filter((chat) => chat.sessionId !== sessionId));                   
+      if (sessionId === currentSessionId) {
+        clearChat(sessionId);
+      }
       setDeleteConfirmationModal(false); 
     } catch (error) {
       console.error('Error deleting session:', error);
@@ -100,7 +105,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
             <ListItem disablePadding>
               <ListItemButton
                 className={`custom-list-item-button ${editingSessionId === chat.sessionId ? 'editing' : ''}`}
-                selected={currentChatId === chat.sessionId}
+                selected={currentSessionId === chat.sessionId}
                 disabled={isStreaming}
                 onClick={() => onChatSelect(chat.sessionId, chat.messages)}
               >
