@@ -66,7 +66,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
 
   const clearChatWithPackageSelection = () => {
     clearChat()
-    handlePackageSelection()
+    if (isPackageSelectionRagEnabled && packagesNamesList.length > 0) {
+      handlePackageSelection();
+    }
   }
 
   const handleTemperatureChange = (event: Event, newValue: number | number[]) => {
