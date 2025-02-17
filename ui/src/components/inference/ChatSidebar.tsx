@@ -47,7 +47,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
         console.error('Error fetching package names:', error);
       }
     };
-    if (isPackageSelectionRagEnabled && packagesNamesList.length > 0) {
+    if (isPackageSelectionRagEnabled) {
       fetchPackages();
     }
   }, [modelId, projectName]);
