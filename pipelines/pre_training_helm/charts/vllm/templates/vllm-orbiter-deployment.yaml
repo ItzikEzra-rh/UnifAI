@@ -40,7 +40,7 @@ spec:
         #command: [ "/bin/bash", "-c", "--" ]
         #args: [ "while true; do sleep 3000000; done;" ]
         args: [
-              "--model", "{{.Values.global.orbiter_model_hf_id}}",
+              "{{.Values.global.orbiter_model_hf_id}}",
               {{- range .Values.global.vllm_orbiter_args }}
               '{{ . }}',
               {{- end }}
@@ -63,6 +63,8 @@ spec:
           value: "/tmp/.cache"
         - name: HF_HOME
           value: "/tmp/.cache"   
+        - name: MODE
+          value: "inference"   
         - name: VLLM_CONFIG_ROOT
           value: "/tmp/.cache"     
         - name: VLLM_CACHE_ROOT
