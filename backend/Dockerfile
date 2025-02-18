@@ -7,6 +7,7 @@ RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
 USER default
 ADD  --chown=default:root --chmod=777 ./backend $HOME/backend
 ADD  --chown=default:root --chmod=777 ./rag  $HOME/rag
+ADD  --chown=default:root --chmod=777 ./pipelines $HOME/pipelines
 WORKDIR $HOME/backend
 RUN mkdir -p -m 777 $HOME/backend/venv $HOME/backend/logs
 RUN ls -lia
