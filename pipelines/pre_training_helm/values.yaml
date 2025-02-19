@@ -6,6 +6,14 @@ global:
 # ====================================================================================
   # Namespace where the Helm chart will deploy the application resources.
   namespace: 
+  # enable toleration ( on production env in order to allocate A100 GPUs).
+  enable_toleration: 
+
+  # support multiple GPUs per Pod.
+  multiple_gpu_per_pod: 
+
+  # Number of GPU per vllm Pod.
+  number_of_gpu: 
 
   # (int) number of prompt-vllm's serving orbiters
   vllm_orbiter_replica: 
