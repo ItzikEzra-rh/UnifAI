@@ -691,9 +691,9 @@ const ChatComponent: React.FC = () => {
         BOLD: /\*\*(.*?)\*\*/g,
       },
       qwen: {
-        TITLE: /^## (.*)/,   
-        SUBTITLE: /^### (.*)/, 
-        BOLD: /__(.*?)__/g,  
+        TITLE: /^## \*\*(.*?)\*\*/,  
+        SUBTITLE: /^### \*\*(.*?)\*\*/,
+        BOLD: /\*\*(.*?)\*\*/g, 
       },
     };
   
