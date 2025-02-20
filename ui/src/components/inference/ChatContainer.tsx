@@ -682,7 +682,7 @@ const ChatComponent: React.FC = () => {
       return line.replace(type, (_, text) => `<${style}>${text}</${style}>`) + '\n';
     };
   
-    // Define different formatting rules for Llama and QWUN
+    // Define different formatting rules for Llama and QWEN
     const CODE = '```';
     const formattingRules = {
       llama: {
@@ -691,9 +691,9 @@ const ChatComponent: React.FC = () => {
         BOLD: /\*\*(.*?)\*\*/g,
       },
       qwen: {
-        TITLE: /^## \*\*(.*?)\*\*/,  
-        SUBTITLE: /^### \*\*(.*?)\*\*/,
-        BOLD: /\*\*(.*?)\*\*/g, 
+        TITLE: /^##\s*\**(.+?)\**\s*$/,   
+        SUBTITLE: /^(###)\s*\**(.+?)\**\s*$/,   
+        BOLD: /\*\*(.*?)\*\*/g,
       },
     };
   
@@ -723,11 +723,11 @@ const ChatComponent: React.FC = () => {
       } else {
         // Handle non-code lines, we can add here any other ideas we have to make our responses nicer looking
         switch (true) {
-          case TITLE.test(line):
-            formattedText += regularText(line, TITLE, 'h2') 
-            break;
           case SUBTITLE.test(line):
             formattedText += regularText(line, SUBTITLE, 'h3') 
+            break;
+          case TITLE.test(line):
+            formattedText += regularText(line, TITLE, 'h2') 
             break;
           case BOLD.test(line):
             formattedText += regularText(line, BOLD, 'strong') 
