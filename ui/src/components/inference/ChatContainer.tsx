@@ -677,15 +677,29 @@ const ChatComponent: React.FC = () => {
 
   const data = React.useMemo(() => (selectedModel ? [selectedModel] : []), [selectedModel]);
   
-  const ReformatText = (text: string) => {
+  const ReformatText = (text: string, modelType: 'llama' | 'qwen') => {
     const regularText = (line: string, type: RegExp, style: string) => {
-      return line.replace(type, (_, text) => `<${style}>${text}</${style}>` ) + '\n';
-    }
+      return line.replace(type, (_, text) => `<${style}>${text}</${style}>`) + '\n';
+    };
+  
+    // Define different formatting rules for Llama and QWEN
+    const CODE = '```';
+    const formattingRules = {
+      llama: {
+        TITLE: /^### (.*)/,
+        SUBTITLE: /^#### (.*)/,
+        BOLD: /\*\*(.*?)\*\*/g,
+      },
+      qwen: {
+        TITLE: /^##\s*\**(.+?)\**\s*$/,   
+        SUBTITLE: /^###\s*\**(.+?)\**\s*$/,   
+        SUBSUBTITLE: /^####\s*\**(.+?)\**\s*$/,   
+        BOLD: /\*\*(.*?)\*\*/g,
+      },
+    };
 
-    const CODE = '```'
-    const TITLE = /^### (.*)/
-    const SUBTITLE = /^#### (.*)/
-    const BOLD = /\*\*(.*?)\*\*/g
+    const { TITLE, SUBTITLE, BOLD } = formattingRules[modelType];
+    const SUBSUBTITLE = modelType === 'qwen' ? formattingRules.qwen.SUBSUBTITLE : null;
 
     const lines = text.split('\n'); 
     let [formattedText, insideCodeBlock, currentLanguage, codeBuffer] = ['', false, '', ''];
@@ -711,11 +725,14 @@ const ChatComponent: React.FC = () => {
       } else {
         // Handle non-code lines, we can add here any other ideas we have to make our responses nicer looking
         switch (true) {
-          case TITLE.test(line):
-            formattedText += regularText(line, TITLE, 'h2') 
+          case (SUBSUBTITLE && SUBSUBTITLE.test(line)):
+            formattedText += regularText(line, SUBSUBTITLE, 'h4') 
             break;
           case SUBTITLE.test(line):
             formattedText += regularText(line, SUBTITLE, 'h3') 
+            break;
+          case TITLE.test(line):
+            formattedText += regularText(line, TITLE, 'h2') 
             break;
           case BOLD.test(line):
             formattedText += regularText(line, BOLD, 'strong') 
@@ -737,17 +754,20 @@ const ChatComponent: React.FC = () => {
     return formattedText;
   };
   
-  const isLlamaModel = () => {
-    // currently only supporting text conventions of the llama models
+  const getModelType = (): 'llama' | 'qwen' | null => {
     const finetunedSteps = selectedModel?.finetuneSteps;
     if (finetunedSteps && finetunedSteps.length > 0) {
       const baseModel = finetunedSteps[0]['base_model'];
       if (baseModel) {
-        return baseModel.toLowerCase().includes('llama');
+        const lowerBaseModel = baseModel.toLowerCase();
+        if (lowerBaseModel.includes('llama')) return 'llama';
+        if (lowerBaseModel.includes('qwen')) return 'qwen';
       }
-    return false
     }
-  }
+    return null;
+  };
+  
+  const modelType = getModelType();
 
   return (
     <>
@@ -779,7 +799,7 @@ const ChatComponent: React.FC = () => {
                   <div key={message.id} style={{ position: 'relative', paddingBottom: '40px' }}>
                     <Message
                       model={{
-                        message: isLlamaModel() ? ReformatText(message.text) : message.text, 
+                        message: modelType ? ReformatText(message.text, modelType) : message.text, 
                         sentTime: 'just now',
                         sender: message.sender === 'user' ? 'You' : 'Bot',
                         direction: message.sender === 'user' ? 'outgoing' : 'incoming',
@@ -880,7 +900,7 @@ const ChatComponent: React.FC = () => {
             onClose={() => setIsCodeValidationModalOpen(false)}
             llmResponse={currentValidationMessage}
             repositoryLocation={selectedModel?.repoInternalLocation || ''}
-            isLlamaModel={isLlamaModel()}
+            modelType={modelType}
             reformatText={ReformatText}
           />
         </div>
