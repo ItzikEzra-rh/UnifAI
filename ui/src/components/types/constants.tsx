@@ -27,7 +27,8 @@ export interface TableFormData {
 export interface ModelData {
     modelId: string;
     modelName: string;
-    hfRepoId: string,
+    hfRepoId: string;
+    repoInternalLocation?: string; 
     trainingName: string;
     modelMaxSeqLen: number;
     modelType: string,

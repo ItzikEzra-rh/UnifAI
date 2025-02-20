@@ -5,6 +5,7 @@ from webargs import fields
 from helpers.apiargs import from_query, from_body
 from flask import jsonify
 from backend.providers.chat import delete_session_from_chat_history, get_chat_history, rename_title_of_chat_session, update_current_chat_history
+from helpers.evaluator.evaluator_agent import EvaluatorAgent
 
 chat_bp = Blueprint("chatHistory", __name__)
 
@@ -63,4 +64,19 @@ def rename_chat_session(session_id, title):
 
     except Exception as e:
         logging.error(f"Error renaming the chat session: {session_id}")
+        return jsonify({"status": "error", "message": str(e)}), 500
+    
+@chat_bp.route("/evaluate", methods=["POST"])
+@from_body({
+    "code":                 fields.Str(required=True, data_key="code"),
+    "repository_location":  fields.Str(required=True, data_key="repositoryLocation"),
+})
+def evaluate_code(code, repository_location):
+    try: 
+        evaluator = EvaluatorAgent(repository_location)
+        evaluation_result = evaluator.evaluate_generated_code(code)
+        return {"status": "success", "result": evaluation_result}
+    
+    except Exception as e:
+        logging.error(f"Error evaluate the code for the repository: {repository_location}")
         return jsonify({"status": "error", "message": str(e)}), 500

@@ -9,6 +9,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import StopIcon from '@mui/icons-material/Stop';
 import StarIcon from '@mui/icons-material/Star';
 import AutorenewIcon from '@mui/icons-material/Replay';
+import FactCheckIcon from '@mui/icons-material/FactCheck';
 import { FormDropdown } from '../shared/FormFields';
 import { ModelData } from '../types/constants'
 import ReactLoading from 'react-loading';
@@ -22,6 +23,7 @@ import '../../styles.css';
 import Prism from 'prismjs';
 import 'prismjs/themes/prism-okaidia.css';
 import { ChatSidebar } from './ChatSidebar';
+import CodeValidationModal from './CodeValidation';
 
 interface FormData {
   project: string;
@@ -195,6 +197,9 @@ const ChatComponent: React.FC = () => {
 
   const [selectedPackages, setSelectedPackages] = useState<string[]>([]);
 
+  const [isCodeValidationModalOpen, setIsCodeValidationModalOpen] = useState<boolean>(false);
+  const [currentValidationMessage, setCurrentValidationMessage] = useState<string>('');
+
   const getChatHistory = async (modelId: string) => {
     const loadedModelChatsResponse = await axiosBE.get('/api/chat/', { params: {modelId: modelId} });
     setHistoryChats(loadedModelChatsResponse.data.response)
@@ -279,6 +284,11 @@ const ChatComponent: React.FC = () => {
     } catch (error) {
       console.error('Error updating chat:', error);
     }
+  };
+
+  const handleCodeValidationClick = (messageText: string) => {
+    setCurrentValidationMessage(messageText);
+    setIsCodeValidationModalOpen(true);
   };
 
   const unloadModel = () => {
@@ -810,6 +820,16 @@ const ChatComponent: React.FC = () => {
                                   <StarIcon />
                                 </IconButton>
                               </Tooltip>
+
+                              <Tooltip title="Code Validation">
+                                <IconButton
+                                  disabled={!selectedModel?.repoInternalLocation}
+                                  onClick={() => handleCodeValidationClick(message.text)}
+                                  size="small"
+                                >
+                                  <FactCheckIcon />
+                                </IconButton>
+                              </Tooltip>
                             </>
                           )}
                           <Tooltip title="Save">
@@ -855,6 +875,14 @@ const ChatComponent: React.FC = () => {
               <Button onClick={handleSavePrompt} color="primary">Save</Button>
             </DialogActions>
           </Dialog>
+          <CodeValidationModal
+            open={isCodeValidationModalOpen}
+            onClose={() => setIsCodeValidationModalOpen(false)}
+            llmResponse={currentValidationMessage}
+            repositoryLocation={selectedModel?.repoInternalLocation || ''}
+            isLlamaModel={isLlamaModel()}
+            reformatText={ReformatText}
+          />
         </div>
        ) : (
         <div className="model-selection-wrapper">
