@@ -222,6 +222,7 @@ const ChatComponent: React.FC = () => {
           trainingName: item.name,
           modelMaxSeqLen: item.context_length,
           hfRepoId: item.hf_repo_id,
+          repoInternalLocation: item?.repo_internal_location,
           modelType: item.model_type,
           project: item.project,
           checkpoint: item?.checkpoint,
