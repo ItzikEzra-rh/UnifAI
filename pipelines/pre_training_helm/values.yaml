@@ -19,6 +19,7 @@ global:
   vllm_orbiter_replica: 
 
   # (int) number of reviewer-vllm's serving reviewer
+  enable_reviewer: 
   vllm_reviewer_replica: 
 
   # (int) number of orbiter to work against prompt-vllm pool
