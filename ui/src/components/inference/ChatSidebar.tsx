@@ -12,28 +12,30 @@ import { ChatMessage } from "./ChatContainer";
 interface ChatSidebarProps {
   drawerOpen: boolean;
   setDrawerOpen: (drawerOpen: boolean) => void;
+  selectedModel: ModelData;
   data: ModelData[];
-  modelId: string;
-  projectName: string;
   temperature: number;
   setTemperature: (temperature: number) => void;
   isStreaming: boolean;
   clearChat: () => void;
   unloadModel: () => void;
+  unloadingModel: boolean;
   handleChatSelect: (chatId: string, chatMessages: ChatMessage[]) => Promise<void>;
-  currentChatId: string;
+  currentSessionId: string;
   historyChats: HistoryChat[];
   setHistoryChats: (historyChats: HistoryChat[]) => void;
   setSelectedPackages: (selectedPackages: string[]) => void;
 }
 
-export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOpen, data, modelId, projectName, temperature, setTemperature, 
-                                                        isStreaming, clearChat, unloadModel, handleChatSelect, currentChatId, historyChats, setHistoryChats,
+export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOpen, selectedModel, data, temperature, setTemperature, 
+                                                        isStreaming, clearChat, unloadModel, unloadingModel, handleChatSelect, currentSessionId, historyChats, setHistoryChats,
                                                         setSelectedPackages}) => {
   const [packagesNamesList, setPackagesNamesList] = useState<string[]>([]);
   const [firstSelectedPackage, setFirstSelectedPackage] = useState<string | null>(null);
   const [secondSelectedPackage, setSecondSelectedPackage] = useState<string | null>(null);  
   const [packageSelectionModal, setPackageSelectionModal] = useState(false);
+
+  const [modelId, projectName, isPackageSelectionRagEnabled] = [selectedModel.modelId, selectedModel.project, selectedModel.isPackageSelectionRagEnabled];
 
   useEffect(() => {
     const fetchPackages = async () => {
@@ -45,7 +47,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
         console.error('Error fetching package names:', error);
       }
     };
-    fetchPackages();
+    if (isPackageSelectionRagEnabled) {
+      fetchPackages();
+    }
   }, [modelId, projectName]);
 
   const handlePackageSelection = () => {
@@ -62,7 +66,9 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
 
   const clearChatWithPackageSelection = () => {
     clearChat()
-    handlePackageSelection()
+    if (isPackageSelectionRagEnabled && packagesNamesList.length > 0) {
+      handlePackageSelection();
+    }
   }
 
   const handleTemperatureChange = (event: Event, newValue: number | number[]) => {
@@ -155,13 +161,15 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
           </div>
           <Divider orientation="horizontal" flexItem />
           <div className="inner-drawer">
-            <ChatHistory
+          <ChatHistory
               modelId={modelId}
               isStreaming={isStreaming}
               onChatSelect={handleChatSelect}
-              currentChatId={currentChatId}
+              currentSessionId={currentSessionId}
               historyChats={historyChats}
               setHistoryChats={setHistoryChats}
+              clearChat={clearChat}
+              unloadingModel={unloadingModel}
             />
           </div>
         </div>
