@@ -692,12 +692,14 @@ const ChatComponent: React.FC = () => {
       },
       qwen: {
         TITLE: /^##\s*\**(.+?)\**\s*$/,   
-        SUBTITLE: /^(###)\s*\**(.+?)\**\s*$/,   
+        SUBTITLE: /^###\s*\**(.+?)\**\s*$/,   
+        SUBSUBTITLE: /^####\s*\**(.+?)\**\s*$/,   
         BOLD: /\*\*(.*?)\*\*/g,
       },
     };
-  
+
     const { TITLE, SUBTITLE, BOLD } = formattingRules[modelType];
+    const SUBSUBTITLE = modelType === 'qwen' ? formattingRules.qwen.SUBSUBTITLE : null;
 
     const lines = text.split('\n'); 
     let [formattedText, insideCodeBlock, currentLanguage, codeBuffer] = ['', false, '', ''];
@@ -723,6 +725,9 @@ const ChatComponent: React.FC = () => {
       } else {
         // Handle non-code lines, we can add here any other ideas we have to make our responses nicer looking
         switch (true) {
+          case (SUBSUBTITLE && SUBSUBTITLE.test(line)):
+            formattedText += regularText(line, SUBSUBTITLE, 'h4') 
+            break;
           case SUBTITLE.test(line):
             formattedText += regularText(line, SUBTITLE, 'h3') 
             break;
