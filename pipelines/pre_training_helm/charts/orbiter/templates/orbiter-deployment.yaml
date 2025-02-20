@@ -51,7 +51,10 @@ spec:
           {{- range .Values.args }}
           '{{ . }}',
           {{- end }}
-          ]
+          {{- if .Values.global.enable_reviewer }}
+          '--reviewer'
+          {{- end }}
+        ]
 
         #command: [ "/bin/bash", "-c", "--" ]
         #args: [ "while true; do sleep 3000000; done;" ]

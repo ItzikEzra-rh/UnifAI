@@ -6,7 +6,7 @@ metadata:
   labels:
     app: {{ .Chart.Name }}
 spec:
-  replicas: {{ .Values.global.reviewer_replica }}
+  replicas: {{ ternary .Values.global.reviewer_replica 0 .Values.global.enable_reviewer }}
   selector:
     matchLabels:
       app: {{ .Chart.Name }}

@@ -2,6 +2,7 @@ global:
   namespace: 
   orbiter_replica:
   promptlab_env: 
+  enable_reviewer:
 
 args:
 - orbiter
@@ -10,7 +11,7 @@ args:
 - 4
 - --celery-worker-prefetch-count
 - 2
-#- --reviewer
+
 resources:
   requests:
     memory: "2Gi"     

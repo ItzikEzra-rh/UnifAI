@@ -4,7 +4,7 @@ global:
   enable_toleration: 
   multiple_gpu_per_pod:
   number_of_gpu: 
-
+  enable_reviewer:
   vllm_orbiter_replica: 
   vllm_reviewer_replica:
 
