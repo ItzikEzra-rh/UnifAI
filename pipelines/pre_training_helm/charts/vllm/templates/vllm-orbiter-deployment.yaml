@@ -40,7 +40,7 @@ spec:
         #command: [ "/bin/bash", "-c", "--" ]
         #args: [ "while true; do sleep 3000000; done;" ]
         args: [
-              "{{.Values.global.orbiter_model_hf_id}}",
+              "--model", "{{.Values.global.orbiter_model_hf_id}}",
               {{- range .Values.global.vllm_orbiter_args }}
               '{{ . }}',
               {{- end }}
@@ -63,8 +63,8 @@ spec:
           value: "/tmp/.cache"
         - name: HF_HOME
           value: "/tmp/.cache"   
-        - name: MODE
-          value: "inference"   
+        - name: HF_HUB_ENABLE_HF_TRANSFER
+          value: "1"   
         - name: VLLM_CONFIG_ROOT
           value: "/tmp/.cache"     
         - name: VLLM_CACHE_ROOT
@@ -93,7 +93,7 @@ spec:
             path: /health
             port: 8000
             scheme: HTTP
-          initialDelaySeconds: 900
+          initialDelaySeconds: {{ ternary 900 120 .Values.global.enable_toleration }}
           periodSeconds: 60
           timeoutSeconds: 60
           successThreshold: 1
@@ -104,7 +104,7 @@ spec:
             path: /health
             port: 8000
             scheme: HTTP
-          initialDelaySeconds: 900
+          initialDelaySeconds: {{ ternary 900 120 .Values.global.enable_toleration }}
           periodSeconds: 60
           timeoutSeconds: 60
           successThreshold: 1

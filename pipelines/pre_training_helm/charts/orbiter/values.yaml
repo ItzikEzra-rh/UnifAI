@@ -7,7 +7,7 @@ args:
 - orbiter
 - --celery
 - --celery-worker-concurrency
-- 8
+- 4
 - --celery-worker-prefetch-count
 - 2
 #- --reviewer

@@ -64,7 +64,9 @@ spec:
         - name: TRANSFORMERS_CACHE
           value: "/tmp/.cache"
         - name: HF_HOME
-          value: "/tmp/.cache"   
+          value: "/tmp/.cache"
+        - name: HF_HUB_ENABLE_HF_TRANSFER
+          value: "1"   
         - name: VLLM_CONFIG_ROOT
           value: "/tmp/.cache"     
         - name: VLLM_CACHE_ROOT
@@ -93,7 +95,7 @@ spec:
             path: /health
             port: 8000
             scheme: HTTP
-          initialDelaySeconds: 900
+          initialDelaySeconds: {{ ternary 900 120 .Values.global.enable_toleration }}
           periodSeconds: 20
           timeoutSeconds: 30
           successThreshold: 1
@@ -104,7 +106,7 @@ spec:
             path: /health
             port: 8000
             scheme: HTTP
-          initialDelaySeconds: 900
+          initialDelaySeconds: {{ ternary 900 120 .Values.global.enable_toleration }}
           periodSeconds: 20
           timeoutSeconds: 30
           successThreshold: 1
