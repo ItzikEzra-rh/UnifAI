@@ -8,8 +8,8 @@ interface CodeValidationModalProps {
   onClose: () => void;
   llmResponse: string;
   repositoryLocation: string;
-  isLlamaModel: boolean;
-  reformatText: (text: string) => string;
+  modelType: 'llama' | 'qwen' | null;
+  reformatText: (text: string, modelType: 'llama' | 'qwen') => string;
 }
 
 const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
@@ -17,7 +17,7 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
   onClose,
   llmResponse,
   repositoryLocation,
-  isLlamaModel,
+  modelType,
   reformatText
 }) => {
   const [code, setCode] = useState<string>('');
@@ -93,7 +93,7 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
                 borderRadius: '0.375rem'
               }}
               dangerouslySetInnerHTML={{ 
-                __html: isLlamaModel ? reformatText(llmResponse) : llmResponse 
+                __html: modelType ? reformatText(llmResponse, modelType) : llmResponse 
               }} 
             />
           </Box>
