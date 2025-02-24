@@ -332,13 +332,13 @@ class GoCodeAnalyzer:
         for struct in used_structs:
             verification_results['structs'].append({
                 'name': struct,
-                'exists': struct in self.symbol_database['structs']
+                'exists': struct in self.symbol_database['structs'] or struct in available_imports
             })
 
         for interface in used_interfaces:
             verification_results['interfaces'].append({
                 'name': interface,
-                'exists': interface in self.symbol_database['interfaces']
+                'exists': interface in self.symbol_database['interfaces'] or interface in available_imports
             })
     
         # Extract and verify package imports
