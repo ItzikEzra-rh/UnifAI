@@ -70,6 +70,10 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
     }
   };
 
+  const handleCodeChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setCode(event.target.value);
+  };
+
   const handleRegenerate = () => {
     handleClose();
     // Future implementation: Trigger API for regeneration
