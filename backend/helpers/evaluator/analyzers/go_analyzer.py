@@ -108,6 +108,87 @@ class GoCodeAnalyzer:
                     # Update global symbol database
                     for symbol_type, symbols in file_symbols.items():
                         self.symbol_database[symbol_type].update(symbols)
+
+    def extract_imports(self, code: str) -> set:
+        """
+        Extract imports from GO code and normalize them to their usage names.
+        Handles both single imports and import blocks.
+        Returns a set of import names as they would be used in the code.
+        """
+        imports = set()
+        
+        # Find the import block or single imports
+        import_block_match = re.search(r'import\s*\((.*?)\)', code, re.DOTALL)
+        if import_block_match:
+            # Handle multi-line import block
+            block = import_block_match.group(1).strip()
+            for line in block.split('\n'):
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                # Handle aliased import
+                alias_match = re.match(r'(\w+)\s+"([^"]+)"', line)
+                if alias_match:
+                    imports.add(alias_match.group(1))  # Add the alias
+                    continue
+                    
+                # Handle regular import
+                regular_match = re.match(r'"([^"]+)"', line)
+                if regular_match:
+                    import_path = regular_match.group(1)
+                    # Get the last component of the path
+                    import_name = import_path.split('/')[-1]
+                    imports.add(import_name)
+        else:
+            # Handle single-line imports
+            single_imports = re.finditer(r'import\s+(?:(\w+)\s+)?"([^"]+)"', code)
+            for match in single_imports:
+                if match.group(1):  # Aliased import
+                    imports.add(match.group(1))
+                else:  # Regular import
+                    import_path = match.group(2)
+                    import_name = import_path.split('/')[-1]
+                    imports.add(import_name)
+        
+        return imports
+    
+    def is_chained_function_call(self, code: str, start_pos: int) -> bool:
+        """
+        Check if a function call is chained (appears directly after another function/method call).
+        
+        Args:
+            code: The full code string
+            start_pos: Starting position of the current function match
+            
+        Returns:
+            bool: True if the function is chained, False otherwise
+        """
+        # Look backwards from the current position
+        before_function = code[:start_pos].rstrip()
+        
+        # Check if the previous character is a dot (indicating method chain)
+        if before_function.endswith('.'):
+            return True
+            
+        # Check if we're inside a function/method call parentheses
+        open_count = 0
+        for i in range(len(before_function) - 1, -1, -1):
+            if before_function[i] == ')':
+                open_count += 1
+            elif before_function[i] == '(':
+                open_count -= 1
+            elif before_function[i] == '.' and open_count == 0:
+                # Found a dot outside of parentheses
+                # E.G. someFunc(obj.Method()).otherFunc() - When analyzing otherFunc, we need to know if the dot before it is outside any parentheses
+                # When open_count is 0, we're outside all parentheses
+                # If we find a dot when open_count is 0, it means we have a true chain
+                return True
+            elif before_function[i] in {';', '{', '}', '\n'} and open_count == 0:
+                # Found a statement boundary without finding a dot
+                return False
+                
+        return False
     
     def verify_code_snippet(self, code: str) -> Dict[str, List[Dict[str, bool]]]:
         """Verify if project-specific symbols used in a code snippet exist"""
@@ -121,6 +202,9 @@ class GoCodeAnalyzer:
         
         # Clean the code (remove escape characters and extra spaces)
         code = code.replace('\\', '').strip()
+
+        # Extract available imports
+        available_imports = self.extract_imports(code)
         
         # Extract function calls using patterns
         function_patterns = [
@@ -132,8 +216,8 @@ class GoCodeAnalyzer:
 
         # Extract method calls
         method_patterns = [
-                r'(\w+)\.(\w+)\([^)]*\)',  # Basic method call: obj.Method()
-                r'(\w+)\.(\w+)\([^)]*\)\.',  # Chained calls: obj.Method1().Method2()
+            r'(\w+)\.(\w+)\([^)]*\)',  # Basic method call: obj.Method()
+            r'(\w+)\.(\w+)\([^)]*\)\.',  # Chained calls: obj.Method1().Method2()
         ]
 
         # Extract and verify struct instantiations
@@ -159,43 +243,60 @@ class GoCodeAnalyzer:
 
         method_names_to_exclude = set()  # Track methods to exclude from functions
         used_methods = set()  # Track unique methods
+        method_parents = {}  # Hash table for method -> parent mapping
 
         def find_method_calls(code):
             for pattern in method_patterns:
                 matches = re.findall(pattern, code)
-                for obj, method_name in matches:
+                for parent, method_name in matches:
                     if (method_name not in self.ginkgo_functions and 
                         method_name not in self.go_builtins):
+                        # Store the parent-method relationship
+                        method_parents[method_name] = parent
+
                         used_methods.add(method_name)
                         method_names_to_exclude.add(method_name)  # Add to exclusion set
 
-                    # Recursively search inside the method arguments
+                    # Recursively search inside method arguments
                     args_match = re.search(r'\((.*)\)', code)
                     if args_match:
                         find_method_calls(args_match.group(1))
 
-                return used_methods
+            return used_methods, method_parents
         
-        # Get all method names first
-        find_method_calls(code)
+        # Get all method names and their parents
+        used_methods, method_parents = find_method_calls(code)
 
-        # Now handle functions, excluding any methods we found
+        # Now handle functions, excluding any methods we found and chained calls
         used_functions = set()
 
         for pattern in function_patterns:
             matches = re.finditer(pattern, code)
             for match in matches:
                 func_name = match.group(1)
-                if (func_name not in self.ginkgo_functions and 
-                    func_name not in self.go_builtins and
-                    func_name not in method_names_to_exclude):  # Add this check
-                    used_functions.add(func_name)
+                # Skip if it's a method we already found or a builtin
+                if (func_name in method_names_to_exclude or 
+                    func_name in self.ginkgo_functions or 
+                    func_name in self.go_builtins):
+                    continue
+                    
+                # Skip if it's a chained function call
+                if self.is_chained_function_call(code, match.start(1)):
+                    continue
+                    
+                used_functions.add(func_name)
         
         # Add unique methods to verification results
         for method in used_methods:
+            # Check if method exists in symbol database OR if its parent is in available imports
+            exists_in_db = method in self.symbol_database['methods']
+            parent = method_parents.get(method, '')
+            exists_in_imports = parent in available_imports
+            
             verification_results['methods'].append({
                 'name': method,
-                'exists': method in self.symbol_database['methods']
+                'exists': exists_in_db or exists_in_imports,
+                # 'parent': parent  # Optional: include parent information
             })
 
         # Add verified functions
