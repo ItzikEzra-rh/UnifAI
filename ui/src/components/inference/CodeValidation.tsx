@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, CircularProgress, Typography } from '@mui/material';
 import axiosBE from '../../http/axiosConfig'
 import ValidationResponseViewer from './CodeValidationResponseViewer'
@@ -6,6 +6,8 @@ import ValidationResponseViewer from './CodeValidationResponseViewer'
 interface CodeValidationModalProps {
   open: boolean;
   onClose: () => void;
+  code: string,
+  setCode: (code: string) => void;
   llmResponse: string;
   repositoryLocation: string;
   modelType: 'llama' | 'qwen' | null;
@@ -15,14 +17,21 @@ interface CodeValidationModalProps {
 const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
   open,
   onClose,
+  code,
+  setCode,
   llmResponse,
   repositoryLocation,
   modelType,
   reformatText
 }) => {
-  const [code, setCode] = useState<string>('');
   const [validationResponse, setValidationResponse] = useState<any>(null);
   const [isValidating, setIsValidating] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (code) {
+      handleValidate()
+    }
+  }, [code])
 
   const handleValidate = async () => {
     setIsValidating(true);
@@ -63,7 +72,7 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
     <Dialog 
       open={open} 
       onClose={handleClose}
-      maxWidth="lg"
+      maxWidth="md"
       fullWidth
       PaperProps={{
         style: { 
@@ -98,7 +107,7 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
             />
           </Box>
           
-          <TextField
+          {/* <TextField
             label="Paste the generated code for validation"
             multiline
             rows={8}
@@ -106,7 +115,7 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
             onChange={handleCodeChange}
             variant="outlined"
             fullWidth
-          />
+          /> */}
 
           {validationResponse && (
             <Box sx={{ mt: 3 }}>
