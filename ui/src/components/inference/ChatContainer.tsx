@@ -198,6 +198,7 @@ const ChatComponent: React.FC = () => {
 
   const [isCodeValidationModalOpen, setIsCodeValidationModalOpen] = useState<boolean>(false);
   const [currentValidationMessage, setCurrentValidationMessage] = useState<string>('');
+  const [codeSnippet, setCodeSnippet] = useState<string>('');
 
   const getChatHistory = async (modelId: string) => {
     const loadedModelChatsResponse = await axiosBE.get('/api/chat/', { params: {modelId: modelId} });
@@ -210,6 +211,27 @@ const ChatComponent: React.FC = () => {
       const newSessionId = uuidv4();
       setSessionId(newSessionId);
     }
+
+    const handleValidationClick = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      const button = target.closest('.code-validate-btn');
+      
+      if (button instanceof HTMLElement) {
+        const encodedContent = button.getAttribute('data-code-content') || '';
+        const codeContent = encodedContent
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#039;/g, "'");
+
+        setCodeSnippet(codeContent)
+        setCurrentValidationMessage(codeContent);
+        setIsCodeValidationModalOpen(true);
+      }
+    };
+  
+    document.addEventListener('click', handleValidationClick);
 
     const fetchModelsAndCheckLoadedModel = async () => {
       // Fetch the model and its chat history on component mount 
@@ -254,6 +276,7 @@ const ChatComponent: React.FC = () => {
       // Stop inference on component unmount
       axiosLLM.get('/api/backend/stopInference', { params: { sessionId: sessionId } }).catch((error) => console.error('Error stopping inference:', error));
       axiosLLM.get('/api/backend/clearChatHistory', { params: { sessionId: sessionId } });
+      document.removeEventListener('click', handleValidationClick);
     };
   }, []);
 
@@ -682,7 +705,50 @@ const ChatComponent: React.FC = () => {
       return line.replace(type, (_, text) => `<${style}>${text}</${style}>`) + '\n';
     };
   
-    // Define different formatting rules for Llama and QWEN
+    // Function to create validation button HTML
+    const createValidationButton = (codeContent: string) => {
+      const escapedCode = codeContent
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+      
+      // Add below disabled={${!selectedModel?.repoInternalLocation}}
+      return `
+        <div class="code-validation-wrapper" style="position: relative; white-space: normal">
+          <div class="code-validation-button" style="position: absolute; bottom: 8px; right: 8px;">
+            <button 
+              data-code-content="${escapedCode}"
+              class="code-validate-btn"
+              style="
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                width: 32px; 
+                height: 32px; 
+                border: none; 
+                background: rgba(255, 255, 255, 0.9); 
+                cursor: pointer; 
+                border-radius: 50%; 
+                box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+                opacity: 0.7;
+                transition: opacity 0.2s, background-color 0.2s;
+              "
+              onmouseover="this.style.opacity='1'; this.style.backgroundColor='rgba(255, 255, 255, 1)';"
+              onmouseout="this.style.opacity='0.7'; this.style.backgroundColor='rgba(255, 255, 255, 0.9)';"
+              onmousedown="this.style.backgroundColor='rgba(240, 240, 240, 1)';"
+              onmouseup="this.style.backgroundColor='rgba(255, 255, 255, 1)';"
+              title="Code Validation"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" style="fill: currentColor;">
+                <path d="M20,3H4C2.9,3,2,3.9,2,5v14c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V5C22,3.9,21.1,3,20,3z M9,17H6c-0.55,0-1-0.45-1-1 s0.45-1,1-1h3c0.55,0,1,0.45,1,1S9.55,17,9,17z M9,13H6c-0.55,0-1-0.45-1-1s0.45-1,1-1h3c0.55,0,1,0.45,1,1S9.55,13,9,13z M9,9H6 C5.45,9,5,8.55,5,8s0.45-1,1-1h3c0.55,0,1,0.45,1,1S9.55,9,9,9z M18.7,11.12l-3.17,3.17l-1.41-1.41c-0.39-0.39-1.02-0.39-1.41,0 c-0.39,0.39-0.39,1.02,0,1.41l2.12,2.12c0.39,0.39,1.02,0.39,1.41,0l3.88-3.88c0.39-0.39,0.39-1.02,0-1.41 C19.72,10.73,19.09,10.73,18.7,11.12z"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      `;
+    };
     const CODE = '```';
     const formattingRules = {
       llama: {
@@ -710,9 +776,9 @@ const ChatComponent: React.FC = () => {
           // Closing code block after printing inside of it up until now
           const language = Prism.languages[currentLanguage] || Prism.languages.javascript;
           const highlightedCode = Prism.highlight(codeBuffer.trim(), language, currentLanguage);
-          formattedText += `${highlightedCode}</code></pre>\n`;
+          formattedText += `${highlightedCode}</code></pre>${createValidationButton(codeBuffer.trim())}`;
           insideCodeBlock = false;
-          codeBuffer = ''; 
+          codeBuffer = '';
         } else {
           // Opening code block after printing non-code lines up until now
           currentLanguage = line.slice(3).trim(); // Extract language (if any) after ```
@@ -726,16 +792,16 @@ const ChatComponent: React.FC = () => {
         // Handle non-code lines, we can add here any other ideas we have to make our responses nicer looking
         switch (true) {
           case (SUBSUBTITLE && SUBSUBTITLE.test(line)):
-            formattedText += regularText(line, SUBSUBTITLE, 'h4') 
+            formattedText += regularText(line, SUBSUBTITLE, 'h4');
             break;
           case SUBTITLE.test(line):
-            formattedText += regularText(line, SUBTITLE, 'h3') 
+            formattedText += regularText(line, SUBTITLE, 'h3');
             break;
           case TITLE.test(line):
-            formattedText += regularText(line, TITLE, 'h2') 
+            formattedText += regularText(line, TITLE, 'h2');
             break;
           case BOLD.test(line):
-            formattedText += regularText(line, BOLD, 'strong') 
+            formattedText += regularText(line, BOLD, 'strong');
             break;
           default:
             formattedText += line + '\n';
@@ -748,7 +814,7 @@ const ChatComponent: React.FC = () => {
     if (insideCodeBlock) {
       const language = Prism.languages[currentLanguage] || Prism.languages.javascript;
       const highlightedCode = Prism.highlight(codeBuffer.trim(), language, currentLanguage);
-      formattedText += `${highlightedCode}</code></pre>\n`; 
+      formattedText += `${highlightedCode}</code></pre>${createValidationButton(codeBuffer.trim())}`;
     }
   
     return formattedText;
@@ -841,7 +907,7 @@ const ChatComponent: React.FC = () => {
                                 </IconButton>
                               </Tooltip>
 
-                              <Tooltip title="Code Validation">
+                              {/* <Tooltip title="Code Validation">
                                 <IconButton
                                   disabled={!selectedModel?.repoInternalLocation}
                                   onClick={() => handleCodeValidationClick(message.text)}
@@ -849,7 +915,7 @@ const ChatComponent: React.FC = () => {
                                 >
                                   <FactCheckIcon />
                                 </IconButton>
-                              </Tooltip>
+                              </Tooltip> */}
                             </>
                           )}
                           <Tooltip title="Save">
@@ -898,6 +964,8 @@ const ChatComponent: React.FC = () => {
           <CodeValidationModal
             open={isCodeValidationModalOpen}
             onClose={() => setIsCodeValidationModalOpen(false)}
+            code={codeSnippet}
+            setCode={setCodeSnippet}
             llmResponse={currentValidationMessage}
             repositoryLocation={selectedModel?.repoInternalLocation || ''}
             modelType={modelType}
