@@ -101,7 +101,7 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
         }
       }}
     >
-      <DialogTitle>Code Validation</DialogTitle>
+      {/* <DialogTitle>Code Validation</DialogTitle> */}
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
           <Box>
