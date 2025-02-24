@@ -21,8 +21,8 @@ class VLLMClient(LLMClient):
             model=self.model_name,
             prompt=prompts,  # Batch prompts
             max_tokens=max_tokens,
-            temperature=0.4,
-            top_p=0.8,
+            temperature=0.3,
+            top_p=0.6,
             stream=True  # Enable streaming
         )
 
