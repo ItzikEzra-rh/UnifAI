@@ -11,7 +11,8 @@ import {
   TableHead, 
   TableRow,
   Paper,
-  Alert
+  Alert,
+  Tooltip
 } from '@mui/material';
 import { CheckCircle, Cancel } from '@mui/icons-material';
 
@@ -42,6 +43,24 @@ interface ValidationTableProps {
   data: ValidationDetail[];
   title: string;
 }
+
+const AccuracyIndicator: React.FC<{ accuracy: number }> = ({ accuracy }) => {
+  const isAccurate = accuracy >= 75.00;
+  
+  return (
+    <Tooltip title={`${accuracy}% of the suggested code elements exist in the original repository`}>
+      <div style={{
+        width: '12px',
+        height: '12px',
+        borderRadius: '50%',
+        backgroundColor: isAccurate ? '#4CAF50' : '#F44336',
+        marginLeft: '10px',
+        display: 'inline-block',
+        verticalAlign: 'middle'
+      }} />
+    </Tooltip>
+  );
+};
 
 const ValidationTable: React.FC<ValidationTableProps> = ({ data, title }) => (
   <TableContainer component={Paper} elevation={0}>
@@ -82,7 +101,7 @@ const TabPanel: React.FC<TabPanelProps> = ({ children, value, index }) => (
   </div>
 );
 
-const ValidationResponseViewer: React.FC<{ data: ValidationResponse }> = ({ data }) => {
+const ValidationResponseViewer: React.FC<{ data: ValidationResponse, accuracy: number }> = ({ data, accuracy }) => {
     const [selectedTab, setSelectedTab] = useState(0);
     
     if (!data) return null;
@@ -114,6 +133,7 @@ const ValidationResponseViewer: React.FC<{ data: ValidationResponse }> = ({ data
       <Box sx={{ width: '100%' }}>
         <Typography variant="h6" sx={{ fontWeight: 600, marginBottom: 2 }}>
           Validation Response
+          <AccuracyIndicator accuracy={accuracy} />
         </Typography>
         
         <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
