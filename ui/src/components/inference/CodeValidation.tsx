@@ -1,17 +1,29 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, CircularProgress, Typography } from '@mui/material';
-import axiosBE from '../../http/axiosConfig'
-import ValidationResponseViewer from './CodeValidationResponseViewer'
+import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress, Typography } from '@mui/material';
+import axiosBE from '../../http/axiosConfig';
+import ValidationResponseViewer from './CodeValidationResponseViewer';
+import '../../styles.css';
 
 interface CodeValidationModalProps {
   open: boolean;
   onClose: () => void;
-  code: string,
+  code: string;
   setCode: (code: string) => void;
   llmResponse: string;
   repositoryLocation: string;
   modelType: 'llama' | 'qwen' | null;
   reformatText: (text: string, modelType: 'llama' | 'qwen') => string;
+}
+
+interface ValidationResponse {
+  is_valid?: boolean;
+  percentages_accuracy?: number;
+  summary?: string;
+  verification_details?: any;
+  status?: string;
+
+  error?: boolean;
+  message?: string;
 }
 
 const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
@@ -24,14 +36,14 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
   modelType,
   reformatText
 }) => {
-  const [validationResponse, setValidationResponse] = useState<any>(null);
+  const [validationResponse, setValidationResponse] = useState<ValidationResponse | null>(null);
   const [isValidating, setIsValidating] = useState<boolean>(false);
 
   useEffect(() => {
     if (code) {
-      handleValidate()
+      handleValidate();
     }
-  }, [code])
+  }, [code]);
 
   const handleValidate = async () => {
     setIsValidating(true);
@@ -58,15 +70,19 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
     }
   };
 
-  const handleCodeChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setCode(event.target.value);
+  const handleRegenerate = () => {
+    handleClose();
+    // Future implementation: Trigger API for regeneration
   };
 
   const handleClose = () => {
     setCode('');
-    setValidationResponse('');
+    setValidationResponse(null);
     onClose();
   };
+
+  const accuracy = validationResponse?.percentages_accuracy ?? 0;
+  const isAccurate = accuracy >= 75.00;
 
   return (
     <Dialog 
@@ -87,10 +103,10 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
           <Box>
             <Typography 
               variant="h6" 
-              sx={{ 
+              style={{ 
                 fontSize: '1.125rem', 
                 fontWeight: 600, 
-                marginBottom: 1 
+                marginBottom: '1rem'
               }}
             >
               LLM Response:
@@ -117,24 +133,33 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
             fullWidth
           /> */}
 
-          {validationResponse && (
+          {validationResponse && !isValidating && (
             <Box sx={{ mt: 3 }}>
-              <ValidationResponseViewer data={validationResponse} />
+              <ValidationResponseViewer data={validationResponse} accuracy={accuracy} />
             </Box>
           )}
         </Box>
       </DialogContent>
       <DialogActions>
-        <Button onClick={handleClose} sx={{ color: "black" }}>
-          Cancel
-        </Button>
-        <Button 
-          onClick={handleValidate} 
-          color="primary"
-          disabled={!code || isValidating}
-        >
-          {isValidating ? <CircularProgress size={24} /> : 'Validate'}
-        </Button>
+        <div className="form-bottom-button">
+          <Button 
+            onClick={handleClose}
+            variant="contained"
+            className="end-button"
+            style={{ marginRight: '10px' }}
+          >
+            Cancel
+          </Button>
+
+          <Button 
+            onClick={handleRegenerate}
+            disabled={isValidating || isAccurate}
+            variant="contained"
+            className="end-button"
+          >
+            {isValidating ? <CircularProgress size={24} /> : 'Re-Generate Response'}
+          </Button>
+        </div>
       </DialogActions>
     </Dialog>
   );
