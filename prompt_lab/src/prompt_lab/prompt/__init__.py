@@ -7,7 +7,7 @@ Makes it easy to import key classes from storage's submodules
 from .prompt import Prompt
 from .prompt_generator import PromptGenerator
 from .policies import PromptMaxTokenSizeFailPolicy, PromptRetryPolicy, PromptReviewFailRetry, PromptCompositePolicy, \
-    PromptPolicy
+    PromptPolicy, PromptPassPolicy, PromptAnswerGenerationPolicy, PromptStatePolicy
 
 __all__ = [
     "Prompt",
@@ -17,4 +17,7 @@ __all__ = [
     "PromptReviewFailRetry",
     "PromptCompositePolicy",
     "PromptPolicy",
+    "PromptPassPolicy",
+    "PromptAnswerGenerationPolicy",
+    "PromptStatePolicy",
 ]

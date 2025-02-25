@@ -48,7 +48,7 @@ sudo yum install -y nvidia-container-toolkit
 
 ```bash
 cd llm-backend
-podman build . -f Dockerfile.cuda --tag llm-be  .
+podman build . -f Dockerfile --tag llm-be  .
 ```
 
 ## bring up the llm backedn and mongod

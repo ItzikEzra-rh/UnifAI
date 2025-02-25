@@ -1,8 +1,9 @@
-import { Box, Divider, Drawer, IconButton, Slider, Tooltip, Typography } from "@mui/material"
+import React, { useState, useEffect } from 'react';
+import axiosBE from '../../http/axiosConfig';
+import { Box, Divider, Drawer, IconButton, Slider, Tooltip, Typography, Dialog, DialogActions, DialogContent, DialogTitle, MenuItem, Select, FormControl, InputLabel, Button } from "@mui/material"
 import { useTable, useSortBy, Column } from 'react-table';
 import ChatHistory, { HistoryChat } from "./ChatHistory"
 import { ModelData } from "../types/constants";
-import React from "react";
 import NewChat from '../../assets/NewChat.png'; 
 import UnloadModal from '../../assets/UnloadModal.png'; 
 import ViewHeadlineIcon from '@mui/icons-material/ViewHeadline';
@@ -11,21 +12,65 @@ import { ChatMessage } from "./ChatContainer";
 interface ChatSidebarProps {
   drawerOpen: boolean;
   setDrawerOpen: (drawerOpen: boolean) => void;
+  selectedModel: ModelData;
   data: ModelData[];
-  modelId: string;
   temperature: number;
   setTemperature: (temperature: number) => void;
   isStreaming: boolean;
   clearChat: () => void;
   unloadModel: () => void;
+  unloadingModel: boolean;
   handleChatSelect: (chatId: string, chatMessages: ChatMessage[]) => Promise<void>;
-  currentChatId: string;
+  currentSessionId: string;
   historyChats: HistoryChat[];
   setHistoryChats: (historyChats: HistoryChat[]) => void;
+  setSelectedPackages: (selectedPackages: string[]) => void;
 }
 
-export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOpen, data, modelId, temperature, setTemperature, 
-                                                        isStreaming, clearChat, unloadModel, handleChatSelect, currentChatId, historyChats, setHistoryChats}) => {
+export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOpen, selectedModel, data, temperature, setTemperature, 
+                                                        isStreaming, clearChat, unloadModel, unloadingModel, handleChatSelect, currentSessionId, historyChats, setHistoryChats,
+                                                        setSelectedPackages}) => {
+  const [packagesNamesList, setPackagesNamesList] = useState<string[]>([]);
+  const [firstSelectedPackage, setFirstSelectedPackage] = useState<string | null>(null);
+  const [secondSelectedPackage, setSecondSelectedPackage] = useState<string | null>(null);  
+  const [packageSelectionModal, setPackageSelectionModal] = useState(false);
+
+  const [modelId, projectName, isPackageSelectionRagEnabled] = [selectedModel.modelId, selectedModel.project, selectedModel.isPackageSelectionRagEnabled];
+
+  useEffect(() => {
+    const fetchPackages = async () => {
+      try {
+        const response = await axiosBE.post('/api/rag/packagesNamesList', { modelId, projectName });
+        setPackagesNamesList(response.data.result || []);
+        handlePackageSelection()
+      } catch (error) {
+        console.error('Error fetching package names:', error);
+      }
+    };
+    if (isPackageSelectionRagEnabled) {
+      fetchPackages();
+    }
+  }, [modelId, projectName]);
+
+  const handlePackageSelection = () => {
+    setFirstSelectedPackage(null);
+    setSecondSelectedPackage(null);
+    setPackageSelectionModal((prevState) => !prevState)
+  }
+
+  const handlePackageSelectionSave = () => {
+    let selectedPackages: string[] = [firstSelectedPackage, secondSelectedPackage].filter((ele): ele is string => ele !== null)
+    setPackageSelectionModal(false);
+    setSelectedPackages(selectedPackages)
+  }
+
+  const clearChatWithPackageSelection = () => {
+    clearChat()
+    if (isPackageSelectionRagEnabled && packagesNamesList.length > 0) {
+      handlePackageSelection();
+    }
+  }
+
   const handleTemperatureChange = (event: Event, newValue: number | number[]) => {
     setTemperature(newValue as number);
   };
@@ -98,7 +143,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
               <ViewHeadlineIcon sx={{ color: 'red' }} />
             </IconButton>
             <Box sx={{ display: 'flex', justifyContent: 'flex-end', }}>
-              <IconButton title="Start New Chat" onClick={clearChat} disabled={isStreaming}>
+              <IconButton title="Start New Chat" onClick={clearChatWithPackageSelection} disabled={isStreaming}>
                 <img src={NewChat} alt="New Chat" style={{ width: 24, height: 24 }}/>
               </IconButton>
               <IconButton title="Unload Model" onClick={unloadModel}>
@@ -116,17 +161,73 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({drawerOpen, setDrawerOp
           </div>
           <Divider orientation="horizontal" flexItem />
           <div className="inner-drawer">
-            <ChatHistory
+          <ChatHistory
               modelId={modelId}
               isStreaming={isStreaming}
               onChatSelect={handleChatSelect}
-              currentChatId={currentChatId}
+              currentSessionId={currentSessionId}
               historyChats={historyChats}
               setHistoryChats={setHistoryChats}
+              clearChat={clearChat}
+              unloadingModel={unloadingModel}
             />
           </div>
         </div>
       </Drawer>
+
+      {/* Package Selection Modal */}
+      <Dialog open={packageSelectionModal} onClose={handlePackageSelection}>
+        <DialogTitle>Select Up to 2 Packages</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            Select the package under which the new test might be implemented, or choose relevant reference packages. 
+            This helps improve the model's context, leading to more accurate and relevant test generation.  
+            If you prefer to skip this step, you can simply click "Skip".
+          </Typography>
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="package1-label">First Package</InputLabel>
+            <Select
+              labelId="package1-label"
+              value={firstSelectedPackage}
+              onChange={(e) => setFirstSelectedPackage(e.target.value)}
+              displayEmpty
+            >
+              <MenuItem value="" disabled>Select a package</MenuItem>
+              {packagesNamesList
+                .filter((pkg) => pkg !== secondSelectedPackage)
+                .map((pkg) => (
+                  <MenuItem key={pkg} value={pkg}>
+                    {pkg}
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
+
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="package2-label">Second Package</InputLabel>
+            <Select
+              labelId="package2-label"
+              value={secondSelectedPackage}
+              onChange={(e) => setSecondSelectedPackage(e.target.value)}
+              displayEmpty
+            >
+              <MenuItem value="" disabled>Select a package</MenuItem>
+              {packagesNamesList
+                .filter((pkg) => pkg !== firstSelectedPackage)
+                .map((pkg) => (
+                  <MenuItem key={pkg} value={pkg}>
+                    {pkg}
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handlePackageSelection} sx={{ color: 'black' }}>Skip</Button>
+          <Button disabled={!(firstSelectedPackage || secondSelectedPackage)} onClick={handlePackageSelectionSave} color="primary">Save</Button>
+        </DialogActions>
+      </Dialog>
     </div>
   )
 }

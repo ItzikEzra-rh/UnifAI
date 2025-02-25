@@ -1,8 +1,10 @@
 from typing import List
-from prompt_lab.prompt import Prompt
-from prompt_lab.batch import Batch
+from prompt_lab.prompt import Prompt, PromptCompositePolicy, PromptStatePolicy, PromptMaxTokenSizeFailPolicy
+from prompt_lab.batch import BatchMaxTokenStrategy, BatchCompositeStrategy, Batch
 from prompt_lab.utils import TokenizerUtils, logger
 from prompt_lab.utils.celery.celery import send_task
+from prompt_lab.storage import DataRepository
+from prompt_lab.llm import ResponseStreamProcessor
 
 
 class PromptOrbiter:
@@ -25,6 +27,7 @@ class PromptOrbiter:
     def __init__(
             self,
             llm_client,
+            repository: DataRepository,
             tokenizer: TokenizerUtils,
             review_queue_name: str,
             reviewer_task_name: str,
@@ -41,15 +44,83 @@ class PromptOrbiter:
             tokenizer (TokenizerUtils): Utility for handling tokenization and token limits.
         """
         self.llm_client = llm_client
+        self.repository = repository
         self.tokenizer = tokenizer
         self.review_queue_name = review_queue_name
         self.reviewer_task_name = reviewer_task_name
         self.reviewed_prompts_queue_name = reviewed_prompts_queue_name
         self.landing_task_name = landing_task_name
         self.reviewer = reviewer
-        self.batch = Batch()
+        self.query_batch = Batch(prompt_policies=PromptCompositePolicy([PromptStatePolicy(tokenizer=self.tokenizer),
+                                                                        PromptMaxTokenSizeFailPolicy(
+                                                                            self.tokenizer.get_tokens_limit())]),
+                                 batch_strategies=BatchCompositeStrategy(
+                                     [BatchMaxTokenStrategy(self.tokenizer.get_tokens_limit())]
+                                 ))
 
         logger.info("[PromptOrbiter] Initialized.")
+
+    def _process_prompt(self, prompt) -> bool:
+        """
+        Process an individual prompt.
+
+        Args:
+            prompt: The prompt to process.
+
+        Returns:
+            bool: True if the prompt is successfully processed, False otherwise.
+        """
+        if self.query_batch.add_prompt(prompt):
+            return True
+
+        # Handle blocked batch
+        if self.query_batch.is_blocked:
+            self.inference_batch()
+
+        # Handle failed prompts
+        if prompt.is_failed:
+            self.repository.save_fail_prompts([prompt.to_dict()])
+            return False
+
+        # Retry adding to a new batch
+        return self.query_batch.add_prompt(prompt)
+
+    def inference_batch(self):
+        if not self.query_batch.has_prompts():
+            return
+
+        prompt_count = self.query_batch.prompts_count()
+        logger.debug(f"Batch prompt count: {prompt_count}")
+        logger.info(f"[PromptOrbiter] Inferencing batch of size {prompt_count}.")
+
+        formatted_prompts = [prompt.formatted_chat_prompt for prompt in self.query_batch.prompts]
+
+        # Send request to the LLM
+        response = self.llm_client.send_request(
+            formatted_prompts, max_tokens=self.tokenizer.max_generation_length
+        )
+
+        sorted_responses = ResponseStreamProcessor().process_response(response)
+
+        # Process each response and update prompts
+        for prompt, answer in zip(self.query_batch.prompts, sorted_responses):
+            prompt.current_answer = answer
+            self.log_question_answer(prompt)
+
+        finalized_prompts = self.query_batch.finalize_batch()
+
+        # Determine the appropriate queue and task
+        send_queue_name = self.review_queue_name if self.reviewer else self.reviewed_prompts_queue_name
+        send_task_name = self.reviewer_task_name if self.reviewer else self.landing_task_name
+
+        send_task(
+            task_name=send_task_name,
+            celery_queue=send_queue_name,
+            batch=finalized_prompts,
+        )
+
+        logger.info(
+            f"[PromptOrbiter] Submitted {len(finalized_prompts)} prompts to queue '{send_queue_name}', task '{send_task_name}'.")
 
     def run(self, batch: List[dict]):
         """
@@ -71,23 +142,30 @@ class PromptOrbiter:
         logger.info(f"[PromptOrbiter] Received batch of size {len(batch)}.")
         for prompt_dict in batch:
             prompt = Prompt.from_dict(**prompt_dict)
-            self.batch.add_prompt(prompt)
+            self._process_prompt(prompt)
 
-        formatted_prompts = [prompt.formatted_prompt for prompt in self.batch.prompts]
-        choices = self.llm_client.send_request(formatted_prompts, max_tokens=self.tokenizer.max_generation_length)
+        if self.query_batch.has_prompts():
+            self.inference_batch()
 
-        # Process each response and update the prompts in the batch
-        for prompt, choice in zip(self.batch.prompts, choices):
-            prompt.output_text = choice["text"]
+    @staticmethod
+    def log_question_answer(prompt):
+        """Logs the current question and answer in a structured, visually appealing format with colors."""
 
-        finalized_prompts = self.batch.finalize_batch()
+        # ANSI color codes
+        GREEN = "\033[92m"
+        BLUE = "\033[94m"
+        LIGHT_PURPLE = "\033[95m"
+        RESET = "\033[0m"  # Reset color
 
-        send_queue_name = self.review_queue_name if self.reviewer else self.reviewed_prompts_queue_name
-        send_task_name = self.reviewer_task_name if self.reviewer else self.landing_task_name
-        send_task(
-            task_name=send_task_name,
-            celery_queue=send_queue_name,
-            batch=finalized_prompts,
-        )
-        logger.info(
-            f"[PromptOrbiter] Submitted {len(finalized_prompts)} prompts to queue {send_queue_name},task {send_task_name}.")
+        separator = "═" * 80  # Stylish separator
+        question_header = f"{GREEN}🟢 QUESTION {RESET}".center(80, "═")
+        system_message_header = f"{LIGHT_PURPLE}🟢 SYSTEM {RESET}".center(80, "═")
+        answer_header = f"{BLUE}🔵 ANSWER {RESET}".center(80, "═")
+
+        logger.debug(f"\n{separator}\n{system_message_header}\n{separator}\n")
+        logger.debug(f"{LIGHT_PURPLE}{prompt.current_system_message}{RESET}\n")
+        logger.debug(f"\n{separator}\n{question_header}\n{separator}\n")
+        logger.debug(f"{GREEN}{prompt.current_question}{RESET}\n")
+        logger.debug(f"\n{separator}\n{answer_header}\n{separator}\n")
+        logger.debug(f"{BLUE}{prompt.current_answer}{RESET}\n")
+        logger.debug(f"\n{separator}\n")

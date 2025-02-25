@@ -1,6 +1,7 @@
 from typing import List
 from prompt_lab.prompt import Prompt
 from .batch_strategy import BatchStrategy
+from prompt_lab.utils import logger
 
 
 class BatchPassPromptsStrategy(BatchStrategy):
@@ -9,7 +10,6 @@ class BatchPassPromptsStrategy(BatchStrategy):
         passed_prompts = all(not prompt.is_review_failed and not prompt.failed for prompt in current_batch)
         if passed_prompts and not new_prompt.is_review_failed and not new_prompt.failed:
             return True
-
         return False
 
     @property

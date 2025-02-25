@@ -1,6 +1,8 @@
 from typing import List
-from prompt_lab.prompt import Prompt, PromptReviewFailRetry, PromptRetryPolicy, PromptCompositePolicy
-from prompt_lab.batch import Batch, BatchCompositeStrategy, BatchRetryPromptsStrategy, BatchPassPromptsStrategy
+from prompt_lab.prompt import Prompt, PromptReviewFailRetry, PromptRetryPolicy, PromptCompositePolicy, \
+    PromptAnswerGenerationPolicy, PromptPassPolicy
+from prompt_lab.batch import Batch, BatchCompositeStrategy, BatchRetryPromptsStrategy, BatchPassPromptsStrategy, \
+    AnswerGenerationStateStrategy
 from prompt_lab.utils.celery.celery import send_task
 from prompt_lab.utils import logger
 from tqdm import tqdm
@@ -37,7 +39,13 @@ class PromptLanding:
                 PromptReviewFailRetry(self.max_retry)
             ])
         )
+
+        self.answer_generation_batch = Batch(batch_strategies=BatchCompositeStrategy([AnswerGenerationStateStrategy()]),
+                                             prompt_policies=PromptCompositePolicy([PromptPassPolicy(),
+                                                                                    PromptAnswerGenerationPolicy()]))
+
         self.pass_batch = Batch(batch_strategies=BatchCompositeStrategy([BatchPassPromptsStrategy()]))
+
         self.fail_batch = Batch()
 
         logger.info("[PromptLanding] Initialized.")
@@ -51,6 +59,35 @@ class PromptLanding:
         progress_bar.n = processed
         progress_bar.total = total
         progress_bar.refresh()
+
+    def send_batch_to_orbiter(self, batch, batch_label: str):
+        """Send a batch of prompts to the orbiter if the batch has any prompts."""
+        if not batch.has_prompts():
+            return
+
+        prompt_count = batch.prompts_count()
+        logger.info(f"[PromptLanding] {batch_label} prompts: {prompt_count}.")
+
+        # Define actions based on batch_label
+        batch_actions = {
+            "retry": lambda: self.repository.update_retry_counter(prompt_count),
+        }
+
+        # Execute associated action if exists
+        action = batch_actions.get(batch_label)
+        if action:
+            action()
+
+        send_task(
+            self.orbiter_task_name,
+            celery_queue=self.orbiter_queue_name,
+            batch=batch.to_dict()
+        )
+
+        logger.info(
+            f"[PromptLanding] Submitted {prompt_count} {batch_label} prompts "
+            f"to queue {self.orbiter_queue_name}."
+        )
 
     def run(self, batch: List[dict]):
         """
@@ -66,6 +103,7 @@ class PromptLanding:
         # Classify prompts into respective batches
         for prompt in prompts:
             (self.retry_batch.add_prompt(prompt) or
+             self.answer_generation_batch.add_prompt(prompt) or
              self.pass_batch.add_prompt(prompt) or
              self.fail_batch.add_prompt(prompt))
 
@@ -79,17 +117,8 @@ class PromptLanding:
             logger.info(f"[PromptLanding] failed prompts: {self.fail_batch.prompts_count()}.")
             self.repository.save_fail_prompts(self.fail_batch.to_dict())
 
-        # Handle retry batch: Update retry counters and re-queue prompts
-        if self.retry_batch.has_prompts():
-            logger.info(f"[PromptLanding] retry prompts: {self.retry_batch.prompts_count()}.")
-            self.repository.update_retry_counter(self.retry_batch.prompts_count())
-            send_task(
-                self.orbiter_task_name,
-                celery_queue=self.orbiter_queue_name,
-                batch=self.retry_batch.to_dict()
-            )
-            logger.info(
-                f"[PromptLanding] Submitted {self.retry_batch.prompts_count()} retry prompts to queue {self.orbiter_queue_name}.")
+        self.send_batch_to_orbiter(self.retry_batch, "retry")
+        self.send_batch_to_orbiter(self.answer_generation_batch, "answer generation")
 
         self.refresh_progress_bar()
 

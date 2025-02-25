@@ -36,3 +36,16 @@ The primary goal of the `code_graph` component is to analyze code elements withi
                                   ["dump_documents", "db.py"]],
            "projectName": "TAG_Files"
      }'
+
+3)  curl -X POST "http://127.0.0.1:13456/api/rag/queryRetrievalByPackagesNames" -H "Content-Type: application/json" -d '{
+           "packagesList": ["schedule", "e2e"],
+           "projectName": "oadp-e2e-qe",
+           "tokenizerPath": "sfiresht/oadp-operator-tag-r16-a16-epoch2",
+           "contextLength": "2048",
+           "modelId": "XX"
+    }'
+
+4) curl -X POST "http://127.0.0.1:13456/api/rag/packagesNamesList" -H "Content-Type: application/json" -d '{
+           "projectName": "kubevirt",
+           "modelId": "XX"
+    }'

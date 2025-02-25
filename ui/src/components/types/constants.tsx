@@ -27,6 +27,8 @@ export interface TableFormData {
 export interface ModelData {
     modelId: string;
     modelName: string;
+    hfRepoId: string;
+    repoInternalLocation?: string; 
     trainingName: string;
     modelMaxSeqLen: number;
     modelType: string,
@@ -39,6 +41,7 @@ export interface ModelData {
         user_tag: string;
     };
     isRagEnabled?: boolean,
+    isPackageSelectionRagEnabled?: boolean,
     // numTests: string,
     // dataSize: string,
 }

@@ -1,6 +1,6 @@
 import time
-from prompt_lab.prompt import PromptGenerator, PromptMaxTokenSizeFailPolicy, PromptCompositePolicy
-from prompt_lab.batch import BatchMaxPromptsNumberStrategy, BatchMaxTokenStrategy, BatchCompositeStrategy, Batch
+from prompt_lab.prompt import PromptGenerator
+from prompt_lab.batch import BatchMaxPromptsNumberStrategy, BatchCompositeStrategy, Batch
 from prompt_lab.utils.celery.celery import is_queue_full, send_task
 from prompt_lab.utils.tokenizer import TokenizerUtils
 from prompt_lab.storage import DataRepository
@@ -32,18 +32,9 @@ class PromptLaunchpad:
         self.batch_size = batch_size
         self.orbiter_task_name = orbiter_task_name
 
-        self.generator = PromptGenerator(self.repository, self.tokenizer)
+        self.generator = PromptGenerator(self.repository)
         self.prepared_prompts_batch = Batch(
-            batch_strategies=BatchCompositeStrategy(
-                [
-                    BatchMaxTokenStrategy(self.tokenizer.get_tokens_limit()),
-                    BatchMaxPromptsNumberStrategy(self.batch_size),
-                ]
-            ),
-            prompt_policies=PromptCompositePolicy(
-                [PromptMaxTokenSizeFailPolicy(self.tokenizer.get_tokens_limit())]
-            ),
-        )
+            batch_strategies=BatchCompositeStrategy([BatchMaxPromptsNumberStrategy(self.batch_size)]))
         self.processed_uuids = self.repository.load_prompts_uuids()
 
         logger.info("[PromptLaunchpad] Initialized.")
@@ -86,11 +77,6 @@ class PromptLaunchpad:
         if self.prepared_prompts_batch.is_blocked:
             self._submit_batch()
 
-        # Handle failed prompts
-        if prompt.is_failed:
-            self.repository.save_fail_prompts([prompt.to_dict()])
-            return False
-
         # Retry adding to a new batch
         return self.prepared_prompts_batch.add_prompt(prompt)
 
@@ -101,7 +87,6 @@ class PromptLaunchpad:
         if not self.prepared_prompts_batch.has_prompts():
             return
         logger.debug(f"batch prompt count {self.prepared_prompts_batch.prompts_count()}")
-        logger.debug(f"batch token count {self.prepared_prompts_batch.batch_token_size()}")
 
         finalized_prompts = self.prepared_prompts_batch.finalize_batch()
 

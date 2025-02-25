@@ -9,11 +9,22 @@ class PromptReviewFailRetry(PromptPolicy):
         self.max_retry = max_retry
 
     def apply(self, prompt: Prompt) -> bool:
-        if prompt.review_failed and prompt.retry_count > self.max_retry:
+        """
+        Mark the prompt as failed if:
+          1. The prompt review has failed, AND
+          2. Either the question or answer generation retry count has exceeded self.max_retry.
+        """
+        if prompt.review_failed and (
+                prompt.question_gen_retry_count > self.max_retry
+                or prompt.answer_gen_retry_count > self.max_retry
+        ):
             prompt.failed = True
-            prompt.set_fail_reason(self.__class__.__name__)
-            logger.info(
-                f"[PromptReviewFailRetry] Failed prompt due to retry count {prompt.retry_count} and it exceeded max "
-                f"retry {self.max_retry} : {prompt.uuid}")
+            fail_reason = f"[PromptReviewFailRetry] Prompt {prompt.uuid} failed due to exceeding the "
+            f"max retry limit of {self.max_retry}. "
+            f"(question_gen_retry_count={prompt.question_gen_retry_count}, "
+            f"answer_gen_retry_count={prompt.answer_gen_retry_count})"
+            prompt.set_fail_reason(fail_reason)
+            logger.info(fail_reason)
             return True
+
         return False
