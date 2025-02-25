@@ -20,7 +20,7 @@ spec:
       initContainers:
 
       - name: wait-for-services
-        image: registry.access.redhat.com/ubi8/ubi-minimal:latest
+        image: images.paas.redhat.com/genie/ubi8:latest
         env:
         - name: RELEASE_NAME
           value: {{.Release.Name| upper}}
@@ -51,7 +51,10 @@ spec:
           {{- range .Values.args }}
           '{{ . }}',
           {{- end }}
-          ]
+          {{- if .Values.global.enable_reviewer }}
+          '--reviewer'
+          {{- end }}
+        ]
 
         #command: [ "/bin/bash", "-c", "--" ]
         #args: [ "while true; do sleep 3000000; done;" ]
@@ -79,7 +82,7 @@ spec:
         - name: MONGODB_PORT
           value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_PORT)
         - name: MODEL_API_URL
-          value: "http://$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_HOST):$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_PORT)/v1/completions"
+          value: "http://$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_HOST):$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_PORT)"
 
 
         resources:

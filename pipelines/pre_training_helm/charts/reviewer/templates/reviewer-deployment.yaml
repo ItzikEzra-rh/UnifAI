@@ -6,7 +6,7 @@ metadata:
   labels:
     app: {{ .Chart.Name }}
 spec:
-  replicas: {{ .Values.global.reviewer_replica }}
+  replicas: {{ ternary .Values.global.reviewer_replica 0 .Values.global.enable_reviewer }}
   selector:
     matchLabels:
       app: {{ .Chart.Name }}
@@ -20,7 +20,7 @@ spec:
       initContainers:
 
       - name: wait-for-services
-        image: registry.access.redhat.com/ubi8/ubi-minimal:latest
+        image: images.paas.redhat.com/genie/ubi8:latest
         env:
         - name: RELEASE_NAME
           value: {{.Release.Name | upper}}

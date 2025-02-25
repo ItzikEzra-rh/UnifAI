@@ -2,27 +2,31 @@ global:
   namespace: 
   promptlab_env:
 
-    
+replicaCount: 1 
 landing:
   args:
-  replicaCount: 1
-  celery_worker_concurrency: 
-  celery_worker_prefetch_count:
+  - landing
+  - --celery
+  - --celery-worker-concurrency
+  - 1
+  - --celery-worker-prefetch-count
+  - 1
+  celery_worker_concurrency: 1
+  celery_worker_prefetch_count: 1
   image:
-    repository: 
-    tag: 
-    pullPolicy: 
+    repository: images.paas.redhat.com/genie/prompt_lab 
+    tag: "latest"
+    pullPolicy: Always
 launchpad:
-  replicaCount: 1
   image:
-    repository: 
-    tag: 
-    pullPolicy: 
+    repository: images.paas.redhat.com/genie/prompt_lab 
+    tag: "latest"
+    pullPolicy: Always
 
 resources:
   requests:
-    memory:  
-    cpu:     
+    memory: "4Gi"     
+    cpu: "2"       
   limits:
-    memory:     
-    cpu:  
+    memory: "4Gi"     
+    cpu: "2"   
