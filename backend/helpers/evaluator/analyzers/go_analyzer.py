@@ -19,6 +19,7 @@ class GoCodeAnalyzer:
             # Setup and Teardown
             'BeforeEach', 'AfterEach', 'JustBeforeEach', 'JustAfterEach',
             'BeforeSuite', 'AfterSuite',
+            'BeforeAll', 'AfterAll', 'By',
             # Assertions
             'Expect', 'Eventually', 'Consistently', 'Should',
             # Helpers & Matchers

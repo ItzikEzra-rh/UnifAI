@@ -389,7 +389,7 @@ const ChatComponent: React.FC = () => {
     }
   };
 
-  const sendQuestion = async (text: string) => {
+  const sendQuestion = async (text: string, contextEnrichment: boolean) => {
     try {
       // Replace <br> tags with \n in the input text
       let formattedText = text.replace(/<br>/g, '\n');
@@ -412,7 +412,7 @@ const ChatComponent: React.FC = () => {
                             {"role": "user",    "content": `${formattedText}`}]
 
       // If current loaded model support RAG we should enrich the LLM with relevant context
-      if (selectedModel?.isRagEnabled) {
+      if (selectedModel?.isRagEnabled && contextEnrichment) {
         const queryRetrievalPayload = {
           text: formattedText,
           projectName: selectedModel?.project,
@@ -551,7 +551,7 @@ const ChatComponent: React.FC = () => {
     });
 
     setIsStreaming(true);
-    sendQuestion(text);
+    sendQuestion(text, false);
   };
 
   const handleSaveClick = (userLatestMessage: string, promptLatestMessage: string) => {
@@ -601,7 +601,7 @@ const ChatComponent: React.FC = () => {
     }
   };
 
-  const regenerateResponse = async () => {
+  const regenerateResponse = async (contextEnrichment: boolean = false) => {
     const lastUserMessage = messages.slice().reverse().find(msg => msg.sender === 'user');
     if (!lastUserMessage) return;
 
@@ -611,7 +611,7 @@ const ChatComponent: React.FC = () => {
       { ...lastUserMessage, id: new Date().toISOString() }, // Re-add the user's message
     ]);
 
-    sendQuestion(lastUserMessage.text)
+    sendQuestion(lastUserMessage.text, contextEnrichment)
   };
 
   const handleStop = async () => {
@@ -890,7 +890,7 @@ const ChatComponent: React.FC = () => {
                             <>
                               <Tooltip title="Regenerate">
                                 <IconButton
-                                  onClick={regenerateResponse}
+                                  onClick={() => regenerateResponse(false)}
                                   size="small"
                                 >
                                   <AutorenewIcon />
@@ -970,6 +970,7 @@ const ChatComponent: React.FC = () => {
             repositoryLocation={selectedModel?.repoInternalLocation || ''}
             modelType={modelType}
             reformatText={ReformatText}
+            regenerateResponse={regenerateResponse}
           />
         </div>
        ) : (

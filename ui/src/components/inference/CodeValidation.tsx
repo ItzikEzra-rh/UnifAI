@@ -13,6 +13,7 @@ interface CodeValidationModalProps {
   repositoryLocation: string;
   modelType: 'llama' | 'qwen' | null;
   reformatText: (text: string, modelType: 'llama' | 'qwen') => string;
+  regenerateResponse: (contextEnrichment: boolean) => void
 }
 
 interface ValidationResponse {
@@ -34,7 +35,8 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
   llmResponse,
   repositoryLocation,
   modelType,
-  reformatText
+  reformatText,
+  regenerateResponse
 }) => {
   const [validationResponse, setValidationResponse] = useState<ValidationResponse | null>(null);
   const [isValidating, setIsValidating] = useState<boolean>(false);
@@ -76,7 +78,8 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
 
   const handleRegenerate = () => {
     handleClose();
-    // Future implementation: Trigger API for regeneration
+    // Trigger API for regeneration
+    regenerateResponse(true)
   };
 
   const handleClose = () => {
