@@ -6,11 +6,20 @@ global:
 # ====================================================================================
   # Namespace where the Helm chart will deploy the application resources.
   namespace: 
+  # enable toleration ( on production env in order to allocate A100 GPUs).
+  enable_toleration: 
+
+  # support multiple GPUs per Pod.
+  multiple_gpu_per_pod: 
+
+  # Number of GPU per vllm Pod.
+  number_of_gpu: 
 
   # (int) number of prompt-vllm's serving orbiters
   vllm_orbiter_replica: 
 
   # (int) number of reviewer-vllm's serving reviewer
+  enable_reviewer: 
   vllm_reviewer_replica: 
 
   # (int) number of orbiter to work against prompt-vllm pool
@@ -78,131 +87,114 @@ global:
     OUTPUT_DATASET_REPO:
     OUTPUT_DATASET_FILE_NAME:
 
-    TEMPLATE_PROJECT_CONTEXT: "The kubev2v/migration-planner project is a tool designed to simplify the migration of virtual machines (VMs) from traditional platforms like VMware to OpenShift Virtualization, a Kubernetes-based platform for managing both containerized and virtualized workloads. It leverages KubeVirt to enable running VMs in Kubernetes-native environments.\nThe tool is part of the Konveyor ecosystem, which includes tools like Forklift for workload modernization and migration. It provides features such as resource mapping, automated migration workflows, and a user-friendly UI for managing credentials, tracking connections, and configuring migrations. Built with Go and licensed under Apache-2.0, it integrates with Kubernetes APIs and tools like Multus for networking and storage.\nAs part of Red Hat's ecosystem, it serves as the upstream version of enterprise-grade migration tools for OpenShift, helping users transition VMware-based workloads to Kubernetes efficiently."
-    PROJECT_ID: "migration-planner"
-    PROJECT_REPO: "https://github.com/kubev2v/migration-planner"
+    TEMPLATE_PROJECT_CONTEXT: 
+    PROJECT_ID: 
+    PROJECT_REPO: 
 
 # ====================================================================================
 # DO NOT MODIFY ANYTHING BELOW THIS LINE
 # Changes made below this line may break the deployment or cause unexpected behavior.
 # ====================================================================================
 
-vllm:
-  image:
-    repository: images.paas.redhat.com/genie/vllm-openai
-    tag: "latest"
-    pullPolicy: IfNotPresent  
-  resources:
-    requests:
-      memory:  "16Gi"   
-      cpu: "2"
-      gpu: 1    
-    limits:
-      memory: "16Gi"   
-      cpu: "2"
-      gpu: 1 
-  service:
-    type: ClusterIP
-    port: 8000
+# vllm:
+#   image:
+#     repository: 
+#     tag: 
+#     pullPolicy: 
+#   resources:
+#     requests:
+#       memory:  
+#       cpu: 
+#       gpu:  
+#     limits:
+#       memory: 
+#       cpu: 
+#       gpu: 
+#   service:
+#     type: 
+#     port: 
 
-orbiter:
-  args:
-  - orbiter
-  - --celery
-  - --reviewer
-  - --celery-worker-concurrency
-  - 4
-  - --celery-worker-prefetch-count
-  - 2
+# orbiter:
+#   args:
+#   image:
+#     repository: 
+#     tag:
+#     pullPolicy: 
+#   resources:
+#     requests:
+#       memory:  
+#       cpu:    
+#     limits:
+#       memory:     
+#       cpu: 
 
-  image:
-    repository: images.paas.redhat.com/genie/prompt_lab
-    tag: "2025.01.20"
-    pullPolicy: Always
-  resources:
-    requests:
-      memory: "2Gi"     
-      cpu: "2"       
-    limits:
-      memory: "2Gi"     
-      cpu: "2" 
+# control:
+#   replicaCount: 
+#   landing:
+#     args:
+#     replicaCount: 
+#     celery_worker_concurrency: 
+#     celery_worker_prefetch_count: 
+#     image:
+#       repository: 
+#       tag: 
+#       pullPolicy: 
+#   launchpad:
+#     image:
+#       repository: 
+#       tag:
+#       pullPolicy: 
 
-control:
-  landing:
-    args:
-    - landing
-    - --celery
-    - --celery-worker-concurrency
-    - 1
-    - --celery-worker-prefetch-count
-    - 1
-  
-    #replicaCount: 1
-    celery_worker_concurrency: 1
-    celery_worker_prefetch_count: 1
-    image:
-      repository: images.paas.redhat.com/genie/prompt_lab 
-      tag: "2025.01.20"
-      pullPolicy: Always
+#   resources:
+#     requests:
+#       memory:    
+#       cpu:       
+#     limits:
+#       memory:    
+#       cpu: 
 
-  launchpad:
-    image:
-      repository: images.paas.redhat.com/genie/prompt_lab
-      tag: "2025.01.20"
-      pullPolicy: Always
+# reviewer:
+#   args:
+#   image:
+#     repository: 
+#     tag: 
+#     pullPolicy: 
+#   resources:
+#     requests:
+#       memory:    
+#       cpu:        
+#     limits:
+#       memory:   
+#       cpu:  
 
-  resources:
-    requests:
-      memory: "1Gi"     
-      cpu: "1"       
-    limits:
-      memory: "1Gi"     
-      cpu: "1"   
-
-reviewer:
-  args:
-  - reviewer
-
-  image:
-    repository: images.paas.redhat.com/genie/reviewer
-    tag: "2025.01.19"
-    pullPolicy: Always
-  resources:
-    requests:
-      memory: "2Gi"     
-      cpu: "2"       
-    limits:
-      memory: "2Gi"     
-      cpu: "2"   
-
-misc:
-  resources:
-    requests:
-      memory: "1Gi"     
-      cpu: "1"       
-    limits:
-      memory: "1Gi"     
-      cpu: "1"   
-  mongodb:
-    image:
-      repository: mongo
-      tag: "latest"
-      pullPolicy: IfNotPresent
-    service:
-      name: mongodb
-      type: ClusterIP
-      port: 27017
-    persistence:
-      enabled: true
-      size: 8Gi
-      storageClass: "aws-ebs"
-  rabbitmq:
-    image:
-      repository: images.paas.redhat.com/genie/rabbitmq
-      tag: "latest"
-      pullPolicy: Always
-    service:
-      name: rabbitmq
-      type: ClusterIP
-      port: 5672
-      managementPort: 15672
+# misc:
+#   resources:
+#     requests:
+#       memory:    
+#       cpu:        
+#     limits:
+#       memory:  
+#       cpu:   
+#   mongodb:
+#     image:
+#       repository: 
+#       tag: 
+#       pullPolicy: 
+#     service:
+#       name: 
+#       type: 
+#       port: 
+#     persistence:
+#       enabled: true
+#       size: 
+#       storageClass: 
+#   rabbitmq:
+#     image:
+#       repository: 
+#       tag: 
+#       pullPolicy: 
+#     service:
+#       name: 
+#       type: 
+#       port: 
+#       managementPort: 

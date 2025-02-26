@@ -5,37 +5,35 @@ global:
 
 resources:
   requests:
-    memory:   
-    cpu:      
+    memory: "1Gi"     
+    cpu: "1"       
   limits:
-    memory:     
-    cpu:   
+    memory: "1Gi"     
+    cpu: "1"    
 
 mongodb:
-  replicaCount: 
+  replicaCount: 1
   image:
-    repository: 
-    tag: 
-    pullPolicy: 
+    repository: mongo
+    tag: "latest"
+    pullPolicy: IfNotPresent
   service:
-    name: 
-    type: 
-    port: 
+    name: mongodb
+    type: ClusterIP
+    port: 27017
   persistence:
-    enabled: 
-    size: 
-    storageClass: 
+    enabled: true
+    size: 8Gi
+    storageClass: "aws-ebs"
 
 rabbitmq:
-  replicaCount: 
-  image:
-    repository: 
-    tag: 
-    pullPolicy: 
+  replicaCount: 1
+  image: 
+    repository: images.paas.redhat.com/genie/rabbitmq
+    tag: "latest"
+    pullPolicy: Always
   service:
-    name: 
-    type: 
-    port: 
-    managementPort: 
-  #user_name: 
-  #password: 
+    name: rabbitmq
+    type: ClusterIP
+    port: 5672
+    managementPort: 15672

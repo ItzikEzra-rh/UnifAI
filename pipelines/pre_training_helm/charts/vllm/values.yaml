@@ -1,6 +1,10 @@
 global:
-  namespace: 
 
+  namespace: 
+  enable_toleration: 
+  multiple_gpu_per_pod:
+  number_of_gpu: 
+  enable_reviewer:
   vllm_orbiter_replica: 
   vllm_reviewer_replica:
 
@@ -11,18 +15,20 @@ global:
   vllm_reviewer_args:
 
 image:
-  repository: 
-  tag: 
-  pullPolicy: 
+  repository: images.paas.redhat.com/genie/vllm-openai
+  tag: "latest"
+  pullPolicy: IfNotPresent  
 
 resources:
   requests:
-    memory:     
-    cpu:     
+    memory:  "28Gi"   
+    cpu: "4"
+    gpu:     
   limits:
-    memory:    
-    cpu:  
+    memory: "28Gi"   
+    cpu: "8"
+    gpu:   
 
 service:
-  type:
-  port: 
+  type: ClusterIP
+  port: 8000
