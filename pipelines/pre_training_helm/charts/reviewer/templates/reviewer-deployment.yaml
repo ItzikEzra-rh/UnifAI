@@ -68,13 +68,13 @@ spec:
         {{- end }}
 
         - name: RABBITMQ_IP
-          value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_HOST)
+          value: $({{ .Release.Name | upper }}_RABBITMQ_SVC_SERVICE_HOST)
         - name: RABBITMQ_PORT
-          value: $({{ .Release.Name | upper }}_RABBITMQ_SERVICE_PORT)
+          value: $({{ .Release.Name | upper }}_RABBITMQ_SVC_SERVICE_PORT)
         - name: MONGODB_IP
-          value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_HOST)
+          value: $({{ .Release.Name | upper }}_MONGODB_SVC_SERVICE_HOST)
         - name: MONGODB_PORT
-          value: $({{ .Release.Name | upper }}_MONGODB_SERVICE_PORT)
+          value: $({{ .Release.Name | upper }}_MONGODB_SVC_SERVICE_PORT)
         - name: VLLM_IP
           value: $({{ .Release.Name | upper }}_VLLM_REVIEWER_SVC_SERVICE_HOST)
         - name: VLLM_PORT

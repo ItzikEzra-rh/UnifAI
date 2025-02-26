@@ -7,13 +7,13 @@ data:
   wait-for-services.sh: |
     export REVIEWER_NUM="{{.Values.global.vllm_reviewer_replica}}"
 
-    while [ "$(curl -s -o /dev/null -w "%{http_code}" -u genie:genie123 http://{{ .Release.Name }}-rabbitmq:15672/api/overview)" != "200" ]; do
+    while [ "$(curl -s -o /dev/null -w "%{http_code}" -u genie:genie123 http://{{ .Release.Name }}-rabbitmq-svc:15672/api/overview)" != "200" ]; do
       echo "Waiting for RabbitMQ service to be ready...";
       sleep 5;
     done;
     echo "RabbitMQ service is up!"
     
-    while [ "$(curl -s -o /dev/null -w "%{http_code}" http://{{ .Release.Name }}-mongodb:27017)" != "200" ]; do
+    while [ "$(curl -s -o /dev/null -w "%{http_code}" http://{{ .Release.Name }}-mongodb-svc:27017)" != "200" ]; do
       echo "Waiting for MongoDB service to be ready...";
       sleep 5;
     done;
