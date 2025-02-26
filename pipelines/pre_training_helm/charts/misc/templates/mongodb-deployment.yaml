@@ -4,22 +4,22 @@ metadata:
   name: {{ .Release.Name }}-mongodb
   namespace: {{ .Values.global.namespace }}
   labels:
-    app: mongodb
+    app: {{ .Release.Name }}-mongodb
 spec:
   replicas: {{ .Values.mongodb.replicaCount }}
   selector:
     matchLabels:
-      app: mongodb
+      app: {{ .Release.Name }}-mongodb
   template:
     metadata:
       labels:
-        app: mongodb
+        app: {{ .Release.Name }}-mongodb
     spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
       containers:
-      - name: mongodb
+      - name: {{ .Release.Name }}-mongodb
         image: {{ .Values.mongodb.image.repository }}:{{ .Values.mongodb.image.tag }} 
         imagePullPolicy: {{ .Values.mongodb.image.pullPolicy }}
         command: [ "/bin/bash", "-c", "--" ]

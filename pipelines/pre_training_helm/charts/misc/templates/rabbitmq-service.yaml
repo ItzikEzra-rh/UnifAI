@@ -1,10 +1,10 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ .Release.Name }}-rabbitmq
+  name: {{ .Release.Name }}-rabbitmq-svc
   namespace: {{ .Values.global.namespace }}
   labels:
-    app: rabbitmq
+    app: {{ .Release.Name }}-rabbitmq
 spec:
   type: {{ .Values.rabbitmq.service.type }}
   ports:
@@ -15,4 +15,4 @@ spec:
       port: {{ .Values.rabbitmq.service.managementPort }}
       targetPort: {{ .Values.rabbitmq.service.managementPort }}
   selector:
-    app: rabbitmq
+    app: {{ .Release.Name }}-rabbitmq
