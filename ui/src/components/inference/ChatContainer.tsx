@@ -348,7 +348,7 @@ const ChatComponent: React.FC = () => {
       setSessionId(chatId)
       const newMessages = chatMessages.map(({ text, sender }) => ({ content: text, role: sender === 'bot' ? 'assistant' : sender }));
       await axiosLLM.post('/api/backend/loadChatContext', {
-        sessionId: sessionId,
+        sessionId: chatId,
         chat: newMessages,
       })
 
