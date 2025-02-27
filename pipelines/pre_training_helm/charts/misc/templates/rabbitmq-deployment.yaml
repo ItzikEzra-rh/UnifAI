@@ -19,6 +19,11 @@ spec:
       - name: {{ .Release.Name }}-rabbitmq
         image: {{ .Values.rabbitmq.image.repository }}:{{ .Values.rabbitmq.image.tag }}
         imagePullPolicy: {{ .Values.rabbitmq.image.pullPolicy }}
+        env:
+        - name: RABBITMQ_USER
+          value: "genie"
+        - name: RABBITMQ_PASSWORD
+          value: "genie123"  
         ports:
         - containerPort: {{ .Values.rabbitmq.service.port }}
         - containerPort: {{ .Values.rabbitmq.service.managementPort }}
