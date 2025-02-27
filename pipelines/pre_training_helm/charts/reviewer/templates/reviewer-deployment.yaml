@@ -4,16 +4,16 @@ metadata:
   name: {{ .Release.Name }}-{{ .Chart.Name }}
   namespace: {{.Values.global.namespace}}
   labels:
-    app: {{ .Chart.Name }}
+    app: {{ .Release.Name }}-{{ .Chart.Name }}
 spec:
   replicas: {{ ternary .Values.global.reviewer_replica 0 .Values.global.enable_reviewer }}
   selector:
     matchLabels:
-      app: {{ .Chart.Name }}
+      app: {{ .Release.Name }}-{{ .Chart.Name }}
   template:
     metadata:
       labels:
-        app: {{ .Chart.Name }}
+        app: {{ .Release.Name }}-{{ .Chart.Name }}
     spec:
       securityContext:
       
