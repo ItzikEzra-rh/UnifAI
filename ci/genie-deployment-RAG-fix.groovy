@@ -12,7 +12,7 @@ properties([
         booleanParam(name: 'reviewer', defaultValue: false, description: 'Create image for reviewer'),
         booleanParam(name: 'DB', defaultValue: false, description: 'Create image for DB'),
         booleanParam(name: 'CELERY', defaultValue: false, description: 'Create image for CELERY'),
-        booleanParam(name: 'RMQ', defaultValue: false, description: 'Create image for RMQ'),
+        booleanParam(name: 'rabbitmq', defaultValue: false, description: 'Create image for RabbitMQ'),
         booleanParam(name: 'deploy_genie', defaultValue: false, description: 'True - Deploy Genie, False - Only build images and upload to image-paas'),
         choice(name: 'deployment_location', choices: ['STAGING', 'PRODUCTION'], description: 'Where to deploy Genie?'),
         string(name: "namespace", defaultValue: "tag-ai--runtime-int", description: "The namespace to use for deployment.")
@@ -337,10 +337,26 @@ pipeline {
                         echo("Building image for CELERY")
                     }
                 }
-                stage('RMQ') {
-                    when { expression { params.RMQ } }
+                stage('rabbitmq') {
+                    when { expression { params.rabbitmq } }
                     steps {
-                        echo("Building image for RMQ")
+                            script{
+                                def module = "rabbitmq"
+                                dir("${buildParams.DevRoot}/${params.BRANCH}/${module}/"){
+                                    cleanWorkspace(module)
+                                    if(buildDockerImage(module)) {
+                                        //checkContainerAndAPI(module)
+                                        tagAndPushImageToRegistry(module,buildParams)
+                                        // if(deploy_genie) {
+                                        //     updateChartfile(module)
+                                        // }                                         
+                                        cleanWorkspace(module)
+                                        } 
+                                        else {
+                                            error("Terminating process for ${module} : Build failed")
+                                    }
+                                }
+                            }
                     }
                 }
             }
