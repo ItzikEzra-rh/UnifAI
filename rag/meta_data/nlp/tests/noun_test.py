@@ -8,6 +8,11 @@ import spacy
 import json
 from typing import List
 
+def load_ndjson(file_path: str) -> list[dict]:
+    """Load NDJSON data from a file."""
+    with open(file_path, "r", encoding="utf-8") as file:
+        return [json.loads(line) for line in file if line.strip()]
+
 def load_json(file_path: str) -> dict:
     """Load JSON data from a file."""
     with open(file_path, "r", encoding="utf-8") as file:
@@ -20,6 +25,7 @@ def extract_questions(data: List[dict]) -> List[str]:
 # Initialize the analyzer
 analyzer = NounAnalyzer()
 
+# data = load_ndjson("{FILE_LOCATION}.ndjson")
 # data = load_json("{FILE_LOCATION}.json")
 # prompts = extract_questions(data)
 
