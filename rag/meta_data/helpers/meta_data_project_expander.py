@@ -4,6 +4,7 @@ from rag.be_utils.utils import time_execution
 from .metadata_extractor.meta_data_extractor import MetaDataExtractorBase
 from .metadata_extractor.kubevirt_meta_data_extractor import KubevirtMetaDataExtractor
 from .metadata_extractor.eco_go_meta_data_extractor import EcogoMetaDataExtractor
+from .metadata_extractor.oadp_meta_data_extractor import OadpMetaDataExtractor
 
 class MetaDataProjectExpander:
     def __init__(self, parsed_elements, project_name, project_repo_path, naming_mapping = {}, built_in_keys = [], exclude_types = [], project_programming_languages = []):
@@ -19,6 +20,7 @@ class MetaDataProjectExpander:
         # Registeration of different extractors expected to be handled from __init__ file of the MetaDataExtractor class
         MetaDataExtractorBase.register_extractor("kubevirt", KubevirtMetaDataExtractor)
         MetaDataExtractorBase.register_extractor("eco-gotests", EcogoMetaDataExtractor)
+        MetaDataExtractorBase.register_extractor("oadp", OadpMetaDataExtractor)
 
     @time_execution
     def add_metadata(self):

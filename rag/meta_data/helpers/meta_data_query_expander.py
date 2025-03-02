@@ -1,6 +1,7 @@
 from .metadata_extractor.meta_data_extractor import MetaDataExtractorBase
 from .metadata_extractor.kubevirt_meta_data_extractor import KubevirtMetaDataExtractor
 from .metadata_extractor.eco_go_meta_data_extractor import EcogoMetaDataExtractor
+from .metadata_extractor.oadp_meta_data_extractor import OadpMetaDataExtractor
 
 class MetaDataQueryExpander:
     def __init__(self, query, project_name, model_name, model_id):
@@ -13,6 +14,7 @@ class MetaDataQueryExpander:
         # Registeration of different extractors expected to be handled from __init__ file of the MetaDataExtractor class
         MetaDataExtractorBase.register_extractor("kubevirt", KubevirtMetaDataExtractor)
         MetaDataExtractorBase.register_extractor("eco-gotests", EcogoMetaDataExtractor)
+        MetaDataExtractorBase.register_extractor("oadp", OadpMetaDataExtractor)
 
     def extract_metadata(self):
         """
