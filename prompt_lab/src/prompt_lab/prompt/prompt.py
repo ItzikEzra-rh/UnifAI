@@ -22,6 +22,7 @@ class Prompt:
     name: str
     context: str
     question_system_message: str
+    training_system_message: str
     seed_system_message: str
     question_seed: str
     question_options: []
