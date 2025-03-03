@@ -4,16 +4,16 @@ metadata:
   name: {{ .Release.Name }}-{{ .Chart.Name }}-reviewer
   namespace: {{ .Values.global.namespace }}
   labels:
-    app: {{ .Chart.Name }}-reviewer
+    app: {{ .Release.Name }}-{{ .Chart.Name }}-reviewer
 spec:
   replicas: {{ ternary .Values.global.vllm_reviewer_replica 0 .Values.global.enable_reviewer }}
   selector:
     matchLabels:
-      app: {{ .Chart.Name }}-reviewer
+      app: {{ .Release.Name }}-{{ .Chart.Name }}-reviewer
   template:
     metadata:
       labels:
-        app: {{ .Chart.Name }}-reviewer
+        app: {{ .Release.Name }}-{{ .Chart.Name }}-reviewer
     spec:
      
       initContainers:
@@ -36,7 +36,7 @@ spec:
 
 
       containers:
-      - name: {{ .Chart.Name }}-reviewer
+      - name: {{ .Release.Name }}-{{ .Chart.Name }}-reviewer
         image: "{{.Values.image.repository}}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         #command: [ "/bin/bash", "-c", "--" ]

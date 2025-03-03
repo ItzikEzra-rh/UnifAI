@@ -4,7 +4,7 @@ metadata:
   name: {{ .Release.Name }}-{{ .Chart.Name }}-reviewer-svc
   namespace: {{ .Values.global.namespace }}
   labels:
-    app: {{ .Chart.Name }}-reviewer
+    app: {{ .Release.Name }}-{{ .Chart.Name }}-reviewer
 spec:
   type: {{.Values.service.type}}
   ports:
@@ -12,4 +12,4 @@ spec:
       port: {{ .Values.service.port }}
       targetPort: {{ .Values.service.port }}
   selector:
-    app: {{ .Chart.Name }}-reviewer
+    app: {{ .Release.Name }}-{{ .Chart.Name }}-reviewer
