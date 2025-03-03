@@ -2,360 +2,90 @@
   "project_id": "",
   "project_repo": "",
   "coding_language": "typescript",
-  "system_message": "You are an expert in TypeScript, skilled in designing modular, scalable, and reusable code. You provide precise guidance on solving complex problems, ensuring optimal use of TypeScript features such as types, interfaces, generics, and modules. You follow clear and consistent coding principles, enabling clean, maintainable, and efficient codebases.",
-  "context_template": "the {project_id} repository: {project_repo}.\nBelow is the element details:\n\n{element_type}\n\n{name}\n\n{file_location}\n\n{imports}\n\n{code}\n\nUtilize the provided element details and code to address the user's question accurately.",
-  "element_templates": {
-    "function": {
-      "Function Understanding and Code Description": {
-        "function_understanding_and_description": {
-          "questions": [
-            {
-              "question": "In the context of {project_id}, what is the purpose of `{element_type}` `{name}`? Provide a detailed explanation of its responsibilities and significance.",
-              "validation": "Is the explanation comprehensive and clear about the purpose, responsibilities, and significance of `{element_type}` `{name}` within {project_id}?"
-            },
-            {
-              "question": "Exploring the key objectives of `{element_type}` `{name}` in the {project_id} project: Provide a detailed explanation of its responsibilities and importance.",
-              "validation": "Is the explanation comprehensive and clear about the key objectives, responsibilities, and importance of `{element_type}` `{name}` for {project_id}?"
-            },
-            {
-              "question": "What function does `{element_type}` `{name}` serve within the {project_id} system? Provide a detailed explanation of its responsibilities and role.",
-              "validation": "Is the explanation comprehensive and clear about the function, responsibilities, and role of `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "Analyzing the role of `{element_type}` `{name}` for {project_id}: Provide a detailed explanation of its responsibilities and relevance.",
-              "validation": "Is the explanation comprehensive and clear about the role, responsibilities, and relevance of `{element_type}` `{name}` in the context of {project_id}?"
-            },
-            {
-              "question": "{project_id}'s implementation: What is the significance of `{element_type}` `{name}`? Provide a detailed explanation of its purpose and responsibilities.",
-              "validation": "Is the explanation comprehensive and clear about the significance, purpose, and responsibilities of `{element_type}` `{name}` within {project_id}?"
-            }
-          ]
-        },
-        "function_usage_and_import": {
-          "questions": [
-            {
-              "question": "In the {project_id} project, provide a code snippet demonstrating how to use `{element_type}` `{name}`, including the correct file location for importing it.",
-              "validation": "Is the code snippet accurate in demonstrating the usage of `{element_type}` `{name}`, and does it include the correct import location for {project_id}?"
-            },
-            {
-              "question": "Show an example of correctly importing and using `{element_type}` `{name}` within the {project_id} context. Include the import path and a sample use case.",
-              "validation": "Does the example clearly show the correct import method and provide a practical use case for `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "How can `{element_type}` `{name}` be utilized in the context of {project_id}? Provide a code example with proper imports.",
-              "validation": "Is the code example comprehensive in demonstrating the utilization of `{element_type}` `{name}`, with correct imports for {project_id}?"
-            },
-            {
-              "question": "Write a code example demonstrating the usage of `{element_type}` `{name}` for the {project_id} project, ensuring the import path is accurate.",
-              "validation": "Does the code example accurately showcase the usage of `{element_type}` `{name}` with the correct import path in {project_id}?"
-            }
-          ]
-        },
-        "function_full_code": {
-          "questions": [
-            {
-              "question": "For the {project_id} project, provide the complete implementation of `{element_type}` `{name}` and explain its purpose and functionality.",
-              "validation": "Does the response include the full implementation of `{element_type}` `{name}` with a clear explanation of its purpose and functionality in {project_id}?"
-            },
-            {
-              "question": "Show the full code of `{element_type}` `{name}` for {project_id}, including all related imports, and explain how it operates within the context.",
-              "validation": "Is the complete code of `{element_type}` `{name}` shown, including relevant imports, and is there a clear explanation of its operation in {project_id}?"
-            },
-            {
-              "question": "Provide the entire source code for `{element_type}` `{name}` as defined in the {project_id} project and describe its role in the implementation.",
-              "validation": "Does the provided code fully represent `{element_type}` `{name}` and include a description of its role within {project_id}?"
-            },
-            {
-              "question": "What is the full implementation of `{element_type}` `{name}` in the context of {project_id}? Include any dependencies or imports used and explain how they contribute to its functionality.",
-              "validation": "Is the full implementation of `{element_type}` `{name}` provided, along with an explanation of its dependencies and their contributions in {project_id}?"
-            },
-            {
-              "question": "Can you show the full source code of `{element_type}` `{name}` for the {project_id} project, ensuring it reflects the complete functionality, and explain how it achieves its objectives?",
-              "validation": "Is the full functionality of `{element_type}` `{name}` reflected in the provided code with a detailed explanation of how it achieves its objectives in {project_id}?"
-            }
-          ]
-        }
-      },
-      "Error Handling and Type Safety": {
-        "error_handling_type_safety_options": {
-          "questions": [
-            {
-              "question": "In the {project_id} context, demonstrate how `{element_type}` `{name}` uses TypeScript's type system to prevent runtime errors and improve code reliability, including specific type guards or narrowing techniques.",
-              "validation": "Does the demonstration effectively show the use of TypeScript's type system for error prevention in {project_id}, highlighting unique type guards or narrowing techniques in `{element_type}` `{name}`?"
-            },
-            {
-              "question": "Analyze the error handling mechanisms in `{element_type}` `{name}` for the {project_id} project, highlighting how TypeScript's strong typing contributes to robust error prevention and management.",
-              "validation": "Is the analysis comprehensive in explaining how TypeScript's strong typing supports error prevention in `{element_type}` `{name}` within {project_id}?"
-            },
-            {
-              "question": "Explain the strategies used in `{element_type}` `{name}` for {project_id} to ensure type safety, including the use of optional chaining, null checks, and type assertions.",
-              "validation": "Does the explanation clearly outline the type safety strategies in `{element_type}` `{name}` for {project_id}, including optional chaining, null checks, and type assertions?"
-            },
-            {
-              "question": "Illustrate the implementation of comprehensive error handling patterns that leverage TypeScript's type system in `{element_type}` `{name}` for the {project_id} project.",
-              "validation": "Is the illustration of error handling patterns thorough and effectively demonstrates the use of TypeScript's type system in `{element_type}` `{name}` for {project_id}?"
-            }
-          ]
-        }
-      },
-      "Performance and Type Optimization": {
-        "performance_typing_options": {
-          "questions": [
-            {
-              "question": "In the context of {project_id}, identify opportunities to optimize type definitions for better compile-time type checking and runtime performance in `{element_type}` `{name}`.",
-              "validation": "Are the optimization opportunities for type definitions in {project_id}'s `{element_type}` `{name}` comprehensive and specific to improving type checking and runtime performance?"
-            },
-            {
-              "question": "Analyze the current type implementation in `{element_type}` `{name}` for the {project_id} project and suggest improvements for more efficient type checking and code execution.",
-              "validation": "Does the analysis provide a detailed and actionable assessment of the current type implementation in `{element_type}` `{name}` for {project_id} with clear improvement suggestions?"
-            },
-            {
-              "question": "Demonstrate advanced type optimization techniques that could be applied to `{element_type}` `{name}` in {project_id} to enhance its performance and type safety.",
-              "validation": "Are the demonstrated type optimization techniques for `{element_type}` `{name}` in {project_id} advanced, practical, and likely to improve performance and type safety?"
-            },
-            {
-              "question": "Explore how generic constraints and type narrowing can be used to improve the performance of `{element_type}` `{name}` within the {project_id} project.",
-              "validation": "Does the exploration effectively show how generic constraints and type narrowing can optimize the performance of `{element_type}` `{name}` in {project_id}?"
-            }
-          ]
-        }
-      },
-      "Modularity and Reusability": {
-        "function_reusability_options": {
-          "questions": [
-            {
-              "question": "For the {project_id} project, suggest improvements for modularity in `{element_type}` `{name}` by incorporating shared utilities and generic type patterns.",
-              "validation": "Are the suggested improvements for modularity in `{element_type}` `{name}` for {project_id} comprehensive and practical?"
-            },
-            {
-              "question": "Identify ways to extend `{element_type}` `{name}` in the context of {project_id} for handling new conditions efficiently, using TypeScript's advanced type features.",
-              "validation": "Do the identified extension methods for `{element_type}` `{name}` in {project_id} demonstrate efficient handling of new conditions using advanced TypeScript type features?"
-            },
-            {
-              "question": "Recommend refactoring opportunities in `{element_type}` `{name}` for the {project_id} project to enhance reusability through generics and interface design.",
-              "validation": "Are the recommended refactoring opportunities for `{element_type}` `{name}` in {project_id} effective in improving reusability through generics and interface design?"
-            },
-            {
-              "question": "Propose techniques to simplify `{element_type}` `{name}` in {project_id} by breaking down complex functions into smaller, reusable components with strong type definitions.",
-              "validation": "Do the proposed techniques effectively simplify `{element_type}` `{name}` in {project_id} by creating more modular and reusable components?"
-            }
-          ]
-        }
-      }
+  "training_system_message": "in the context of ${project_id} project",
+  "seed_system_message": "",
+  "question_system_message": "",
+  "context": "Below is the element of type ${element_type} with the name ${name}:\n\n${file_location}\n\n${element_type}\n\n${tags}\n\n${package}\n\n${imports}\n\n${structs}\n\n${interfaces}\n\n${global_vars}\n\n${code}\n\nUtilize the provided element details and code to address the user's question accurately.",
+  "q_and_a": [
+    {
+      "name": "step-by-step ${element_type} ${name} prompt - 2 steps - CoT",
+      "seed_system_message": "The user-like request should mention it is about TypeScript Cypress, use details from the context to formulate the user-like request. **You must not include any extra explanation, code, imports, or file location.**",
+      "question_system_message": "I am providing a **TypeScript ${element_type}** using the **Cypress framework**. Your response **must** simulate the **thought process of an experienced engineer** constructing this **${element_type}** from scratch.\n\n## **Response Structure**  \n\n### **${element_type} Objective**  \n- Clearly describe **what the ${element_type} validates** and why it matters.  \n- Identify **key components and expected behaviors**.  \n\n### **Detailed Chain of Thought**  \n- Walk through the **${element_type}** step-by-step, ensuring **every function is explained**.  \n- Use a **first-person engineering thought process**, integrating the structured breakdown seamlessly.  \n\n  - **\"First, I need to validate X, so I’ll create a test that checks Y.\"** (Explains what the function does)  \n  - **\"To achieve Y, I’ll use Cypress features or utilities that interact with the system appropriately.\"** (Explains why it is needed)  \n  - **\"Since this test interacts with Z, I’ll need to import A and B to handle it.\"** (Explicitly lists required imports)  \n  - **\"To ensure Y works as expected, I’ll leverage Cypress built-ins, and if necessary, I’ll implement a helper function or pull in an external utility or library.\"** (Covers implementation flexibility conditionally)  \n  - **\"This test involves multiple components, so I’ll validate each one step-by-step.\"** (Explains interactions)  \n  - **\"To confirm correctness, I’ll use assertions suited to the behavior I’m testing.\"** (Explains test validation)  \n  - **\"For debugging or reliability, I’ll add logging or wait conditions as needed.\"** (Covers error handling and stability)  \n  - **\"Once it’s working, I’ll refine it for clarity, maintainability, and alignment with best practices.\"** (Ensures code quality)  \n\n- **Do not** include code snippets inside the Chain of Thought.  \n- Make it a **detailed first-person Chain of Thought** for each functionality.  \n- The **Chain of Thought** should be a **detailed narrative** that explains the **logic, decisions, and specific validations** for every part of the test.  \n- Cover **all key components** needed to construct the **${element_type}**, including **expected outcomes, error handling, and any libraries or imports required**.  \n- Explain **interactions between multiple components or systems**, detailing how to validate and verify the correct behavior.  \n- **For each test case and function, use the first-person engineering thought process as a software engineer trying to create it.**  \n- **For each logic or functionality, show all the details you need to construct it in the first-person engineering thought process.**  \n- **Each use of functionality must explain what resource or import it needs.**  \n- **For each function, explicitly mention what import it uses.**  \n\n### **Complete Test Code**  \n- **Provide the full ${element_type} in one section**, including **necessary imports, helper functions, documentation, and comments**.  \n- **Must** insert **new comments** into Complete Test Code to explain the implementation.  \n- **Ensure** Cypress conventions and TypeScript typing are followed.  \n- **Comments must be inside the code itself.**  \n- **Do not** add the copyright message inside the complete code.  \n\n## **Important Rules**  \n- **Every test case and function must be explained using the first-person engineering thought process.**  \n- **The structured breakdown (What it does, Why it is needed, Imports, Error handling, etc.) must be embedded within the first-person thought process, not as a checklist.**  \n- **Explicitly mention which imports are required for each function within the Chain of Thought.**  \n- **Must insert comments into the Complete Test Code.**  \n- **Do not** break the code into multiple sections—**provide the full test in one piece.**  \n- **Exclude execution instructions or unnecessary explanations.**  \n- **Comments must be inside the code itself.**  \n",
+      "context": "${context}",
+      "question_seed": "Formulate a user-like request that asks to create the described ${element_type}, including step-by-step guidance for designing, implementing, and validating it. you must not include any extra explanation, code, imports or file location.",
+      "question": [],
+      "answer": "",
+      "question_validation": "",
+      "answer_validation": "",
+      "element_types": ["test"],
+      "condition": ""
     },
-    "file": {
-      "File Role and TypeScript Structure": {
-        "file_role_structure_options": {
-          "questions": [
-            {
-              "question": "In the {project_id} project, describe the purpose of `{element_type}` `{name}`, detailing how it organizes key functions and leverages TypeScript's modular structure.",
-              "validation": "Is the description comprehensive in explaining the purpose, function organization, and TypeScript modular structure of `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "For {project_id}, explain the `{element_type}` `{name}`, discussing its role in maintaining modularity, type safety, and testability.",
-              "validation": "Does the explanation thoroughly cover the role of `{element_type}` `{name}` in maintaining modularity, type safety, and testability for {project_id}?"
-            },
-            {
-              "question": "Provide a TypeScript code snippet that showcases the main functions in `{element_type}` `{name}` for the {project_id} project, illustrating its responsibilities in supporting the type system.",
-              "validation": "Is the code snippet effective in demonstrating the main functions and their responsibilities within the type system of `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "Generate a code snippet for {project_id} demonstrating essential functions and type interactions in `{element_type}` `{name}`, highlighting TypeScript-specific design patterns.",
-              "validation": "Does the code snippet effectively highlight the TypeScript design patterns and type interactions in `{element_type}` `{name}` for {project_id}?"
-            }
-          ]
-        }
-      },
-      "TypeScript Modularity and Optimization": {
-        "file_modularity_refactoring_options": {
-          "questions": [
-            {
-              "question": "In the context of {project_id}, suggest ways to refactor and optimize `{element_type}` `{name}` to improve type safety, modularity, and performance.",
-              "validation": "Are the suggested refactoring and optimization methods for `{element_type}` `{name}` in {project_id} comprehensive and tailored to improving type safety, modularity, and performance?"
-            },
-            {
-              "question": "For the {project_id} project, identify specific functions or type definitions in `{element_type}` `{name}` that could be modularized into more reusable and type-safe components.",
-              "validation": "Do the identified functions and type definitions in `{element_type}` `{name}` for {project_id} demonstrate clear potential for improved modularity and type safety?"
-            },
-            {
-              "question": "Discuss opportunities to enhance type readability, simplify complex type structures, and optimize performance within `{element_type}` `{name}` in the {project_id} project.",
-              "validation": "Is the discussion thorough in addressing type readability, type structure simplification, and performance optimization for `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "In {project_id}, recommend restructuring `{element_type}` `{name}` to reduce type complexity and increase type inference efficiency across multiple components.",
-              "validation": "Are the recommendations effective in reducing type complexity and improving type inference efficiency for `{element_type}` `{name}` in {project_id}?"
-            }
-          ]
-        }
-      }
+    {
+      "name": "small ${element_type} ${name} prompt - 2 steps - CoT",
+      "seed_system_message": "The user-like request should mention it is about TypeScript Cypress, use details from the context to formulate the user-like request. **You must not include any extra explanation, code, imports, or file location.**",
+      "question_system_message": "I am providing a **TypeScript ${element_type}** using the **Cypress framework**. Your response **must** simulate the **thought process of an experienced engineer** constructing this **${element_type}** from scratch.\n\n## **Response Structure**  \n\n### **${element_type} Objective**  \n- Clearly describe **what the ${element_type} validates** and why it matters.  \n- Identify **key components and expected behaviors**.  \n\n### **Detailed Chain of Thought**  \n- Walk through the **${element_type}** step-by-step, ensuring **every function is explained**.  \n- Use a **first-person engineering thought process**, integrating the structured breakdown seamlessly.  \n\n  - **\"First, I need to validate X, so I’ll create a test that checks Y.\"** (Explains what the function does)  \n  - **\"To achieve Y, I’ll use Cypress features or utilities that interact with the system appropriately.\"** (Explains why it is needed)  \n  - **\"Since this test interacts with Z, I’ll need to import A and B to handle it.\"** (Explicitly lists required imports)  \n  - **\"To ensure Y works as expected, I’ll leverage Cypress built-ins, and if necessary, I’ll implement a helper function or pull in an external utility or library.\"** (Covers implementation flexibility conditionally)  \n  - **\"This test involves multiple components, so I’ll validate each one step-by-step.\"** (Explains interactions)  \n  - **\"To confirm correctness, I’ll use assertions suited to the behavior I’m testing.\"** (Explains test validation)  \n  - **\"For debugging or reliability, I’ll add logging or wait conditions as needed.\"** (Covers error handling and stability)  \n  - **\"Once it’s working, I’ll refine it for clarity, maintainability, and alignment with best practices.\"** (Ensures code quality)  \n\n- **Do not** include code snippets inside the Chain of Thought.  \n- Make it a **detailed first-person Chain of Thought** for each functionality.  \n- The **Chain of Thought** should be a **detailed narrative** that explains the **logic, decisions, and specific validations** for every part of the test.  \n- Cover **all key components** needed to construct the **${element_type}**, including **expected outcomes, error handling, and any libraries or imports required**.  \n- Explain **interactions between multiple components or systems**, detailing how to validate and verify the correct behavior.  \n- **For each test case and function, use the first-person engineering thought process as a software engineer trying to create it.**  \n- **For each logic or functionality, show all the details you need to construct it in the first-person engineering thought process.**  \n- **Each use of functionality must explain what resource or import it needs.**  \n- **For each function, explicitly mention what import it uses.**  \n\n### **Complete Test Code**  \n- **Provide the full ${element_type} in one section**, including **necessary imports, helper functions, documentation, and comments**.  \n- **Must** insert **new comments** into Complete Test Code to explain the implementation.  \n- **Ensure** Cypress conventions and TypeScript typing are followed.  \n- **Comments must be inside the code itself.**  \n- **Do not** add the copyright message inside the complete code.  \n\n## **Important Rules**  \n- **Every test case and function must be explained using the first-person engineering thought process.**  \n- **The structured breakdown (What it does, Why it is needed, Imports, Error handling, etc.) must be embedded within the first-person thought process, not as a checklist.**  \n- **Explicitly mention which imports are required for each function within the Chain of Thought.**  \n- **Must insert comments into the Complete Test Code.**  \n- **Do not** break the code into multiple sections—**provide the full test in one piece.**  \n- **Exclude execution instructions or unnecessary explanations.**  \n- **Comments must be inside the code itself.**  \n",      "context": "${context}",
+      "question_seed": "Formulate a user-like request that asks to create the described ${element_type}. you must not include any extra explanation, code, imports or file location.",
+      "question": [],
+      "answer": "",
+      "question_validation": "",
+      "answer_validation": "",
+      "element_types": ["test"],
+      "condition": ""
     },
-    "test": {
-      "Test Strategy and Coverage": {
-        "test_strategy_options": {
-          "questions": [
-            {
-              "question": "Describe the comprehensive test strategy for `{element_type}` `{name}` in the {project_id} project. How does it ensure thorough coverage of different scenarios and edge cases?",
-              "validation": "Does the explanation provide a detailed overview of the test strategy, covering the scope, approach, and specific techniques used to achieve comprehensive testing for `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "What is the overall testing strategy for `{element_type}` `{name}` in {project_id}, and how does it address scenario diversity and edge case coverage?",
-              "validation": "Does the response include a detailed strategy for covering diverse scenarios and edge cases for `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "Explain the key components of the testing strategy for `{element_type}` `{name}` in {project_id}, focusing on how it ensures exhaustive validation and scenario coverage.",
-              "validation": "Is the testing strategy for `{element_type}` `{name}` in {project_id} well-defined and comprehensive in its approach to validation?"
-            },
-            {
-              "question": "Provide an in-depth analysis of the testing strategy for `{element_type}` `{name}` in {project_id}. How does it guarantee effective scenario and edge case coverage?",
-              "validation": "Does the analysis highlight how the testing strategy ensures effective validation of `{element_type}` `{name}` in {project_id}?"
-            }
-          ]
-        },
-        "test_type_and_technique": {
-          "questions": [
-            {
-              "question": "Explain the different types of tests implemented for `{element_type}` `{name}` in {project_id}. Discuss unit tests, integration tests, and any specialized testing techniques used.",
-              "validation": "Does the explanation thoroughly cover the various test types and specialized testing techniques applied to `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "What are the testing methodologies applied for `{element_type}` `{name}` in {project_id}, and how do they contribute to robust validation?",
-              "validation": "Is the description of testing methodologies for `{element_type}` `{name}` in {project_id} complete and well-articulated?"
-            },
-            {
-              "question": "Describe the various testing approaches for `{element_type}` `{name}` in {project_id}, including unit, integration, and advanced testing techniques.",
-              "validation": "Does the response provide a clear and detailed explanation of the testing approaches used for `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "How do the testing techniques for `{element_type}` `{name}` in {project_id} ensure effective validation across different testing levels?",
-              "validation": "Does the explanation cover all testing levels and techniques applied to `{element_type}` `{name}` in {project_id}?"
-            }
-          ]
-        },
-        "test_implementation_details": {
-          "questions": [
-            {
-              "question": "For the {project_id} project, provide the full implementation of `{element_type}` `{name}`, including all test cases, setup, and teardown mechanisms. Explain how each test contributes to verifying the component's functionality.",
-              "validation": "Does the response include a complete implementation of `{element_type}` `{name}` with a comprehensive explanation of each test case's purpose and contribution to functionality verification in {project_id}?"
-            },
-            {
-              "question": "Present the detailed implementation of `{element_type}` `{name}` in {project_id}, explaining the role of setup, execution, and teardown mechanisms.",
-              "validation": "Does the response offer a thorough implementation with clear explanations for each step in `{element_type}` `{name}` for {project_id}?"
-            },
-            {
-              "question": "Provide a step-by-step breakdown of the test suite implementation for `{element_type}` `{name}` in {project_id}, focusing on its structure and objectives.",
-              "validation": "Is the test suite implementation of `{element_type}` `{name}` in {project_id} well-documented and aligned with its objectives?"
-            },
-            {
-              "question": "How does the implementation of `{element_type}` `{name}` in {project_id} ensure functionality verification through detailed setup, execution, and teardown processes?",
-              "validation": "Is the implementation description for `{element_type}` `{name}` in {project_id} thorough and aligned with functionality goals?"
-            }
-          ]
-        },
-        "error_handling_and_edge_cases": {
-          "questions": [
-            {
-              "question": "Demonstrate how `{element_type}` `{name}` in {project_id} handles error scenarios and edge cases through its test suite. Provide examples of tests that cover exceptional conditions and potential failure modes.",
-              "validation": "Do the provided test examples effectively showcase the handling of error scenarios and edge cases for `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "How does the test suite for `{element_type}` `{name}` in {project_id} ensure robust coverage of error scenarios and edge cases? Provide specific examples.",
-              "validation": "Does the response include detailed examples and strategies for handling edge cases and error scenarios in `{element_type}` `{name}` for {project_id}?"
-            },
-            {
-              "question": "Explain the error handling strategies employed for `{element_type}` `{name}` in {project_id}, highlighting tests for exceptional conditions and their robustness.",
-              "validation": "Does the explanation comprehensively cover error handling strategies and their implementation for `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "What mechanisms are in place in `{element_type}` `{name}` for {project_id} to address edge cases and unexpected inputs effectively?",
-              "validation": "Is the explanation clear and detailed in showcasing the mechanisms for handling edge cases and unexpected inputs in `{element_type}` `{name}` for {project_id}?"
-            }
-          ]
-        }
-      }
+    {
+      "name": "human-readable way ${element_type} ${name} prompt - 2 steps - CoT",
+      "seed_system_message": "The user-like request should mention it is about TypeScript Cypress, use details from the context to formulate the user-like request. **You must not include any extra explanation, code, imports, or file location.**, ** dont add 'Hey team' **",
+      "question_system_message": "I am providing a **TypeScript ${element_type}** using the **Cypress framework**. Your response **must** simulate the **thought process of an experienced engineer** constructing this **${element_type}** from scratch.\n\n## **Response Structure**  \n\n### **${element_type} Objective**  \n- Clearly describe **what the ${element_type} validates** and why it matters.  \n- Identify **key components and expected behaviors**.  \n\n### **Detailed Chain of Thought**  \n- Walk through the **${element_type}** step-by-step, ensuring **every function is explained**.  \n- Use a **first-person engineering thought process**, integrating the structured breakdown seamlessly.  \n\n  - **\"First, I need to validate X, so I’ll create a test that checks Y.\"** (Explains what the function does)  \n  - **\"To achieve Y, I’ll use Cypress features or utilities that interact with the system appropriately.\"** (Explains why it is needed)  \n  - **\"Since this test interacts with Z, I’ll need to import A and B to handle it.\"** (Explicitly lists required imports)  \n  - **\"To ensure Y works as expected, I’ll leverage Cypress built-ins, and if necessary, I’ll implement a helper function or pull in an external utility or library.\"** (Covers implementation flexibility conditionally)  \n  - **\"This test involves multiple components, so I’ll validate each one step-by-step.\"** (Explains interactions)  \n  - **\"To confirm correctness, I’ll use assertions suited to the behavior I’m testing.\"** (Explains test validation)  \n  - **\"For debugging or reliability, I’ll add logging or wait conditions as needed.\"** (Covers error handling and stability)  \n  - **\"Once it’s working, I’ll refine it for clarity, maintainability, and alignment with best practices.\"** (Ensures code quality)  \n\n- **Do not** include code snippets inside the Chain of Thought.  \n- Make it a **detailed first-person Chain of Thought** for each functionality.  \n- The **Chain of Thought** should be a **detailed narrative** that explains the **logic, decisions, and specific validations** for every part of the test.  \n- Cover **all key components** needed to construct the **${element_type}**, including **expected outcomes, error handling, and any libraries or imports required**.  \n- Explain **interactions between multiple components or systems**, detailing how to validate and verify the correct behavior.  \n- **For each test case and function, use the first-person engineering thought process as a software engineer trying to create it.**  \n- **For each logic or functionality, show all the details you need to construct it in the first-person engineering thought process.**  \n- **Each use of functionality must explain what resource or import it needs.**  \n- **For each function, explicitly mention what import it uses.**  \n\n### **Complete Test Code**  \n- **Provide the full ${element_type} in one section**, including **necessary imports, helper functions, documentation, and comments**.  \n- **Must** insert **new comments** into Complete Test Code to explain the implementation.  \n- **Ensure** Cypress conventions and TypeScript typing are followed.  \n- **Comments must be inside the code itself.**  \n- **Do not** add the copyright message inside the complete code.  \n\n## **Important Rules**  \n- **Every test case and function must be explained using the first-person engineering thought process.**  \n- **The structured breakdown (What it does, Why it is needed, Imports, Error handling, etc.) must be embedded within the first-person thought process, not as a checklist.**  \n- **Explicitly mention which imports are required for each function within the Chain of Thought.**  \n- **Must insert comments into the Complete Test Code.**  \n- **Do not** break the code into multiple sections—**provide the full test in one piece.**  \n- **Exclude execution instructions or unnecessary explanations.**  \n- **Comments must be inside the code itself.**  \n",      "context": "${context}",
+      "question_seed": "Formulate a user-like request that asks to create the described ${element_type} in detail in a natural, human-readable way. ensuring it feels like a real developer's request. The request should be formatted as a single, cohesive paragraph without bullet points or structure, flowing naturally as if someone is explaining their needs in a conversational way. you must not include any extra explanation, code, imports or file location.",
+      "question": [],
+      "answer": "",
+      "question_validation": "",
+      "answer_validation": "",
+      "element_types": ["test"],
+      "condition": ""
     },
-    "test_case": {
-      "Test Case Design and Analysis": {
-        "test_case_structure_options": {
-          "questions": [
-            {
-              "question": "What are the design principles behind the `{element_type}` `{name}` test case for the {project_id} project, and how do they ensure meaningful and thorough testing of the target component?",
-              "validation": "Does the description provide a clear and detailed explanation of the test case design principles for `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "How does the `{element_type}` `{name}` test case design for {project_id} achieve comprehensive validation of the component, and what principles guide its structure?",
-              "validation": "Does the description highlight the comprehensive design principles of `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "Explain the underlying principles of the `{element_type}` `{name}` test case in {project_id} and how they support a robust testing process.",
-              "validation": "Is the explanation detailed in describing the principles that ensure the robustness of `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "Describe the rationale and guiding principles of the `{element_type}` `{name}` test case design in {project_id} and how they enhance testing effectiveness.",
-              "validation": "Does the rationale effectively explain the test case design principles for `{element_type}` `{name}` in {project_id}?"
-            }
-          ]
-        },
-        "test_case_implementation_details": {
-          "questions": [
-            {
-              "question": "For the {project_id} project, provide the full implementation of `{element_type}` `{name}`, including all setup, execution, and assertion steps. Explain the rationale behind each test case component.",
-              "validation": "Does the response include a complete implementation of `{element_type}` `{name}` with a comprehensive explanation of each component's purpose and contribution in {project_id}?"
-            },
-            {
-              "question": "Provide the detailed implementation of `{element_type}` `{name}` for {project_id}, describing its setup, execution process, and validation steps along with their rationale.",
-              "validation": "Does the implementation description of `{element_type}` `{name}` in {project_id} include all necessary steps with clear rationale?"
-            },
-            {
-              "question": "Share the full test case implementation of `{element_type}` `{name}` in {project_id}, specifying each phase—setup, execution, and assertions—and justify their inclusion.",
-              "validation": "Is the test case implementation of `{element_type}` `{name}` in {project_id} thorough and well-justified?"
-            },
-            {
-              "question": "Outline the complete structure of `{element_type}` `{name}` in {project_id}, detailing its implementation and explaining the rationale for each component's design.",
-              "validation": "Does the response provide a detailed implementation and rationale for `{element_type}` `{name}` in {project_id}?"
-            }
-          ]
-        },
-        "test_case_scenario_coverage": {
-          "questions": [
-            {
-              "question": "Analyze the scenario coverage for `{element_type}` `{name}` in {project_id}. Discuss how the test case addresses different input combinations, edge cases, and potential failure modes.",
-              "validation": "Does the analysis comprehensively cover the various scenarios, input combinations, and potential failure modes tested by `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "Examine the coverage of `{element_type}` `{name}` in {project_id}, detailing how edge cases and diverse input combinations are handled.",
-              "validation": "Does the response cover edge cases and input combinations comprehensively for `{element_type}` `{name}` in {project_id}?"
-            },
-            {
-              "question": "Evaluate the `{element_type}` `{name}` test case in {project_id} and its approach to covering a wide range of scenarios, including edge cases and failure points.",
-              "validation": "Does the evaluation describe how `{element_type}` `{name}` in {project_id} ensures robust scenario coverage?"
-            },
-            {
-              "question": "How does the `{element_type}` `{name}` test case in {project_id} address edge cases, unexpected inputs, and potential failure conditions?",
-              "validation": "Is the explanation of scenario coverage for `{element_type}` `{name}` in {project_id} thorough and well-detailed?"
-            }
-          ]
-        },
-        "test_case_type_safety_and_validation": {
-          "questions": [
-            {
-              "question": "Demonstrate how the `{element_type}` `{name}` test case leverages TypeScript's type system to ensure rigorous type checking and validation in the {project_id} project.",
-              "validation": "Do the examples effectively showcase the use of TypeScript's type system for validation in the `{element_type}` `{name}` test case for {project_id}?"
-            },
-            {
-              "question": "Show how `{element_type}` `{name}` uses TypeScript's type features in {project_id} to enforce strong type checking and catch potential issues early.",
-              "validation": "Does the response clearly illustrate the use of TypeScript's type system to enhance validation in `{element_type}` `{name}` for {project_id}?"
-            },
-            {
-              "question": "Explain how TypeScript's type safety mechanisms are utilized in the `{element_type}` `{name}` test case to prevent errors in {project_id}.",
-              "validation": "Is the explanation clear and effective in demonstrating the role of TypeScript's type safety in `{element_type}` `{name}` for {project_id}?"
-            },
-            {
-              "question": "Describe how `{element_type}` `{name}` employs TypeScript type checking to ensure correctness and reliability in {project_id}.",
-              "validation": "Does the response highlight the benefits and implementation of TypeScript type checking in `{element_type}` `{name}` for {project_id}?"
-            }
-          ]
-        }
-      }
+    {
+      "name": "small ${element_type} ${name} prompt - 2 steps - CoT",
+      "seed_system_message": "The user request should clearly specify the test case type (e.g., Ginkgo type in Go). Use context details to **formulate a precise and relevant request** based on the test case type.\n **you must not include any extra explanation, code, imports or file location**",
+      "question_system_message": "I am providing a **GoLang ${element_type}** using the **Ginkgo framework**. Your response must simulate the **thought process of an experienced engineer** designing and implementing this ${element_type} from scratch.\n\n## **Response Structure**\n\n1. **${element_type} Objective**  \n   - Clearly define **what the ${element_type} is testing or validating** and why it is important.  \n   - Identify **key components, expected behavior, and possible edge cases**.  \n   - Ensure the scope of the test is well-defined and aligns with the project’s requirements.  \n\n2. **Detailed Chain of Thought**  \n   - Walk through the ${element_type} step-by-step, ensuring **every function is explained**.  \n   - Use a **first-person engineering thought process**, including:  \n\n     - **\"First, I need to validate X, so I need a function that does Y.\"**  \n     - **\"To achieve Y, I will use Z function or API, which requires importing A and B.\"**  \n     - **\"Since this function requires A and B, I need to import C and D to use it.\"**  \n     - **\"This function interacts with multiple components, so I will analyze each one separately.\"**  \n     - **\"To ensure correctness, I will use Expect from Gomega, so I must import the Gomega library.\"**  \n     - **\"For debugging, I will include glog logging, which requires importing the log package.\"**  \n     - **\"Now that the ${element_type} is structured, I will refine it for readability, maintainability, and best practices.\"**  \n\n   - **Each function must have a clear explanation**, covering:  \n     - **What it does**  \n     - **Why it is needed**  \n     - **Which imports are required to use it (mention them naturally within the explanation flow)**  \n     - **How it handles errors or failures**  \n     - **How it interacts with other functions or components**  \n\n   - **Each function must follow this first-person engineering thought process**\n   - **Ensure imports are explained in context** as part of the logical reasoning for why they are needed.  \n   - **Do not add imports if they do not exist in the context**\n   - **Do not include code snippets inside the Chain of Thought.**  \n   - **The CoT should be fully written out, explaining the logical decisions rather than showing code.**  \n\n3. **Exact Test Case Code**  \n   - Provide **the exact test case code as described in the context** without any modifications.  \n   - Ensure the **package declaration** is correct.  \n   - Include **all necessary imports exactly as they are provided**.  \n   - Maintain **the exact test logic structure** using Ginkgo’s features (e.g., Describe, Context, BeforeEach, AfterEach, It, DescribeTable).  \n   - Add **inline comments only for explanation** if necessary, without altering the logic.  \n   - **Do not change, add, or remove any function calls, variables, or test logic** unless explicitly required for correctness.  \n\n## **Strict Rules for Test Case Handling**  \n- **The provided test case code must remain exactly as described in the context.**  \n- **If the test case is already correct, it should be used as-is without any modifications.**  \n- **No additional function calls, variables, or logic should be added unless explicitly necessary.**  \n- **Only inline comments should be added inside the test block for clarity.**  \n- **Every function explanation in the Chain of Thought must mention the required imports as part of the logical flow, explaining why they are needed.**  \n\nYour response must reflect the **rigor, precision, and structured thinking** of an experienced engineer, ensuring that the ${element_type} is formatted correctly, follows best practices, and maintains high readability and maintainability without altering the provided test case logic.",
+      "context": "${context}",
+      "question_seed": "Formulate a user-like request that asks to create the described ${element_type}, including step-by-step guidance for designing, implementing, and validating it. you must not include any extra explanation, code, imports or file location.",
+      "question": [],
+      "answer": "",
+      "question_validation": "",
+      "answer_validation": "",
+      "element_types": ["_test case"],
+      "condition": ""
+    },
+    {
+      "name": "step-by-step ${element_type} ${name} prompt - 2 steps - CoT",
+      "seed_system_message": "The user-like request should mention that it is about a Typescript function. Use details from the context to formulate the user-like request. **you must not include any extra explanation, code, imports or file location**",
+      "question_system_message": "I am providing a **TypeScript function**. Your response **must** simulate the **thought process of an experienced engineer** constructing this function from scratch.\n\n## **Response Structure**  \n\n### **Function Objective**  \n- Clearly describe **what the function does** and **why it is necessary**.  \n- Identify its **inputs, outputs, and expected behavior**.  \n- Explain any **constraints, edge cases, or optimizations** to consider.  \n\n### **Detailed Chain of Thought**  \n- Walk through the **function implementation** step-by-step, ensuring **each decision is explained**.  \n- Use a **first-person engineering thought process**, including:  \n\n  - **\"First, I need to achieve X, so I will define a function that does Y.\"**  \n  - **\"To achieve Y, I will use a TypeScript feature or utility function.\"**  \n  - **\"Since this function requires A and B, I need to import C from module D to use it.\"**  \n  - **\"This function interacts with multiple components, so I will analyze each one separately.\"**  \n  - **\"To handle potential failures, I will include proper error handling using try-catch or type checks.\"**  \n  - **\"For debugging and logging, I will use console.log or a logging library as needed.\"**  \n  - **\"Now that the function is structured, I will refine it for readability, maintainability, and TypeScript best practices.\"**  \n\n- **Each important component of the function must be explained**, covering:  \n  - **What it does**  \n  - **Why it is required**  \n  - **Which imports are necessary** (explicitly mention them with module names)  \n  - **How it handles errors or unexpected conditions**  \n  - **How it interacts with other components or dependencies**  \n\n- **Do not** include code snippets inside the Chain of Thought.  \n- The **explanation must be fully written out**, covering **logical decisions rather than just showing code**.  \n\n### **Complete Function Code**  \n- **Provide the full function implementation exactly as it is described**, including **imports and other structures without modifying any part of it**.  \n- **Logging, error handling (try-catch, type assertions, etc.), and other constructs must remain exactly as written in the provided code**.  \n- **Do not** introduce any additional code, modifications, or formatting changes that were **not originally present**.  \n- **Must** insert **comments inside the code snippet** itself to explain key parts **without altering its logic or behavior**.  \n- **Do not** add **helper functions if they are not explicitly defined in the provided context code**.  \n- **Ensure** that all **utility functions, imported modules, or dependencies referenced in the function are exactly as provided** without modification or replacement.  \n\n## **Important Rules**  \n- **Every important logic block must have its own Chain of Thought explanation.**  \n- **Explicitly list necessary imports for each function or utility inside the Chain of Thought, including module names.**  \n- **Use first-person engineering reasoning in the Chain of Thought.**  \n- **Ensure the function code is fully commented with inline annotations directly inside it.**  \n- **Do not** break the function into multiple sections—**provide it as a single, complete snippet**.  \n- **Do not** modify, reformat, or alter the function’s **logic, logging, error handling, or structure** in any way.  \n- **Exclude execution instructions or unnecessary explanations.**  \n- **All comments must be inside the code itself without changing any existing implementation.**  \n- **Your response must reflect the rigor, precision, and structured thinking of an experienced engineer** writing a **maintainable TypeScript function** while **preserving its original implementation exactly**.  \n",
+      "context": "${context}",
+      "question_seed": "Formulate a user-like request that asks to create the described ${element_type}, including step-by-step guidance for designing and implementing. you must not include any extra explanation, code, imports or file location.",
+      "question": [],
+      "answer": "",
+      "question_validation": "",
+      "answer_validation": "",
+      "element_types": ["function"],
+      "condition": ""
+    },
+    {
+      "name": "${element_type} ${name} code description",
+      "seed_system_message": "",
+      "question_system_message": "",
+      "context": "",
+      "question_seed": "",
+      "question": [
+        "Describe the following ${element_type} code:\n```typescript\n${code}",
+        "Explain the functionality and structure of the given ${element_type} code:\n```typescript\n${code}\n",
+        "Analyze and describe what the following ${element_type} code does:\n```typescript\n${code}\n"
+      ],
+      "answer": "",
+      "question_validation": "",
+      "answer_validation": "",
+      "element_types": ["test", "_test case", "function"],
+      "condition": ""
     }
-  }
+  ]
 }

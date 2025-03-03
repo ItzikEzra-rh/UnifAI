@@ -1,4 +1,4 @@
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 from collections import defaultdict
 from transformers import AutoTokenizer
 from datasets import load_dataset
@@ -15,6 +15,7 @@ def analyze_context_lengths(
         dataset_split="train",
         input_key="question",
         output_key="answer",
+        system_key="system",
         bins=None,
         output_image="token_length_distribution.png"
 ):
@@ -35,8 +36,10 @@ def analyze_context_lengths(
     for element in tqdm(dataset, total=total_elements):
         user_text = element.get(input_key, "")
         assistant_text = element.get(output_key, "")
+        system_text = element.get(system_key, "")
 
         messages = [
+            {"role": "system", "content": system_text},
             {"role": "user", "content": user_text},
             {"role": "assistant", "content": assistant_text}
         ]
@@ -105,13 +108,14 @@ def analyze_context_lengths(
 
 # Example usage:
 bins = [64, 128, 256, 512, 1024, 2048, 4096, 4500, 5000, 5200, 5400, 5800, 7000, 8192]
-repo_name = "oodeh/oadp-tag-parsed"
-file_name = "output_oadp-e2e-qe.json"
-tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-Coder-7B-Instruct")
+repo_name = "oodeh/NCS-TAG-training"
+file_name = "NCS_TAG_training.json"
+tokenizer = AutoTokenizer.from_pretrained("Qwen/Qwen2.5-Coder-14B-Instruct")
 
 dataset_split = "train"
 input_key = "question"
 output_key = "answer"
+system_key = "system"
 
 analysis_results = analyze_context_lengths(
     repo_name=repo_name,
@@ -119,5 +123,6 @@ analysis_results = analyze_context_lengths(
     dataset_split=dataset_split,
     input_key=input_key,
     output_key=output_key,
+    system_key=system_key,
     bins=bins
 )
