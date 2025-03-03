@@ -12,6 +12,7 @@ properties([
         booleanParam(name: 'reviewer', defaultValue: false, description: 'Create image for reviewer'),
         booleanParam(name: 'DB', defaultValue: false, description: 'Create image for DB'),
         booleanParam(name: 'CELERY', defaultValue: false, description: 'Create image for CELERY'),
+        booleanParam(name: 'vllm', defaultValue: false, description: 'Create vllm image for Prompt/Reviewer cycle'),
         booleanParam(name: 'rabbitmq', defaultValue: false, description: 'Create image for RabbitMQ'),
         booleanParam(name: 'deploy_genie', defaultValue: false, description: 'True - Deploy Genie, False - Only build images and upload to image-paas'),
         choice(name: 'deployment_location', choices: ['STAGING', 'PRODUCTION'], description: 'Where to deploy Genie?'),
@@ -334,6 +335,28 @@ pipeline {
                     when { expression { params.CELERY } }
                     steps {
                         echo("Building image for CELERY")
+                    }
+                }
+                stage('vllm') {
+                    when { expression { params.vllm } }
+                    steps {
+                            script{
+                                def module = "vllm"
+                                dir("${buildParams.DevRoot}/${params.BRANCH}/${module}/"){
+                                    cleanWorkspace(module)
+                                    if(buildDockerImage(module)) {
+                                        //checkContainerAndAPI(module)
+                                        tagAndPushImageToRegistry(module,buildParams)
+                                        // if(deploy_genie) {
+                                        //     updateChartfile(module)
+                                        // }                                         
+                                        cleanWorkspace(module)
+                                        } 
+                                        else {
+                                            error("Terminating process for ${module} : Build failed")
+                                    }
+                                }
+                            }
                     }
                 }
                 stage('rabbitmq') {
