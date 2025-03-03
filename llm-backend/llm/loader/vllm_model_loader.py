@@ -41,7 +41,7 @@ class VLLMModelLoader(AbstractModelLoader):
         except Exception as e:
             raise RuntimeError(f"Failed to start vLLM server: {e}")
 
-    def wait_for_server(self, timeout=180, interval=5):
+    def wait_for_server(self, timeout=300, interval=5):
         """Wait for the vLLM server to start within a given timeout."""
         server_url = os.path.join(self.server_url, "health")
         start_time = time.time()
