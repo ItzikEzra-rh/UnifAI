@@ -1,12 +1,12 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ .Release.Name }}-mongodb-np
+  name: {{ .Release.Name }}-np
   namespace: {{ .Values.global.namespace }}
 spec:
   podSelector:
     matchLabels:
-      app: mongodb
+      app: {{ .Release.Name }}-np
 
   policyTypes:
     - Ingress

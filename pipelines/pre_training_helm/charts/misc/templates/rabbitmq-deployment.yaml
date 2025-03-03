@@ -4,21 +4,26 @@ metadata:
   name: {{ .Release.Name }}-rabbitmq
   namespace: {{ .Values.global.namespace }}
   labels:
-    app: rabbitmq
+    app: {{ .Release.Name }}-rabbitmq
 spec:
   replicas: {{ .Values.rabbitmq.replicaCount }}
   selector:
     matchLabels:
-      app: rabbitmq
+      app: {{ .Release.Name }}-rabbitmq
   template:
     metadata:
       labels:
-        app: rabbitmq
+        app: {{ .Release.Name }}-rabbitmq
     spec:
       containers:
-      - name: rabbitmq
+      - name: {{ .Release.Name }}-rabbitmq
         image: {{ .Values.rabbitmq.image.repository }}:{{ .Values.rabbitmq.image.tag }}
         imagePullPolicy: {{ .Values.rabbitmq.image.pullPolicy }}
+        env:
+        - name: RABBITMQ_USER
+          value: "genie"
+        - name: RABBITMQ_PASSWORD
+          value: "genie123"  
         ports:
         - containerPort: {{ .Values.rabbitmq.service.port }}
         - containerPort: {{ .Values.rabbitmq.service.managementPort }}
