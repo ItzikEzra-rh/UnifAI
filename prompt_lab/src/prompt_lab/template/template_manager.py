@@ -50,6 +50,9 @@ class TemplateManager:
         return [q_and_a for q_and_a in self.project_config.get("q_and_a", []) if
                 element_type in q_and_a.get("element_types")]
 
+    def get_training_system_message(self):
+        return self.project_config["training_system_message"]
+
     def is_condition_met(self, condition: str, element_data: dict) -> bool:
         """Evaluate a condition using the Jinja environment."""
         if not condition:
