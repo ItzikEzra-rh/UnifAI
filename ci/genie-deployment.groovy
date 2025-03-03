@@ -363,6 +363,10 @@ pipeline {
                     when { expression { params.rabbitmq } }
                     steps {
                             script{
+                stage('rabbitmq') {
+                    when { expression { params.rabbitmq } }
+                    steps {
+                            script{
                                 def module = "rabbitmq"
                                 dir("${buildParams.DevRoot}/${params.BRANCH}/${module}/"){
                                     cleanWorkspace(module)
