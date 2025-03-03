@@ -338,11 +338,11 @@ pipeline {
                         echo("Building image for CELERY")
                     }
                 }
-                stage('vllm-openai ') {
+                stage('vllm-openai') {
                     when { expression { params.vllm } }
                     steps {
                             script{
-                                def module = "vllm-openai "
+                                def module = "vllm-openai"
                                 dir("${buildParams.DevRoot}/${params.BRANCH}/${module}/"){
                                     cleanWorkspace(module)
                                     if(buildDockerImage(module)) {
