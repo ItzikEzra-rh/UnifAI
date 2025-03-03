@@ -44,6 +44,7 @@ class PromptFormatter:
         """Prepare a fully formatted Prompt object."""
         context = self.render_context(element_data, q_and_a.get("context"))
         q_and_a = self.substitute_q_and_a(q_and_a=q_and_a, element_data=element_data)
+        training_system_message = self.template_manager.get_training_system_message()
         name = q_and_a.get("name")
         element_type = element_data.get("element_type")
         seed_system_message = q_and_a.get("seed_system_message")
@@ -61,6 +62,7 @@ class PromptFormatter:
             uuid=prompt_uuid,
             name=name,
             element_type=element_type,
+            training_system_message=training_system_message,
             context=context,
             seed_system_message=seed_system_message,
             question_system_message=question_system_message,
