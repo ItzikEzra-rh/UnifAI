@@ -6,9 +6,8 @@ ADD . $HOME/ui
 WORKDIR $HOME/ui
 RUN cd $HOME/ui
 RUN npm install  -g npm yarn
-RUN npm install -g  @fontsource/red-hat-display universalify
-RUN npm install
-RUN npm run build
+RUN yarn install
+RUN yarn build
 RUN yarn global add serve
 CMD serve -s build
 # Stage 2: Serve the built app with Nginx
