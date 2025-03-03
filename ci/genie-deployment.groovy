@@ -12,7 +12,7 @@ properties([
         booleanParam(name: 'reviewer', defaultValue: false, description: 'Create image for reviewer'),
         booleanParam(name: 'DB', defaultValue: false, description: 'Create image for DB'),
         booleanParam(name: 'CELERY', defaultValue: false, description: 'Create image for CELERY'),
-        booleanParam(name: 'vllm-openai', defaultValue: false, description: 'Create vllm-openai image for Prompt/Reviewer cycle'),
+        booleanParam(name: 'vllm_openai', defaultValue: false, description: 'Create vllm-openai image for Prompt/Reviewer cycle'),
         booleanParam(name: 'rabbitmq', defaultValue: false, description: 'Create image for RabbitMQ'),
         booleanParam(name: 'deploy_genie', defaultValue: false, description: 'True - Deploy Genie, False - Only build images and upload to image-paas'),
         choice(name: 'deployment_location', choices: ['STAGING', 'PRODUCTION'], description: 'Where to deploy Genie?'),
@@ -337,11 +337,11 @@ pipeline {
                         echo("Building image for CELERY")
                     }
                 }
-                stage('vllm-openai') {
-                    when { expression { params.vllm-openai } }
+                stage('vllm_openai') {
+                    when { expression { params.vllm_openai} }
                     steps {
                             script{
-                                def module = "vllm-openai"
+                                def module = "vllm_openai"
                                 dir("${buildParams.DevRoot}/${params.BRANCH}/${module}/"){
                                     cleanWorkspace(module)
                                     if(buildDockerImage(module)) {
