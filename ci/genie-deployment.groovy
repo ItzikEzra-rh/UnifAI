@@ -12,7 +12,10 @@ properties([
         booleanParam(name: 'reviewer', defaultValue: false, description: 'Create image for reviewer'),
         booleanParam(name: 'DB', defaultValue: false, description: 'Create image for DB'),
         booleanParam(name: 'CELERY', defaultValue: false, description: 'Create image for CELERY'),
+<<<<<<< HEAD
         booleanParam(name: 'vllm-openai ', defaultValue: false, description: 'Create vllm-openai image for Prompt/Reviewer cycle'),
+=======
+>>>>>>> origin
         booleanParam(name: 'rabbitmq', defaultValue: false, description: 'Create image for RabbitMQ'),
         booleanParam(name: 'deploy_genie', defaultValue: false, description: 'True - Deploy Genie, False - Only build images and upload to image-paas'),
         choice(name: 'deployment_location', choices: ['STAGING', 'PRODUCTION'], description: 'Where to deploy Genie?'),
@@ -359,10 +362,6 @@ pipeline {
                             }
                     }
                 }
-                stage('rabbitmq') {
-                    when { expression { params.rabbitmq } }
-                    steps {
-                            script{
                 stage('rabbitmq') {
                     when { expression { params.rabbitmq } }
                     steps {
