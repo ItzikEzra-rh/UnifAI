@@ -338,7 +338,7 @@ pipeline {
                     }
                 }
                 stage('vllm-openai') {
-                    when { expression { params.vllm } }
+                    when { expression { params.vllm-openai } }
                     steps {
                             script{
                                 def module = "vllm-openai"
