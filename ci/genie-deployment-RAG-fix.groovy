@@ -338,7 +338,7 @@ pipeline {
                         echo("Building image for CELERY")
                     }
                 }
-                stage('vllm-openai') {
+                stage('vllm_openai') {
                     when { expression { params.vllm_openai } }
                     steps {
                             script{
