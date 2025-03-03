@@ -240,7 +240,7 @@ pipeline {
                     when { expression { params.data_pre } }
                     steps {
                         script{
-                            def module = "data-pre"
+                            def module = "data_pre"
                             dir("${buildParams.DevRoot}/${params.BRANCH}/${module}/"){
                                 cleanWorkspace(module)
                                 if(buildDockerImage(module)) {
@@ -406,8 +406,16 @@ pipeline {
     post { 
             success { 
                 echo('Build finished successfully')
-                echo("Genie UI is available at ${GUI_EP}")
                 cleanPodmanSystem()
+                script {
+                    if( params.deploy_genie && GUI_EP ) {
+                        echo("Deployment completed successfuly")
+                        echo("Genie UI is available at http://${GUI_EP}")
+                    }
+                    else if ( params.deploy_genie && !GUI_EP ) {
+                        echo("Unexpected error: GUI_EP is empty or invalid.")
+                    }
+                }
              }
         }
 }
