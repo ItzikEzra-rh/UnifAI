@@ -7,15 +7,19 @@ from prompt_lab.llm import VLLMClient
 from typing import List
 
 
-def initialize_config_and_tokenizer():
+def initialize_config():
+    return ConfigManager()
+
+
+def initialize_tokenizer():
     """Initialize and return configuration and tokenizer."""
-    config = ConfigManager()
+    config = initialize_config()
     tokenizer = TokenizerUtils(
         tokenizer_path=config.get("tokenizer_path"),
         max_context_length=config.get_as_int("model_max_context_length"),
         max_generation_length=config.get_as_int("model_max_generation_length"),
     )
-    return config, tokenizer
+    return tokenizer
 
 
 def initialize_mongo_handlers_and_repository(config, db_name):
@@ -43,7 +47,8 @@ def initialize_mongo_handlers_and_repository(config, db_name):
 
 def run_launchpad():
     """Run the 'launchpad' command logic."""
-    config, tokenizer = initialize_config_and_tokenizer()
+    config = initialize_config()
+    tokenizer = initialize_tokenizer()
     repository = initialize_mongo_handlers_and_repository(config, db_name="promptLab")
 
     PromptLaunchpad(
@@ -58,7 +63,8 @@ def run_launchpad():
 
 def run_orbiter(batch: List[dict]):
     """Run the 'orbiter' command logic."""
-    config, tokenizer = initialize_config_and_tokenizer()
+    config = initialize_config()
+    tokenizer = initialize_tokenizer()
     repository = initialize_mongo_handlers_and_repository(config, db_name="promptLab")
     llm_client = VLLMClient(
         api_url=config.get("model_api_url"),
@@ -80,7 +86,7 @@ def run_orbiter(batch: List[dict]):
 
 def run_landing(batch: List[dict]):
     """Run the 'landing' command logic."""
-    config, _ = initialize_config_and_tokenizer()
+    config = initialize_config()
     repository = initialize_mongo_handlers_and_repository(config, db_name="promptLab")
 
     PromptLanding(
@@ -89,3 +95,9 @@ def run_landing(batch: List[dict]):
         orbiter_task_name=config.get("orbiter_task_name"),
         max_retry=config.get_as_int("max_retry"),
     ).run(batch)
+
+
+def run_export():
+    config = initialize_config()
+    repository = initialize_mongo_handlers_and_repository(config, db_name="promptLab")
+    repository.export()

@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, Any, Optional
 import click
 import traceback
-from prompt_lab.tasks import run_orbiter, run_landing, run_launchpad
+from prompt_lab.tasks import run_orbiter, run_landing, run_launchpad, run_export
 from prompt_lab.config import ConfigManager
 from prompt_lab.utils.celery.celery import start_celery_worker
 from prompt_lab.utils import logger, Logger_instance
@@ -161,6 +161,16 @@ def orbiter(ctx: click.Context, **kwargs: Any) -> None:
 def landing(ctx: click.Context, **kwargs: Any) -> None:
     """Process and manage the results of LLM queries."""
     handle_task(run_landing, ctx, kwargs, queue_key='reviewed_prompts_queue_name')
+
+
+@cli.command()
+@common_options
+@click.option('--output-dataset-repo', help="Output dataset repository ID.")
+@click.option('--output-dataset-file-name', help="Output dataset File name in the repo.")
+@click.pass_context
+def export(ctx: click.Context, **kwargs: Any) -> None:
+    """Process and manage the results of LLM queries."""
+    handle_task(run_export, ctx, kwargs)
 
 
 if __name__ == "__main__":
