@@ -169,7 +169,7 @@ def landing(ctx: click.Context, **kwargs: Any) -> None:
 @click.option('--output-dataset-file-name', help="Output dataset File name in the repo.")
 @click.pass_context
 def export(ctx: click.Context, **kwargs: Any) -> None:
-    """Process and manage the results of LLM queries."""
+    """Export the passed prompts."""
     handle_task(run_export, ctx, kwargs)
 
 
