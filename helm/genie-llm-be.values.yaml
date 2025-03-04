@@ -9,7 +9,7 @@ env:
 replicaCount: 1
 image:
    repository: images.paas.redhat.com/genie/llm-backend 
-   tag: 2025.01.13
+   tag: latest #2025.01.13
    pullPolicy: Always
 resources:
   limits:
