@@ -341,7 +341,7 @@ pipeline {
                     when { expression { params.vllm_openai} }
                     steps {
                             script{
-                                def module = "vllm_openai"
+                                def module = "vllm-openai"
                                 dir("${buildParams.DevRoot}/${params.BRANCH}/${module}/"){
                                     cleanWorkspace(module)
                                     if(buildDockerImage(module)) {
