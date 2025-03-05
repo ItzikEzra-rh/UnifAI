@@ -1,8 +1,14 @@
+import ctypes
 import re
 import os
 from .tree_sitter_parser import TreeSitterParser
 
-ROBOT_LANGUAGE_PATH = '/home/cloud-user/Projects/playGround/tree-sitter-playground/so_files/robot-eric.so'
+# Get the path to so_files inside data_pre
+current_dir = os.path.dirname(os.path.abspath(__file__))
+data_pre_dir = os.path.abspath(os.path.join(current_dir, "..", ".."))
+so_files_dir = os.path.join(data_pre_dir, "so_files")
+ROBOT_LANGUAGE_PATH = os.path.join(so_files_dir, "robot-eric.so")
+go_lib = ctypes.CDLL(ROBOT_LANGUAGE_PATH)
 # ROBOT_FILE_PATH = '/home/cloud-user/Projects/Robot-POC-InstructLab/fullTests/6003_Scale_in_out_worker_node_after_failed_scale_out.robot'
 # ROBOT_FILE_PATH =  '/home/cloud-user/Projects/Robot-POC-InstructLab/24.0/4022_Add_Rsyslog_rule_and_Delete_Rsyslog_rule.robot'
 ROBOT_FILE_PATH =  '/home/cloud-user/Projects/Robot-POC-InstructLab/24.0/8103_Zabbix_server_is_running_in_all_manage_nodes.robot'

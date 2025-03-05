@@ -1,9 +1,15 @@
+import ctypes
 import re
 import os
 import uuid
 from .tree_sitter_parser import TreeSitterParser
+# Get the path to so_files inside data_pre
+current_dir = os.path.dirname(os.path.abspath(__file__))
+data_pre_dir = os.path.abspath(os.path.join(current_dir, "..", ".."))
+so_files_dir = os.path.join(data_pre_dir, "so_files")
+TYPE_SCRIPT_LANGUAGE_PATH = os.path.join(so_files_dir, "tree-sitter-typescript.so")
+go_lib = ctypes.CDLL(TYPE_SCRIPT_LANGUAGE_PATH)
 
-TYPE_SCRIPT_LANGUAGE_PATH = '/home/cloud-user/Projects/playGround/tree-sitter-playground/tree-sitter-typescript/typescript/tree-sitter-typescript.so'
 TYPE_SCRIPT_FILE_PATH =  '/home/cloud-user/Projects/tag-integration-with-mta/tackle-ui-tests/cypress/e2e/tests/administration/jira-connection/crud.test.ts'
 
 class TypeScriptParser(TreeSitterParser):
