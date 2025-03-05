@@ -3,6 +3,7 @@ from typing import Iterator, Dict, Any
 from huggingface_hub import HfApi, HfFolder
 import pandas as pd
 from datasets import Dataset
+from prompt_lab.prompt import Prompt
 import tempfile
 from prompt_lab.utils import logger
 
@@ -46,7 +47,8 @@ class HFExporter:
         """
         chunk = []
         for record in generator:
-            chunk.append(record)
+            record.pop("_id")
+            chunk.append(Prompt.from_dict(**record).export())
             if len(chunk) == size:
                 yield chunk
                 chunk = []
