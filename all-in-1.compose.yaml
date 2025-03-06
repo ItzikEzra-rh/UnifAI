@@ -19,6 +19,18 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+  rabbitmq:
+    image: docker.io/rabbitmq
+    container_name: rabbitmq
+    networks:
+      - genie-network
+    ports:
+      - "5672:5672"
+    environment:
+      - RABBITMQ_DEFAULT_USER=genie
+      - RABBITMQ_DEFAULT_PASS=genie123
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
 
   ui:
     image: localhost/ui:latest
@@ -51,10 +63,13 @@ services:
     environment:
        - BACKEND_ENV=PRODUCTION
        - MONGODB_HOST=mongodb
+       - RABBITMQ_HOST=rabbitmq
     networks:
       - genie-network
 
     depends_on:
+      rabbitmq:
+        condition: service_healthy
       mongodb:
         condition: service_healthy
 
@@ -91,4 +106,5 @@ services:
 
 volumes:
   mongo_data:
+  rabbitmq_data:
   model-v:
