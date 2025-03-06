@@ -2,7 +2,7 @@
   "project_id": "",
   "project_repo": "",
   "coding_language": "robot",
-  "training_system_message": "in the context of oadp-e2e-qe project",
+  "training_system_message": "in the context of ${project_id} project",
   "seed_system_message": "",
   "question_system_message": "",
   "context": "Below is the element of type ${element_type} with:\n\n${code}\n\nUtilize the provided element details and code to address the user's question accurately.",
@@ -47,6 +47,19 @@
       "condition": ""
     },
     {
+      "name": "small ${element_type} ${name} prompt - 2 steps - CoT",
+      "seed_system_message": "The user-like request should mention it is about Robot ${element_type}, use details from the context to formulate the user-like request. **You must not include any extra explanation, code, imports, or file location**",
+      "question_system_message": "I am providing a **Robot ${element_type}** using the **Robot Framework**. Your response must simulate the **thought process of an experienced engineer** constructing this keyword from scratch, with a detailed breakdown that guides the reader on how to create the keyword step-by-step without showing code in the Chain of Thought.\n\n## **Response Structure**\n1. **${element_type} Objective**  \n   - Clearly describe **what the ${element_type} does** and why it is necessary.  \n   - Identify **key components, expected behaviors, and specific actions** needed.  \n   - Explicitly outline **what success and failure scenarios look like** for this keyword.\n\n2. **Detailed Chain of Thought**  \n   - Provide a **comprehensive step-by-step breakdown** of how to construct the keyword, ensuring **every action and component is thoroughly explained**.  \n   - Use a **first-person engineering thought process**, integrating the structured breakdown seamlessly.  \n   - The explanation should be so detailed that someone reading it could easily recreate the entire keyword without seeing the code itself.  \n\n     - **\"First, I need to check X, so I need a keyword that does Y and handles Z scenario.\"**  \n     - **\"To achieve Y, I will use Z library or built-in keyword to ensure it covers this specific behavior.\"**  \n     - **\"Since this keyword requires interaction with A and B, I need to import C to provide the functionality needed.\"**  \n     - **\"I will structure the keyword to cover edge cases such as D and E, ensuring comprehensive coverage.\"**  \n     - **\"For error handling, I will log messages, validate results, and capture screenshots as needed.\"**  \n     - **\"I will ensure the keyword is modular by creating reusable components, improving readability and maintainability.\"**  \n\n   - **Do not include code snippets inside the Chain of Thought.**  \n   - **The Chain of Thought should be a detailed narrative that explains the logic, decisions, and specific validations for every part of the keyword.**  \n   - **Cover all key components needed to construct the keyword, including expected outcomes, error handling, and any libraries or imports required.**  \n   - **Explain interactions between multiple components or systems, detailing how to validate and verify the correct behavior.**  \n   - **for each Each part and logic, use first-person engineering thought process** as a software engineer trying to create it.  \n   - **Each use of functionality, explain what resource or import it needs.**  \n\n3. **Complete Keyword Code**  \n   - Provide the **full ${element_type} in one section**, including necessary imports, helper keywords, documentation, and comments.  \n   - **Must insert comments inside the code snippet itself explaining key parts.**  \n\n## **Important Rules**  \n- **Every important component must be explained using the first-person engineering thought process.**  \n- **The structured breakdown (What it does, Why it is needed, Imports, Error handling, etc.) must be embedded within the first-person thought process, not as a checklist.**  \n- **Explicitly mention which imports are required for each component within the Chain of Thought.**  \n- **Use first-person engineering reasoning in the Chain of Thought, explaining decisions for every part of the keyword.**  \n- **Ensure the keyword is fully commented with inline annotations directly inside it.**  \n- **Do not break the keyword into multiple sections—provide the full keyword in one piece.**  \n- **Exclude execution instructions or unnecessary explanations.**  \n- **Comments must be inside *Complete Keyword Code* itself.**  \n- **All components and parts used in the keyword must be covered and fully explained in the *Detailed Chain of Thought.**  \n- **Don't create a section that explains the keyword in the end.** ",
+      "context": "${context}",
+      "question_seed": "Formulate a user-like request that asks to create the described ${element_type}. you must not include any extra explanation, code, imports or file location.",
+      "question": [],
+      "answer": "",
+      "question_validation": "",
+      "answer_validation": "",
+      "element_types": ["keyword"],
+      "condition": ""
+    },
+    {
       "name": "${element_type} ${name} code description",
       "seed_system_message": "",
       "question_system_message": "",
@@ -60,7 +73,7 @@
       "answer": "",
       "question_validation": "",
       "answer_validation": "",
-      "element_types": ["test", "_test case", "_function"],
+      "element_types": ["test", "keyword"],
       "condition": ""
     }
   ]
