@@ -6,6 +6,7 @@ ADD . $HOME/ui
 WORKDIR $HOME/ui
 RUN cd $HOME/ui
 RUN npm install  -g npm yarn
+RUN yarn global add @fontsource/red-hat-display universalify
 RUN yarn install
 RUN yarn build
 RUN yarn global add serve
