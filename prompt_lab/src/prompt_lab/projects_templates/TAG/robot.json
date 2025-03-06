@@ -2,7 +2,7 @@
   "project_id": "",
   "project_repo": "",
   "coding_language": "robot",
-  "training_system_message": "in the context of oadp-e2e-qe project",
+  "training_system_message": "in the context of ${project_id} project",
   "seed_system_message": "",
   "question_system_message": "",
   "context": "Below is the element of type ${element_type} with:\n\n${code}\n\nUtilize the provided element details and code to address the user's question accurately.",
