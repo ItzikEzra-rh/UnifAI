@@ -3,7 +3,12 @@ FROM registry.access.redhat.com/ubi9/python-311
 #FROM registry.access.redhat.com/ubi9/python-39
 USER root
 RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
-
+RUN dnf install -y tar && \
+    curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz -o oc.tar.gz && \
+    tar -xvzf oc.tar.gz -C /usr/local/bin/ && \
+    rm -f oc.tar.gz && \
+    chmod +x /usr/local/bin/oc /usr/local/bin/kubectl
+    
 USER default
 ADD  --chown=default:root --chmod=777 ./backend $HOME/backend
 ADD  --chown=default:root --chmod=777 ./rag  $HOME/rag
