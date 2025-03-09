@@ -2,6 +2,7 @@
 Module for importing non-configured flask extensions
 """
 from celery import Celery
+from config.configParams import config
 
 
 def make_celery():
@@ -9,8 +10,12 @@ def make_celery():
     run celery using:
     celery -A celery_app.init worker --loglevel=info
     """
+    
+    host = config.get("dpr", "rabbitmq_host")
+    port = config.get("dpr", "rabbitmq_port")
+    
     celery_app = Celery('celery_reviewer',
-                        broker="pyamqp://guest:guest@localhost//",
+                        broker=host.format(port=port),
                         backend="rpc://",
                         include=['celery_app.tasks'])  
 
