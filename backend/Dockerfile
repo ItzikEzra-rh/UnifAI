@@ -2,7 +2,7 @@
 FROM registry.access.redhat.com/ubi9/python-311
 #FROM registry.access.redhat.com/ubi9/python-39
 USER root
-RUN dnf update -y && dnf install -y vim less iputils telnet curl tar gzip && dnf clean all
+RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
 RUN curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz -o oc.tar.gz && \
     tar -xvzf oc.tar.gz -C /usr/local/bin/ && \
     rm -f oc.tar.gz && \
