@@ -1,11 +1,11 @@
 env:
   MONGODB_HOST: mongodb
+  RABBITMQ_HOST: rabbitmq
   BACKEND_ENV: "production"
 debug: false
 
 replicaCount: 1
 image:
    repository: images.paas.redhat.com/genie/backend
-   tag: latest #2025.01.14
-  #  tag: helm
+   tag: helm
    pullPolicy: Always
