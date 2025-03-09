@@ -1,5 +1,6 @@
-import { TextField, MenuItem, FormControlLabel, Checkbox, Typography, Box } from '@mui/material';
+import { TextField, MenuItem, FormControlLabel, Checkbox, Typography, Box, Button } from '@mui/material';
 import { Controller } from 'react-hook-form';
+import { useRef } from 'react';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -40,6 +41,7 @@ interface FormFileUploadProps {
   control: any;
   errors: any;
   onFileUpload: (files: FileList | null) => void;
+  accept?: string;
 }
 
 export const FormField: React.FC<FormFieldProps> = ({ name, label, control, errors, type = 'text', disabled = false, secret = false }) => (
@@ -136,3 +138,30 @@ export const FormFileUpload: React.FC<FormFileUploadProps> = ({ name, label, con
     {errors[name] && <Typography color="error">{errors[name]?.message}</Typography>}
   </div>
 );
+
+export const FormFileUploadHelm: React.FC<FormFileUploadProps> = ({ name, label, control, errors, onFileUpload, accept }) => {
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleButtonClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
+  return (
+    <div className="form-group">
+      <label>{label}</label>
+      <input
+        type="file"
+        accept={accept}
+        ref={fileInputRef}
+        style={{ display: 'none' }} 
+        onChange={(e) => onFileUpload(e.target.files)}
+      />
+      <Button className="end-button" variant="contained" onClick={handleButtonClick}>
+        Choose File
+      </Button>
+      {errors[name] && <Typography color="error">{errors[name]?.message}</Typography>}
+    </div>
+  );
+};

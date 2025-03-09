@@ -85,11 +85,13 @@ const StatisticsGraphs: React.FC = () => {
         <Charts
           type="pie"
           data={getProjectsData()}
+          className="graph-container"
           title="Project Distribution"
         />
         <Charts
           type="pie"
           data={getModelNameData()}
+          className="graph-container"
           title="Model Name Distribution"
         />
       </div>
@@ -100,8 +102,10 @@ const StatisticsGraphs: React.FC = () => {
             label: project,
             value: getBarChartData().contextLengths[idx],
           }))}
+          className="graph-container"
           title="Context Length by Project"
           label="Context Length"
+          isHidden={true}
         />
         <Charts
           type="line"
@@ -109,6 +113,7 @@ const StatisticsGraphs: React.FC = () => {
             label: modelName,
             value: getLineChartData().contextLengths[idx],
           }))}
+          className="graph-container"
           title="Context Length by Model"
           label="Context Length"
         />

@@ -4,6 +4,7 @@ from endpoints.git import git_bp
 from endpoints.forms import forms_bp
 from endpoints.prompts import prompts_bp
 from endpoints.inference import inference_bp
+from endpoints.dpr import dpr_bp
 
 
 def register_all_endpoints(app):
@@ -14,6 +15,7 @@ def register_all_endpoints(app):
         {"bp": forms_bp, "parent": 'forms', "route": ''},
         {"bp": prompts_bp, "parent": 'prompts', "route": ''},
         {"bp": inference_bp, "parent": 'inference', "route": ''},
+        {"bp": dpr_bp, "parent": 'dpr', "route": ''}
     ]
     
     # register all other blueprints in the app
