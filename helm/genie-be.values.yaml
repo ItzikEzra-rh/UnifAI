@@ -7,5 +7,5 @@ debug: false
 replicaCount: 1
 image:
    repository: images.paas.redhat.com/genie/backend
-   tag: helm
+   tag: latest
    pullPolicy: Always
