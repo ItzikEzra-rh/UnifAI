@@ -192,42 +192,46 @@ const DatasetPreparationTable: React.FC = () => {
 
   useEffect(() => {
     let intervalId: any;
-
+  
     const fetchMetrics = async () => {
       try {
-        const promises = runningProgress.map(async (item) => {
-            const response = await axios.get(`/api/dpr/metrics`, { params: { id: item._id } });
-            const data = response.data.data;
-            const mongodb = data.mongodb || {};
-
-            const progressData = mongodb ? mongodb.find((entry: any) => entry._id === 'progress_data') : {};
-            const pass = progressData?.prompts_pass || 0;
-            const fail = progressData?.prompts_failed || 0;
-
-            return {
-              ...item,
-              metrics: data, 
-              promptsProgress: {
-                pass,
-                fail,
-              },
-            };
-
+        const runningResponse = await axios.get('/api/dpr/currentlyRunningDeployment');
+        const currentlyRunningIds = new Set(runningResponse.data.map((item: any) => item._id));
+  
+        const filteredProgress = runningProgress.filter((item) => currentlyRunningIds.has(item._id));
+  
+        const promises = filteredProgress.map(async (item) => {
+          const response = await axios.get(`/api/dpr/metrics`, { params: { id: item._id } });
+          const data = response.data.data;
+          const mongodb = data.mongodb || {};
+  
+          const progressData = mongodb ? mongodb.find((entry: any) => entry._id === 'progress_data') : {};
+          const pass = progressData?.prompts_pass || 0;
+          const fail = progressData?.prompts_failed || 0;
+  
+          return {
+            ...item,
+            metrics: data, 
+            promptsProgress: {
+              pass,
+              fail,
+            },
+          };
         });
-
+  
         const updatedProgress = await Promise.all(promises);
         setRunningProgress(updatedProgress);
-
       } catch (error) {
         console.error('Error fetching status:', error);
       }
     };
-
+  
     fetchMetrics();
     intervalId = setInterval(fetchMetrics, 30000);
-
+  
     return () => clearInterval(intervalId);
   }, [runningProgress.length]);
+  
 
   const handleUninstallConfirm = async (datasetId: string, setOpen: ((open: boolean) => void)) => {
     if (datasetId) {
@@ -298,7 +302,7 @@ const DatasetPreparationTable: React.FC = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {runningProgress.map((row) => {
+          {runningProgress?.map((row) => {
             // Calculate the progress percentage for each row
             const progressData = row.metrics?.mongodb?.find((item: any) => item._id === 'progress_data');
             const progressPercentage = (progressData?.prompts_processed / progressData?.number_of_prompts) * 100 || 0;

@@ -24,6 +24,7 @@ def helm_install(user_data):
         data = json.loads(helm_install["data"])
         data["is_deleted"] = False
         data.pop("manifest", None)
+        data.pop("chart", None)
 
         result = Collections.by_name('dpr').insert_one(data)
 
@@ -45,7 +46,7 @@ def helm_upgrade(user_data):
 
     creds = get_config_creds(id)
     if creds:
-        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
+        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"], namespace=creds["namespace"])
         helm_upgrade = helm.run_dpr_command(DPRCommands.UPGRADE, deployment_name=creds["deployment_name"],helm_set_params=helm_set_params_str)
 
         if helm_upgrade["status"] == "success":
@@ -81,6 +82,7 @@ def helm_status(id):
 @mongo
 def helm_metrics(id):
     def pull_metrics(id):
+        print("pulling")
         def fetch_rabbitmq_stats(route):
             try:
                 response = requests.get(f"http://{route}:15672/api/queues", 
@@ -121,32 +123,29 @@ def helm_metrics(id):
         return helm_response(False, ", ".join(errors)) if errors else helm_response(True, update_data)
 
     def get_metrics(id):
+        print("getting")
         result = Collections.by_name('dpr').find_one({"_id": ObjectId(id)})
-        print(result.get('metrics', {}))
         return result.get('metrics', {})
 
     deployment_details = Collections.by_name('dpr').find_one({"_id": ObjectId(id)}, {"status": 1})
     deployment_status = deployment_details.get('status', "")
+    print(deployment_status)
     return get_metrics(id) if deployment_status == "DONE" or deployment_status == "UNINSTALLED" else pull_metrics(id)
 
 @mongo
 def helm_route(id):
-    print(id)
     creds = get_config_creds(id)
-    print(creds)
     helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
+    
     routes = {
         "release_rmq_route": DPRCommands.RMQROUTE,
         "release_db_route": DPRCommands.DBROUTE,
     }
-    print(routes)
+
     updated_routes = {}
     for route_key, command in routes.items():
-        print("1")
         if not creds[route_key]:
-            print("2")
             route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], spec="{.status.loadBalancer.ingress[0].hostname}")
-            print(route_result)
 
             if route_result["data"]:
                 update_result = Collections.by_name("dpr").update_one(
@@ -176,6 +175,7 @@ def get_config_creds(id):
         config = config_data.get("config", {}).get("global", {})
         return {
             "hf_token": config.get("hf_token"),
+            "namespace": config.get("namespace"),
             "api_url": config.get("api_url"),
             "deployment_name": config_data.get("name"),
             "release_rmq_route": config.get("release_rmq_route", ""),
