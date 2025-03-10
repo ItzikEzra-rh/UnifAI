@@ -38,7 +38,7 @@ const UninstallModal: React.FC<UninstallModalProps> = ({ datasetId, status, hand
     <>
     <Box display="flex" alignItems="center" gap={1}>
         <Tooltip title={title}>
-          <span> {/* Wrap in a span to allow tooltips on disabled buttons */}
+          <span> 
             <IconButton onClick={() => setOpen(true)} sx={{ color: 'red' }} disabled={disabled}>
               <CancelIcon />
             </IconButton>
@@ -104,11 +104,21 @@ const RemoveModal: React.FC<RemoveModalProps> = ({ datasetId, handleRemoveConfir
 
 const StatisticsModal = (datasetDetails: any) => {
   const [open, setOpen] = useState(false);
+  const disabled = datasetDetails.metrics?.mongodb
+  const title = disabled ? "Statistics will be available shortly" : "Display more statistics"
+
   return (
     <>
-      <IconButton onClick={() => setOpen(true)} sx={{ color: 'red' }} title="Display more statistics">
-        <ShowChartIcon />
-      </IconButton>
+      <Box display="flex" alignItems="center" gap={1}>
+        <Tooltip title={title}>
+          <span> 
+            <IconButton onClick={() => setOpen(true)} sx={{ color: 'red' }} disabled={disabled}>
+              <ShowChartIcon />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Box>
+  
       <Modal open={open} onClose={() => setOpen(false)}>
         <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', height: '60%', width: '65%', bgcolor: 'background.paper' }}>
           <ProgressDisplay datasetDetails={datasetDetails.datasetDetails} onClose={() => setOpen(false)} />
@@ -191,8 +201,8 @@ const DatasetPreparationTable: React.FC = () => {
             const mongodb = data.mongodb || {};
 
             const progressData = mongodb ? mongodb.find((entry: any) => entry._id === 'progress_data') : {};
-            const pass = progressData.prompts_pass || 0;
-            const fail = progressData.prompts_failed || 0;
+            const pass = progressData?.prompts_pass || 0;
+            const fail = progressData?.prompts_failed || 0;
 
             return {
               ...item,

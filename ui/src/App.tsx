@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './styles.css';
-import { USER_ROLE } from './components/types/roles';
+import { DATA_SCIENCE_ROLE, USER_ROLE } from './components/types/roles';
 import Toolbar from './components/navigation/Toolbar';
 import WelcomeContent from './components/about/WelcomeContent';
 import AIContent from './components/about/AIContent';
@@ -16,7 +16,7 @@ import DatasetPreparationTable from './components/dataset/DatasetPreparationTabl
 import HelmForm from './components/dataset/HelmForm';
 
 const App: React.FC = () => {
-  const [role, setRole] = useState<string>(USER_ROLE);
+  const [role, setRole] = useState<string>(DATA_SCIENCE_ROLE);
 
   return (
     <Router>
