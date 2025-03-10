@@ -22,19 +22,19 @@ const App: React.FC = () => {
     <Router>
       <div className="app">
         <Toolbar role={role} setRole={setRole} />
-        <Routes>
-          <Route path="/" element={<WelcomeContent />} />
-          <Route path="/ai-content" element={<AIContent />} />
-          <Route path="/create-dataset" element={<ProjectForm />} />
-          <Route path="/prepare-dataset" element={<HelmForm />} />
-          <Route path="/deployed-datasets" element={<DatasetPreparationTable />} />
-          <Route path="/dataset-table" element={<DataSetTable />} />
-          <Route path="/train-form" element={<TrainingForm />} />
-          <Route path="/form-table" element={<FormTable />} />
-          <Route path="/chatbot" element={<ChatComponent />} />
-          <Route path="/saved-prompts" element={<SavedPrompt />} />
-          <Route path="/statistics" element={<Statistics />} />
-        </Routes>
+        <div className="main-content">
+          <Routes>
+            <Route path="/" element={<WelcomeContent />} />
+            <Route path="/ai-content" element={<AIContent />} />
+            <Route path="/create-dataset" element={<ProjectForm />} />
+            <Route path="/dataset-table" element={<DataSetTable />} />
+            <Route path="/train-form" element={<TrainingForm />} />
+            <Route path="/form-table" element={<FormTable />} />
+            <Route path="/chatbot" element={<ChatComponent />} />
+            <Route path="/saved-prompts" element={<SavedPrompt />} />
+            <Route path="/statistics" element={<Statistics />} />
+          </Routes>
+        </div>
       </div>
     </Router>
   );
