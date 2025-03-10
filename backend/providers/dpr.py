@@ -59,13 +59,12 @@ def helm_upgrade(user_data):
         return helm_upgrade
 
 @mongo
-def helm_uninstall(id):
-    print("Calling helm uninstall")
+def helm_uninstall(id, status):
     creds = get_config_creds(id)
     if creds:
         helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
         helm_uninstall = helm.run_dpr_command(DPRCommands.UNINSTALL, deployment_name=creds["deployment_name"])
-
+        Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"status": status}})
         return helm_uninstall
 
 
@@ -126,29 +125,35 @@ def helm_metrics(id):
         print(result.get('metrics', {}))
         return result.get('metrics', {})
 
-    deployment_details = Collections.by_name('dpr').find_one({"_id": ObjectId(id)}, {"is_completed": 1})
-    is_deploy_complete = deployment_details.get('is_completed', False)
-    return get_metrics(id) if is_deploy_complete else pull_metrics(id)
+    deployment_details = Collections.by_name('dpr').find_one({"_id": ObjectId(id)}, {"status": 1})
+    deployment_status = deployment_details.get('status', "")
+    return get_metrics(id) if deployment_status == "DONE" or deployment_status == "UNINSTALLED" else pull_metrics(id)
 
 @mongo
 def helm_route(id):
+    print(id)
     creds = get_config_creds(id)
+    print(creds)
     helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
-
     routes = {
         "release_rmq_route": DPRCommands.RMQROUTE,
         "release_db_route": DPRCommands.DBROUTE,
     }
-
+    print(routes)
     updated_routes = {}
     for route_key, command in routes.items():
+        print("1")
         if not creds[route_key]:
+            print("2")
             route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], spec="{.status.loadBalancer.ingress[0].hostname}")
+            print(route_result)
+
             if route_result["data"]:
                 update_result = Collections.by_name("dpr").update_one(
                     {"_id": ObjectId(id)},
                     {"$set": {f"config.global.{route_key}": route_result["data"]}}
                 )
+                print("?")
                 if update_result.matched_count <= 0:
                     return helm_response(False, f"Failed to update {route_key} in DB for id {id}")
 
@@ -167,7 +172,6 @@ def delete_deployment(id):
 
 def get_config_creds(id):
     config_data = Collections.by_name('dpr').find_one({'_id': ObjectId(id)})
-
     if config_data:
         config = config_data.get("config", {}).get("global", {})
         return {
@@ -233,9 +237,9 @@ def create_json_format(user_data):
 @mongo
 def get_actively_running():
     """
-    :return: list of deployments that are currently running (haven't been deleted from the db)
+    :return: list of deployments that are currently running (haven't been uninstalled)
     """
-    result = Collections.by_name('dpr').find({"is_completed": {"$ne": True}}, {"_id": 1})
+    result = Collections.by_name('dpr').find({"status": {"$nin": ["DONE", "UNINSTALLED"]}}, {"_id": 1})
 
     return [{"_id": str(doc["_id"])} for doc in result]
 
@@ -246,14 +250,15 @@ def get_not_deleted():
     """
     result = Collections.by_name('dpr').find(
         {"is_deleted": False},
-        {"_id": 1, "name": 1, "info.first_deployed": 1, "metrics": 1, "is_completed": 1}
+        {"_id": 1, "name": 1, "info.first_deployed": 1, "metrics": 1, "status": 1}
     )
 
     return [{"_id": str(doc["_id"]), 
              "name": doc.get("name"), 
              "first_deployed": doc.get("info", {}).get("first_deployed", "N/A"), 
              "metrics": doc.get("metrics", {}),
-             "is_completed": doc.get("is_completed", False)} for doc in result]
+             "status": doc.get("status", "N/A")}
+                for doc in result]
 
 @mongo
 def get_json_file_config(id):
@@ -278,8 +283,7 @@ async def celery_fetch_dpr():
             metrics_data[deployment_id] = metrics
             progress_data = next((item for item in metrics.get('data', {}).get('mongodb', {}) if item.get('_id') == "progress_data"), None)
             no_remaining_prompts = progress_data['prompts_failed'] + progress_data['prompts_pass'] == progress_data['number_of_prompts']
-            if no_remaining_prompts and progress_data['exported']: # add here the file upload
-                Collections.by_name('dpr').update_one({"_id": ObjectId(deployment_id)}, {"$set": {"is_completed": True}})
-                helm_uninstall(deployment_id)
+            if no_remaining_prompts and progress_data['exported']:
+                helm_uninstall(deployment_id, "DONE")
 
     return metrics_data

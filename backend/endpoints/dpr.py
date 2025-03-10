@@ -18,11 +18,11 @@ def status(id):
 
 @dpr_bp.route("/uninstall", methods=["GET"])
 @from_query({
-    "id":        fields.Str(required=True, data_key="id")
+    "id":        fields.Str(required=True, data_key="id"),
+    "status":    fields.Str(required=True, data_key="status")
 })
-def uninstall(id):
-
-    uninstall = helm_uninstall(id)
+def uninstall(id, status):
+    uninstall = helm_uninstall(id, status)
     return uninstall
 
 

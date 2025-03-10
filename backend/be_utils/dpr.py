@@ -4,7 +4,7 @@ from be_utils.utils import shell_exec,helm_response
 
 class DPRCommands(Enum):
     INSTALL     = "helm install -f {values}  {deployment_name} /opt/app-root/src/pipelines/pre_training_helm --output json"
-    UNINSTALL   = "helm uninstall --wait {deployment_name} "
+    UNINSTALL   = "helm uninstall {deployment_name} "
     STATUS      = "helm status {deployment_name} "
     UPGRADE     = "helm upgrade {deployment_name} --reuse-values /opt/app-root/src/pipelines/pre_training_helm {helm_set_params} --output json"
     RMQROUTE    = "oc get svc {deployment_name}-rabbitmq-svc -o jsonpath={spec}"

@@ -13,6 +13,7 @@ import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
 interface UninstallModalProps {
   datasetId: string;
+  status: string;
   handleUninstallConfirm: (datasetId: string, setOpen: ((open: boolean) => void)) => Promise<void>;
 }
 
@@ -21,9 +22,11 @@ interface RemoveModalProps {
   handleRemoveConfirm: (datasetId: string, setOpen: ((open: boolean) => void)) => Promise<void>;
 }
 
-const UninstallModal: React.FC<UninstallModalProps> = ({ datasetId, handleUninstallConfirm }) => {
+const UninstallModal: React.FC<UninstallModalProps> = ({ datasetId, status, handleUninstallConfirm }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const disabled = status === "DONE" || status === "UNINSTALLED"
+  const title = disabled ? "Deployment has already been uninstalled" : "Trigger uninstall of the helm proccess"
 
   const handleConfirmClick = async () => {
     setLoading(true);
@@ -34,10 +37,14 @@ const UninstallModal: React.FC<UninstallModalProps> = ({ datasetId, handleUninst
   return (
     <>
     <Box display="flex" alignItems="center" gap={1}>
-      <IconButton onClick={() => setOpen(true)} sx={{ color: 'red' }} title="Trigger uninstall of the helm proccess">
-        <CancelIcon />
-      </IconButton>
-    </Box>
+        <Tooltip title={title}>
+          <span> {/* Wrap in a span to allow tooltips on disabled buttons */}
+            <IconButton onClick={() => setOpen(true)} sx={{ color: 'red' }} disabled={disabled}>
+              <CancelIcon />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Box>
 
     <Modal open={open} onClose={() => setOpen(false)}>
       <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 400, bgcolor: 'background.paper', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', p: 3 }}>
@@ -151,23 +158,15 @@ const ConfigModal = ({ datasetId }: { datasetId: string }) => {
 
 const DatasetPreparationTable: React.FC = () => {
   const [runningProgress, setRunningProgress] = useState<any[]>([]);
-  const [orderBy, setOrderBy] = useState('datasetName');
+  const [orderBy, setOrderBy] = useState('Start Time');
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
 
   const fetchListData = async () => {
     try {
       const response = await axios.get('/api/dpr/notDeletedDeployment');
-
+  
       if (Array.isArray(response.data)) {
-        const formattedData = response.data.map((item: any) => ({
-          datasetId: item._id, 
-          datasetName: item.name, 
-          startTime: item.first_deployed || "N/A", 
-          isCompleted: item.is_completed,
-          metrics: item.metrics || {}
-        }));
-
-        setRunningProgress(formattedData);
+        setRunningProgress(response.data); 
       } else {
         console.error("Expected array but got:", response.data);
       }
@@ -175,9 +174,10 @@ const DatasetPreparationTable: React.FC = () => {
       console.error("Error fetching data:", error);
     }
   };
-
+  
   useEffect(() => {
     fetchListData();
+    console.log(runningProgress)
   }, []);
 
   useEffect(() => {
@@ -186,13 +186,11 @@ const DatasetPreparationTable: React.FC = () => {
     const fetchMetrics = async () => {
       try {
         const promises = runningProgress.map(async (item) => {
-            const response = await axios.get(`/api/dpr/metrics`, { params: { id: item.datasetId } });
+            const response = await axios.get(`/api/dpr/metrics`, { params: { id: item._id } });
             const data = response.data.data;
-            console.log(data)
-            const mongodb = data.mongodb || [];
+            const mongodb = data.mongodb || {};
 
-
-            const progressData = mongodb.find((entry: any) => entry._id === 'progress_data') || {};
+            const progressData = mongodb ? mongodb.find((entry: any) => entry._id === 'progress_data') : {};
             const pass = progressData.prompts_pass || 0;
             const fail = progressData.prompts_failed || 0;
 
@@ -224,7 +222,7 @@ const DatasetPreparationTable: React.FC = () => {
   const handleUninstallConfirm = async (datasetId: string, setOpen: ((open: boolean) => void)) => {
     if (datasetId) {
       try {
-        await axios.get('/api/dpr/uninstall', { params: {id: datasetId} });
+        await axios.get('/api/dpr/uninstall', { params: {id: datasetId, status: "UNINSTALLED"} });
         setOpen(false);
         fetchListData();
       } catch (error) {
@@ -299,9 +297,9 @@ const DatasetPreparationTable: React.FC = () => {
             const remaining = progressData?.number_of_prompts - progressData?.prompts_processed;
             const displayRemaining = remaining ?? 'TBD';
             return (
-              <TableRow key={row.datasetId}>
-                <TableCell>{row.datasetName}</TableCell>
-                <TableCell>{moment(row.startTime).format("MMM DD, YYYY [at] hh:mm A")}</TableCell>
+              <TableRow key={row._id}>
+                <TableCell>{row.name}</TableCell>
+                <TableCell>{moment(row.first_deployed).format("MMM DD, YYYY [at] hh:mm A")}</TableCell>
                 <TableCell>
                   <Box sx={{ width: '100%', mt: 2 }}>
                   <Tooltip title={<p className="custom-tooltip-text">Passed Prompts: {passed}, Failed Prompts: {failed}, Remaining: {displayRemaining}</p>} classes={{ tooltip: "custom-tooltip" }}>
@@ -322,17 +320,17 @@ const DatasetPreparationTable: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <Box sx={{display: 'flex', justifyContent: 'center'}}>
-                    <ConfigModal datasetId={row.datasetId} />
+                    <ConfigModal datasetId={row._id} />
                   </Box>
                 </TableCell>
                 <TableCell>
                   <Box sx={{display: 'flex', justifyContent: 'center'}}>
-                    <UninstallModal datasetId={row.datasetId} handleUninstallConfirm={handleUninstallConfirm} />
+                    <UninstallModal datasetId={row._id} status={row.status} handleUninstallConfirm={handleUninstallConfirm} />
                   </Box>
                 </TableCell>
                 <TableCell>
                   <Box sx={{display: 'flex', justifyContent: 'center'}}>
-                    <RemoveModal datasetId={row.datasetId} handleRemoveConfirm={handleRemoveConfirm} />
+                    <RemoveModal datasetId={row._id} handleRemoveConfirm={handleRemoveConfirm} />
                   </Box>
                 </TableCell>
               </TableRow>
