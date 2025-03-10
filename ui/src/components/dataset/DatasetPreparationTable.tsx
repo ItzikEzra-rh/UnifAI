@@ -203,9 +203,8 @@ const DatasetPreparationTable: React.FC = () => {
         const promises = filteredProgress.map(async (item) => {
           const response = await axios.get(`/api/dpr/metrics`, { params: { id: item._id } });
           const data = response.data.data;
-          const mongodb = data.mongodb || {};
-  
-          const progressData = mongodb ? mongodb.find((entry: any) => entry._id === 'progress_data') : {};
+          console.log(data)
+          const progressData = data.mongodb ? data.mongodb.find((entry: any) => entry._id === 'progress_data') : {};
           const pass = progressData?.prompts_pass || 0;
           const fail = progressData?.prompts_failed || 0;
   
@@ -303,6 +302,7 @@ const DatasetPreparationTable: React.FC = () => {
         </TableHead>
         <TableBody>
           {runningProgress?.map((row) => {
+            console.log(row)
             // Calculate the progress percentage for each row
             const progressData = row.metrics?.mongodb?.find((item: any) => item._id === 'progress_data');
             const progressPercentage = (progressData?.prompts_processed / progressData?.number_of_prompts) * 100 || 0;

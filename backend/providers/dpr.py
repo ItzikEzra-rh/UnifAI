@@ -94,7 +94,7 @@ def helm_metrics(id):
                 queues = ["prompts_process_queue", "reviewed_queue", "reviewer_queue"]
                 return {item["name"]: item for item in response.json() if item["name"] in queues}
             except requests.exceptions.RequestException:
-                return helm_response(False, f"Failed to fetch metrics from {route}")
+                return {}
 
         def fetch_mongodb_stats(route):
             try: 
@@ -102,7 +102,7 @@ def helm_metrics(id):
                 db = client['promptLab']  
                 return list(db['statistics'].find())
             except:
-                return helm_response(False, f"Failed to fetch metrics from {route}")
+                return {}
 
         creds = get_config_creds(id)
         rabbitmq_route, db_route = creds.get("release_rmq_route"), creds.get("release_db_route")
