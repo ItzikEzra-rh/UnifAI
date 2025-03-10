@@ -1,7 +1,5 @@
 FROM images.paas.redhat.com/genie/vllm-openai:latest
 
-RUN dnf update -y && \
-    dnf install -y git vim less iputils telnet
 
 RUN echo "umask 000" >> /etc/profile
 
