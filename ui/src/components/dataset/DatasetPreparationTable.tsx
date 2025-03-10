@@ -19,6 +19,7 @@ interface UninstallModalProps {
 
 interface RemoveModalProps {
   datasetId: string;
+  status: string;
   handleRemoveConfirm: (datasetId: string, setOpen: ((open: boolean) => void)) => Promise<void>;
 }
 
@@ -65,9 +66,11 @@ const UninstallModal: React.FC<UninstallModalProps> = ({ datasetId, status, hand
   );
 };
 
-const RemoveModal: React.FC<RemoveModalProps> = ({ datasetId, handleRemoveConfirm }) => {
+const RemoveModal: React.FC<RemoveModalProps> = ({ datasetId, status, handleRemoveConfirm }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const enabled = status === "DONE" || status === "UNINSTALLED"
+  const title = enabled ? "Remove this proccess from the table" : "You can't remove this row before the deployment is uninstalled"
 
   const handleConfirmClick = async () => {
     setLoading(true);
@@ -78,10 +81,14 @@ const RemoveModal: React.FC<RemoveModalProps> = ({ datasetId, handleRemoveConfir
   return (
     <>
     <Box display="flex" alignItems="center" gap={1}>
-      <IconButton onClick={() => setOpen(true)} sx={{ color: 'red' }} title="Remove this proccess from the table">
-        <DeleteIcon />
-      </IconButton>
-    </Box>
+        <Tooltip title={title}>
+          <span> 
+            <IconButton onClick={() => setOpen(true)} sx={{ color: 'red' }} disabled={!enabled}>
+            <DeleteIcon />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Box>
 
     <Modal open={open} onClose={() => setOpen(false)}>
       <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 400, bgcolor: 'background.paper', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', p: 3 }}>
@@ -174,7 +181,6 @@ const DatasetPreparationTable: React.FC = () => {
   const fetchListData = async () => {
     try {
       const response = await axios.get('/api/dpr/notDeletedDeployment');
-  
       if (Array.isArray(response.data)) {
         setRunningProgress(response.data); 
       } else {
@@ -189,7 +195,7 @@ const DatasetPreparationTable: React.FC = () => {
     fetchListData();
     console.log(runningProgress)
   }, []);
-
+  console.log(runningProgress)
   useEffect(() => {
     let intervalId: any;
   
@@ -198,19 +204,20 @@ const DatasetPreparationTable: React.FC = () => {
         const runningResponse = await axios.get('/api/dpr/currentlyRunningDeployment');
         const currentlyRunningIds = new Set(runningResponse.data.map((item: any) => item._id));
   
-        const filteredProgress = runningProgress.filter((item) => currentlyRunningIds.has(item._id));
+        const promises = runningProgress.map(async (item) => {
+          if (!currentlyRunningIds.has(item._id)) {
+            return item; // Keep items that are not currently running
+          }
   
-        const promises = filteredProgress.map(async (item) => {
           const response = await axios.get(`/api/dpr/metrics`, { params: { id: item._id } });
           const data = response.data.data;
-          console.log(data)
           const progressData = data.mongodb ? data.mongodb.find((entry: any) => entry._id === 'progress_data') : {};
           const pass = progressData?.prompts_pass || 0;
           const fail = progressData?.prompts_failed || 0;
   
           return {
             ...item,
-            metrics: data, 
+            metrics: data,
             promptsProgress: {
               pass,
               fail,
@@ -230,6 +237,7 @@ const DatasetPreparationTable: React.FC = () => {
   
     return () => clearInterval(intervalId);
   }, [runningProgress.length]);
+  
   
 
   const handleUninstallConfirm = async (datasetId: string, setOpen: ((open: boolean) => void)) => {
@@ -344,7 +352,7 @@ const DatasetPreparationTable: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <Box sx={{display: 'flex', justifyContent: 'center'}}>
-                    <RemoveModal datasetId={row._id} handleRemoveConfirm={handleRemoveConfirm} />
+                    <RemoveModal datasetId={row._id} status={row.status} handleRemoveConfirm={handleRemoveConfirm} />
                   </Box>
                 </TableCell>
               </TableRow>

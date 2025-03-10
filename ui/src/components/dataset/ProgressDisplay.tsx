@@ -19,16 +19,7 @@ interface PromptLabStats {
   exported: string;
 }
 
-interface ReviewerStats {
-  id: string;
-  projectName: string;
-  promptsRetried: number;
-  promptsFailed: number;
-  promptsPass: number;
-}
-
 const ChartContainer: React.FC<{ title: string; type: 'pie' | 'bar' | 'line'; data: ChartData[]; colors: string[]; isHidden?: boolean }> = ({ title, type, data, colors, isHidden }) => {
-  console.log(data)
   return (
     <Box sx={{ width: '50%', bgcolor: 'white', boxShadow: 3, borderRadius: 2, p: 2 }}>
       <Typography variant="h6" sx={{ fontWeight: 'bold', mb: 1 }}>
@@ -45,28 +36,34 @@ const ChartContainer: React.FC<{ title: string; type: 'pie' | 'bar' | 'line'; da
       </div> )}
     </Box>
   );
-};
-
-const ProgressBar: React.FC<{ startTime: string | null }> = ({ startTime }) => {
+};const ProgressTime: React.FC<{ startTime: string | null; endTime?: string | null }> = ({ startTime, endTime }) => {
   const [elapsedTime, setElapsedTime] = useState<number | string>('Calculating...');
 
   useEffect(() => {
-    if (startTime) {
-      const start = new Date(startTime).getTime();
+    if (!startTime) return;
 
-      const interval = setInterval(() => {
-        const diff = Math.floor((new Date().getTime() - start) / 1000);
-        setElapsedTime(diff > 0 ? diff : 'Calculating...');
-      }, 1000);
+    const start = new Date(startTime).getTime();
 
-      return () => clearInterval(interval);
+    if (endTime) {
+      // If endTime exists, calculate the fixed elapsed time and stop here
+      const end = new Date(endTime).getTime();
+      setElapsedTime(Math.floor((end - start) / 1000));
+      return;
     }
-  }, [startTime]);
+
+    // Start interval only if endTime is not provided
+    const interval = setInterval(() => {
+      const diff = Math.floor((new Date().getTime() - start) / 1000);
+      setElapsedTime(diff > 0 ? diff : 'Calculating...');
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [startTime, endTime]); // Dependency array ensures re-evaluation when endTime changes
 
   if (!startTime) return null;
 
   const formatTime = (elapsed: number | string) => {
-    if (typeof elapsed === 'string') return elapsed; // Preserve "Calculating..."
+    if (typeof elapsed === 'string') return elapsed;
 
     const days = Math.floor(elapsed / (3600 * 24));
     const hours = Math.floor((elapsed % (3600 * 24)) / 3600);
@@ -96,26 +93,30 @@ const ProgressBar: React.FC<{ startTime: string | null }> = ({ startTime }) => {
   );
 };
 
+
 const ChartsStatistics: React.FC<{ promptLabData: PromptLabStats | null }> = ({ promptLabData }) => {
-  console.log(promptLabData)
-  if (!promptLabData) return null;
-  const remainingPrompts = promptLabData?.number_of_prompts - promptLabData?.prompts_processed;
+  const remainingPrompts = promptLabData ? promptLabData.number_of_prompts - promptLabData.prompts_processed : 0;
 
   const passFailRemainColors = ['#54bc89', '#e75d57', '#99b4be'];
   const counterColors = ['#ffd028', '#54bc89', '#e75d57', '#0386a9'];
-  const counterData = [
-    { label: 'Processed', value: promptLabData.prompts_processed },
-    { label: 'Passed', value: promptLabData.prompts_pass },
-    { label: 'Failed', value: promptLabData.prompts_failed },
-    { label: 'Retried', value: promptLabData.prompts_retried },
-  ];
 
-  const overviewData = [
-    { id: 0, label: `PASS (${promptLabData.prompts_pass})`, value: promptLabData.prompts_pass },
-    { id: 1, label: `FAIL (${promptLabData.prompts_failed})`, value: promptLabData.prompts_failed },
-    { id: 2, label: `REMAINING (${remainingPrompts})`, value: remainingPrompts },
-  ];
-  console.log(counterData)
+  const counterData = promptLabData
+    ? [
+        { label: 'Processed', value: promptLabData.prompts_processed },
+        { label: 'Passed', value: promptLabData.prompts_pass },
+        { label: 'Failed', value: promptLabData.prompts_failed },
+        { label: 'Retried', value: promptLabData.prompts_retried },
+      ]
+    : [];
+
+  const overviewData = promptLabData
+    ? [
+        { id: 0, label: `PASS (${promptLabData.prompts_pass})`, value: promptLabData.prompts_pass },
+        { id: 1, label: `FAIL (${promptLabData.prompts_failed})`, value: promptLabData.prompts_failed },
+        { id: 2, label: `REMAINING (${remainingPrompts})`, value: remainingPrompts },
+      ]
+    : [];
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'row', width: '96%', gap: 2, p: 2, bgcolor: 'white', alignItems: 'center', justifyContent: 'center' }}>
       <ChartContainer title="Prompt Lab Counters View" type="bar" data={counterData} colors={counterColors} isHidden={true} />
@@ -141,7 +142,7 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({ datasetDetails, onClo
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, p: 2, bgcolor: 'white', alignItems: 'center' }}>
-        <ProgressBar startTime={datasetDetails.first_deployed} />
+        <ProgressTime startTime={datasetDetails.first_deployed} endTime={datasetDetails.finished_running} />
         <ChartsStatistics promptLabData={promptLabData} />
     </Box>
   );

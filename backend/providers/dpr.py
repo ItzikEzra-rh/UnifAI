@@ -65,13 +65,12 @@ def helm_uninstall(id, status):
     if creds:
         helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
         helm_uninstall = helm.run_dpr_command(DPRCommands.UNINSTALL, deployment_name=creds["deployment_name"])
-        Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"status": status}})
+        Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"status": status}, "$currentDate": {"finished_running": True}})
         return helm_uninstall
 
 
 @mongo
 def helm_status(id):
-
     creds = get_config_creds(id)
     if creds:
         helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
@@ -81,56 +80,56 @@ def helm_status(id):
 
 @mongo
 def helm_metrics(id):
-    def pull_metrics(id):
-        print("pulling")
-        def fetch_rabbitmq_stats(route):
-            try:
-                response = requests.get(f"http://{route}:15672/api/queues", 
-                                        auth=(config.get("dpr", "rmq_username"), config.get("dpr", "rmq_password")), 
-                                        timeout=5)
-                if response.status_code != 200:
-                    return helm_response(False, f"Failed to fetch metrics from {route}")
+    def fetch_rabbitmq_stats(route):
+        try:
+            response = requests.get(f"http://{route}:15672/api/queues", 
+                                    auth=(config.get("dpr", "rmq_username"), config.get("dpr", "rmq_password")), 
+                                    timeout=5)
+            if response.status_code != 200:
+                return helm_response(False, f"Failed to fetch metrics from {route}")
 
-                queues = ["prompts_process_queue", "reviewed_queue", "reviewer_queue"]
-                return {item["name"]: item for item in response.json() if item["name"] in queues}
-            except requests.exceptions.RequestException:
-                return {}
+            queues = ["prompts_process_queue", "reviewed_queue", "reviewer_queue"]
+            return {item["name"]: item for item in response.json() if item["name"] in queues}
+        except requests.exceptions.RequestException:
+            return {}
 
-        def fetch_mongodb_stats(route):
-            try: 
-                client = MongoClient(f'mongodb://{route}')  
-                db = client['promptLab']  
-                return list(db['statistics'].find())
-            except:
-                return {}
+    def fetch_mongodb_stats(route):
+        try: 
+            client = MongoClient(f'mongodb://{route}')  
+            db = client['promptLab']  
+            return list(db['statistics'].find())
+        except:
+            return {}
 
-        creds = get_config_creds(id)
-        rabbitmq_route, db_route = creds.get("release_rmq_route"), creds.get("release_db_route")
-        if not rabbitmq_route or not db_route:
-            helm_route(id)
-        rabbitmq_stats = fetch_rabbitmq_stats(rabbitmq_route) if rabbitmq_route else None
-        mongodb_stats = fetch_mongodb_stats(db_route) if db_route else None
+    creds = get_config_creds(id)
+    rabbitmq_route, db_route = creds.get("release_rmq_route"), creds.get("release_db_route")
+    if not rabbitmq_route or not db_route:
+        helm_route(id)
 
-        errors = [msg for msg, cond in zip(["Missing RabbitMQ route.", "Missing MongoDB route."], [not rabbitmq_route, not db_route]) if cond]
+    rabbitmq_stats = fetch_rabbitmq_stats(rabbitmq_route) if rabbitmq_route else None
+    mongodb_stats = fetch_mongodb_stats(db_route) if db_route else None
 
-        update_data = {"rabbitmq": rabbitmq_stats, "mongodb": mongodb_stats}
-        update_data = {k: v for k, v in update_data.items() if v is not None}
+    errors = [msg for msg, cond in zip(["Missing RabbitMQ route.", "Missing MongoDB route."], [not rabbitmq_route, not db_route]) if cond]
 
-        if update_data:
-            result = Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"metrics": update_data}})
-            if result.matched_count == 0:
-                errors.append("Failed to update database.")
-        return helm_response(False, ", ".join(errors)) if errors else helm_response(True, update_data)
+    update_data = {"rabbitmq": rabbitmq_stats, "mongodb": mongodb_stats}
+    update_data = {k: v for k, v in update_data.items() if v is not None}
 
-    def get_metrics(id):
-        print("getting")
-        result = Collections.by_name('dpr').find_one({"_id": ObjectId(id)})
-        return result.get('metrics', {})
+    if update_data:
+        result = Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"metrics": update_data}})
+        if result.matched_count == 0:
+            errors.append("Failed to update database.")
 
-    deployment_details = Collections.by_name('dpr').find_one({"_id": ObjectId(id)}, {"status": 1})
-    deployment_status = deployment_details.get('status', "")
-    print(deployment_status)
-    return get_metrics(id) if deployment_status == "DONE" or deployment_status == "UNINSTALLED" else pull_metrics(id)
+    if errors:
+        return helm_response(False, ", ".join(errors))
+    
+    # Check if the deployment should be uninstalled
+    progress_data = next((item for item in mongodb_stats if item.get('_id') == "progress_data"), None)
+    if progress_data:
+        no_remaining_prompts = progress_data['prompts_failed'] + progress_data['prompts_pass'] == progress_data['number_of_prompts']
+        if no_remaining_prompts and progress_data.get('exported', False):
+            helm_uninstall(id, "DONE")
+
+    return helm_response(True, update_data)
 
 @mongo
 def helm_route(id):
@@ -250,12 +249,13 @@ def get_not_deleted():
     """
     result = Collections.by_name('dpr').find(
         {"is_deleted": False},
-        {"_id": 1, "name": 1, "info.first_deployed": 1, "metrics": 1, "status": 1}
+        {"_id": 1, "name": 1, "info.first_deployed": 1, "finished_running": 1, "metrics": 1, "status": 1}
     )
 
     return [{"_id": str(doc["_id"]), 
              "name": doc.get("name"), 
              "first_deployed": doc.get("info", {}).get("first_deployed", "N/A"), 
+             "finished_running": doc.get("finished_running", ""), 
              "metrics": doc.get("metrics", {}),
              "status": doc.get("status", "N/A")}
                 for doc in result]
@@ -281,9 +281,5 @@ async def celery_fetch_dpr():
         metrics = helm_metrics(deployment_id)
         if metrics:
             metrics_data[deployment_id] = metrics
-            progress_data = next((item for item in metrics.get('data', {}).get('mongodb', {}) if item.get('_id') == "progress_data"), None)
-            no_remaining_prompts = progress_data['prompts_failed'] + progress_data['prompts_pass'] == progress_data['number_of_prompts']
-            if no_remaining_prompts and progress_data['exported']:
-                helm_uninstall(deployment_id, "DONE")
 
     return metrics_data
