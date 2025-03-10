@@ -215,6 +215,7 @@ const DatasetPreparationTable: React.FC = () => {
   }, [currentlyRunningDatasets.length]);
 
   useEffect(() => {
+    console.log(currentlyRunningDatasets)
     const fetchMetrics = async () => {
         console.log(datasets);
         try {
