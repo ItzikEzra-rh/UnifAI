@@ -22,5 +22,4 @@ ENV BACKEND_ENV=production
 # Optimize caching & networking
 RUN rm -rf /.cache && mkdir /.cache && chmod -R 777 /.cache
 RUN mkdir -p /root/.cache/huggingface/ && chmod 777 /root/.cache
-
-CMD ["/bin/bash", "-c", "source venv/bin/activate && python app.py"]
+ENTRYPOINT ["/bin/bash", "-c", "source venv/bin/activate && python app.py"]
