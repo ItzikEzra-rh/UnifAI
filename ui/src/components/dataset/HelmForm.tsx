@@ -50,7 +50,7 @@ const HelmForm: React.FC = () => {
         </Button>
       </Box>
 
-      {!formSubmitted ? <FormComponent onSubmit={onSubmit} isLoading={isLoading} /> : <SuccessMessage />}
+      {!formSubmitted ? <FormComponent onSubmit={onSubmit} isLoading={isLoading} /> : <SuccessMessage text="Helm install has been triggered, redirecting to dataset table" />}
 
       <ToastContainer position="top-right" autoClose={5000} hideProgressBar />
     </>

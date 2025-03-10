@@ -128,7 +128,7 @@ const StatisticsModal = (datasetDetails: any) => {
   
       <Modal open={open} onClose={() => setOpen(false)}>
         <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', height: '60%', width: '65%', bgcolor: 'background.paper' }}>
-          <ProgressDisplay datasetDetails={datasetDetails.datasetDetails} onClose={() => setOpen(false)} />
+          <ProgressDisplay datasetDetails={datasetDetails.datasetDetails} />
         </Box>
       </Modal>
     </>
@@ -174,15 +174,17 @@ const ConfigModal = ({ datasetId }: { datasetId: string }) => {
 };
 
 const DatasetPreparationTable: React.FC = () => {
-  const [runningProgress, setRunningProgress] = useState<any[]>([]);
+  const [datasets, setDatasets] = useState<any[]>([]);
+  const [currentlyRunningDatasets, setCurrentlyRunningDatasets] = useState<any[]>([]);
   const [orderBy, setOrderBy] = useState('Start Time');
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
 
   const fetchListData = async () => {
+    console.log("fetching")
     try {
       const response = await axios.get('/api/dpr/notDeletedDeployment');
       if (Array.isArray(response.data)) {
-        setRunningProgress(response.data); 
+        setDatasets(response.data); 
       } else {
         console.error("Expected array but got:", response.data);
       }
@@ -190,56 +192,85 @@ const DatasetPreparationTable: React.FC = () => {
       console.error("Error fetching data:", error);
     }
   };
-  
+
   useEffect(() => {
-    fetchListData();
-    console.log(runningProgress)
-  }, []);
-  console.log(runningProgress)
-  useEffect(() => {
-    let intervalId: any;
-  
-    const fetchMetrics = async () => {
+    console.log("fetching2")
+    const fetchCurrentlyRunning = async () => {
       try {
         const runningResponse = await axios.get('/api/dpr/currentlyRunningDeployment');
-        const currentlyRunningIds = new Set(runningResponse.data.map((item: any) => item._id));
-  
-        const promises = runningProgress.map(async (item) => {
-          if (!currentlyRunningIds.has(item._id)) {
-            return item; // Keep items that are not currently running
-          }
-  
-          const response = await axios.get(`/api/dpr/metrics`, { params: { id: item._id } });
-          const data = response.data.data;
-          const progressData = data.mongodb ? data.mongodb.find((entry: any) => entry._id === 'progress_data') : {};
-          const pass = progressData?.prompts_pass || 0;
-          const fail = progressData?.prompts_failed || 0;
-  
-          return {
-            ...item,
-            metrics: data,
-            promptsProgress: {
-              pass,
-              fail,
-            },
-          };
-        });
-  
-        const updatedProgress = await Promise.all(promises);
-        setRunningProgress(updatedProgress);
+        setCurrentlyRunningDatasets(runningResponse.data); // Update the running deployments state
       } catch (error) {
-        console.error('Error fetching status:', error);
+        console.error("Error fetching currently running deployments:", error);
       }
     };
-  
-    fetchMetrics();
-    intervalId = setInterval(fetchMetrics, 30000);
-  
-    return () => clearInterval(intervalId);
-  }, [runningProgress.length]);
-  
-  
 
+    fetchCurrentlyRunning();
+  }, []);
+  
+  useEffect(() => {
+    console.log("here")
+    console.log(currentlyRunningDatasets)
+
+    fetchListData();
+  }, [currentlyRunningDatasets.length]);
+
+  useEffect(() => {
+    const fetchMetrics = async () => {
+        console.log(datasets);
+        try {
+            // Fetch the currently running deployments
+            const runningResponse = await axios.get('/api/dpr/currentlyRunningDeployment');
+            const runningDatasets = runningResponse.data;
+            setCurrentlyRunningDatasets(runningDatasets); // Update the currently running datasets
+
+            const currentlyRunningIds = new Set(runningDatasets.map((item: any) => item._id));
+
+            const promises = datasets.map(async (item) => {
+                if (!currentlyRunningIds.has(item._id)) {
+                    return item; // If not running, keep the item as is
+                }
+
+                // Fetch metrics only for running datasets
+                const response = await axios.get(`/api/dpr/metrics`, { params: { id: item._id } });
+                const data = response.data.data;
+                const progressData = data.mongodb ? data.mongodb.find((entry: any) => entry._id === 'progress_data') : {};
+                const pass = progressData?.prompts_pass || 0;
+                const fail = progressData?.prompts_failed || 0;
+
+                return {
+                    ...item,
+                    metrics: data,
+                    promptsProgress: {
+                        pass,
+                        fail,
+                    },
+                };
+            });
+
+            // If there are no running datasets, don't overwrite datasets, just keep existing
+            if (runningDatasets.length === 0) {
+                setDatasets(datasets);
+            } else {
+                // Update datasets with the new progress only for running datasets
+                const updatedProgress = await Promise.all(promises);
+                console.log(updatedProgress);
+                setDatasets(updatedProgress);
+            }
+        } catch (error) {
+            console.error('Error fetching status:', error);
+        }
+    };
+
+    // Only fetch metrics if there is at least one dataset
+    if (datasets.length > 0) {
+        fetchMetrics(); // Initial fetch
+        const intervalId = setInterval(fetchMetrics, 30000); // Re-fetch every 30 seconds
+        return () => clearInterval(intervalId); // Clean up the interval on unmount
+    }
+}, [currentlyRunningDatasets.length]); // Trigger when datasets change
+
+  
+  
   const handleUninstallConfirm = async (datasetId: string, setOpen: ((open: boolean) => void)) => {
     if (datasetId) {
       try {
@@ -309,8 +340,7 @@ const DatasetPreparationTable: React.FC = () => {
           </TableRow>
         </TableHead>
         <TableBody>
-          {runningProgress?.map((row) => {
-            console.log(row)
+          {datasets?.map((row) => {
             // Calculate the progress percentage for each row
             const progressData = row.metrics?.mongodb?.find((item: any) => item._id === 'progress_data');
             const progressPercentage = (progressData?.prompts_processed / progressData?.number_of_prompts) * 100 || 0;

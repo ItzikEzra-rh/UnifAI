@@ -5,7 +5,6 @@ import Charts, { ChartData } from '../shared/Charts';
 
 interface ProgressDisplayProps {
   datasetDetails: any;
-  onClose: () => void;
 }
 
 interface PromptLabStats {
@@ -26,17 +25,14 @@ const ChartContainer: React.FC<{ title: string; type: 'pie' | 'bar' | 'line'; da
         {title}
       </Typography>
       <Divider sx={{ mb: 2 }} />
-      {!data ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%', height: '300px' }}>
-          <CircularProgress />
-        </Box>
-      ) : (
       <div style={{ display: 'flex', justifyContent: 'center' }}>
         <Charts type={type} data={data} className="progress-graph-container" colors={colors} isHidden={isHidden} />
-      </div> )}
+      </div>
     </Box>
   );
-};const ProgressTime: React.FC<{ startTime: string | null; endTime?: string | null }> = ({ startTime, endTime }) => {
+};
+
+const ProgressTime: React.FC<{ startTime: string | null; endTime?: string | null }> = ({ startTime, endTime }) => {
   const [elapsedTime, setElapsedTime] = useState<number | string>('Calculating...');
 
   useEffect(() => {
@@ -51,14 +47,13 @@ const ChartContainer: React.FC<{ title: string; type: 'pie' | 'bar' | 'line'; da
       return;
     }
 
-    // Start interval only if endTime is not provided
     const interval = setInterval(() => {
       const diff = Math.floor((new Date().getTime() - start) / 1000);
       setElapsedTime(diff > 0 ? diff : 'Calculating...');
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [startTime, endTime]); // Dependency array ensures re-evaluation when endTime changes
+  }, [startTime, endTime]); 
 
   if (!startTime) return null;
 
@@ -125,7 +120,7 @@ const ChartsStatistics: React.FC<{ promptLabData: PromptLabStats | null }> = ({ 
   );
 };
 
-const ProgressDisplay: React.FC<ProgressDisplayProps> = ({ datasetDetails, onClose }) => {
+const ProgressDisplay: React.FC<ProgressDisplayProps> = ({ datasetDetails }) => {
   const [promptLabData, setPromptLabData] = useState<PromptLabStats | null>(null);
 
   useEffect(() => {

@@ -144,7 +144,7 @@ const ProjectForm: React.FC = () => {
     return (
     <>     
     {formSubmitted ? 
-      <SuccessMessage /> : 
+      <SuccessMessage text="Form has been submitted, dataset generation will start soon" /> : 
       <Box className="form-container">
         <Stepper activeStep={activeStep} orientation="vertical">
           <Step>
