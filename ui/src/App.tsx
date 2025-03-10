@@ -27,6 +27,8 @@ const App: React.FC = () => {
             <Route path="/" element={<WelcomeContent />} />
             <Route path="/ai-content" element={<AIContent />} />
             <Route path="/create-dataset" element={<ProjectForm />} />
+            <Route path="/prepare-dataset" element={<HelmForm />} />
+            <Route path="/deployed-datasets" element={<DatasetPreparationTable />} />
             <Route path="/dataset-table" element={<DataSetTable />} />
             <Route path="/train-form" element={<TrainingForm />} />
             <Route path="/form-table" element={<FormTable />} />
