@@ -8,9 +8,11 @@ uwsgi
 webargs
 flask_pymongo
 pandas
-vllm
 bitsandbytes
 openai
+hf_transfer 
+nvitop 
+llmcompressor
 #triton==3.0.0 
 #xformers==0.0.27.post2 
 #accelerate==1.0.1 
