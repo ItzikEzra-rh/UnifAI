@@ -67,8 +67,7 @@ const Charts: React.FC<ChartProps> = ({
             xAxis={[{ data: data.map(item => item.label), scaleType: 'band',
             colorMap: {
               type: "ordinal",
-              colors: colors ? colors : ["#02B2AF"],
-              // ...(Array.isArray(colors) && colors.length > 0 ? { colors } : {}), // Add colors key only if colors is a non-empty array
+              colors: colors ? colors : ["#02B2AF"]
             }
             }]}
             slotProps={{ legend: { hidden: isHidden } }}

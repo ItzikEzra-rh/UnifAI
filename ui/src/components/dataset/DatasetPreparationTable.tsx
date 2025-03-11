@@ -34,7 +34,7 @@ const UninstallModal: React.FC<ModalProps> = ({ datasetId, status, handleConfirm
   return (
     <>
       <TableTooltip icon={CancelIcon} title={title} setOpen={setOpen} disabled={disabled} />
-      <ConfirmationModal text="Are you sure you want to uninstall?" open={open} setOpen={setOpen} loading={loading} loaderText="Uninstalling..." handleClick={handleConfirmClick}/>
+      <ConfirmationModal text="Are you sure you want to uninstall?" open={open} onClose={() => setOpen(false)} loading={loading} loaderText="Uninstalling..." handleClick={handleConfirmClick}/>
     </>  
   );
 };
@@ -54,7 +54,7 @@ const RemoveModal: React.FC<ModalProps> = ({ datasetId, status, handleConfirm })
   return (
     <>
       <TableTooltip icon={DeleteIcon} title={title} setOpen={setOpen} disabled={!enabled} />
-      <ConfirmationModal text="Are you sure you want to remove this deployment from the table?" open={open} setOpen={setOpen} loading={loading} loaderText="Removing..." handleClick={handleConfirmClick}/>
+      <ConfirmationModal text="Are you sure you want to remove this deployment from the table?" open={open} onClose={() => setOpen(false)} loading={loading} loaderText="Removing..." handleClick={handleConfirmClick}/>
     </>  
   );
 };
