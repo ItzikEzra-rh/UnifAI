@@ -5,12 +5,13 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 GITLAB_API_URL = "https://gitlab.cee.redhat.com/api/v4/projects"
 GIT_EXTENSION = ".git"
+PRIVATE_TOKEN = "private_token"
 class GitlabAPI(AbstractAPI):
     base_url = None
     private_token = None
 
     def __init__(self, repo_url, private_token):
-        super().__init__(repo_url, repo_url, {"private_token": private_token})
+        super().__init__(repo_url, repo_url, {PRIVATE_TOKEN: private_token})
         self.private_token = private_token 
         self.base_url = self._get_project_api_url() 
         
@@ -56,3 +57,8 @@ class GitlabAPI(AbstractAPI):
 
     def _decode_file_content(self, data):
         return data.text 
+    
+    def get_git_token(self):
+        if PRIVATE_TOKEN in self.auth:
+            return self.auth[PRIVATE_TOKEN]
+        raise ValueError("No GitLab private token found. Cannot proceed.")

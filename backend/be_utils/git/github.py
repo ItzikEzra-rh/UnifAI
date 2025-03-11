@@ -1,11 +1,12 @@
 import requests
 from backend.be_utils.git.git import AbstractAPI
 
+AUTHORIZATION = 'Authorization'
 class GithubAPI(AbstractAPI):
     def __init__(self, repo_owner, repo_name, auth_token):
         base_url = f"https://api.github.com/repos/{repo_owner}/{repo_name}"
         repo_url = f"https://github.com/{repo_owner}/{repo_name}"
-        super().__init__(base_url, repo_url, {"Authorization": f"token {auth_token}"})
+        super().__init__(base_url, repo_url, {AUTHORIZATION: f"token {auth_token}"})
 
     def _get_headers(self):
         return self.auth
@@ -50,3 +51,8 @@ class GithubAPI(AbstractAPI):
             return filtered_files
         else:
             raise ValueError(f"❌ No files found in the specified directory: {dir_name}")
+        
+    def get_git_token(self):
+        if AUTHORIZATION in self.auth and self.auth[AUTHORIZATION].startswith("token "):
+            return self.auth[AUTHORIZATION].split(" ", 1)[1]
+        raise ValueError("No GitHub authentication token found. Cannot proceed.")

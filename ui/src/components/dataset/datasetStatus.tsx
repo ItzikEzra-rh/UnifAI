@@ -49,7 +49,7 @@ const CustomConnector = styled(StepConnector, {
 const CustomStepIconRoot = styled('div')<{
   ownerState: { completed?: boolean; active?: boolean; isLastStep?: boolean };
 }>(({ ownerState }) => ({
-  backgroundColor: '#ccc',
+  backgroundColor: '#ccc', // Default grey
   zIndex: 1,
   color: '#fff',
   width: 50,
@@ -58,21 +58,21 @@ const CustomStepIconRoot = styled('div')<{
   borderRadius: '50%',
   justifyContent: 'center',
   alignItems: 'center',
-  
-  ...((ownerState.isLastStep == ownerState.active) || ownerState.completed
+
+  ...(ownerState.isLastStep && ownerState.active
     ? {
         backgroundImage: 'linear-gradient(136deg, rgb(131, 212, 117) 0%, rgb(87, 200, 77) 50%, rgb(46, 182, 44) 100%)',
-      }
-    : ownerState.active && !ownerState.completed
-    ? {
-        backgroundImage: 'linear-gradient(95deg, rgb(242,113,33) 0%, rgb(233,64,87) 50%, rgb(138,35,135) 100%)',
-        boxShadow: '0 4px 10px 0 rgba(0,0,0,.25)',
       }
     : ownerState.completed
     ? {
         backgroundImage: 'linear-gradient(136deg, rgb(131, 212, 117) 0%, rgb(87, 200, 77) 50%, rgb(46, 182, 44) 100%)',
       }
-    : {}),
+    : ownerState.active
+    ? {
+        backgroundImage: 'linear-gradient(95deg, rgb(242,113,33) 0%, rgb(233,64,87) 50%, rgb(138,35,135) 100%)',
+        boxShadow: '0 4px 10px 0 rgba(0,0,0,.25)',
+      }
+    : {})
 }));
 
 const CustomStepIcon = (props: StepIconProps) => {

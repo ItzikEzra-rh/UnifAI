@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
+import io
 import os
 import re
 import subprocess
+import threading
 from urllib.parse import quote_plus
+import concurrent.futures
 import requests
 
 BASE_CLONE_DIR = "/tmp/repos"
@@ -66,60 +69,68 @@ class AbstractAPI(ABC):
 
     def _clone_repo(self):
         repo_name = self.repo_url.split("/")[-1].replace(".git", "")
-        local_path = os.path.join("/tmp/repos", repo_name)
+        local_path = os.path.join(BASE_CLONE_DIR, repo_name)
 
         if os.path.exists(local_path):
             print(f"✅ Repository already cloned: {local_path}")
             return local_path
 
         print(f"🔄 Cloning repository {self.repo_url} into {local_path}...")
-        os.makedirs("/tmp/repos", exist_ok=True)
-
-        if 'auth_token' in self.auth:
-            git_token = self.auth['auth_token']
-        elif 'Authorization' in self.auth:
-            if self.auth['Authorization'].startswith("token "):
-                git_token = self.auth['Authorization'].split(" ", 1)[1]
-        else:
-            raise ValueError("No authentication token found. Cannot proceed.")
-
+        os.makedirs(BASE_CLONE_DIR, exist_ok=True)
+   
+        git_token = self.get_git_token()
+        
         authenticated_repo_url = self.repo_url.replace("https://", f"https://oauth2:{git_token}@")
         git_env = os.environ.copy()
         git_env["GIT_SSL_NO_VERIFY"] = "true"
-
+     
         result = subprocess.run(
             ["git", "clone", "--depth=1", authenticated_repo_url, local_path],
             capture_output=True, text=True, env=git_env
         )
-
         if result.returncode == 0:
             print(f"✅ Repository cloned successfully: {local_path}")
             return local_path
         else:
             raise ValueError(f"❌ Failed to clone repo: {result.stderr}")
-    
+
+        
     def list_files(self, dir_name, branch):
-        """Retrieve all files from the GitLab repository with pagination."""
+        """Retrieve all files from GitLab using parallel requests."""
         files = []
-        page = 1
+        lock = threading.Lock()
+        max_threads = 10 
 
-        while True:
-            url = self._build_list_files_url(dir_name, branch, page)
-            response, _ = self._get(url, headers=self._get_headers())
+        # Fetch total pages initially to schedule tasks efficiently
+        url = self._build_list_files_url(dir_name, branch, 1)
+        response, headers = self._get(url, headers=self._get_headers())
 
-            if not isinstance(response, list) or not response:
-                break 
+        if not isinstance(response, list) or not response:
+            raise ValueError(f"❌ No files found in the specified directory: {dir_name}")
 
+        with lock:
             files.extend(response)
-            page += 1 
+
+        total_pages = int(headers.get("X-Total-Pages", 1))
+
+        def fetch_page(page_num):
+            url = self._build_list_files_url(dir_name, branch, page_num)
+            response, _ = self._get(url, headers=self._get_headers())
+            if isinstance(response, list):
+                with lock:
+                    files.extend(response)
+
+        with concurrent.futures.ThreadPoolExecutor(max_workers=max_threads) as executor:
+            # Start from page 2 as page 1 was already fetched
+            executor.map(fetch_page, range(2, total_pages + 1))
 
         filtered_files = [item for item in files if self._is_valid_file(item)]
 
         if filtered_files:
             return filtered_files
         else:
-            raise ValueError(f"❌ No files found in the specified directory: {dir_name}")
-                    
+            raise ValueError(f"❌ No valid files found in the specified directory: {dir_name}")
+        
     def get_file_content(self, file_path, branch):
         """Fetch content of a specific file from GitLab.
 
@@ -166,6 +177,10 @@ class AbstractAPI(ABC):
 
     @abstractmethod
     def _decode_file_content(self, data):
+        pass
+    
+    @abstractmethod
+    def get_git_token(self):
         pass
 
     @abstractmethod
