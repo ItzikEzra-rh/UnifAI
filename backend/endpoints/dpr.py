@@ -114,10 +114,11 @@ def delete(id):
 
 @dpr_bp.route("/metrics", methods=["GET"])
 @from_query({
-    "id":        fields.Str(required=True, data_key="id")
+    "id":        fields.Str(required=True, data_key="id"),
+    "name":      fields.Str(required=True, data_key="name")
 })
-def get_metrics(id):
-    metrics = helm_metrics(id)
+def get_metrics(id, name):
+    metrics = helm_metrics(id, name)
     return metrics
 
 @dpr_bp.route("/currentlyRunningDeployment", methods=["GET"])

@@ -147,7 +147,7 @@ const DatasetPreparationTable: React.FC = () => {
                     return item; // If the deplyment isn't currently running, keep the item as is
                 }
 
-                const response = await axios.get(`/api/dpr/metrics`, { params: { id: item._id } });
+                const response = await axios.get(`/api/dpr/metrics`, { params: { id: item._id, name: item.name } });
                 const data = response.data.data;
                 const progressData = data.mongodb ? data.mongodb.find((entry: any) => entry._id === 'progress_data') : {};
                 const pass = progressData?.prompts_pass || 0;
@@ -254,7 +254,9 @@ const DatasetPreparationTable: React.FC = () => {
         </TableHead>
         <TableBody>
           {datasets?.map((row) => {
+            console.log(row)
             const mongoData = row?.metrics?.mongodb || {}
+            console.log(mongoData)
             const progressData = Object.keys(mongoData).length > 0 ? mongoData.find((item: any) => item._id === 'progress_data') : null;
             const progressPercentage = (progressData?.prompts_processed / progressData?.number_of_prompts) * 100 || 0;
             const passed = progressData?.prompts_pass || 0;

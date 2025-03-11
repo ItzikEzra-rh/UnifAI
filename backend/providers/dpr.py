@@ -79,10 +79,10 @@ def helm_status(id):
 
 
 @mongo
-def helm_metrics(id):
+def helm_metrics(id, name):
     def fetch_rabbitmq_stats(route):
         try:
-            response = requests.get(f"http://{route}:15672/api/queues", 
+            response = requests.get(f"http://{name}-rabbitmq-svc:15672/api/queues", 
                                     auth=(config.get("dpr", "rmq_username"), config.get("dpr", "rmq_password")), 
                                     timeout=5)
             if response.status_code != 200:
@@ -95,7 +95,7 @@ def helm_metrics(id):
 
     def fetch_mongodb_stats(route):
         try: 
-            client = MongoClient(f'mongodb://{route}')  
+            client = MongoClient(f'mongodb://{name}-mongodb-svc')  
             db = client['promptLab']  
             return list(db['statistics'].find())
         except:
@@ -144,7 +144,7 @@ def helm_route(id):
     updated_routes = {}
     for route_key, command in routes.items():
         if not creds[route_key]:
-            route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], spec="{.status.loadBalancer.ingress[0].hostname}")
+            route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], spec="{.metadata.name}")
 
             if route_result["data"]:
                 update_result = Collections.by_name("dpr").update_one(
@@ -251,7 +251,8 @@ async def celery_fetch_dpr():
     metrics_data = {}
     for deployment in running_deployments:
         deployment_id = deployment["_id"]
-        metrics = helm_metrics(deployment_id)
+        deployment_name = deployment["deployment_name"]
+        metrics = helm_metrics(deployment_id, deployment_name)
         if metrics:
             metrics_data[deployment_id] = metrics
 
