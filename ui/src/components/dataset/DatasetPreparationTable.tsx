@@ -180,7 +180,6 @@ const DatasetPreparationTable: React.FC = () => {
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
 
   const fetchListData = async () => {
-    console.log("fetching")
     try {
       const response = await axios.get('/api/dpr/notDeletedDeployment');
       if (Array.isArray(response.data)) {
@@ -192,44 +191,21 @@ const DatasetPreparationTable: React.FC = () => {
       console.error("Error fetching data:", error);
     }
   };
-
-  useEffect(() => {
-    console.log("fetching2")
-    const fetchCurrentlyRunning = async () => {
-      try {
-        const runningResponse = await axios.get('/api/dpr/currentlyRunningDeployment');
-        setCurrentlyRunningDatasets(runningResponse.data); // Update the running deployments state
-      } catch (error) {
-        console.error("Error fetching currently running deployments:", error);
-      }
-    };
-
-    fetchCurrentlyRunning();
-  }, []);
   
   useEffect(() => {
-    console.log("here")
-    console.log(currentlyRunningDatasets)
-
     fetchListData();
   }, [currentlyRunningDatasets.length]);
 
   useEffect(() => {
-    console.log("fetching3")
-    console.log(currentlyRunningDatasets)
     const fetchMetrics = async () => {
-        console.log(datasets);
         try {
-            // Fetch the currently running deployments
             const runningResponse = await axios.get('/api/dpr/currentlyRunningDeployment');
             const runningDatasets = runningResponse.data;
-            console.log(runningDatasets)
-            setCurrentlyRunningDatasets(runningDatasets); // Update the currently running datasets
+            setCurrentlyRunningDatasets(runningDatasets);
 
             const currentlyRunningIds = new Set(runningDatasets.map((item: any) => item._id));
 
             const promises = datasets.map(async (item) => {
-              console.log(datasets)
                 if (!currentlyRunningIds.has(item._id)) {
                     return item; // If not running, keep the item as is
                 }
@@ -253,13 +229,10 @@ const DatasetPreparationTable: React.FC = () => {
 
             // If there are no running datasets, don't overwrite datasets, just keep existing
             if (runningDatasets.length === 0) {
-              console.log("optin1")
-                setDatasets(datasets);
+                fetchListData();
             } else {
-              console.log("optin2")
                 // Update datasets with the new progress only for running datasets
                 const updatedProgress = await Promise.all(promises);
-                console.log(updatedProgress);
                 setDatasets(updatedProgress);
             }
         } catch (error) {
