@@ -254,7 +254,8 @@ const DatasetPreparationTable: React.FC = () => {
         </TableHead>
         <TableBody>
           {datasets?.map((row) => {
-            const progressData = row.metrics?.mongodb?.find((item: any) => item._id === 'progress_data');
+            const mongoData = row?.metrics?.mongodb || {}
+            const progressData = Object.keys(mongoData).length > 0 ? mongoData.find((item: any) => item._id === 'progress_data') : null;
             const progressPercentage = (progressData?.prompts_processed / progressData?.number_of_prompts) * 100 || 0;
             const passed = progressData?.prompts_pass || 0;
             const failed = progressData?.prompts_failed || 0;

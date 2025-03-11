@@ -7,13 +7,13 @@ import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import UploadHelmJson from './UploadHelmJson';
 import CreateHelmJson from '../inference/CreateHelmJson';
-import { useNavigate } from 'react-router-dom';  // Import the useNavigate hook
+import { useNavigate } from 'react-router-dom';  
 
 const HelmForm: React.FC = () => {
   const [formSubmitted, setFormSubmitted] = useState(false);
   const [mode, setMode] = useState<'create' | 'upload'>('upload');
   const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate(); // Create navigate instance
+  const navigate = useNavigate(); 
 
   const onSubmit: SubmitHandler<any> = async (data, event) => {
     event?.preventDefault(); 
@@ -24,10 +24,9 @@ const HelmForm: React.FC = () => {
       if (res.status === 200) {
         setFormSubmitted(true);
         console.log('Form submitted successfully:', data);
-        // Redirect to /deployed-datasets after successful submission
         setTimeout(() => {
-          navigate('/deployed-datasets'); // Trigger navigation
-        }, 2000); // Delay to allow user to see success message
+          navigate('/deployed-datasets'); 
+        }, 2000); 
       }
     } catch (error) {
       console.error('Error submitting form:', error);
