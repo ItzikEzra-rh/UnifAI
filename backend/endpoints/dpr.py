@@ -1,9 +1,7 @@
 from flask import Blueprint, jsonify, make_response,request
 from webargs import fields
-from providers.dpr import create_json_format, delete_deployment, get_actively_running, get_not_deleted, get_json_file_config, helm_status, helm_uninstall, helm_install, helm_upgrade, helm_route, helm_metrics
-from config.configParams import config
+from providers.dpr import create_json_format, delete_deployment, get_actively_running, get_not_deleted_deployments, get_json_file_config, helm_status, helm_uninstall, helm_install, helm_upgrade, helm_route, helm_metrics
 from helpers.apiargs import from_query, from_body
-
 
 dpr_bp = Blueprint("dpr", __name__)
 
@@ -130,10 +128,10 @@ def get_running_instances():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
-@dpr_bp.route("/notDeletedDeployment", methods=["GET"])
+@dpr_bp.route("/displayDeployments", methods=["GET"])
 def get_displayed_instances():
     try:
-        result = get_not_deleted()
+        result = get_not_deleted_deployments()
         return result
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500

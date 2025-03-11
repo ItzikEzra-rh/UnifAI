@@ -151,7 +151,6 @@ def helm_route(id):
                     {"_id": ObjectId(id)},
                     {"$set": {f"config.global.{route_key}": route_result["data"]}}
                 )
-                print("?")
                 if update_result.matched_count <= 0:
                     return helm_response(False, f"Failed to update {route_key} in DB for id {id}")
 
@@ -217,7 +216,7 @@ def get_actively_running():
     return [{"_id": str(doc["_id"])} for doc in result]
 
 @mongo
-def get_not_deleted():
+def get_not_deleted_deployments():
     """
     :return: list of deployments that are currently running (haven't been deleted from the db)
     """
@@ -232,7 +231,7 @@ def get_not_deleted():
              "finished_running": doc.get("finished_running", ""), 
              "metrics": doc.get("metrics", {}),
              "status": doc.get("status", "N/A")}
-                for doc in result]
+            for doc in result]
 
 @mongo
 def get_json_file_config(id):

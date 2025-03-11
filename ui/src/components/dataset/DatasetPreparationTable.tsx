@@ -1,29 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import { Box, Button, IconButton, Modal, LinearProgress, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, Typography, Tooltip } from '@mui/material'; 
+import { Box, IconButton, Modal, LinearProgress, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, Typography, Tooltip } from '@mui/material'; 
 import axios from '../../http/axiosConfig';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ShowChartIcon from '@mui/icons-material/ShowChart';
-import DescriptionIcon from '@mui/icons-material/Description'; // Import file icon
+import DescriptionIcon from '@mui/icons-material/Description';
 import '../../styles.css';
 import ProgressDisplay from './ProgressDisplay';
 import moment from 'moment';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { ConfirmationModal } from '../shared/ConfirmationModal';
+import { TableTooltip } from '../shared/TableTooltip';
 
-interface UninstallModalProps {
+interface ModalProps {
   datasetId: string;
   status: string;
-  handleUninstallConfirm: (datasetId: string, setOpen: ((open: boolean) => void)) => Promise<void>;
+  handleConfirm: (datasetId: string, setOpen: ((open: boolean) => void)) => Promise<void>;
 }
 
-interface RemoveModalProps {
-  datasetId: string;
-  status: string;
-  handleRemoveConfirm: (datasetId: string, setOpen: ((open: boolean) => void)) => Promise<void>;
-}
-
-const UninstallModal: React.FC<UninstallModalProps> = ({ datasetId, status, handleUninstallConfirm }) => {
+const UninstallModal: React.FC<ModalProps> = ({ datasetId, status, handleConfirm }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const disabled = status === "DONE" || status === "UNINSTALLED"
@@ -31,42 +27,19 @@ const UninstallModal: React.FC<UninstallModalProps> = ({ datasetId, status, hand
 
   const handleConfirmClick = async () => {
     setLoading(true);
-    await handleUninstallConfirm(datasetId, setOpen);
+    await handleConfirm(datasetId, setOpen);
     setLoading(false);
   };
 
   return (
     <>
-    <Box display="flex" alignItems="center" gap={1}>
-        <Tooltip title={title}>
-          <span> 
-            <IconButton onClick={() => setOpen(true)} sx={{ color: 'red' }} disabled={disabled}>
-              <CancelIcon />
-            </IconButton>
-          </span>
-        </Tooltip>
-      </Box>
-
-    <Modal open={open} onClose={() => setOpen(false)}>
-      <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 400, bgcolor: 'background.paper', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', p: 3 }}>
-        <Typography variant="h6" component="h2" sx={{ mb: 2, fontWeight: 500, color: '#1a1a1a' }}>
-          Are you sure you want to uninstall?
-        </Typography>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3, pt: 2, borderTop: '1px solid #eaeaea' }}>
-          <Button onClick={() => setOpen(false)} disabled={loading} style={{padding: '8px 16px', borderRadius: '6px', border: '1px solid #e0e0e0', backgroundColor: '#ffffff', color: '#666666', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 500}}>
-            No
-          </Button>
-          <Button onClick={handleConfirmClick} disabled={loading} style={{padding: '8px 16px', borderRadius: '6px', border: 'none', backgroundColor: '#dc2626', color: 'white', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 500,}}>
-            {loading ? 'Uninstalling...' : 'Yes'}
-          </Button>
-        </Box>
-      </Box>
-    </Modal>
-  </>  
+      <TableTooltip icon={CancelIcon} title={title} setOpen={setOpen} disabled={disabled} />
+      <ConfirmationModal text="Are you sure you want to uninstall?" open={open} setOpen={setOpen} loading={loading} loaderText="Uninstalling..." handleClick={handleConfirmClick}/>
+    </>  
   );
 };
 
-const RemoveModal: React.FC<RemoveModalProps> = ({ datasetId, status, handleRemoveConfirm }) => {
+const RemoveModal: React.FC<ModalProps> = ({ datasetId, status, handleConfirm }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const enabled = status === "DONE" || status === "UNINSTALLED"
@@ -74,58 +47,24 @@ const RemoveModal: React.FC<RemoveModalProps> = ({ datasetId, status, handleRemo
 
   const handleConfirmClick = async () => {
     setLoading(true);
-    await handleRemoveConfirm(datasetId, setOpen);
+    await handleConfirm(datasetId, setOpen);
     setLoading(false);
   };
 
   return (
     <>
-    <Box display="flex" alignItems="center" gap={1}>
-        <Tooltip title={title}>
-          <span> 
-            <IconButton onClick={() => setOpen(true)} sx={{ color: 'red' }} disabled={!enabled}>
-            <DeleteIcon />
-            </IconButton>
-          </span>
-        </Tooltip>
-      </Box>
-
-    <Modal open={open} onClose={() => setOpen(false)}>
-      <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 400, bgcolor: 'background.paper', borderRadius: '8px', boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)', p: 3 }}>
-        <Typography variant="h6" component="h2" sx={{ mb: 2, fontWeight: 500, color: '#1a1a1a' }}>
-          Are you sure you want to remove this deployment from the table?
-        </Typography>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 3, pt: 2, borderTop: '1px solid #eaeaea' }}>
-          <Button onClick={() => setOpen(false)} disabled={loading} style={{padding: '8px 16px', borderRadius: '6px', border: '1px solid #e0e0e0', backgroundColor: '#ffffff', color: '#666666', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 500}}>
-            No
-          </Button>
-          <Button onClick={handleConfirmClick} disabled={loading} style={{padding: '8px 16px', borderRadius: '6px', border: 'none', backgroundColor: '#dc2626', color: 'white', cursor: 'pointer', transition: 'all 0.2s', fontWeight: 500,}}>
-            {loading ? 'Removing...' : 'Yes'}
-          </Button>
-        </Box>
-      </Box>
-    </Modal>
-  </>  
+      <TableTooltip icon={DeleteIcon} title={title} setOpen={setOpen} disabled={!enabled} />
+      <ConfirmationModal text="Are you sure you want to remove this deployment from the table?" open={open} setOpen={setOpen} loading={loading} loaderText="Removing..." handleClick={handleConfirmClick}/>
+    </>  
   );
 };
 
 const StatisticsModal = (datasetDetails: any) => {
   const [open, setOpen] = useState(false);
-  const disabled = datasetDetails.metrics?.mongodb
-  const title = disabled ? "Statistics will be available shortly" : "Display more statistics"
 
   return (
     <>
-      <Box display="flex" alignItems="center" gap={1}>
-        <Tooltip title={title}>
-          <span> 
-            <IconButton onClick={() => setOpen(true)} sx={{ color: 'red' }} disabled={disabled}>
-              <ShowChartIcon />
-            </IconButton>
-          </span>
-        </Tooltip>
-      </Box>
-  
+      <TableTooltip icon={ShowChartIcon} title="Display more statistics" setOpen={setOpen} />
       <Modal open={open} onClose={() => setOpen(false)}>
         <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', height: '60%', width: '65%', bgcolor: 'background.paper' }}>
           <ProgressDisplay datasetDetails={datasetDetails.datasetDetails} />
@@ -156,9 +95,7 @@ const ConfigModal = ({ datasetId }: { datasetId: string }) => {
 
   return (
     <>
-      <IconButton onClick={() => setOpen(true)} sx={{ color: 'red' }} title="Display configuration json file">
-        <DescriptionIcon />
-      </IconButton>
+      <TableTooltip icon={DescriptionIcon} title="Display configuration json file" setOpen={setOpen} />
       <Modal open={open} onClose={() => setOpen(false)}>
         <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', height: '70%', width: '80%', bgcolor: 'background.paper', padding: 3, overflow: 'auto' }}>
           <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
@@ -181,7 +118,7 @@ const DatasetPreparationTable: React.FC = () => {
 
   const fetchListData = async () => {
     try {
-      const response = await axios.get('/api/dpr/notDeletedDeployment');
+      const response = await axios.get('/api/dpr/displayDeployments');
       if (Array.isArray(response.data)) {
         setDatasets(response.data); 
       } else {
@@ -207,10 +144,9 @@ const DatasetPreparationTable: React.FC = () => {
 
             const promises = datasets.map(async (item) => {
                 if (!currentlyRunningIds.has(item._id)) {
-                    return item; // If not running, keep the item as is
+                    return item; // If the deplyment isn't currently running, keep the item as is
                 }
 
-                // Fetch metrics only for running datasets
                 const response = await axios.get(`/api/dpr/metrics`, { params: { id: item._id } });
                 const data = response.data.data;
                 const progressData = data.mongodb ? data.mongodb.find((entry: any) => entry._id === 'progress_data') : {};
@@ -227,11 +163,11 @@ const DatasetPreparationTable: React.FC = () => {
                 };
             });
 
-            // If there are no running datasets, don't overwrite datasets, just keep existing
             if (runningDatasets.length === 0) {
+               // If there are no running datasets, don't overwrite datasets, just keep existing
                 fetchListData();
             } else {
-                // Update datasets with the new progress only for running datasets
+                // Update datasets with the new progress
                 const updatedProgress = await Promise.all(promises);
                 setDatasets(updatedProgress);
             }
@@ -240,13 +176,12 @@ const DatasetPreparationTable: React.FC = () => {
         }
     };
 
-    // Only fetch metrics if there is at least one dataset
     if (datasets.length > 0) {
-        fetchMetrics(); // Initial fetch
-        const intervalId = setInterval(fetchMetrics, 30000); // Re-fetch every 30 seconds
-        return () => clearInterval(intervalId); // Clean up the interval on unmount
+        fetchMetrics(); 
+        const intervalId = setInterval(fetchMetrics, 30000); 
+        return () => clearInterval(intervalId); 
     }
-}, [currentlyRunningDatasets.length, datasets.length]); // Trigger when datasets change
+}, [currentlyRunningDatasets.length, datasets.length]); 
 
 
   const handleUninstallConfirm = async (datasetId: string, setOpen: ((open: boolean) => void)) => {
@@ -319,7 +254,6 @@ const DatasetPreparationTable: React.FC = () => {
         </TableHead>
         <TableBody>
           {datasets?.map((row) => {
-            // Calculate the progress percentage for each row
             const progressData = row.metrics?.mongodb?.find((item: any) => item._id === 'progress_data');
             const progressPercentage = (progressData?.prompts_processed / progressData?.number_of_prompts) * 100 || 0;
             const passed = progressData?.prompts_pass || 0;
@@ -355,12 +289,12 @@ const DatasetPreparationTable: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <Box sx={{display: 'flex', justifyContent: 'center'}}>
-                    <UninstallModal datasetId={row._id} status={row.status} handleUninstallConfirm={handleUninstallConfirm} />
+                    <UninstallModal datasetId={row._id} status={row.status} handleConfirm={handleUninstallConfirm} />
                   </Box>
                 </TableCell>
                 <TableCell>
                   <Box sx={{display: 'flex', justifyContent: 'center'}}>
-                    <RemoveModal datasetId={row._id} status={row.status} handleRemoveConfirm={handleRemoveConfirm} />
+                    <RemoveModal datasetId={row._id} status={row.status} handleConfirm={handleRemoveConfirm} />
                   </Box>
                 </TableCell>
               </TableRow>
