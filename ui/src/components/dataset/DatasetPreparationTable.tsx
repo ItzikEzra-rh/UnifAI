@@ -246,7 +246,7 @@ const DatasetPreparationTable: React.FC = () => {
         const intervalId = setInterval(fetchMetrics, 30000); // Re-fetch every 30 seconds
         return () => clearInterval(intervalId); // Clean up the interval on unmount
     }
-}, [currentlyRunningDatasets.length]); // Trigger when datasets change
+}, [currentlyRunningDatasets.length, datasets.length]); // Trigger when datasets change
 
 
   const handleUninstallConfirm = async (datasetId: string, setOpen: ((open: boolean) => void)) => {

@@ -183,54 +183,28 @@ def get_config_creds(id):
     return {}
 
 def create_json_format(user_data):
-    enable_reviewer = user_data["global"].get("enable_reviewer", True)
+    def extract_config(data, exclude_keys=None):
+        exclude_keys = exclude_keys or []
+        return {k: data.get(k, "") for k in data if k not in exclude_keys}
+
+    global_config = extract_config(user_data["global"])
+    promptlab_env = extract_config(user_data["promptLab"], exclude_keys=["vllm_orbiter_args"])
+    reviewer_env = extract_config(user_data["reviewer"]) if global_config.get("enable_reviewer") else {}
 
     json_output = {
         "global": {
-            "api_url": user_data["global"].get("api_url", ""),
-            "deployment_name": user_data["global"].get("deployment_name", ""),
-            "vllm_reviewer_replica": user_data["global"].get("vllm_reviewer_replica", 1),
-            "hf_token": user_data["global"].get("hf_token", ""),
-            "enable_reviewer": enable_reviewer,
-            "enable_toleration": user_data["global"].get("enable_toleration", False),
-            "multiple_gpu_per_pod": user_data["global"].get("multiple_gpu_per_pod", False),
-            "number_of_gpu": user_data["global"].get("number_of_gpu", 2),
-            "vllm_orbiter_args": [
-                "--max_model_len",
-                user_data["promptLab"]["vllm_orbiter_args"].get("maxLength", 16000),
-                "--gpu_memory_utilization",
-                user_data["promptLab"]["vllm_orbiter_args"].get("gpuMemoryUtilization", 0.88)
-            ],
-            "orbiter_replica": user_data["global"].get("orbiter_replica", 1),
-            "namespace": user_data["global"].get("namespace", ""),
-            "promptlab_env": {
-                **{k: v for k, v in user_data["promptLab"].items() if k != "vllm_orbiter_args"},
-                **user_data["file"]
-            },
+            **global_config,
             "orbiter_model_hf_id": user_data["promptLab"].get("PROMPT_LAB_MODEL_HF_ID", ""),
-            "vllm_orbiter_replica": user_data["global"].get("vllm_orbiter_replica", 1),
+            "promptlab_env": {**promptlab_env, **user_data["file"]},
         }
     }
-
-    if enable_reviewer:
+    
+    if global_config.get("enable_reviewer", True):
         json_output["global"].update({
-            "vllm_reviewer_args": [
-                "--max_model_len",
-                user_data["reviewer"]["vllm_reviewer_args"].get("maxLength", 16000),
-                "--gpu_memory_utilization",
-                user_data["reviewer"]["vllm_reviewer_args"].get("gpuMemoryUtilization", 0.88)
-            ],
-            "reviewer_replica": user_data["global"].get("reviewer_replica", 1),
-            "reviewer_model_hf_id": user_data["reviewer"].get("REVIEWER_MODEL_HF_ID", ""),
-            "reviewer_env": {
-                "REVIEWER_MAX_GENERATION_LENGTH": user_data["reviewer"].get("REVIEWER_MAX_GENERATION_LENGTH", 16000),
-                "REVIEWER_MAX_CONTEXT_LENGTH": user_data["reviewer"].get("REVIEWER_MAX_CONTEXT_LENGTH", 2048),
-                "REVIEWER_BATCH_SIZE": user_data["reviewer"].get("REVIEWER_BATCH_SIZE", 8),
-                "REVIEWER_MODEL_HF_ID": user_data["reviewer"].get("REVIEWER_MODEL_HF_ID", ""),
-                "REVIEWER_SCORE_THRESHOLD": user_data["reviewer"].get("REVIEWER_SCORE_THRESHOLD", 75)
-            }
+            "reviewer_model_hf_id": reviewer_env.get("REVIEWER_MODEL_HF_ID", ""),
+            "reviewer_env": reviewer_env,
         })
-
+    
     return json_output
 
 @mongo
