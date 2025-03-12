@@ -85,8 +85,8 @@ class VLLMModelLoader(AbstractModelLoader):
             stream=True,
             max_tokens=max_new_tokens,
             temperature=temperature,
-            frequency_penalty=0.6,
-            presence_penalty=0.4
+            # frequency_penalty=0.6,
+            # presence_penalty=0.4
         )
 
         # Stream the response content and check stop event to break
