@@ -105,9 +105,9 @@
       "context": "",
       "question_seed": "",
       "question": [
-        "Provide a detailed explanation of the key sections and any decorators (if applicable) in the ${element_type} named ${name} within the following ${coding_language} code, along with their purposes:\\n${coding_language}\\n${code}",
-        "Break down the key sections of the ${element_type} named ${name} in the given ${coding_language} code, highlighting their roles and discussing any decorators if they exist:\\n${coding_language}\\n${code}",
-        "Analyze the essential components of the ${element_type} named ${name} in the provided ${coding_language} code, including any decorators if present, and explain their functions:\\n${coding_language}\\n${code}"
+        "Provide a detailed explanation of the key sections and any decorators (if applicable) in the ${element_type} named ${name} within the following ${coding_language} code. Include relevant snippets to illustrate their purposes:\\n\\n```${coding_language}\\n${code}\\n```",
+        "Break down the key sections of the ${element_type} named ${name} in the given ${coding_language} code, highlighting their roles and discussing any decorators if they exist. Ensure to include code snippets to support the explanation:\\n\\n```${coding_language}\\n${code}\\n```",
+        "Analyze the essential components of the ${element_type} named ${name} in the provided ${coding_language} code, including any decorators if present. Explain their functions with relevant code snippets:\\n\\n```${coding_language}\\n${code}\\n```"
       ],
       "answer": "",
       "question_validation": "",
