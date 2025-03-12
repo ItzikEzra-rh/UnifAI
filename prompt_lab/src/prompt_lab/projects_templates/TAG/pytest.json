@@ -112,7 +112,7 @@
       "answer": "",
       "question_validation": "",
       "answer_validation": "",
-      "element_types": ["_test", "_test case", "_function"],
+      "element_types": ["test", "_test case", "_function"],
       "condition": ""
     }
   ]
