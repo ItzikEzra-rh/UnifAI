@@ -24,7 +24,7 @@ def get_registered_models():
     return registry.get_all_models()
 
 
-def load_model(model_uid, max_len=22000, vllm_port=8000):
+def load_model(model_uid, max_len=8000, vllm_port=8000):
     """
     Load (or reuse) a vLLM model. If the same base model is already loaded, it returns that instance.
     Otherwise, unloads the current model (if any) and loads the new one.

@@ -72,8 +72,10 @@ class VLLMModelLoader:
 
         if self.adapters:
             cmd.append("--enable-lora")
-            lora_modules = " ".join(f"{adapter.get('name')}={adapter.get('local_adapter_path')}" for adapter in self.adapters)
-            cmd.extend(["--lora-modules", lora_modules])
+            cmd.append("--lora-modules")  # Add flag separately
+            for adapter in self.adapters:
+                cmd.append(
+                    f"{adapter.get('name')}={adapter.get('local_adapter_path')}")  # Append each LoRA module separately
 
         try:
             print(cmd)
