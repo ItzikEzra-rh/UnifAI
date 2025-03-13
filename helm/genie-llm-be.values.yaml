@@ -3,7 +3,6 @@ env:
   HF_TOKEN: "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"
   VLLM_CONFIG_ROOT: '/tmp/usage'
   HF_HOME: '/tmp/'
-  HF_HUB_ENABLE_HF_TRANSFER: '1'
   BACKEND_ENV: "production"
       
 replicaCount: 1
