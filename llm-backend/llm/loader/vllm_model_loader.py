@@ -1,163 +1,179 @@
-import requests
+import os
 import subprocess
 import time
-from llm.loader.model_loader import AbstractModelLoader
-from llm.chat_manager import ChatManager
-from openai import OpenAI
 import threading
-import os
+import requests
 import psutil
+from openai import OpenAI
 
 
-class VLLMModelLoader(AbstractModelLoader):
-    vllm_process = None
+class VLLMModelLoader:
+    """
+    A SOLID, modular, and efficient loader for vLLM with optional adapter support.
 
-    def __init__(self, *args, vllm_port=8000, **kwargs):
-        super().__init__(*args, **kwargs)
+    Parameters:
+      - base_model: Identifier for the base model.
+      - max_len: Maximum sequence length.
+      - quantized: Boolean indicating if the model is quantized.
+      - adapters: Optional dict mapping adapter names to local checkpoint paths.
+      - vllm_port: Port number for the vLLM server.
+
+    When adapters are provided, the vLLM process is started with:
+      --enable-lora
+      --lora-modules adapter_name=adapter_path[,adapter2=adapter_path2,...]
+
+    During inference, if adapters exist the first adapter's name is used as the model name
+    for the OpenAI API call. Otherwise, the base model name is used.
+    """
+
+    _lock = threading.Lock()
+    instance = None
+
+    def __init__(self, base_model: str, max_len: int, quantized: bool, adapters: dict = None, vllm_port: int = 8000):
+        print(max_len)
+        self.base_model = base_model
+        self.max_len = max_len
+        self.quantized = quantized
+        self.adapters = adapters or []
         self.vllm_port = vllm_port
         self.server_url = f"http://0.0.0.0:{self.vllm_port}/"
-        self.chat_manager = ChatManager(self.context_length, self.max_new_tokens, self.tokenizer)
-        self.stop_event = {}
-        # self.stop_event = threading.Event()
+        self.vllm_process = None
+        self.stop_events = {}  # Mapping: session_id -> threading.Event
 
-    def load_model(self):
-        """Load the vLLM model."""
-        if self.vllm_process is not None:
-            print("vLLM server is already running.")
-            return False
+    @classmethod
+    def load(cls, base_model: str, max_len: int, quantized: bool, adapters: dict = None, vllm_port: int = 8000):
+        """
+        Load or reuse a vLLM model instance. If a model is already loaded:
+          - If the base model is the same, returns the current instance.
+          - Otherwise, unloads the current instance and loads a new one.
+        """
+        with cls._lock:
+            if cls.instance is not None:
+                if cls.instance.base_model != base_model:
+                    cls.instance.unload()
+                else:
+                    return cls.instance
+            print(max_len)
+            instance = cls(base_model, max_len, quantized, adapters, vllm_port)
+            instance._start_server()
+            cls.instance = instance
+            return instance
+
+    def _start_server(self):
+        """Builds the vLLM command line and starts the server process."""
+        cmd = [
+            "vllm", "serve", self.base_model,
+            "--port", str(self.vllm_port),
+            "--max-model-len", str(self.max_len)
+        ]
+
+        if self.quantized:
+            cmd.extend(["--quantization", "bitsandbytes", "--load-format", "bitsandbytes"])
+
+        if self.adapters:
+            cmd.append("--enable-lora")
+            lora_modules = " ".join(f"{adapter.get('name')}={adapter.get('local_adapter_path')}" for adapter in self.adapters)
+            cmd.extend(["--lora-modules", lora_modules])
+
         try:
-            cmd = ["vllm", "serve", self.hf_repo_id,
-                   "--port", str(self.vllm_port),
-                   "--max-model-len", str(self.chat_manager.context_length)]
-
-            if self.quantized:
-                quantized_cmd = ["--quantization", "bitsandbytes",
-                                 "--load-format", "bitsandbytes"]
-                cmd.extend(quantized_cmd)
             print(cmd)
             self.vllm_process = subprocess.Popen(cmd)
-
-            return self.wait_for_server()
         except Exception as e:
             raise RuntimeError(f"Failed to start vLLM server: {e}")
 
-    def wait_for_server(self, timeout=420, interval=5):
-        """Wait for the vLLM server to start within a given timeout."""
-        server_url = os.path.join(self.server_url, "health")
+        self._wait_for_server()
+
+    def _wait_for_server(self, timeout: int = 420, interval: int = 5):
+        """Wait until the vLLM server is healthy by checking its /health endpoint."""
+        health_url = os.path.join(self.server_url, "health")
         start_time = time.time()
         while time.time() - start_time < timeout:
             try:
-                response = requests.get(server_url)
+                response = requests.get(health_url)
                 if response.status_code == 200:
                     print("vLLM server is up!")
-                    return True
+                    return
             except requests.ConnectionError:
-                print(f"Trying to connect to VLLM server, {time.time() - start_time} seconds passed...")
-                time.sleep(interval)
-        print("vLLM server did not start within the timeout period.")
-        return False
+                pass
+            print(f"Waiting for vLLM server... {int(time.time() - start_time)}s elapsed")
+            time.sleep(interval)
+        raise RuntimeError("vLLM server did not start within the timeout period.")
 
-    def infer(self, messages, temperature, max_new_tokens=None, session_id=" "):
-        """Send a prompt to the model and stream the response."""
-        self.stop_event[session_id] = threading.Event()
-        self.stop_event[session_id].clear()  # Clear any previous stop event
-        openai_api_key = "EMPTY"
+    def infer(self, adapter_name, messages: list, temperature: float, max_new_tokens: int, session_id: str = "default"):
+        """
+        Sends an inference request. The model name used is:
+          - The first adapter's name if adapters exist.
+          - Otherwise, the base model name.
+        """
+        self.stop_events.setdefault(session_id, threading.Event()).clear()
         openai_api_base = os.path.join(self.server_url, "v1")
+        client = OpenAI(api_key="EMPTY", base_url=openai_api_base)
 
-        # Instantiate the client
-        client = OpenAI(
-            api_key=openai_api_key,
-            base_url=openai_api_base,
-        )
+        # Choose the model name for inference
+        adapter_names = [adapter.get("name") for adapter in self.adapters]
+        if adapter_name not in adapter_names and not adapter_names:
+            raise Exception(f"Adapter {adapter_name} is not registered")
 
-        if max_new_tokens:
-            self.max_new_tokens = max_new_tokens
-            self.chat_manager.max_new_tokens = max_new_tokens
+        model_name = adapter_name if adapter_name else self.base_model
 
-        # Add user prompt to chat history (token limit check is handled by ChatManager)
-        for message in messages:
-            self.chat_manager.add_message(message["role"], message["content"], session_id)
-
-        # Call OpenAI API with the entire chat history and enable streaming
         response = client.chat.completions.create(
-            messages=self.chat_manager.get_chat_history(session_id),
-            model=self.hf_repo_id,
+            model=model_name,
+            messages=messages,
             stream=True,
             max_tokens=max_new_tokens,
             temperature=temperature,
-            # frequency_penalty=0.6,
-            # presence_penalty=0.4
         )
 
-        # Stream the response content and check stop event to break
-        return self.generate_response(response, session_id)
+        return self._stream_response(response, session_id)
 
-    def generate_response(self, response, session_id):
-        """Stream the OpenAI API response and update the chat history."""
+    def _stream_response(self, response, session_id: str):
+        """Generator to stream the inference response."""
         response_content = ""
-
-        # Stream each chunk to the client
         for chunk in response:
-            if self.stop_event[session_id].is_set():  # Check if stop signal has been triggered
+            if self.stop_events[session_id].is_set():
                 response.close()
-                print("Stopping inference as requested.")
+                print("Inference stopped.")
                 break
-
             if hasattr(chunk, "choices") and chunk.choices:
                 content = getattr(chunk.choices[0].delta, "content", "")
                 if content:
                     response_content += content
-                    yield content.encode('utf-8')
+                    yield content.encode("utf-8")
+        # Optionally: store or log the full response_content.
 
-        # Add assistant's response to chat history if inference was not stopped
-        if not self.stop_event[session_id].is_set():
-            self.chat_manager.add_message("assistant", response_content, session_id)
+    def stop_infer(self, session_id: str):
+        """Signal to stop the inference session."""
+        if session_id in self.stop_events:
+            self.stop_events[session_id].set()
+            return True
+        return False
 
-    def clean_model(self):
-        """Terminate the model process and wait for the port to be released."""
-        if self.model_loader:
+    def unload(self):
+        """
+        Cleanly unload the model by terminating the vLLM process and waiting for the port to be released.
+        """
+        with self.__class__._lock:
             if self.vllm_process:
                 self.vllm_process.terminate()
                 self.vllm_process.wait()
                 self.vllm_process = None
-                time.sleep(5)
-                self.wait_for_port_release(self.vllm_port, timeout=60)
-                return True
-        return False
+                self._wait_for_port_release(self.vllm_port)
+            self.__class__.instance = None
 
-    def wait_for_port_release(self, port, timeout=60):
-        """Wait until the given port is released by checking connection status.
-        to make release time faster(the TIME_WAIT value) use: `sudo sysctl -w net.ipv4.tcp_fin_timeout=2`
-        """
+    def _wait_for_port_release(self, port: int, timeout: int = 180):
+        """Wait until the given port is released."""
         start_time = time.time()
         while time.time() - start_time < timeout:
-            if not self.is_port_in_use(port):
+            if not self._is_port_in_use(port):
                 print(f"Port {port} has been released.")
                 return True
-            print(f"Waiting for port {port} to be released...")
             time.sleep(1)
         print(f"Warning: Port {port} was not released within {timeout} seconds.")
         return False
 
-    @staticmethod
-    def is_port_in_use(port):
-        """Check if the port is currently in use."""
+    def _is_port_in_use(self, port: int) -> bool:
+        """Check if the port is still in use."""
         for conn in psutil.net_connections():
             if conn.laddr.port == port:
-                print(f"Port {port} is in use with status: {conn.status}")
                 return True
-        print(f"Port {port} is free.")
         return False
-
-    def stop_infer(self, session_id):
-        """Stop the inference by setting the stop event and deleting the client."""
-        if session_id in self.stop_event:
-            self.stop_event[session_id].set()  # Signal to stop streaming
-            return True
-        return False
-
-    def clear_chat_history(self, session_id):
-        self.chat_manager.clear_history(session_id)
-
-    def load_chat_context(self, chat, session_id):
-        return self.chat_manager.load_chat_context(chat, session_id)

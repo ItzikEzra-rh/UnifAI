@@ -1,57 +1,70 @@
 from llm.register import RegisterModel
+from llm.register_adapter import AdapterRegistry
 import llm.model as llm_model
 from llm.hugging_face import HFTokenManager, HuggingFaceAPI
-from llm.loader.vllm_model_loader import VLLMModelLoader
 from llm.loader.model_loader import AbstractModelLoader
 
-
-def register_trained_model(hf_url, quantized):
-    return RegisterModel().register_model(hf_url, quantized)
-
-
-def load_model(model_id, context_length):
-    if AbstractModelLoader.model_loader:
-        return "There is already a loaded model, please unload the model first."
-    if AbstractModelLoader.is_model_loading:
-        return "There is a loading model process happening now."
-
-    with AbstractModelLoader.load_lock:
-        AbstractModelLoader.is_model_loading = True
-        model_info = RegisterModel().get_model(model_id)
-        if not model_info:
-            raise ValueError(f"Model with ID {model_id} not found")
-
-        base_model = model_info.get('base_model', 'Unknown')
-        project = model_info.get('project', 'Unknown')
-        context_length = context_length if context_length else model_info.get('context_length')
-        model_type = model_info.get('model_type', 'Unknown')
-        checkpoint = model_info.get('checkpoint', "")
-        huggingface_url = model_info.get('huggingface_url', 'Unknown')
-        hf_repo_id = model_info.get('hf_repo_id', "")
-        quantized = bool(model_info.get('quantized', True))
-        model = VLLMModelLoader(model_id, base_model, project, context_length,
-                                model_type, checkpoint, huggingface_url, hf_repo_id, quantized=quantized)
-        res = model.load_model()
-        AbstractModelLoader.model_loader = model
-        AbstractModelLoader.is_model_loading = False
-        return res
+from llm.register_adapter import AdapterRegistry
+from llm.loader.vllm_model_loader import VLLMModelLoader
 
 
-def inference(messages, temperature, max_new_tokens=4096, session_id=""):
-    model = AbstractModelLoader.model_loader
-    if not model:
-        raise ValueError("No model loaded. Please load a model first.")
-    return model.infer(messages, temperature, max_new_tokens=max_new_tokens, session_id=session_id)
+def register_adapter(repo_id, checkpoint_step, epoch, checkpoint_repo_id=None):
+    """
+    Register an adapter using the AdapterRegistry.
+    """
+    registry = AdapterRegistry()
+    return registry.register_adapter(repo_id, checkpoint_step, epoch, checkpoint_repo_id)
 
 
-def stop_inference(session_id):
-    if AbstractModelLoader.model_loader is not None:
-        return AbstractModelLoader.model_loader.stop_infer(session_id)
+def get_registered_models():
+    """
+    Retrieve all registered base models.
+    """
+    registry = AdapterRegistry()
+    return registry.get_all_models()
+
+
+def load_model(model_uid, max_len=22000, vllm_port=8000):
+    """
+    Load (or reuse) a vLLM model. If the same base model is already loaded, it returns that instance.
+    Otherwise, unloads the current model (if any) and loads the new one.
+    """
+    model = AdapterRegistry().get_base_model(model_uid)
+    adapters = AdapterRegistry().list_adapters(model_uid)
+    print(max_len)
+    return VLLMModelLoader.load(model.get("base_model_name"), max_len, model.get("quantized"), adapters, vllm_port)
+
+
+def inference(adapter_name: str,
+              messages: list,
+              temperature: float,
+              max_new_tokens: int = 16000,
+              session_id: str = "default"):
+    """
+    Perform inference using the loaded model.
+    """
+    if VLLMModelLoader.instance is None:
+        raise ValueError("No model is currently loaded. Please load a model first.")
+    return VLLMModelLoader.instance.infer(adapter_name, messages, temperature, max_new_tokens, session_id)
+
+
+def stop_inference(session_id: str):
+    """
+    Stop the current inference session.
+    """
+    if VLLMModelLoader.instance is not None:
+        return VLLMModelLoader.instance.stop_infer(session_id)
     return False
 
 
-def get_models():
-    return RegisterModel().get_models()
+def unload_model():
+    """
+    Unload the current model.
+    """
+    if VLLMModelLoader.instance is not None:
+        VLLMModelLoader.instance.unload()
+        return True
+    return False
 
 
 def save_hf_token(token):
@@ -66,19 +79,6 @@ def get_loaded_model():
     if AbstractModelLoader.model_loader:
         return AbstractModelLoader.model_loader.model_id
     return None
-
-
-def unload_model():
-    if AbstractModelLoader.is_model_loading:
-        return "There is a loading model process happening now."
-
-    with AbstractModelLoader.load_lock:
-        if AbstractModelLoader.model_loader:
-            AbstractModelLoader.model_loader.clean_model()
-            del AbstractModelLoader.model_loader
-            AbstractModelLoader.model_loader = None
-            return True
-        return False
 
 
 def clear_chat_history(session_id):
