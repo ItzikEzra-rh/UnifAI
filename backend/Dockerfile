@@ -3,7 +3,18 @@ FROM registry.access.redhat.com/ubi9/python-311
 #FROM registry.access.redhat.com/ubi9/python-39
 USER root
 RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
+RUN curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/ocp/stable/openshift-client-linux.tar.gz -o oc.tar.gz && \
+    tar -xvzf oc.tar.gz -C /usr/local/bin/ && \
+    rm -f oc.tar.gz && \
+    chmod +x /usr/local/bin/oc /usr/local/bin/kubectl
 
+RUN curl -sSL https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz -o helm.tar.gz && \ 
+    tar -xvzf helm.tar.gz && \ 
+    mv linux-amd64/helm /usr/local/bin/helm && \ 
+    chmod +x /usr/local/bin/helm && \ 
+    rm -rf linux-amd64 helm.tar.gz && \ 
+    dnf clean all
+    
 USER default
 ADD  --chown=default:root --chmod=777 ./backend $HOME/backend
 ADD  --chown=default:root --chmod=777 ./rag  $HOME/rag
