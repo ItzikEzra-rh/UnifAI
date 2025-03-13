@@ -14,7 +14,7 @@ RUN curl -sSL https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz -o helm.tar.gz
     chmod +x /usr/local/bin/helm && \ 
     rm -rf linux-amd64 helm.tar.gz && \ 
     dnf clean all
-    
+
 USER default
 ADD  --chown=default:root --chmod=777 ./backend $HOME/backend
 ADD  --chown=default:root --chmod=777 ./rag  $HOME/rag
@@ -36,6 +36,8 @@ RUN /bin/bash -c "source venv/bin/activate && \
     pip install -r requirementsBE.txt && \
     python -m spacy download en_core_web_sm"
 
+RUN /bin/bash -c "source venv/bin/activate && \
+    pip install -r ../prompt_lab/requirements.txt"
+
 # Set the default command to activate the virtual environment and keep the container running
 CMD ["/bin/bash", "-c", "source venv/bin/activate && python app.py"]
-
