@@ -13,5 +13,7 @@ networkx
 spacy
 #lsof
 matplotlib
+PyYAML
+transformers
 
 # Should run from the venv: python -m spacy download en_core_web_sm

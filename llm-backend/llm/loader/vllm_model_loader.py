@@ -41,7 +41,7 @@ class VLLMModelLoader(AbstractModelLoader):
         except Exception as e:
             raise RuntimeError(f"Failed to start vLLM server: {e}")
 
-    def wait_for_server(self, timeout=180, interval=5):
+    def wait_for_server(self, timeout=420, interval=5):
         """Wait for the vLLM server to start within a given timeout."""
         server_url = os.path.join(self.server_url, "health")
         start_time = time.time()
@@ -85,8 +85,8 @@ class VLLMModelLoader(AbstractModelLoader):
             stream=True,
             max_tokens=max_new_tokens,
             temperature=temperature,
-            frequency_penalty=0.6,
-            presence_penalty=0.4
+            # frequency_penalty=0.6,
+            # presence_penalty=0.4
         )
 
         # Stream the response content and check stop event to break

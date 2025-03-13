@@ -1,30 +1,25 @@
-### ---------------------------- stage 1
-FROM docker.io/nvidia/cuda:12.6.0-cudnn-runtime-ubi9 as base
+FROM images.paas.redhat.com/genie/vllm-openai:latest
 
-# Install necessary packages
-RUN dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
-RUN dnf update -y && \
-    dnf install -y python3-pip git cuda-toolkit  python3-devel
 
-# Upgrade pip and install virtualenv
+RUN echo "umask 000" >> /etc/profile
+
 RUN pip3 install --upgrade pip virtualenv
-
-# Create and activate a virtual environment
 RUN virtualenv venv
-
 ADD . .
 RUN /bin/bash -c "source venv/bin/activate &&  pip install -r requirementsBE.txt"
 
-### ---------------------------- stage 2
-FROM docker.io/nvidia/cuda:12.6.0-cudnn-runtime-ubi9
-RUN dnf config-manager --add-repo https://developer.download.nvidia.com/compute/cuda/repos/rhel9/x86_64/cuda-rhel9.repo
-RUN dnf update -y && \
-    dnf install -y git cuda-toolkit python3-devel vim less iputils telnet
-RUN dnf clean all
-#WORKDIR /root
-COPY --from=base venv venv
 
-ADD . .
-RUN ln -s /usr/local/cuda-12.6/targets/x86_64-linux/lib/stubs/libcuda.so /usr/lib/libcuda.so
-ENV TOKENIZERS_PARALLELISM=true BACKEND_ENV=production
-CMD ["/bin/bash", "-c", "source venv/bin/activate && python app.py"]
+ENV HF_HUB_ENABLE_HF_TRANSFER=1
+ENV MPLCONFIGDIR=/tmp/matplotlib
+ENV BACKEND_ENV=production
+ENV TRITON_CACHE_DIR=/tmp/.triton
+ENV VLLM_ENGINE_USE_TCP=1
+ENV NCCL_P2P_DISABLE=1
+ENV VLLM_CONFIG_ROOT=/tmp/.cache
+ENV VLLM_CACHE_ROOT=/tmp/.cache
+ENV BACKEND_ENV=production
+
+# Optimize caching & networking
+RUN rm -rf /.cache && mkdir /.cache && chmod -R 777 /.cache
+RUN mkdir -p /root/.cache/huggingface/ && chmod 777 /root/.cache
+ENTRYPOINT ["/bin/bash", "-c", "source venv/bin/activate && python app.py"]

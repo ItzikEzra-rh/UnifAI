@@ -47,7 +47,7 @@ def inference(prompt, temperature=None, session_id=""):
     "messages": fields.List(fields.Dict(), missing=[], required=False, data_key="messages"),
     "temperature": fields.Str(data_key="temperature", required=False, missing=None),
     "session_id": fields.Str(data_key="sessionId", required=False, missing="N/A"),
-    "max_gen_len": fields.Str(data_key="maxGenLen", required=False, missing="4096"),
+    "max_gen_len": fields.Str(data_key="maxGenLen", required=False, missing="12000"),
 })
 def inference_post(messages, temperature, session_id, max_gen_len):
     return Response(llm_provider.inference(messages,

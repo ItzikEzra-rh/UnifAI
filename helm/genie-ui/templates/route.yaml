@@ -3,6 +3,7 @@ kind: Route
 metadata:
   annotations:
     openshift.io/host.generated: "true"
+    haproxy.router.openshift.io/rewrite-target: /
   labels:
     {{- include "genie-ui.labels" . | nindent 4 }}
   name: {{ include "genie-ui.fullname" . }}
