@@ -24,40 +24,47 @@ def register_adapter(repo_id, checkpoint_step, epoch):
     return llm_provider.register_adapter(repo_id, checkpoint_step, epoch)
 
 
+# @backend_bp.route("/loadModel", methods=["GET"])
+# @from_query({
+#     "model_id": fields.Str(data_key="modelId", required=True),
+#     # "context_length": fields.Str(data_key="contextLength", missing=None)
+# })
+# def load_model(model_id):
+#     return jsonify(llm_provider.load_model(model_id))
+
 @backend_bp.route("/loadModel", methods=["GET"])
 @from_query({
-    "model_id": fields.Str(data_key="modelId", required=True),
-    # "context_length": fields.Str(data_key="contextLength", missing=None)
+    "adapter_id": fields.Str(data_key="adapterId", required=True)
 })
-def load_model(model_id):
-    return jsonify(llm_provider.load_model(model_id))
+def load_model(adapter_id):
+    return jsonify(llm_provider.load_model(adapter_id))
 
 
-@backend_bp.route("/inference", methods=["GET"])
-@from_query({
-    "adapter_name": fields.Str(data_key="adapterName", required=True),
-    "prompt": fields.Str(data_key="prompt", required=True),
-    "temperature": fields.Str(data_key="temperature", required=False, default=None),
-    "session_id": fields.Str(data_key="sessionId", required=False, default="N/A"),
-})
-def inference(adapter_name, prompt, temperature=None, session_id=""):
-    return Response(llm_provider.inference(adapter_name,
-                                           prompt,
-                                           temperature,
-                                           session_id=session_id),
-                    content_type='text/plain')
+# @backend_bp.route("/inference", methods=["GET"])
+# @from_query({
+#     "adapter_uid": fields.Str(data_key="adapterUid", required=True),
+#     "prompt": fields.Str(data_key="prompt", required=True),
+#     "temperature": fields.Str(data_key="temperature", required=False, default=None),
+#     "session_id": fields.Str(data_key="sessionId", required=False, default="N/A"),
+# })
+# def inference(adapter_uid, prompt, temperature=None, session_id=""):
+#     return Response(llm_provider.inference(adapter_uid,
+#                                            prompt,
+#                                            temperature,
+#                                            session_id=session_id),
+#                     content_type='text/plain')
 
 
 @backend_bp.route("/inference", methods=["POST"])
 @from_body({
-    "adapter_name": fields.Str(data_key="adapterName", required=False, missing=None),
+    "adapter_uid": fields.Str(data_key="adapterUid", required=False, missing=None),
     "messages": fields.List(fields.Dict(), missing=[], required=False, data_key="messages"),
     "temperature": fields.Str(data_key="temperature", required=False, missing=None),
     "session_id": fields.Str(data_key="sessionId", required=False, missing="N/A"),
-    "max_gen_len": fields.Str(data_key="maxGenLen", required=False, missing="12000"),
+    "max_gen_len": fields.Str(data_key="maxGenLen", required=False, missing="4000"),
 })
-def inference_post(adapter_name, messages, temperature, session_id, max_gen_len):
-    return Response(llm_provider.inference(adapter_name,
+def inference_post(adapter_uid, messages, temperature, session_id, max_gen_len):
+    return Response(llm_provider.inference(adapter_uid,
                                            messages,
                                            temperature,
                                            max_new_tokens=int(max_gen_len),
