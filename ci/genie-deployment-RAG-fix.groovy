@@ -402,29 +402,31 @@ pipeline {
                     script {
                       module = "helmfile"
                     } 
-                    cleanWorkspace(module) 
-                    withCredentials([string(credentialsId: 'RHOI-service-token', variable: 'token')]){
-                        echo("Creating helm deployment pod")
-                        sh("oc login --token=${token} --server=${ClusterAddress}")
-                        sh("oc project ${params.namespace}")
-                        echo("Deploy Helm container")
-                        sh("podman run -dt --workdir /helm/charts -v .:/helm/charts:Z -v ~/.kube/:/helm/.kube:Z --name helmfile ghcr.io/helmfile/helmfile:latest bash")
-                        echo("Removing previous pods")
-                        sh("podman exec -t helmfile bash -c 'pods=\$(helmfile list| grep genie|awk \"{ print \$1}\") && helmfile destroy \$pods'")
-                        echo("Deploy/update Helm chart")
-                        sh("podman exec -t helmfile helmfile apply")
-                        script{
-                            GUI_EP = sh(
-                                script: 'oc get route genie-ui -n tag-ai--runtime-int -o jsonpath="{.spec.host}"',
-                                returnStdout: true
-                                ).trim()
-                        }
-                        echo("Deploy completed successfuly")
-                        echo("Genie UI is available at ${GUI_EP}")
+                    echo "deploy!!!!"
+                    GUI_EP = sh("echo 1234")
+                    // cleanWorkspace(module) 
+                    // withCredentials([string(credentialsId: 'RHOI-service-token', variable: 'token')]){
+                    //     echo("Creating helm deployment pod")
+                    //     sh("oc login --token=${token} --server=${ClusterAddress}")
+                    //     sh("oc project ${params.namespace}")
+                    //     echo("Deploy Helm container")
+                    //     sh("podman run -dt --workdir /helm/charts -v .:/helm/charts:Z -v ~/.kube/:/helm/.kube:Z --name helmfile ghcr.io/helmfile/helmfile:latest bash")
+                    //     echo("Removing previous pods")
+                    //     sh("podman exec -t helmfile bash -c 'pods=\$(helmfile list| grep genie|awk \"{ print \$1}\") && helmfile destroy \$pods'")
+                    //     echo("Deploy/update Helm chart")
+                    //     sh("podman exec -t helmfile helmfile apply")
+                    //     script{
+                    //         GUI_EP = sh(
+                    //             script: 'oc get route genie-ui -n tag-ai--runtime-int -o jsonpath="{.spec.host}"',
+                    //             returnStdout: true
+                    //             ).trim()
+                    //     }
+                    //     echo("Deploy completed successfuly")
+                    //     echo("Genie UI is available at ${GUI_EP}")
                         
 
-                    }
-                    cleanWorkspace(module)
+                    // }
+                    // cleanWorkspace(module)
                 }
 
             }
