@@ -37,7 +37,7 @@ def load_model(adapter_id):
     "messages": fields.List(fields.Dict(), missing=[], required=False, data_key="messages"),
     "temperature": fields.Str(data_key="temperature", required=False, missing=None),
     "session_id": fields.Str(data_key="sessionId", required=False, missing="N/A"),
-    "max_gen_len": fields.Str(data_key="maxGenLen", required=False, missing="4000"),
+    "max_gen_len": fields.Str(data_key="maxGenLen", required=False, missing="16000"),
 })
 def inference_post(adapter_uid, messages, temperature, session_id, max_gen_len):
     return Response(llm_provider.inference(adapter_uid,

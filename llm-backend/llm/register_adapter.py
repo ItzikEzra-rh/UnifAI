@@ -11,7 +11,7 @@ class AdapterRegistry:
     into a MongoDB collection. Each base model document contains:
       - base_model_name: the name of the base model.
       - quantized: a boolean indicating whether the model is quantized.
-      - modelType: a value indicating the model type from the adapter.
+      - model_type: a value indicating the model type from the adapter.
       - context_length: the maximum context_length among all adapters for the base model.
       - adapters: a list of adapter records (card data), each with its own unique adapter_uid.
       - uid: a unique identifier for the base model document.
@@ -95,7 +95,7 @@ class AdapterRegistry:
           1. Download the card.json file and checkpoint files.
           2. Enrich the card data with the local checkpoint path and update the adapter name (appending epoch).
           3. Generate a unique adapter_uid for the adapter (if new).
-          4. Extract the base model name, quantized flag, modelType, and context_length from the card data.
+          4. Extract the base model name, quantized flag, model_type, and context_length from the card data.
           5. Insert a new base model document into Mongo or update an existing one by adding/updating the adapter.
           6. Ensure a default adapter with project "ALL" exists in the base model's adapters.
           7. Update the base model's context_length with the maximum context_length among its adapters.
@@ -104,7 +104,7 @@ class AdapterRegistry:
         :param checkpoint_step: Checkpoint step to download.
         :param epoch: Epoch number to append to the adapter name.
         :param checkpoint_repo_id: Repository ID for checkpoints. If None, defaults to repo_id.
-        :return: A summary dictionary with the base model uid, adapter name, adapter_uid, quantized flag, modelType, and context_length.
+        :return: A summary dictionary with the base model uid, adapter name, adapter_uid, quantized flag, model_type, and context_length.
         :raises ValueError: If required keys are missing in the card data.
         :raises Exception: For any other errors during registration.
         """
@@ -114,9 +114,9 @@ class AdapterRegistry:
 
             card_data = self._download_card_data(repo_id)
 
-            # Ensure modelType is in the card data; set a default value if it's missing.
-            if "modelType" not in card_data:
-                card_data["modelType"] = "default"
+            # Ensure model_type is in the card data; set a default value if it's missing.
+            if "model_type" not in card_data:
+                card_data["model_type"] = "default"
 
             # Extract context_length from card_data; default to 0 if missing.
             card_data["context_length"] = card_data.get("context_length", 0)
@@ -140,8 +140,8 @@ class AdapterRegistry:
             if quantized is None:
                 raise ValueError("Quantized flag is missing in card data.")
 
-            # Retrieve the modelType value from card_data
-            model_type = card_data["modelType"]
+            # Retrieve the model_type value from card_data
+            model_type = card_data["model_type"]
 
             existing_doc = self.collection.find_one({"base_model_name": base_model})
             if existing_doc:
@@ -169,7 +169,7 @@ class AdapterRegistry:
                     {"$set": {
                         "quantized": quantized,
                         "adapters": adapters,
-                        "modelType": model_type,
+                        "model_type": model_type,
                         "context_length": max_context_length
                     }}
                 )
@@ -179,7 +179,7 @@ class AdapterRegistry:
                     "base_model_name": base_model,
                     "quantized": quantized,
                     "adapters": [card_data],
-                    "modelType": model_type
+                    "model_type": model_type
                 }
                 new_doc["adapters"] = self._ensure_default_adapter(new_doc["adapters"], base_model, quantized)
                 # Compute the maximum context_length among all adapters.
@@ -195,7 +195,7 @@ class AdapterRegistry:
                 "adapter": adapter_name,
                 "adapter_uid": card_data["adapter_uid"],
                 "quantized": quantized,
-                "modelType": model_type,
+                "model_type": model_type,
                 "context_length": max_context_length
             }
         except Exception as e:
@@ -279,7 +279,7 @@ class AdapterRegistry:
         """
         Retrieve all base models from the collection.
 
-        :return: A list of dictionaries containing base model names, quantized flags, adapters, modelType, and context_length.
+        :return: A list of dictionaries containing base model names, quantized flags, adapters, model_type, and context_length.
         """
         try:
             models = list(self.collection.find({}, {"_id": 0}))

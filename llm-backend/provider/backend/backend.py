@@ -31,6 +31,10 @@ def load_model(adapter_uid, vllm_port=8000):
     model_uid = base_model_doc.get("uid")
     model_max_len = base_model_doc.get("context_length")
     adapters = registry.list_adapters(model_uid)
+    model = VLLMModelLoader.instance
+    if model:
+        if model.current_adapter_uid == adapter_uid:
+            return adapter_uid
     # Load the vLLM model, passing along the current adapter UID.
     VLLMModelLoader.load(
         base_model_doc.get("base_model_name"),
@@ -39,7 +43,7 @@ def load_model(adapter_uid, vllm_port=8000):
         adapters,
         vllm_port,
         current_adapter_uid=adapter_uid)
-    return True
+    return adapter_uid
 
 
 def inference(adapter_uid: str,
