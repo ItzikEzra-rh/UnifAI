@@ -700,7 +700,7 @@ const ChatComponent: React.FC = () => {
 
   const data = React.useMemo(() => (selectedModel ? [selectedModel] : []), [selectedModel]);
   
-  const ReformatText = (text: string, modelType: 'llama' | 'qwen') => {
+  const ReformatText = (text: string, modelType: 'llama' | 'qwen', enableCodeValidation: boolean) => {
     const regularText = (line: string, type: RegExp, style: string) => {
       return line.replace(type, (_, text) => `<${style}>${text}</${style}>`) + '\n';
     };
@@ -776,7 +776,7 @@ const ChatComponent: React.FC = () => {
           // Closing code block after printing inside of it up until now
           const language = Prism.languages[currentLanguage] || Prism.languages.javascript;
           const highlightedCode = Prism.highlight(codeBuffer.trim(), language, currentLanguage);
-          formattedText += `${highlightedCode}</code></pre>${createValidationButton(codeBuffer.trim())}`;
+          formattedText += enableCodeValidation? `${highlightedCode}</code></pre>${createValidationButton(`${CODE}\n` + codeBuffer.trim() + CODE)}` : `${highlightedCode}</code></pre>`;
           insideCodeBlock = false;
           codeBuffer = '';
         } else {
@@ -814,7 +814,7 @@ const ChatComponent: React.FC = () => {
     if (insideCodeBlock) {
       const language = Prism.languages[currentLanguage] || Prism.languages.javascript;
       const highlightedCode = Prism.highlight(codeBuffer.trim(), language, currentLanguage);
-      formattedText += `${highlightedCode}</code></pre>${createValidationButton(codeBuffer.trim())}`;
+      formattedText += enableCodeValidation? `${highlightedCode}</code></pre>${createValidationButton(`${CODE}\n` + codeBuffer.trim() + CODE)}` : `${highlightedCode}</code></pre>`;
     }
   
     return formattedText;
@@ -865,7 +865,7 @@ const ChatComponent: React.FC = () => {
                   <div key={message.id} style={{ position: 'relative', paddingBottom: '40px' }}>
                     <Message
                       model={{
-                        message: modelType ? ReformatText(message.text, modelType) : message.text, 
+                        message: modelType ? ReformatText(message.text, modelType, true) : message.text, 
                         sentTime: 'just now',
                         sender: message.sender === 'user' ? 'You' : 'Bot',
                         direction: message.sender === 'user' ? 'outgoing' : 'incoming',

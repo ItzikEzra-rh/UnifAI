@@ -7,12 +7,19 @@ from .meta_data_extractor import MetaDataExtractorBase
 nlp = spacy.load("en_core_web_sm")
 
 class EcogoMetaDataExtractor(MetaDataExtractorBase):
-    TOP_100_TERMS = ['err', 'test', 'tsparam', 'error', 'cluster', 'pod', 'node', 'namespace', 'reportxml', 'func', 'module', 'image', 'policy', 'deployment', 'cgu', 'label', 'workload', 'ginkgo',
+    TOP_100_TERMS_ORIG = ['err', 'test', 'tsparam', 'error', 'cluster', 'pod', 'node', 'namespace', 'reportxml', 'func', 'module', 'image', 'policy', 'deployment', 'cgu', 'label', 'workload', 'ginkgo',
                     'object', 'definition', 'time', 'version', 'minute', 'spec', 'operator', 'block', 'hub', 'agentserviceconfig', 'network', 'configmap', 'step', 'spk', 'status', 'iov', 'service',
                     'worker', 'string', 'package', 'configuration', 'testdata', 'cgubuilder', 'container', 'glog', 'spoke', 'resource', 'config', 'code', 'reboot', 'address', 'nil', 'robot', 'sriov',
                     'netconfig', 'ibu', 'kmm', 'ztp', 'infraenv', 'assert', 'validation', 'allclose', 'tmm', 'kmmparam', 'fmt', 'helper', 'moduleloadercontainer', 'ztpconfig', 'dns', 'spkcommon', 'app',
                     'traffic', 'default', 'udp', 'resolution', 'var', 'interface', 'upgrade', 'rdscorecommon', 'case', 'mce', 'describe', 'testnamespace', 'bgp', 'workerlabelmap', 'client', 'state',
                     'value', 'kmmparams', 'server', 'list', 'check', 'message', 'secret', 'source', 'master', 'apiclient', 'modulename', 'disk', 'kernel', 'agentclusterinstall', 'argo']
+    
+    TOP_100_TERMS = ['tsparam', 'error', 'cluster', 'pod', 'node', 'namespace', 'reportxml', 'module', 'image', 'policy', 'deployment', 'cgu', 'label', 'workload',
+                'definition', 'time', 'version', 'minute', 'spec', 'operator', 'block', 'hub', 'agentserviceconfig', 'network', 'configmap', 'step', 'spk', 'status', 'iov', 'service',
+                'worker', 'configuration', 'testdata', 'cgubuilder', 'container', 'spoke', 'resource', 'config', 'code', 'reboot', 'address', 'sriov',
+                'netconfig', 'ibu', 'kmm', 'ztp', 'infraenv', 'assert', 'validation', 'allclose', 'tmm', 'kmmparam', 'helper', 'moduleloadercontainer', 'ztpconfig', 'dns', 'spkcommon', 'app',
+                'traffic', 'udp', 'resolution', 'interface', 'upgrade', 'rdscorecommon', 'mce', 'testnamespace', 'bgp', 'workerlabelmap', 'client', 'state',
+                'kmmparams', 'server', 'list', 'message', 'secret', 'source', 'master', 'apiclient', 'modulename', 'disk', 'kernel', 'agentclusterinstall', 'argo']
 
     @staticmethod
     def is_technical_term(word: str) -> bool:
