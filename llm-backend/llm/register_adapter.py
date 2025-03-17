@@ -80,7 +80,7 @@ class AdapterRegistry:
         """
         if not any(adapter.get("project") == "ALL" for adapter in adapters):
             default_adapter = {
-                "name": "",
+                "name": base_model,
                 "base_model": base_model,
                 "quantized": quantized,
                 "project": "ALL",
