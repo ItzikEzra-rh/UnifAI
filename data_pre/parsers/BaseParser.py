@@ -1,8 +1,6 @@
 import os
 import json
 import abc
-from data_pre.parsers.components.tree_sitter_parser import TreeSitterParser
-from data_pre.parsers.components.robot_parser import RobotParser
 
 class BaseParser(abc.ABC):
     def __init__(self, repo_local_path, file_paths, project_name, organization_name):
