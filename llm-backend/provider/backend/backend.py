@@ -24,16 +24,17 @@ def get_registered_models():
     return registry.get_all_models()
 
 
-def load_model(adapter_uid, max_len=8000, vllm_port=8000):
+def load_model(adapter_uid, vllm_port=8000):
     registry = AdapterRegistry()
     # Retrieve the base model document based on the provided adapter_uid.
     base_model_doc = registry.get_base_model_by_adapter(adapter_uid)
     model_uid = base_model_doc.get("uid")
+    model_max_len = base_model_doc.get("context_length")
     adapters = registry.list_adapters(model_uid)
     # Load the vLLM model, passing along the current adapter UID.
     VLLMModelLoader.load(
         base_model_doc.get("base_model_name"),
-        max_len,
+        model_max_len,
         base_model_doc.get("quantized"),
         adapters,
         vllm_port,
