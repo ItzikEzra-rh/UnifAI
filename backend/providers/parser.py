@@ -1,13 +1,11 @@
-import sys
-import os
+from flask import jsonify
 from backend.be_utils.files_cleaner import FileCleaner
 from backend.be_utils.git.utils import get_git_api
 from backend.providers.forms import get_form, update_form_status
 from backend.providers.hf import upload_json_to_hf
-from shared.enums import FormStatus
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from data_pre.parsers.RobotParserWrapper import RobotParserWrapper
 from data_pre.parsers.TreeSitterParserWrapper import TreeSitterParserWrapper
+from shared.enums import FormStatus
 
 def get_parser(repo_local_path, file_paths, framework, project_name, organization_name):
     """
