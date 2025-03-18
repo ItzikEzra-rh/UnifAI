@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Box, Button, CircularProgress, IconButton, Checkbox, FormControlLabel } from '@mui/material';
+import { Box, Button, CircularProgress, IconButton, Checkbox, FormControlLabel, FormControl, InputLabel, MenuItem, Select, SelectChangeEvent } from '@mui/material';
 import axios from '../../http/axiosConfig';
 import ButtonGroup from '@mui/material/ButtonGroup';
 import CollapseIcon from '@mui/icons-material/Remove';
@@ -10,6 +10,7 @@ import { SimpleTreeView, TreeItem } from '@mui/x-tree-view';
 import "./GitTree.css";
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { fetchExtensions } from '../../http/extensions';
 
 interface ProjectFormDetails {
   gitUrl: string;
@@ -26,6 +27,8 @@ interface PropTypes {
   setChecked: (checked: string[]) => void;
   loading: boolean;
   setLoading: (loading: boolean) => void;
+  availableExtensions: string[];
+  testsList: TestItem[];
 }
 
 interface TreeItemData {
@@ -111,19 +114,49 @@ export function isPathInDb(dbList: {[key: string]: boolean}, node: string) {
     return dbList[node.substring(1)];
 }
 
-const TreeButtons: React.FC<{ collapse: () => void; expand: () => void; checked: boolean; onCheckboxChange: () => void }> = ({ collapse, expand, checked, onCheckboxChange }) => (
-  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
-    <FormControlLabel
-      control={<Checkbox checked={checked} onChange={onCheckboxChange} />}
-      label={checked ? 'Deselect All' : 'Select All'} // The label text
-    />
-    <ButtonGroup>
-      <Button title="Collapse all" onClick={collapse} startIcon={<CollapseIcon />} className='tree-button' />
-      <Button title="Expand all" onClick={expand} startIcon={<ExpandIcon />} className='tree-button' />
-    </ButtonGroup>
-  </div>
-);
+const TreeButtons: React.FC<{ 
+  collapse: () => void; 
+  expand: () => void; 
+  checked: boolean; 
+  onCheckboxChange: () => void;
+  handleExtensionChange: (ext: SelectChangeEvent<string[]>) => void;
+  selectedExtensions: string[];
+  availableExtensions: string[];
+}> = ({ collapse, expand, checked, onCheckboxChange, handleExtensionChange, selectedExtensions, availableExtensions}) => {
+  
+  return (
+    <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px'}}>
+      <ButtonGroup sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+          <FormControlLabel
+              control={<Checkbox checked={checked} onChange={onCheckboxChange} />}
+              label={checked ? 'Deselect All' : 'Select All'}
+            />
+          <FormControl sx={{ minWidth: 400 }}>
+          <InputLabel>By Extensions</InputLabel>
+          <Select
+            multiple
+            label='By Extensions'
+            value={selectedExtensions}
+            onChange={handleExtensionChange}
+            renderValue={(selected) => selected.join(', ')}
+          >
+           {availableExtensions.map((ext) => (
+              <MenuItem key={ext} value={ext}>
+                {ext}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+       
+      </ButtonGroup>
 
+      <ButtonGroup>
+        <Button title="Collapse all" onClick={collapse} startIcon={<CollapseIcon />} className='tree-button' />
+        <Button title="Expand all" onClick={expand} startIcon={<ExpandIcon />} className='tree-button' />
+      </ButtonGroup>
+    </div>
+  );
+};
 /**
  * TreeNode Component
  * 
@@ -248,8 +281,9 @@ const GitForm: React.FC<PropTypes> = ({
           setChecked,
           loading,
           setLoading,
+          availableExtensions,
+          testsList
         }) => {
-  const { gitUrl, gitCredentialKey, gitBranchName, gitFolderPath } = projectFormDetails;
   const [isOpen, setIsOpen] = useState(false);
   const [checkedDB, setCheckedDB] = useState<string[]>([]);
   const [checkboxChecked, setCheckboxChecked] = useState(false);
@@ -259,19 +293,12 @@ const GitForm: React.FC<PropTypes> = ({
   const [nodes, setNodes] = useState<TreeItemData[]>([]);
   const [testsInDB, setTestsInDB] = useState<{ [key: string]: boolean }>({});
   const [testContentOpen, setTestContentOpen] = useState(false);
+  const [selectedExtensions, setSelectedExtensions] = useState<string[]>([]);
+
 
   const getTestsTree = useCallback(() => {
-    setLoading(true);
-    axios.get('/api/git/files', {
-      params: {
-        gitUrl,
-        gitCredentialKey,
-        gitFolderPath,
-        gitBranchName
-      },
-    }).then(response => buildTreeWrapper(response.data.result))
-      .catch(() => setLoading(false));
-  }, [projectFormDetails]);
+    buildTreeWrapper(testsList)
+  }, [testsList]);
 
 
   const buildTreeWrapper = (testsList: TestItem[]) => {
@@ -297,25 +324,55 @@ const GitForm: React.FC<PropTypes> = ({
     setExpanded([]);
     getTestsTree();
   };
-
-  const accumulatePath = (nodes: TreeItemData) => {
-    let tmpArr: string[] = [];
+  
+  const accumulatePath = (nodes: TreeItemData, extensionFilters: string[] = []) => {
+    let selectedPaths: string[] = [];
+  
     if (nodes.children && nodes.children.length > 0) {
-      tmpArr = Array.prototype.concat(...nodes.children.map(child => accumulatePath(child)));
-      tmpArr.push(nodes.value);
-      return tmpArr;
+      const childSelections = nodes.children.flatMap(child => accumulatePath(child, extensionFilters));
+      const allChildrenSelected = nodes.children.every(child => childSelections.includes(child.value));
+      if (allChildrenSelected) {
+        selectedPaths.push(nodes.value);
+      }
+      selectedPaths = [...selectedPaths, ...childSelections];
     }
-    return [nodes.value];
+  
+    if (!nodes.children || nodes.children.length === 0) {
+      if (extensionFilters.length === 0 || extensionFilters.some(ext => nodes.value.endsWith(ext))) {
+        selectedPaths.push(nodes.value);
+      }
+    }
+  
+    return selectedPaths;
   };
-
+  
   const expandAll = () => {
     setExpanded(Array.prototype.concat(...nodes.map(item => accumulatePath(item))));
   };
 
   const onCheckboxChange = () => {
-    setCheckboxChecked(prevStatusCheckboxChecked => !prevStatusCheckboxChecked);
-    setChecked(checkboxChecked ? [] : nodes.map(item => accumulatePath(item)).flat())
-  }
+    const newCheckedState = !checkboxChecked;
+  
+    if (newCheckedState) {
+      setSelectedExtensions([]); // Clear multi-select when Select All is checked
+      setChecked(nodes.map(item => accumulatePath(item)).flat());
+    } else {
+      setChecked([]);
+    }
+  
+    setCheckboxChecked(newCheckedState);
+  };
+
+  const handleExtensionChange = (event: SelectChangeEvent<string[]>) => {
+    const values = event.target.value as string[];
+    setSelectedExtensions(values);
+    onExtensionCheckboxChange(values);
+  };
+
+  const onExtensionCheckboxChange = (extensions: string[]) => {
+    setCheckboxChecked(false);
+    setChecked(extensions.length === 0 ? [] : nodes.map(node => accumulatePath(node, extensions)).flat());
+  };
 
   useEffect(() => {
     if (triggerOpen) {
@@ -339,7 +396,7 @@ const GitForm: React.FC<PropTypes> = ({
         </div>
       ) : (
         <div className="form-section">
-          <TreeButtons collapse={() => setExpanded([])} expand={expandAll} checked={checkboxChecked} onCheckboxChange={onCheckboxChange} />
+          <TreeButtons availableExtensions={availableExtensions} selectedExtensions={selectedExtensions} handleExtensionChange={handleExtensionChange} collapse={() => setExpanded([])} expand={expandAll} checked={checkboxChecked} onCheckboxChange={onCheckboxChange} />
           <Box sx={{maxHeight: "400px", overflow: "auto", border: "1px solid #ccc", borderRadius: "4px"}}>
             <SimpleTreeView
               multiSelect
@@ -364,7 +421,7 @@ const GitForm: React.FC<PropTypes> = ({
               ))}
             </SimpleTreeView>
           </Box>
-          <div className="tests-selected">{countSelectedTests(nodes, checked)} Tests Selected</div>
+          <div className="tests-selected">{countSelectedTests(nodes, checked)} Files Selected</div>
         </div>
       )}
     </>

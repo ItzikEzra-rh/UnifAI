@@ -15,5 +15,5 @@ spacy
 matplotlib
 PyYAML
 transformers
-
+tree-sitter==0.21.3
 # Should run from the venv: python -m spacy download en_core_web_sm

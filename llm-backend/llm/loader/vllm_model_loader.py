@@ -146,9 +146,10 @@ class VLLMModelLoader:
             # Add user prompt to chat history (token limit check is handled by ChatManager)
             for message in messages:
                 self.chat_manager.add_message(message["role"], message["content"], session_id)
+            # print(self.chat_manager.get_chat_history(session_id))
             response = client.chat.completions.create(
                 model=model_name,
-                messages=messages,
+                messages=self.chat_manager.get_chat_history(session_id),
                 stream=True,
                 max_tokens=max_new_tokens,
                 temperature=temperature,
