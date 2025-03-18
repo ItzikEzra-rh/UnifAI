@@ -37,6 +37,15 @@ extraSecrets:
           {
             "name": "/"
           }
+        ],
+        "permissions": [
+          {
+            "user": "{{ .Values.auth.username }}",
+            "vhost": "/",
+            "configure": ".*",
+            "write": ".*",
+            "read": ".*"
+          }
         ]
       }
 loadDefinition:
