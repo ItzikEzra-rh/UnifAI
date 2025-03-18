@@ -14,8 +14,8 @@ def make_celery():
     host = config.get("dpr", "rabbitmq_host")
     port = config.get("dpr", "rabbitmq_port")
     
-    celery_app = Celery('celery_reviewer',
-                        broker=host.format(port=port),
+    celery_app = Celery('celery_backend',
+                        broker=f"{host}:{port}",
                         # broker="pyamqp://guest:guest@localhost//",
                         backend="rpc://",
                         include=['celery_app.tasks'])  
