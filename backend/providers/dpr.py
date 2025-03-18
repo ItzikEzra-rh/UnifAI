@@ -18,8 +18,8 @@ def helm_install(user_data):
     api_url = yaml_data["global"]["api_url"]
     namespace = yaml_data["global"]["namespace"]
 
-    helm = DPR(hf_token,api_url, namespace)
-    helm_install = helm.run_dpr_command(DPRCommands.INSTALL, deployment_name=deployment_name,values=file_path)
+    helm = DPR(hf_token,api_url)
+    helm_install = helm.run_dpr_command(DPRCommands.INSTALL, deployment_name=deployment_name, values=file_path, namespace=namespace)
 
     if helm_install["status"] == "success":
         data = json.loads(helm_install["data"])
@@ -47,8 +47,8 @@ def helm_upgrade(user_data):
 
     creds = get_config_creds(id)
     if creds:
-        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"], namespace=creds["namespace"])
-        helm_upgrade = helm.run_dpr_command(DPRCommands.UPGRADE, deployment_name=creds["deployment_name"],helm_set_params=helm_set_params_str)
+        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
+        helm_upgrade = helm.run_dpr_command(DPRCommands.UPGRADE, deployment_name=creds["deployment_name"], helm_set_params=helm_set_params_str, namespace=creds["namespace"])
 
         if helm_upgrade["status"] == "success":
             result = Collections.by_name('dpr').update_one(
@@ -64,8 +64,8 @@ def helm_upgrade(user_data):
 def helm_uninstall(id, status):
     creds = get_config_creds(id)
     if creds:
-        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"], namespace=creds["namespace"])
-        helm_uninstall = helm.run_dpr_command(DPRCommands.UNINSTALL, deployment_name=creds["deployment_name"])
+        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
+        helm_uninstall = helm.run_dpr_command(DPRCommands.UNINSTALL, deployment_name=creds["deployment_name"], namepace=creds["namespace"])
         Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"status": status}, "$currentDate": {"finished_running": True}})
         return helm_uninstall
 
@@ -74,8 +74,8 @@ def helm_uninstall(id, status):
 def helm_status(id):
     creds = get_config_creds(id)
     if creds:
-        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"], namespace=creds["namespace"])
-        status = helm.run_dpr_command(DPRCommands.STATUS, deployment_name=creds["deployment_name"])
+        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
+        status = helm.run_dpr_command(DPRCommands.STATUS, deployment_name=creds["deployment_name"], namespace=creds["namespace"])
         return status
 
 
@@ -137,7 +137,7 @@ def helm_metrics(id, name):
 @mongo
 def helm_route(id):
     creds = get_config_creds(id)
-    helm = DPR(api_url=creds["api_url"], token=creds["hf_token"], namespace=creds["namespace"])
+    helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
     
     routes = {
         "release_rmq_route": DPRCommands.RMQROUTE,
@@ -147,8 +147,8 @@ def helm_route(id):
     updated_routes = {}
     for route_key, command in routes.items():
         if not creds[route_key]:
-            # route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], spec="{.metadata.name}")
-            route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], spec="{.status.loadBalancer.ingress[0].hostname}")
+            route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], namespace=creds["namespace"], spec="{.metadata.name}")
+            # route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], namespace=creds["namespace"], spec="{.status.loadBalancer.ingress[0].hostname}")
 
             if route_result["data"]:
                 update_result = Collections.by_name("dpr").update_one(

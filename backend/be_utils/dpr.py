@@ -14,7 +14,7 @@ class DPRCommands(Enum):
 
 
 class DPR:
-    def __init__(self, api_url, token, namespace):
+    def __init__(self, api_url, token, namespace=None):
         self.api_url = api_url
         self.token = token
         self.namespace = namespace
