@@ -12,6 +12,7 @@ import SyntaxHighlighter from 'react-syntax-highlighter';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { ConfirmationModal } from '../shared/ConfirmationModal';
 import { TableTooltip } from '../shared/TableTooltip';
+import { displayedDeployments, dprDelete, dprUninstall, getConfigFile, getMetrics, runningDeployments } from '../../http/dpr';
 
 const FINISHED_STATUSES = ["DONE", "UNINSTALLED"]
 
@@ -65,8 +66,8 @@ const ConfigModal = ({ datasetId }: { datasetId: string }) => {
   useEffect(() => {
     const fetchConfig = async () => {
       try {
-        const response = await axios.get(`/api/dpr/getConfigFile`, { params: { id: datasetId } });
-        setConfig(response.data || {});
+        const response = await getConfigFile(datasetId);
+        setConfig(response || {});
       } catch (error) {
         console.error('Error fetching config:', error);
       }
@@ -102,9 +103,9 @@ const DatasetPreparationTable: React.FC = () => {
 
   const fetchListData = async () => {
     try {
-      const response = await axios.get('/api/dpr/displayDeployments');
-      if (Array.isArray(response.data)) {
-        setDatasets(response.data); 
+      const response = await displayedDeployments();
+      if (Array.isArray(response)) {
+        setDatasets(response); 
       } else {
         console.error("Expected array but got:", response.data);
       }
@@ -120,8 +121,8 @@ const DatasetPreparationTable: React.FC = () => {
   useEffect(() => {
     const fetchMetrics = async () => {
         try {
-            const runningResponse = await axios.get('/api/dpr/currentlyRunningDeployment');
-            const runningDatasets = runningResponse.data;
+            const runningResponse = await runningDeployments();
+            const runningDatasets = runningResponse;
             setCurrentlyRunningDatasets(runningDatasets);
 
             const currentlyRunningIds = new Set(runningDatasets.map((item: any) => item._id));
@@ -130,9 +131,8 @@ const DatasetPreparationTable: React.FC = () => {
                 if (!currentlyRunningIds.has(item._id)) {
                     return item; // If the deplyment isn't currently running, keep the item as is
                 }
-
-                const response = await axios.get(`/api/dpr/metrics`, { params: { id: item._id, name: item.name } });
-                const data = response.data.data;
+                const response = await getMetrics(item._id, item.name);
+                const data = response.data;
                 const progressData = data.mongodb ? data.mongodb.find((entry: any) => entry._id === 'progress_data') : {};
                 const pass = progressData?.prompts_pass || 0;
                 const fail = progressData?.prompts_failed || 0;
@@ -171,7 +171,7 @@ const DatasetPreparationTable: React.FC = () => {
   const handleUninstallConfirm = async (datasetId: string, setOpen: ((open: boolean) => void)) => {
     if (datasetId) {
       try {
-        await axios.get('/api/dpr/uninstall', { params: {id: datasetId, status: "UNINSTALLED"} });
+        await dprUninstall(datasetId, "UNINSTALLED")
         setOpen(false);
         fetchListData();
       } catch (error) {
@@ -183,7 +183,7 @@ const DatasetPreparationTable: React.FC = () => {
   const handleRemoveConfirm = async (datasetId: string, setOpen: ((open: boolean) => void)) => {
     if (datasetId) {
       try {
-        await axios.get('/api/dpr/delete', { params: {id: datasetId} });
+        await dprDelete(datasetId);
         setOpen(false);
         fetchListData();
       } catch (error) {

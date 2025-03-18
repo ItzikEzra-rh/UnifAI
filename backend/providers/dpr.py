@@ -65,7 +65,7 @@ def helm_uninstall(id, status):
     creds = get_config_creds(id)
     if creds:
         helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
-        helm_uninstall = helm.run_dpr_command(DPRCommands.UNINSTALL, deployment_name=creds["deployment_name"], namepace=creds["namespace"])
+        helm_uninstall = helm.run_dpr_command(DPRCommands.UNINSTALL, deployment_name=creds["deployment_name"], namespace=creds["namespace"])
         Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"status": status}, "$currentDate": {"finished_running": True}})
         return helm_uninstall
 
@@ -83,8 +83,7 @@ def helm_status(id):
 def helm_metrics(id, name):
     def fetch_rabbitmq_stats(route):
         try:
-            response = requests.get(f"http://{name}-rabbitmq-svc:15672/api/queues", 
-            # response = requests.get(f"http://{route}:15672/api/queues", 
+            response = requests.get(f"http://{route}:15672/api/queues", 
                                     auth=(config.get("dpr", "rmq_username"), config.get("dpr", "rmq_password")), 
                                     timeout=5)
             if response.status_code != 200:
@@ -97,8 +96,7 @@ def helm_metrics(id, name):
 
     def fetch_mongodb_stats(route):
         try: 
-            client = MongoClient(f'mongodb://{name}-mongodb-svc')  
-            # client = MongoClient(f'mongodb://{route}')  
+            client = MongoClient(f'mongodb://{route}')  
             db = client['promptLab']  
             return list(db['statistics'].find())
         except:
@@ -137,18 +135,25 @@ def helm_metrics(id, name):
 @mongo
 def helm_route(id):
     creds = get_config_creds(id)
+    api_url = creds["api_url"]
+    namespace = creds["namespace"]
+            
     helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
-    
+
     routes = {
         "release_rmq_route": DPRCommands.RMQROUTE,
         "release_db_route": DPRCommands.DBROUTE,
     }
-
+    
     updated_routes = {}
     for route_key, command in routes.items():
         if not creds[route_key]:
-            route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], namespace=creds["namespace"], spec="{.metadata.name}")
-            # route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], namespace=creds["namespace"], spec="{.status.loadBalancer.ingress[0].hostname}")
+            is_prod = api_url == config.get("dpr", "prod_cluster")
+            is_runtime = namespace == "tag-ai--runtime-int"
+            spec = "{.spec.host}{.spec.path}" if is_prod else ("{.metadata.name}" if is_runtime else "{.status.loadBalancer.ingress[0].hostname}")
+            option = "route" if is_prod else "svc"
+            
+            route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], namespace=creds["namespace"], spec=spec, option=option) 
 
             if route_result["data"]:
                 update_result = Collections.by_name("dpr").update_one(
@@ -190,13 +195,16 @@ def create_json_format(user_data):
         exclude_keys = exclude_keys or []
         return {k: data.get(k, "") for k in data if k not in exclude_keys}
 
-    global_config = extract_config(user_data["global"])
+    global_config = extract_config(user_data["global"], exclude_keys=["api_url"])
     promptlab_env = extract_config(user_data["promptLab"], exclude_keys=["vllm_orbiter_args"])
     reviewer_env = extract_config(user_data["reviewer"]) if global_config.get("enable_reviewer") else {}
 
+    api_option = user_data["global"]["api_url"]
+    
     json_output = {
         "global": {
             **global_config,
+            "api_url": config.get("dpr", "preprod_cluster" if api_option == "Preproduction Cluster" else "prod_cluster"),
             "orbiter_model_hf_id": user_data["promptLab"].get("PROMPT_LAB_MODEL_HF_ID", ""),
             "promptlab_env": {**promptlab_env, **user_data["file"]},
         }

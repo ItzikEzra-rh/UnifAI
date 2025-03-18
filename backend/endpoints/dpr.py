@@ -14,8 +14,8 @@ def status(id):
     return status
 
 
-@dpr_bp.route("/uninstall", methods=["GET"])
-@from_query({
+@dpr_bp.route("/uninstall", methods=["POST"])
+@from_body({
     "id":        fields.Str(required=True, data_key="id"),
     "status":    fields.Str(required=True, data_key="status")
 })
@@ -104,8 +104,8 @@ def route(id):
     route = helm_route(id)
     return route
 
-@dpr_bp.route("/delete", methods=["GET"])
-@from_query({
+@dpr_bp.route("/delete", methods=["POST"])
+@from_body({
     "id":        fields.Str(required=True, data_key="id")
 })
 def delete(id):

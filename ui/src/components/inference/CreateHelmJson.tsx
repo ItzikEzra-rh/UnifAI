@@ -269,7 +269,7 @@ const CreateHelmJson: React.FC<CreateHelmJsonProps> = ({ onSubmit, isLoading }) 
 
     const mockRepoOptions = ['oodeh/eco-gotest-testing', 'mcarmi/testing_dpr'];
     const mockFileOptions = ['eco-gotests_TAG_100_test_100_function.json', 'myfile.json'];
-    const ClusterOptions = ['https://api.stc-ai-e1-pp.imap.p1.openshiftapps.com:6443']
+    const ClusterOptions = ['Preproduction Cluster', 'Production Cluster']
 
     return (
         <>

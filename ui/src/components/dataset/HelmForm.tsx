@@ -8,6 +8,7 @@ import 'react-toastify/dist/ReactToastify.css';
 import UploadHelmJson from './UploadHelmJson';
 import CreateHelmJson from '../inference/CreateHelmJson';
 import { useNavigate } from 'react-router-dom';  
+import { dprInstall } from '../../http/dpr';
 
 const HelmForm: React.FC = () => {
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -20,8 +21,8 @@ const HelmForm: React.FC = () => {
     try {
       setIsLoading(true);
       console.log('Submitting JSON file data:', data);
-      const res = await axios.post('/api/dpr/install', { data: data, mode: mode });
-      if (res.status === 200) {
+      const res = await dprInstall(data, mode);
+      if (res.status === "success") {
         setFormSubmitted(true);
         console.log('Form submitted successfully:', data);
         setTimeout(() => {
