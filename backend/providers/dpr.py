@@ -83,6 +83,7 @@ def helm_metrics(id, name):
     def fetch_rabbitmq_stats(route):
         try:
             response = requests.get(f"http://{name}-rabbitmq-svc:15672/api/queues", 
+            # response = requests.get(f"http://{route}:15672/api/queues", 
                                     auth=(config.get("dpr", "rmq_username"), config.get("dpr", "rmq_password")), 
                                     timeout=5)
             if response.status_code != 200:
@@ -96,6 +97,7 @@ def helm_metrics(id, name):
     def fetch_mongodb_stats(route):
         try: 
             client = MongoClient(f'mongodb://{name}-mongodb-svc')  
+            # client = MongoClient(f'mongodb://{route}')  
             db = client['promptLab']  
             return list(db['statistics'].find())
         except:
@@ -144,7 +146,8 @@ def helm_route(id):
     updated_routes = {}
     for route_key, command in routes.items():
         if not creds[route_key]:
-            route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], spec="{.metadata.name}")
+            # route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], spec="{.metadata.name}")
+            route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], spec="{.status.loadBalancer.ingress[0].hostname}")
 
             if route_result["data"]:
                 update_result = Collections.by_name("dpr").update_one(

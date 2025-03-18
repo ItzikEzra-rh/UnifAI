@@ -16,6 +16,7 @@ def make_celery():
     
     celery_app = Celery('celery_reviewer',
                         broker=host.format(port=port),
+                        # broker="pyamqp://guest:guest@localhost//",
                         backend="rpc://",
                         include=['celery_app.tasks'])  
 
@@ -27,7 +28,7 @@ def make_celery():
     beat_schedule={
         'fetch-dpr-metrics-every-30-mins': {
             'task': 'celery_app.tasks.fetch_dpr_metrics',
-            'schedule': 900.0 # call this function every 15 minutes
+            'schedule': 90.0 # call this function every 15 minutes
         }
     }
 )

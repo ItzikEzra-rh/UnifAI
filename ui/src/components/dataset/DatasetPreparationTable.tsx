@@ -13,49 +13,33 @@ import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { ConfirmationModal } from '../shared/ConfirmationModal';
 import { TableTooltip } from '../shared/TableTooltip';
 
-interface ModalProps {
+const FINISHED_STATUSES = ["DONE", "UNINSTALLED"]
+
+type ActionModalProps = {
   datasetId: string;
-  status: string;
-  handleConfirm: (datasetId: string, setOpen: ((open: boolean) => void)) => Promise<void>;
-}
-
-const UninstallModal: React.FC<ModalProps> = ({ datasetId, status, handleConfirm }) => {
-  const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const disabled = status === "DONE" || status === "UNINSTALLED"
-  const title = disabled ? "Deployment has already been uninstalled" : "Trigger uninstall of the helm proccess"
-
-  const handleConfirmClick = async () => {
-    setLoading(true);
-    await handleConfirm(datasetId, setOpen);
-    setLoading(false);
-  };
-
-  return (
-    <>
-      <TableTooltip icon={CancelIcon} title={title} setOpen={setOpen} disabled={disabled} />
-      <ConfirmationModal text="Are you sure you want to uninstall?" open={open} onClose={() => setOpen(false)} loading={loading} loaderText="Uninstalling..." handleClick={handleConfirmClick}/>
-    </>  
-  );
+  handleConfirm: (datasetId: string, setOpen: React.Dispatch<React.SetStateAction<boolean>>) => Promise<void>;
+  icon: React.ElementType;
+  title: string;
+  disabledCondition: boolean;
+  confirmationText: string;
+  loaderText: string;
 };
 
-const RemoveModal: React.FC<ModalProps> = ({ datasetId, status, handleConfirm }) => {
+const ActionModal: React.FC<ActionModalProps> = ({ datasetId, handleConfirm, icon, title, disabledCondition, confirmationText, loaderText }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
-  const enabled = status === "DONE" || status === "UNINSTALLED"
-  const title = enabled ? "Remove this proccess from the table" : "You can't remove this row before the deployment is uninstalled"
-
+    
   const handleConfirmClick = async () => {
     setLoading(true);
     await handleConfirm(datasetId, setOpen);
     setLoading(false);
   };
-
+  
   return (
     <>
-      <TableTooltip icon={DeleteIcon} title={title} setOpen={setOpen} disabled={!enabled} />
-      <ConfirmationModal text="Are you sure you want to remove this deployment from the table?" open={open} onClose={() => setOpen(false)} loading={loading} loaderText="Removing..." handleClick={handleConfirmClick}/>
-    </>  
+      <TableTooltip icon={icon} title={title} setOpen={setOpen} disabled={disabledCondition} />
+      <ConfirmationModal text={confirmationText} open={open} onClose={() => setOpen(false)} loading={loading} loaderText={loaderText} handleClick={handleConfirmClick} />
+    </>
   );
 };
 
@@ -254,9 +238,7 @@ const DatasetPreparationTable: React.FC = () => {
         </TableHead>
         <TableBody>
           {datasets?.map((row) => {
-            console.log(row)
             const mongoData = row?.metrics?.mongodb || {}
-            console.log(mongoData)
             const progressData = Object.keys(mongoData).length > 0 ? mongoData.find((item: any) => item._id === 'progress_data') : null;
             const progressPercentage = (progressData?.prompts_processed / progressData?.number_of_prompts) * 100 || 0;
             const passed = progressData?.prompts_pass || 0;
@@ -292,12 +274,28 @@ const DatasetPreparationTable: React.FC = () => {
                 </TableCell>
                 <TableCell>
                   <Box sx={{display: 'flex', justifyContent: 'center'}}>
-                    <UninstallModal datasetId={row._id} status={row.status} handleConfirm={handleUninstallConfirm} />
+                    <ActionModal 
+                      datasetId={row._id} 
+                      handleConfirm={handleUninstallConfirm} 
+                      icon={CancelIcon} 
+                      title={FINISHED_STATUSES.includes(row.status) ? "Deployment has already been uninstalled" : "Trigger uninstall of the helm process"} 
+                      disabledCondition={FINISHED_STATUSES.includes(row.status)} 
+                      confirmationText="Are you sure you want to uninstall?" 
+                      loaderText="Uninstalling..." 
+                    />
                   </Box>
                 </TableCell>
                 <TableCell>
                   <Box sx={{display: 'flex', justifyContent: 'center'}}>
-                    <RemoveModal datasetId={row._id} status={row.status} handleConfirm={handleRemoveConfirm} />
+                    <ActionModal 
+                      datasetId={row._id} 
+                      handleConfirm={handleRemoveConfirm} 
+                      icon={DeleteIcon} 
+                      title={FINISHED_STATUSES.includes(row.status) ? "Remove this process from the table" : "You can't remove this row before the deployment is uninstalled"} 
+                      disabledCondition={!FINISHED_STATUSES.includes(row.status)} 
+                      confirmationText="Are you sure you want to remove this deployment from the table?" 
+                      loaderText="Removing..." 
+                    />
                   </Box>
                 </TableCell>
               </TableRow>
