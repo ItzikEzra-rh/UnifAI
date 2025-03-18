@@ -1,44 +1,47 @@
-from backend.be_utils.gitlab import GitlabAPI
 
-def get_directory_list(file_list_gitlab, file_list_db):
-    """build a list of files from gitlab and add atrribute if each file is already in the database
+from backend.be_utils.git.utils import get_git_api
+from backend.providers.extensions import get_extensions_json
 
-    :param str[] file_list_gitlab: list of files from gitlab for product/version
-    :param str[] file_list_db: list of files from database for product/version
-    :param str version: number of version in gitlab/db (18.5/19.0)
-    :return: list of file with state if it's in the db
+
+def get_directory_list(file_list_git, file_list_db):
+    """Build a list of files from Git and add an attribute if each file is already in the database.
+
+    :param str[] file_list_git: List of files from the Git provider.
+    :param str[] file_list_db: List of files from the database.
+    :return: List of files with a state indicating if they exist in the database.
     """
-
-    database_set = {file_node["path"] + "/" +
-                    file_node["name"] for file_node in file_list_db}
-    list_of_files = [{'file': gitlab_file["path"], 'in_db': gitlab_file["path"] in database_set}
-                     for gitlab_file in file_list_gitlab if
-                     gitlab_file["name"].endswith(("jmx", "robot", "py")) and "__init__" not in str(gitlab_file)]
-
+    frameworks = get_extensions_json()["frameworks"]
+    database_set = {file_node["path"] + "/" + file_node["name"] for file_node in file_list_db}
+    list_of_files = [
+        {'file': git_file["path"], 'in_db': git_file["path"] in database_set}
+        for git_file in file_list_git
+        if (git_file.get("name") or git_file.get("path", "")).endswith(("resource","jmx", "robot", "ts", "go", "tsx", "js")) and "__init__" not in str(git_file)
+    ]
     return list_of_files
 
-def list_of_files_from_gitlab(repo_url, repo_auth_key, repo_folder_path, branch):
-    """creating a list of files form gitlab , for directory "product/param", and state file if he is in db
 
-    :param str repo_url: representing the git repo url
-    :param str repo_auth_key: authentication key for the dedicated git repo
-    :param str repo_folder_path: valid folder to expand exist on the dedicated git repo
-    :param str branch: valid branch to expand from under the dedicated git repo 
-    :return: list of files from gitlab of product/version
+def list_of_files_from_git(repo_url, repo_auth_key, repo_folder_path, branch):
+    """Retrieve a list of files from the appropriate Git provider and check if they exist in the database.
+
+    :param str repo_url: Repository URL provided by the user.
+    :param str repo_auth_key: Authentication key for the Git provider.
+    :param str repo_folder_path: Folder path in the repository to scan.
+    :param str branch: Branch name.
+    :return: List of files from the repository with a state indicating database existence.
     """
-    gitlab = GitlabAPI(repo_url, repo_auth_key)
-    file_list_gitlab = gitlab.list_files(repo_folder_path, branch)
-    return get_directory_list(file_list_gitlab, [])
+    git_api = get_git_api(repo_url, repo_auth_key)  # Dynamically select the provider.
+    file_list_git = git_api.list_files(repo_folder_path, branch)
+    return get_directory_list(file_list_git, [])
 
-def get_test_content_from_gitlab(repo_url, repo_auth_key, branch, test_path):
-    """Fetch test file content from GitLab.
 
-    :param str repo_url: Git repository URL
-    :param str repo_auth_key: Authentication key
-    :param str branch: Branch name
-    :param str test_path: Path of the test file
-    :return: File content as a string
+def get_test_content_from_git(repo_url, repo_auth_key, branch, test_path):
+    """Fetch the content of a test file from the appropriate Git provider.
+
+    :param str repo_url: Repository URL provided by the user.
+    :param str repo_auth_key: Authentication key for the Git provider.
+    :param str branch: Branch name.
+    :param str test_path: Path to the test file in the repository.
+    :return: The content of the test file as a string.
     """
-    gitlab = GitlabAPI(repo_url, repo_auth_key)
-    file_content = gitlab.get_file_content(test_path, branch)
-    return file_content
+    git_api = get_git_api(repo_url, repo_auth_key)  # Dynamically select the provider.
+    return git_api.get_file_content(test_path, branch)
