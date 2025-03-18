@@ -120,7 +120,7 @@ const ModelSelection: React.FC<ModelSelectionProps> = ({ models, onSelectModel }
           label="Choose Model"
           control={control}
           errors={{}}
-          options={filteredModels.map((model) => model.trainingName)}
+          options={selectedProject? filteredModels.map((model) => model.trainingName) : []}
           onSelect={handleModelSelection}
         />
         {selectedDropDownMenu && (
