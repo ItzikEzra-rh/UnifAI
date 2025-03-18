@@ -14,13 +14,16 @@ class TreeSitterParser:
         from .robot_parser import RobotParser
         from .go_parser import GoParser
         from .type_script_parser import TypeScriptParser
+        from .python_parser import PythonParser
         
         if file_path.endswith('.robot'):
             return RobotParser(file_path=file_path, realtive_path=realtive_path, project_name=project_name)
         elif file_path.endswith('.go'):
             return GoParser(file_path=file_path, realtive_path=realtive_path, project_name=project_name)
-        elif file_path.endswith('.ts') or file_path.endswith('.tsx'):
+        elif file_path.endswith('.ts') or file_path.endswith('.tsx') or file_path.endswith('.js'):
             return TypeScriptParser(file_path=file_path, realtive_path=realtive_path, project_name=project_name)
+        elif file_path.endswith('.py'):
+            return PythonParser(file_path=file_path, realtive_path=realtive_path, project_name=project_name)
         # TODO: Need to implement parser for TSX (GENIE-86/https://issues.redhat.com/browse/GENIE-86)
         # elif file_path.endswith('.tsx'):
         #     return TypeScriptCompiledParser(file_path=file_path, realtive_path=realtive_path, project_name=project_name)
