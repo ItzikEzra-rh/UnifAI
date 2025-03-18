@@ -11,7 +11,7 @@ import StarIcon from '@mui/icons-material/Star';
 import AutorenewIcon from '@mui/icons-material/Replay';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import { FormDropdown } from '../shared/FormFields';
-import { ModelData } from '../types/constants'
+import { ModelDataResponse, ModelData, Adapters } from '../types/constants'
 import ReactLoading from 'react-loading';
 import '@chatscope/chat-ui-kit-styles/dist/default/styles.min.css';
 import axiosLLM, { AXIOS_LLM_IP } from '../../http/axiosLLMConfig';
@@ -54,7 +54,7 @@ const LoadingOverlay: React.FC<LoadingProps> = ({loadType}) => (
   <div className="loading-overlay">
     <ReactLoading type="bubbles" color="#000" height={100} width={100} />
     <h2 style={{ marginTop: '20px', fontSize: '1.5em', textAlign: 'center', color: '#000' }}>
-      Please be patient while we {loadType} the requested model. This process may take up to 2 minutes.
+      Please be patient while we {loadType} the requested model. This process may take up to 4 minutes.
     </h2>
   </div>
 );
@@ -236,20 +236,33 @@ const ChatComponent: React.FC = () => {
     const fetchModelsAndCheckLoadedModel = async () => {
       // Fetch the model and its chat history on component mount 
       try {
+        // Fetch available models - Legendary Version
+        // const modelsResponse = await axiosLLM.get<ModelData[]>('/api/backend/getModels');
+        // const transformedData: ModelData[] = modelsResponse.data.map((item: any) => ({
+        //   modelId: item._id,
+        //   modelName: item.name,
+        //   trainingName: item.name,
+        //   modelMaxSeqLen: item.context_length,
+        //   hfRepoId: item.hf_repo_id,
+        //   repoInternalLocation: item?.repo_internal_location,
+        //   modelType: item.model_type,
+        //   project: item.project,
+        //   checkpoint: item?.checkpoint,
+        //   finetuneSteps: item?.finetune_steps,
+        //   promptTemplate: item?.prompt_template,
+        // }));
+        // setModels(transformedData);
+
         // Fetch available models
-        const modelsResponse = await axiosLLM.get<ModelData[]>('/api/backend/getModels');
-        const transformedData: ModelData[] = modelsResponse.data.map((item: any) => ({
-          modelId: item._id,
-          modelName: item.name,
-          trainingName: item.name,
-          modelMaxSeqLen: item.context_length,
-          hfRepoId: item.hf_repo_id,
-          repoInternalLocation: item?.repo_internal_location,
-          modelType: item.model_type,
-          project: item.project,
-          checkpoint: item?.checkpoint,
-          finetuneSteps: item?.finetune_steps,
-          promptTemplate: item?.prompt_template,
+        const modelsResponse = await axiosLLM.get<ModelDataResponse[]>('/api/backend/getModels');
+        const transformedData: ModelData[] = modelsResponse.data[0].adapters.map((adapter: Adapters) => ({
+          modelId: adapter.adapter_uid,
+          modelName: adapter.name,
+          trainingName: adapter.name,
+          modelMaxSeqLen: adapter?.context_length,
+          repoInternalLocation: adapter?.repo_internal_location,
+          modelType: modelsResponse.data[0].model_type,
+          project: adapter.project,
         }));
         setModels(transformedData);
   
@@ -368,24 +381,39 @@ const ChatComponent: React.FC = () => {
 
       try {
         const response = await axiosLLM.get('/api/backend/loadModel', {
-          params: { modelId: selectedModel.modelId },
+          params: { adapterId: selectedModel.modelId },
         });
 
-        // Handle specific backend responses
-        if (
-          response.data === "There is already a loaded model, please unload the model first." ||
-          response.data === "There is a loading model process happening now."
-        ) {
-          toast.warning(response.data);
-        } else {
-          setSelectedModel(selectedModel);
-        }
+        setSelectedModel(selectedModel);
       } catch (error) {
         console.error('Error loading model:', error);
         toast.error('An error occurred while loading the model.');
       } finally {
         setLoadingModel(false);
       }
+      
+      // Legendary Code (might be relevant again in the near future) 
+
+      // try {
+      //   const response = await axiosLLM.get('/api/backend/loadModel', {
+      //     params: { modelId: selectedModel.modelId },
+      //   });
+
+      //   // Handle specific backend responses
+      //   if (
+      //     response.data === "There is already a loaded model, please unload the model first." ||
+      //     response.data === "There is a loading model process happening now."
+      //   ) {
+      //     toast.warning(response.data);
+      //   } else {
+      //     setSelectedModel(selectedModel);
+      //   }
+      // } catch (error) {
+      //   console.error('Error loading model:', error);
+      //   toast.error('An error occurred while loading the model.');
+      // } finally {
+      //   setLoadingModel(false);
+      // }
     }
   };
 
@@ -451,7 +479,8 @@ const ChatComponent: React.FC = () => {
       const inferencePayload = {
         messages: promptMessages,
         temperature: temperature.toString(),
-        sessionId: sessionId
+        sessionId: sessionId,
+        adapterUid: selectedModel?.modelId,
       }
 
       const response = await fetch(`${AXIOS_LLM_IP}/api/backend/inference`, {
@@ -658,17 +687,21 @@ const ChatComponent: React.FC = () => {
     }
   };
 
+  // Legendary Code (might be relevant again in the near future) 
+  // const handleUnLoad = async () => {
+  //   setUnloadingModel(true);
+  //   try {
+  //     await axiosLLM.get('/api/backend/unloadModel');
+  //   } catch (error) {
+  //     console.error('Error stopping inference:', error);
+  //   } finally {
+  //     setUnloadingModel(false);
+  //   }
+  // };
 
-  const handleUnLoad = async () => {
-    setUnloadingModel(true);
-    try {
-      await axiosLLM.get('/api/backend/unloadModel');
-    } catch (error) {
-      console.error('Error stopping inference:', error);
-    } finally {
-      setUnloadingModel(false);
-    }
-  };
+  const handleUnLoad = () => {
+    console.log("GUI: Skipping unloading the model from the GPU")
+  }
 
   // Some browsers or environments (e.g., older browsers, certain versions of Safari, or if running in a non-HTTPS environment) may not
   // support the clipboard API or parts of it. The writeText method may be unavailable, leading to this error.
@@ -833,7 +866,8 @@ const ChatComponent: React.FC = () => {
     return null;
   };
   
-  const modelType = getModelType();
+  // const modelType = getModelType();
+  const modelType : 'llama' | 'qwen' | null = selectedModel?.modelType || null;
 
   return (
     <>
