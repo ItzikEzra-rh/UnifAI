@@ -2,8 +2,16 @@ import re
 import os
 import uuid
 from .tree_sitter_parser import TreeSitterParser
+import sys
+import ctypes
 
-GO_LANGUAGE_PATH = '/home/cloud-user/Projects/playGround/tree-sitter-playground/tree-sitter-go/go.so'
+# Get the path to so_files inside data_pre
+current_dir = os.path.dirname(os.path.abspath(__file__))
+data_pre_dir = os.path.abspath(os.path.join(current_dir, "..", ".."))
+so_files_dir = os.path.join(data_pre_dir, "so_files")
+GO_LANGUAGE_PATH = os.path.join(so_files_dir, "go.so")
+go_lib = ctypes.CDLL(GO_LANGUAGE_PATH)
+
 GO_FILE_PATH =  '/home/cloud-user/Projects/openshift-tests-private/test/extended/clusterinfrastructure/metrics.go'
 
 class GoParser(TreeSitterParser):
@@ -64,7 +72,7 @@ class GoParser(TreeSitterParser):
                 used_types.append(type_name)
         return used_types
         
-    def enitre_file_parsing(self, go_file_names_mapping):
+    def enitre_file_parsing(self):
         def get_file_package(root_node):
             """Helper function to get the code of all the imports in a go file."""
             imports_file_locations = {}
@@ -83,6 +91,7 @@ class GoParser(TreeSitterParser):
             """Helper function to extract entire robot code."""
             used_imports = get_import_node_code(node)
             package_name = get_file_package(node)
+            
             return {
                 "element_type": file_type,
                 "project_name": self.project_name,
@@ -97,7 +106,6 @@ class GoParser(TreeSitterParser):
                 "package": f"{package_name}" if package_name else "",
                 "tags": ""
             }
-
         root_node, content = self.get_root_node()
         file_type = "file"
         return extract_entire_code(root_node, content, file_type)

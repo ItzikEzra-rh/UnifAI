@@ -4,7 +4,7 @@ The purpose of this folder is to use tree sitter robot parser to analyze the rob
 # How to run the parser
 ## Build the image.
 ```bash
-cd data-pre && podman build  --tag treesitter .
+cd data_pre && podman build  --tag treesitter .
 ```
 ## Prepare the robot file folder
 ```bash
