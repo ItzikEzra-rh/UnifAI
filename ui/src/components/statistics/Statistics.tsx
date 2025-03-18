@@ -21,7 +21,7 @@ const StatisticsGraphs: React.FC = () => {
         const response = await axios.get('/api/backend/getModels');
         const transformedData = response.data[0].adapters.map((item: any) => ({
           id: item.adapter_uid,
-          contextLength: item.context_length,
+          contextLength: item?.context_length,
           modelName: item.name,
           modelType: response.data[0].model_type,
           project: item.project,
