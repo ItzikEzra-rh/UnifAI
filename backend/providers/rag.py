@@ -12,7 +12,7 @@ from rag.code_graph.code_context_extractor import CodeContextExtractor
 from rag.code_graph.language_parsers.language_parser import FunctionContext
 from rag.be_utils.db.db import mongo, Collections
 
-from prompt_lab.src.prompt_lab.utils.tokenizer import TokenizerUtils
+from prompt_lab.utils.tokenizer import TokenizerUtils
 
 def format_context_for_llm(context: Dict[str, FunctionContext]) -> str:
     """Format the context in a way that's suitable for LLM input."""

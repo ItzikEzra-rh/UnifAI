@@ -5,13 +5,9 @@ export interface FormData {
     gitCredentialKey: string;
     gitFolderPath?: string;
     gitBranchName: string;
-    baseModelName: 'Mistral' | 'Llama' | 'Granite';
-    testsCodeFramework: 'Python' | 'Robot' | 'Go' | 'Jmeter';
+    testsCodeFramework: string;
     numberOfTests: number;
-    expandDatasetTo: '5x' | '10x' | '25x' | '50x' | '100x';
-    datasetGradingUpgrade?: boolean;
-    parserFile: FileList;
-}
+    datasetGradingUpgrade?: boolean;}
 
 export interface TableFormData {
     projectName: string;
