@@ -17,7 +17,7 @@ def register_all_endpoints(app):
         {"bp": forms_bp, "parent": 'forms', "route": ''},
         {"bp": prompts_bp, "parent": 'prompts', "route": ''},
         {"bp": inference_bp, "parent": 'inference', "route": ''},
-        {"bp": dpr_bp, "parent": 'dpr', "route": ''}
+        {"bp": dpr_bp, "parent": 'dpr', "route": ''},
         {"bp": extensions_bp, "parent": 'extensions', "route": ''},
         {"bp": parser_bp, "parent": 'parser', "route": ''},
     ]
