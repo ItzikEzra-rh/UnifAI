@@ -41,7 +41,7 @@ class VLLMModelLoader:
             self.vllm_port = vllm_port
             self.server_url = f"http://0.0.0.0:{self.vllm_port}/"
             self.vllm_process = None
-            self.max_new_tokens = None
+            self.max_new_tokens = 12000
             self.tokenizer = AutoTokenizer.from_pretrained(self.base_model)
             self.chat_manager = ChatManager(self.max_len, self.max_new_tokens, self.tokenizer)
             self.stop_events = {}  # Mapping: session_id -> threading.Event
