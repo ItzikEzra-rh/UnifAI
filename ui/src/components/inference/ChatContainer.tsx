@@ -185,7 +185,7 @@ const ChatComponent: React.FC = () => {
   const [promptName, setPromptName] = useState<string>('');
   const [promptUserLatestMessage, setPromptUserLatestMessage] = useState<string>('');
   const [promptLLMLatestMessage, setPromptLLMLatestMessage] = useState<string>('');
-  const [temperature, setTemperature] = useState<number>(0.3);
+  const [temperature, setTemperature] = useState<number>(0.5);
 
   const [isRatingModalOpen, setIsRatingModalOpen] = useState<boolean>(false);
   const [messageRatings, setMessageRatings] = useState<{ [key: number]: RatingData }>({});
@@ -380,6 +380,9 @@ const ChatComponent: React.FC = () => {
       setLoadingModel(true);
 
       try {
+        // Making sure that we clear all previous chat messages from the GPU before loading a new model  
+        clearChat()
+
         const response = await axiosLLM.get('/api/backend/loadModel', {
           params: { adapterId: selectedModel.modelId },
         });
@@ -436,7 +439,7 @@ const ChatComponent: React.FC = () => {
       }
 
       let additionalContext = ""
-      let promptMessages = [{"role": "system",  "content": `Please answer the question in the context of ${selectedModel?.project}`},
+      let promptMessages = [{"role": "system",  "content": `This context is about ${selectedModel?.project} project`},
                             {"role": "user",    "content": `${formattedText}`}]
 
       // If current loaded model support RAG we should enrich the LLM with relevant context

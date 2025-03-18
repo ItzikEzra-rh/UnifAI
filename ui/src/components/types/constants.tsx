@@ -16,8 +16,8 @@ export interface FormData {
 export interface TableFormData {
     projectName: string;
     trainingName: string;
-    baseModelName: 'Mistral' | 'Llama' | 'Granite';
-    testsCodeFramework: 'Python' | 'Robot' | 'Go' | 'Jmeter';
+    baseModelName: 'Mistral' | 'Llama' | 'Granite' | 'Qwen';
+    testsCodeFramework: 'Python' | 'Robot' | 'Go' | 'Jmeter' | '-';
     status: 'Initial' | 'In progress' | 'Finished';
     progress: string; // Represented by percentage (e.g., "50%")
     modelType: 'finetuned' | 'foundational' | 'checkpoint';

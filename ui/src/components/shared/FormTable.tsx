@@ -157,20 +157,36 @@ const FormsTable: React.FC = () => {
     const fetchData = async () => {
       try {
         const response = await axios.get('/api/backend/getModels');
-        const transformedData = response.data.map((item: any) => {
-          const { status, progress } = getStatusAndProgress(item.model_type, item?.checkpoint);
+        const transformedData = response.data[0].adapters.map((item: any) => {
           return {
             projectName: item.project,
             trainingName: item.name.substring(0, 40),
             contextLength: item.context_length,
-            baseModelName: item.base_model,
-            modelType: item.model_type,
-            testsCodeFramework: 'Robot',
-            status,
-            progress,
-            checkpoint: item?.checkpoint
+            baseModelName: response.data[0].base_model_name,
+            modelType: item.project == "ALL"? 'foundational' : 'finetuned',
+            testsCodeFramework: '-',
+            status: "Finished",
+            progress: '100%',
+            checkpoint: item?.checkpoint || ''
           };
         });
+
+          // Legendary Code (might be relevant again in the near future)
+          // const transformedData = response.data.map((item: any) => {
+          //   const { status, progress } = getStatusAndProgress(item.model_type, item?.checkpoint);
+          //   return {
+          //     projectName: item.project,
+          //     trainingName: item.name.substring(0, 40),
+          //     contextLength: item.context_length,
+          //     baseModelName: item.base_model,
+          //     modelType: item.model_type,
+          //     testsCodeFramework: 'Robot',
+          //     status,
+          //     progress,
+          //     checkpoint: item?.checkpoint
+          //   };
+          // });
+        
         setData(transformedData);
       } catch (error) {
         console.error('Error fetching model data:', error);
