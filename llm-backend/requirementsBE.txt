@@ -8,12 +8,11 @@ uwsgi
 webargs
 flask_pymongo
 pandas
-vllm
-openai==1.53.0
-torch==2.4.0 
-transformers 
-unsloth==2024.10.7 
-unsloth_zoo==2024.10.5  
+bitsandbytes
+openai
+hf_transfer 
+nvitop 
+llmcompressor
 #triton==3.0.0 
 #xformers==0.0.27.post2 
 #accelerate==1.0.1 

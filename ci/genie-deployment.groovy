@@ -12,6 +12,7 @@ properties([
         booleanParam(name: 'reviewer', defaultValue: false, description: 'Create image for reviewer'),
         booleanParam(name: 'DB', defaultValue: false, description: 'Create image for DB'),
         booleanParam(name: 'CELERY', defaultValue: false, description: 'Create image for CELERY'),
+        booleanParam(name: 'vllm_openai', defaultValue: false, description: 'Create vllm-openai image for Prompt/Reviewer cycle'),
         booleanParam(name: 'rabbitmq', defaultValue: false, description: 'Create image for RabbitMQ'),
         booleanParam(name: 'deploy_genie', defaultValue: false, description: 'True - Deploy Genie, False - Only build images and upload to image-paas'),
         choice(name: 'deployment_location', choices: ['STAGING', 'PRODUCTION'], description: 'Where to deploy Genie?'),
@@ -134,8 +135,13 @@ def tagAndPushImageToRegistry(module, buildParams) {
         sh """
             podman login -u ${REGISTRY_USER} -p ${REGISTRY_PASS} ${buildParams.ImageRegistry}
             podman push ${module}:${VERSION} ${buildParams.ImageRegistry}/${buildParams.ImageRegistryPath}/${module}:${VERSION}
-            podman push --quiet ${module}:${VERSION} ${buildParams.ImageRegistry}/${buildParams.ImageRegistryPath}/${module}:latest
+            #podman push --quiet ${module}:${VERSION} ${buildParams.ImageRegistry}/${buildParams.ImageRegistryPath}/${module}:latest
         """
+        if (params.deploy_genie) {
+            sh """
+                podman push --quiet ${module}:${VERSION} ${buildParams.ImageRegistry}/${buildParams.ImageRegistryPath}/${module}:latest
+            """
+        }
         echo("Image for ${module} has been tagged and pushed to ${buildParams.ImageRegistry}/${buildParams.ImageRegistryPath}/${module}:${VERSION}")
 
     }
@@ -334,6 +340,28 @@ pipeline {
                     when { expression { params.CELERY } }
                     steps {
                         echo("Building image for CELERY")
+                    }
+                }
+                stage('vllm_openai') {
+                    when { expression { params.vllm_openai} }
+                    steps {
+                            script{
+                                def module = "vllm-openai"
+                                dir("${buildParams.DevRoot}/${params.BRANCH}/${module}/"){
+                                    cleanWorkspace(module)
+                                    if(buildDockerImage(module)) {
+                                        //checkContainerAndAPI(module)
+                                        tagAndPushImageToRegistry(module,buildParams)
+                                        // if(deploy_genie) {
+                                        //     updateChartfile(module)
+                                        // }                                         
+                                        cleanWorkspace(module)
+                                        } 
+                                        else {
+                                            error("Terminating process for ${module} : Build failed")
+                                    }
+                                }
+                            }
                     }
                 }
                 stage('rabbitmq') {

@@ -12,7 +12,7 @@ image:
    pullPolicy: Always
 resources:
   limits:
-    cpu: 2
+    cpu: 4
     # -- CPU memory configuration
     memory: 16Gi
     # -- Number of gpus used

@@ -37,6 +37,8 @@ RUN /bin/bash -c "source venv/bin/activate && \
     pip install -r requirementsBE.txt && \
     python -m spacy download en_core_web_sm"
 
+RUN /bin/bash -c "source venv/bin/activate && \
+    pip install -r ../prompt_lab/requirements.txt"
+
 # Set the default command to activate the virtual environment and keep the container running
 CMD ["/bin/bash", "-c", "source venv/bin/activate && python app.py"]
-
