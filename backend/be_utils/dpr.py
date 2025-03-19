@@ -10,8 +10,8 @@ class DPRCommands(Enum):
     STATUS      = "helm status {deployment_name} --namespace {namespace}"
     # UPGRADE     = "helm upgrade {deployment_name} --reuse-values /home/cloud-user/AI-TC-s-Generator/pipelines/pre_training_helm {helm_set_params} --output json --namespace {namespace}"
     UPGRADE     = "helm upgrade {deployment_name} --reuse-values /opt/app-root/src/pipelines/pre_training_helm {helm_set_params} --output json --namespace {namespace}"
-    RMQROUTE    = "oc get {option} {deployment_name}-rabbitmq-svc -o jsonpath={spec} --namespace {namespace}"
-    DBROUTE     = "oc get {option} {deployment_name}-mongodb-svc -o jsonpath={spec} --namespace {namespace}"
+    RMQROUTE    = "oc get {option} {deployment_name}-rabbitmq-{option} -o jsonpath={spec} --namespace {namespace}"
+    DBROUTE     = "oc get {option} {deployment_name}-mongodb-{option} -o jsonpath={spec} --namespace {namespace}"
     OC_WHOAMI   = "oc whoami"
     OC_LOGIN    = "oc login --token={} --server={}"
 
@@ -46,8 +46,8 @@ class DPR:
         
     def oc_login(self):
 
-        prod_cluster = config.get("clusters", "prod_cluster")
-        preprod_cluster = config.get("clusters", "preprod_cluster")
+        prod_cluster = config.get("dpr_clusters", "prod_cluster")
+        preprod_cluster = config.get("dpr_clusters", "preprod_cluster")
 
         cluster_access_token = prod_cluster if self.api_url == prod_cluster else preprod_cluster
         

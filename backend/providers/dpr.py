@@ -18,7 +18,7 @@ def helm_install(user_data):
     api_url = yaml_data["global"]["api_url"]
     namespace = yaml_data["global"]["namespace"]
 
-    helm = DPR(hf_token,api_url)
+    helm = DPR(token=hf_token,api_url=api_url)
     helm_install = helm.run_dpr_command(DPRCommands.INSTALL, deployment_name=deployment_name, values=file_path, namespace=namespace)
 
     if helm_install["status"] == "success":
@@ -84,7 +84,7 @@ def helm_metrics(id, name):
     def fetch_rabbitmq_stats(route):
         try:
             response = requests.get(f"http://{route}:15672/api/queues", 
-                                    auth=(config.get("dpr", "rmq_username"), config.get("dpr", "rmq_password")), 
+                                    auth=(config.get("rabbitmq", "rmq_username"), config.get("rabbitmq", "rmq_password")), 
                                     timeout=5)
             if response.status_code != 200:
                 return helm_response(False, f"Failed to fetch metrics from {route}")
@@ -204,7 +204,7 @@ def create_json_format(user_data):
     json_output = {
         "global": {
             **global_config,
-            "api_url": config.get("dpr", "preprod_cluster" if api_option == "Preproduction Cluster" else "prod_cluster"),
+            "api_url": config.get("dpr_clusters", "preprod_cluster" if api_option == "Preproduction Cluster" else "prod_cluster"),
             "orbiter_model_hf_id": user_data["promptLab"].get("PROMPT_LAB_MODEL_HF_ID", ""),
             "promptlab_env": {**promptlab_env, **user_data["file"]},
         }
