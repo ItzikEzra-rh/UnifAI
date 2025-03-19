@@ -12,6 +12,7 @@ from ..exporters import HFExporter
 from ..stats import Stats
 from pymongo import errors
 from prompt_lab.utils import logger
+from prompt_lab.prompt import Prompt
 
 
 class HybridHFMongoRepository(DataRepository):
@@ -115,8 +116,15 @@ class HybridHFMongoRepository(DataRepository):
             query = {"failed": False}
 
             # Retrieve the filtered data and pass it to the exporter
-            url = self.exporter.export(self.processed_handler.read_data(query=query))
+            prompts_iterator = self._iterator_prompts_export(self.processed_handler.read_data(query=query))
+            url = self.exporter.export(prompts_iterator)
             self.stats_handler.set_exported(url)
+
+    @classmethod
+    def _iterator_prompts_export(cls, record_generator: Iterator[Dict[str, Any]]):
+        for record in record_generator:
+            record.pop("_id", None)
+            yield Prompt.from_dict(**record).export()
 
     def close(self) -> None:
         self.input_handler.close()
