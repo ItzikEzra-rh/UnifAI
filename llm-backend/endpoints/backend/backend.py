@@ -1,7 +1,6 @@
 import logging
 import os
-from flask import Blueprint
-from flask import jsonify, Response, stream_with_context
+from flask import Blueprint, jsonify, Response, stream_with_context
 from webargs import fields
 from be_utils.flask.api_args import from_body, from_query, abort
 import provider.backend.backend as llm_provider
@@ -14,43 +13,35 @@ def sanity_check():
     return 'There is access to api backend'
 
 
-@backend_bp.route("/registerTrainedModel", methods=["POST"])
+@backend_bp.route("/registerAdapter", methods=["POST"])
 @from_body({
-    "hf_url": fields.Str(data_key="hfUrl", required=True),
-    "quantized": fields.Bool(data_key="quantized", required=False, default=True),
+    "repo_id": fields.Str(data_key="repoId", required=True),
+    "epoch": fields.Integer(data_key="epoch", required=True),
+    "checkpoint_step": fields.Integer(data_key="checkpointStep", required=True),
 })
-def register_trained_model(hf_url, quantized):
-    return llm_provider.register_trained_model(hf_url, quantized)
+def register_adapter(repo_id, checkpoint_step, epoch):
+    return llm_provider.register_adapter(repo_id, checkpoint_step, epoch)
 
 
 @backend_bp.route("/loadModel", methods=["GET"])
 @from_query({
-    "model_id": fields.Str(data_key="modelId", required=True),
-    "context_length": fields.Str(data_key="contextLength", missing=None)
+    "adapter_id": fields.Str(data_key="adapterId", required=True)
 })
-def load_model(model_id, context_length):
-    return jsonify(llm_provider.load_model(model_id, context_length))
-
-
-@backend_bp.route("/inference", methods=["GET"])
-@from_query({
-    "prompt": fields.Str(data_key="prompt", required=True),
-    "temperature": fields.Str(data_key="temperature", required=False, default=None),
-    "session_id": fields.Str(data_key="sessionId", required=False, default="N/A"),
-})
-def inference(prompt, temperature=None, session_id=""):
-    return Response(llm_provider.inference(prompt, temperature, session_id=session_id), content_type='text/plain')
+def load_model(adapter_id):
+    return jsonify(llm_provider.load_model(adapter_id))
 
 
 @backend_bp.route("/inference", methods=["POST"])
 @from_body({
+    "adapter_uid": fields.Str(data_key="adapterUid", required=False, missing=None),
     "messages": fields.List(fields.Dict(), missing=[], required=False, data_key="messages"),
     "temperature": fields.Str(data_key="temperature", required=False, missing=None),
     "session_id": fields.Str(data_key="sessionId", required=False, missing="N/A"),
-    "max_gen_len": fields.Str(data_key="maxGenLen", required=False, missing="4096"),
+    "max_gen_len": fields.Str(data_key="maxGenLen", required=False, missing="12000"),
 })
-def inference_post(messages, temperature, session_id, max_gen_len):
-    return Response(llm_provider.inference(messages,
+def inference_post(adapter_uid, messages, temperature, session_id, max_gen_len):
+    return Response(llm_provider.inference(adapter_uid,
+                                           messages,
                                            temperature,
                                            max_new_tokens=int(max_gen_len),
                                            session_id=session_id),
@@ -67,7 +58,7 @@ def stop_inference(session_id):
 
 @backend_bp.route("/getModels", methods=["GET"])
 def get_models():
-    return jsonify(llm_provider.get_models())
+    return jsonify(llm_provider.get_registered_models())
 
 
 @backend_bp.route("/saveToken", methods=["POST"])
@@ -112,3 +103,15 @@ def clear_chat_history(session_id):
 })
 def load_chat_context(chat, session_id):
     return jsonify(llm_provider.load_chat_context(chat, session_id))
+
+
+@backend_bp.errorhandler(Exception)
+def handle_exception(error):
+    """
+    Global error handler for the blueprint.
+    Logs the exception and returns a JSON response with an error message and 500 status code.
+    """
+    logging.exception("Unhandled Exception: %s", error)
+    response = jsonify({"error": str(error)})
+    response.status_code = 500
+    return response

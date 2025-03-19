@@ -22,6 +22,7 @@ class Prompt:
     name: str
     context: str
     question_system_message: str
+    training_system_message: str
     seed_system_message: str
     question_seed: str
     question_options: []
@@ -76,8 +77,13 @@ class Prompt:
     def export(self):
         """export format is only question and answer"""
         return {
+            "uuid": self.uuid,
+            "original_data_uuid": self.original_data["uuid"],
+            "name": self.name,
+            "element_type": self.element_type,
             "question": self.question,
-            "answer": self.answer
+            "answer": self.answer,
+            "system": self.training_system_message
         }
 
     def __repr__(self) -> str:

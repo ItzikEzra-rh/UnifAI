@@ -12,7 +12,8 @@ properties([
         booleanParam(name: 'reviewer', defaultValue: false, description: 'Create image for reviewer'),
         booleanParam(name: 'DB', defaultValue: false, description: 'Create image for DB'),
         booleanParam(name: 'CELERY', defaultValue: false, description: 'Create image for CELERY'),
-        booleanParam(name: 'RMQ', defaultValue: false, description: 'Create image for RMQ'),
+        booleanParam(name: 'vllm_openai', defaultValue: false, description: 'Create vllm-openai image for Prompt/Reviewer cycle'),
+        booleanParam(name: 'rabbitmq', defaultValue: false, description: 'Create image for RabbitMQ'),
         booleanParam(name: 'deploy_genie', defaultValue: false, description: 'True - Deploy Genie, False - Only build images and upload to image-paas'),
         choice(name: 'deployment_location', choices: ['STAGING', 'PRODUCTION'], description: 'Where to deploy Genie?'),
         string(name: "namespace", defaultValue: "tag-ai--runtime-int", description: "The namespace to use for deployment.")
@@ -134,8 +135,13 @@ def tagAndPushImageToRegistry(module, buildParams) {
         sh """
             podman login -u ${REGISTRY_USER} -p ${REGISTRY_PASS} ${buildParams.ImageRegistry}
             podman push ${module}:${VERSION} ${buildParams.ImageRegistry}/${buildParams.ImageRegistryPath}/${module}:${VERSION}
-            podman push --quiet ${module}:${VERSION} ${buildParams.ImageRegistry}/${buildParams.ImageRegistryPath}/${module}:latest
+            #podman push --quiet ${module}:${VERSION} ${buildParams.ImageRegistry}/${buildParams.ImageRegistryPath}/${module}:latest
         """
+        if (params.deploy_genie) {
+            sh """
+                podman push --quiet ${module}:${VERSION} ${buildParams.ImageRegistry}/${buildParams.ImageRegistryPath}/${module}:latest
+            """
+        }
         echo("Image for ${module} has been tagged and pushed to ${buildParams.ImageRegistry}/${buildParams.ImageRegistryPath}/${module}:${VERSION}")
 
     }
@@ -240,7 +246,7 @@ pipeline {
                     when { expression { params.data_pre } }
                     steps {
                         script{
-                            def module = "data-pre"
+                            def module = "data_pre"
                             dir("${buildParams.DevRoot}/${params.BRANCH}/${module}/"){
                                 cleanWorkspace(module)
                                 if(buildDockerImage(module)) {
@@ -336,10 +342,48 @@ pipeline {
                         echo("Building image for CELERY")
                     }
                 }
-                stage('RMQ') {
-                    when { expression { params.RMQ } }
+                stage('vllm_openai') {
+                    when { expression { params.vllm_openai} }
                     steps {
-                        echo("Building image for RMQ")
+                            script{
+                                def module = "vllm-openai"
+                                dir("${buildParams.DevRoot}/${params.BRANCH}/${module}/"){
+                                    cleanWorkspace(module)
+                                    if(buildDockerImage(module)) {
+                                        //checkContainerAndAPI(module)
+                                        tagAndPushImageToRegistry(module,buildParams)
+                                        // if(deploy_genie) {
+                                        //     updateChartfile(module)
+                                        // }                                         
+                                        cleanWorkspace(module)
+                                        } 
+                                        else {
+                                            error("Terminating process for ${module} : Build failed")
+                                    }
+                                }
+                            }
+                    }
+                }
+                stage('rabbitmq') {
+                    when { expression { params.rabbitmq } }
+                    steps {
+                            script{
+                                def module = "rabbitmq"
+                                dir("${buildParams.DevRoot}/${params.BRANCH}/${module}/"){
+                                    cleanWorkspace(module)
+                                    if(buildDockerImage(module)) {
+                                        //checkContainerAndAPI(module)
+                                        tagAndPushImageToRegistry(module,buildParams)
+                                        // if(deploy_genie) {
+                                        //     updateChartfile(module)
+                                        // }                                         
+                                        cleanWorkspace(module)
+                                        } 
+                                        else {
+                                            error("Terminating process for ${module} : Build failed")
+                                    }
+                                }
+                            }
                     }
                 }
             }
@@ -390,8 +434,16 @@ pipeline {
     post { 
             success { 
                 echo('Build finished successfully')
-                echo("Genie UI is available at ${GUI_EP}")
                 cleanPodmanSystem()
+                script {
+                    if( params.deploy_genie && GUI_EP ) {
+                        echo("Deployment completed successfuly")
+                        echo("Genie UI is available at http://${GUI_EP}")
+                    }
+                    else if ( params.deploy_genie && !GUI_EP ) {
+                        echo("Unexpected error: GUI_EP is empty or invalid.")
+                    }
+                }
              }
         }
 }

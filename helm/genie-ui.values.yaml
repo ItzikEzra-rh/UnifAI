@@ -5,7 +5,8 @@ env:
 
 image:
    repository: images.paas.redhat.com/genie/ui
-   tag: 2025.01.31
+   tag: latest #2025.01.31
+   pullPolicy: Always
 service:
   type: ClusterIP
 

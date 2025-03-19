@@ -1,6 +1,6 @@
-import { TextField, MenuItem, FormControlLabel, Checkbox, Typography, Box } from '@mui/material';
+import { TextField, MenuItem, FormControlLabel, Checkbox, Typography, Box, Tooltip, styled, TooltipProps, tooltipClasses } from '@mui/material';
 import { Controller } from 'react-hook-form';
-
+import InfoIcon from '@mui/icons-material/Info';
 interface TabPanelProps {
   children?: React.ReactNode;
   index: number;
@@ -15,6 +15,7 @@ interface FormFieldProps {
   type?: string;
   disabled?: boolean;
   secret?: boolean;
+  tooltip?: string;
 }
 
 interface FormDropdownProps {
@@ -42,16 +43,52 @@ interface FormFileUploadProps {
   onFileUpload: (files: FileList | null) => void;
 }
 
-export const FormField: React.FC<FormFieldProps> = ({ name, label, control, errors, type = 'text', disabled = false, secret = false }) => (
-  <div className="form-group">
-    <label>{label}</label>
-    <Controller
-      name={name}
-      control={control}
-      render={({ field }) => <TextField {...field} type={secret ? 'password' : type} fullWidth error={!!errors[name]} helperText={errors[name]?.message} disabled={disabled} />}
-    />
-  </div>
-);
+const LightTooltip = styled(({ className, ...props }: TooltipProps) => (
+  <Tooltip {...props} classes={{ popper: className }} />
+))(({ theme }) => ({
+  [`& .${tooltipClasses.tooltip}`]: {
+    backgroundColor: theme.palette.common.white,
+    color: 'rgba(0, 0, 0, 0.87)',
+    boxShadow: theme.shadows[1],
+    fontSize: 15,
+  },
+}));
+
+export const FormField: React.FC<FormFieldProps> = ({
+  name,
+  label,
+  control,
+  errors,
+  type = "text",
+  disabled = false,
+  secret = false,
+  tooltip,
+}) => {
+  return (
+    <div className="form-group">
+      <div style={{ display: "flex", alignItems: "center", gap: 1, cursor: "pointer" }}>
+        <LightTooltip title={tooltip || ""} disableHoverListener={!tooltip} arrow>
+            <InfoIcon fontSize={'small'} sx={{ color: "gray", margin: "0px 4px 5px 0px" }} />
+        </LightTooltip>
+        <label>{label}</label>
+      </div>
+      <Controller
+        name={name}
+        control={control}
+        render={({ field }) => (
+          <TextField
+            {...field}
+            type={secret ? "password" : type}
+            fullWidth
+            error={!!errors[name]}
+            helperText={errors[name]?.message}
+            disabled={disabled}
+          />
+        )}
+      />
+    </div>
+  );
+};
 
 export const TabPanel: React.FC<TabPanelProps> = ({ children, value, index, ...other }) => (
   <div

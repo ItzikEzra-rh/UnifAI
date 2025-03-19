@@ -4,16 +4,16 @@ metadata:
   name: {{ .Release.Name }}-{{ .Chart.Name }}-orbiter
   namespace: {{ .Values.global.namespace }}
   labels:
-    app: {{ .Chart.Name }}-orbiter
+    app: {{ .Release.Name }}-{{ .Chart.Name }}-orbiter
 spec:
   replicas: {{ .Values.global.vllm_orbiter_replica}}
   selector:
     matchLabels:
-      app: {{ .Chart.Name }}-orbiter
+      app: {{ .Release.Name }}-{{ .Chart.Name }}-orbiter
   template:
     metadata:
       labels:
-        app: {{ .Chart.Name }}-orbiter
+        app: {{ .Release.Name }}-{{ .Chart.Name }}-orbiter
     spec:
       initContainers:
       - name: wait-for-services
@@ -34,7 +34,7 @@ spec:
 
 
       containers:
-      - name: {{ .Chart.Name }}-orbiter
+      - name: {{ .Release.Name }}-{{ .Chart.Name }}-orbiter
         image: "{{.Values.image.repository}}:{{ .Values.image.tag }}"
         imagePullPolicy: {{ .Values.image.pullPolicy }}
         #command: [ "/bin/bash", "-c", "--" ]

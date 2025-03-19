@@ -5,34 +5,49 @@ export interface FormData {
     gitCredentialKey: string;
     gitFolderPath?: string;
     gitBranchName: string;
-    baseModelName: 'Mistral' | 'Llama' | 'Granite';
-    testsCodeFramework: 'Python' | 'Robot' | 'Go' | 'Jmeter';
+    testsCodeFramework: string;
     numberOfTests: number;
-    expandDatasetTo: '5x' | '10x' | '25x' | '50x' | '100x';
-    datasetGradingUpgrade?: boolean;
-    parserFile: FileList;
-}
+    datasetGradingUpgrade?: boolean;}
 
 export interface TableFormData {
     projectName: string;
     trainingName: string;
-    baseModelName: 'Mistral' | 'Llama' | 'Granite';
-    testsCodeFramework: 'Python' | 'Robot' | 'Go' | 'Jmeter';
+    baseModelName: 'Mistral' | 'Llama' | 'Granite' | 'Qwen';
+    testsCodeFramework: 'Python' | 'Robot' | 'Go' | 'Jmeter' | '-';
     status: 'Initial' | 'In progress' | 'Finished';
     progress: string; // Represented by percentage (e.g., "50%")
     modelType: 'finetuned' | 'foundational' | 'checkpoint';
     checkpoint?: string;
 }
 
+export interface ModelDataResponse {
+    base_model_name: string;
+    quantized: boolean;
+    adapters: Adapters[];
+    uid: string;
+    model_type: 'llama' | 'qwen' | null;
+}
+
+export interface Adapters {
+    name: string;
+    project: string;
+    quantized: boolean,
+    base_model: string;
+    context_length: number;
+    local_adapter_path: string;
+    adapter_uid: string;
+    repo_internal_location?: string; 
+}
+
 export interface ModelData {
     modelId: string;
     modelName: string;
-    hfRepoId: string;
+    hfRepoId?: string;
     repoInternalLocation?: string; 
     trainingName: string;
     modelMaxSeqLen: number;
-    modelType: string,
-    project: string,
+    modelType: 'llama' | 'qwen' | null;
+    project: string;
     checkpoint?: string,
     finetuneSteps?: any[], 
     promptTemplate?: {
@@ -40,8 +55,8 @@ export interface ModelData {
         end_tag: string;
         user_tag: string;
     };
-    isRagEnabled?: boolean,
-    isPackageSelectionRagEnabled?: boolean,
+    isRagEnabled?: boolean;
+    isPackageSelectionRagEnabled?: boolean;
     // numTests: string,
     // dataSize: string,
 }
