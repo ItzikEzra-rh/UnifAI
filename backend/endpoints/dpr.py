@@ -35,6 +35,7 @@ def deploy(data, mode):
     # {
     #     "global": {
     #         "api_url": "https://api.stc-ai-e1-pp.imap.p1.openshiftapps.com:6443",
+    #         "connection": "Service", 
     #         "deployment_name": "dpr",
     #         "namespace": "tag-ai--yhabushi-nb", 
     #         "enable_toleration": False,
@@ -75,7 +76,7 @@ def deploy(data, mode):
     #         }, 
     #     }
     # }
-    install = helm_install(helm_json) # We need to add oc login here
+    install = helm_install(helm_json) 
     if install.get("status") == "success":
         return jsonify(install), 200 
     else:

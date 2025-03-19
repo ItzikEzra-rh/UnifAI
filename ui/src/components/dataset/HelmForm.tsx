@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Button, Box } from '@mui/material';
 import SuccessMessage from '../shared/SuccessMessage';
 import { SubmitHandler } from 'react-hook-form';
-import axios from '../../http/axiosConfig';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import UploadHelmJson from './UploadHelmJson';

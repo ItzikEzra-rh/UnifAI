@@ -46,10 +46,10 @@ class DPR:
         
     def oc_login(self):
 
-        prod_cluster = config.get("dpr_clusters", "prod_cluster")
-        preprod_cluster = config.get("dpr_clusters", "preprod_cluster")
+        prod_cluster = config.get("dpr", "prod_cluster")
+        preprod_cluster = config.get("dpr", "preprod_cluster")
 
-        cluster_access_token = config.get("dpr_clusters","prod_access_token") if self.api_url == prod_cluster else config.get("dpr_clusters","preprod_access_token")
+        cluster_access_token = config.get("dpr","prod_access_token") if self.api_url == prod_cluster else config.get("dpr","preprod_access_token")
 
         command_str = DPRCommands.OC_LOGIN.value.format(cluster_access_token=cluster_access_token, server=self.api_url)
         rc, stdout = shell_exec(command_str)

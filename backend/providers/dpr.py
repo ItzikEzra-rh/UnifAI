@@ -17,9 +17,10 @@ def helm_install(user_data):
     hf_token = yaml_data["global"]["hf_token"]
     api_url = yaml_data["global"]["api_url"]
     namespace = yaml_data["global"]["namespace"]
+    connection_url = config.get("dpr", yaml_data["global"]["connection"])
 
     helm = DPR(token=hf_token,api_url=api_url)
-    helm_install = helm.run_dpr_command(DPRCommands.INSTALL, deployment_name=deployment_name, values=file_path, namespace=namespace)
+    helm_install = helm.run_dpr_command(DPRCommands.INSTALL, deployment_name=deployment_name, values=file_path, namespace=namespace, connection_url=connection_url)
 
     if helm_install["status"] == "success":
         data = json.loads(helm_install["data"])
@@ -31,7 +32,7 @@ def helm_install(user_data):
 
         helm_install.pop("data",None)
         helm_install["_id"] = str(result.inserted_id)
-
+    
     return helm_install
 
 @mongo
@@ -204,7 +205,7 @@ def create_json_format(user_data):
     json_output = {
         "global": {
             **global_config,
-            "api_url": config.get("dpr_clusters", "preprod_cluster" if api_option == "Preproduction Cluster" else "prod_cluster"),
+            "api_url": config.get("dpr", "preprod_cluster" if api_option == "Preproduction Cluster" else "prod_cluster"),
             "orbiter_model_hf_id": user_data["promptLab"].get("PROMPT_LAB_MODEL_HF_ID", ""),
             "promptlab_env": {**promptlab_env, **user_data["file"]},
         }
