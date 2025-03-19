@@ -1,6 +1,7 @@
 from enum import Enum
 from be_utils.utils import shell_exec,helm_response
-
+import re
+from config.configParams import config
 
 class DPRCommands(Enum):
     # INSTALL     = "helm install -f {values}  {deployment_name} /home/cloud-user/AI-TC-s-Generator/pipelines/pre_training_helm --output json --namespace {namespace}"
@@ -11,7 +12,8 @@ class DPRCommands(Enum):
     UPGRADE     = "helm upgrade {deployment_name} --reuse-values /opt/app-root/src/pipelines/pre_training_helm {helm_set_params} --output json --namespace {namespace}"
     RMQROUTE    = "oc get {option} {deployment_name}-rabbitmq-svc -o jsonpath={spec} --namespace {namespace}"
     DBROUTE     = "oc get {option} {deployment_name}-mongodb-svc -o jsonpath={spec} --namespace {namespace}"
-
+    OC_WHOAMI   = "oc whoami"
+    OC_LOGIN    = "oc login --token={} --server={}"
 
 class DPR:
     def __init__(self, api_url, token, namespace=None):
@@ -25,7 +27,32 @@ class DPR:
         if not isinstance(command, DPRCommands):
             return helm_response(False, f"Error: Invalid Helm command {command}")
 
+        if not self.is_oc_logged_in():
+            if not self.oc_login():
+                return helm_response(False, f"Error: Failed to log in to OpenShift cluster: {self.api_url}")          
+
         command_str = command.value.format(**kwargs).strip()
         rc, stdout = shell_exec(command_str)
 
         return helm_response(rc == 0, stdout.strip())
+
+    def is_oc_logged_in(self):
+
+        command_str = DPRCommands.OC_WHOAMI.value
+        rc, stdout = shell_exec(command_str)
+        if rc == 0 and re.search(r"system:serviceaccount:tag-ai.*", stdout):
+            return True
+        return False
+        
+    def oc_login(self):
+
+        prod_cluster = config.get("clusters", "prod_cluster")
+        preprod_cluster = config.get("clusters", "preprod_cluster")
+
+        cluster_access_token = prod_cluster if self.api_url == prod_cluster else preprod_cluster
+        
+        command_str = DPRCommands.OC_LOGIN.value.format(token=cluster_access_token, server=self.api_url)
+        rc, stdout = shell_exec(command_str)
+        if rc == 0 and re.search(r"Logged into*", stdout):
+            return True
+        return False
