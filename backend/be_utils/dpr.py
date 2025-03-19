@@ -13,7 +13,7 @@ class DPRCommands(Enum):
     RMQROUTE    = "oc get {option} {deployment_name}-rabbitmq-{option} -o jsonpath={spec} --namespace {namespace}"
     DBROUTE     = "oc get {option} {deployment_name}-mongodb-{option} -o jsonpath={spec} --namespace {namespace}"
     OC_WHOAMI   = "oc whoami"
-    OC_LOGIN    = "oc login --token={} --server={}"
+    OC_LOGIN    = "oc login --token={cluster_access_token} --server={server}"
 
 class DPR:
     def __init__(self, api_url, token, namespace=None):
@@ -49,9 +49,9 @@ class DPR:
         prod_cluster = config.get("dpr_clusters", "prod_cluster")
         preprod_cluster = config.get("dpr_clusters", "preprod_cluster")
 
-        cluster_access_token = prod_cluster if self.api_url == prod_cluster else preprod_cluster
-        
-        command_str = DPRCommands.OC_LOGIN.value.format(token=cluster_access_token, server=self.api_url)
+        cluster_access_token = config.get("dpr_clusters","prod_access_token") if self.api_url == prod_cluster else config.get("clusters","preprod_access_token")
+
+        command_str = DPRCommands.OC_LOGIN.value.format(cluster_access_token=cluster_access_token, server=self.api_url)
         rc, stdout = shell_exec(command_str)
         if rc == 0 and re.search(r"Logged into*", stdout):
             return True
