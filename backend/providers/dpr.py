@@ -201,11 +201,13 @@ def create_json_format(user_data):
     reviewer_env = extract_config(user_data["reviewer"]) if global_config.get("enable_reviewer") else {}
 
     api_option = user_data["global"]["api_url"]
+    connection_option = user_data["global"]["connection"]
     
     json_output = {
         "global": {
             **global_config,
             "api_url": config.get("dpr", "preprod_cluster" if api_option == "Preproduction Cluster" else "prod_cluster"),
+            "connection": config.get("dpr", connection_option),
             "orbiter_model_hf_id": user_data["promptLab"].get("PROMPT_LAB_MODEL_HF_ID", ""),
             "promptlab_env": {**promptlab_env, **user_data["file"]},
         }
