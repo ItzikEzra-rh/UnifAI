@@ -13,8 +13,8 @@ class FunctionContext:
     name: str
     file_path: str
     signature: str
-    calls: List[str]
-    called_by: List[str]
+    # calls: List[str]
+    # called_by: List[str]
     source_code: str
     language: str
     package_name: Optional[str] = None  # Particularly useful for Go

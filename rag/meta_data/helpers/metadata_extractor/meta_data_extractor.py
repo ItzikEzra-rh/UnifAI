@@ -14,7 +14,7 @@ class MetaDataExtractorBase(ABC):
         pass
     
     @abstractmethod
-    def extract_resources(self, text: str) -> List[str]:
+    def extract_buzz_words(self, text: str) -> List[str]:
         """Extract resources from the given text."""
         pass
 

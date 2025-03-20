@@ -19,6 +19,7 @@ class GoCodeAnalyzer:
             # Setup and Teardown
             'BeforeEach', 'AfterEach', 'JustBeforeEach', 'JustAfterEach',
             'BeforeSuite', 'AfterSuite',
+            'BeforeAll', 'AfterAll', 'By',
             # Assertions
             'Expect', 'Eventually', 'Consistently', 'Should',
             # Helpers & Matchers
@@ -32,7 +33,7 @@ class GoCodeAnalyzer:
             # Built-in functions
             'make', 'new', 'len', 'cap', 'append', 'copy', 'delete',
             'close', 'complex', 'real', 'imag', 'panic', 'recover',
-            'print', 'println', 'import', 'func',
+            'print', 'println', 'import', 'func', 'if',
             # Common standard library method names
             'String', 'Error', 'Read', 'Write', 'Close', 'Open',
             'Init', 'Scan', 'Print', 'Printf', 'Println',
@@ -50,6 +51,8 @@ class GoCodeAnalyzer:
             'byte', 'rune', 'float64', 'float32', 'bool', 'error',
             'interface', 'struct', 'map', 'chan', 'func'
         }
+
+        self.primitive_types = {"string", "int", "float64", "bool", "byte", "rune", "complex64", "complex128"}
     
     def parse_go_file(self, file_path: str) -> Dict[str, Set[str]]:
         """Parse a Go file and extract all symbol definitions"""
@@ -209,7 +212,7 @@ class GoCodeAnalyzer:
         # Extract function calls using patterns
         function_patterns = [
             r'(\w+)\s*\(',  # Basic function calls
-            r'(\w+)\s*:=\s*\w+\.',  # Function assignments
+            r'(\w+)\s*:=\s*(?![^)]*\))\w+\.',  # Function assignment, (?<![.=]) ensures not matching function assignments incorrectly. e.g. "var myFunc = someFunction()" - can capture muFunc as function 
             r'func\s+(\w+)\s*\(',  # Function definitions
             r'return\s+(\w+)\s*\(',  # Return statements with function calls
         ]
@@ -314,7 +317,8 @@ class GoCodeAnalyzer:
             matches = re.finditer(pattern, code)
             for match in matches:
                 struct_name = match.group(1)
-                used_structs.add(struct_name)  # Add to set instead of directly to results
+                if struct_name not in self.primitive_types:
+                    used_structs.add(struct_name)  # Add to set instead of directly to results
 
         # Interface usage section:
         for pattern in interface_patterns:
@@ -343,7 +347,7 @@ class GoCodeAnalyzer:
     
         # Extract and verify package imports
         # package_uses = re.finditer(r'import\s+(?:"([^"]+)"|`([^`]+)`)', code)
-        package_uses = re.finditer(r'package\s+(\w+)', code) 
+        package_uses = re.finditer(r'package\s+(\w+)', code)
 
         for match in package_uses:
             package = match.group(1) or match.group(2)
@@ -353,3 +357,8 @@ class GoCodeAnalyzer:
             })
             
         return verification_results
+    
+# TODO: ignore commented out lines. e.g. " // Calling dpaClient.build() is the old pattern." - in that case .build will map into method
+
+# TODO: One big caveat with using REGEX mapping: we are not mapping method based on their actual struct. E.G dpaClient.x(), if 'x' mapped as a method in the entire project under another struct
+# it will still considered as a MATCH despite the face this method dont exist under 'dpaClient' actual struct

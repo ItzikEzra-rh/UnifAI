@@ -3,7 +3,7 @@ from webargs import fields
 from helpers.apiargs import from_query, from_body
 from be_utils.utils import json_response
 from backend.providers.rag import parsed_elements_metadata_expansion, query_meta_data_retrieval, project_graph_expansion, meta_data_to_graph_retrieval,\
-                                  get_context_by_packages, get_available_package_names_list_by_project
+                                  get_context_by_packages, get_available_package_names_list_by_project, buzz_words_appearance_hash_table
 
 rag_bp = Blueprint("rag", __name__)
 
@@ -53,6 +53,22 @@ def query_retrieval(text, project_name, model_name, model_id):
     """
     best_match = query_meta_data_retrieval(text, project_name, model_name, model_id)
     return json_response({"result": best_match})
+
+@rag_bp.route("/buzzWordsAppearanceCounter", methods=["GET"])
+@from_query({"project_name":                   fields.Str(missing='', data_key="projectName"),
+             "model_name":                     fields.Str(missing='', data_key="modelName"),
+             "model_id":                       fields.Str(missing='', data_key="modelId"),
+})
+def buzz_words_appearance_counter(project_name, model_name, model_id):
+    """checking for each of the buzz words in certain project - total number of appearances 
+
+    :param str project_name:
+    :param str model_name: current model name which being served by VLLM
+    :param str model_id: current model id which being served by VLLM
+    :return:
+    """
+    buzz_words_appearance = buzz_words_appearance_hash_table(project_name, model_name, model_id)
+    return json_response({"result": buzz_words_appearance})
 
 @rag_bp.route("/queryRetrievalByPackagesNames", methods=["POST"])
 @from_body({"packages_list":                 fields.List(fields.Str(), missing=[], data_key="packagesList"),

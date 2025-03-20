@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Dialog, DialogTitle, DialogContent, DialogActions, Button, CircularProgress, Typography } from '@mui/material';
+import { ExpandMore, ExpandLess } from '@mui/icons-material';
 import axiosBE from '../../http/axiosConfig';
 import ValidationResponseViewer from './CodeValidationResponseViewer';
 import '../../styles.css';
@@ -12,7 +13,8 @@ interface CodeValidationModalProps {
   llmResponse: string;
   repositoryLocation: string;
   modelType: 'llama' | 'qwen' | null;
-  reformatText: (text: string, modelType: 'llama' | 'qwen') => string;
+  reformatText: (text: string, modelType: 'llama' | 'qwen', enableCodeValidation: boolean) => string;
+  regenerateResponse: (contextEnrichment: boolean) => void
 }
 
 interface ValidationResponse {
@@ -34,10 +36,12 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
   llmResponse,
   repositoryLocation,
   modelType,
-  reformatText
+  reformatText,
+  regenerateResponse
 }) => {
   const [validationResponse, setValidationResponse] = useState<ValidationResponse | null>(null);
   const [isValidating, setIsValidating] = useState<boolean>(false);
+  const [isLLMResponseVisible, setIsLLMResponseVisible] = useState<boolean>(false);
 
   useEffect(() => {
     if (code) {
@@ -76,13 +80,18 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
 
   const handleRegenerate = () => {
     handleClose();
-    // Future implementation: Trigger API for regeneration
+    // Trigger API for regeneration
+    regenerateResponse(true)
   };
 
   const handleClose = () => {
     setCode('');
     setValidationResponse(null);
     onClose();
+  };
+
+  const toggleLLMResponse = () => {
+    setIsLLMResponseVisible((prev) => !prev);
   };
 
   const accuracy = validationResponse?.percentages_accuracy ?? 0;
@@ -104,28 +113,35 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
       {/* <DialogTitle>Code Validation</DialogTitle> */}
       <DialogContent>
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, mt: 2 }}>
-          <Box>
-            <Typography 
-              variant="h6" 
-              style={{ 
-                fontSize: '1.125rem', 
-                fontWeight: 600, 
-                marginBottom: '1rem'
-              }}
-            >
-              LLM Response:
-            </Typography>
-            <div 
-              style={{ 
-                backgroundColor: '#f9fafb',
-                padding: '1rem',
-                borderRadius: '0.375rem'
-              }}
-              dangerouslySetInnerHTML={{ 
-                __html: modelType ? reformatText(llmResponse, modelType) : llmResponse 
-              }} 
-            />
-          </Box>
+          {validationResponse && !isValidating && (
+              <Box sx={{ mt: 3 }}>
+                <ValidationResponseViewer data={validationResponse} accuracy={accuracy} />
+              </Box>
+            )}
+
+            <Box>
+              <Typography 
+                variant="h6" 
+                style={{ fontSize: '1.125rem', fontWeight: 600, marginBottom: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                onClick={toggleLLMResponse}
+              >
+                LLM Response
+                {isLLMResponseVisible ? <ExpandLess sx={{ marginLeft: '8px' }} /> : <ExpandMore sx={{ marginLeft: '8px' }} />}
+              </Typography>
+              
+              {isLLMResponseVisible && (
+                <div 
+                  style={{ 
+                    backgroundColor: '#f9fafb',
+                    padding: '1rem',
+                    borderRadius: '0.375rem'
+                  }}
+                  dangerouslySetInnerHTML={{ 
+                    __html: modelType ? reformatText(llmResponse, modelType, false) : llmResponse 
+                  }} 
+                />
+              )}
+            </Box>
           
           {/* <TextField
             label="Paste the generated code for validation"
@@ -136,12 +152,6 @@ const CodeValidationModal: React.FC<CodeValidationModalProps> = ({
             variant="outlined"
             fullWidth
           /> */}
-
-          {validationResponse && !isValidating && (
-            <Box sx={{ mt: 3 }}>
-              <ValidationResponseViewer data={validationResponse} accuracy={accuracy} />
-            </Box>
-          )}
         </Box>
       </DialogContent>
       <DialogActions>

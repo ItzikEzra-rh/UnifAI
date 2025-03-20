@@ -420,7 +420,7 @@ const ChatComponent: React.FC = () => {
     }
   };
 
-  const sendQuestion = async (text: string) => {
+  const sendQuestion = async (text: string, contextEnrichment: boolean) => {
     try {
       // Replace <br> tags with \n in the input text
       let formattedText = text.replace(/<br>/g, '\n');
@@ -443,7 +443,7 @@ const ChatComponent: React.FC = () => {
                             {"role": "user",    "content": `${formattedText}`}]
 
       // If current loaded model support RAG we should enrich the LLM with relevant context
-      if (selectedModel?.isRagEnabled) {
+      if (selectedModel?.isRagEnabled && contextEnrichment) {
         const queryRetrievalPayload = {
           text: formattedText,
           projectName: selectedModel?.project,
@@ -583,7 +583,7 @@ const ChatComponent: React.FC = () => {
     });
 
     setIsStreaming(true);
-    sendQuestion(text);
+    sendQuestion(text, false);
   };
 
   const handleSaveClick = (userLatestMessage: string, promptLatestMessage: string) => {
@@ -633,7 +633,7 @@ const ChatComponent: React.FC = () => {
     }
   };
 
-  const regenerateResponse = async () => {
+  const regenerateResponse = async (contextEnrichment: boolean = false) => {
     const lastUserMessage = messages.slice().reverse().find(msg => msg.sender === 'user');
     if (!lastUserMessage) return;
 
@@ -643,7 +643,7 @@ const ChatComponent: React.FC = () => {
       { ...lastUserMessage, id: new Date().toISOString() }, // Re-add the user's message
     ]);
 
-    sendQuestion(lastUserMessage.text)
+    sendQuestion(lastUserMessage.text, contextEnrichment)
   };
 
   const handleStop = async () => {
@@ -736,7 +736,7 @@ const ChatComponent: React.FC = () => {
 
   const data = React.useMemo(() => (selectedModel ? [selectedModel] : []), [selectedModel]);
   
-  const ReformatText = (text: string, modelType: 'llama' | 'qwen') => {
+  const ReformatText = (text: string, modelType: 'llama' | 'qwen', enableCodeValidation: boolean) => {
     const regularText = (line: string, type: RegExp, style: string) => {
       return line.replace(type, (_, text) => `<${style}>${text}</${style}>`) + '\n';
     };
@@ -776,6 +776,7 @@ const ChatComponent: React.FC = () => {
               onmousedown="this.style.backgroundColor='rgba(240, 240, 240, 1)';"
               onmouseup="this.style.backgroundColor='rgba(255, 255, 255, 1)';"
               title="Code Validation"
+              disabled={!selectedModel?.repoInternalLocation}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" style="fill: currentColor;">
                 <path d="M20,3H4C2.9,3,2,3.9,2,5v14c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V5C22,3.9,21.1,3,20,3z M9,17H6c-0.55,0-1-0.45-1-1 s0.45-1,1-1h3c0.55,0,1,0.45,1,1S9.55,17,9,17z M9,13H6c-0.55,0-1-0.45-1-1s0.45-1,1-1h3c0.55,0,1,0.45,1,1S9.55,13,9,13z M9,9H6 C5.45,9,5,8.55,5,8s0.45-1,1-1h3c0.55,0,1,0.45,1,1S9.55,9,9,9z M18.7,11.12l-3.17,3.17l-1.41-1.41c-0.39-0.39-1.02-0.39-1.41,0 c-0.39,0.39-0.39,1.02,0,1.41l2.12,2.12c0.39,0.39,1.02,0.39,1.41,0l3.88-3.88c0.39-0.39,0.39-1.02,0-1.41 C19.72,10.73,19.09,10.73,18.7,11.12z"/>
@@ -812,7 +813,7 @@ const ChatComponent: React.FC = () => {
           // Closing code block after printing inside of it up until now
           const language = Prism.languages[currentLanguage] || Prism.languages.javascript;
           const highlightedCode = Prism.highlight(codeBuffer.trim(), language, currentLanguage);
-          formattedText += `${highlightedCode}</code></pre>${createValidationButton(codeBuffer.trim())}`;
+          formattedText += enableCodeValidation? `${highlightedCode}</code></pre>${createValidationButton(`${CODE}\n` + codeBuffer.trim() + CODE)}` : `${highlightedCode}</code></pre>`;
           insideCodeBlock = false;
           codeBuffer = '';
         } else {
@@ -850,7 +851,7 @@ const ChatComponent: React.FC = () => {
     if (insideCodeBlock) {
       const language = Prism.languages[currentLanguage] || Prism.languages.javascript;
       const highlightedCode = Prism.highlight(codeBuffer.trim(), language, currentLanguage);
-      formattedText += `${highlightedCode}</code></pre>${createValidationButton(codeBuffer.trim())}`;
+      formattedText += enableCodeValidation? `${highlightedCode}</code></pre>${createValidationButton(`${CODE}\n` + codeBuffer.trim() + CODE)}` : `${highlightedCode}</code></pre>`;
     }
   
     return formattedText;
@@ -902,7 +903,7 @@ const ChatComponent: React.FC = () => {
                   <div key={message.id} style={{ position: 'relative', paddingBottom: '40px' }}>
                     <Message
                       model={{
-                        message: modelType ? ReformatText(message.text, modelType) : message.text, 
+                        message: modelType ? ReformatText(message.text, modelType, true) : message.text, 
                         sentTime: 'just now',
                         sender: message.sender === 'user' ? 'You' : 'Bot',
                         direction: message.sender === 'user' ? 'outgoing' : 'incoming',
@@ -927,7 +928,7 @@ const ChatComponent: React.FC = () => {
                             <>
                               <Tooltip title="Regenerate">
                                 <IconButton
-                                  onClick={regenerateResponse}
+                                  onClick={() => regenerateResponse(false)}
                                   size="small"
                                 >
                                   <AutorenewIcon />
@@ -1007,6 +1008,7 @@ const ChatComponent: React.FC = () => {
             repositoryLocation={selectedModel?.repoInternalLocation || ''}
             modelType={modelType}
             reformatText={ReformatText}
+            regenerateResponse={regenerateResponse}
           />
         </div>
        ) : (

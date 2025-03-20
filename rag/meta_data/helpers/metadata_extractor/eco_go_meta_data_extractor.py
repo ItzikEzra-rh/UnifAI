@@ -6,46 +6,26 @@ from .meta_data_extractor import MetaDataExtractorBase
 # Load spaCy's small English model for NLP
 nlp = spacy.load("en_core_web_sm")
 
-class KubevirtMetaDataExtractor(MetaDataExtractorBase):
-    K8S_TERMS = [
-        "namespace", "volume", "deployment", "pod", "service", "configmap",
-        "secret", "auto_scaler", "ingress", "container", "persistentvolume",
-        "statefulset", "daemonset", "replicaset", "node", "scheduler", "controller"
-    ]
-
-    K8S_RESOURCES = [
-        "VirtualMachineInstance", "VMI", "Pod", "Service", "Ingress", "ConfigMap",
-        "Deployment", "StatefulSet", "DaemonSet", "Secret", "PersistentVolumeClaim",
-        "PersistentVolume", "ReplicaSet", "Node", "Controller", "Scheduler"
-    ]
+class EcogoMetaDataExtractor(MetaDataExtractorBase):
+    TOP_100_TERMS_ORIG = ['err', 'test', 'tsparam', 'error', 'cluster', 'pod', 'node', 'namespace', 'reportxml', 'func', 'module', 'image', 'policy', 'deployment', 'cgu', 'label', 'workload', 'ginkgo',
+                    'object', 'definition', 'time', 'version', 'minute', 'spec', 'operator', 'block', 'hub', 'agentserviceconfig', 'network', 'configmap', 'step', 'spk', 'status', 'iov', 'service',
+                    'worker', 'string', 'package', 'configuration', 'testdata', 'cgubuilder', 'container', 'glog', 'spoke', 'resource', 'config', 'code', 'reboot', 'address', 'nil', 'robot', 'sriov',
+                    'netconfig', 'ibu', 'kmm', 'ztp', 'infraenv', 'assert', 'validation', 'allclose', 'tmm', 'kmmparam', 'fmt', 'helper', 'moduleloadercontainer', 'ztpconfig', 'dns', 'spkcommon', 'app',
+                    'traffic', 'default', 'udp', 'resolution', 'var', 'interface', 'upgrade', 'rdscorecommon', 'case', 'mce', 'describe', 'testnamespace', 'bgp', 'workerlabelmap', 'client', 'state',
+                    'value', 'kmmparams', 'server', 'list', 'check', 'message', 'secret', 'source', 'master', 'apiclient', 'modulename', 'disk', 'kernel', 'agentclusterinstall', 'argo']
+    
+    TOP_100_TERMS = ['tsparam', 'error', 'cluster', 'pod', 'node', 'namespace', 'reportxml', 'module', 'image', 'policy', 'deployment', 'cgu', 'label', 'workload',
+                'definition', 'time', 'version', 'minute', 'spec', 'operator', 'block', 'hub', 'agentserviceconfig', 'network', 'configmap', 'step', 'spk', 'status', 'iov', 'service',
+                'worker', 'configuration', 'testdata', 'cgubuilder', 'container', 'spoke', 'resource', 'config', 'code', 'reboot', 'address', 'sriov',
+                'netconfig', 'ibu', 'kmm', 'ztp', 'infraenv', 'assert', 'validation', 'allclose', 'tmm', 'kmmparam', 'helper', 'moduleloadercontainer', 'ztpconfig', 'dns', 'spkcommon', 'app',
+                'traffic', 'udp', 'resolution', 'interface', 'upgrade', 'rdscorecommon', 'mce', 'testnamespace', 'bgp', 'workerlabelmap', 'client', 'state',
+                'kmmparams', 'server', 'list', 'message', 'secret', 'source', 'master', 'apiclient', 'modulename', 'disk', 'kernel', 'agentclusterinstall', 'argo']
 
     @staticmethod
     def is_technical_term(word: str) -> bool:
         """
         Identifies technical terms, abbreviations, and compound technical words.
-        """
-        # Common technical prefixes
-        technical_prefixes = [
-            'lib',      # libraries
-            'vmi',      # virtual machine related
-            'vm',       # virtual machine
-            'api',      # API related
-            'db',       # database
-            'replica',  # kubernetes/container terms
-            'pod',      # kubernetes terms
-            'kube',     # kubernetes terms
-            'docker',   # container terms
-            'config',   # configuration related
-            'auth',     # authentication related
-            'sys',      # system related
-        ]
-
-        # Check if word starts with technical prefixes
-        word_lower = word.lower()
-        for prefix in technical_prefixes:
-            if word_lower.startswith(prefix):
-                return True
-                
+        """                
         # Check for common technical patterns
         technical_patterns = [
             r'^[A-Z]+$',          # all caps abbreviations
@@ -66,7 +46,7 @@ class KubevirtMetaDataExtractor(MetaDataExtractorBase):
         Checks if a word is a pure action verb by validating its structure.
         Returns False for compound words or technical terms.
         """
-        if KubevirtMetaDataExtractor.is_technical_term(word):
+        if EcogoMetaDataExtractor.is_technical_term(word):
             return False
             
         # Common technical suffixes to filter out
@@ -125,16 +105,11 @@ class KubevirtMetaDataExtractor(MetaDataExtractorBase):
                     actions.add(lemma)
         
         return sorted(list(actions))
-
-    def extract_k8s_terms(self, text: str) -> List[str]:
-        """Match predefined K8S_TERMS in the text."""
-        terms_found = [term for term in self.K8S_TERMS if term.lower() in text.lower()]
-        return list(set(terms_found))
-
+    
     def extract_buzz_words(self, text: str) -> List[str]:
-        """Extract Kubernetes-related resources from the text."""
-        resources = [resource for resource in self.K8S_RESOURCES if resource.lower() in text.lower()]
-        return list(set(resources))
+        """Match predefined TOP_TERMS in the text."""
+        terms_found = [term for term in self.TOP_100_TERMS if term.lower() in text.lower()]
+        return list(set(terms_found))
 
     @staticmethod
     def extract_test_id(name: str) -> str:
