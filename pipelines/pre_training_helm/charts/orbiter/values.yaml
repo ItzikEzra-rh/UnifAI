@@ -1,4 +1,5 @@
 global:
+  connection:
   namespace: 
   orbiter_replica:
   promptlab_env: 

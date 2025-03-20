@@ -1,4 +1,5 @@
 global:
+  connection:
   namespace: 
   reviewer_replica:
   reviewer_env:

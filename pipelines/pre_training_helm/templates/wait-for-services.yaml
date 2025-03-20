@@ -6,6 +6,7 @@ metadata:
 data:
   wait-for-services.sh: |
     export REVIEWER_NUM="{{.Values.global.vllm_reviewer_replica}}"
+    MONGODB_IP="{{ default (printf "%s-mongodb-svc" .Release.Name) .Values.global.connection }}"
 
     while [ "$(curl -s -o /dev/null -w "%{http_code}" -u genie:genie123 http://{{ .Release.Name }}-rabbitmq-svc:15672/api/overview)" != "200" ]; do
       echo "Waiting for RabbitMQ service to be ready...";
@@ -13,11 +14,11 @@ data:
     done;
     echo "RabbitMQ service is up!"
     
-    while [ "$(curl -s -o /dev/null -w "%{http_code}" http://{{ .Release.Name }}-mongodb-svc:27017)" != "200" ]; do
+    while [ "$(curl -s -o /dev/null -w "%{http_code}" http://$MONGODB_IP:27017)" != "200" ]; do
       echo "Waiting for MongoDB service to be ready...";
       sleep 5;
     done;
-    echo "MongoDB service is up!"
+    echo "MongoDB service is up at $MONGODB_IP."
 
     if [ "$CHART_NAME" != "vllm" ]; then
 
