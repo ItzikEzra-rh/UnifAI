@@ -77,7 +77,7 @@ service:
   labels: {}
 
 ## Resource limits and requests
-resources: {}
+resources: 
   limits:
     cpu: 1000m
     memory: 1024Mi
