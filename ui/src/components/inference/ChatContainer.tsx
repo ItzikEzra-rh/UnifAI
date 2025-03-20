@@ -776,6 +776,7 @@ const ChatComponent: React.FC = () => {
               onmousedown="this.style.backgroundColor='rgba(240, 240, 240, 1)';"
               onmouseup="this.style.backgroundColor='rgba(255, 255, 255, 1)';"
               title="Code Validation"
+              disabled={!selectedModel?.repoInternalLocation}
             >
               <svg width="20" height="20" viewBox="0 0 24 24" style="fill: currentColor;">
                 <path d="M20,3H4C2.9,3,2,3.9,2,5v14c0,1.1,0.9,2,2,2h16c1.1,0,2-0.9,2-2V5C22,3.9,21.1,3,20,3z M9,17H6c-0.55,0-1-0.45-1-1 s0.45-1,1-1h3c0.55,0,1,0.45,1,1S9.55,17,9,17z M9,13H6c-0.55,0-1-0.45-1-1s0.45-1,1-1h3c0.55,0,1,0.45,1,1S9.55,13,9,13z M9,9H6 C5.45,9,5,8.55,5,8s0.45-1,1-1h3c0.55,0,1,0.45,1,1S9.55,9,9,9z M18.7,11.12l-3.17,3.17l-1.41-1.41c-0.39-0.39-1.02-0.39-1.41,0 c-0.39,0.39-0.39,1.02,0,1.41l2.12,2.12c0.39,0.39,1.02,0.39,1.41,0l3.88-3.88c0.39-0.39,0.39-1.02,0-1.41 C19.72,10.73,19.09,10.73,18.7,11.12z"/>
