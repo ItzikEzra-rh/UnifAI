@@ -25,13 +25,6 @@ storage:
   labels:
     paas.redhat.com/appcode: TAG-001
 
-networkPolicy:
-  ## Ingress and Egress policies
-   ingress: 
-   - ports:
-      - port: 27017
-        protocol: TCP
-   egress: {}
       
 
 
