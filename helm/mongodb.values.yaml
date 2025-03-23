@@ -7,8 +7,6 @@ customLabels: {}
 ## Additional annotations for Deployment or StatefulSet
 customAnnotations: {}
 securityContext: {}
-service:
-  type: LoadBalancer
 image:
   registry: "images.paas.redhat.com/genie"
   repository: "mongo"

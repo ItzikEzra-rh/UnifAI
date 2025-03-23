@@ -63,7 +63,7 @@ securityContext: {}
 service:
   # Suffix of the headless service name
   headlessServiceSuffix: internal
-  type: ClusterIP
+  type: LoadBalancer
   port: 27017
   ## The node port (only relevant for type LoadBalancer or NodePort)
   nodePort:
