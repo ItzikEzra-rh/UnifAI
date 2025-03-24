@@ -1,4 +1,5 @@
 global:
+  connection:
   namespace: 
   promptlab_env:
 

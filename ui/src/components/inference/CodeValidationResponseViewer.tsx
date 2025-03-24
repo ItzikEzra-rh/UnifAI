@@ -48,7 +48,11 @@ const AccuracyIndicator: React.FC<{ accuracy: number }> = ({ accuracy }) => {
   const isAccurate = accuracy >= 75.00;
   
   return (
-    <Tooltip title={`${accuracy}% of the suggested code elements exist in the original repository`}>
+    <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      gap: '8px', 
+    }}>
       <div style={{
         width: '12px',
         height: '12px',
@@ -58,7 +62,10 @@ const AccuracyIndicator: React.FC<{ accuracy: number }> = ({ accuracy }) => {
         display: 'inline-block',
         verticalAlign: 'middle'
       }} />
-    </Tooltip>
+      <Typography variant="body2" sx={{ fontWeight: 600 }}>
+        {accuracy}% of the suggested code elements exist in the original repository
+      </Typography>
+    </div>
   );
 };
 

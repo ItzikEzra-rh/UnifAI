@@ -6,6 +6,10 @@ global:
 # ====================================================================================
   # Namespace where the Helm chart will deploy the application resources.
   namespace: 
+
+  # (str) Optional, when empty it will create a mongodb+service as part of independent process otherwise it will use the genie-mongodb Pod via LB.
+  connection:
+
   # enable toleration ( on production env in order to allocate A100 GPUs).
   enable_toleration: 
 

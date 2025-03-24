@@ -47,8 +47,7 @@ class HFExporter:
         """
         chunk = []
         for record in generator:
-            record.pop("_id")
-            chunk.append(Prompt.from_dict(**record).export())
+            chunk.append(record)
             if len(chunk) == size:
                 yield chunk
                 chunk = []
