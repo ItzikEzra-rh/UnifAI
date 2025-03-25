@@ -12,8 +12,8 @@ image:
 
 resources:
   limits:
-    cpu: 2
+    cpu: 4
     memory: 6Gi
   requests:
-    cpu: 4
+    cpu: 2
     memory: 4Gi
