@@ -124,7 +124,7 @@ const DatasetPreparationTable: React.FC = () => {
             const runningResponse = await runningDeployments();
             const runningDatasets = runningResponse;
             setCurrentlyRunningDatasets(runningDatasets);
-
+            // this will be changed to just be calls from the mongodb after saving data there
             const currentlyRunningIds = new Set(runningDatasets.map((item: any) => item._id));
 
             const promises = datasets.map(async (item) => {

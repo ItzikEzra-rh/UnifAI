@@ -69,9 +69,10 @@ export const FormField: React.FC<FormFieldProps> = ({
   return (
     <div className="form-group">
       <div style={{ display: "flex", alignItems: "center", gap: 1, cursor: "pointer" }}>
-        <LightTooltip title={tooltip || ""} disableHoverListener={!tooltip} arrow>
-            <InfoIcon fontSize={'small'} sx={{ color: "gray", margin: "0px 4px 5px 0px" }} />
-        </LightTooltip>
+        {tooltip &&
+          <LightTooltip title={tooltip || ""} disableHoverListener={!tooltip} arrow>
+              <InfoIcon fontSize={'small'} sx={{ color: "gray", margin: "0px 4px 5px 0px" }} />
+          </LightTooltip>}
         <label>{label}</label>
       </div>
       <Controller

@@ -27,6 +27,7 @@ def initialize_mongo_handlers_and_repository(config, db_name):
     mongo_uri = get_mongo_url()
     processed_handler = MongoDataHandler(uri=mongo_uri, db_name=db_name, collection_name="processedPrompts")
     stats_handler = MongoDataHandler(uri=mongo_uri, db_name=db_name, collection_name="statistics")
+    instances_handler = MongoDataHandler(uri=mongo_uri, db_name=db_name, collection_name="instances")
 
     repository = HybridHFMongoRepository(
         input_handler=HuggingFaceDataHandler(
@@ -37,6 +38,7 @@ def initialize_mongo_handlers_and_repository(config, db_name):
         ) if config.get("input_dataset_repo") else None,
         processed_handler=processed_handler,
         stats_handler=stats_handler,
+        instances_handler=instances_handler,
         exporter=HFExporter(
             repo_id=config.get("output_dataset_repo"),
             file_name=config.get("output_dataset_file_name")
@@ -49,7 +51,7 @@ def run_launchpad():
     """Run the 'launchpad' command logic."""
     config = initialize_config()
     tokenizer = initialize_tokenizer()
-    repository = initialize_mongo_handlers_and_repository(config, db_name="promptLab")
+    repository = initialize_mongo_handlers_and_repository(config, db_name="dpr")
 
     PromptLaunchpad(
         repository=repository,

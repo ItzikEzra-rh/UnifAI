@@ -65,7 +65,7 @@ const schema = yup.object().shape({
     }),
     global: yup.object({
         api_url: yup.string().required('Cluster Selection is required'),
-        connection: yup.string().required('Network Connection is required'),
+        connection: yup.string(),
         deployment_name: yup.string().required('Deployment Name is required'),
         vllm_reviewer_replica: yup.number().when('global.enable_reviewer', (enable_reviewer, schema) => 
             enable_reviewer ? schema.required('Reviewer Model HuggingFace ID is required') : schema.notRequired()

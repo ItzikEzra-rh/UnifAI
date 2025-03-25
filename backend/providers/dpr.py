@@ -17,10 +17,9 @@ def helm_install(user_data):
     hf_token = yaml_data["global"]["hf_token"]
     api_url = yaml_data["global"]["api_url"]
     namespace = yaml_data["global"]["namespace"]
-    connection_url = config.get("dpr", yaml_data["global"]["connection"])
 
     helm = DPR(token=hf_token,api_url=api_url)
-    helm_install = helm.run_dpr_command(DPRCommands.INSTALL, deployment_name=deployment_name, values=file_path, namespace=namespace, connection_url=connection_url)
+    helm_install = helm.run_dpr_command(DPRCommands.INSTALL, deployment_name=deployment_name, values=file_path, namespace=namespace)
 
     if helm_install["status"] == "success":
         data = json.loads(helm_install["data"])
@@ -256,19 +255,22 @@ def get_json_file_config(id):
     result = list(Collections.by_name('dpr').find({'_id': ObjectId(id)}, {'config': 1}))
     return result[0]['config'] if result else []
 
-async def celery_fetch_dpr():
+async def celery_check_dpr_progress():
     """
     Fetches Helm metrics for all currently running deployments.
     """
     print("Starting fetch metrics for dpr")
     running_deployments = get_actively_running()
-
-    metrics_data = {}
+    
     for deployment in running_deployments:
-        deployment_id = deployment["_id"]
-        deployment_name = deployment["deployment_name"]
-        metrics = helm_metrics(deployment_id, deployment_name)
-        if metrics:
-            metrics_data[deployment_id] = metrics
-
-    return metrics_data
+        id = deployment["_id"]
+        creds = get_config_creds(id)
+        rabbitmq_route, db_route = creds.get("release_rmq_route"), creds.get("release_db_route")
+        if not rabbitmq_route or not db_route:
+            helm_route(id)
+        mongodb_stats = deployment["metrics"]["mongodb"]
+        progress_data = next((item for item in mongodb_stats if item.get('_id') == "progress_data"), None)
+        if progress_data:
+            no_remaining_prompts = progress_data['prompts_failed'] + progress_data['prompts_pass'] == progress_data['number_of_prompts']
+            if no_remaining_prompts and progress_data.get('exported', False):
+                helm_uninstall(id, "DONE")

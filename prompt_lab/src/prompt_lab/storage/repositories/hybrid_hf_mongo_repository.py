@@ -6,6 +6,8 @@ and defers export logic to an HFExporter.
 """
 
 from typing import Dict, Any, Iterator, Set, List
+
+from prompt_lab.storage.stats.instances import Instances
 from .data_repository import DataRepository
 from ..datahandler import HuggingFaceDataHandler, MongoDataHandler
 from ..exporters import HFExporter
@@ -28,13 +30,15 @@ class HybridHFMongoRepository(DataRepository):
             input_handler: HuggingFaceDataHandler,
             processed_handler: MongoDataHandler,
             stats_handler: MongoDataHandler,
+            instances_handler: MongoDataHandler,
             exporter: HFExporter
     ):
         self.input_handler = input_handler
         self.processed_handler = processed_handler
         self.stats_handler = Stats(stats_handler)
+        self.instances_handler = Instances(instances_handler, self.stats_handler.progress_id)
         self.exporter = exporter
-
+        
     # input handler
     def load_input_data(self) -> Iterator[Dict[str, Any]]:
         return self.input_handler.read_data()

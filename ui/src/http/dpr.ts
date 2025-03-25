@@ -32,8 +32,9 @@ export const dprDelete = async (datasetId: string): Promise<any> => {
 
 export const getMetrics = async (datasetId: string, name: string): Promise<any> => {
   try {
-    const response = await apiClient.get<{ response: any }>("/api/dpr/metrics", { params: { id: datasetId, name: name} });
-    return response.data || [];
+    return []
+    // const response = await apiClient.get<{ response: any }>("/api/dpr/metrics", { params: { id: datasetId, name: name} });
+    // return response.data || [];
   } catch (error) {
     console.error("Error fetching metrics:", error);
     return [];
