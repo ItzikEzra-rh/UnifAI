@@ -29,11 +29,13 @@ class Stats:
         """
         Ensure progress data exists in the storage, initializing it if necessary.
         """
-        existing_data = list(self.statistics_handler.read_data(query={}).sort("_id", -1).limit(1))
+        existing_data = list(self.statistics_handler.read_data(
+                    query={"_id": self.progress_id}
+                ))        
         
         if not existing_data:
-            inserted_id = self.statistics_handler.append_record(self.DEFAULT_VALUES)
-            self.progress_id = inserted_id  
+            result = self.statistics_handler.append_record(self.DEFAULT_VALUES)
+            self.progress_id = result.inserted_id  
         else:
             self.progress_id = existing_data[0]["_id"]  
 
@@ -83,6 +85,7 @@ class Stats:
         """
         Retrieve the current progress data directly from the database.
         """
+        
         progress_data = list(self.statistics_handler.read_data(query={"_id": self.progress_id}))
 
         if not progress_data:
