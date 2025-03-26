@@ -29,15 +29,20 @@ class Stats:
         """
         Ensure progress data exists in the storage, initializing it if necessary.
         """
-        existing_data = list(self.statistics_handler.read_data(
-                    query={"_id": self.progress_id}
-                ))        
-        
-        if not existing_data:
-            result = self.statistics_handler.append_record(self.DEFAULT_VALUES)
-            self.progress_id = result.inserted_id  
-        else:
-            self.progress_id = existing_data[0]["_id"]  
+        print(self.progress_id)
+        if self.progress_id is None:
+            # Check if there is an existing record and retrieve its _id
+            existing_data = list(self.statistics_handler.read_data(
+                query={"type": "progress_data"}  # Adjust query if needed
+            ))
+
+            if existing_data:
+                self.progress_id = existing_data[0]["_id"]
+            else:
+                # Create a new record and store the generated _id
+                result = self.statistics_handler.append_record(self.DEFAULT_VALUES)
+                self.progress_id = result.inserted_id  # Capture the generated ID
+
 
     def _validate_key(self, key: str) -> None:
         """
@@ -65,6 +70,8 @@ class Stats:
         """
         Increment a specific progress key directly in the database.
         """
+        print("incrementing")
+        print(self.progress_id)
         self._validate_key(key)
         self.statistics_handler.update_record(
             query={"_id": self.progress_id},
