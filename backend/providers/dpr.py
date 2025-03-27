@@ -14,7 +14,7 @@ from config.configParams import config
 def helm_install(user_data):
     result = Collections.by_name('dpr').insert_one({})  
     process_id = str(result.inserted_id)
-    user_data["global"]["promptlab_env"]["PROCESS_ID"] = process_id  
+    user_data["global"]["process_id"] = process_id  
 
     file_path, yaml_data = json_to_yaml(user_data)
 
