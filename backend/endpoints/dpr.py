@@ -119,7 +119,7 @@ def delete(id):
 })
 def promptlab_stats(id):
     stats = get_promptlab_stats(id)
-    return stats
+    return {"data": stats}
 
 # @dpr_bp.route("/metrics", methods=["GET"])
 # @from_query({

@@ -120,26 +120,16 @@ const DatasetPreparationTable: React.FC = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        // Map through each dataset and fetch stats
+        console.log("?")
         const updatedDatasets = await Promise.all(datasets.map(async (dataset) => {
-          const data = await getStats(dataset._id);  // Call getStats with dataset ID
-      
+        const data = await getStats(dataset._id); 
     
-          const pass = data?.prompts_pass || 0;
-          const fail = data?.prompts_failed || 0;
-    
-          // Return the updated dataset with stats
           return {
             ...dataset,
-            stats: data,  // Store full stats for later reference
-            promptsProgress: {
-              pass,
-              fail,
-            },
+            stats: data
           };
         }));
     
-        // Update the datasets state with the new data
         setDatasets(updatedDatasets);
     
       } catch (error) {
@@ -150,7 +140,7 @@ const DatasetPreparationTable: React.FC = () => {
     
 
     if (datasets.length > 0) {
-      fetchStats();
+        fetchStats();
         const intervalId = setInterval(fetchStats, 30000);
         return () => clearInterval(intervalId);
     }
@@ -226,11 +216,10 @@ const DatasetPreparationTable: React.FC = () => {
         </TableHead>
         <TableBody>
           {datasets?.map((row) => {
-            const progressData = row.promptsProgress || {};
             const stats = row.stats || {};
 
-            const passed = progressData?.pass || 0;
-            const failed = progressData?.fail || 0;
+            const passed = stats.prompts_pass || 0;
+            const failed = stats.prompts_failed || 0;
             const promptsProcessed = stats.prompts_processed || 0;
             const totalPrompts = stats.number_of_prompts || 0;
             const remaining = totalPrompts - promptsProcessed;
