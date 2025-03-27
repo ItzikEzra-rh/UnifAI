@@ -18,11 +18,12 @@ class Stats:
         "exported": "",
     }
 
-    def __init__(self, statistics_handler):
+    def __init__(self, statistics_handler, process_id):
         """
         :param statistics_handler: A MongoDataHandler instance for managing progress data.
         """
         self.statistics_handler = statistics_handler
+        self.process_id = process_id
         self.progress_id = None
         self._initialize_progress_data()
 
@@ -30,6 +31,7 @@ class Stats:
         """
         Ensure progress data exists in the storage, initializing it if necessary.
         """
+        print(self.process_id)
         if self.progress_id is None:
             # Check if there is an existing record and retrieve its _id
             existing_data = list(self.statistics_handler.read_data(

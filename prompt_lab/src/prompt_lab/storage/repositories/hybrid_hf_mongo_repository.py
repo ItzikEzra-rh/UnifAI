@@ -29,11 +29,12 @@ class HybridHFMongoRepository(DataRepository):
             input_handler: HuggingFaceDataHandler,
             processed_handler: MongoDataHandler,
             stats_handler: MongoDataHandler,
-            exporter: HFExporter
+            exporter: HFExporter,
+            process_id: str = None
     ):
         self.input_handler = input_handler
         self.processed_handler = processed_handler
-        self.stats_handler = Stats(stats_handler)
+        self.stats_handler = Stats(stats_handler, process_id=process_id)
         self.exporter = exporter
         
     # input handler
