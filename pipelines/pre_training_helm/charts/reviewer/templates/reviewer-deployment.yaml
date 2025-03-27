@@ -83,6 +83,11 @@ spec:
         - name: MONGODB_PORT
           value: $({{ .Release.Name | upper }}_MONGODB_SVC_SERVICE_PORT)
         {{- end }}
+        
+        {{- if .Values.global.process_id }}
+        - name: PROCESS_ID
+          value: {{ .Values.global.process_id }}
+        {{- end }}
 
         - name: VLLM_IP
           value: $({{ .Release.Name | upper }}_VLLM_REVIEWER_SVC_SERVICE_HOST)

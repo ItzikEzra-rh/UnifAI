@@ -86,7 +86,12 @@ spec:
         - name: MONGODB_PORT
           value: $({{ .Release.Name | upper }}_MONGODB_SVC_SERVICE_PORT)
         {{- end }}
-          
+
+        {{- if .Values.global.process_id }}
+        - name: PROCESS_ID
+          value: {{ .Values.global.process_id }}
+        {{- end }}
+
         - name: CELERY_WORKER_CONCURRENCY
           value: "{{.Values.landing.celery_worker_concurrency}}"
         - name: CELERY_WORKER_PREFETCH_COUNT
@@ -146,6 +151,11 @@ spec:
           value: $({{ .Release.Name | upper }}_MONGODB_SVC_SERVICE_HOST)
         - name: MONGODB_PORT
           value: $({{ .Release.Name | upper }}_MONGODB_SVC_SERVICE_PORT)
+        {{- end }}
+        
+        {{- if .Values.global.process_id }}
+        - name: PROCESS_ID
+          value: {{ .Values.global.process_id }}
         {{- end }}
 
         resources:

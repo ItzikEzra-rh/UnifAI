@@ -89,6 +89,11 @@ spec:
         - name: MONGODB_PORT
           value: $({{ .Release.Name | upper }}_MONGODB_SVC_SERVICE_PORT)
         {{- end }}
+        
+        {{- if .Values.global.process_id }}
+        - name: PROCESS_ID
+          value: {{ .Values.global.process_id }}
+        {{- end }}
 
         - name: MODEL_API_URL
           value: "http://$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_HOST):$({{ .Release.Name | upper }}_VLLM_ORBITER_SVC_SERVICE_PORT)"
