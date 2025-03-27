@@ -12,13 +12,19 @@ from config.configParams import config
 
 @mongo
 def helm_install(user_data):
-    file_path , yaml_data  = json_to_yaml(user_data)
+    result = Collections.by_name('dpr').insert_one({})  
+    process_id = str(result.inserted_id)
+    user_data["global"]["promptlab_env"]["PROCESS_ID"] = process_id  
+
+    file_path, yaml_data = json_to_yaml(user_data)
+
     deployment_name = yaml_data["global"]["deployment_name"]
     hf_token = yaml_data["global"]["hf_token"]
     api_url = yaml_data["global"]["api_url"]
     namespace = yaml_data["global"]["namespace"]
 
-    helm = DPR(token=hf_token,api_url=api_url)
+
+    helm = DPR(token=hf_token, api_url=api_url)
     helm_install = helm.run_dpr_command(DPRCommands.INSTALL, deployment_name=deployment_name, values=file_path, namespace=namespace)
 
     if helm_install["status"] == "success":
@@ -27,12 +33,17 @@ def helm_install(user_data):
         data.pop("manifest", None)
         data.pop("chart", None)
 
-        result = Collections.by_name('dpr').insert_one(data)
+        Collections.by_name('dpr').update_one(
+            {"_id": result.inserted_id},
+            {"$set": data}
+        )
 
-        helm_install.pop("data",None)
-        helm_install["_id"] = str(result.inserted_id)
-    
+        helm_install.pop("data", None)
+        helm_install["_id"] = process_id  
+
     return helm_install
+
+
 
 @mongo
 def helm_upgrade(user_data):
