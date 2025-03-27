@@ -126,7 +126,7 @@ const ProgressDisplay: React.FC<ProgressDisplayProps> = ({ datasetDetails }) => 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        let promptLabResponse = datasetDetails?.metrics?.mongodb?.find((item: any) => item._id === 'progress_data');
+        let promptLabResponse = datasetDetails?.stats;
         setPromptLabData(promptLabResponse);
       } catch (error) {
         console.error('Error fetching statistics:', error);

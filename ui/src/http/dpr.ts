@@ -33,22 +33,22 @@ export const dprDelete = async (datasetId: string): Promise<any> => {
 export const getStats = async (datasetId: string): Promise<any> => {
   try {
     const response = await apiClient.get<{ response: any }>("/api/dpr/getStats", { params: { id: datasetId} });
-    return response.data || [];
+    return response.data || {};
   } catch (error) {
-    console.error("Error fetching metrics:", error);
+    console.error("Error fetching statistics:", error);
     return [];
   }
 };
 
-export const getMetrics = async (datasetId: string, name: string): Promise<any> => {
-  try {
-    const response = await apiClient.get<{ response: any }>("/api/dpr/metrics", { params: { id: datasetId, name: name} });
-    return response.data || [];
-  } catch (error) {
-    console.error("Error fetching metrics:", error);
-    return [];
-  }
-};
+// export const getMetrics = async (datasetId: string, name: string): Promise<any> => {
+//   try {
+//     const response = await apiClient.get<{ response: any }>("/api/dpr/metrics", { params: { id: datasetId, name: name} });
+//     return response.data || [];
+//   } catch (error) {
+//     console.error("Error fetching metrics:", error);
+//     return [];
+//   }
+// };
 
 export const getConfigFile = async (datasetId: string): Promise<any> => {
   try {
@@ -56,16 +56,6 @@ export const getConfigFile = async (datasetId: string): Promise<any> => {
     return response.data || [];
   } catch (error) {
     console.error("Error fetching configuration file:", error);
-    return [];
-  }
-};
-
-export const runningDeployments = async (): Promise<any> => {
-  try {
-    const response = await apiClient.get<{ response: any }>("/api/dpr/currentlyRunningDeployment");
-    return response.data || {};
-  } catch (error) {
-    console.error("Error fetching running deployments:", error);
     return [];
   }
 };

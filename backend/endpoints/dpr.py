@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, make_response,request
 from webargs import fields
-from providers.dpr import create_json_format, delete_deployment, get_actively_running, get_not_deleted_deployments, get_json_file_config, get_promptlab_stats, helm_status, helm_uninstall, helm_install, helm_upgrade, helm_route, helm_metrics
+from providers.dpr import create_json_format, delete_deployment, get_actively_running, get_not_deleted_deployments, get_json_file_config, get_promptlab_stats, helm_status, helm_uninstall, helm_install, helm_upgrade, helm_route #helm_metrics
 from helpers.apiargs import from_query, from_body
 
 dpr_bp = Blueprint("dpr", __name__)
@@ -121,14 +121,14 @@ def promptlab_stats(id):
     stats = get_promptlab_stats(id)
     return stats
 
-@dpr_bp.route("/metrics", methods=["GET"])
-@from_query({
-    "id":        fields.Str(required=True, data_key="id"),
-    "name":      fields.Str(required=True, data_key="name")
-})
-def get_metrics(id, name):
-    metrics = helm_metrics(id, name)
-    return metrics
+# @dpr_bp.route("/metrics", methods=["GET"])
+# @from_query({
+#     "id":        fields.Str(required=True, data_key="id"),
+#     "name":      fields.Str(required=True, data_key="name")
+# })
+# def get_metrics(id, name):
+#     metrics = helm_metrics(id, name)
+#     return metrics
 
 @dpr_bp.route("/currentlyRunningDeployment", methods=["GET"])
 def get_running_instances():

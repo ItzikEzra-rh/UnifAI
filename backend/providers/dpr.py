@@ -9,10 +9,11 @@ import json
 from bson import ObjectId
 import requests 
 from config.configParams import config
-
-client = MongoClient()
-promptlab_db = client["promptLab"]
             
+
+client = MongoClient("mongodb://a5ffa60f5d55c41b68502c546ca314f4-1891935839.us-east-1.elb.amazonaws.com:27017")
+promptlab_db = client["promptLab"]
+
 @mongo
 def helm_install(user_data):
     result = Collections.by_name('dpr').insert_one({})  
@@ -82,7 +83,7 @@ def helm_uninstall(id, status):
         helm_uninstall = helm.run_dpr_command(DPRCommands.UNINSTALL, deployment_name=creds["deployment_name"], namespace=creds["namespace"])
         Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"status": status}, "$currentDate": {"finished_running": True}})
         try:
-            promptlab_db["processedPrompts"].drop()  # Drop the collection
+            promptlab_db["processedPrompts"].drop() 
             print("Successfully dropped processedPrompts collection from promptLab database.")
         except Exception as e:
             print(f"Error dropping processedPrompts collection: {e}")
@@ -98,58 +99,58 @@ def helm_status(id):
         return status
 
 
-@mongo
-def helm_metrics(id, name):
-    def fetch_rabbitmq_stats(route):
-        try:
-            response = requests.get(f"http://{route}:15672/api/queues", 
-                                    auth=(config.get("rabbitmq", "rmq_username"), config.get("rabbitmq", "rmq_password")), 
-                                    timeout=5)
-            if response.status_code != 200:
-                return helm_response(False, f"Failed to fetch metrics from {route}")
+# @mongo
+# def helm_metrics(id, name):
+#     def fetch_rabbitmq_stats(route):
+#         try:
+#             response = requests.get(f"http://{route}:15672/api/queues", 
+#                                     auth=(config.get("rabbitmq", "rmq_username"), config.get("rabbitmq", "rmq_password")), 
+#                                     timeout=5)
+#             if response.status_code != 200:
+#                 return helm_response(False, f"Failed to fetch metrics from {route}")
 
-            queues = ["prompts_process_queue", "reviewed_queue", "reviewer_queue"]
-            return {item["name"]: item for item in response.json() if item["name"] in queues}
-        except requests.exceptions.RequestException:
-            return {}
+#             queues = ["prompts_process_queue", "reviewed_queue", "reviewer_queue"]
+#             return {item["name"]: item for item in response.json() if item["name"] in queues}
+#         except requests.exceptions.RequestException:
+#             return {}
 
-    def fetch_mongodb_stats(route):
-        try: 
-            client = MongoClient(f'mongodb://{route}')  
-            db = client['promptLab']  
-            return list(db['statistics'].find())
-        except:
-            return {}
+#     def fetch_mongodb_stats(route):
+#         try: 
+#             client = MongoClient(f'mongodb://{route}')  
+#             db = client['promptLab']  
+#             return list(db['statistics'].find())
+#         except:
+#             return {}
 
-    creds = get_config_creds(id)
-    rabbitmq_route, db_route = creds.get("release_rmq_route"), creds.get("release_db_route")
-    if not rabbitmq_route or not db_route:
-        helm_route(id)
+#     creds = get_config_creds(id)
+#     rabbitmq_route, db_route = creds.get("release_rmq_route"), creds.get("release_db_route")
+#     if not rabbitmq_route or not db_route:
+#         helm_route(id)
 
-    rabbitmq_stats = fetch_rabbitmq_stats(rabbitmq_route) if rabbitmq_route else None
-    mongodb_stats = fetch_mongodb_stats(db_route) if db_route else None
+#     rabbitmq_stats = fetch_rabbitmq_stats(rabbitmq_route) if rabbitmq_route else None
+#     mongodb_stats = fetch_mongodb_stats(db_route) if db_route else None
 
-    errors = [msg for msg, cond in zip(["Missing RabbitMQ route.", "Missing MongoDB route."], [not rabbitmq_route, not db_route]) if cond]
+#     errors = [msg for msg, cond in zip(["Missing RabbitMQ route.", "Missing MongoDB route."], [not rabbitmq_route, not db_route]) if cond]
 
-    update_data = {"rabbitmq": rabbitmq_stats, "mongodb": mongodb_stats}
-    update_data = {k: v for k, v in update_data.items() if v is not None}
+#     update_data = {"rabbitmq": rabbitmq_stats, "mongodb": mongodb_stats}
+#     update_data = {k: v for k, v in update_data.items() if v is not None}
 
-    if update_data:
-        result = Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"metrics": update_data}})
-        if result.matched_count == 0:
-            errors.append("Failed to update database.")
+#     if update_data:
+#         result = Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"metrics": update_data}})
+#         if result.matched_count == 0:
+#             errors.append("Failed to update database.")
 
-    if errors:
-        return helm_response(False, ", ".join(errors))
+#     if errors:
+#         return helm_response(False, ", ".join(errors))
     
-    # Check if the deployment should be uninstalled
-    progress_data = next((item for item in mongodb_stats if item.get('_id') == "progress_data"), None)
-    if progress_data:
-        no_remaining_prompts = progress_data['prompts_failed'] + progress_data['prompts_pass'] == progress_data['number_of_prompts']
-        if no_remaining_prompts and progress_data.get('exported', False):
-            helm_uninstall(id, "DONE")
+#     # Check if the deployment should be uninstalled
+#     progress_data = next((item for item in mongodb_stats if item.get('_id') == "progress_data"), None)
+#     if progress_data:
+#         no_remaining_prompts = progress_data['prompts_failed'] + progress_data['prompts_pass'] == progress_data['number_of_prompts']
+#         if no_remaining_prompts and progress_data.get('exported', False):
+#             helm_uninstall(id, "DONE")
 
-    return helm_response(True, update_data)
+#     return helm_response(True, update_data)
 
 @mongo
 def helm_route(id):
@@ -190,7 +191,7 @@ def helm_route(id):
 def get_promptlab_stats(id):
     result = promptlab_db["statistics"].find_one({"_id": ObjectId(id)})
     print(result)
-    return {result}
+    return result
 
 @mongo
 def delete_deployment(id):
@@ -261,14 +262,13 @@ def get_not_deleted_deployments():
     """
     result = Collections.by_name('dpr').find(
         {"is_deleted": False},
-        {"_id": 1, "name": 1, "info.first_deployed": 1, "finished_running": 1, "metrics": 1, "status": 1}
+        {"_id": 1, "name": 1, "info.first_deployed": 1, "finished_running": 1, "status": 1}
     )
 
     return [{"_id": str(doc["_id"]), 
              "name": doc.get("name"), 
              "first_deployed": doc.get("info", {}).get("first_deployed", "N/A"), 
              "finished_running": doc.get("finished_running", ""), 
-             "metrics": doc.get("metrics", {}),
              "status": doc.get("status", "N/A")}
             for doc in result]
 
@@ -281,10 +281,11 @@ def get_json_file_config(id):
     return result[0]['config'] if result else []
 
 async def celery_check_dpr_progress():
+    # NEEED TO CHANGE LOGIC HERE
     """
-    Fetches Helm metrics for all currently running deployments.
+    Fetches Helm stats for all currently running deployments.
     """
-    print("Starting fetch metrics for dpr")
+    print("Starting fetch stats for dpr")
     running_deployments = get_actively_running()
     
     for deployment in running_deployments:

@@ -12,9 +12,9 @@ import SyntaxHighlighter from 'react-syntax-highlighter';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { ConfirmationModal } from '../shared/ConfirmationModal';
 import { TableTooltip } from '../shared/TableTooltip';
-import { displayedDeployments, dprDelete, dprUninstall, getConfigFile, getMetrics, getStats, runningDeployments } from '../../http/dpr';
+import { displayedDeployments, dprDelete, dprUninstall, getConfigFile, getStats } from '../../http/dpr';
 
-const FINISHED_STATUSES = ["DONE", "UNINSTALLED"]
+const FINISHED_STATUSES = ["DONE", "UNINSTALLED"];
 
 type ActionModalProps = {
   datasetId: string;
@@ -50,7 +50,7 @@ const StatisticsModal = (datasetDetails: any) => {
   return (
     <>
       <TableTooltip icon={ShowChartIcon} title="Display more statistics" setOpen={setOpen} />
-      <Modal open={open} onClose={() => setOpen(false)}>
+      <Modal open={open} onClose={() => setOpen(false)} >
         <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', height: '60%', width: '65%', bgcolor: 'background.paper' }}>
           <ProgressDisplay datasetDetails={datasetDetails.datasetDetails} />
         </Box>
@@ -97,7 +97,6 @@ const ConfigModal = ({ datasetId }: { datasetId: string }) => {
 
 const DatasetPreparationTable: React.FC = () => {
   const [datasets, setDatasets] = useState<any[]>([]);
-  const [currentlyRunningDatasets, setCurrentlyRunningDatasets] = useState<any[]>([]);
   const [orderBy, setOrderBy] = useState('Start Time');
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
 
@@ -113,66 +112,54 @@ const DatasetPreparationTable: React.FC = () => {
       console.error("Error fetching data:", error);
     }
   };
-  
+
   useEffect(() => {
     fetchListData();
-  }, [currentlyRunningDatasets.length]);
+  }, []);
 
   useEffect(() => {
-    const fetchMetrics = async () => {
-        try {
-            const runningResponse = await runningDeployments();
-            const runningDatasets = runningResponse;
-            setCurrentlyRunningDatasets(runningDatasets);
-            // this will be changed to just be calls from the mongodb after saving data there
-            const currentlyRunningIds = new Set(runningDatasets.map((item: any) => item._id));
-
-            const promises = datasets.map(async (item) => {
-                if (!currentlyRunningIds.has(item._id)) {
-                    return item; // If the deplyment isn't currently running, keep the item as is
-                }
-                const response = await getStats(item._id);
-                console.log(response)
-                const data = response.data;
-                const progressData = data ? data.find((entry: any) => entry._id === item._id) : {};
-                const pass = progressData?.prompts_pass || 0;
-                const fail = progressData?.prompts_failed || 0;
-
-                return {
-                    ...item,
-                    metrics: data,
-                    promptsProgress: {
-                        pass,
-                        fail,
-                    },
-                };
-            });
-
-            if (runningDatasets.length === 0) {
-               // If there are no running datasets, don't overwrite datasets, just keep existing
-                fetchListData();
-            } else {
-                // Update datasets with the new progress
-                const updatedProgress = await Promise.all(promises);
-                setDatasets(updatedProgress);
-            }
-        } catch (error) {
-            console.error('Error fetching status:', error);
-        }
+    const fetchStats = async () => {
+      try {
+        // Map through each dataset and fetch stats
+        const updatedDatasets = await Promise.all(datasets.map(async (dataset) => {
+          const data = await getStats(dataset._id);  // Call getStats with dataset ID
+      
+    
+          const pass = data?.prompts_pass || 0;
+          const fail = data?.prompts_failed || 0;
+    
+          // Return the updated dataset with stats
+          return {
+            ...dataset,
+            stats: data,  // Store full stats for later reference
+            promptsProgress: {
+              pass,
+              fail,
+            },
+          };
+        }));
+    
+        // Update the datasets state with the new data
+        setDatasets(updatedDatasets);
+    
+      } catch (error) {
+        console.error('Error fetching stats:', error);
+      }
     };
+    
+    
 
     if (datasets.length > 0) {
-        fetchMetrics(); 
-        const intervalId = setInterval(fetchMetrics, 30000); 
-        return () => clearInterval(intervalId); 
+      fetchStats();
+        const intervalId = setInterval(fetchStats, 30000);
+        return () => clearInterval(intervalId);
     }
-}, [currentlyRunningDatasets.length, datasets.length]); 
-
+  }, [datasets.length]); 
 
   const handleUninstallConfirm = async (datasetId: string, setOpen: ((open: boolean) => void)) => {
     if (datasetId) {
       try {
-        await dprUninstall(datasetId, "UNINSTALLED")
+        await dprUninstall(datasetId, "UNINSTALLED");
         setOpen(false);
         fetchListData();
       } catch (error) {
@@ -207,7 +194,7 @@ const DatasetPreparationTable: React.FC = () => {
     'Config': '2%', 
     'Cancel': '2%',
     'Remove': '2%'
-  }
+  };
 
   const displayNameByColumns = {
     'Dataset Name': 'Dataset Name',
@@ -217,7 +204,7 @@ const DatasetPreparationTable: React.FC = () => {
     'Config': '', 
     'Cancel': '',
     'Remove': ''
-  }
+  };
 
   return (
     <Box className="form-container">
@@ -239,28 +226,32 @@ const DatasetPreparationTable: React.FC = () => {
         </TableHead>
         <TableBody>
           {datasets?.map((row) => {
-            const mongoData = row?.metrics?.mongodb || {}
-            const progressData = Object.keys(mongoData).length > 0 ? mongoData.find((item: any) => item._id === 'progress_data') : null;
-            const progressPercentage = (progressData?.prompts_processed / progressData?.number_of_prompts) * 100 || 0;
-            const passed = progressData?.prompts_pass || 0;
-            const failed = progressData?.prompts_failed || 0;
-            const remaining = progressData?.number_of_prompts - progressData?.prompts_processed;
-            const displayRemaining = remaining ?? 'TBD';
+            const progressData = row.promptsProgress || {};
+            const stats = row.stats || {};
+
+            const passed = progressData?.pass || 0;
+            const failed = progressData?.fail || 0;
+            const promptsProcessed = stats.prompts_processed || 0;
+            const totalPrompts = stats.number_of_prompts || 0;
+            const remaining = totalPrompts - promptsProcessed;
+
+            const progressPercentage = totalPrompts > 0 ? (promptsProcessed / totalPrompts) * 100 : 0;
+
+            const displayRemaining = remaining >= 0 ? remaining : 'TBD';
             return (
               <TableRow key={row._id}>
                 <TableCell>{row.name}</TableCell>
                 <TableCell>{moment(row.first_deployed).format("MMM DD, YYYY [at] hh:mm A")}</TableCell>
                 <TableCell>
                   <Box sx={{ width: '100%', mt: 2 }}>
-                  <Tooltip title={<p className="custom-tooltip-text">Passed Prompts: {passed}, Failed Prompts: {failed}, Remaining: {displayRemaining}</p>} classes={{ tooltip: "custom-tooltip" }}>
-                    <Box sx={{ width: "100%", mt: 2 }}>
-                      <LinearProgress className="linear-progress-red" variant="determinate" value={progressPercentage} />
-                      <Typography variant="caption" textAlign="center" display="block" mt={1}>
-                        {`${Math.round(progressPercentage)}%`}
-                      </Typography>
-                    </Box>
-                  </Tooltip>
-
+                    <Tooltip title={<p className="custom-tooltip-text">Passed Prompts: {passed}, Failed Prompts: {failed}, Remaining: {displayRemaining}</p>} classes={{ tooltip: "custom-tooltip" }}>
+                      <Box sx={{ width: "100%", mt: 2 }}>
+                        <LinearProgress className="linear-progress-red" variant="determinate" value={progressPercentage} />
+                        <Typography variant="caption" textAlign="center" display="block" mt={1}>
+                          {`${Math.round(progressPercentage)}%`}
+                        </Typography>
+                      </Box>
+                    </Tooltip>
                   </Box>
                 </TableCell>
                 <TableCell>
