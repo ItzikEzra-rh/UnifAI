@@ -12,7 +12,7 @@ import SyntaxHighlighter from 'react-syntax-highlighter';
 import { atomOneDark } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { ConfirmationModal } from '../shared/ConfirmationModal';
 import { TableTooltip } from '../shared/TableTooltip';
-import { displayedDeployments, dprDelete, dprUninstall, getConfigFile, getMetrics, runningDeployments } from '../../http/dpr';
+import { displayedDeployments, dprDelete, dprUninstall, getConfigFile, getMetrics, getStats, runningDeployments } from '../../http/dpr';
 
 const FINISHED_STATUSES = ["DONE", "UNINSTALLED"]
 
@@ -131,9 +131,10 @@ const DatasetPreparationTable: React.FC = () => {
                 if (!currentlyRunningIds.has(item._id)) {
                     return item; // If the deplyment isn't currently running, keep the item as is
                 }
-                const response = await getMetrics(item._id, item.name);
+                const response = await getStats(item._id);
+                console.log(response)
                 const data = response.data;
-                const progressData = data.mongodb ? data.mongodb.find((entry: any) => entry._id === 'progress_data') : {};
+                const progressData = data ? data.find((entry: any) => entry._id === item._id) : {};
                 const pass = progressData?.prompts_pass || 0;
                 const fail = progressData?.prompts_failed || 0;
 

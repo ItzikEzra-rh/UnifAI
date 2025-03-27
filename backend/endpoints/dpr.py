@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, make_response,request
 from webargs import fields
-from providers.dpr import create_json_format, delete_deployment, get_actively_running, get_not_deleted_deployments, get_json_file_config, helm_status, helm_uninstall, helm_install, helm_upgrade, helm_route, helm_metrics
+from providers.dpr import create_json_format, delete_deployment, get_actively_running, get_not_deleted_deployments, get_json_file_config, get_promptlab_stats, helm_status, helm_uninstall, helm_install, helm_upgrade, helm_route, helm_metrics
 from helpers.apiargs import from_query, from_body
 
 dpr_bp = Blueprint("dpr", __name__)
@@ -112,6 +112,14 @@ def route(id):
 def delete(id):
     result = delete_deployment(id)
     return {"data": result}
+
+@dpr_bp.route("/getStats", methods=["GET"])
+@from_query({
+    "id":        fields.Str(required=True, data_key="id"),
+})
+def promptlab_stats(id):
+    stats = get_promptlab_stats(id)
+    return stats
 
 @dpr_bp.route("/metrics", methods=["GET"])
 @from_query({

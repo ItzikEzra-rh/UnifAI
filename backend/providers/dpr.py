@@ -10,6 +10,9 @@ from bson import ObjectId
 import requests 
 from config.configParams import config
 
+client = MongoClient()
+promptlab_db = client["promptLab"]
+            
 @mongo
 def helm_install(user_data):
     result = Collections.by_name('dpr').insert_one({})  
@@ -78,6 +81,11 @@ def helm_uninstall(id, status):
         helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
         helm_uninstall = helm.run_dpr_command(DPRCommands.UNINSTALL, deployment_name=creds["deployment_name"], namespace=creds["namespace"])
         Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"status": status}, "$currentDate": {"finished_running": True}})
+        try:
+            promptlab_db["processedPrompts"].drop()  # Drop the collection
+            print("Successfully dropped processedPrompts collection from promptLab database.")
+        except Exception as e:
+            print(f"Error dropping processedPrompts collection: {e}")
         return helm_uninstall
 
 
@@ -177,6 +185,12 @@ def helm_route(id):
                 updated_routes[route_key] = route_result["data"]
 
     return helm_response(True, updated_routes)
+
+@mongo
+def get_promptlab_stats(id):
+    result = promptlab_db["statistics"].find_one({"_id": ObjectId(id)})
+    print(result)
+    return {result}
 
 @mongo
 def delete_deployment(id):

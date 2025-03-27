@@ -66,8 +66,6 @@ class Stats:
         """
         Increment a specific progress key directly in the database.
         """
-        print("incrementing")
-        print(self.process_id)
         self._validate_key(key)
         self.statistics_handler.update_record(
             query={"_id": ObjectId(self.process_id)},
