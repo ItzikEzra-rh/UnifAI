@@ -53,10 +53,15 @@ class HybridHFMongoRepository(DataRepository):
 
         for record in transformed_data:
             try:
-                self.processed_handler.append_record(record)
+                self.processed_handler.collection.update_one(
+                    {"_id": record["_id"]},  
+                    {"$set": record},  
+                    upsert=True 
+                )
                 increment_callback()
-            except errors.DuplicateKeyError as e:
-                logger.error(f"DuplicateKeyError for uuid {record['uuid']} in processed collection: {e}")
+            except errors.DuplicateKeyError:
+                logger.warning(f"DuplicateKeyError: Prompt with _id {record['_id']} already exists. Skipping.")
+
 
     def save_pass_prompts(self, prompts: List[Dict[str, Any]]) -> None:
         """

@@ -49,7 +49,7 @@ def run_launchpad():
     """Run the 'launchpad' command logic."""
     config = initialize_config()
     tokenizer = initialize_tokenizer()
-    repository = initialize_mongo_handlers_and_repository(config, db_name="dpr")
+    repository = initialize_mongo_handlers_and_repository(config, db_name="promptLab")
 
     PromptLaunchpad(
         repository=repository,
