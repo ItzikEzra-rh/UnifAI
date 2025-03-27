@@ -1,4 +1,5 @@
 from typing import Dict, Any
+from bson import ObjectId
 
 
 class Stats:
@@ -29,7 +30,6 @@ class Stats:
         """
         Ensure progress data exists in the storage, initializing it if necessary.
         """
-        print(self.progress_id)
         if self.progress_id is None:
             # Check if there is an existing record and retrieve its _id
             existing_data = list(self.statistics_handler.read_data(
@@ -37,12 +37,14 @@ class Stats:
             ))
 
             if existing_data:
+                # Keep the most recent progress data by picking the latest entry
+                existing_data.sort(key=lambda x: x["_id"], reverse=True)  # Sort by _id to get the latest one
                 self.progress_id = existing_data[0]["_id"]
             else:
-                # Create a new record and store the generated _id
-                result = self.statistics_handler.append_record(self.DEFAULT_VALUES)
-                self.progress_id = result.inserted_id  # Capture the generated ID
-
+                # Generate a new document with an explicit _id
+                new_record = {"_id": ObjectId(), **self.DEFAULT_VALUES}
+                result = self.statistics_handler.append_record(new_record)
+                self.progress_id = new_record["_id"]  # Capture the generated ID
 
     def _validate_key(self, key: str) -> None:
         """
@@ -62,7 +64,7 @@ class Stats:
         prompts_processed = progress_data.get("prompts_processed", 0)
 
         self.statistics_handler.update_record(
-            query={"_id": self.progress_id},
+            query={"_id": ObjectId(self.progress_id)},
             update={"$set": {"prompts_generated": prompts_processed}}
         )
 
@@ -74,7 +76,7 @@ class Stats:
         print(self.progress_id)
         self._validate_key(key)
         self.statistics_handler.update_record(
-            query={"_id": self.progress_id},
+            query={"_id": ObjectId(self.progress_id)},
             update={"$inc": {key: amount}}
         )
 
@@ -84,7 +86,7 @@ class Stats:
         """
         self._validate_key(key)
         self.statistics_handler.update_record(
-            query={"_id": self.progress_id},
+            query={"_id": ObjectId(self.progress_id)},
             update={"$set": {key: value}}
         )
 
@@ -93,7 +95,7 @@ class Stats:
         Retrieve the current progress data directly from the database.
         """
         
-        progress_data = list(self.statistics_handler.read_data(query={"_id": self.progress_id}))
+        progress_data = list(self.statistics_handler.read_data(query={"_id": ObjectId(self.progress_id)}))
 
         if not progress_data:
             raise RuntimeError("Progress data not found in the database.")
@@ -105,7 +107,7 @@ class Stats:
         Reset all progress values to their default state directly in the database.
         """
         self.statistics_handler.update_record(
-            query={"_id": self.progress_id},
+            query={"_id": ObjectId(self.progress_id)},
             update={"$set": self.DEFAULT_VALUES}
         )
 
