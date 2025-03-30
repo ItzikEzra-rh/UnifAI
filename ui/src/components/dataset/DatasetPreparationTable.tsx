@@ -17,7 +17,7 @@ import { displayedDeployments, dprDelete, dprUninstall, getConfigFile, getStats 
 const FINISHED_STATUSES = ["DONE", "UNINSTALLED"];
 
 type ActionModalProps = {
-  datasetId: string;
+  datasetDetails: any;
   handleConfirm: (datasetId: string, setOpen: React.Dispatch<React.SetStateAction<boolean>>) => Promise<void>;
   icon: React.ElementType;
   title: string;
@@ -26,13 +26,13 @@ type ActionModalProps = {
   loaderText: string;
 };
 
-const ActionModal: React.FC<ActionModalProps> = ({ datasetId, handleConfirm, icon, title, disabledCondition, confirmationText, loaderText }) => {
+const ActionModal: React.FC<ActionModalProps> = ({ datasetDetails, handleConfirm, icon, title, disabledCondition, confirmationText, loaderText }) => {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
     
   const handleConfirmClick = async () => {
     setLoading(true);
-    await handleConfirm(datasetId, setOpen);
+    await handleConfirm(datasetDetails, setOpen);
     setLoading(false);
   };
   
@@ -100,6 +100,23 @@ const DatasetPreparationTable: React.FC = () => {
   const [orderBy, setOrderBy] = useState('Start Time');
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
 
+  const fetchStats = async () => {
+    try {
+      const updatedDatasets = await Promise.all(datasets.map(async (dataset) => {
+      const data = await getStats(dataset._id);   
+  
+        return {
+          ...dataset,
+          stats: data.data
+        };
+      }));
+  
+      setDatasets(updatedDatasets);
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
   const fetchListData = async () => {
     try {
       const response = await displayedDeployments();
@@ -118,27 +135,6 @@ const DatasetPreparationTable: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        console.log("?")
-        const updatedDatasets = await Promise.all(datasets.map(async (dataset) => {
-        const data = await getStats(dataset._id); 
-    
-          return {
-            ...dataset,
-            stats: data
-          };
-        }));
-    
-        setDatasets(updatedDatasets);
-    
-      } catch (error) {
-        console.error('Error fetching stats:', error);
-      }
-    };
-    
-    
-
     if (datasets.length > 0) {
         fetchStats();
         const intervalId = setInterval(fetchStats, 30000);
@@ -146,10 +142,10 @@ const DatasetPreparationTable: React.FC = () => {
     }
   }, [datasets.length]); 
 
-  const handleUninstallConfirm = async (datasetId: string, setOpen: ((open: boolean) => void)) => {
-    if (datasetId) {
+  const handleUninstallConfirm = async (datasetDetails: any, setOpen: ((open: boolean) => void)) => {
+    if (datasetDetails) {
       try {
-        await dprUninstall(datasetId, "UNINSTALLED");
+        await dprUninstall(datasetDetails._id, "UNINSTALLED");
         setOpen(false);
         fetchListData();
       } catch (error) {
@@ -158,10 +154,10 @@ const DatasetPreparationTable: React.FC = () => {
     }
   };
 
-  const handleRemoveConfirm = async (datasetId: string, setOpen: ((open: boolean) => void)) => {
-    if (datasetId) {
+  const handleRemoveConfirm = async (dataset: any, setOpen: ((open: boolean) => void)) => {
+    if (dataset) {
       try {
-        await dprDelete(datasetId);
+        await dprDelete(dataset._id);
         setOpen(false);
         fetchListData();
       } catch (error) {
@@ -256,7 +252,7 @@ const DatasetPreparationTable: React.FC = () => {
                 <TableCell>
                   <Box sx={{display: 'flex', justifyContent: 'center'}}>
                     <ActionModal 
-                      datasetId={row._id} 
+                      datasetDetails={row} 
                       handleConfirm={handleUninstallConfirm} 
                       icon={CancelIcon} 
                       title={FINISHED_STATUSES.includes(row.status) ? "Deployment has already been uninstalled" : "Trigger uninstall of the helm process"} 
@@ -269,7 +265,7 @@ const DatasetPreparationTable: React.FC = () => {
                 <TableCell>
                   <Box sx={{display: 'flex', justifyContent: 'center'}}>
                     <ActionModal 
-                      datasetId={row._id} 
+                      datasetDetails={row} 
                       handleConfirm={handleRemoveConfirm} 
                       icon={DeleteIcon} 
                       title={FINISHED_STATUSES.includes(row.status) ? "Remove this process from the table" : "You can't remove this row before the deployment is uninstalled"} 

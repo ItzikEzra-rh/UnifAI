@@ -63,6 +63,7 @@ export const getConfigFile = async (datasetId: string): Promise<any> => {
 export const displayedDeployments = async (): Promise<any> => {
   try {
     const response = await apiClient.get<{ response: any }>("/api/dpr/displayDeployments");
+    console.log(response)
     return response.data || {};
   } catch (error) {
     console.error("Error fetching displayed deployments:", error);

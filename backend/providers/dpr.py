@@ -190,7 +190,6 @@ def helm_route(id):
 @mongo
 def get_promptlab_stats(id):
     result = promptlab_db["statistics"].find_one({"_id": ObjectId(id)})
-    print(result)
     return result
 
 @mongo
@@ -260,17 +259,26 @@ def get_not_deleted_deployments():
     """
     :return: list of deployments that are currently running (haven't been deleted from the db)
     """
-    result = Collections.by_name('dpr').find(
+    deployments = Collections.by_name('dpr').find(
         {"is_deleted": False},
         {"_id": 1, "name": 1, "info.first_deployed": 1, "finished_running": 1, "status": 1}
     )
 
-    return [{"_id": str(doc["_id"]), 
-             "name": doc.get("name"), 
-             "first_deployed": doc.get("info", {}).get("first_deployed", "N/A"), 
-             "finished_running": doc.get("finished_running", ""), 
-             "status": doc.get("status", "N/A")}
-            for doc in result]
+    deployments_with_stats = []
+
+    for deployment in deployments:
+        stats = get_promptlab_stats(deployment["_id"])
+
+        deployments_with_stats.append({
+            "_id": str(deployment["_id"]),
+            "name": deployment.get("name"),
+            "first_deployed": deployment.get("info", {}).get("first_deployed", "N/A"),
+            "finished_running": deployment.get("finished_running", ""),
+            "status": deployment.get("status", "N/A"),
+            "stats": stats or {}
+        })
+
+    return deployments_with_stats
 
 @mongo
 def get_json_file_config(id):
