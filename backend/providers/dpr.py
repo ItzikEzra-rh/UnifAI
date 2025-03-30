@@ -246,15 +246,6 @@ def create_json_format(user_data):
     return json_output
 
 @mongo
-def get_actively_running():
-    """
-    :return: list of deployments that are currently running (haven't been uninstalled)
-    """
-    result = Collections.by_name('dpr').find({"status": {"$nin": ["DONE", "UNINSTALLED"]}}, {"_id": 1})
-
-    return [{"_id": str(doc["_id"])} for doc in result]
-
-@mongo
 def get_not_deleted_deployments():
     """
     :return: list of deployments that are currently running (haven't been deleted from the db)
@@ -289,22 +280,16 @@ def get_json_file_config(id):
     return result[0]['config'] if result else []
 
 async def celery_check_dpr_progress():
-    # NEEED TO CHANGE LOGIC HERE
     """
     Fetches Helm stats for all currently running deployments.
     """
     print("Starting fetch stats for dpr")
-    running_deployments = get_actively_running()
+    running_deployments = get_not_deleted_deployments()
     
     for deployment in running_deployments:
         id = deployment["_id"]
-        creds = get_config_creds(id)
-        rabbitmq_route, db_route = creds.get("release_rmq_route"), creds.get("release_db_route")
-        if not rabbitmq_route or not db_route:
-            helm_route(id)
-        mongodb_stats = deployment["metrics"]["mongodb"]
-        progress_data = next((item for item in mongodb_stats if item.get('_id') == "progress_data"), None)
-        if progress_data:
-            no_remaining_prompts = progress_data['prompts_failed'] + progress_data['prompts_pass'] == progress_data['number_of_prompts']
-            if no_remaining_prompts and progress_data.get('exported', False):
+        mongodb_stats = get_promptlab_stats(id)
+        if mongodb_stats:
+            no_remaining_prompts = mongodb_stats['prompts_failed'] + mongodb_stats['prompts_pass'] == mongodb_stats['number_of_prompts']
+            if no_remaining_prompts and mongodb_stats.get('exported', False):
                 helm_uninstall(id, "DONE")
