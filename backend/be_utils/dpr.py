@@ -13,6 +13,7 @@ class DPRCommands(Enum):
     RMQROUTE    = "oc get {option} {deployment_name}-rabbitmq-{option} -o jsonpath={spec} --namespace {namespace}"
     DBROUTE     = "oc get {option} {deployment_name}-mongodb-{option} -o jsonpath={spec} --namespace {namespace}"
     OC_WHOAMI   = "oc whoami"
+    OC_SHOWSERVER = "oc whoami --show-server"
     OC_LOGIN    = "oc logout && oc login --token={cluster_access_token} --server={server}"
 
 class DPR:
@@ -37,16 +38,17 @@ class DPR:
         return helm_response(rc == 0, stdout.strip())
 
     def is_oc_logged_in(self):
-
         command_str = DPRCommands.OC_WHOAMI.value
         rc, stdout = shell_exec(command_str)
+        command_str1 = DPRCommands.OC_SHOWSERVER.value
+        rc1, stdout1 = shell_exec(command_str1)
         if rc == 0 and re.search(r"system:serviceaccount:tag-ai.*", stdout):
-            return True
+            if rc1 == 0 and self.api_url == stdout1:
+                return True
         return False
         
     def oc_login(self):
         prod_cluster = config.get("dpr", "prod_cluster")
-
         cluster_access_token = config.get("dpr","prod_access_token") if self.api_url == prod_cluster else config.get("dpr","preprod_access_token")
 
         command_str = DPRCommands.OC_LOGIN.value.format(cluster_access_token=cluster_access_token, server=self.api_url)
