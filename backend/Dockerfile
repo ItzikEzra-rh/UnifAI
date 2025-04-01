@@ -48,4 +48,4 @@ RUN /bin/bash -c "source venv/bin/activate && \
 RUN /bin/bash -c "source venv/bin/activate && pip install ../prompt_lab"
 
 # Start Supervisor (using the supervisord.conf located in $HOME/backend)
-CMD ["/bin/sh", "-c", "source /venv/bin/activate && supervisord -c supervisord.conf"]
+CMD ["/bin/sh", "-c", ". ./venv/bin/activate && supervisord -c supervisord.conf"]
