@@ -38,8 +38,8 @@ class CeleryApp:
             worker_task_log_format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             beat_schedule={
                 'fetch-dpr-metrics-every-30-mins': {
-                'task': 'celery_app.tasks.fetch_dpr_metrics',
-                'schedule': 90.0 # call this function every 15 minutes
+                'task': 'celery_app.tasks.fetch_dpr_progress',
+                'schedule': 60.0 # change this call this function every 15 minutes
             }
     }
         )
