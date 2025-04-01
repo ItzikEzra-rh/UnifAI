@@ -7,6 +7,7 @@ from bson import ObjectId
 from config.configParams import config
             
 client = MongoClient(f"mongodb://{config.get('dpr', 'mongo_ext_addr')}:27017")
+
 promptlab_db = client["promptLab"]
 
 @mongo
