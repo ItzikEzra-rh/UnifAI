@@ -13,7 +13,7 @@ class DPRCommands(Enum):
     RMQROUTE    = "oc get {option} {deployment_name}-rabbitmq-{option} -o jsonpath={spec} --namespace {namespace}"
     DBROUTE     = "oc get {option} {deployment_name}-mongodb-{option} -o jsonpath={spec} --namespace {namespace}"
     OC_WHOAMI   = "oc whoami"
-    OC_LOGIN    = "oc login --token={cluster_access_token} --server={server}"
+    OC_LOGIN    = "oc logout && oc login --token={cluster_access_token} --server={server}"
 
 class DPR:
     def __init__(self, api_url, token, namespace=None):
