@@ -19,9 +19,6 @@ RUN curl -sSL https://get.helm.sh/helm-v3.14.0-linux-amd64.tar.gz -o helm.tar.gz
     rm -rf linux-amd64 helm.tar.gz && \
     dnf clean all
 
-# Install Supervisor
-RUN dnf install -y supervisor && dnf clean all
-
 USER default
 # Add your application files (including supervisord.conf placed in ./backend)
 ADD  --chown=default:root --chmod=777 ./backend $HOME/backend
