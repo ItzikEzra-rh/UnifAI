@@ -12,7 +12,6 @@ import { FormButton } from '../shared/FormButton';
 
 type GlobalProps = {
     api_url: string;
-    connection: string;
     enable_toleration: boolean;
     multiple_gpu_per_pod: boolean;
     number_of_gpu: number;
@@ -65,7 +64,6 @@ const schema = yup.object().shape({
     }),
     global: yup.object({
         api_url: yup.string().required('Cluster Selection is required'),
-        connection: yup.string(),
         deployment_name: yup.string().required('Deployment Name is required'),
         vllm_reviewer_replica: yup.number().when('global.enable_reviewer', (enable_reviewer, schema) => 
             enable_reviewer ? schema.required('Reviewer Model HuggingFace ID is required') : schema.notRequired()
@@ -149,7 +147,6 @@ const CreateHelmJson: React.FC<CreateHelmJsonProps> = ({ onSubmit, isLoading }) 
         },
         global: {
             api_url: 'Preproduction Cluster',
-            connection: 'Service',
             deployment_name: 'dpr',
             vllm_reviewer_replica: 1,
             vllm_orbiter_replica: 1,
@@ -273,7 +270,6 @@ const CreateHelmJson: React.FC<CreateHelmJsonProps> = ({ onSubmit, isLoading }) 
     const mockRepoOptions = ['oodeh/eco-gotest-testing', 'mcarmi/testing_dpr'];
     const mockFileOptions = ['eco-gotests_TAG_100_test_100_function.json', 'myfile.json'];
     const ClusterOptions = ['Preproduction Cluster', 'Production Cluster']
-    const NetworkOptions = ['Service', 'Route']
 
     return (
         <>
@@ -303,9 +299,8 @@ const CreateHelmJson: React.FC<CreateHelmJsonProps> = ({ onSubmit, isLoading }) 
                 </CustomStepLabel>
                 <StepContent>
                     <form className="form-section">
-                        <div style={{ display: 'grid', gridTemplateColumns: '0.7fr 0.3fr', gap: '16px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
                             <FormDropdown name="global.api_url" label="Cluster Selection" control={control} errors={errors} options={ClusterOptions}/>
-                            <FormDropdown name="global.connection" label="Network Connection" control={control} errors={errors} options={NetworkOptions}/>
                         </div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 0.3fr 0.3fr', gap: '16px' }}>
                             <FormField name="global.deployment_name" label="Deployment Name" control={control} errors={errors} /> 

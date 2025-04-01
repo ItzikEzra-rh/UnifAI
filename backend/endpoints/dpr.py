@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, make_response,request
 from webargs import fields
-from providers.dpr import create_json_format, delete_deployment, get_not_deleted_deployments, get_json_file_config, get_promptlab_stats, helm_status, helm_uninstall, helm_install, helm_upgrade, helm_route #helm_metrics
+from providers.dpr import create_json_format, delete_deployment, get_not_deleted_deployments, get_json_file_config, get_promptlab_stats, helm_status, helm_uninstall, helm_install, helm_upgrade#, helm_route #helm_metrics
 from helpers.apiargs import from_query, from_body
 
 dpr_bp = Blueprint("dpr", __name__)
@@ -35,7 +35,6 @@ def deploy(data, mode):
     # {
     #     "global": {
     #         "api_url": "https://api.stc-ai-e1-pp.imap.p1.openshiftapps.com:6443",
-    #         "connection": "Service", 
     #         "deployment_name": "dpr",
     #         "namespace": "tag-ai--yhabushi-nb", 
     #         "enable_toleration": False,
@@ -97,13 +96,13 @@ def upgrade():
     upgrade = helm_upgrade(user_data)
     return upgrade
 
-@dpr_bp.route("/route", methods=["GET"])
-@from_query({
-    "id":        fields.Str(required=True, data_key="id")
-})
-def route(id):
-    route = helm_route(id)
-    return route
+# @dpr_bp.route("/route", methods=["GET"])
+# @from_query({
+#     "id":        fields.Str(required=True, data_key="id")
+# })
+# def route(id):
+#     route = helm_route(id)
+#     return route
 
 @dpr_bp.route("/delete", methods=["POST"])
 @from_body({

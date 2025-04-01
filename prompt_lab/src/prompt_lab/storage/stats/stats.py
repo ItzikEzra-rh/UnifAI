@@ -29,9 +29,7 @@ class Stats:
     def _initialize_progress_data(self) -> None:
         """
         Ensure progress data exists in the storage, initializing it if necessary.
-        """
-        print(self.process_id)
-        
+        """        
         existing_data = list(self.statistics_handler.read_data(query={"_id": ObjectId(self.process_id)}))
 
         if not existing_data:

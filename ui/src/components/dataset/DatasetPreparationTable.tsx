@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Box, IconButton, Modal, LinearProgress, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, Typography, Tooltip } from '@mui/material'; 
-import axios from '../../http/axiosConfig';
+import { Box, Modal, LinearProgress, Table, TableBody, TableCell, TableHead, TableRow, TableSortLabel, Typography, Tooltip } from '@mui/material'; 
 import DeleteIcon from '@mui/icons-material/Delete';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ShowChartIcon from '@mui/icons-material/ShowChart';

@@ -45,9 +45,7 @@ class DPR:
         return False
         
     def oc_login(self):
-
         prod_cluster = config.get("dpr", "prod_cluster")
-        preprod_cluster = config.get("dpr", "preprod_cluster")
 
         cluster_access_token = config.get("dpr","prod_access_token") if self.api_url == prod_cluster else config.get("dpr","preprod_access_token")
 

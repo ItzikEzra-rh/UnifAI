@@ -1,17 +1,12 @@
-import asyncio
-import time
 from pymongo import MongoClient
 from be_utils.dpr import DPR, DPRCommands
 from be_utils.utils import json_to_yaml, helm_response
-import uuid
 from be_utils.db.db import mongo, Collections
 import json
 from bson import ObjectId
-import requests 
 from config.configParams import config
             
-
-client = MongoClient("mongodb://a5ffa60f5d55c41b68502c546ca314f4-1891935839.us-east-1.elb.amazonaws.com:27017")
+client = MongoClient(f"mongodb://{config.get('dpr', 'mongo_ext_addr')}:27017")
 promptlab_db = client["promptLab"]
 
 @mongo
@@ -19,6 +14,7 @@ def helm_install(user_data):
     result = Collections.by_name('dpr').insert_one({})  
     process_id = str(result.inserted_id)
     user_data["global"]["process_id"] = process_id  
+    user_data["global"]["connection"] = config.get("dpr", "mongo_ext_addr")
 
     file_path, yaml_data = json_to_yaml(user_data)
 
@@ -152,40 +148,40 @@ def helm_status(id):
 
 #     return helm_response(True, update_data)
 
-@mongo
-def helm_route(id):
-    creds = get_config_creds(id)
-    api_url = creds["api_url"]
-    namespace = creds["namespace"]
+# @mongo
+# def helm_route(id):
+#     creds = get_config_creds(id)
+#     api_url = creds["api_url"]
+#     namespace = creds["namespace"]
             
-    helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
+#     helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
 
-    routes = {
-        "release_rmq_route": DPRCommands.RMQROUTE,
-        "release_db_route": DPRCommands.DBROUTE,
-    }
+#     routes = {
+#         "release_rmq_route": DPRCommands.RMQROUTE,
+#         "release_db_route": DPRCommands.DBROUTE,
+#     }
     
-    updated_routes = {}
-    for route_key, command in routes.items():
-        if not creds[route_key]:
-            is_prod = api_url == config.get("dpr", "prod_cluster")
-            is_runtime = namespace == "tag-ai--runtime-int"
-            spec = "{.spec.host}{.spec.path}" if is_prod else ("{.metadata.name}" if is_runtime else "{.status.loadBalancer.ingress[0].hostname}")
-            option = "route" if is_prod else "svc"
+#     updated_routes = {}
+#     for route_key, command in routes.items():
+#         if not creds[route_key]:
+#             is_prod = api_url == config.get("dpr", "prod_cluster")
+#             is_runtime = namespace == "tag-ai--runtime-int"
+#             spec = "{.spec.host}{.spec.path}" if is_prod else ("{.metadata.name}" if is_runtime else "{.status.loadBalancer.ingress[0].hostname}")
+#             option = "route" if is_prod else "svc"
             
-            route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], namespace=creds["namespace"], spec=spec, option=option) 
+#             route_result = helm.run_dpr_command(command, deployment_name=creds["deployment_name"], namespace=creds["namespace"], spec=spec, option=option) 
 
-            if route_result["data"]:
-                update_result = Collections.by_name("dpr").update_one(
-                    {"_id": ObjectId(id)},
-                    {"$set": {f"config.global.{route_key}": route_result["data"]}}
-                )
-                if update_result.matched_count <= 0:
-                    return helm_response(False, f"Failed to update {route_key} in DB for id {id}")
+#             if route_result["data"]:
+#                 update_result = Collections.by_name("dpr").update_one(
+#                     {"_id": ObjectId(id)},
+#                     {"$set": {f"config.global.{route_key}": route_result["data"]}}
+#                 )
+#                 if update_result.matched_count <= 0:
+#                     return helm_response(False, f"Failed to update {route_key} in DB for id {id}")
 
-                updated_routes[route_key] = route_result["data"]
+#                 updated_routes[route_key] = route_result["data"]
 
-    return helm_response(True, updated_routes)
+#     return helm_response(True, updated_routes)
 
 @mongo
 def get_promptlab_stats(id):
@@ -225,13 +221,11 @@ def create_json_format(user_data):
     reviewer_env = extract_config(user_data["reviewer"]) if global_config.get("enable_reviewer") else {}
 
     api_option = user_data["global"]["api_url"]
-    connection_option = user_data["global"]["connection"]
     
     json_output = {
         "global": {
             **global_config,
             "api_url": config.get("dpr", "preprod_cluster" if api_option == "Preproduction Cluster" else "prod_cluster"),
-            "connection": config.get("dpr", connection_option),
             "orbiter_model_hf_id": user_data["promptLab"].get("PROMPT_LAB_MODEL_HF_ID", ""),
             "promptlab_env": {**promptlab_env, **user_data["file"]},
         }
@@ -254,7 +248,6 @@ def get_not_deleted_deployments():
         {"is_deleted": False},
         {"_id": 1, "name": 1, "info.first_deployed": 1, "finished_running": 1, "status": 1}
     )
-
     deployments_with_stats = []
 
     for deployment in deployments:
