@@ -48,5 +48,3 @@ class CeleryApp:
     def app(self):
         """Get the singleton Celery instance."""
         return self.celery_app
-
-celery = CeleryApp().app
