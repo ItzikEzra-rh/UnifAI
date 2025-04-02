@@ -14,7 +14,7 @@ class DPRCommands(Enum):
     DBROUTE         = "oc get {option} {deployment_name}-mongodb-{option} -o jsonpath={spec} --namespace {namespace}"
     OC_WHOAMI       = "oc whoami"
     OC_SHOWSERVER   = "oc whoami --show-server"
-    OC_LOGIN        = "oc logout && oc login --token={cluster_access_token} --server={server} && oc project {namespace}"
+    OC_LOGIN        = "oc login --token={cluster_access_token} --server={server} && oc project {namespace}"
 
 class DPR:
     def __init__(self, api_url, token, namespace=None):

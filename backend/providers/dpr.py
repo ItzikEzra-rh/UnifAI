@@ -78,14 +78,14 @@ def helm_uninstall(id, status):
     if creds:
         helm = DPR(api_url=creds["api_url"], token=creds["hf_token"], namespace=creds["namespace"])
         helm_uninstall = helm.run_dpr_command(DPRCommands.UNINSTALL, deployment_name=creds["deployment_name"], namespace=creds["namespace"])
-        if helm_uninstall.status == "failed":
-            return # need to take this option into account
-        Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"status": status}, "$currentDate": {"finished_running": True}})
-        try:
-            promptlab_db["processedPrompts"].drop() 
-            print("Successfully dropped processedPrompts collection from promptLab database.")
-        except Exception as e:
-            print(f"Error dropping processedPrompts collection: {e}")
+        if helm_uninstall["status"] == "success":
+            Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"status": status}, "$currentDate": {"finished_running": True}})
+            try:
+                promptlab_db["processedPrompts"].drop() 
+                print("Successfully dropped processedPrompts collection from promptLab database.")
+            except Exception as e:
+                print(f"Error dropping processedPrompts collection: {e}")
+                
         return helm_uninstall
 
 
@@ -265,6 +265,7 @@ def get_not_deleted_deployments():
 
     return deployments_with_stats
 
+@mongo
 def get_running_deployments():
     deployments = Collections.by_name('dpr').find(
         {"status": {"$nin": ["UNINSTALLED", "DONE"]}})
@@ -278,6 +279,7 @@ def get_json_file_config(id):
     result = list(Collections.by_name('dpr').find({'_id': ObjectId(id)}, {'config': 1}))
     return result[0]['config'] if result else []
 
+@mongo
 def celery_check_dpr_progress():
     """
     Fetches Helm stats for all currently running deployments.
