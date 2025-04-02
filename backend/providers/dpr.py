@@ -74,6 +74,7 @@ def helm_upgrade(user_data):
 
 @mongo
 def helm_uninstall(id, status):
+    print("calling helm uninstall")
     creds = get_config_creds(id)
     if creds:
         helm = DPR(api_url=creds["api_url"], token=creds["hf_token"], namespace=creds["namespace"])
@@ -268,7 +269,8 @@ def get_not_deleted_deployments():
 @mongo
 def get_running_deployments():
     deployments = Collections.by_name('dpr').find(
-        {"status": {"$nin": ["UNINSTALLED", "DONE"]}})
+        {"status": {"$nin": ["UNINSTALLED", "DONE"]}}
+    )
     return deployments
 
 @mongo
@@ -286,7 +288,7 @@ def celery_check_dpr_progress():
     """
     print("Starting fetch stats for dpr")
     running_deployments = get_running_deployments()
-    
+    print(running_deployments)
     for deployment in running_deployments:
         id = deployment["_id"]
         mongodb_stats = get_promptlab_stats(id)
