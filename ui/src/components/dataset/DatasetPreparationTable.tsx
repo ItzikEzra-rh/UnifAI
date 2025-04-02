@@ -120,7 +120,7 @@ const DatasetPreparationTable: React.FC = () => {
     try {
       const response = await displayedDeployments();
       if (Array.isArray(response)) {
-        setDatasets(response); 
+        setDatasets((prevDatasets) => {return response})
       } else {
         console.error("Expected array but got:", response.data);
       }
