@@ -8,6 +8,7 @@ releases:
   - name: genie-mongodb
     chart: ./mongodb
     wait: true
+    timeout: 300
     values:
       - "./mongodb.values.yaml"
 
