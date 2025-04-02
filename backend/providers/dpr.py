@@ -25,7 +25,7 @@ def helm_install(user_data):
     namespace = yaml_data["global"]["namespace"]
 
 
-    helm = DPR(token=hf_token, api_url=api_url)
+    helm = DPR(token=hf_token, api_url=api_url, namespace=namespace)
     helm_install = helm.run_dpr_command(DPRCommands.INSTALL, deployment_name=deployment_name, values=file_path, namespace=namespace)
 
     if helm_install["status"] == "success":
@@ -59,7 +59,7 @@ def helm_upgrade(user_data):
 
     creds = get_config_creds(id)
     if creds:
-        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
+        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"], namespace=creds["namespace"])
         helm_upgrade = helm.run_dpr_command(DPRCommands.UPGRADE, deployment_name=creds["deployment_name"], helm_set_params=helm_set_params_str, namespace=creds["namespace"])
 
         if helm_upgrade["status"] == "success":
@@ -76,8 +76,10 @@ def helm_upgrade(user_data):
 def helm_uninstall(id, status):
     creds = get_config_creds(id)
     if creds:
-        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
+        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"], namespace=creds["namespace"])
         helm_uninstall = helm.run_dpr_command(DPRCommands.UNINSTALL, deployment_name=creds["deployment_name"], namespace=creds["namespace"])
+        if helm_uninstall.status == "failed":
+            return # need to take this option into account
         Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"status": status}, "$currentDate": {"finished_running": True}})
         try:
             promptlab_db["processedPrompts"].drop() 
@@ -91,7 +93,7 @@ def helm_uninstall(id, status):
 def helm_status(id):
     creds = get_config_creds(id)
     if creds:
-        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"])
+        helm = DPR(api_url=creds["api_url"], token=creds["hf_token"], namespace=creds["namespace"])
         status = helm.run_dpr_command(DPRCommands.STATUS, deployment_name=creds["deployment_name"], namespace=creds["namespace"])
         return status
 
@@ -207,8 +209,6 @@ def get_config_creds(id):
             "namespace": config.get("namespace"),
             "api_url": config.get("api_url"),
             "deployment_name": config_data.get("name"),
-            "release_rmq_route": config.get("release_rmq_route", ""),
-            "release_db_route": config.get("release_db_route", ""),
         }
     return {}
 
@@ -265,6 +265,11 @@ def get_not_deleted_deployments():
 
     return deployments_with_stats
 
+def get_running_deployments():
+    deployments = Collections.by_name('dpr').find(
+        {"status": {"$nin": ["UNINSTALLED", "DONE"]}})
+    return deployments
+
 @mongo
 def get_json_file_config(id):
     """
@@ -273,17 +278,19 @@ def get_json_file_config(id):
     result = list(Collections.by_name('dpr').find({'_id': ObjectId(id)}, {'config': 1}))
     return result[0]['config'] if result else []
 
-async def celery_check_dpr_progress():
+def celery_check_dpr_progress():
     """
     Fetches Helm stats for all currently running deployments.
     """
     print("Starting fetch stats for dpr")
-    running_deployments = get_not_deleted_deployments()
+    running_deployments = get_running_deployments()
     
     for deployment in running_deployments:
         id = deployment["_id"]
         mongodb_stats = get_promptlab_stats(id)
         if mongodb_stats:
             no_remaining_prompts = mongodb_stats['prompts_failed'] + mongodb_stats['prompts_pass'] == mongodb_stats['number_of_prompts']
+            print(no_remaining_prompts)
+            print(mongodb_stats.get('exported'))
             if no_remaining_prompts and mongodb_stats.get('exported', False):
                 helm_uninstall(id, "DONE")
