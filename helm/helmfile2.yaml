@@ -20,7 +20,7 @@ releases:
     wait: true
     set:
       - name: env.MONGO_EXT_ADDR
-        value: "{{ exec "kubectl" (list "get" "svc" "mongodb" "-o" "jsonpath={.status.loadBalancer.ingress[0].hostname}") }}"
+        value: "{{ exec "kubectl" (list "get" "svc" "mongodb" "-o" "jsonpath={.status.loadBalancer.ingress[0].hostname}") | default "mongodb"}}"
     values:
       - "genie-be.values.yaml"
 
