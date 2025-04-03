@@ -722,21 +722,16 @@ background-color: #e0e0e0d5;
 }
 
 .linear-progress-red {
-  background-color: rgba(255, 0, 0, 0.2) !important; 
-  border-radius: 20px;
+  background-color: rgba(154, 147, 147, 0.2) !important; 
+  border-radius: 10px;
   height: 16px !important ;
 }
 
 
 .linear-progress-red .MuiLinearProgress-bar {
-  background-color: #e75d57;
-  background: repeating-linear-gradient(
-    135deg,
-    #e75d57,
-    #dc3f36 10px,
-    #ea443b 20px
-  ) !important;
-  border-radius: 20px;
+  background-color: #ff0d00;
+  background: rgb(220, 32, 32) !important;
+  border-radius: 10px;
 }
 
 .custom-tooltip {
