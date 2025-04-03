@@ -99,23 +99,6 @@ const DatasetPreparationTable: React.FC = () => {
   const [orderBy, setOrderBy] = useState('Start Time');
   const [order, setOrder] = useState<'asc' | 'desc'>('asc');
 
-  const fetchStats = async () => {
-    try {
-      const updatedDatasets = await Promise.all(datasets.map(async (dataset) => {
-      const data = await getStats(dataset._id);   
-  
-        return {
-          ...dataset,
-          stats: data.data
-        };
-      }));
-  
-      setDatasets(updatedDatasets);
-    } catch (error) {
-      console.error('Error fetching stats:', error);
-    }
-  };
-
   const fetchListData = async () => {
     try {
       const response = await displayedDeployments();
@@ -135,8 +118,8 @@ const DatasetPreparationTable: React.FC = () => {
 
   useEffect(() => {
     if (datasets.length > 0) {
-        fetchStats();
-        const intervalId = setInterval(fetchStats, 30000);
+        fetchListData();
+        const intervalId = setInterval(fetchListData, 30000);
         return () => clearInterval(intervalId);
     }
   }, [datasets.length]); 
