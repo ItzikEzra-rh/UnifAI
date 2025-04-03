@@ -76,10 +76,7 @@ def deploy(data, mode):
     #     }
     # }
     install = helm_install(helm_json) 
-    if install.get("status") == "success":
-        return jsonify(install), 200 
-    else:
-        return make_response(jsonify({"error": install.get("message", "Installation failed")}), 400) 
+    return (jsonify(install), 200) if install.get("status") == "success" else install
 
 @dpr_bp.route("/upgrade", methods=["POST"])
 def upgrade():

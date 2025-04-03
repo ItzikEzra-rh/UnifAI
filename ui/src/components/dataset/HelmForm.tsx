@@ -27,6 +27,8 @@ const HelmForm: React.FC = () => {
         setTimeout(() => {
           navigate('/deployed-datasets'); 
         }, 2000); 
+      } else {
+        toast.warn(res.data || "An error occured while triggering the installation.");
       }
     } catch (error) {
       console.error('Error submitting form:', error);

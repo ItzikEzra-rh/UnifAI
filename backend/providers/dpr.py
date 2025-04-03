@@ -12,6 +12,9 @@ promptlab_db = client["promptLab"]
 
 @mongo
 def helm_install(user_data):
+    if list(get_running_deployments()):
+        return helm_response(False, "Another installation is currently running, please wait before starting a new one.")  
+    
     result = Collections.by_name('dpr').insert_one({})  
     process_id = str(result.inserted_id)
     user_data["global"]["process_id"] = process_id  
@@ -41,6 +44,8 @@ def helm_install(user_data):
 
         helm_install.pop("data", None)
         helm_install["_id"] = process_id  
+    else:
+        Collections.by_name('dpr').delete_one({"_id": result.inserted_id})
 
     return helm_install
 
