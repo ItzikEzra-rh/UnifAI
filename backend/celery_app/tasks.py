@@ -2,7 +2,7 @@ import logging
 from celery_app.init import CeleryApp
 from providers.dpr import celery_check_dpr_progress
 
-@CeleryApp().app.task(bind=True, max_retries=16, default_retry_delay=30)  # 8 minutes till fail
+@CeleryApp().app.task(bind=True, max_retries=16, default_retry_delay=30)
 def fetch_dpr_progress(self):
     """
     Celery task for the metrics fetch of dpr processes.

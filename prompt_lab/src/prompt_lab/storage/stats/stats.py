@@ -104,6 +104,9 @@ class Stats:
     def increment_with_processed(self, key: str, amount: int = 1) -> None:
         """
         Increment a specific key and also increment `prompts_processed`.
+        
+        :param key: The key to increment.
+        :param amount: The amount to increment by.
         """
         self.increment(key, amount)
         self.increment("prompts_processed", amount)
@@ -133,6 +136,10 @@ class Stats:
     def is_done(self) -> bool:
         """
         Check if all generated prompts have been processed.
+        
+        This queries the database to ensure the latest data is used.
+        
+        :return: True if done, False otherwise.
         """
         progress_data = self.get_stats()
         number_of_prompts = progress_data.get("number_of_prompts", 0)
@@ -141,12 +148,27 @@ class Stats:
         return number_of_prompts == prompts_processed and number_of_prompts != 0
 
     def get_number_of_elements(self) -> int:
+        """
+        Retrieve the current value of 'number_of_elements' directly from the database.
+        
+        :return: The value of 'number_of_elements'.
+        """
         return self.get_stats().get("number_of_elements", 0)
 
     def get_number_of_prompts(self) -> int:
+        """
+        Retrieve the current value of 'number_of_prompts' directly from the database.
+        
+        :return: The value of 'number_of_prompts'.
+        """
         return self.get_stats().get("number_of_prompts", 0)
 
     def get_processed_num(self) -> int:
+        """
+        Retrieve the current value of 'prompts_processed' directly from the database.
+        
+        :return: The value of 'prompts_processed'.
+        """
         return self.get_stats().get("prompts_processed", 0)
 
     def is_exported(self) -> bool:

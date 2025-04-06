@@ -267,8 +267,9 @@ const CreateHelmJson: React.FC<CreateHelmJsonProps> = ({ onSubmit, isLoading }) 
       }
     };
 
+    // this will be replaced with calling the db for the parser results
     const mockRepoOptions = ['oodeh/eco-gotest-testing', 'mcarmi/testing_dpr'];
-    const mockFileOptions = ['eco-gotests_TAG_100_test_100_function.json', 'myfile.json'];
+    const mockFileOptions = ['eco-gotests_TAG_100_test_100_function.json', 'mysmallfile.json'];
     const ClusterOptions = ['Preproduction Cluster', 'Production Cluster']
 
     return (

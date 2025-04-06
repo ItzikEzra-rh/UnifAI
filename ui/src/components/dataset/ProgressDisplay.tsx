@@ -33,21 +33,15 @@ const ChartContainer: React.FC<{ title: string; type: 'pie' | 'bar' | 'line'; da
 };
 
 const ProgressTime: React.FC<{ startTime: string | null; endTime?: any }> = ({ startTime, endTime }) => {
-  
   const [elapsedTime, setElapsedTime] = useState<number | string>('Calculating...');
-
   useEffect(() => {
     if (!startTime) return;
-
     const start = new Date(startTime).getTime();
 
     if (endTime) {
-      console.log("this option")
       // If endTime exists, calculate the fixed elapsed time and stop here
       const end = new Date(endTime.$date).getTime();
-      console.log(end)
       setElapsedTime(Math.floor((end - start) / 1000));
-      console.log(elapsedTime)
       return;
     }
 
@@ -125,7 +119,6 @@ const ChartsStatistics: React.FC<{ promptLabData: PromptLabStats | null }> = ({ 
 };
 
 const ProgressDisplay: React.FC<ProgressDisplayProps> = ({ datasetDetails }) => {
-  console.log(datasetDetails)
   const [promptLabData, setPromptLabData] = useState<PromptLabStats | null>(null);
 
   useEffect(() => {

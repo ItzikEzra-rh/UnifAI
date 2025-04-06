@@ -5,10 +5,9 @@ from config.configParams import config
 
 class DPRCommands(Enum):
     # INSTALL         = "helm install -f {values}  {deployment_name} /home/cloud-user/AI-TC-s-Generator/pipelines/pre_training_helm --output json --namespace {namespace}"
-    INSTALL       = "helm install -f {values} {deployment_name} /opt/app-root/src/pipelines/pre_training_helm --output json --namespace {namespace}"
+    INSTALL         = "helm install -f {values} {deployment_name} /opt/app-root/src/pipelines/pre_training_helm --output json --namespace {namespace}"
     UNINSTALL       = "helm uninstall {deployment_name} --namespace {namespace}"
     STATUS          = "helm status {deployment_name} --namespace {namespace}"
-    # UPGRADE       = "helm upgrade {deployment_name} --reuse-values /home/cloud-user/AI-TC-s-Generator/pipelines/pre_training_helm {helm_set_params} --output json --namespace {namespace}"
     UPGRADE         = "helm upgrade {deployment_name} --reuse-values /opt/app-root/src/pipelines/pre_training_helm {helm_set_params} --output json --namespace {namespace}"
     RMQROUTE        = "oc get {option} {deployment_name}-rabbitmq-{option} -o jsonpath={spec} --namespace {namespace}"
     DBROUTE         = "oc get {option} {deployment_name}-mongodb-{option} -o jsonpath={spec} --namespace {namespace}"
@@ -34,7 +33,6 @@ class DPR:
 
         command_str = command.value.format(**kwargs).strip()
         rc, stdout = shell_exec(command_str)
-
         return helm_response(rc == 0, stdout.strip())
 
     def is_oc_logged_in(self):

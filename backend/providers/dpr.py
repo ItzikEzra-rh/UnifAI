@@ -7,7 +7,6 @@ from bson import ObjectId
 from config.configParams import config
             
 client = MongoClient(f"mongodb://{config.get('dpr', 'mongo_ext_addr')}:27017")
-
 promptlab_db = client["promptLab"]
 
 @mongo
@@ -79,7 +78,6 @@ def helm_upgrade(user_data):
 
 @mongo
 def helm_uninstall(id, status):
-    print("calling helm uninstall")
     creds = get_config_creds(id)
     if creds:
         helm = DPR(api_url=creds["api_url"], token=creds["hf_token"], namespace=creds["namespace"])
@@ -202,7 +200,6 @@ def delete_deployment(id):
     """
     :return: list of deployments that are currently running (haven't been deleted from the db)
     """
-
     result = Collections.by_name('dpr').update_one({"_id": ObjectId(id)}, {"$set": {"is_deleted": True}})
     return result.modified_count
 
@@ -293,13 +290,10 @@ def celery_check_dpr_progress():
     """
     print("Starting fetch stats for dpr")
     running_deployments = get_running_deployments()
-    print(running_deployments)
     for deployment in running_deployments:
         id = deployment["_id"]
         mongodb_stats = get_promptlab_stats(id)
         if mongodb_stats:
             no_remaining_prompts = mongodb_stats['prompts_failed'] + mongodb_stats['prompts_pass'] == mongodb_stats['number_of_prompts']
-            print(no_remaining_prompts)
-            print(mongodb_stats.get('exported'))
             if no_remaining_prompts and mongodb_stats.get('exported', False):
                 helm_uninstall(id, "DONE")

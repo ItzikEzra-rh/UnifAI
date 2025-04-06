@@ -36,7 +36,7 @@ class CeleryApp:
             worker_log_format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             worker_task_log_format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             beat_schedule={
-                'fetch-dpr-progress-every-30-mins': {
+                'fetch-dpr-progress-every-5-mins': {
                 'task': 'celery_app.tasks.fetch_dpr_progress',
                 'schedule': 300.0 
             }
