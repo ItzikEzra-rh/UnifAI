@@ -14,6 +14,7 @@ from ..stats import Stats
 from pymongo import errors
 from prompt_lab.utils import logger
 from prompt_lab.prompt import Prompt
+from bson import ObjectId
 
 
 class HybridHFMongoRepository(DataRepository):
@@ -34,7 +35,7 @@ class HybridHFMongoRepository(DataRepository):
     ):
         self.input_handler = input_handler
         self.processed_handler = processed_handler
-        self.stats_handler = Stats(stats_handler, process_id=process_id)
+        self.stats_handler = Stats(stats_handler, process_id=ObjectId(process_id))
         self.exporter = exporter
         
     # input handler
@@ -54,7 +55,7 @@ class HybridHFMongoRepository(DataRepository):
 
         for record in transformed_data:
             try:
-                self.processed_handler.collection.update_one({"_id": record["_id"]}, {"$set": record}, upsert=True)
+                self.processed_handler.update_record({"_id": record["_id"]}, {"$set": record}, upsert=True)
                 increment_callback()
             except errors.DuplicateKeyError:
                 logger.warning(f"DuplicateKeyError: Prompt with _id {record['_id']} already exists. Skipping.")

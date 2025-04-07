@@ -1,5 +1,4 @@
 from typing import Dict, Any
-from bson import ObjectId
 
 
 class Stats:
@@ -30,11 +29,11 @@ class Stats:
         """
         Ensure progress data exists in the storage, initializing it if necessary.
         """        
-        existing_data = list(self.statistics_handler.read_data(query={"_id": ObjectId(self.process_id)}))
+        existing_data = list(self.statistics_handler.read_data(query={"_id": self.process_id}))
 
         if not existing_data:
             # Generate a new document with self.process_id as _id
-            new_record = {"_id": ObjectId(self.process_id), **self.DEFAULT_VALUES}
+            new_record = {"_id": self.process_id, **self.DEFAULT_VALUES}
             self.statistics_handler.append_record(new_record)
 
 
@@ -56,7 +55,7 @@ class Stats:
         prompts_processed = progress_data.get("prompts_processed", 0)
 
         self.statistics_handler.update_record(
-            query={"_id": ObjectId(self.process_id)},
+            query={"_id": self.process_id},
             update={"$set": {"prompts_generated": prompts_processed}}
         )
 
@@ -66,7 +65,7 @@ class Stats:
         """
         self._validate_key(key)
         self.statistics_handler.update_record(
-            query={"_id": ObjectId(self.process_id)},
+            query={"_id": self.process_id},
             update={"$inc": {key: amount}}
         )
 
@@ -76,7 +75,7 @@ class Stats:
         """
         self._validate_key(key)
         self.statistics_handler.update_record(
-            query={"_id": ObjectId(self.process_id)},
+            query={"_id": self.process_id},
             update={"$set": {key: value}}
         )
 
@@ -85,7 +84,7 @@ class Stats:
         Retrieve the current progress data directly from the database.
         """
         
-        progress_data = list(self.statistics_handler.read_data(query={"_id": ObjectId(self.process_id)}))
+        progress_data = list(self.statistics_handler.read_data(query={"_id": self.process_id}))
 
         if not progress_data:
             raise RuntimeError("Progress data not found in the database.")
@@ -97,7 +96,7 @@ class Stats:
         Reset all progress values to their default state directly in the database.
         """
         self.statistics_handler.update_record(
-            query={"_id": ObjectId(self.process_id)},
+            query={"_id": self.process_id},
             update={"$set": self.DEFAULT_VALUES}
         )
 
