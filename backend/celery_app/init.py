@@ -4,6 +4,7 @@ Module for importing non-configured flask extensions
 from celery import Celery
 from prompt_lab.utils.logging_config import logger
 import logging
+from config.configParams import config
 
 
 class CeleryApp:
@@ -22,10 +23,10 @@ class CeleryApp:
         """Initialize the Celery instance."""
         self.celery_app = Celery(
             'celery_backend',
-            broker=f"amqp://rabbitmq:5672",
-            BROKER_USER='genie',
-            BROKER_PASSWORD='genie123',
-            backend="mongodb://mongodb:27017",
+            broker=f"amqp://rabbitmq:{config.get("rabbitmq", "rmq_port")}",
+            BROKER_USER=config.get("rabbitmq", "rmq_username"),
+            BROKER_PASSWORD=config.get("rabbitmq", "rmq_password"),
+            backend=f"mongodb://mongodb:{config.get("mongodb", "mongo_port")}",
             include=['celery_app.tasks']
         )
 
