@@ -421,7 +421,7 @@ pipeline {
                         sh("podman exec -t helmfile helmfile -f helmfile1.yaml apply")
                         sh("sleep 10")
                         echo("Deploy/update Helmfile2 for everything else")
-                        sh("podman exec -t helmfile helmfile -f helmfile2.yaml apply --debug")
+                        sh("podman exec -t helmfile helmfile -f helmfile2.yaml apply")
 
                         script{
                             GUI_EP = sh(
