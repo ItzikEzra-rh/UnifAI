@@ -35,7 +35,7 @@ class HybridHFMongoRepository(DataRepository):
     ):
         self.input_handler = input_handler
         self.processed_handler = processed_handler
-        self.stats_handler = Stats(stats_handler, process_id=ObjectId(process_id))
+        self.stats_handler = Stats(stats_handler, process_id=ObjectId(process_id) if process_id else None)
         self.exporter = exporter
         
     # input handler

@@ -226,7 +226,7 @@ def create_json_format(user_data):
 
     output_dataset_filename = user_data["promptLab"].get("OUTPUT_DATASET_FILE_NAME", "")
     promptlab_env["OUTPUT_DATASET_FILE_NAME"] = output_dataset_filename if \
-        output_dataset_filename.startswith("train_") else "train_" + output_dataset_filename
+        output_dataset_filename.startswith("train-") else "train-" + output_dataset_filename
         
     api_option = user_data["global"]["api_url"]
     
