@@ -414,7 +414,7 @@ pipeline {
                         sh("podman exec -t helmfile bash -c 'helmfile destroy -f helmfile2.yaml --deleteWait'")
                         sh("podman exec -t helmfile bash -c 'helmfile destroy -f helmfile1.yaml --deleteWait'")
                         echo("Wait for the key resourc is deleted")
-                        sh("until ! oc get deployment,statefulset,svc | grep 'genie\|mongo\|rabbitmq'; do echo 'Waiting for deployment deletion...'; sleep 5; done")
+                        sh("until ! oc get deployment,statefulset,svc | grep 'genie\\|mongo\\|rabbitmq'; do echo 'Waiting for deployment deletion...'; sleep 5; done")
                         sh("sleep 10")
 
                         echo("Deploy/update Helmfile1 for mongodb and rabbitmq")
