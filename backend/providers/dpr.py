@@ -221,9 +221,13 @@ def create_json_format(user_data):
         return {k: data.get(k, "") for k in data if k not in exclude_keys}
 
     global_config = extract_config(user_data["global"], exclude_keys=["api_url"])
-    promptlab_env = extract_config(user_data["promptLab"], exclude_keys=["vllm_orbiter_args"])
+    promptlab_env = extract_config(user_data["promptLab"], exclude_keys=["vllm_orbiter_args", "OUTPUT_DATASET_FILE_NAME"])
     reviewer_env = extract_config(user_data["reviewer"]) if global_config.get("enable_reviewer") else {}
 
+    output_dataset_filename = user_data["promptLab"].get("OUTPUT_DATASET_FILE_NAME", "")
+    promptlab_env["OUTPUT_DATASET_FILE_NAME"] = output_dataset_filename if \
+        output_dataset_filename.startswith("train_") else "train_" + output_dataset_filename
+        
     api_option = user_data["global"]["api_url"]
     
     json_output = {
