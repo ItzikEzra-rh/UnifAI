@@ -111,6 +111,7 @@ data:
             sorted_token_counts = sorted(token_counts)
             print("\nSorted Token Sizes:")
             print(sorted_token_counts)
+            print(f"Dataset_size: {str(len(sorted_token_counts))}")
 
             return results
 
