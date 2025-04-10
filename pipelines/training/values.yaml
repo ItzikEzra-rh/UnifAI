@@ -29,7 +29,8 @@ Deployment:
         containers:
           - name: genie-trainer
             #image: images.paas.redhat.com/genie/training:test
-            image: images.paas.redhat.com/genie/training:jenkins
+            #image: images.paas.redhat.com/genie/training:jenkins
+            image: images.paas.redhat.com/genie/training:latest
             imagePullPolicy: Always
             stdin: true
             tty: true
