@@ -174,7 +174,7 @@ def createValueFile(params, buildParams) {
         PROJECT                     : params.PROJECT,
         MODEL_NAME_OR_PATH          : params.MODEL_NAME_OR_PATH,
         TEMPLATE                    : params.TEMPLATE,
-        DATASET_REPO                     : params.DATASET_REPO,
+        DATASET_REPO                : params.DATASET_REPO,
         DATASET_NAME                : params.DATASET_REPO.split("/")[-1],
         DATASET_FILE_NAME           : params.DATASET_FILE_NAME,
         LORA_RANK                   : params.LORA_RANK,
