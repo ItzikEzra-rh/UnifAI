@@ -191,7 +191,7 @@ def createValueFile(params, buildParams) {
     def text='''
 Global:
   namespace: "${NAMESPACE}" 
-  dataset_repo: ${DATASET_REPO}"
+  dataset_repo: "${DATASET_REPO}"
   dataset_file_name: "${DATASET_FILE_NAME}"
 
 ConfigMap: 
