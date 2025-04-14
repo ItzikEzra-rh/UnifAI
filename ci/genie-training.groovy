@@ -415,5 +415,12 @@ pipeline {
                 echo('Build finished successfully')
                 cleanPodmanSystem()
              }
+            failed {
+                echo('Build failed, please debug existing deployment')
+            }
+            aborted {
+                echo('Build aborted')
+                helmOperation('uninstall')
+            }
         }
 }
