@@ -116,7 +116,7 @@ ConfigMap:
     namespace: tag-ai--pipeline  #tag-ai--runtime-int 
   data: 
     APP: "Genie"
-    MODE: "debug" #debug | training
+    MODE: "training" #debug | training
     GPU_NUM: "2"
     PROJECT: "mpc_training"
     MPLCONFIGDIR: "/tmp/matplotlib"
