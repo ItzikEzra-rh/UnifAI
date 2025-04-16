@@ -22,10 +22,10 @@ properties([
 
 Map buildParams = [
     LogLevel           : "ALL",
-    MainRepoURL        : "github.com",
-    MainRepoProject    : "Nirsisr/Genie-AI",
+    MainRepoURL        : "gitlab.cee.redhat.com", //"github.com",
+    MainRepoProject    : "nrashti/genie-ai", //"Nirsisr/Genie-AI",
     MainRepoBranch     : "main",
-    CredentialsId      : "tag-github-creds",
+    CredentialsId      : "tag-gitlab-creds", //"tag-github-creds",
     NodeToRun          : "tag-slave",
     DevRoot            : "/root/workspace/${env.JOB_NAME}", //${env.JOB_NAME}/${env.BUILD_ID}",
     ImageRegistry      : "images.paas.redhat.com",
