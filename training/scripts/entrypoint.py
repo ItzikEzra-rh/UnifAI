@@ -44,20 +44,32 @@ model_name = '-'.join(filter(None, map(str.strip, model_name_parts))).strip('-')
 training_done_message="Training completed. Do not forget to share your model on huggingface.co/models =)"
 model_output_folder="/app/LLaMA-Factory/saves/test"
 session_name="training"
+hf_username="taguser"
+hf_space="cia-tools"
 
 
 
 #hugging face functions
 def hf_login():
-    print("logging in to hugging face using predefined token")
-    huggingface_hub.login(os.environ['token']) # might be unnecessary  
+    print("Logging in to hugging face using predefined token")
+    try:
+        huggingface_hub.login(os.environ['token']) # might be unnecessary  
+    except Exception as e:
+        print("login to Hugging face failed with following exception:")
+        print(e)
 
 def hf_upload():
     #this function uploads the whole results folder to hugging face 
     #note that it will upload to the space according to the token used
     print("uploading fine-tuned model to hugging face")
+    #removing the need for progress bars as they mess up the upload part
+    os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
     api = huggingface_hub.HfApi()
-    api.upload_large_folder(repo_id=model_name, repo_type="model",folder_path=model_output_folder)
+    try:
+      api.upload_large_folder(repo_id=model_name, repo_type="model",folder_path=model_output_folder)
+    except Exception as e:
+      print("upload to Hugging face failed with the following exception:")
+      print(e)
 
 #General functions
 
@@ -138,14 +150,18 @@ def run_training():
     check_training_process()
     check_train_log()
 
-def get_cutoff_length():
+def get_dataset_info():
     output = run_command("python /app/LLaMA-Factory/dataset-token-size-distribution.py") 
     lines = output.splitlines()
+    #get the cutoff_length (also named context length)
     for line in lines:
         if 'Max_tokens' in line.strip():
-            max_tokens = line.replace('Max_tokens:','').strip()
+            max_tokens = str(line.replace('Max_tokens:','').strip())
             print("max tokens value is: {}".format(max_tokens))
-            return max_tokens
+        elif 'Dataset_size' in line.strip():
+            dataset_size = str(line.replace('Dataset_size:',''))
+    return max_tokens, dataset_size
+    
 
 def get_save_steps():
     #This function calculates the save_steps for the llamafactory-cli trani command
@@ -153,15 +169,17 @@ def get_save_steps():
     # dataset_size/batch_size 
     #where:
     #batch_size = gradient_accumulation_steps * per_device_train_batch_size * num of GPUs
-    headers = {'Authorization': 'Bearer {}'.format(os.environ['token'])}
-    hf_size_url = "https://datasets-server.huggingface.co/size?dataset={}".format(os.environ["DATASET_REPO"])
-    print('getting dataset size')
-    output = url_query(hf_size_url,headers)
-    for s in output["size"]["splits"]:
-        if s["split"] == "train":
-            trainsplit = s
-    dataset_size = trainsplit['num_rows']  #$.size.splits[?(@.split=='train')].num_rows
-    os.environ["DATASET_SIZE"] = str(dataset_size)
+    
+    #headers = {'Authorization': 'Bearer {}'.format(os.environ['token'])}
+    #hf_size_url = "https://datasets-server.huggingface.co/size?dataset={}".format(os.environ["DATASET_REPO"])
+    #print('getting dataset size')
+    # output = url_query(hf_size_url,headers)
+    # for s in output["size"]["splits"]:
+    #     if s["split"] == "train":
+    #         trainsplit = s
+    # dataset_size = trainsplit['num_rows']  #$.size.splits[?(@.split=='train')].num_rows
+    # os.environ["DATASET_SIZE"] = str(dataset_size)
+    dataset_size = os.environ['DATASET_SIZE']
     batch_size = int(os.environ['GRADIENT_ACCUMULATION_STEPS']) * int(os.environ['PER_DEVICE_TRAIN_BATCH_SIZE']) * int(os.environ['GPU_NUM'])
     os.environ["BATCH_SIZE"] = str(batch_size)
     print(f"dataset_size: {dataset_size}")
@@ -177,9 +195,10 @@ def main():
         print("Running in training mode...")
         print("Updating LlamaFactory dataset info file...")
         update_jinja(DATASET_FILE_TEMPLATE,DATASET_FILE)
-        os.environ["CUTOFF_LEN"] = str(get_cutoff_length())
+        os.environ["CUTOFF_LEN"], os.environ["DATASET_SIZE"]  = get_dataset_info()
         os.environ["SAVE_STEPS"] = str(int(get_save_steps()))
         os.environ["MODEL_NAME"] = str(model_name)
+        os.environ["TRAINED_MODEL_REPO"] = hf_username + model_name
         print("save_steps: {}".format(os.environ["SAVE_STEPS"]))
         update_jinja(ARGS_TEMPLATE,ARGS_FILE)
         hf_login()

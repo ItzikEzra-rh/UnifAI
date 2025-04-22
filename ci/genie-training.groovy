@@ -8,10 +8,11 @@ properties([
         booleanParam(name: 'deploy_training', defaultValue: false, description: 'True - Deploy Genie, False - Only build images and upload to image-paas'),
         choice(name: 'deployment_location', choices: ['staging', 'production'], description: 'Where to deploy Genie?'),
         string(name: "namespace", defaultValue: "tag-ai--pipeline", description: "The namespace to use for deployment."),
-        string(name: "PROJECT", defaultValue: "mpc_training", description: "The name of the project for which we train the model"),
+        string(name: "PROJECT", defaultValue: "", description: "The name of the project for which we train the model"),
         string(name: "MODEL_NAME_OR_PATH", defaultValue: "Qwen/Qwen2.5-Coder-14B-Instruct", description: "what model to use (from huggingface)"),
         string(name: "TEMPLATE", defaultValue: "qwen", description: "The template to use (should match the model)"),
-        string(name: "DATASET", defaultValue: "mpc_training", description: "The dataset to use for the fine tuning"), 
+        string(name: "DATASET_REPO", defaultValue: "", description: "The dataset to use for the fine tuning - we're using the train split"),
+        string(name: "DATASET_FILE_NAME", defaultValue: "", description: "full path (in hugging face to the file)"), 
         string(name: "LORA_RANK", defaultValue: "16", description: ""),
         string(name: "LORA_ALPHA", defaultValue: "16", description: ""),
         string(name: "LORA_DROPOUT", defaultValue: "0.1", description: ""),               
@@ -173,8 +174,9 @@ def createValueFile(params, buildParams) {
         PROJECT                     : params.PROJECT,
         MODEL_NAME_OR_PATH          : params.MODEL_NAME_OR_PATH,
         TEMPLATE                    : params.TEMPLATE,
-        DATASET                     : params.DATASET,
-        DATASET_NAME                : params.DATASET.split("/")[-1],
+        DATASET_REPO                : params.DATASET_REPO,
+        DATASET_NAME                : params.DATASET_REPO.split("/")[-1],
+        DATASET_FILE_NAME           : params.DATASET_FILE_NAME,
         LORA_RANK                   : params.LORA_RANK,
         LORA_ALPHA                  : params.LORA_ALPHA,
         LORA_DROPOUT                : params.LORA_DROPOUT,
@@ -187,17 +189,19 @@ def createValueFile(params, buildParams) {
     ]
 
     def text='''
+Global:
+  namespace: "${NAMESPACE}" 
+  dataset_repo: "${DATASET_REPO}"
+  dataset_file_name: "${DATASET_FILE_NAME}"
+
 ConfigMap: 
   data: 
-    MODE: "training" #debug | training
     PROJECT: ${PROJECT}
-    DATASET_REPO: "${DATASET}"
+    DATASET_REPO: "${DATASET_REPO}"
     DATASET_NAME: "${DATASET_NAME}"
+    DATASET_FILE_NAME: "${DATASET_FILE_NAME}" 
 
 ConfigMapTrainerArgs:
-    metadata:
-        name: trainer-configmap-trainer-args
-        namespace: "${NAMESPACE}"
     data: 
         MODEL_NAME_OR_PATH: "${MODEL_NAME_OR_PATH}"
         LORA_RANK: "${LORA_RANK}"
@@ -375,10 +379,11 @@ pipeline {
                                 returnStdout: true
                                 ).trim()
                             POD_NAME = sh(
-                                script: 'oc get pods -o jsonpath="{.items[?(@.metadata.name contains "genie-training")].metadata.name}"',
+                                script: '''oc get pods -o jsonpath="{.items[?(@.metadata.name=='genie-training')].metadata.name}"''',
                                 returnStdout: true
                                 ).trim()                                
-                        }  
+                        }
+                        echo("Training pod found ${POD_NAME}")
                         //sh("curl http://${API_EP}/api/training/status")
                         //sh("oc logs genie-training-7d4bfd64cd-vqjqp |tail -1")  
                         script{
@@ -410,5 +415,12 @@ pipeline {
                 echo('Build finished successfully')
                 cleanPodmanSystem()
              }
+            failed {
+                echo('Build failed, please debug existing deployment')
+            }
+            aborted {
+                echo('Build aborted')
+                helmOperation('uninstall')
+            }
         }
 }
