@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import axiosBE from '../../http/axiosConfig';
 import { Paper, Typography, List, ListItem, ListItemButton, ListItemText, ListItemIcon, Divider, Box, ListItemSecondaryAction, IconButton, Dialog, DialogActions, DialogContent, DialogTitle, Button, TextField } from '@mui/material';
 import MessageIcon from '@mui/icons-material/Message';
@@ -27,7 +27,7 @@ interface ChatHistoryProps {
 
 export interface HistoryChat {
   sessionId: string;
-  latestTimestamp: string;
+  latestTimestamp: { "$date": string };
   messages: ChatMessage[];
   firstMessage: string;
   title?: string;
@@ -152,7 +152,7 @@ const ChatHistory: React.FC<ChatHistoryProps> = ({ modelId, isStreaming, onChatS
                       </React.Fragment>)}
                   secondary={
                     <Typography component="span" variant="caption" color="text.secondary">
-                      {moment(chat.latestTimestamp).format('DD/MM/YYYY HH:mm:ss')}
+                      {new Date(chat.latestTimestamp["$date"]).toLocaleString("en-GB")}
                     </Typography>}
                 />
               </ListItemButton>
