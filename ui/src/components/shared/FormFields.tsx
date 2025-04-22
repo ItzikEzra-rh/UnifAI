@@ -131,7 +131,7 @@ export const FormDropdown: React.FC<FormDropdownProps> = ({ name, label, control
             }
           }}
         >
-          {options.map((option) => (
+          {options?.map((option) => (
             <MenuItem key={option} value={option}>
               {option}
             </MenuItem>
