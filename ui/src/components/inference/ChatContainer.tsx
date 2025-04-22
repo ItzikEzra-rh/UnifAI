@@ -352,7 +352,7 @@ const ChatComponent: React.FC = () => {
         sessionId: chatId,
         chat: newMessages,
       })
-
+      
       // Load selected chat messages
       setMessages(chatMessages);
     } catch (error) {
@@ -806,7 +806,8 @@ const ChatComponent: React.FC = () => {
         } else {
           // Opening code block after printing non-code lines up until now
           currentLanguage = line.slice(3).trim(); // Extract language (if any) after ```
-          formattedText += `<pre class="language-${currentLanguage}"><code>`;
+          formattedText += `<pre class="language-${currentLanguage}" style="overflow-x: auto; max-width: 100%; white-space: pre-wrap; word-break: break-word;"><code>`;
+
           insideCodeBlock = true;
         }
       } else if (insideCodeBlock) {
