@@ -193,6 +193,7 @@ def main():
     mode = os.getenv("MODE", "training").lower()  # Default to "training" if MODE is not set
     if mode == "training":
         print("Running in training mode...")
+        hf_login()
         print("Updating LlamaFactory dataset info file...")
         update_jinja(DATASET_FILE_TEMPLATE,DATASET_FILE)
         os.environ["CUTOFF_LEN"], os.environ["DATASET_SIZE"]  = get_dataset_info()
@@ -201,7 +202,6 @@ def main():
         os.environ["TRAINED_MODEL_REPO"] = hf_username + model_name
         print("save_steps: {}".format(os.environ["SAVE_STEPS"]))
         update_jinja(ARGS_TEMPLATE,ARGS_FILE)
-        hf_login()
         run_training()
         #run_command_screen('screen -L -Logfile /app/train-screen.log -dmS {} llamafactory-cli train /app/LLaMA-Factory/trainer_args.yaml'.format(session_name))
         #create the card.json file
