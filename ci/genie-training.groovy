@@ -415,7 +415,7 @@ pipeline {
                 echo('Build finished successfully')
                 cleanPodmanSystem()
              }
-            failed {
+            failure {
                 echo('Build failed, please debug existing deployment')
             }
             aborted {
