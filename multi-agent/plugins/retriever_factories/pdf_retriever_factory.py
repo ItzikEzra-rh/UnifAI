@@ -4,14 +4,14 @@ from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
 from agents.pdf_agent import PDFAgent
 
-class PDFRetrieverConfig(BaseModel):
-    """
-    Configuration schema for the PDF retriever.
-    """
-    name: str
-    type: Literal["pdf"] = Field("pdf", const=True)
-    documents: List[str]  # Paths or URIs to PDF documents
-
+# class PDFRetrieverConfig(BaseModel):
+#     """
+#     Configuration schema for the PDF retriever.
+#     """
+#     name: str
+#     type: Literal["pdf"] = Field("pdf", const=True)
+#     documents: List[str]  # Paths or URIs to PDF documents
+#
 
 class PDFRetrieverFactory(BaseFactory):
     """

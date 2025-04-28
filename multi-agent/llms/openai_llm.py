@@ -1,5 +1,6 @@
 from llms.base_llm import BaseLLM
-from langchain.chat_models import ChatOpenAI
+from langchain_community.chat_models import ChatOpenAI
+
 
 class OpenAILLM(BaseLLM):
     def __init__(self, api_key: str, model: str = "gpt-4", temperature=0.7):

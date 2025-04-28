@@ -1,7 +1,6 @@
 # composers/agent_composer.py
 
 from typing import Dict, Any
-from plugins.plugin_registry import PluginRegistry
 from agents.base_agent import BaseAgent
 from agents.langchain_agent_node import LangChainAgentNode
 from schemas.agent_config import AgentConfig

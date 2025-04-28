@@ -4,10 +4,17 @@ from typing import Any, Dict
 from pydantic import ValidationError
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
-from schemas.llm_config import LLMConfig
+from schemas.llm.mock_config import MockLLMConfig
 from llms.mock_llm import MockLLM
+from plugins.decorators import register_element
 
 
+@register_element(
+    name="mock_llm",
+    element_type="llm",
+    description="Mock API",
+    config_schema=MockLLMConfig,
+)
 class MockLLMFactory(BaseFactory):
     """
     Factory for creating a MockLLM instance for testing.

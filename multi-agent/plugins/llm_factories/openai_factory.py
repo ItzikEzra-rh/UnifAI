@@ -4,7 +4,7 @@ from typing import Any, Dict
 from pydantic import ValidationError
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
-from schemas.llm_config import LLMConfig, OpenAIConfig
+from schemas.llm.openai_config import OpenAIConfig
 from llms.openai_llm import OpenAILLM
 from plugins.decorators import register_element
 

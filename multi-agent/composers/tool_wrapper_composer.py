@@ -1,7 +1,6 @@
 # composers/tool_wrapper_composer.py
 
 from typing import Dict, Any
-from plugins.plugin_registry import PluginRegistry
 from schemas.node_config import NodeSpec
 from nodes.tool_node import ToolNode
 from plugins.exceptions import PluginConfigurationError

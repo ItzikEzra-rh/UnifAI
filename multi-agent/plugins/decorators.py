@@ -1,6 +1,5 @@
-# plugins/decorators.py
 
-from registry.element_registry import element_registry
+from registry import element_registry
 
 
 def register_element(name: str, element_type: str, description: str = "", config_schema: type = None):

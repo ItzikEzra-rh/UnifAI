@@ -1,5 +1,3 @@
-# schemas/llm_config.py
-
 from pydantic import BaseModel, Field
 from typing import Literal, Optional, Dict, Any
 
@@ -25,16 +23,3 @@ class LLMConfig(BaseModel):
         description="Any extra provider-specific kwargs"
     )
 
-
-class OpenAIConfig(LLMConfig):
-    type: Literal["openai"] = Field("openai", const=True)
-    # you can override api_key, api_base, etc. here
-
-
-class MockLLMConfig(LLMConfig):
-    type: Literal["mock"] = Field("mock", const=True)
-
-
-class LlamaStackConfig(LLMConfig):
-    type: Literal["llamastack"] = Field("llamastack", const=True)
-    # e.g. host: str, port: int if needed

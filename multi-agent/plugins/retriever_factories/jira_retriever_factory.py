@@ -5,14 +5,14 @@ from plugins.exceptions import PluginConfigurationError
 from agents.jira_agent import JiraAgent
 
 
-class JiraRetrieverConfig(BaseModel):
-    """
-    Configuration schema for the Jira retriever.
-    """
-    name: str
-    type: Literal["jira"] = Field("jira", const=True)
-    vector_store: Dict[str, Any] = {}  # Vector store settings for RAG
-
+# class JiraRetrieverConfig(BaseModel):
+#     """
+#     Configuration schema for the Jira retriever.
+#     """
+#     name: str
+#     type: Literal["jira"] = Field("jira", const=True)
+#     vector_store: Dict[str, Any] = {}  # Vector store settings for RAG
+#
 
 class JiraRetrieverFactory(BaseFactory):
     """

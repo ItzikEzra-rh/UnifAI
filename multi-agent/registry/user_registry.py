@@ -3,6 +3,7 @@
 from typing import Dict, Any
 from registry.element_registry import element_registry
 
+
 class UserRegistry:
     """
     Per-user/session dynamic registry.
@@ -40,7 +41,7 @@ class UserRegistry:
             config_data = schema_cls(**(config_overrides or {})).dict()
 
         # Create instance
-        if hasattr(cls_or_factory, "create"):   # It's a factory
+        if hasattr(cls_or_factory, "create"):  # It's a factory
             instance = cls_or_factory().create(config_data, registry=self)
         else:  # It's a simple static class (like Node)
             instance = cls_or_factory()

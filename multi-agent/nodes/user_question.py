@@ -1,7 +1,7 @@
-from registry import registry
+# from registry import element_registry
 
 
-@registry.register_node("user_question")
+# @element_registry.register_node("user_question")
 class UserQuestionNode:
     def __call__(self, state):
         print("UserQuestionNode: Prompt received:", state.get("user_input"))

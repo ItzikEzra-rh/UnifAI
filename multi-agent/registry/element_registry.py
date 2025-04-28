@@ -2,6 +2,7 @@ import importlib
 import pkgutil
 import threading
 from typing import Dict, Any, Optional
+import os
 
 
 class ElementRegistry:
@@ -75,21 +76,26 @@ class ElementRegistry:
         return name in self.elements
 
     # --- Auto discovery at startup ---
-
     def auto_discover(self):
         """
-        Imports all modules under `multi_agent.plugins/` and `multi_agent.nodes/`
-        to trigger @register_element decorators.
+        Only import Python modules from folders inside `plugins/` that match '*_factories'.
         """
-        search_paths = [
-            "multi_agent.plugins"
-        ]
+        plugins_dir = os.path.join(os.getcwd(), "plugins")
 
-        for base_package in search_paths:
-            try:
-                base_dir = base_package.replace(".", "/")
-                for finder, name, ispkg in pkgutil.walk_packages([base_dir], prefix=base_package + "."):
-                    if not ispkg:
-                        importlib.import_module(name)
-            except Exception as e:
-                print(f"Failed to import from {base_package}: {e}")
+        if not os.path.isdir(plugins_dir):
+            print(f"Plugins directory not found at {plugins_dir}")
+            return
+
+        for folder_name in os.listdir(plugins_dir):
+            folder_path = os.path.join(plugins_dir, folder_name)
+
+            # Only process directories matching *_factories
+            if os.path.isdir(folder_path) and folder_name.endswith("_factories"):
+                for filename in os.listdir(folder_path):
+                    if filename.endswith(".py") and not filename.startswith("__"):
+                        module_name = f"plugins.{folder_name}.{filename[:-3]}"  # Remove '.py'
+                        try:
+                            importlib.import_module(module_name)
+                            print(f"Imported {module_name}")
+                        except Exception as e:
+                            print(f"Failed to import {module_name}: {e}")
