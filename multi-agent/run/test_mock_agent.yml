@@ -1,0 +1,44 @@
+# ----------------------------
+# 1️⃣ LLM Definitions
+# ----------------------------
+llms:
+  - name: mock_llm
+    type: mock
+    # mock factory can be configured to return a constant or random reply
+
+# ----------------------------
+# 2️⃣ Retriever / Tool Stubs
+# (none needed for this example)
+# ----------------------------
+retrievers: []
+tools: []
+
+# ----------------------------
+# 3️⃣ Agent Definitions
+# ----------------------------
+agents:
+  - name: mock_agent
+    type: langchain_agent      # our “custom agent” pattern
+    llm: mock_llm              # ← use the mock LLM above
+    retriever: null            # a no-op retriever you’ve registered
+    tools: []
+    system_message: "You are a mock agent that echoes the query."
+    retries: 1
+
+# ----------------------------
+# 4️⃣ Plan Steps
+# ----------------------------
+plan:
+  - name: user_input
+    node: user_question
+
+  - name: ask_mock
+    after: user_input
+    node:
+      define:
+        type: agent_node
+        agent: mock_agent
+
+  - name: finalize
+    after: ask_mock
+    node: final_answer
