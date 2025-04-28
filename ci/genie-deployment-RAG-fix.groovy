@@ -16,6 +16,7 @@ properties([
         booleanParam(name: 'rabbitmq', defaultValue: false, description: 'Create image for RabbitMQ'),
         booleanParam(name: 'deploy_genie', defaultValue: false, description: 'True - Deploy Genie, False - Only build images and upload to image-paas'),
         choice(name: 'deployment_location', choices: ['STAGING', 'PRODUCTION'], description: 'Where to deploy Genie?'),
+        choice(name: 'deployment_type', choices: ['FRESH_INSTALL', 'APPLICATION_UPGRADE'], description: 'Type of deployment: FreshInstallation (delete everything and reinstall)? Or only upgrade the APPLICATION entities?'),
         string(name: "namespace", defaultValue: "tag-ai--runtime-int", description: "The namespace to use for deployment.")
     ]) 
 ])
@@ -189,7 +190,7 @@ pipeline {
                     extensions: [[$class: 'RelativeTargetDirectory', relativeTargetDir: "${buildParams.DevRoot}/${params.BRANCH}"]],
                     submoduleCfg: [],
                     userRemoteConfigs: [[
-                        credentialsId: "${buildParams.CredentialsId}",
+                        //credentialsId: "${buildParams.CredentialsId}",
                         url: "https://${buildParams.MainRepoURL}/${buildParams.MainRepoProject}.git"
                     ]]
                 ])
@@ -401,28 +402,31 @@ pipeline {
                 dir("${buildParams.DevRoot}/${params.BRANCH}/helm/") {
                     script {
                       module = "helmfile"
-                    } 
-                    cleanWorkspace(module) 
-                    withCredentials([string(credentialsId: 'RHOI-service-token', variable: 'token')]){
+                      cleanWorkspace(module) 
+                      withCredentials([string(credentialsId: 'RHOI-service-token', variable: 'token')]){
 
                         echo("Creating helm deployment pod")
                         sh("oc login --token=${token} --server=${ClusterAddress}")
                         sh("oc project ${params.namespace}")
                         echo("Deploy Helm container")
                         sh("podman run -dt --workdir /helm/charts -v .:/helm/charts:Z -v ~/.kube/:/helm/.kube:Z --name helmfile ghcr.io/helmfile/helmfile:latest bash")
-                        echo("Removing previous helms")
-                        sh("podman exec -t helmfile bash -c 'helmfile destroy -f helmfile2.yaml --deleteWait'")
-                        sh("podman exec -t helmfile bash -c 'helmfile destroy -f helmfile1.yaml --deleteWait'")
-                        echo("Wait for the key resourc is deleted")
-                        sh("until ! oc get deployment,statefulset,svc | grep 'genie\\|mongo\\|rabbitmq'; do echo 'Waiting for deployment deletion...'; sleep 5; done")
-                        sh("sleep 10")
 
-                        echo("Deploy/update Helmfile1 for mongodb and rabbitmq")
-                        sh("podman exec -t helmfile helmfile -f helmfile1.yaml apply")
-                        sh("sleep 10")
+                        if(params.deployment_type == 'FRESH_INSTALL') {
+                            echo("Removing previous helms")
+                            sh("podman exec -t helmfile bash -c 'helmfile destroy -f helmfile2.yaml --deleteWait'")
+                            sh("podman exec -t helmfile bash -c 'helmfile destroy -f helmfile1.yaml --deleteWait'")
+                            echo("Wait for the key resourc is deleted")
+                            sh("until ! oc get deployment,statefulset,svc | grep 'genie\\|mongo\\|rabbitmq'; do echo 'Waiting for deployment deletion...'; sleep 5; done")
+                            sh("sleep 10")
+
+                            echo("Deploy/update Helmfile1 for mongodb and rabbitmq")
+                            sh("podman exec -t helmfile helmfile -f helmfile1.yaml apply")
+                            sh("sleep 10")
+                        }
+                        //else fall into application_upgrade path
                         echo("Deploy/update Helmfile2 for everything else")
                         sh("podman exec -t helmfile helmfile -f helmfile2.yaml apply")
-
+                        
                         script{
                             GUI_EP = sh(
                                 script: 'oc get route genie-ui -n tag-ai--runtime-int -o jsonpath="{.spec.host}"',
@@ -433,8 +437,9 @@ pipeline {
                         echo("Genie UI is available at ${GUI_EP}")
                         
 
+                      }
+                      cleanWorkspace(module)
                     }
-                    cleanWorkspace(module)
                 }
 
             }
