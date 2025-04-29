@@ -1,17 +1,17 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, Optional
 from typing import List
 from schemas.llm.llm_config import LLMConfig
 
 
 class BaseNodeConfig(BaseModel):
     """
-    Defines a pre-registered node's default atomic elements.
-    Used by ComponentRegistry to store reusable templates.
+    A reusable “template” for a Node, registered in ElementRegistry.
+    Provides default atomic keys.
     """
     name: str
-    type: str  # e.g. "custom_agent", "tool_node"
-    agent: str
+    type: str  # must match NodeSpec.type
     llm: str  # default LLM key
-    retriever: str  # default retriever key
-    tools: List[str] = []  # default tool keys
-    system_message: str  # default prompt or message
+    retriever: Optional[str]
+    tools: List[str] = []
+    system_message: Optional[str]
+    retries: int = 1

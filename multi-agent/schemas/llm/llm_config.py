@@ -17,6 +17,10 @@ class LLMConfig(BaseModel):
         "https://api.openai.com",
         description="Base URL for the OpenAI API"
     )
+    system_message: Optional[str] = Field(
+        None,
+        description="Optional system message to guide LLM behavior (e.g., prompt preamble)"
+    )
     timeout: Optional[int] = Field(60, description="Request timeout in seconds")
     extra: Dict[str, Any] = Field(
         default_factory=dict,

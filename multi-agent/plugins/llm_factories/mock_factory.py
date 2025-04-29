@@ -4,7 +4,7 @@ from typing import Any, Dict
 from pydantic import ValidationError
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
-from schemas.llm.mock_config import MockLLMConfig
+from schemas.llm.mock_config import MockLLMConfig, LLMConfig
 from llms.mock_llm import MockLLM
 from plugins.decorators import register_element
 
@@ -22,13 +22,13 @@ class MockLLMFactory(BaseFactory):
     Ensures config is well-formed (type="mock") but otherwise returns a stateless mock.
     """
 
-    def accepts(self, cfg: Dict[str, Any]) -> bool:
+    def accepts(self, cfg: MockLLMConfig) -> bool:
         """
         Recognize configs with 'type': 'mock'.
         """
-        return cfg.get("type") == "mock"
+        return cfg.type == "mock"
 
-    def create(self, cfg: Dict[str, Any]) -> MockLLM:
+    def create(self, cfg: MockLLMConfig) -> MockLLM:
         """
         Validate cfg and return a MockLLM.
 
@@ -37,12 +37,6 @@ class MockLLMFactory(BaseFactory):
             - type == "mock"
         :raises PluginConfigurationError: on validation failure
         """
-        try:
-            # We still run through LLMConfig to ensure 'name' etc. are present
-            LLMConfig(**cfg)
-        except ValidationError as ve:
-            raise PluginConfigurationError("MockLLM config validation error", cfg) from ve
-
         try:
             return MockLLM()
         except Exception as e:

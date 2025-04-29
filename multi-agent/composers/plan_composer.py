@@ -1,83 +1,78 @@
-# composers/plan_composer.py
-
-from typing import Union, List
-from pydantic import BaseModel
-from graph.graph_plan import GraphPlan, Step
-from schemas.blueprint_schema import StepSpec
-from schemas.node_config import NodeSpec
-from core.graph_context import GraphContext
-from composers.agent_composer import AgentComposer
-from composers.tool_wrapper_composer import ToolNodeComposer
+from typing import List, Union
+from registry.element_registry import ElementRegistry
+from session.session_registry import SessionRegistry
+from schemas.blueprint.blueprint import StepDef, NodeSpec
+from graph.graph_plan import GraphPlan
+from graph.dynamic_node_factory import NodeFactory
 
 
 class PlanComposer:
     """
-    Builds a GraphPlan from a list of StepSpec objects.
+    Converts a list of StepDef objects (from BlueprintSpec.plan)
+    into a fully-populated GraphPlan of Step(name, func, ...).
 
-    - Delegates agent/node creation to AgentComposer.
-    - Delegates single-tool wrapping to ToolNodeComposer.
-    - Uses ComponentRegistry for static node lookups.
+    - Resolves static nodes by name via ElementRegistry → NodeConfig templates.
+    - Builds dynamic nodes (NodeSpec) via NodeFactory + SessionRegistry.
+    - Enforces SOLID separation: only composes plan structure.
     """
 
-    def __init__(self, context: GraphContext):
-        self.ctx = context
-        self.plan = GraphPlan()
+    def __init__(
+            self,
+            session_registry: SessionRegistry,
+            element_registry: ElementRegistry
+    ) -> None:
+        self.session = session_registry
+        self.elements = element_registry
 
-    def add_step(self, step_spec: StepSpec) -> None:
+    def compose(self, step_defs: List[StepDef]) -> GraphPlan:
+        plan = GraphPlan()
+
+        for sd in step_defs:
+            # 1) normalize 'after' to list
+            after = []
+            if sd.after:
+                if isinstance(sd.after, str):
+                    after = [sd.after]
+                else:
+                    after = sd.after
+
+            # 2) instantiate the node
+            func = self._resolve_node(sd.node)
+
+            # 3) add into plan
+            plan.add_step(
+                name=sd.name,
+                func=func,
+                after=after,
+                exit_condition=sd.exit_condition,
+                branches=sd.branches
+            )
+
+        # 4) sanity-check references
+        plan.validate()
+        return plan
+
+    def _resolve_node(self, node_field: Union[str, NodeSpec]):
         """
-        Add a single step to the internal GraphPlan.
+        Returns a callable node instance for the plan.
 
-        :param step_spec: validated StepSpec from blueprint_schema.
+        If node_field is a string → static node:
+          • fetch config_schema & Node class from ElementRegistry
+          • build a NodeSpec → pass to NodeFactory
+
+        If node_field is a NodeSpec → inline:
+          • pass directly to NodeFactory
+
+        NodeFactory merges template defaults + overrides + session atoms.
         """
-        name = step_spec.name
-        after = step_spec.after
-
-        # Determine the node factory function
-        node_field = step_spec.node
         if isinstance(node_field, str):
-            # Static, pre-registered node
-            func = self.ctx.base_registry.get_node(node_field)
-
+            # static node: name=type
+            spec = NodeSpec(type=node_field, name=node_field)
         else:
-            # Dynamic NodeSpec
-            spec: NodeSpec = node_field
-            spec.validate_mode()
+            spec = node_field
 
-            # Branch by inline-type vs. template-ref
-            if spec.ref:
-                # Merge template + overrides, then treat as inline
-                template = self.ctx.base_registry.get_node(spec.ref)
-                merged = template.dict()
-                overrides = spec.dict(exclude_unset=True, exclude={"ref"})
-                merged.update(overrides)
-                func = self._build_from_spec(merged)
+        # Build a BaseNode subclass instance
+        node_instance = NodeFactory.build(spec, self.session)
 
-            else:
-                # Pure inline definition
-                func = self._build_from_spec(spec.dict())
-
-        # Register the step
-        self.plan.add_step(name=name, func=func, after=after)
-
-    def _build_from_spec(self, cfg: dict):
-        """
-        Dispatch to the appropriate composer by `type` field.
-        """
-        node_type = cfg.get("type")
-        if node_type == "custom_agent":
-            return AgentComposer.build(cfg, self.ctx.plugin_registry)
-        if node_type == "tool_node":
-            return ToolNodeComposer.build(cfg, self.ctx.plugin_registry)
-        if node_type == "discussion":
-            # Future: DiscussionNodeComposer.build(...)
-            return self.ctx.base_registry.get_node("discussion")(self.ctx.plugin_registry.get_llm(cfg["llm"]))
-        if node_type == "critic":
-            return self.ctx.base_registry.get_node("critic")(self.ctx.plugin_registry.get_llm(cfg["llm"]))
-        raise ValueError(f"Unsupported node type: {node_type}")
-
-    def finalize(self, builder) -> None:
-        """
-        Compile the accumulated GraphPlan into an executable graph
-        within the GraphContext.
-        """
-        self.ctx.compile_plan(self.plan, builder)
+        # Return the callable (we assume BaseNode.__call__ invokes run())
+        return node_instance

@@ -19,16 +19,6 @@ class ToolDef(BaseModel):
     type: str
 
 
-class AgentDef(BaseModel):
-    name: str
-    type: str
-    llm: str
-    retriever: Optional[str] = None
-    tools: Optional[List[str]] = []
-    system_message: str
-    retries: int = 1
-
-
 class NodeSpec(BaseModel):
     """
     Inline node definition schema.
@@ -60,5 +50,4 @@ class BlueprintSpec(BaseModel):
     llms: List[LLMDef] = Field(default_factory=list)
     retrievers: List[RetrieverDef] = Field(default_factory=list)
     tools: List[ToolDef] = Field(default_factory=list)
-    agents: List[AgentDef] = Field(default_factory=list)
     plan: List[StepDef]

@@ -9,15 +9,22 @@ import os, yaml, uuid
 # from logs.in_memory_logger import InMemoryLogger
 from registry import element_registry
 from blueprints.loader.yaml_blueprint_loader import YAMLBlueprintLoader
+from session.workflow_session_factory import WorkflowSessionFactory
 
 
 def main():
     element_registry.auto_discover()
     # print(element_registry.list_elements())
 
+    session = WorkflowSessionFactory(element_registry=element_registry,
+                                     blueprint_loader=YAMLBlueprintLoader(),
+                                     plan_composer=None,
+                                     engine_factory=None,
+                                     logger_factory=None)
+    session.create(blueprint_path="run/test_mock_agent.yml")
     # Load blueprint
-    blueprint_dict = YAMLBlueprintLoader().load("run/test_mock_agent.yml")
-    print(blueprint_dict)
+    # blueprint_spec = YAMLBlueprintLoader().load("run/test_mock_agent.yml")
+    # print(blueprint_spec)
     #  Plugin registry & factories
     # plugin_registry = PluginRegistry()
 

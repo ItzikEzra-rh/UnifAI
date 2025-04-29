@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Literal, Dict, List
+from typing import Literal, Dict, List, Any
 
 
 class SlackRetrieverConfig(BaseModel):
@@ -8,7 +8,7 @@ class SlackRetrieverConfig(BaseModel):
     """
     name: str
     type: Literal["slack"]
-    vector_store: Dict[str, any]  # E.g. vector store parameters
+    vector_store: Dict[str, Any]  # E.g. vector store parameters
 
 
 class JiraRetrieverConfig(BaseModel):
@@ -17,7 +17,7 @@ class JiraRetrieverConfig(BaseModel):
     """
     name: str
     type: Literal["jira"]
-    vector_store: Dict[str, any]
+    vector_store: Dict[str, Any]
 
 
 class PDFRetrieverConfig(BaseModel):

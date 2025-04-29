@@ -14,14 +14,6 @@ retrievers: []
 tools: []
 
 # ----------------------------
-# 3️⃣ Agent Definitions
-# ----------------------------
-agents:
-  - name: mock_agent
-    type: mock_agent
-    llm: mock_llm
-
-# ----------------------------
 # 4️⃣ Plan Steps
 # ----------------------------
 plan:
@@ -32,8 +24,8 @@ plan:
     after: user_input
     node:
       name: mock_agent_node
-      type: agent_node
-      agent: mock_agent
+      type: mock
+      llm: mock_llm
 
   - name: finalize
     after: ask_mock

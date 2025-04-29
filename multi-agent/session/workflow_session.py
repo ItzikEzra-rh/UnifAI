@@ -1,9 +1,9 @@
 # core/workflow_session.py
 
-from registry.session_registry import SessionRegistry
-from schemas.blueprint_schema import BlueprintSpec
+from session.session_registry import SessionRegistry
+from schemas.blueprint.blueprint import BlueprintSpec
 from graph.graph_plan import GraphPlan
-from engine.base_graph_builder import ExecutableGraph
+# from engine.base_graph_builder import ExecutableGraph
 from logs.logger_interface import LoggerInterface
 from engine.base_graph_builder import BaseGraphBuilder
 from typing import Any, Dict
@@ -26,18 +26,18 @@ class WorkflowSession:
             session_registry: SessionRegistry,
             blueprint: BlueprintSpec,
             graph_plan: GraphPlan,
-            executable_graph: ExecutableGraph,
+            # executable_graph: ExecutableGraph,
             logger: LoggerInterface,
             builder: BaseGraphBuilder,
             metadata: Dict[str, Any] = None,
     ) -> None:
         self.session_registry = session_registry
-        self.blueprint        = blueprint
-        self.graph_plan       = graph_plan
-        self.executable_graph = executable_graph
-        self.logger           = logger
-        self.builder          = builder
-        self.metadata         = metadata or {}
+        self.blueprint = blueprint
+        self.graph_plan = graph_plan
+        # self.executable_graph = executable_graph
+        self.logger = logger
+        self.builder = builder
+        self.metadata = metadata or {}
 
     def recompile(self) -> None:
         """
