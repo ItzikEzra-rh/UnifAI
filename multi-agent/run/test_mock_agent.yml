@@ -23,7 +23,7 @@ plan:
   - name: ask_mock
     after: user_input
     node:
-      name: mock_agent_node
+      name: mock_agent
       type: mock
       llm: mock_llm
 

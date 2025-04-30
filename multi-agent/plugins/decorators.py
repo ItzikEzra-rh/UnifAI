@@ -1,26 +1,26 @@
+from registry.element_registry import ElementRegistry
+from registry.element_definition import ElementDefinition
+from typing import Optional, Type
+from pydantic import BaseModel
+from plugins.base_factory import BaseFactory
 
-from registry import element_registry
 
-
-def register_element(name: str, element_type: str, description: str = "", config_schema: type = None):
-    """
-    Decorator for factories or static nodes to register them into the global ElementRegistry.
-
-    Args:
-        name (str): Unique name for this element (e.g., "openai_llm", "slack_agent").
-        element_type (str): Category ("llm", "tool", "agent", "node").
-        description (str): Optional human-readable description.
-        config_schema (type): Optional Pydantic BaseModel config schema.
-    """
-
-    def decorator(cls):
-        element_registry.register(
-            name=name,
-            element_type=element_type,
-            description=description,
-            config_schema=config_schema,
-            cls=cls,
+def register_element(
+        *,
+        category: str,
+        type_key: str,
+        description: str = "",
+        config_schema: Optional[Type[BaseModel]] = None
+):
+    def decorator(factory_cls: Type[BaseFactory]):
+        edef = ElementDefinition(
+            category=category,
+            type_key=type_key,
+            factory_cls=factory_cls,
+            schema_cls=config_schema,
+            description=description
         )
-        return cls
+        ElementRegistry().register_element(edef)
+        return factory_cls
 
     return decorator

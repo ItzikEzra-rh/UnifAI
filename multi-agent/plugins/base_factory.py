@@ -1,36 +1,44 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
+from typing import Any, Generic, TypeVar, Dict
+
+# Type variables for config schema and return type
+Cfg = TypeVar("Cfg")
+Out = TypeVar("Out")
 
 
-class BaseFactory(ABC):
+class BaseFactory(ABC, Generic[Cfg, Out]):
     """
-    Abstract interface for all dynamic plugin factories.
+    Abstract interface for all plugin factories (LLMs, tools, nodes, retrievers, etc.).
 
-    Each factory must answer two questions:
-      1) `accepts(cfg)` – can this factory build from the given config?
-      2) `create(cfg)`  – create and return the plugin instance.
+    Defines a two‐step contract:
+      1) accepts(cfg) → bool
+           “Do I know how to build from this config?”
+      2) create(cfg, **deps) → Out
+           “Given a validated config and any injected dependencies,
+            produce the plugin instance.”
 
-    By coding to this interface, PluginRegistry can remain agnostic
-    to specific plugin types and support new ones via drop-in factories.
+    This lets PluginRegistry and NodeFactory remain agnostic to specific
+    plugin types, while still enabling drop-in extensions via new factories.
     """
 
     @abstractmethod
-    def accepts(self, cfg: Dict[str, Any]) -> bool:
+    def accepts(self, cfg: Cfg) -> bool:
         """
-        Return True if this factory knows how to handle `cfg`.
+        Return True if this factory can build an instance from the given config.
 
-        :param cfg: A validated configuration dictionary.
-        :return: True if `create(cfg)` will succeed for this factory.
+        :param cfg: A validated configuration object (Pydantic model).
+        :return: True if create(cfg, **deps) will succeed.
         """
-        pass
+        ...
 
     @abstractmethod
-    def create(self, cfg: Dict[str, Any]) -> Any:
+    def create(self, cfg: Cfg, **deps: Any) -> Out:
         """
-        Instantiate the plugin from `cfg`.
+        Instantiate and return the plugin from the given config.
 
-        :param cfg: A validated configuration dictionary.
+        :param cfg: A validated configuration object.
+        :param deps: Arbitrary keyword‐injected dependencies (e.g. llm, tools, retriever).
         :raises Exception: on invalid config or instantiation failure.
         :return: The created plugin instance.
         """
-        pass
+        ...

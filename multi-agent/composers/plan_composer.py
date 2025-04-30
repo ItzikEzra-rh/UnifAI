@@ -3,7 +3,7 @@ from registry.element_registry import ElementRegistry
 from session.session_registry import SessionRegistry
 from schemas.blueprint.blueprint import StepDef, NodeSpec
 from graph.graph_plan import GraphPlan
-from graph.dynamic_node_factory import NodeFactory
+from .node_factory import NodeFactory
 
 
 class PlanComposer:
@@ -19,10 +19,8 @@ class PlanComposer:
     def __init__(
             self,
             session_registry: SessionRegistry,
-            element_registry: ElementRegistry
     ) -> None:
         self.session = session_registry
-        self.elements = element_registry
 
     def compose(self, step_defs: List[StepDef]) -> GraphPlan:
         plan = GraphPlan()

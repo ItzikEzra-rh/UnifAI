@@ -2,7 +2,7 @@ from typing import Optional
 from blueprints.loader.base_blueprint_loader import BaseBlueprintLoader
 from registry.element_registry import ElementRegistry
 from .element_builder import SessionElementBuilder
-# from composers.plan_composer import PlanComposer
+from composers.plan_composer import PlanComposer
 # from engine.engine_factory import EngineFactory
 from .workflow_session import WorkflowSession
 
@@ -30,7 +30,7 @@ class WorkflowSessionFactory:
         self._elements = element_registry
         self._loader = blueprint_loader
         self._session_element_builder = SessionElementBuilder(element_registry=self._elements)
-        self._composer = plan_composer
+        self._composer = None
         self._engines = engine_factory
         # self._make_logger = logger_factory or (lambda: InMemoryLogger())
 
@@ -42,7 +42,9 @@ class WorkflowSessionFactory:
         session_registry = self._session_element_builder.build(spec)
 
         # # 3) Build the abstract plan
-        # graph_plan = self._composer.compose(spec.plan, session_registry)
+        self._composer = PlanComposer(session_registry=session_registry)
+        graph_plan = self._composer.compose(spec.plan)
+
         #
         # # 4) Compile to executable graph
         # builder = self._engines.get_builder(engine_name)

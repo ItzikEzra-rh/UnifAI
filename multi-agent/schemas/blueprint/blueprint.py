@@ -1,12 +1,7 @@
 from typing import Union, Optional, List, Dict
 from pydantic import BaseModel, Field
-
-
-class LLMDef(BaseModel):
-    name: str
-    type: str
-
-    # any llm-specific overrides go here
+from schemas.nodes.base_node import NodesSpec
+from schemas.llm.base_llm import LLMsSpec
 
 
 class RetrieverDef(BaseModel):
@@ -19,35 +14,16 @@ class ToolDef(BaseModel):
     type: str
 
 
-class NodeSpec(BaseModel):
-    """
-    Inline node definition schema.
-    You can add whatever fields you need here (type, agent, llm, retriever, etc).
-    """
-    name: Optional[str] = None
-    type: str
-    agent: Optional[str] = None
-    llm: Optional[str] = None
-    retriever: Optional[str] = None
-    tools: List[str] = Field(default_factory=list)
-    system_message: Optional[str] = None
-    retries: Optional[int] = None
-
-
 class StepDef(BaseModel):
-    """
-    A single step in the user’s plan.
-    'node' can be a simple static node name, or a full NodeSpec.
-    """
     name: str
     after: Optional[Union[str, List[str]]] = None
     exit_condition: Optional[str] = None
-    branches: Optional[Dict[str, str]] = None
-    node: Union[str, NodeSpec]
+    branches: Optional[dict] = None
+    node: NodesSpec
 
 
 class BlueprintSpec(BaseModel):
-    llms: List[LLMDef] = Field(default_factory=list)
+    llms: List[LLMsSpec] = Field(default_factory=list)
     retrievers: List[RetrieverDef] = Field(default_factory=list)
     tools: List[ToolDef] = Field(default_factory=list)
     plan: List[StepDef]

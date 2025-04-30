@@ -1,19 +1,17 @@
-# plugins/llm_factories/mock_factory.py
-
 from typing import Any, Dict
 from pydantic import ValidationError
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
-from schemas.llm.mock_config import MockLLMConfig, LLMConfig
+from schemas.llm.base_llm import MockLLMConfig
 from llms.mock_llm import MockLLM
 from plugins.decorators import register_element
 
 
 @register_element(
-    name="mock_llm",
-    element_type="llm",
-    description="Mock API",
+    type_key=MockLLMConfig.type,
+    category="llm",
     config_schema=MockLLMConfig,
+    description="Mock LLM"
 )
 class MockLLMFactory(BaseFactory):
     """
@@ -28,7 +26,7 @@ class MockLLMFactory(BaseFactory):
         """
         return cfg.type == "mock"
 
-    def create(self, cfg: MockLLMConfig) -> MockLLM:
+    def create(self, cfg: MockLLMConfig, **deps: Any) -> MockLLM:
         """
         Validate cfg and return a MockLLM.
 

@@ -1,101 +1,124 @@
-import importlib
-import pkgutil
 import threading
-from typing import Dict, Any, Optional
-import os
+from typing import Dict, List
+
+from registry.element_definition import ElementDefinition
 
 
 class ElementRegistry:
     """
-    Central catalog of available Nodes, LLMs, Agents, and Tools.
-    Built at startup via decorators and auto-discovery.
-    Singleton implementation.
+    Singleton registry of all plugin element definitions, organized
+    by category (e.g. "llm", "tool", "retriever", "node") and type_key
+    (e.g. "openai", "mock", "slack_agent").
+
+    Each ElementDefinition holds:
+      - category: str
+      - type_key: str
+      - description: str
+      - schema_cls: Optional[PydanticModel]
+      - factory_cls: BaseFactory subclass
     """
 
-    _instance = None
-    _lock = threading.Lock()  # To make thread-safe if needed
+    _instance: "ElementRegistry" = None
+    _lock = threading.RLock()
 
-    def __new__(cls):
+    def __new__(cls) -> "ElementRegistry":
+        # Thread-safe lazy singleton instantiation
         if cls._instance is None:
             with cls._lock:
                 if cls._instance is None:
-                    cls._instance = super(ElementRegistry, cls).__new__(cls)
+                    cls._instance = super().__new__(cls)
+                    # mark as uninitialized so __init__ runs once
                     cls._instance._initialized = False
         return cls._instance
 
-    def __init__(self):
-        if self._initialized:
-            return  # Already initialized once
-        self.elements: Dict[str, Dict[str, Any]] = {}
+    def __init__(self) -> None:
+        # Only initialize once
+        if getattr(self, "_initialized", False):
+            return
+        # _defs maps category -> (type_key -> ElementDefinition)
+        self._defs: Dict[str, Dict[str, ElementDefinition]] = {}
         self._initialized = True
 
-    # --- Registration ---
-
-    def register(self, *, name: str, element_type: str, description: str = "", config_schema: type = None,
-                 cls: type = None) -> None:
-        if name in self.elements:
-            raise ValueError(f"Element '{name}' already registered.")
-
-        self.elements[name] = {
-            "type": element_type,
-            "description": description,
-            "config_schema": config_schema,
-            "cls": cls,
-        }
-
-    # --- Discovery ---
-
-    def list_elements(self, type_filter: Optional[str] = None) -> list[Dict[str, Any]]:
-        """List all registered elements, optionally filtered by type."""
-        return [
-            {"name": name, **meta}
-            for name, meta in self.elements.items()
-            if type_filter is None or meta["type"] == type_filter
-        ]
-
-    def get_metadata(self, name: str) -> Dict[str, Any]:
-        """Get metadata (type, description, schema) for an element."""
-        if name not in self.elements:
-            raise KeyError(f"Element '{name}' not found.")
-        return self.elements[name]
-
-    def get_factory_or_class(self, name: str) -> Any:
-        """Get the class or factory responsible for creating this element."""
-        if name not in self.elements:
-            raise KeyError(f"Element '{name}' not found.")
-        return self.elements[name]["cls"]
-
-    def get_schema(self, name: str) -> Optional[type]:
-        """Return the associated config schema for an element."""
-        if name not in self.elements:
-            raise KeyError(f"Element '{name}' not found.")
-        return self.elements[name]["config_schema"]
-
-    def has_element(self, name: str) -> bool:
-        """Check if an element exists."""
-        return name in self.elements
-
-    # --- Auto discovery at startup ---
-    def auto_discover(self):
+    def register_element(self, edef: ElementDefinition) -> None:
         """
-        Only import Python modules from folders inside `plugins/` that match '*_factories'.
-        """
-        plugins_dir = os.path.join(os.getcwd(), "plugins")
+        Register a new ElementDefinition under its category/type_key.
 
-        if not os.path.isdir(plugins_dir):
-            print(f"Plugins directory not found at {plugins_dir}")
+        :param edef: The ElementDefinition to register.
+        :raises ValueError: if that category/type_key is already registered.
+        """
+        with self._lock:
+            cat_map = self._defs.setdefault(edef.category, {})
+            if edef.type_key in cat_map:
+                raise ValueError(f"Element already registered: {edef.category}/{edef.type_key}")
+            cat_map[edef.type_key] = edef
+
+    def list_types(self, category: str) -> List[str]:
+        """
+        List all registered type_keys for a given category.
+
+        :param category: e.g. "llm", "tool", "node"
+        :return: list of type_key strings
+        """
+        return list(self._defs.get(category, {}).keys())
+
+    def get_definition(self, category: str, type_key: str) -> ElementDefinition:
+        """
+        Retrieve the ElementDefinition for a given category and type_key.
+
+        :param category: component category
+        :param type_key: specific plugin type
+        :raises KeyError: if not found
+        """
+        try:
+            return self._defs[category][type_key]
+        except KeyError:
+            raise KeyError(f"No element registered under {category}/{type_key}")
+
+    def get_factory(self, category: str, type_key: str):
+        """
+        Get the factory class for the specified element.
+
+        :param category: component category
+        :param type_key: plugin type
+        :return: BaseFactory subclass
+        """
+        return self.get_definition(category, type_key).factory_cls
+
+    def get_schema(self, category: str, type_key: str):
+        """
+        Get the Pydantic schema class for the specified element.
+
+        :param category: component category
+        :param type_key: plugin type
+        :return: BaseModel subclass or None
+        """
+        return self.get_definition(category, type_key).schema_cls
+
+    def get_description(self, category: str, type_key: str) -> str:
+        """
+        Get the human-readable description for the specified element.
+
+        :param category: component category
+        :param type_key: plugin type
+        :return: description string
+        """
+        return self.get_definition(category, type_key).description
+
+    def auto_discover(self, plugins_root: str = None) -> None:
+        """
+        (Optional) Dynamically import all `*_factories` packages under the
+        `plugins_root` directory to trigger their `@register_element` calls.
+        """
+        import os, pkgutil, importlib
+
+        root = plugins_root or os.path.join(os.getcwd(), "plugins")
+        if not os.path.isdir(root):
             return
 
-        for folder_name in os.listdir(plugins_dir):
-            folder_path = os.path.join(plugins_dir, folder_name)
-
-            # Only process directories matching *_factories
-            if os.path.isdir(folder_path) and folder_name.endswith("_factories"):
-                for filename in os.listdir(folder_path):
-                    if filename.endswith(".py") and not filename.startswith("__"):
-                        module_name = f"plugins.{folder_name}.{filename[:-3]}"  # Remove '.py'
-                        try:
-                            importlib.import_module(module_name)
-                            print(f"Imported {module_name}")
-                        except Exception as e:
-                            print(f"Failed to import {module_name}: {e}")
+        for finder, name, ispkg in pkgutil.iter_modules([root]):
+            if ispkg and name.endswith("_factories"):
+                pkg_name = f"plugins.{name}"
+                pkg_path = os.path.join(root, name)
+                for _, mod_name, ismod in pkgutil.iter_modules([pkg_path]):
+                    if ismod:
+                        importlib.import_module(f"{pkg_name}.{mod_name}")
