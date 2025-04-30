@@ -37,14 +37,13 @@ class WorkflowSessionFactory:
     def create(self, blueprint_path: str, engine_name: str = "langgraph", metadata: dict = None):
         # 1) Load & validate blueprint
         spec = self._loader.load(blueprint_path)
-        print(spec)
+        # print(spec)
         # 2) Instantiate session-wide components
         session_registry = self._session_element_builder.build(spec)
-
         # # 3) Build the abstract plan
         self._composer = PlanComposer(session_registry=session_registry)
         graph_plan = self._composer.compose(spec.plan)
-
+        print(graph_plan.pretty_print())
         #
         # # 4) Compile to executable graph
         # builder = self._engines.get_builder(engine_name)

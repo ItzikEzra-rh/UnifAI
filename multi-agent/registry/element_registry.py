@@ -1,6 +1,7 @@
+import importlib
 import threading
 from typing import Dict, List
-
+import os
 from registry.element_definition import ElementDefinition
 
 
@@ -104,21 +105,26 @@ class ElementRegistry:
         """
         return self.get_definition(category, type_key).description
 
-    def auto_discover(self, plugins_root: str = None) -> None:
+    def auto_discover(self):
         """
-        (Optional) Dynamically import all `*_factories` packages under the
-        `plugins_root` directory to trigger their `@register_element` calls.
+        Only import Python modules from folders inside `plugins/` that match '*_factories'.
         """
-        import os, pkgutil, importlib
+        plugins_dir = os.path.join(os.getcwd(), "plugins")
 
-        root = plugins_root or os.path.join(os.getcwd(), "plugins")
-        if not os.path.isdir(root):
+        if not os.path.isdir(plugins_dir):
+            print(f"Plugins directory not found at {plugins_dir}")
             return
 
-        for finder, name, ispkg in pkgutil.iter_modules([root]):
-            if ispkg and name.endswith("_factories"):
-                pkg_name = f"plugins.{name}"
-                pkg_path = os.path.join(root, name)
-                for _, mod_name, ismod in pkgutil.iter_modules([pkg_path]):
-                    if ismod:
-                        importlib.import_module(f"{pkg_name}.{mod_name}")
+        for folder_name in os.listdir(plugins_dir):
+            folder_path = os.path.join(plugins_dir, folder_name)
+
+            # Only process directories matching *_factories
+            if os.path.isdir(folder_path) and folder_name.endswith("_factories"):
+                for filename in os.listdir(folder_path):
+                    if filename.endswith(".py") and not filename.startswith("__"):
+                        module_name = f"plugins.{folder_name}.{filename[:-3]}"  # Remove '.py'
+                        # try:
+                        importlib.import_module(module_name)
+                            # print(f"Imported {module_name}")
+                        # except Exception as e:
+                        #     print(f"Failed to import {module_name}: {e}")

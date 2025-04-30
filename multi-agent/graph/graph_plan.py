@@ -101,3 +101,54 @@ class GraphPlan:
             }
             for s in self._steps
         }
+
+    def pretty_print(self) -> None:
+        """
+        Print out the plan as an ASCII tree, showing dependencies,
+        exit conditions and branch targets.  Detects cycles and
+        annotates already‐visited nodes.
+        """
+        roots = self.get_roots()
+        visited = set()
+
+        def _format_step(step, prefix, is_last):
+            """Print one step, then recurse into its children."""
+            # Detect cycle
+            marker = " [*]" if step.name in visited else ""
+            # Mark visited once we print it
+            if step.name not in visited:
+                visited.add(step.name)
+
+            # Build detail suffix
+            details = []
+            if step.exit_condition:
+                details.append(f"exit_if={step.exit_condition}")
+            if step.branches:
+                b = ", ".join(f"{c}→{t}" for c, t in step.branches.items())
+                details.append(f"branches={b}")
+            suffix = (" [" + "; ".join(details) + "]") if details else ""
+
+            # Print the node line
+            bullet = "└── " if is_last else "├── "
+            print(f"{prefix}{bullet}{step.name}{suffix}{marker}")
+
+            # Compute new prefix for children
+            child_prefix = prefix + ("    " if is_last else "│   ")
+            # Find direct children (those that list this step in .after)
+            children = [s for s in self.steps if step.name in (s.after or [])]
+            for i, child in enumerate(children):
+                _format_step(child, child_prefix, i == len(children) - 1)
+
+        # If no explicit roots (fully cyclic), fall back to printing all steps flat
+        if not roots:
+            print("No roots found (graph may be fully cyclic). Listing all steps:")
+            roots = self.steps
+
+        # Kick off the walk
+        for i, root in enumerate(roots):
+            # For each root we don’t indent
+            print(root.name)
+            visited.add(root.name)
+            children = [s for s in self.steps if root.name in (s.after or [])]
+            for j, child in enumerate(children):
+                _format_step(child, "", j == len(children) - 1)

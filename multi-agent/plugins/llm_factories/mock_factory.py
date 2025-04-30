@@ -8,7 +8,7 @@ from plugins.decorators import register_element
 
 
 @register_element(
-    type_key=MockLLMConfig.type,
+    type_key=MockLLMConfig.model_fields["type"].default,
     category="llm",
     config_schema=MockLLMConfig,
     description="Mock LLM"

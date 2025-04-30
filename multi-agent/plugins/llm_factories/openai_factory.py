@@ -8,7 +8,7 @@ from llms.openai_llm import OpenAILLM
 
 @register_element(
     category="llm",
-    type_key="openai",
+    type_key=OpenAIConfig.model_fields["type"].default,
     config_schema=OpenAIConfig,
     description="OpenAI LLM"
 )

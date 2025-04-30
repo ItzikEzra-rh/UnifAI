@@ -1,18 +1,21 @@
 from pydantic import BaseModel, Field, Extra
-from typing import Literal, List, Optional, Union
+from typing import Literal, List, Optional, Union, Annotated
 
 
 class NodeBaseConfig(BaseModel):
     """
-    Shared fields for all nodes.
+    Defines all atomic node fields as optional.
+    Subclasses will override required ones as needed.
     """
-    name: Optional[str] = Field(
-        None,
-        description="Optional instance name for this node; falls back to type if unset"
-    )
+    name: Optional[str] = Field(None, description="Optional node instance name")
+    llm: Optional[str] = Field(None, description="LLM key to use")
+    retriever: Optional[str] = Field(None, description="Retriever key to use")
+    tools: List[str] = Field(default_factory=list, description="List of tool keys")
+    system_message: Optional[str] = Field(None, description="Custom system prompt")
+    retries: Optional[int] = Field(None, description="Retry count if failure")
 
     class Config:
-        extra = Extra.forbid  # forbid any fields not explicitly declared here
+        extra = Extra.forbid
 
 
 class MockAgentNodeConfig(NodeBaseConfig):
@@ -64,22 +67,13 @@ class UserQuestionNodeConfig(NodeBaseConfig):
     type: Literal["user_question_node"] = "user_question_node"
 
 
-NodeConfig = Union[
-    MockAgentNodeConfig,
-    CustomAgentNodeConfig,
-    FinalAnswerNodeConfig,
-    UserQuestionNodeConfig,
+# Apply discriminator correctly to the union
+NodeSpec = Annotated[
+    Union[
+        MockAgentNodeConfig,
+        CustomAgentNodeConfig,
+        FinalAnswerNodeConfig,
+        UserQuestionNodeConfig,
+    ],
+    Field(discriminator="type")
 ]
-
-
-class NodesSpec(BaseModel):
-    """
-    A list of inline node definitions in the user blueprint.
-
-    Uses `type` as the discriminator to pick the correct config subclass.
-    """
-    nodes: List[NodeConfig] = Field(
-        ...,
-        discriminator="type",
-        description="Inline node specs with per-type override fields"
-    )

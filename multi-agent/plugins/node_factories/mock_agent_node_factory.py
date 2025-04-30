@@ -7,7 +7,7 @@ from plugins.exceptions import PluginConfigurationError
 
 
 @register_element(
-    type_key=MockAgentNodeConfig.type,
+    type_key=MockAgentNodeConfig.model_fields["type"].default,
     category="node",
     config_schema=MockAgentNodeConfig,
     description="MockAgentNodeConfig"

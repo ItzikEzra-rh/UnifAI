@@ -5,8 +5,8 @@ from pydantic import ValidationError
 
 from registry import element_registry
 from session.session_registry import SessionRegistry
-from schemas.node_config import BaseNodeConfig
-from schemas.blueprint_schema import NodeSpec
+from schemas.nodes.base_node import NodeBaseConfig
+from schemas.blueprint.blueprint import NodeSpec
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
 from nodes.base_node import BaseNode
@@ -14,11 +14,12 @@ from nodes.base_node import BaseNode
 
 class NodeFactory:
     """
-    Orchestrates creation of all BaseNode instances by:
-      1) Looking up the registered factory class & config schema
-      2) Validating & merging inline overrides via Pydantic
-      3) Resolving session-scoped dependencies (LLM, retriever, tools)
-      4) Delegating instantiation to the factory.create(...)
+    Orchestrates creation of BaseNode instances. Steps:
+
+      1) Lookup ElementDefinition by category="node", type_key=node_spec.type
+      2) Validate & merge inline overrides via Pydantic schema
+      3) Resolve session-scoped dependencies (llm, retriever, tools)
+      4) Delegate instantiation to factory.create(cfg, **deps)
     """
 
     @staticmethod
@@ -26,43 +27,44 @@ class NodeFactory:
             node_spec: NodeSpec,
             session: SessionRegistry
     ) -> BaseNode:
-        # 1) Lookup the BaseFactory subclass and its Pydantic schema
+        # 1) Lookup the factory class & config schema by (category, type_key)
         try:
-            factory_cls = element_registry.get_factory_or_class(node_spec.name)  # must be a BaseFactory subclass
-            schema = element_registry.get_schema(node_spec.name)  # must be a BaseNodeConfig subclass
-        except KeyError:
+            factory_cls = element_registry.get_factory("node", node_spec.type)
+            schema_cls = element_registry.get_schema("node", node_spec.type)
+        except ValueError:
             raise PluginConfigurationError(
-                f"No factory or schema registered for node type '{node_spec.type}'",
+                f"No factory/schema registered for node type '{node_spec.type}'",
                 node_spec.dict()
             )
 
-        if schema is None or not issubclass(schema, BaseNodeConfig):
+        # Ensure the schema is a subclass of our base config
+        if schema_cls is None or not issubclass(schema_cls, NodeBaseConfig):
             raise PluginConfigurationError(
                 f"Invalid or missing config schema for node type '{node_spec.type}'",
                 node_spec.dict()
             )
 
-        # 2) Validate & merge the inline NodeSpec into a BaseNodeConfig
+        # 2) Validate & merge overrides
         try:
-            cfg: BaseNodeConfig = schema(**node_spec.dict(exclude_unset=True))
+            cfg: NodeBaseConfig = schema_cls(**node_spec.dict(exclude_unset=True))
         except ValidationError as ve:
             raise PluginConfigurationError(
                 f"NodeSpec validation failed for '{node_spec.type}': {ve}",
                 node_spec.dict()
             )
 
-        # 3) Resolve all atomic dependencies from the session
+        # 3) Resolve dependencies from the session
         deps: Dict[str, Any] = {
             "llm": session.get_llm(cfg.llm) if cfg.llm else None,
             "retriever": session.get_retriever(cfg.retriever) if cfg.retriever else None,
             "tools": [session.get_tool(t) for t in cfg.tools],
         }
 
-        # 4) Delegate to the factory for final instantiation
+        # 4) Instantiate via the factory
         factory: BaseFactory = factory_cls()
         if not factory.accepts(cfg):
             raise PluginConfigurationError(
-                f"Factory '{factory_cls.__name__}' does not accept config for '{node_spec.type}'",
+                f"Factory '{factory_cls.__name__}' rejects config for '{node_spec.type}'",
                 cfg.dict()
             )
 

@@ -1,7 +1,7 @@
 # schemas/llm_config.py
 
-from pydantic import BaseModel, Field, HttpUrl, Extra, validator
-from typing import Literal, Optional, Dict, Any, Union, List
+from pydantic import BaseModel, Field, HttpUrl, Extra
+from typing import Literal, Optional, Dict, Any, Union, List, Annotated
 
 
 class BaseLLMConfig(BaseModel):
@@ -94,16 +94,9 @@ class LlamaStackConfig(BaseLLMConfig):
     )
 
 
-LLMConfig = Union[OpenAIConfig, MockLLMConfig, LlamaStackConfig]
+# Discriminated union with proper Field(...) annotation
+LLMsSpec = Annotated[
+    Union[OpenAIConfig, MockLLMConfig, LlamaStackConfig],
+    Field(discriminator="type")
+]
 
-
-class LLMsSpec(BaseModel):
-    """
-    A list of LLM definitions as provided in the user blueprint.
-    Uses `type` as a discriminator to pick the correct subclass.
-    """
-    llms: List[LLMConfig] = Field(
-        ...,
-        discriminator="type",
-        description="Collection of LLM instances to register in this session"
-    )

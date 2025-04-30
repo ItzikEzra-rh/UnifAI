@@ -6,7 +6,7 @@ from nodes.agents.custom_agent_node import CustomAgentNode
 
 
 @register_element(
-    type_key=CustomAgentNodeConfig.type,
+    type_key=CustomAgentNodeConfig.model_fields["type"].default,
     category="node",
     config_schema=CustomAgentNodeConfig,
     description="CustomAgentNodeConfig"

@@ -7,7 +7,7 @@ from plugins.exceptions import PluginConfigurationError
 
 
 @register_element(
-    type_key=UserQuestionNodeConfig.type,
+    type_key=UserQuestionNodeConfig.model_fields["type"].default,
     category="node",
     config_schema=UserQuestionNodeConfig,
     description="UserQuestionNodeConfig"

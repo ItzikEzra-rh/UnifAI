@@ -1,32 +1,32 @@
 # ----------------------------
-# 1️⃣ LLM Definitions
+# LLM Definitions
 # ----------------------------
 llms:
   - name: mock_llm
     type: mock
-    # mock factory can be configured to return a constant or random reply
 
 # ----------------------------
-# 2️⃣ Retriever / Tool Stubs
-# (none needed for this example)
+# Retriever / Tool Stubs
 # ----------------------------
-retrievers: []
-tools: []
+retrievers: [ ]
+tools: [ ]
 
 # ----------------------------
-# 4️⃣ Plan Steps
+# Plan Steps
 # ----------------------------
 plan:
   - name: user_input
-    node: user_question
+    node:
+      type: user_question_node
 
   - name: ask_mock
     after: user_input
     node:
       name: mock_agent
-      type: mock
+      type: mock_agent_node
       llm: mock_llm
 
   - name: finalize
     after: ask_mock
-    node: final_answer
+    node:
+      type: final_answer_node

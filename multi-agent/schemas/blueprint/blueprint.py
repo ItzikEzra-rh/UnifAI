@@ -1,6 +1,6 @@
 from typing import Union, Optional, List, Dict
 from pydantic import BaseModel, Field
-from schemas.nodes.base_node import NodesSpec
+from schemas.nodes.base_node import NodeSpec
 from schemas.llm.base_llm import LLMsSpec
 
 
@@ -19,7 +19,7 @@ class StepDef(BaseModel):
     after: Optional[Union[str, List[str]]] = None
     exit_condition: Optional[str] = None
     branches: Optional[dict] = None
-    node: NodesSpec
+    node: NodeSpec
 
 
 class BlueprintSpec(BaseModel):
