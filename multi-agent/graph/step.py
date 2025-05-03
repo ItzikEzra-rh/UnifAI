@@ -19,7 +19,7 @@ class Step:
             name: str,
             func: Any,
             after: Optional[List[str]] = None,
-            exit_condition: Optional[str] = None,
+            exit_condition: Any = None,
             branches: Optional[Dict[str, str]] = None
     ) -> None:
         self.name = name

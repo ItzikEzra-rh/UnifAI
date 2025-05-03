@@ -34,7 +34,10 @@ class PlanComposer:
                 else:
                     after = sd.after
 
-            # 2) instantiate the node
+            # 2) get the condition callable
+            cond_fn = self.session.get_condition(sd.exit_condition) if sd.exit_condition else None
+
+            # 3) instantiate the node
             func = self._resolve_node(sd.node)
 
             # 3) add into plan
@@ -42,7 +45,7 @@ class PlanComposer:
                 name=sd.name,
                 func=func,
                 after=after,
-                exit_condition=sd.exit_condition,
+                exit_condition=cond_fn,
                 branches=sd.branches
             )
 

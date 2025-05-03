@@ -1,5 +1,3 @@
-# registry/session_registry.py
-
 from typing import Any, Dict
 
 
@@ -9,7 +7,7 @@ class SessionRegistry:
       - llms
       - tools
       - retrievers
-      - agents
+      - conditions
       - nodes (optional, if you want to cache Node instances)
     """
 
@@ -17,8 +15,8 @@ class SessionRegistry:
         self._llms: Dict[str, Any] = {}
         self._tools: Dict[str, Any] = {}
         self._retrievers: Dict[str, Any] = {}
-        self._agents: Dict[str, Any] = {}
         self._nodes: Dict[str, Any] = {}
+        self._condition: Dict[str, Any] = {}
 
     # ---- LLMs ----
     def register_llm(self, name: str, instance: Any) -> None:
@@ -41,16 +39,16 @@ class SessionRegistry:
     def get_retriever(self, name: str) -> Any:
         return self._retrievers[name]
 
-    # ---- Agents ----
-    def register_agent(self, name: str, instance: Any) -> None:
-        self._agents[name] = instance
-
-    def get_agent(self, name: str) -> Any:
-        return self._agents[name]
-
-    # ---- (Optional) Nodes ----
+    # ---- Nodes ----
     def register_node(self, name: str, instance: Any) -> None:
         self._nodes[name] = instance
 
     def get_node(self, name: str) -> Any:
         return self._nodes[name]
+
+    # ---- Nodes ----
+    def register_condition(self, name: str, instance: Any) -> None:
+        self._condition[name] = instance
+
+    def get_condition(self, name: str) -> Any:
+        return self._condition[name]

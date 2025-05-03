@@ -6,10 +6,24 @@ llms:
     type: mock
 
 # ----------------------------
-# Retriever / Tool Stubs
+# Retriever
 # ----------------------------
 retrievers: [ ]
+
+# ----------------------------
+# Tool Stubs
+# ----------------------------
 tools: [ ]
+
+# ----------------------------
+# Conditions
+# ----------------------------
+conditions:
+  - name: cond1
+    type: threshold
+    input_key: input_key
+    threshold: 5.0
+    operator: ">"
 
 # ----------------------------
 # Plan Steps
@@ -25,6 +39,10 @@ plan:
       name: mock_agent
       type: mock_agent_node
       llm: mock_llm
+    exit_condition: cond1
+    branches:
+      true: finalize
+      false: ask_mock
 
   - name: finalize
     after: ask_mock

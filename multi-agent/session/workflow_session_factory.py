@@ -44,8 +44,8 @@ class WorkflowSessionFactory:
         self._composer = PlanComposer(session_registry=session_registry)
         graph_plan = self._composer.compose(spec.plan)
         print(graph_plan.pretty_print())
-        #
-        # # 4) Compile to executable graph
+
+        # 4) Compile to executable graph
         # builder = self._engines.get_builder(engine_name)
         # executable_graph = builder.build(graph_plan)
         #

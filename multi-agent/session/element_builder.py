@@ -27,6 +27,7 @@ class SessionElementBuilder:
         self._build_category("llm", spec.llms, session.register_llm)
         self._build_category("tool", spec.tools, session.register_tool)
         self._build_category("retriever", spec.retrievers, session.register_retriever)
+        self._build_category("condition", spec.conditions, session.register_condition)
 
         return session
 

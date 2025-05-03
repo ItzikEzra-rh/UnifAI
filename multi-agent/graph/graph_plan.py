@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Callable
 from .step import Step
 
 
@@ -27,7 +27,7 @@ class GraphPlan:
             name: str,
             func: Any,
             after: Optional[List[str]] = None,
-            exit_condition: Optional[str] = None,
+            exit_condition: Callable[[str], Callable[[Dict[str, Any]], Any]] = None,
             branches: Optional[Dict[str, str]] = None
     ) -> None:
         """
