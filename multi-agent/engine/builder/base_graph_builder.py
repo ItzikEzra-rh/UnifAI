@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict
 from graph.graph_plan import GraphPlan, Step
+from engine.executor.interfaces import GraphExecutor
 
 
 class BaseGraphBuilder(ABC):
@@ -52,7 +53,7 @@ class BaseGraphBuilder(ABC):
         ...
 
     @abstractmethod
-    def build(self) -> Any:
+    def build_executor(self) -> GraphExecutor:
         """
         Compile and return the engine’s executable graph object.
         """
@@ -60,7 +61,7 @@ class BaseGraphBuilder(ABC):
 
     def compile_from_plan(
             self,
-            plan: GraphPlan) -> Any:
+            plan: GraphPlan) -> GraphExecutor:
         """
         Default helper: wires up all steps, dependencies, conditionals,
         and identifies entry/exit, then builds.
@@ -90,4 +91,4 @@ class BaseGraphBuilder(ABC):
         self.set_exit(leaves[0].name)
 
         # 4) compile
-        return self.build()
+        return self.build_executor()

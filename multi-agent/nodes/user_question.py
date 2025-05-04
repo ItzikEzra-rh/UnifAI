@@ -19,6 +19,6 @@ class UserQuestionNode(BaseNode):
         Log the incoming user_input and return the unmodified state.
         Downstream nodes can read state["user_input"].
         """
-        user_input = state.get("user_input", "<no input provided>")
+        user_input = state.get("input", "<no input provided>")
         print(f"UserQuestionNode: Prompt received: {user_input}")
         return state

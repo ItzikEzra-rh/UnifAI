@@ -1,9 +1,10 @@
-from typing import Any, Dict, Callable
-from typing_extensions import TypedDict, Annotated
+from typing import Type, Callable
 from langgraph.graph import StateGraph, END
-from langgraph.graph.message import add_messages
+from runtime.state.base_state import BaseGraphState
+from .base_graph_builder import BaseGraphBuilder
+from engine.executor.langgraph_executable import LangGraphExecutor
 
-from engine.base_graph_builder import BaseGraphBuilder
+from typing import Any, Dict
 
 
 class LangGraphBuilder(BaseGraphBuilder):
@@ -11,13 +12,8 @@ class LangGraphBuilder(BaseGraphBuilder):
     Concrete GraphBuilder that targets LangGraph’s StateGraph API.
     """
 
-    class State(TypedDict):
-        # Example shared state slot for messages
-        messages: Annotated[list, add_messages]
-
-    def __init__(self) -> None:
-        # initialize an empty StateGraph
-        self._graph = StateGraph(self.State)
+    def __init__(self, state_cls: Type[BaseGraphState]) -> None:
+        self._graph = StateGraph(state_cls)
 
     def add_node(self, name: str, func: Any) -> None:
         self._graph.add_node(name, func)
@@ -52,8 +48,8 @@ class LangGraphBuilder(BaseGraphBuilder):
         # Allow `name` or explicit END
         self._graph.set_finish_point(name or END)
 
-    def build(self) -> Any:
+    def build_executor(self) -> LangGraphExecutor:
         """
-        Compile the StateGraph into LangGraph’s executable DAG.
+        Compile the StateGraph into LangGraph’s executable.
         """
-        return self._graph.compile()
+        return LangGraphExecutor(self._graph.compile())

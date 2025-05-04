@@ -3,8 +3,9 @@ from blueprints.loader.base_blueprint_loader import BaseBlueprintLoader
 from registry.element_registry import ElementRegistry
 from .element_builder import SessionElementBuilder
 from composers.plan_composer import PlanComposer
-# from engine.engine_factory import EngineFactory
+from engine.builder.graph_builder_factory import GraphBuilderFactory
 from .workflow_session import WorkflowSession
+from runtime.state.graph_state import GraphState
 
 
 # from logs.in_memory_logger import InMemoryLogger
@@ -23,18 +24,17 @@ class WorkflowSessionFactory:
             self,
             element_registry: ElementRegistry,
             blueprint_loader: BaseBlueprintLoader,
-            plan_composer,
-            engine_factory,
+            engine_name: str,
             logger_factory: Optional[callable] = None,
     ):
         self._elements = element_registry
         self._loader = blueprint_loader
         self._session_element_builder = SessionElementBuilder(element_registry=self._elements)
+        self._engine_builder = GraphBuilderFactory(GraphState).create(engine_name)
         self._composer = None
-        self._engines = engine_factory
         # self._make_logger = logger_factory or (lambda: InMemoryLogger())
 
-    def create(self, blueprint_path: str, engine_name: str = "langgraph", metadata: dict = None):
+    def create(self, blueprint_path: str, metadata: dict = None):
         # 1) Load & validate blueprint
         spec = self._loader.load(blueprint_path)
         # print(spec)
@@ -46,18 +46,18 @@ class WorkflowSessionFactory:
         print(graph_plan.pretty_print())
 
         # 4) Compile to executable graph
-        # builder = self._engines.get_builder(engine_name)
-        # executable_graph = builder.build(graph_plan)
-        #
-        # # 5) Create logger + session
+        executable_graph = self._engine_builder.compile_from_plan(graph_plan)
+        # state = executable_graph.invoke(GraphState(input="hi"))
+        # print(state)
+        # 5) Create logger + session
         # logger = self._make_logger()
-        # session = WorkflowSession(
-        #     session_registry=session_registry,
-        #     blueprint=spec,
-        #     graph_plan=graph_plan,
-        #     executable_graph=executable_graph,
-        #     logger=logger,
-        #     builder=builder,
-        #     metadata=metadata,
-        # )
-        # return session
+        session = WorkflowSession(
+            session_registry=session_registry,
+            blueprint=spec,
+            graph_plan=graph_plan,
+            executable_graph=executable_graph,
+            # logger=None,
+            builder=self._engine_builder,
+            metadata=metadata,
+        )
+        return session

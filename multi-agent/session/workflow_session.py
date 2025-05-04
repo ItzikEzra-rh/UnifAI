@@ -3,9 +3,8 @@
 from session.session_registry import SessionRegistry
 from schemas.blueprint.blueprint import BlueprintSpec
 from graph.graph_plan import GraphPlan
-# from engine.base_graph_builder import ExecutableGraph
-from logs.logger_interface import LoggerInterface
-from engine.base_graph_builder import BaseGraphBuilder
+from engine.builder.base_graph_builder import BaseGraphBuilder
+from engine.executor.interfaces import GraphExecutor
 from typing import Any, Dict
 
 
@@ -26,16 +25,15 @@ class WorkflowSession:
             session_registry: SessionRegistry,
             blueprint: BlueprintSpec,
             graph_plan: GraphPlan,
-            # executable_graph: ExecutableGraph,
-            logger: LoggerInterface,
+            executable_graph: GraphExecutor,
             builder: BaseGraphBuilder,
             metadata: Dict[str, Any] = None,
     ) -> None:
         self.session_registry = session_registry
         self.blueprint = blueprint
         self.graph_plan = graph_plan
-        # self.executable_graph = executable_graph
-        self.logger = logger
+        self.executable_graph = executable_graph
+        # self.logger = logger
         self.builder = builder
         self.metadata = metadata or {}
 
@@ -44,4 +42,4 @@ class WorkflowSession:
         Rebuilds the executable_graph from the current graph_plan,
         using the stored builder.
         """
-        self.executable_graph = self.builder.build(self.graph_plan)
+        self.executable_graph = self.builder.compile_from_plan(self.graph_plan)
