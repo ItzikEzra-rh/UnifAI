@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, TypedDict
 from engine.executor.interfaces import GraphExecutor
 from runtime.state.base_state import BaseGraphState
 
@@ -12,6 +12,7 @@ class LangGraphExecutor(GraphExecutor):
     def __init__(self, compiled_graph: Any) -> None:
         self._compiled = compiled_graph
 
-    def run(self, initial_state: BaseGraphState) -> BaseGraphState:
+    def run(self, initial_state):
         # delegate to LangGraph’s invoke API
         return self._compiled.invoke(initial_state)
+        # return self._compiled.invoke(initial_state)

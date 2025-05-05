@@ -1,5 +1,6 @@
 from typing import Any, Dict
 from nodes.base_node import BaseNode
+from runtime.state.graph_state import GraphState
 
 
 class MockAgentNode(BaseNode):
@@ -16,7 +17,7 @@ class MockAgentNode(BaseNode):
         # No LLM, retriever, or tools needed here—just call BaseNode with defaults
         super().__init__(name=name)
 
-    def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    def run(self, state: dict) -> dict:
         """
         Perform the mock node’s logic.
 

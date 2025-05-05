@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List
+from runtime.state.graph_state import GraphState
 
 
 class BaseNode(ABC):
@@ -25,14 +26,14 @@ class BaseNode(ABC):
         self.retries = max(1, retries)
 
     @abstractmethod
-    def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    def run(self, state: dict) -> dict:
         """
         Perform this node’s logic, returning an updated state dict.
         Called by the graph executor.
         """
         ...
 
-    def __call__(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    def __call__(self, state: dict) -> dict:
         return self.run(state)
 
     def __repr__(self) -> str:

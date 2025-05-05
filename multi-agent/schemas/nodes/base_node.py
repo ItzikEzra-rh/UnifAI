@@ -49,7 +49,7 @@ class CustomAgentNodeConfig(NodeBaseConfig):
         None, description="Override default system prompt"
     )
     retries: Optional[int] = Field(
-        None, description="Override default retry count"
+        1, description="Override default retry count"
     )
 
 

@@ -1,6 +1,7 @@
 from typing import Any, Dict
 import operator
 from .base_condition import BaseCondition
+from runtime.state.graph_state import GraphState
 
 
 class ThresholdCondition(BaseCondition):
@@ -25,13 +26,14 @@ class ThresholdCondition(BaseCondition):
         self.threshold = threshold
         self.operator_fn = self.OPERATORS[operator]
 
-    def __call__(self, state: Dict[str, Any]) -> bool:
+    def __call__(self, state: dict) -> bool:
         """
         Fetches `value = state[self.input_key]`, then returns
         operator_fn(value, threshold).
         """
+        print(state)
         value = state.get(self.input_key)
-        return self.operator_fn(value, self.threshold)
+        return self.operator_fn(float(value), self.threshold)
 
     def __repr__(self) -> str:
         return (

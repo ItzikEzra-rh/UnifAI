@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Dict
+from runtime.state.graph_state import GraphState
 
 
 class BaseCondition(ABC):
@@ -9,7 +10,7 @@ class BaseCondition(ABC):
     """
 
     @abstractmethod
-    def __call__(self, state: Dict[str, Any]) -> Any:
+    def __call__(self, state: dict) -> Any:
         """
         Evaluate the condition against the provided graph `state`.
         Return a key that will select the next branch.

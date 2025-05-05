@@ -1,48 +1,39 @@
 from typing import Any, Dict, List, Optional
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
+from langchain.schema import HumanMessage, AIMessage, SystemMessage
 from llms.base_llm import BaseLLM
 
 
 class OpenAILLM(BaseLLM):
     """
-    LLM client backed by OpenAI's chat API via LangChain's ChatOpenAI wrapper.
+    LLM client for vLLM-served Qwen model using LangChain's ChatOpenAI wrapper.
     """
 
     def __init__(
             self,
-            api_key: str,
-            base_url: Optional[str] = None,
-            model_name: str = "gpt-4",
+            base_url: str = "http://0.0.0.0:8000/v1",
+            model_name: str = "Qwen/Qwen1.5-7B-Chat",
             temperature: float = 0.7,
             max_tokens: int = 1024,
-            timeout: int = 60,
+            api_key: str = "EMPTY",
             **extra: Any
     ):
         """
-        :param api_key:      Your OpenAI API key.
-        :param base_url:     Base URL for the OpenAI API (e.g. Azure endpoint or openai.com).
-        :param model_name:   The model ID to use (e.g. "gpt-4").
-        :param temperature:  Sampling temperature 0–1.
+        :param base_url:     vLLM API base (OpenAI-compatible).
+        :param model_name:   Qwen model ID (e.g. "Qwen/Qwen1.5-7B-Chat").
+        :param temperature:  Sampling temperature.
         :param max_tokens:   Max tokens to generate.
-        :param timeout:      Request timeout in seconds.
-        :param extra:        Provider-specific overrides (e.g. headers, organization).
+        :param extra:        Extra kwargs passed to ChatOpenAI.
         """
-        # LangChain's ChatOpenAI expects:
-        #   openai_api_key, model_name, temperature, max_tokens,
-        #   openai_api_base, request_timeout, plus any extra kwargs.
-        params: Dict[str, Any] = {
-            "openai_api_key": api_key,
-            "model_name": model_name,
-            "temperature": temperature,
-            "max_tokens": max_tokens,
-            "request_timeout": timeout,
+        self._name = "vllm-qwen"
+        self.client = ChatOpenAI(
+            api_key=api_key,
+            base_url=base_url,
+            model=model_name,
+            temperature=temperature,
+            max_tokens=max_tokens,
             **extra
-        }
-        if base_url:
-            params["openai_api_base"] = base_url
-
-        self.client = ChatOpenAI(**params)
-        self._name = "openai"
+        )
 
     def chat(
             self,
@@ -54,13 +45,9 @@ class OpenAILLM(BaseLLM):
             **kwargs: Any
     ) -> str:
         """
-        Send a chat completion request.
+        Send a chat request to the vLLM model.
 
-        :param messages:     List of {"role": "...", "content": "..."} dicts.
-        :param temperature:  Override the default sampling temperature.
-        :param max_tokens:   Override the default max tokens.
-        :param stream:       Whether to stream partial responses.
-        :param kwargs:       Any additional generation params.
+        :param messages: List of {"role": "user"/"assistant"/"system", "content": "..."}
         """
         call_params: Dict[str, Any] = {}
         if temperature is not None:
@@ -69,17 +56,26 @@ class OpenAILLM(BaseLLM):
             call_params["max_tokens"] = max_tokens
         call_params.update(kwargs)
 
-        # LangChain's ChatOpenAI .invoke supports `messages`, `stream`, and generation params
-        return self.client.invoke(messages, stream=stream, **call_params)
+        # Convert to LangChain message objects
+        lc_messages = []
+        for m in messages:
+            role = m["role"]
+            content = m["content"]
+            if role == "user":
+                lc_messages.append(HumanMessage(content=content))
+            elif role == "assistant":
+                lc_messages.append(AIMessage(content=content))
+            elif role == "system":
+                lc_messages.append(SystemMessage(content=content))
+            else:
+                raise ValueError(f"Unsupported message role: {role}")
+
+        response = self.client.invoke(lc_messages, stream=stream, **call_params)
+        return response.content
 
     def embed(self, text: str, **kwargs: Any) -> List[float]:
-        """
-        OpenAI chat models don't natively support embeddings here.
-        Raise or implement via a separate embeddings client if needed.
-        """
-        raise NotImplementedError("Embedding not supported by OpenAI chat model")
+        raise NotImplementedError("Embedding not supported by ChatOpenAI")
 
     @property
     def name(self) -> str:
-        """Return the driver key for this LLM (“openai”)."""
         return self._name

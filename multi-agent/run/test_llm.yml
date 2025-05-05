@@ -2,8 +2,9 @@
 # LLM Definitions
 # ----------------------------
 llms:
-  - name: mock_llm
-    type: mock
+  - name: openai_llm
+    type: openai
+    model_name: Qwen/Qwen2.5-7B-Instruct
 
 # ----------------------------
 # Retriever
@@ -18,12 +19,12 @@ tools: [ ]
 # ----------------------------
 # Conditions
 # ----------------------------
-#conditions:
-#  - name: cond1
-#    type: threshold
-#    input_key: input_key
-#    threshold: 5.0
-#    operator: ">"
+conditions:
+  - name: cond1
+    type: threshold
+    input_key: condition
+    threshold: 5.0
+    operator: ">"
 
 # ----------------------------
 # Plan Steps
@@ -33,18 +34,19 @@ plan:
     node:
       type: user_question_node
 
-  - name: ask_mock
+  - name: ask_llm
     after: user_input
     node:
-      name: mock_agent
-      type: mock_agent_node
-      llm: mock_llm
-  #    exit_condition: cond1
-  #    branches:
-  #      true: finalize
-  #      false: ask_mock
+      name: ask_llm_custom_agent
+      type: custom_agent_node
+      llm: openai_llm
+      system_message: |
+        you will get as an input some number, and you add to this number 1, and you just return the the output number nothing else.
+    exit_condition: cond1
+    branches:
+      true: finalize
+      false: ask_llm
 
   - name: finalize
-    after: ask_mock
     node:
       type: final_answer_node

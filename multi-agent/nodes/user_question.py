@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 from nodes.base_node import BaseNode
+from runtime.state.graph_state import GraphState
 
 
 class UserQuestionNode(BaseNode):
@@ -14,11 +15,12 @@ class UserQuestionNode(BaseNode):
         # No LLM, retriever, or tools needed here—just call BaseNode with defaults
         super().__init__(name=name)
 
-    def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    def run(self, state: dict) -> dict:
         """
         Log the incoming user_input and return the unmodified state.
         Downstream nodes can read state["user_input"].
         """
-        user_input = state.get("input", "<no input provided>")
+        print(state)
+        user_input = state.get("user_prompt", "<no input provided>")
         print(f"UserQuestionNode: Prompt received: {user_input}")
         return state

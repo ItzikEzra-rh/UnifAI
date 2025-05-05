@@ -30,12 +30,10 @@ class OpenAIFactory(BaseFactory[OpenAIConfig, OpenAILLM]):
         try:
             client = OpenAILLM(
                 api_key=cfg.api_key,
-                api_base=str(cfg.api_base),
+                base_url=str(cfg.base_url),
                 model_name=cfg.model_name,
                 temperature=cfg.temperature,
                 max_tokens=cfg.max_tokens,
-                azure_deployment_id=cfg.azure_deployment_id,
-                timeout=cfg.timeout,
                 **cfg.extra
             )
             return client

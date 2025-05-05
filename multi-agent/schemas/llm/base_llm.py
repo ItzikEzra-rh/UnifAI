@@ -24,7 +24,7 @@ class OpenAIConfig(BaseLLMConfig):
     """
     type: Literal["openai"] = "openai"
     model_name: str = Field(
-        "gpt-4",
+        "Qwen/Qwen3-8B",
         description="The OpenAI model ID to use for completions"
     )
     temperature: float = Field(
@@ -32,23 +32,16 @@ class OpenAIConfig(BaseLLMConfig):
         description="Sampling temperature"
     )
     max_tokens: int = Field(
-        1024,
+        4096,
         description="Maximum number of tokens to generate"
     )
     api_key: str = Field(
-        ..., description="API key or token for OpenAI"
+        "EMPTY",
+        description="API key or token for OpenAI"
     )
-    api_base: HttpUrl = Field(
-        "https://api.openai.com",
+    base_url: HttpUrl = Field(
+        "http://localhost:8000/v1",
         description="Base URL for the OpenAI API"
-    )
-    azure_deployment_id: Optional[str] = Field(
-        None,
-        description="(Azure only) Deployment name"
-    )
-    timeout: Optional[int] = Field(
-        60,
-        description="Request timeout in seconds"
     )
     extra: Dict[str, Any] = Field(
         default_factory=dict,
@@ -99,4 +92,3 @@ LLMsSpec = Annotated[
     Union[OpenAIConfig, MockLLMConfig, LlamaStackConfig],
     Field(discriminator="type")
 ]
-

@@ -1,5 +1,6 @@
 from typing import Any, Dict, List
 from nodes.base_node import BaseNode
+from runtime.state.graph_state import GraphState
 
 
 class FinalAnswerNode(BaseNode):
@@ -12,13 +13,12 @@ class FinalAnswerNode(BaseNode):
         # No LLM, retriever, or tools needed for finalization
         super().__init__(name=name)
 
-    def run(self, state: Dict[str, Any]) -> Dict[str, Any]:
+    def run(self, state: dict) -> dict:
         """
         Selects the final answer and emits it.
         """
         # Prefer the critic's judgement if present; otherwise use the discussion result
-        result = state.get("critic_judgement") or state.get("discussion_answer")
-        state["final_output"] = result
+        result = state.get("output")
 
         # Print or otherwise emit the final output
         print("FinalAnswerNode: Final output:\n", result)
