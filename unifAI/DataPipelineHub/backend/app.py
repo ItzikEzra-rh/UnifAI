@@ -8,6 +8,7 @@ from endpoints import register_all_endpoints
 from flask import Flask
 from flask_cors import CORS
 from global_utils.flask.request_rules import RequestRules
+from global_utils.config import ConfigManager
 
 # from config.configParams import config_params
 # from be_utils.db.flaks_db import register_mongo
@@ -24,6 +25,16 @@ CORS(app)
 # app.db = register_mongo(app)
 
 register_all_endpoints(app)
+
+# Following configuration is required to interact with global_utils such celery in other parts of the application  
+initial_config = {
+  "rabbitmq_port": "5672",
+  "rabbitmq_ip": "0.0.0.0",
+  "mongodb_port": "27017",
+  "mongodb_ip": "0.0.0.0"
+}
+
+config = ConfigManager(initial_config=initial_config)
 
 # Init before_request/after_request rules
 RequestRules(app)

@@ -1,10 +1,12 @@
+import pymongo
 from data_sources.slack.slack_config_manager import SlackConfigManager
 from data_sources.slack.slack_connector import SlackConnector
 from data_sources.slack.slack_data_processor import SlackProcessor
 from data_sources.slack.slack_chunker_strategy import SlackChunkerStrategy
+from data_sources.slack.slack_pipeline_scheduler import SlackDataPipeline
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
 from utils.storage.vector_storage_factory import VectorStorageFactory
-from shared import logger
+from shared.logger import logger
 
 def _get_configured_connector() -> SlackConnector:
     config_manager = SlackConfigManager()
@@ -48,11 +50,23 @@ def embed_slack_channels_flow(channel_list):
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()
 
+    # Create MongoDB client
+    mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
+
+    # Create data pipeline with existing logger
+    slack_pipeline = SlackDataPipeline(mongo_client, logger=logger)
+
     response = []
     for channel in channel_list:
         try:
             channel_id = channel["channel_id"]
             channel_name = channel["channel_name"]
+
+            # Process the slack channel using our pipeline
+            slack_pipeline.process_slack_channel(channel_id, channel_name)
+
+            # Start log monitoring - this will uses the event-driven handler system
+            slack_pipeline.monitor.start_log_monitoring(target_logger=logger, pipeline_id=f"slack_{channel_id}")
 
             messages, thread_messages = connector.get_conversations_history(channel_id)
             processed_messages_data = processor.process(messages, channel_name=channel_name) 
@@ -71,6 +85,8 @@ def embed_slack_channels_flow(channel_list):
                     "status": "success",
                     "chunks_stored": len(enriched)
                 })
+                
+            slack_pipeline.monitor.finish_log_monitoring()
         except Exception as e:
             logger.error(f"Failed to embed channel {channel.get('channel_name')}: {str(e)}")
             response.append({

@@ -41,17 +41,17 @@ def embed_channels(channels):
         return jsonify({"error": str(e)}), 500
     
 
-@slack_bp.route("/embed.channels.direct", methods=["PUT"])
-@from_body({
-    "channels": fields.List(fields.Dict(), required=True)
-})
-def embed_channels(channels):
-    try:
-        results = embed_slack_channels_flow(channels)
-        return jsonify({"status": "success", "details": results}), 200
-    except Exception as e:
-        logger.error(f"Embedding Slack channels failed: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+# @slack_bp.route("/embed.channels.direct", methods=["PUT"])
+# @from_body({
+#     "channels": fields.List(fields.Dict(), required=True)
+# })
+# def embed_channels(channels):
+#     try:
+#         results = embed_slack_channels_flow(channels)
+#         return jsonify({"status": "success", "details": results}), 200
+#     except Exception as e:
+#         logger.error(f"Embedding Slack channels failed: {str(e)}")
+#         return jsonify({"error": str(e)}), 500
 
 
 @slack_bp.route("/slack.channel.chunks", methods=["GET"])

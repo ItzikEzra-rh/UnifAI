@@ -39,8 +39,17 @@ class CeleryApp:
         )
 
         celery_logger = logging.getLogger('celery')
-        celery_logger.handlers = logger.handlers
+
+        # Clear Celery's handlers
+        for handler in celery_logger.handlers[:]:
+            celery_logger.removeHandler(handler)
+
+        # Add your custom handlers
+        for handler in logger.handlers:
+            celery_logger.addHandler(handler)
+
         celery_logger.setLevel(logger.level)
+        celery_logger.propagate = False
 
     @property
     def app(self):
