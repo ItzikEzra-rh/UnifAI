@@ -6,11 +6,11 @@
 
 --------------------------------------------------------------------------------------------------------------------------------------------
 
-# Challenges a& Thoughts
+# Challenges & Thoughts
 
-# Handling heavy synchronous backend operations under concurrency pressure (might happen once user start the 'Slack Pipeline' for few channels altogether:
+## Handling heavy synchronous backend operations under concurrency pressure (might happen once user start the 'Slack Pipeline' for few channels altogether:
 
-# 🔹 Option 1: Stay synchronous but control concurrency
+### 🔹 Option 1: Stay synchronous but control concurrency
 Using a thread pool (like concurrent.futures.ThreadPoolExecutor) and limit max workers.
 Don’t spawn infinite threads — control queue depth.
 Return a “job is being processed” response and let the client poll or subscribe (see async note below).
@@ -20,7 +20,7 @@ executor = ThreadPoolExecutor(max_workers=10)  # reasonable limit
 future = executor.submit(heavy_api_call, ...)
 ```
 
-# 🔹  Option 2: Scaling Recommendations (Large Scale)
+### 🔹  Option 2: Scaling Recommendations (Large Scale)
 ✅ Kubernetes-based Scaling
 Horizontal Pod Autoscaling (HPA): scale pods based on CPU usage or custom metrics (like queue length).
 
