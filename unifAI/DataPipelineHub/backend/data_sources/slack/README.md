@@ -8,7 +8,7 @@
 
 # Challenges & Thoughts
 
-## Handling heavy synchronous backend operations under concurrency pressure (might happen once user start the 'Slack Pipeline' for few channels altogether:
+Handling heavy synchronous backend operations under concurrency pressure (might happen once user start the 'Slack Pipeline' for few channels altogether:
 
 ### 🔹 Option 1: Stay synchronous but control concurrency
 Using a thread pool (like concurrent.futures.ThreadPoolExecutor) and limit max workers.
