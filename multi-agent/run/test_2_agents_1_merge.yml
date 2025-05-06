@@ -49,10 +49,20 @@ plan:
       system_message: |
         just echo to me the name nir
 
+  - name: agent_3 # The Resilient Flora-Fauna Hybrid Designer
+    after: user_input
+    node:
+      name: ask_llm_custom_agent_3
+      type: custom_agent_node
+      llm: openai_llm # Or your preferred LLM
+      system_message: |
+        just echo to me the name omri
+
   - name: agent_merger # The Symbiosis Architect
     after:
       - agent_1
       - agent_2
+      - agent_3
     node:
       name: agent_merger_node
       type: merger_node # This node type must be able to take outputs from agent_1 and agent_2 and present them to its LLM.

@@ -11,7 +11,7 @@ class LLMMergerNode(BaseNode):
             messages.append({"role": "system", "content": self.system_message})
         # messages.append({"role": "user", "content": state.get("user_prompt", "")})
 
-        agents_output = state.get("agents_output", [])
+        agents_output = state.get("nodes_output", [])
         agents_output_str = ""
         for agent_dict in agents_output:
             agents_output_str += f"{agent_dict}\n"

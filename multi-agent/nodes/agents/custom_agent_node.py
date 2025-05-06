@@ -33,6 +33,6 @@ class CustomAgentNode(BaseNode):
             response = tool.invoke(response)
 
         # 5) Store output
-        state["agents_output"] = {self.name: response}
+        state["nodes_output"] = {self.name: response}
 
         return state
