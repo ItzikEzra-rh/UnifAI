@@ -104,51 +104,53 @@ class GraphPlan:
 
     def pretty_print(self) -> None:
         """
-        Print out the plan as an ASCII tree, showing dependencies,
-        exit conditions and branch targets.  Detects cycles and
-        annotates already‐visited nodes.
+        Print out the plan as an ASCII tree, showing dependencies.
+        If a node depends on multiple parents (e.g. agent_merger),
+        it will be shown once, after all its parents.
         """
         roots = self.get_roots()
         visited = set()
 
         def _format_step(step, prefix, is_last):
-            """Print one step, then recurse into its children."""
-            # Detect cycle
-            marker = " [*]" if step.name in visited else ""
-            # Mark visited once we print it
-            if step.name not in visited:
-                visited.add(step.name)
-
-            # Build detail suffix
-            details = []
-            if step.exit_condition:
-                details.append(f"exit_if={step.exit_condition}")
-            if step.branches:
-                b = ", ".join(f"{c}→{t}" for c, t in step.branches.items())
-                details.append(f"branches={b}")
-            suffix = (" [" + "; ".join(details) + "]") if details else ""
-
-            # Print the node line
+            # Print the node
             bullet = "└── " if is_last else "├── "
-            print(f"{prefix}{bullet}{step.name}{suffix}{marker}")
+            print(f"{prefix}{bullet}{step.name}")
+            # Avoid re-visiting
+            if step.name in visited:
+                return
+            visited.add(step.name)
 
-            # Compute new prefix for children
+            # Recurse into its children (single-parent edges only)
             child_prefix = prefix + ("    " if is_last else "│   ")
-            # Find direct children (those that list this step in .after)
-            children = [s for s in self.steps if step.name in (s.after or [])]
-            for i, child in enumerate(children):
-                _format_step(child, child_prefix, i == len(children) - 1)
+            children = [
+                s for s in self.steps
+                # only those whose .after is exactly [step.name] or includes it among multiple parents
+                if s.after and step.name in s.after
+            ]
+            # But skip any multi-parent nodes here; we’ll handle them at the parent level
+            single_parent_children = [c for c in children if not c.after or len(c.after) == 1]
+            for i, child in enumerate(single_parent_children):
+                _format_step(child, child_prefix, i == len(single_parent_children) - 1)
 
-        # If no explicit roots (fully cyclic), fall back to printing all steps flat
-        if not roots:
-            print("No roots found (graph may be fully cyclic). Listing all steps:")
-            roots = self.steps
-
-        # Kick off the walk
-        for i, root in enumerate(roots):
-            # For each root we don’t indent
+        for root in roots:
             print(root.name)
             visited.add(root.name)
-            children = [s for s in self.steps if root.name in (s.after or [])]
-            for j, child in enumerate(children):
-                _format_step(child, "", j == len(children) - 1)
+
+            # 1) print its single-parent children (agent_1, agent_2)
+            direct = [
+                s for s in self.steps
+                if s.after and s.after == [root.name]
+            ]
+            for i, child in enumerate(direct):
+                _format_step(child, "", False)
+
+            # 2) now find any merge nodes whose all parents are in `direct`
+            direct_names = {c.name for c in direct}
+            merges = [
+                s for s in self.steps
+                if s.after and len(s.after) > 1 and set(s.after) <= direct_names
+            ]
+            if merges:
+                # we assume just one merge for simplicity
+                merge = merges[0]
+                _format_step(merge, "", True)

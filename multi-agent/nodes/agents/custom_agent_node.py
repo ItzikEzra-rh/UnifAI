@@ -27,12 +27,12 @@ class CustomAgentNode(BaseNode):
         print(f"""user prompt: {state.get("user_prompt", "")}""")
         # 3) Call LLM
         response = self.llm.chat(messages)
-        print(f"""response: {response}""")
+        # print(f"""response: {response}""")
         # 4) Optionally use tools on response
         for tool in self.tools:
             response = tool.invoke(response)
 
-        state["user_prompt"] = response
-        state["condition"] = int(response)
-        state["output"] = response
+        # 5) Store output
+        state["agents_output"] = {self.name: response}
+
         return state

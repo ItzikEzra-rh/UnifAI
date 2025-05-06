@@ -53,6 +53,23 @@ class CustomAgentNodeConfig(NodeBaseConfig):
     )
 
 
+class MergerLLMNodeConfig(NodeBaseConfig):
+    """
+    Full overrides for a custom agent node:
+     - llm, retriever, tools, system_message, retries.
+    """
+    type: Literal["merger_node"] = "merger_node"
+    llm: Optional[str] = Field(
+        None, description="Override default LLM key"
+    )
+    system_message: Optional[str] = Field(
+        None, description="Override default system prompt"
+    )
+    retries: Optional[int] = Field(
+        1, description="Override default retry count"
+    )
+
+
 class FinalAnswerNodeConfig(NodeBaseConfig):
     """
     No overrides allowed—this node simply emits the final_output.
@@ -74,6 +91,7 @@ NodeSpec = Annotated[
         CustomAgentNodeConfig,
         FinalAnswerNodeConfig,
         UserQuestionNodeConfig,
+        MergerLLMNodeConfig,
     ],
     Field(discriminator="type")
 ]
