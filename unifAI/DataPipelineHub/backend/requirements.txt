@@ -6,3 +6,4 @@ langchain
 numpy
 sentence-transformers
 qdrant-client
+docling
