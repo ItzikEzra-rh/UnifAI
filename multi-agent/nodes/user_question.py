@@ -1,5 +1,5 @@
 from typing import Any, Dict, List
-from nodes.base_node import BaseNode
+from nodes.base_node import BaseNode, StreamWriter
 from runtime.state.graph_state import GraphState
 
 
@@ -20,7 +20,7 @@ class UserQuestionNode(BaseNode):
         Log the incoming user_input and return the unmodified state.
         Downstream nodes can read state["user_input"].
         """
-        print(state)
+        # print(state)
         user_input = state.get("user_prompt", "<no input provided>")
-        print(f"UserQuestionNode: Prompt received: {user_input}")
+        # print(f"UserQuestionNode: Prompt received: {user_input}")
         return state

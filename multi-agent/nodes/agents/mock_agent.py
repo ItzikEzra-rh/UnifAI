@@ -1,5 +1,5 @@
 from typing import Any, Dict
-from nodes.base_node import BaseNode
+from nodes.base_node import BaseNode, StreamWriter
 from runtime.state.graph_state import GraphState
 
 

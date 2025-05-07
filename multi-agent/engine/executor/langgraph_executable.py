@@ -16,3 +16,15 @@ class LangGraphExecutor(GraphExecutor):
         # delegate to LangGraph’s invoke API
         return self._compiled.invoke(initial_state)
         # return self._compiled.invoke(initial_state)
+
+    def stream(self, initial_state, *args, **kwargs):
+        """
+        stream the graph’s output to the given stream.
+        """
+        stream_mode = kwargs.get("stream_mode", None)
+        if stream_mode:
+            for chunk in self._compiled.stream(
+                    initial_state,
+                    stream_mode=stream_mode,
+            ):
+                yield chunk

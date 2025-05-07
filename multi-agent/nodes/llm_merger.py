@@ -1,4 +1,4 @@
-from .base_node import BaseNode
+from .base_node import BaseNode, StreamWriter
 
 
 class LLMMergerNode(BaseNode):
@@ -18,7 +18,7 @@ class LLMMergerNode(BaseNode):
         messages.append({"role": "user", "content": agents_output_str})
         # print(f"""agents_output: {agents_output_str}""")
         # 2) Call LLM
-        response = self.llm.chat(messages)
+        response = self.call_llm(messages)
         # print(f"""response: {response}""")
 
         state["output"] = response

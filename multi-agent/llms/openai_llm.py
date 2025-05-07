@@ -1,10 +1,10 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Iterator
 from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
-from llms.base_llm import BaseLLM
+from llms.base_llm import BaseLLM, SupportsStreaming
 
 
-class OpenAILLM(BaseLLM):
+class OpenAILLM(BaseLLM, SupportsStreaming):
     """
     LLM client for vLLM-served Qwen model using LangChain's ChatOpenAI wrapper.
     """
@@ -57,24 +57,37 @@ class OpenAILLM(BaseLLM):
         call_params.update(kwargs)
 
         # Convert to LangChain message objects
-        lc_messages = []
-        for m in messages:
-            role = m["role"]
-            content = m["content"]
-            if role == "user":
-                lc_messages.append(HumanMessage(content=content))
-            elif role == "assistant":
-                lc_messages.append(AIMessage(content=content))
-            elif role == "system":
-                lc_messages.append(SystemMessage(content=content))
-            else:
-                raise ValueError(f"Unsupported message role: {role}")
+        lc_messages = self._to_lc_messages(messages)
 
         response = self.client.invoke(lc_messages, stream=stream, **call_params)
         return response.content
 
-    def embed(self, text: str, **kwargs: Any) -> List[float]:
-        raise NotImplementedError("Embedding not supported by ChatOpenAI")
+    def stream(
+            self,
+            messages: List[Dict[str, Any]],
+            **call_params
+    ) -> Iterator[str]:
+        """
+        Pass stream=True through to LangChain and unwrap content token by token.
+        """
+        lc_messages = self._to_lc_messages(messages)
+        for chunk in self.client.stream(lc_messages, stream=True, **call_params):
+            yield chunk.content
+
+    @staticmethod
+    def _to_lc_messages(messages):
+        lc_msgs = []
+        for m in messages:
+            role, content = m["role"], m["content"]
+            if role == "user":
+                lc_msgs.append(HumanMessage(content=content))
+            elif role == "assistant":
+                lc_msgs.append(AIMessage(content=content))
+            elif role == "system":
+                lc_msgs.append(SystemMessage(content=content))
+            else:
+                raise ValueError(f"Unsupported role {role}")
+        return lc_msgs
 
     @property
     def name(self) -> str:
