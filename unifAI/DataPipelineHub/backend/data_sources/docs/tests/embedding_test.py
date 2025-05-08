@@ -55,7 +55,7 @@ def process_documents_for_embedding() -> None:
     doc_processor = DocumentProcessor()
     
     # Process with various options
-    processed_documents = doc_processor.process(
+    processed_documents = doc_processor.process_docs(
         raw_documents,
         clean_markdown=False, # Clean markdown content
         clean_text=False,     # Leave text content as is for now

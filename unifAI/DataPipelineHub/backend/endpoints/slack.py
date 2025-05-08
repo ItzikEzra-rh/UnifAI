@@ -32,7 +32,7 @@ def embed_channels(channels):
     try:
         send_task(
             task_name="data_sources.slack.slack_tasks.embed_slack_channels_task",
-            celery_queue="slack_queue",  # or whatever queue name you're using
+            celery_queue="slack_queue",
             channel_list=channels
         )
         return jsonify({"status": "task submitted"}), 202

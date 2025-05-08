@@ -40,12 +40,12 @@ class DocumentProcessor(DataProcessor):
             "citations": r"\[\d+\]",
         }
         
-    def process(self, data: List[Dict[str, Any]], **kwargs) -> List[Dict[str, Any]]:
+    def process(self, doc: Dict[str, Any], **kwargs) -> Dict[str, Any]:
         """
-        Process document data to prepare for embedding.
-        
+        Process a single document data dictionary to prepare for embedding.
+
         Args:
-            data: List of document data dictionaries
+            doc: A single document data dictionary
             **kwargs: Additional parameters specific to document processing
                 - clean_markdown: Whether to clean markdown content (default: True)
                 - clean_text: Whether to clean text content (default: False)
@@ -53,70 +53,76 @@ class DocumentProcessor(DataProcessor):
                 - preserve_original: Whether to preserve original content (default: True)
             
         Returns:
-            List of processed document data dictionaries
+            Processed document data dictionary
         """
-        logger.info(f"Starting document processing for {len(data)} documents")
-        
         # Get processing options
         clean_markdown = kwargs.get("clean_markdown", True)
         clean_text = kwargs.get("clean_text", False)
         remove_references = kwargs.get("remove_references", False)
         preserve_original = kwargs.get("preserve_original", True)
-        
-        self._data = data
-        self._processed_data = []
-        
-        for i, doc in enumerate(data):
-            try:
-                logger.info(f"Processing document {i+1}/{len(data)}: {doc.get('filename', 'Unknown')}")
-                
-                # Create a copy of the document data
-                processed_doc = doc.copy() if preserve_original else {}
-                
-                # Add minimal required fields if not preserving original
-                if not preserve_original:
-                    processed_doc["path"] = doc.get("path")
-                    processed_doc["filename"] = doc.get("filename")
-                    processed_doc["metadata"] = doc.get("metadata", {})
-                
-                # Clean markdown content if present and requested
-                if "markdown" in doc and clean_markdown:
-                    if preserve_original:
-                        processed_doc["clean_markdown"] = self.clean_markdown(doc["markdown"])
-                    else:
-                        processed_doc["markdown"] = self.clean_markdown(doc["markdown"])
-                
-                # Clean text content if present and requested
-                if "text" in doc and clean_text:
-                    if preserve_original:
-                        processed_doc["clean_text"] = self.clean_content(doc["text"], remove_references)
-                    else:
-                        processed_doc["text"] = self.clean_content(doc["text"], remove_references)
-                    
-                # Add processing metadata
-                if "metadata" not in processed_doc:
-                    processed_doc["metadata"] = {}
-                    
-                processed_doc["metadata"]["processed"] = True
-                processed_doc["metadata"]["processing_options"] = {
-                    "clean_markdown": clean_markdown,
-                    "clean_text": clean_text,
-                    "remove_references": remove_references,
-                    "preserve_original": preserve_original
-                }
-                
-                # Add to processed data
-                self._processed_data.append(processed_doc)
-                logger.info(f"Successfully processed document: {doc.get('filename', 'Unknown')}")
-                
-            except Exception as e:
-                logger.error(f"Error processing document {doc.get('filename', 'Unknown')}: {str(e)}")
-                # Add original document with error flag
-                doc["processing_error"] = str(e)
-                self._processed_data.append(doc)
-        
-        logger.info(f"Document processing complete. Processed {len(self._processed_data)} documents")
-        return self._processed_data
+
+        try:
+            logger.info(f"Processing document: {doc.get('filename', 'Unknown')}")
+            # Create a copy of the document data
+            processed_doc = doc.copy() if preserve_original else {}
+
+            # Add minimal required fields if not preserving original
+            if not preserve_original:
+                processed_doc["path"] = doc.get("path")
+                processed_doc["filename"] = doc.get("filename")
+                processed_doc["metadata"] = doc.get("metadata", {})
+
+            # Clean markdown content if present and requested
+            if "markdown" in doc and clean_markdown:
+                if preserve_original:
+                    processed_doc["clean_markdown"] = self.clean_markdown(doc["markdown"])
+                else:
+                    processed_doc["markdown"] = self.clean_markdown(doc["markdown"])
+
+            # Clean text content if present and requested
+            if "text" in doc and clean_text:
+                if preserve_original:
+                    processed_doc["clean_text"] = self.clean_content(doc["text"], remove_references)
+                else:
+                    processed_doc["text"] = self.clean_content(doc["text"], remove_references)
+
+            # Add processing metadata
+            if "metadata" not in processed_doc:
+                processed_doc["metadata"] = {}
+
+            processed_doc["metadata"]["processed"] = True
+            processed_doc["metadata"]["processing_options"] = {
+                "clean_markdown": clean_markdown,
+                "clean_text": clean_text,
+                "remove_references": remove_references,
+                "preserve_original": preserve_original
+            }
+
+            logger.info(f"Successfully processed document: {doc.get('filename', 'Unknown')}")
+            return processed_doc
+
+        except Exception as e:
+            logger.error(f"Error processing document {doc.get('filename', 'Unknown')}: {str(e)}")
+            # Add original document with error flag
+            doc["processing_error"] = str(e)
+            return doc
+
+
+    def process_docs(self, data: List[Dict[str, Any]], **kwargs) -> List[Dict[str, Any]]:
+        """
+        Process a list of document data dictionaries.
+
+        Args:
+            data: List of document dictionaries
+            **kwargs: Processing options passed to individual `process` calls
+
+        Returns:
+            List of processed document data dictionaries
+        """
+        logger.info(f"Starting batch document processing for {len(data)} documents")
+        processed = [self.process(doc, **kwargs) for doc in data]
+        logger.info(f"Batch processing complete. Processed {len(processed)} documents")
+        return processed
     
     def clean_content(self, content: str, remove_references: bool = False) -> str:
         """
@@ -233,42 +239,49 @@ class DocumentProcessor(DataProcessor):
         logger.info(f"Extracted {len(sections)} sections from document {doc.get('filename', 'Unknown')}")
         return sections
     
-    def prepare_for_embedding(self, processed_docs: Optional[List[Dict[str, Any]]] = None) -> List[Dict[str, Any]]:
+    def prepare_for_single_doc_embedding(self, doc: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Prepare processed documents for embedding.
-        
+        Prepare a single processed document for embedding.
+
         This method extracts the key content that should be sent to the chunking and embedding layer.
-        
+
         Args:
-            processed_docs: Optional list of processed documents (uses self._processed_data if None)
-            
+            doc: A single processed document
+
         Returns:
-            List of documents prepared for embedding
+            Simplified document dictionary for embedding
         """
-        docs = processed_docs if processed_docs is not None else self._processed_data
-        logger.info(f"Preparing {len(docs)} documents for embedding")
-        
-        embedding_docs = []
-        
-        for doc in docs:
-            try:
-                # Create a simplified document for embedding
-                embed_doc = {
-                    "id": os.path.basename(doc.get("path", "")),
-                    "filename": doc.get("filename", ""),
-                    "content": doc.get("clean_text", doc.get("text", "")),
-                    "metadata": {
-                        "title": doc.get("metadata", {}).get("title", "Untitled"),
-                        "page_count": doc.get("metadata", {}).get("page_count", 1),
-                        "word_count": doc.get("metadata", {}).get("word_count", 0),
-                        "source_path": doc.get("path", ""),
-                    }
+        try:
+            # Create a simplified document for embedding
+            embed_doc = {
+                "id": os.path.basename(doc.get("path", "")),
+                "filename": doc.get("filename", ""),
+                "content": doc.get("clean_text", doc.get("text", "")),
+                "metadata": {
+                    "title": doc.get("metadata", {}).get("title", "Untitled"),
+                    "page_count": doc.get("metadata", {}).get("page_count", 1),
+                    "word_count": doc.get("metadata", {}).get("word_count", 0),
+                    "source_path": doc.get("path", ""),
                 }
-                
-                embedding_docs.append(embed_doc)
-                
-            except Exception as e:
-                logger.error(f"Error preparing document for embedding: {str(e)}")
-        
+            }
+            return embed_doc
+
+        except Exception as e:
+            logger.error(f"Error preparing document for embedding: {str(e)}")
+            return {}
+
+
+    def prepare_for_embedding(self, processed_docs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Prepare a list of processed documents for embedding.
+
+        Args:
+            processed_docs: List of processed document dictionaries
+
+        Returns:
+            List of simplified embedding document dictionaries
+        """
+        logger.info(f"Preparing {len(processed_docs)} documents for embedding")
+        embedding_docs = [self.prepare_for_single_doc_embedding(doc) for doc in processed_docs]
         logger.info(f"Prepared {len(embedding_docs)} documents for embedding")
         return embedding_docs
