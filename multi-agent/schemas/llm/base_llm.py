@@ -40,7 +40,7 @@ class OpenAIConfig(BaseLLMConfig):
         description="API key or token for OpenAI"
     )
     base_url: HttpUrl = Field(
-        "http://localhost:8000/v1",
+        default_factory=lambda: HttpUrl("http://localhost:8000/v1"),
         description="Base URL for the OpenAI API"
     )
     extra: Dict[str, Any] = Field(

@@ -5,6 +5,7 @@ llms:
   - name: openai_llm
     type: openai
     model_name: Qwen/Qwen2.5-7B-Instruct
+    base_url: http://localhost:8000/v1
 
 # ----------------------------
 # Retriever

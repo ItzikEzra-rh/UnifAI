@@ -1,6 +1,5 @@
 from typing import Any, TypedDict
 from engine.executor.interfaces import GraphExecutor
-from runtime.state.base_state import BaseGraphState
 
 
 class LangGraphExecutor(GraphExecutor):

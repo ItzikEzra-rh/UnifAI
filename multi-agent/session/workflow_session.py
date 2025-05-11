@@ -1,11 +1,11 @@
-# core/workflow_session.py
-
 from session.session_registry import SessionRegistry
 from schemas.blueprint.blueprint import BlueprintSpec
 from graph.graph_plan import GraphPlan
 from engine.builder.base_graph_builder import BaseGraphBuilder
 from engine.executor.interfaces import GraphExecutor
+from core.run_context import RunContext
 from typing import Any, Dict
+from graph.graph_state import GraphState
 
 
 class WorkflowSession:
@@ -27,6 +27,9 @@ class WorkflowSession:
             graph_plan: GraphPlan,
             executable_graph: GraphExecutor,
             builder: BaseGraphBuilder,
+            run_context: RunContext,
+            # logger: LoggerInterface,
+            graph_state: GraphState,
             metadata: Dict[str, Any] = None,
     ) -> None:
         self.session_registry = session_registry
@@ -35,7 +38,9 @@ class WorkflowSession:
         self.executable_graph = executable_graph
         # self.logger = logger
         self.builder = builder
+        self.run_context = run_context
         self.metadata = metadata or {}
+        self.graph_state = graph_state
 
     def recompile(self) -> None:
         """

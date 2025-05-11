@@ -1,7 +1,5 @@
-from typing import Any, Dict
 import operator
 from .base_condition import BaseCondition
-from runtime.state.graph_state import GraphState
 
 
 class ThresholdCondition(BaseCondition):
