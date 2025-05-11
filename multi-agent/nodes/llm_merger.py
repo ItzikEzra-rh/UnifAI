@@ -1,10 +1,11 @@
 from .base_node import BaseNode, StreamWriter
+from graph.graph_state import GraphState
 
 
 class LLMMergerNode(BaseNode):
     """this class is a node that merges the output of multiple Nodes using LLM and a custom system prompt."""
 
-    def run(self, state: dict) -> dict:
+    def run(self, state: GraphState) -> GraphState:
         # 1) Build messages
         messages = state.get("messages", [])
         if self.system_message:
@@ -22,4 +23,5 @@ class LLMMergerNode(BaseNode):
         # print(f"""response: {response}""")
 
         state["output"] = response
+
         return state

@@ -50,7 +50,7 @@ class MongoSessionRepository(SessionRepository):
             "run_context": ctx.to_dict(),
             "metadata": session.metadata,
             "blueprint_spec": session.blueprint.model_dump(mode="json"),
-            "graph_state": session.graph_state,
+            "graph_state": dict(session.graph_state),
         }
         self._col.replace_one(
             {"user_id": ctx.user_id, "run_id": ctx.run_id},

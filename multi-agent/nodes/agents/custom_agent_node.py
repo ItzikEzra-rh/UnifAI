@@ -1,5 +1,6 @@
 from typing import Any, Dict, List, Optional
 from nodes.base_node import BaseNode, StreamWriter
+from graph.graph_state import GraphState
 
 
 class CustomAgentNode(BaseNode):
@@ -20,7 +21,7 @@ class CustomAgentNode(BaseNode):
         messages.append({"role": "user", "content": state.get("user_prompt", "")})
         return messages
 
-    def run(self, state: dict) -> dict:
+    def run(self, state: GraphState) -> GraphState:
         """Main execution logic, shared by run and stream."""
         messages = self._prepare_messages(state)
         response = self.call_llm(messages)  # handles both streaming and non-streaming

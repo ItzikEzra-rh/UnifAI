@@ -1,4 +1,5 @@
 from nodes.base_node import BaseNode
+from graph.graph_state import GraphState
 
 
 class UserQuestionNode(BaseNode):
@@ -13,7 +14,7 @@ class UserQuestionNode(BaseNode):
         # No LLM, retriever, or tools needed here—just call BaseNode with defaults
         super().__init__(name=name)
 
-    def run(self, state: dict) -> dict:
+    def run(self, state: GraphState) -> GraphState:
         """
         Log the incoming user_input and return the unmodified state.
         Downstream nodes can read state["user_input"].

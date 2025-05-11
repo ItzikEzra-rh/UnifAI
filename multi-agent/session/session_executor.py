@@ -94,6 +94,12 @@ class SessionExecutor:
                     **stream_kwargs
             ):
                 yield chunk
+                try:
+                    # will work only if custom is enabled in stream_kwargs
+                    session.graph_state = chunk[1].get("state") if isinstance(chunk, (list, tuple)) and isinstance(
+                        chunk[1], dict) else None
+                except Exception:
+                    session.graph_state = None
 
         except Exception as e:
             # if getattr(session, "logger", None):
@@ -101,4 +107,5 @@ class SessionExecutor:
             raise e
 
         # once the generator ends, finalize
+
         self._post_run(session, session.graph_state)

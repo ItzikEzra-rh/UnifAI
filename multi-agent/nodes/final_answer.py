@@ -1,4 +1,5 @@
 from nodes.base_node import BaseNode
+from graph.graph_state import GraphState
 
 
 class FinalAnswerNode(BaseNode):
@@ -11,7 +12,7 @@ class FinalAnswerNode(BaseNode):
         # No LLM, retriever, or tools needed for finalization
         super().__init__(name=name)
 
-    def run(self, state: dict) -> dict:
+    def run(self, state: GraphState) -> GraphState:
         """
         Selects the final answer and emits it.
         """
@@ -19,5 +20,5 @@ class FinalAnswerNode(BaseNode):
         result = state.get("output")
 
         # Print or otherwise emit the final output
-        # print("FinalAnswerNode: Final output:\n", result)
+
         return state

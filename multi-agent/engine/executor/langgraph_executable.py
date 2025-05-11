@@ -27,3 +27,9 @@ class LangGraphExecutor(GraphExecutor):
                     stream_mode=stream_mode,
             ):
                 yield chunk
+
+    def get_state(self):
+        """
+        Get the current state of the graph.
+        """
+        return self._compiled.get_state(None)

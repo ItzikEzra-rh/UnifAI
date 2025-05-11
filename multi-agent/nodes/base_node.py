@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional
-
+from graph.graph_state import GraphState
 StreamWriter = Callable[[Any], None]
 
 
@@ -28,7 +28,7 @@ class BaseNode(ABC):
         self.stream_writer = None
 
     @abstractmethod
-    def run(self, state: dict) -> dict:
+    def run(self, state: GraphState) -> GraphState:
         """
         Main execution logic, shared by run and stream.
         """
@@ -42,7 +42,7 @@ class BaseNode(ABC):
                 "state": result,
             })
 
-    def __call__(self, state: dict, writer: StreamWriter = None) -> dict:
+    def __call__(self, state: GraphState, writer: StreamWriter = None) -> GraphState:
         """
         Unified entrypoint: stream if writer is passed, else run normally.
         """

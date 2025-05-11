@@ -47,15 +47,15 @@ def main_new_session():
     stream = executor.stream(
         session_or_id=session,
         inputs={"user_prompt": "eco the name"},
-        stream_mode=["custom", "updates"]
+        stream_mode=["custom"]
     )
+
     for chunk in stream:
         if "custom" == chunk[0]:
             chunk = chunk[1]
             if chunk["type"] == "llm_token" and \
                     (chunk["node"] == "ask_llm_custom_agent_2" or chunk["node"] == "agent_merger_node"):
                 print(chunk["chunk"], end="", flush=True)
-    # print("Final GraphState:", final)
 
 
 def main_resume_session(run_id: str):
@@ -68,6 +68,7 @@ def main_resume_session(run_id: str):
         stream_mode=["custom", "updates"]
     )
     for chunk in stream:
+        print(chunk)
         if "custom" == chunk[0]:
             chunk = chunk[1]
             if chunk["type"] == "llm_token" and \
@@ -76,6 +77,6 @@ def main_resume_session(run_id: str):
 
 
 if __name__ == "__main__":
-    # main_new_session()
+    main_new_session()
     # main_resume_session(get_current_context().run_id)
-    main_resume_session("aaa07745-4d02-400c-8d88-c7ea75007bab")
+    # main_resume_session("8241065f-e3f1-4735-9630-233775a70dcb")

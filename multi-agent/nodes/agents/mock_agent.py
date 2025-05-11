@@ -1,4 +1,5 @@
 from nodes.base_node import BaseNode
+from graph.graph_state import GraphState
 
 
 class MockAgentNode(BaseNode):
@@ -15,7 +16,7 @@ class MockAgentNode(BaseNode):
         # No LLM, retriever, or tools needed here—just call BaseNode with defaults
         super().__init__(name=name)
 
-    def run(self, state: dict) -> dict:
+    def run(self, state: GraphState) -> GraphState:
         """
         Perform the mock node’s logic.
 
