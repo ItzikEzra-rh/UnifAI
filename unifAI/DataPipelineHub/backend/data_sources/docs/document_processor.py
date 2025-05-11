@@ -62,7 +62,7 @@ class DocumentProcessor(DataProcessor):
         preserve_original = kwargs.get("preserve_original", True)
 
         try:
-            logger.info(f"Processing document: {doc.get('filename', 'Unknown')}")
+            logger.info(f"Starting to process {doc.get('filename', 'Unknown')}")
             # Create a copy of the document data
             processed_doc = doc.copy() if preserve_original else {}
 

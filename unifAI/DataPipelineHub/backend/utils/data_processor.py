@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Dict, List, Any
+from typing import Dict, List, Any, Union
 
 class DataProcessor(ABC):
     """
@@ -25,7 +25,7 @@ class DataProcessor(ABC):
         return len(self._processed_data)
     
     @abstractmethod
-    def process(self, data: List[Dict[str, Any]] | Dict[str, Any], **kwargs) -> List[Dict[str, Any]]:
+    def process(self, data: Union[List[Dict[str, Any]], Dict[str, Any]], **kwargs) -> List[Dict[str, Any]]:
         """
         Process the raw data from the source.
         

@@ -9,7 +9,8 @@ initial_config = {
 }
 
 config = ConfigManager(initial_config=initial_config)
-celery = CeleryApp(broker_user_name="guest", broker_password="guest", task_modules=["data_sources.slack.slack_tasks"]).app
+celery = CeleryApp(broker_user_name="guest", broker_password="guest", task_modules=["data_sources.slack.slack_tasks", "data_sources.docs.docs_tasks"]).app
 
 # TODO: In order to start celery worker, below line should be triggered from backend/
 # celery -A celery_app.init worker -c 1 --loglevel=info -Q slack_queue -n data_sources
+# celery -A celery_app.init worker -c 1 --loglevel=info -Q docs_queue -n data_sources

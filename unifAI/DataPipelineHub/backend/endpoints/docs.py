@@ -26,7 +26,7 @@ def embed_docs(docs):
         send_task(
             task_name="data_sources.docs.docs_tasks.embed_docs_task",
             celery_queue="docs_queue",
-            channel_list=docs
+            doc_list=docs
         )
         return jsonify({"status": "task submitted"}), 202
     except Exception as e:

@@ -89,9 +89,10 @@ class LogParser:
         if "Stored" in log_line and "embeddings" in log_line:
             return PipelineStatus.DONE
         
+        # Currently each pipeline already turned into 'ACTIVE' in the registeration procedure
         # Examples to detect active state
-        if "Making API request" in log_line or "Starting" in log_line:
-            return PipelineStatus.ACTIVE
+        # if "Making API request" in log_line or "Starting" in log_line:
+        #     return PipelineStatus.ACTIVE
         
         # Examples to detect errors
         if "ERROR" in log_line or "Failed" in log_line:

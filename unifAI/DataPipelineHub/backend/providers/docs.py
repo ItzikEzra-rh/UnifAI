@@ -1,7 +1,10 @@
+import pymongo
+import uuid
 from data_sources.docs.doc_connector import DocumentConnector
 from data_sources.docs.doc_config_manager import DocConfigManager
 from data_sources.docs.document_processor import DocumentProcessor
 from data_sources.docs.pdf_chunker_strategy import PDFChunkerStrategy
+from data_sources.docs.doc_pipeline_scheduler import DocDataPipeline
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
@@ -50,12 +53,25 @@ def embed_docs_flow(doc_list):
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()
 
+    # Create MongoDB client
+    mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
+
+    # Create data pipeline with existing logger
+    doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
+
     response = []
     for doc in doc_list:
         try:
             doc_path = doc["doc_path"]
             doc_name = doc["doc_name"]
-        
+            doc_id = str(uuid.uuid4())
+
+            # Process the slack channel using our pipeline
+            doc_pipeline.process_doc(doc_id, doc_name)
+
+            # Start log monitoring - this will uses the event-driven handler system
+            doc_pipeline.monitor.start_log_monitoring(target_logger=logger, pipeline_id=f"doc_{doc_id}")
+
             result = doc_connector.process_document(doc_path)
             
             # Process with various options
@@ -79,6 +95,7 @@ def embed_docs_flow(doc_list):
                 "chunks_stored": len(enriched_chunks)
             })
 
+            doc_pipeline.monitor.finish_log_monitoring()
         except Exception as e:
             logger.error(f"Failed to embed doc {doc.get('doc_name')}: {str(e)}")
             response.append({

@@ -6,6 +6,7 @@ from .pipeline_monitor_base import PipelineMonitorBase, SourceType, PipelineStat
 from .mongo_db_pipeline_repository import MongoDBPipelineRepository
 from .log_parser import LogParser
 from .slack.slack_log_parser import SlackLogParser
+from .docs.doc_log_parser import DocLogParser
 
 class PipelineMonitor(PipelineMonitorBase):
     """
@@ -227,7 +228,7 @@ class PipelineMonitor(PipelineMonitorBase):
         logs = self.repository.get_recent_logs(source_type, limit)
         return [log.get("message", "") for log in logs]
     
-    def process_log_line(self, log_line: str, pipeline_id: str) -> None:
+    def process_log_line(self, log_line: str, pipeline_id: str = None) -> None:
         """
         Process a log line to extract monitoring information.
         
@@ -236,6 +237,7 @@ class PipelineMonitor(PipelineMonitorBase):
         
         Args:
             log_line: A string containing a log entry
+            pipeline_id: Optional pipeline ID. If None, will attempt to extract from log
         """
         timestamp, module, level, message = LogParser.parse_log_line(log_line)
         
@@ -245,23 +247,19 @@ class PipelineMonitor(PipelineMonitorBase):
             source_type = SourceType.SLACK
         elif "Jira" in message:
             source_type = SourceType.JIRA
-        elif "Document" in message:
+        elif "document" in message.lower() or "pdf" in message.lower() or "docx" in message.lower() or module.startswith("docling"):
             source_type = SourceType.DOCUMENT
-
-        # def extract_pipeline_id(source_type):
-        #     """
-        #     Extract pipeline id per each source_type
-        #     """
-        #     pipeline_id = ""
-
-        #     if source_type == SourceType.SLACK:
-        #         # Extract channel ID to identify the pipeline
-        #         channel_id = SlackLogParser.extract_slack_channel_id(log_line)
-        #         pipeline_id = f"slack_{channel_id}" if channel_id else None
-
-        #     return pipeline_id
-
-        # pipeline_id = extract_pipeline_id(source_type)
+        
+        # Extract pipeline ID if not provided
+        if not pipeline_id:
+            if source_type == SourceType.SLACK:
+                # Extract channel ID to identify the pipeline
+                channel_id = SlackLogParser.extract_slack_channel_id(log_line)
+                pipeline_id = f"slack_{channel_id}" if channel_id else None
+            elif source_type == SourceType.DOCUMENT:
+                # Extract document ID to identify the pipeline
+                doc_id = DocLogParser.extract_doc_id(log_line)
+                pipeline_id = f"doc_{doc_id}" if doc_id else None
         
         # Update recent logs cache
         self.recent_logs_cache[source_type].appendleft(log_line)
@@ -283,23 +281,49 @@ class PipelineMonitor(PipelineMonitorBase):
         
         # Check if this pipeline is already registered
         pipeline = self.repository.get_pipeline(pipeline_id)
-        if not pipeline and "Starting" in message:
+        if not pipeline and ("Starting" in message or "Processing" in message):
             # Auto-register new pipeline
             self.register_pipeline(pipeline_id, source_type)
         
         # Extract and update metrics
         metrics = {}
         
+        # Process based on source type
         if source_type == SourceType.SLACK:
             # Count API calls
-            api_endpoint =  SlackLogParser.extract_api_endpoint(log_line)
+            api_endpoint = SlackLogParser.extract_api_endpoint(log_line)
             if api_endpoint:
                 metrics["api_calls"] = 1
-        
+            
             # Track message counts
             message_count = SlackLogParser.extract_message_count(log_line)
             if message_count:
                 metrics["documents_retrieved"] = message_count
+        
+        elif source_type == SourceType.DOCUMENT:
+            # For document pipelines, each pipeline represents one document
+            if "Processing document" in message or "Started processing" in message:
+                metrics["documents_retrieved"] = 1
+            
+            # Count API calls for document processing
+            api_endpoint = DocLogParser.extract_api_endpoint(log_line)
+            if api_endpoint:
+                metrics["api_calls"] = 1
+            
+            # # Track chunk counts
+            # chunk_count = DocLogParser.extract_chunk_count(log_line)
+            # if chunk_count:
+            #     metrics["chunks_generated"] = chunk_count
+            
+            # # Track embedding counts
+            # embedding_count = DocLogParser.extract_embedding_count(log_line)
+            # if embedding_count:
+            #     metrics["embeddings_created"] = embedding_count
+            
+            # # Check for document processing status changes
+            # status = DocLogParser.extract_processing_status(log_line)
+            # if status:
+            #     self.update_pipeline_status(pipeline_id, status)
         
         # Track chunk counts
         chunk_count = LogParser.extract_chunk_count(log_line)
@@ -315,7 +339,7 @@ class PipelineMonitor(PipelineMonitorBase):
         if metrics and pipeline_id:
             self.log_metrics(pipeline_id, metrics)
         
-        # Check for status changes
+        # Check for status changes (in the future we can handle it by source-specific parser)
         status = LogParser.extract_pipeline_status(log_line)
         if status and pipeline_id:
             self.update_pipeline_status(pipeline_id, status)
