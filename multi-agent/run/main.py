@@ -10,7 +10,6 @@ from core.context import get_current_context
 def setup_components():
     # auto‐discover all your node/tool/llm factories
     element_registry.auto_discover()
-
     # factory that builds fresh WorkflowSession
     session_factory = WorkflowSessionFactory(
         element_registry=element_registry,
@@ -31,7 +30,7 @@ def main_new_session():
     manager, executor = setup_components()
 
     blueprint_loader = YAMLBlueprintLoader()
-    spec = blueprint_loader.load("run/test_2_agents_1_merge.yml")
+    spec = blueprint_loader.load("run/test_1_agents_slack_retriever.yml")
 
     session = manager.create_session(
         user_id="alice",
@@ -46,7 +45,7 @@ def main_new_session():
     # — run it to completion —
     stream = executor.stream(
         session_or_id=session,
-        inputs={"user_prompt": "eco the name"},
+        inputs={"user_prompt": "what can you tell me about the jira summarizer"},
         stream_mode=["custom"]
     )
 
@@ -54,7 +53,7 @@ def main_new_session():
         if "custom" == chunk[0]:
             chunk = chunk[1]
             if chunk["type"] == "llm_token" and \
-                    (chunk["node"] == "ask_llm_custom_agent_2" or chunk["node"] == "agent_merger_node"):
+                    (chunk["node"] == "ask_llm_custom_agent_2" or chunk["node"] == "slack_agent_node"):
                 print(chunk["chunk"], end="", flush=True)
 
 

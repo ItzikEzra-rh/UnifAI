@@ -1,29 +1,45 @@
-from pydantic import BaseModel
-from typing import Literal, Dict, List, Any
+from typing import Literal
+from pydantic import Field, Extra, BaseModel, HttpUrl
 
 
-class SlackRetrieverConfig(BaseModel):
+class BaseRetrieverConfig(BaseModel):
     """
-    Configuration for a Slack-based retriever agent.
+    Common fields for any Retriever.
+    Concrete configs must subclass this and set `type` to a Literal.
     """
-    name: str
-    type: Literal["slack"]
-    vector_store: Dict[str, Any]  # E.g. vector store parameters
+    name: str = Field(
+        ...,
+        description="Unique key for this retriever instance"
+    )
+    type: str = Field(
+        ...,
+        description="Discriminator: which retriever provider to use"
+    )
+
+    class Config:
+        extra = Extra.forbid
 
 
-class JiraRetrieverConfig(BaseModel):
+class SlackRetrieverConfig(BaseRetrieverConfig):
     """
-    Configuration for a Jira-based retriever agent.
+    Pydantic schema for the SlackRetriever.
     """
-    name: str
-    type: Literal["jira"]
-    vector_store: Dict[str, Any]
+    type: Literal["slack"] = "slack"
+    api_url: HttpUrl = Field(
+        "http://0.0.0.0:13456/api/slack/query.match",
+        description="The endpoint for your Slack‐query service"
+    )
+    top_k_results: int = Field(
+        3,
+        ge=1,
+        description="How many top matches to request"
+    )
+    threshold: float = Field(
+        0.3,
+        ge=0.0,
+        le=1.0,
+        description="Minimum score to accept a match"
+    )
 
-
-class PDFRetrieverConfig(BaseModel):
-    """
-    Configuration for a PDF-based retriever agent.
-    """
-    name: str
-    type: Literal["pdf"]
-    documents: List[str]  # List of filepaths or URIs to PDF documents
+    class Config:
+        extra = Extra.forbid

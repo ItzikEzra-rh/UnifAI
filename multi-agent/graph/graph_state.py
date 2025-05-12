@@ -2,7 +2,6 @@ from typing import Any, Dict, Iterator, List, Tuple
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field, ConfigDict
 
-
 def append_dict_to_list(existing: List[Dict[str, Any]], new_item) -> List[Dict[str, Any]]:
     """
     Merge strategy for `nodes_output`:
@@ -30,43 +29,46 @@ def append_dict_to_list(existing: List[Dict[str, Any]], new_item) -> List[Dict[s
 
 class GraphState(BaseModel):
     """
-    Pydantic‐backed execution state for LangGraph.
+    Pydantic-backed execution state for LangGraph.
 
-    • Declares your main channels with merge‐strategies via Annotated
+    • Declares your main channels with merge-strategies via Annotated
     • Allows arbitrary extra keys at runtime (extra="allow")
     • Behaves like a dict: __getitem__, __setitem__, keys(), items(), etc.
     """
     model_config = ConfigDict(
-        extra="allow",  # permit new keys on the fly
-        arbitrary_types_allowed=True  # in case you store non‐JSON types
+        extra="allow",               # permit new keys on the fly
+        arbitrary_types_allowed=True # in case you store non‐JSON types
     )
 
     # —————– Channels (with merge strategies) —————–
-    # last‐writer‐wins for user_prompt:
+    # last-writer-wins for user_prompt:
     user_prompt: Annotated[str, lambda old, new: new] = ""
     # accumulate dicts into a list:
     nodes_output: Annotated[List[Dict[str, Any]], append_dict_to_list] = Field(default_factory=list)
-    # last‐writer‐wins for output:
+    # last-writer-wins for output:
     output: Annotated[str, lambda old, new: new] = ""
 
-    # —————– Helpers to access Pydantic “extras” —————–
+    # —————– Helpers to access & persist Pydantic “extras” —————–
     @property
     def _extra(self) -> Dict[str, Any]:
-        return getattr(self, "__pydantic_extra__", {}) or {}
+        # ensure one persistent dict on the instance
+        if not hasattr(self, "__pydantic_extra__"):
+            object.__setattr__(self, "__pydantic_extra__", {})
+        return getattr(self, "__pydantic_extra__")
 
-    # —————– Dict‐like API —————–
+    # —————– Dict-like API —————–
     def __getitem__(self, key: str) -> Any:
+        # 1) declared field?
         if key in self.__class__.model_fields:
             return getattr(self, key)
-        if key in self._extra:
-            return self._extra[key]
-        raise KeyError(f"{key!r} not found in state.")
+        # 2) any extra?
+        return self._extra.get(key, None)
 
     def __setitem__(self, key: str, value: Any) -> None:
         if key in self.__class__.model_fields:
             setattr(self, key, value)
         else:
-            # store in extras
+            # write into the same dict that __getitem__ reads from
             self._extra[key] = value
 
     def __delitem__(self, key: str) -> None:
@@ -98,11 +100,10 @@ class GraphState(BaseModel):
 
     def dict(self, *args, **kwargs) -> Dict[str, Any]:
         """
-        Override Pydantic’s `model_dump()` to include both
+        Override Pydantic’s model_dump() to include both
         declared fields and dynamic extras.
         """
         base = super().model_dump(*args, **kwargs)
-        # extras already held in __pydantic_extra__
         return {**base, **self._extra}
 
     def __repr__(self) -> str:

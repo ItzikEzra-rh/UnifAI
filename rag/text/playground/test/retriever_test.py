@@ -1,5 +1,5 @@
 from rag.text.rag_processor import RAGProcessor
-from retriever.rag_retriever import RAGRetriever
+from retrievers.rag_retriever import RAGRetriever
 from db.vector_db import DBConfig, VectorDB
 from chunking.text_chunker import TextChunker
 from embeddings.embeddings_generator import EmbeddingsGenerator

@@ -10,15 +10,17 @@ class CustomAgentNode(BaseNode):
     and support both streaming and synchronous execution.
     """
 
-    def _prepare_messages(self, state: Dict[str, Any]) -> List[Dict[str, str]]:
+    def _prepare_messages(self, state: GraphState) -> List[Dict[str, str]]:
         """Constructs system + user messages. Retrieves context if needed."""
         if self.retriever:
-            state["context"] = self.retriever.retrieve(state)
+            # Retrieve context based on the user prompt and store it in the state
+            state["context"] = self.retriever.retrieve(state.get("user_prompt", ""))
 
         messages = []
         if self.system_message:
             messages.append({"role": "system", "content": self.system_message})
-        messages.append({"role": "user", "content": state.get("user_prompt", "")})
+        msg = f"""context: {state['context']}"\n {state.get("user_prompt", "")}"""
+        messages.append({"role": "user", "content": msg})
         return messages
 
     def run(self, state: GraphState) -> GraphState:
