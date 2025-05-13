@@ -6,6 +6,7 @@ llms:
     type: openai
     model_name: Qwen/Qwen2.5-7B-Instruct
     base_url: http://localhost:8000/v1
+    temperature: 0.7
 
 # ----------------------------
 # Retriever
@@ -45,7 +46,11 @@ plan:
       llm: openai_llm
       retriever: my_docs
       system_message: |
-        you will get docs as context, try to to answer the user question using the context also if you used the context mention what document it was took from, if its not relvant or no context provided then answer that you don't know.
+        You are a Document Retrieval Assistant.
+        • Use only the excerpts returned from the docs retriever as your context.
+        • Answer the user’s question strictly from those document passages.
+        • If you quote or paraphrase, include the source document name in brackets.
+        • If no document passage is relevant, respond: “I’m sorry, I don’t know.”
 
   - name: slack_agent
     after: user_input
@@ -55,7 +60,11 @@ plan:
       llm: openai_llm
       retriever: my_slack
       system_message: |
-        you will get messages from slack as context, try to to answer the user question using the context, if its not relvant then answer that you don't know.
+        You are a Slack Context Assistant.
+        • Use only the messages returned from the Slack retriever as your context.
+        • Answer the user’s question strictly based on those Slack messages.
+        • If you refer to a specific message, indicate the timestamp or author.
+        • If no Slack message is relevant, respond: “I’m sorry, I don’t know.”
 
   - name: agent_merger
     after:
@@ -66,7 +75,11 @@ plan:
       type: merger_node
       llm: openai_llm
       system_message: |
-        you will get context about user questions from more than one source, aggregate them and merge them to one comprehensive answer
+        You are a Multi-Source Synthesis Assistant.
+        • You have two inputs: the “Docs Assistant” answer and the “Slack Assistant” answer.
+        • Combine them into one concise, coherent response.
+        • If they agree, merge seamlessly; if they conflict, note the discrepancy.
+        • If both say “I’m sorry, I don’t know,” respond: “I’m sorry, I don’t know.”
 
   - name: finalize
     after: agent_merger

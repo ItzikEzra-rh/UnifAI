@@ -6,69 +6,58 @@ from session.user_session_manager import UserSessionManager
 from session.session_executor import SessionExecutor
 from core.context import get_current_context
 
-import sys
-import textwrap
-from typing import Iterator, Any, Dict
+from typing import Iterator, Any, Dict, List
+from rich.live import Live
+from rich.panel import Panel
+from rich.layout import Layout
+from rich.console import Console
+
+console = Console()
 
 
-def clear_screen():
-    sys.stdout.write("\033[2J\033[H")
-    sys.stdout.flush()
+def make_layout(buffers: Dict[str, str], logs: List[str]) -> Layout:
+    layout = Layout()
 
+    # Top pane for logs
+    layout.split_column(
+        Layout(name="logs", size=len(logs) + 2),
+        Layout(name="agents", ratio=1),
+    )
+    layout["logs"].update(Panel("\n".join(logs), title="📋 Logs"))
 
-def render(buffers: Dict[str, str], width: int = 60):
-    """
-    Draw one wrapped box per node in the order first seen.
-    Each box grows downward as new tokens arrive, with wrapping.
-    """
-    clear_screen()
+    # Bottom pane: one panel per agent, in order seen
+    agent_panels = []
     for node, text in buffers.items():
-        title = f"[{node}]"
-        # top border
-        print("┌" + "─" * width + "┐")
-        # title line
-        print("│ " + title.ljust(width - 1) + "│")
-        # separator
-        print("├" + "─" * width + "┤")
-        # wrap the buffer into lines no longer than `width - 1`
-        wrapped = textwrap.wrap(text, width=width - 1) or [""]
-        for line in wrapped:
-            print("│ " + line.ljust(width - 1) + "│")
-        # bottom border + blank line
-        print("└" + "─" * width + "┘\n")
+        agent_panels.append(Panel(text or "[waiting…]", title=node, expand=True))
+    # split row into as many columns as there are agents
+    layout["agents"].split_row(*agent_panels)
+    return layout
 
 
-def stream_boxes(stream: Iterator[Any], width: int = 60):
-    """
-    Consume an LLM‐style custom stream, buffer each node’s tokens,
-    and re-render wrapped boxes on every token arrival.
-    """
+def stream_with_rich(
+        stream: Iterator[Any],
+        initial_logs: List[str] = None,
+):
+    logs = initial_logs[:] if initial_logs else []
     buffers: Dict[str, str] = {}
 
-    for raw in stream:
-        # 1) filter down to your custom payloads
-        if raw[0] != "custom":
-            continue
+    with Live(make_layout(buffers, logs), console=console, refresh_per_second=10) as live:
+        for raw in stream:
+            # your filtering logic
+            if raw[0] != "custom":
+                continue
+            chunk = raw[1]
+            if chunk.get("type") != "llm_token":
+                continue
 
-        chunk = raw[1]
-        # 2) only care about LLM tokens
-        if chunk.get("type") != "llm_token":
-            continue
+            node = chunk.get("node", "unknown")
+            token = chunk.get("chunk", "")
 
-        node = chunk.get("node", "unknown")
-        token = chunk.get("chunk", "")
+            buffers.setdefault(node, "")
+            buffers[node] += token
 
-        # 3) initialize buffer if first time
-        buffers.setdefault(node, "")
-
-        # 4) append incoming token
-        buffers[node] += token
-
-        # 5) redraw all boxes
-        render(buffers, width=width)
-
-    # final newline so the cursor isn’t stuck
-    print()
+            # update the layout in-place
+            live.update(make_layout(buffers, logs))
 
 
 def setup_components():
@@ -109,10 +98,10 @@ def main_new_session():
 
     stream = executor.stream(
         session_or_id=session,
-        inputs={"user_prompt": "what is the tm command?"},
+        inputs={"user_prompt": "what is the tm command and tell me from where do you get your info about it?"},
         stream_mode=["custom"]
     )
-    stream_boxes(stream)
+    stream_with_rich(stream)
     # for chunk in stream:
     #     if "custom" == chunk[0]:
     #         chunk = chunk[1]
