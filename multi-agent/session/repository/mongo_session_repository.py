@@ -44,6 +44,7 @@ class MongoSessionRepository(SessionRepository):
 
     def save(self, session: WorkflowSession) -> None:
         ctx = session.run_context
+
         doc = {
             "user_id": ctx.user_id,
             "run_id": ctx.run_id,
@@ -52,6 +53,7 @@ class MongoSessionRepository(SessionRepository):
             "blueprint_spec": session.blueprint.model_dump(mode="json"),
             "graph_state": dict(session.graph_state),
         }
+
         self._col.replace_one(
             {"user_id": ctx.user_id, "run_id": ctx.run_id},
             doc,

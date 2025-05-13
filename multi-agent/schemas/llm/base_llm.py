@@ -1,5 +1,3 @@
-# schemas/llm_config.py
-
 from pydantic import BaseModel, Field, HttpUrl, Extra
 from typing import Literal, Optional, Dict, Any, Union, List, Annotated
 
@@ -15,7 +13,7 @@ class BaseLLMConfig(BaseModel):
     )
 
     class Config:
-        extra = Extra.forbid  # forbid any fields not declared here
+        extra = Extra.forbid
 
 
 class OpenAIConfig(BaseLLMConfig):

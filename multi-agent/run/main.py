@@ -30,8 +30,7 @@ def main_new_session():
     manager, executor = setup_components()
 
     blueprint_loader = YAMLBlueprintLoader()
-    spec = blueprint_loader.load("run/test_1_agents_slack_retriever.yml")
-
+    spec = blueprint_loader.load("run/test_1_agents_docs_retriever.yml")
     session = manager.create_session(
         user_id="alice",
         blueprint_spec=spec,
@@ -43,9 +42,10 @@ def main_new_session():
 
     # manager, executor = setup_components()
     # — run it to completion —
+
     stream = executor.stream(
         session_or_id=session,
-        inputs={"user_prompt": "what can you tell me about the jira summarizer"},
+        inputs={"user_prompt": "what is the tm command?"},
         stream_mode=["custom"]
     )
 
@@ -53,7 +53,7 @@ def main_new_session():
         if "custom" == chunk[0]:
             chunk = chunk[1]
             if chunk["type"] == "llm_token" and \
-                    (chunk["node"] == "ask_llm_custom_agent_2" or chunk["node"] == "slack_agent_node"):
+                    (chunk["node"] == "ask_llm_custom_agent_2" or chunk["node"] == "docs_agent_node"):
                 print(chunk["chunk"], end="", flush=True)
 
 
