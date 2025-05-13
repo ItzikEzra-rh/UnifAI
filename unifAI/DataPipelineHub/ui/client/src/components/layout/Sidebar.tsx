@@ -3,7 +3,8 @@ import { Link, useLocation } from "wouter";
 import { useProject } from "@/contexts/ProjectContext";
 import { 
   FaTachometerAlt, FaCogs, FaFileAlt, 
-  FaChartLine, FaUserShield, FaCog, FaSignOutAlt 
+  FaChartLine, FaUserShield, FaCog, FaSignOutAlt,
+  FaRobot
 } from "react-icons/fa";
 import { FaJira, FaSlack, FaBars } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -94,6 +95,13 @@ export default function Sidebar() {
             to="/documents"
             isActive={location === '/documents'}
             status={null}
+          />
+          <NavItem 
+            icon={<FaRobot className="sidebar-icon" />} 
+            label="Agentic AI" 
+            to="/agentic-ai"
+            isActive={location === '/agentic-ai'}
+            status="New"
           />
         </ul>
 

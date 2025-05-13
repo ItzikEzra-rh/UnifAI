@@ -7,6 +7,7 @@ from providers.slack import (
     get_available_slack_channels,
     embed_slack_channels_flow,
     count_channel_chunks,
+    get_best_match_results
 )
 
 slack_bp = Blueprint("slack", __name__)
@@ -64,4 +65,18 @@ def slack_channel_chunks(channel_name):
         return jsonify({"channel_name": channel_name, "chunk_count": count}), 200
     except Exception as e:
         logger.error(f"Counting chunks failed: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
+    
+@slack_bp.route("/query.match", methods=["GET"])
+@from_query({
+    "query": fields.Str(required=True),
+    "top_k_results": fields.Int(required=False)
+})
+def best_match_results(query, top_k_results):
+    try:
+        search_results = get_best_match_results(query, top_k_results)
+        return jsonify({"search_results": search_results}), 200
+    except Exception as e:
+        logger.error(f"Failed to find best match for user query: {str(e)}")
         return jsonify({"error": str(e)}), 500

@@ -105,3 +105,32 @@ def embed_docs_flow(doc_list):
             })
 
     return response
+
+def get_best_match_results(query: str, top_k_results: int = 5):
+    # Create embedding generator
+    embedding_config = {
+        "type": "sentence_transformer",
+        "model_name": "all-MiniLM-L6-v2",
+        "batch_size": 32
+    }
+    embedding_generator = EmbeddingGeneratorFactory.create(embedding_config)
+    
+    # Create vector storage
+    storage_config = {
+        "type": "qdrant",
+        "collection_name": "pdf_doc_data",
+        "embedding_dim": embedding_generator.embedding_dim,
+        "url": "http://localhost",
+        "port": 6333
+    }
+    vector_storage = VectorStorageFactory.create(storage_config)
+    vector_storage.initialize()
+    
+    query_embedding = embedding_generator.generate_query_embedding(query)
+    
+    search_results = vector_storage.search(
+        query_embedding=query_embedding,
+        top_k=top_k_results,
+    )
+
+    return search_results

@@ -3,7 +3,7 @@ from webargs import fields
 from shared.logger import logger
 from global_utils.helpers.apiargs import from_query, from_body
 from global_utils.celery_app.helpers import send_task
-from providers.docs import get_available_doc_list
+from providers.docs import get_available_doc_list, get_best_match_results
 
 docs_bp = Blueprint("docs", __name__)
 
@@ -31,4 +31,17 @@ def embed_docs(docs):
         return jsonify({"status": "task submitted"}), 202
     except Exception as e:
         logger.error(f"Failed to submit docs embedding task: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
+@docs_bp.route("/query.match", methods=["GET"])
+@from_query({
+    "query": fields.Str(required=True),
+    "top_k_results": fields.Int(required=False)
+})
+def best_match_results(query, top_k_results):
+    try:
+        search_results = get_best_match_results(query, top_k_results)
+        return jsonify({"search_results": search_results}), 200
+    except Exception as e:
+        logger.error(f"Failed to find best match for user query: {str(e)}")
         return jsonify({"error": str(e)}), 500
