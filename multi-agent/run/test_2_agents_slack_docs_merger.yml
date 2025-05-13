@@ -1,0 +1,74 @@
+# ----------------------------
+# LLM Definitions
+# ----------------------------
+llms:
+  - name: openai_llm
+    type: openai
+    model_name: Qwen/Qwen2.5-7B-Instruct
+    base_url: http://localhost:8000/v1
+
+# ----------------------------
+# Retriever
+# ----------------------------
+retrievers:
+  - name: my_docs
+    type: docs
+
+  - name: my_slack
+    type: slack
+
+
+# ----------------------------
+# Tool Stubs
+# ----------------------------
+tools: [ ]
+
+# ----------------------------
+# Conditions
+# ----------------------------
+conditions: [ ]
+
+
+# ----------------------------
+# Plan Steps
+# ----------------------------
+plan:
+  - name: user_input
+    node:
+      type: user_question_node
+
+  - name: docs_agent
+    after: user_input
+    node:
+      name: docs_agent_node
+      type: custom_agent_node
+      llm: openai_llm
+      retriever: my_docs
+      system_message: |
+        you will get docs as context, try to to answer the user question using the context also if you used the context mention what document it was took from, if its not relvant or no context provided then answer that you don't know.
+
+  - name: slack_agent
+    after: user_input
+    node:
+      name: slack_agent_node
+      type: custom_agent_node
+      llm: openai_llm
+      retriever: my_slack
+      system_message: |
+        you will get messages from slack as context, try to to answer the user question using the context, if its not relvant then answer that you don't know.
+
+  - name: agent_merger
+    after:
+      - docs_agent
+      - slack_agent
+    node:
+      name: agent_merger_node
+      type: merger_node
+      llm: openai_llm
+      system_message: |
+        you will get context about user questions from more than one source, aggregate them and merge them to one comprehensive answer
+
+  - name: finalize
+    after: agent_merger
+    node:
+      type: final_answer_node

@@ -80,10 +80,9 @@ class GraphState(BaseModel):
             raise KeyError(f"{key!r} not found in state.")
 
     def get(self, key: str, default: Any = None) -> Any:
-        try:
+        if key in self.__class__.model_fields or key in self._extra:
             return self[key]
-        except KeyError:
-            return default
+        return default
 
     def update(self, data: Dict[str, Any]) -> None:
         for k, v in data.items():
