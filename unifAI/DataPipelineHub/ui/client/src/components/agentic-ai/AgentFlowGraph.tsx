@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -14,7 +14,9 @@ import ReactFlow, {
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { motion } from 'framer-motion';
+import { Plus, Activity, Database, FileText, Zap, Filter, GitBranch, Share2 } from 'lucide-react';
 
 // Custom node components
 const AgentNode = ({ data, selected }: any) => {
@@ -248,29 +250,141 @@ const initialEdges: Edge[] = [
   },
 ];
 
+// Sample graph flow variations
+const graphFlows = [
+  {
+    id: 'default',
+    name: 'Default Pipeline',
+    description: 'Standard processing pipeline',
+    icon: <Activity className="h-4 w-4 mr-2" />,
+    flow: {
+      nodes: initialNodes,
+      edges: initialEdges
+    }
+  },
+  {
+    id: 'data-extraction',
+    name: 'Data Extraction',
+    description: 'Extract and process structured data',
+    icon: <Database className="h-4 w-4 mr-2" />,
+    flow: {
+      nodes: initialNodes, // Using same nodes/edges for demo
+      edges: initialEdges
+    }
+  },
+  {
+    id: 'document-analysis',
+    name: 'Document Analysis',
+    description: 'Process PDF and text documents',
+    icon: <FileText className="h-4 w-4 mr-2" />,
+    flow: {
+      nodes: initialNodes,
+      edges: initialEdges
+    }
+  },
+  {
+    id: 'rapid-response',
+    name: 'Rapid Response',
+    description: 'Optimized for quick answers',
+    icon: <Zap className="h-4 w-4 mr-2" />,
+    flow: {
+      nodes: initialNodes,
+      edges: initialEdges
+    }
+  },
+  {
+    id: 'data-filtering',
+    name: 'Data Filtering',
+    description: 'Advanced filtering pipeline',
+    icon: <Filter className="h-4 w-4 mr-2" />,
+    flow: {
+      nodes: initialNodes,
+      edges: initialEdges
+    }
+  },
+  {
+    id: 'branching-logic',
+    name: 'Branching Logic',
+    description: 'Complex decision tree',
+    icon: <GitBranch className="h-4 w-4 mr-2" />,
+    flow: {
+      nodes: initialNodes,
+      edges: initialEdges
+    }
+  }
+];
+
 export default function AgentFlowGraph() {
+  const [selectedFlow, setSelectedFlow] = useState(graphFlows[0]);
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
+  const handleFlowSelect = (flow: any) => {
+    setSelectedFlow(flow);
+    setNodes(flow.flow.nodes);
+    setEdges(flow.flow.edges);
+  };
+
   return (
     <Card className="bg-background-card shadow-card border-gray-800">
-      <CardHeader className="py-4 px-6">
+      <CardHeader className="py-4 px-6 flex flex-row justify-between items-center">
         <CardTitle className="text-lg font-heading">Agent Flow Visualization</CardTitle>
+        <Button 
+          className="bg-[#8A2BE2] hover:bg-opacity-80 flex items-center gap-2"
+          size="sm"
+          onClick={() => console.log('Build Graph clicked')}
+        >
+          <Plus className="h-4 w-4" />
+          Build Graph
+        </Button>
       </CardHeader>
       <CardContent className="p-0" style={{ height: 500 }}>
-        <ReactFlow
-          nodes={nodes}
-          edges={edges}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          nodeTypes={nodeTypes}
-          fitView
-          attributionPosition="bottom-right"
-        >
-          <Controls />
-          <MiniMap />
-          <Background color="#aaa" gap={16} />
-        </ReactFlow>
+        <div className="flex h-full">
+          {/* Sidebar for graph selection */}
+          <div className="w-1/5 border-r border-gray-800 bg-background-dark overflow-y-auto">
+            <div className="py-3 px-4 border-b border-gray-800 bg-background-surface">
+              <h3 className="text-sm font-medium">Available Flows</h3>
+            </div>
+            <div className="py-2">
+              {graphFlows.map((flow) => (
+                <motion.div
+                  key={flow.id}
+                  className={`px-4 py-2 border-l-2 cursor-pointer ${
+                    selectedFlow.id === flow.id
+                      ? 'border-[#8A2BE2] bg-[#8A2BE2] bg-opacity-10'
+                      : 'border-transparent hover:bg-background-surface'
+                  }`}
+                  onClick={() => handleFlowSelect(flow)}
+                  whileHover={{ x: 2 }}
+                  transition={{ duration: 0.1 }}
+                >
+                  <div className="flex items-center">
+                    {flow.icon}
+                    <span className="text-sm font-medium">{flow.name}</span>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-1">{flow.description}</p>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Graph visualization */}
+          <div className="flex-grow">
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              nodeTypes={nodeTypes}
+              fitView
+              attributionPosition="bottom-right"
+            >
+              <Controls />
+              <MiniMap />
+              <Background color="#aaa" gap={16} />
+            </ReactFlow>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

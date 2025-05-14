@@ -2,7 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Pause, Play, Trash2, Download, Info, AlertCircle, CheckCircle } from "lucide-react";
+import { 
+  Pause, Play, Trash2, Download, Info, AlertCircle, CheckCircle,
+  Search, User, FileSearch, GitPullRequest, Database, Code, MessageSquare, Brain, Wrench, Layers
+} from "lucide-react";
 
 interface LogEntry {
   id: string;
@@ -11,6 +14,64 @@ interface LogEntry {
   message: string;
   status: 'info' | 'processing' | 'success' | 'error';
 }
+
+// Sample agent nodes for log filtering
+const agentNodes = [
+  {
+    id: 'all',
+    name: 'All Agents',
+    description: 'Combined logs from all agents',
+    icon: <Layers className="h-4 w-4 mr-2" />,
+  },
+  {
+    id: 'user-query',
+    name: 'User Query',
+    description: 'User input processing',
+    icon: <User className="h-4 w-4 mr-2" />,
+  },
+  {
+    id: 'query-parser',
+    name: 'Query Parser',
+    description: 'Intent & entity extraction',
+    icon: <Search className="h-4 w-4 mr-2" />,
+  },
+  {
+    id: 'context-retriever',
+    name: 'Context Retriever',
+    description: 'Knowledge retrieval',
+    icon: <FileSearch className="h-4 w-4 mr-2" />,
+  },
+  {
+    id: 'planning-agent',
+    name: 'Planning Agent',
+    description: 'Task decomposition',
+    icon: <GitPullRequest className="h-4 w-4 mr-2" />,
+  },
+  {
+    id: 'research-agent',
+    name: 'Research Agent',
+    description: 'Information gathering',
+    icon: <Database className="h-4 w-4 mr-2" />,
+  },
+  {
+    id: 'tool-agent',
+    name: 'Tool Agent',
+    description: 'External tool usage',
+    icon: <Wrench className="h-4 w-4 mr-2" />,
+  },
+  {
+    id: 'response-generator',
+    name: 'Response Generator',
+    description: 'Output creation',
+    icon: <MessageSquare className="h-4 w-4 mr-2" />,
+  },
+  {
+    id: 'llm-response',
+    name: 'LLM Response',
+    description: 'Final answer generation',
+    icon: <Brain className="h-4 w-4 mr-2" />,
+  },
+];
 
 export default function ExecutionStream() {
   const [logs, setLogs] = useState<LogEntry[]>([
@@ -23,9 +84,15 @@ export default function ExecutionStream() {
     }
   ]);
   
+  const [selectedNode, setSelectedNode] = useState(agentNodes[0]);
   const [autoscroll, setAutoscroll] = useState(true);
   const [isRunning, setIsRunning] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
+  
+  // Filter logs based on selected node
+  const filteredLogs = selectedNode.id === 'all' 
+    ? logs 
+    : logs.filter(log => log.agent === selectedNode.name);
   
   // Demo logs for simulation
   const demoLogs: LogEntry[] = [
@@ -260,58 +327,96 @@ export default function ExecutionStream() {
         </div>
       </CardHeader>
       <CardContent className="flex-grow overflow-hidden p-0 flex flex-col">
-        <div 
-          className="flex-grow overflow-y-auto p-4 font-mono text-sm bg-background-dark"
-          style={{ maxHeight: 'calc(100% - 2rem)' }}
-        >
-          <AnimatePresence>
-            {logs.map((log) => (
-              <motion.div
-                key={log.id}
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.2 }}
-                className="mb-2 pb-2 border-b border-gray-800"
-              >
-                <div className="flex items-start">
-                  <div className="mt-1 mr-2">
-                    <StatusIcon status={log.status} />
+        <div className="flex h-full">
+          {/* Agent nodes sidebar */}
+          <div className="w-1/5 border-r border-gray-800 bg-background-dark overflow-y-auto">
+            <div className="py-3 px-4 border-b border-gray-800 bg-background-surface">
+              <h3 className="text-sm font-medium">Agent Nodes</h3>
+            </div>
+            <div className="py-2">
+              {agentNodes.map((node) => (
+                <motion.div
+                  key={node.id}
+                  className={`px-4 py-2 border-l-2 cursor-pointer ${
+                    selectedNode.id === node.id
+                      ? 'border-[#00B0FF] bg-[#00B0FF] bg-opacity-10'
+                      : 'border-transparent hover:bg-background-surface'
+                  }`}
+                  onClick={() => setSelectedNode(node)}
+                  whileHover={{ x: 2 }}
+                  transition={{ duration: 0.1 }}
+                >
+                  <div className="flex items-center">
+                    {node.icon}
+                    <span className="text-sm font-medium">{node.name}</span>
                   </div>
-                  <div>
-                    <div className="flex items-center text-xs mb-1">
-                      <span className="text-gray-400">{formatTime(log.timestamp)}</span>
-                      <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
-                        log.status === 'info' ? 'bg-[#00B0FF] bg-opacity-20 text-[#00B0FF]' :
-                        log.status === 'processing' ? 'bg-[#FFB300] bg-opacity-20 text-[#FFB300]' :
-                        log.status === 'success' ? 'bg-[#00E676] bg-opacity-20 text-[#00E676]' :
-                        'bg-[#FF1744] bg-opacity-20 text-[#FF1744]'
-                      }`}>
-                        {log.agent}
-                      </span>
+                  {node.description && (
+                    <p className="text-xs text-gray-400 mt-1">{node.description}</p>
+                  )}
+                </motion.div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Log stream */}
+          <div className="flex-grow flex flex-col">
+            <div 
+              className="flex-grow overflow-y-auto p-4 font-mono text-sm bg-background-dark"
+              style={{ maxHeight: 'calc(100% - 2rem)' }}
+            >
+              <AnimatePresence>
+                {filteredLogs.map((log) => (
+                  <motion.div
+                    key={log.id}
+                    initial={{ opacity: 0, y: 5 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="mb-2 pb-2 border-b border-gray-800"
+                  >
+                    <div className="flex items-start">
+                      <div className="mt-1 mr-2">
+                        <StatusIcon status={log.status} />
+                      </div>
+                      <div>
+                        <div className="flex items-center text-xs mb-1">
+                          <span className="text-gray-400">{formatTime(log.timestamp)}</span>
+                          <span className={`ml-2 px-1.5 py-0.5 rounded text-xs ${
+                            log.status === 'info' ? 'bg-[#00B0FF] bg-opacity-20 text-[#00B0FF]' :
+                            log.status === 'processing' ? 'bg-[#FFB300] bg-opacity-20 text-[#FFB300]' :
+                            log.status === 'success' ? 'bg-[#00E676] bg-opacity-20 text-[#00E676]' :
+                            'bg-[#FF1744] bg-opacity-20 text-[#FF1744]'
+                          }`}>
+                            {log.agent}
+                          </span>
+                        </div>
+                        <div className={`${
+                          log.status === 'error' ? 'text-[#FF1744]' : 'text-gray-300'
+                        }`}>
+                          {log.message}
+                        </div>
+                      </div>
                     </div>
-                    <div className={`${
-                      log.status === 'error' ? 'text-[#FF1744]' : 'text-gray-300'
-                    }`}>
-                      {log.message}
-                    </div>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </AnimatePresence>
-          <div ref={logsEndRef} />
-        </div>
-        <div className="px-4 py-2 border-t border-gray-800 flex justify-between items-center text-xs">
-          <span className="text-gray-400">{logs.length} log entries</span>
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="autoscroll"
-              checked={autoscroll}
-              onChange={() => setAutoscroll(!autoscroll)}
-              className="mr-2"
-            />
-            <label htmlFor="autoscroll" className="text-gray-400">Auto-scroll</label>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              <div ref={logsEndRef} />
+            </div>
+            <div className="px-4 py-2 border-t border-gray-800 flex justify-between items-center text-xs">
+              <span className="text-gray-400">
+                {filteredLogs.length} log entries
+                {selectedNode.id !== 'all' && ` for ${selectedNode.name}`}
+              </span>
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="autoscroll"
+                  checked={autoscroll}
+                  onChange={() => setAutoscroll(!autoscroll)}
+                  className="mr-2"
+                />
+                <label htmlFor="autoscroll" className="text-gray-400">Auto-scroll</label>
+              </div>
+            </div>
           </div>
         </div>
       </CardContent>
