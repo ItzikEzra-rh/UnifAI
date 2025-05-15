@@ -71,7 +71,7 @@ class MongoSessionRepository(SessionRepository):
         # 2) Re-create fresh session via factory
         session = self._factory.create(
             user_id=ctx.user_id,
-            blueprint_spec=BlueprintSpec.parse_obj(doc["blueprint_spec"]),
+            blueprint_spec=BlueprintSpec.model_validate(doc["blueprint_spec"]),
             metadata=doc.get("metadata", {}),
         )
 

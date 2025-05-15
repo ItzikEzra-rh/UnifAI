@@ -25,3 +25,4 @@ class BlueprintSpec(BaseModel):
     conditions: List[ConditionSpec] = Field(default_factory=list)
     tools: List[ToolDef] = Field(default_factory=list)
     plan: List[StepDef]
+    description: Optional[str] = "Blueprint description"

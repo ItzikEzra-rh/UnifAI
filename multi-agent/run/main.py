@@ -4,7 +4,8 @@ from blueprints.loader.yaml_blueprint_loader import YAMLBlueprintLoader
 from session.workflow_session_factory import WorkflowSessionFactory
 from session.user_session_manager import UserSessionManager
 from session.session_executor import SessionExecutor
-from core.context import get_current_context
+from blueprints.service import BlueprintService
+from blueprints.repository.mongo_blueprint_repository import MongoBlueprintRepository
 
 from typing import Iterator, Any, Dict, List
 from rich.live import Live
@@ -84,6 +85,7 @@ def main_new_session():
 
     blueprint_loader = YAMLBlueprintLoader()
     spec = blueprint_loader.load("run/test_2_agents_slack_docs_merger.yml")
+
     session = manager.create_session(
         user_id="alice",
         blueprint_spec=spec,
@@ -98,14 +100,17 @@ def main_new_session():
 
     stream = executor.stream(
         session_or_id=session,
-        inputs={"user_prompt": "what is the tm command and tell me from where do you get your info about it?"},
+        # inputs={"user_prompt": "what is the tm command and tell me from where do you get your info about it?"},
+        inputs={"user_prompt": "how to install AIM on CNA?"},
         stream_mode=["custom"]
     )
     stream_with_rich(stream)
     # for chunk in stream:
     #     if "custom" == chunk[0]:
     #         chunk = chunk[1]
-    #         if chunk["type"] == "llm_token" and \
+    #         if chunk["type"] =
+    #
+    #         = "llm_token" and \
     #                 (chunk["node"] == "slack_agent_node" or chunk["node"] == "agent_merger_node"):
     #             print(chunk["chunk"], end="", flush=True)
 
@@ -116,19 +121,22 @@ def main_resume_session(run_id: str):
     # — resume an existing session —
     stream = executor.stream(
         session_or_id=run_id,
-        inputs={"user_prompt": "eco the name"},
-        stream_mode=["custom", "updates"]
+        inputs={"user_prompt": "what is the install command in AIM?"},
+        stream_mode=["custom"]
     )
-    for chunk in stream:
-        print(chunk)
-        if "custom" == chunk[0]:
-            chunk = chunk[1]
-            if chunk["type"] == "llm_token" and \
-                    (chunk["node"] == "ask_llm_custom_agent_2" or chunk["node"] == "agent_merger_node"):
-                print(chunk["chunk"], end="", flush=True)
+    stream_with_rich(stream)
 
 
 if __name__ == "__main__":
-    main_new_session()
+    blueprint_loader = YAMLBlueprintLoader()
+    spec = blueprint_loader.load("run/test_2_agents_slack_docs_merger.yml")
+    repo = MongoBlueprintRepository()
+    service = BlueprintService(repo)
+    # bid = service.register(spec)
+    # print(service.get_blueprint_spec("81bdd223-4dba-4bb3-81d1-20fbaf19dd01"))
+    import json
+    # print(service.delete("707f3ac8-3d09-41dd-90c3-d3ce0a6dacb2"))
+    print(json.dumps(service.get_dict("81bdd223-4dba-4bb3-81d1-20fbaf19dd01")))
+    # main_new_session()
     # main_resume_session(get_current_context().run_id)
-    # main_resume_session("8241065f-e3f1-4735-9630-233775a70dcb")
+    # main_resume_session("64fc9af1-2dd8-405d-a491-925639a4100f")
