@@ -6,10 +6,10 @@ from nodes.agents.custom_agent_node import CustomAgentNode
 
 
 @register_element(
-    type_key=CustomAgentNodeConfig.model_fields["type"].default,
-    category="node",
+    type_key=CustomAgentNodeConfig.Meta.type,
+    category=CustomAgentNodeConfig.Meta.category,
     config_schema=CustomAgentNodeConfig,
-    description="CustomAgentNodeConfig"
+    description=CustomAgentNodeConfig.Meta.description,
 )
 class CustomAgentNodeFactory(BaseFactory[CustomAgentNodeConfig, CustomAgentNode]):
     """

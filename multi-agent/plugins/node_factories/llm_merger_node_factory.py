@@ -6,10 +6,10 @@ from nodes.llm_merger import LLMMergerNode
 
 
 @register_element(
-    type_key=MergerLLMNodeConfig.model_fields["type"].default,
-    category="node",
+    type_key=MergerLLMNodeConfig.Meta.type,
+    category=MergerLLMNodeConfig.Meta.category,
     config_schema=MergerLLMNodeConfig,
-    description="MergerLLMNodeConfig is a configuration schema for the Merger LLM node. "
+    description=MergerLLMNodeConfig.Meta.description,
 )
 class CustomAgentNodeFactory(BaseFactory[MergerLLMNodeConfig, LLMMergerNode]):
     """

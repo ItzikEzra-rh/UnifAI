@@ -7,10 +7,10 @@ from llms.openai_llm import OpenAILLM
 
 
 @register_element(
-    category="llm",
-    type_key=OpenAIConfig.model_fields["type"].default,
+    category=OpenAIConfig.Meta.category,
+    type_key=OpenAIConfig.Meta.type,
     config_schema=OpenAIConfig,
-    description="OpenAI LLM"
+    description=OpenAIConfig.Meta.description
 )
 class OpenAIFactory(BaseFactory[OpenAIConfig, OpenAILLM]):
     """

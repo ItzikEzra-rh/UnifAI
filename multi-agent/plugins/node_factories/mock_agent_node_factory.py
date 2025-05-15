@@ -7,10 +7,10 @@ from plugins.exceptions import PluginConfigurationError
 
 
 @register_element(
-    type_key=MockAgentNodeConfig.model_fields["type"].default,
-    category="node",
+    type_key=MockAgentNodeConfig.Meta.type,
+    category=MockAgentNodeConfig.Meta.category,
     config_schema=MockAgentNodeConfig,
-    description="MockAgentNodeConfig"
+    description=MockAgentNodeConfig.Meta.description,
 )
 class MockAgentNodeFactory(BaseFactory[MockAgentNodeConfig, MockAgentNode]):
     """

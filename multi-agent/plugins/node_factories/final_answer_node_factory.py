@@ -7,10 +7,10 @@ from plugins.exceptions import PluginConfigurationError
 
 
 @register_element(
-    type_key=FinalAnswerNodeConfig.model_fields["type"].default,
-    category="node",
+    type_key=FinalAnswerNodeConfig.Meta.type,
+    category=FinalAnswerNodeConfig.Meta.category,
     config_schema=FinalAnswerNodeConfig,
-    description="FinalAnswerNodeConfig"
+    description=FinalAnswerNodeConfig.Meta.description,
 )
 class FinalAnswerNodeFactory(BaseFactory[FinalAnswerNodeConfig, FinalAnswerNode]):
     """

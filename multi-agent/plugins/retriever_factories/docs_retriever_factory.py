@@ -7,10 +7,10 @@ from retrievers.docs_retriever import DocsRetriever
 
 
 @register_element(
-    category="retriever",
-    type_key=DocsRetrieverConfig.model_fields["type"].default,
+    category=DocsRetrieverConfig.Meta.category,
+    type_key=DocsRetrieverConfig.Meta.type,
     config_schema=DocsRetrieverConfig,
-    description="Docs‐based retriever via an external HTTP API"
+    description=DocsRetrieverConfig.Meta.description
 )
 class DocsRetrieverFactory(BaseFactory[DocsRetrieverConfig, DocsRetriever]):
     def accepts(self, cfg: DocsRetrieverConfig) -> bool:

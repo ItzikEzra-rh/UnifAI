@@ -1,11 +1,18 @@
-from pydantic import BaseModel, Field, HttpUrl, Extra
-from typing import Literal, Optional, Dict, Any, Union, List, Annotated
+from typing import ClassVar, Literal, Optional, Dict, Any, Union, Annotated, Protocol
+from pydantic import BaseModel, Field, HttpUrl, Extra, SkipValidation
+
+
+class LLMMeta(Protocol):
+    category: ClassVar[str]
+    display_name: ClassVar[str]
+    description: ClassVar[str]
+    type: ClassVar[str]  # discriminator value for this config
 
 
 class BaseLLMConfig(BaseModel):
     """
     Common fields for any LLM provider.
-    Concrete configs must subclass this and set `type` to a literal.
+    Subclasses must define a matching Literal type and can override Meta.
     """
     name: str = Field(..., description="Unique key for this LLM instance")
     type: Literal["openai", "mock", "llamastack"] = Field(
@@ -14,6 +21,13 @@ class BaseLLMConfig(BaseModel):
 
     class Config:
         extra = Extra.forbid
+        arbitrary_types_allowed = True
+
+    class Meta(LLMMeta):
+        category: ClassVar[SkipValidation[str]] = "llm"
+        display_name: ClassVar[SkipValidation[str]] = "Generic LLM"
+        description: ClassVar[SkipValidation[str]] = "Base class for LLM configurations"
+        type: ClassVar[SkipValidation[str]] = "base"
 
 
 class OpenAIConfig(BaseLLMConfig):
@@ -43,8 +57,13 @@ class OpenAIConfig(BaseLLMConfig):
     )
     extra: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Provider‐specific kwargs passed through as is"
+        description="Provider-specific kwargs passed through as is"
     )
+
+    class Meta(BaseLLMConfig.Meta):
+        display_name: ClassVar[SkipValidation[str]] = "OpenAI"
+        description: ClassVar[SkipValidation[str]] = "Official OpenAI API configuration"
+        type: ClassVar[SkipValidation[str]] = "openai"
 
 
 class MockLLMConfig(BaseLLMConfig):
@@ -61,6 +80,11 @@ class MockLLMConfig(BaseLLMConfig):
         description="If set, always return this string instead of real inference"
     )
 
+    class Meta(BaseLLMConfig.Meta):
+        display_name: ClassVar[SkipValidation[str]] = "Mock LLM"
+        description: ClassVar[SkipValidation[str]] = "Returns a constant or echo—for testing"
+        type: ClassVar[SkipValidation[str]] = "mock"
+
 
 class LlamaStackConfig(BaseLLMConfig):
     """
@@ -68,12 +92,10 @@ class LlamaStackConfig(BaseLLMConfig):
     """
     type: Literal["llamastack"] = "llamastack"
     server_url: HttpUrl = Field(
-        ...,
-        description="URL of the LlamaStack inference server"
+        ..., description="URL of the LlamaStack inference server"
     )
     model_id: str = Field(
-        ...,
-        description="Identifier of the Llama model to use"
+        ..., description="Identifier of the Llama model to use"
     )
     timeout: Optional[int] = Field(
         60,
@@ -81,11 +103,15 @@ class LlamaStackConfig(BaseLLMConfig):
     )
     extra: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Provider‐specific kwargs passed through as is"
+        description="Provider-specific kwargs passed through as is"
     )
 
+    class Meta(BaseLLMConfig.Meta):
+        display_name: ClassVar[SkipValidation[str]] = "LlamaStack"
+        description: ClassVar[SkipValidation[str]] = "LlamaStack inference server configuration"
+        type: ClassVar[SkipValidation[str]] = "llamastack"
 
-# Discriminated union with proper Field(...) annotation
+
 LLMsSpec = Annotated[
     Union[OpenAIConfig, MockLLMConfig, LlamaStackConfig],
     Field(discriminator="type")

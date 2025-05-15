@@ -50,6 +50,7 @@ plan:
         • Use only the excerpts returned from the docs retriever as your context.
         • Answer the user’s question strictly from those document passages.
         • If you quote or paraphrase, include the source document name in brackets.
+        • mention all the documents names you take the info from.
         • If no document passage is relevant, respond: “I’m sorry, I don’t know.”
 
   - name: slack_agent

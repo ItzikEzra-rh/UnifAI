@@ -7,10 +7,10 @@ from retrievers.slack_retriever import SlackRetriever
 
 
 @register_element(
-    category="retriever",
-    type_key=SlackRetrieverConfig.model_fields["type"].default,
+    category=SlackRetrieverConfig.Meta.category,
+    type_key=SlackRetrieverConfig.Meta.type,
     config_schema=SlackRetrieverConfig,
-    description="Slack‐based retriever via an external HTTP API"
+    description=SlackRetrieverConfig.Meta.description
 )
 class SlackRetrieverFactory(BaseFactory[SlackRetrieverConfig, SlackRetriever]):
     def accepts(self, cfg: SlackRetrieverConfig) -> bool:

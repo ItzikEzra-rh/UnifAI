@@ -23,7 +23,7 @@ def make_layout(buffers: Dict[str, str], logs: List[str]) -> Layout:
         Layout(name="logs", size=len(logs) + 2),
         Layout(name="agents", ratio=1),
     )
-    layout["logs"].update(Panel("\n".join(logs), title="📋 Logs"))
+    layout["logs"].update(Panel("\n".join(logs), title="Agents Stream"))
 
     # Bottom pane: one panel per agent, in order seen
     agent_panels = []
