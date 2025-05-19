@@ -79,7 +79,7 @@ class MongoSessionRepository(SessionRepository):
         session.run_context = ctx
 
         # 4) Restore GraphState in one shot
-        session.graph_state = doc["graph_state"]
+        session.graph_state = GraphState(**doc["graph_state"])
 
         return session
 

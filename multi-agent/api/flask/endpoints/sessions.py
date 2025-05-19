@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify, current_app, Response
 from global_utils.helpers.apiargs import from_body, from_query
 from webargs import fields
 import json
-from pydantic import BaseModel
+from pydantic.json import pydantic_encoder
 
 sessions_bp = Blueprint("sessions", __name__)
 
@@ -26,21 +26,31 @@ def create_user_session(blueprint_id, user_id, metadata):
         return jsonify({"error": str(e)}), 500
 
 
-@sessions_bp.route("/user.session.execute", methods=["GET"])
+@sessions_bp.route("/user.session.execute", methods=["POST"])
 @from_body({
     "session_id": fields.Str(data_key="sessionId", required=True),
     "inputs": fields.Dict(data_key="inputs", required=True),
     "stream_mode": fields.List(fields.Str, data_key="streamMode", missing=lambda: ["custom"]),
+    "stream": fields.Bool(data_key="stream", missing=False),
 })
-def stream_user_session(session_id, inputs, stream_mode):
+def execute_user_session(session_id, inputs, stream_mode, stream):
+    """
+    Execute (or stream) an existing session.
+    - If `stream` is False (default), returns the full result as JSON.
+    - If `stream` is True, returns an NDJSON stream of chunks.
+    """
     svc = current_app.container.session_service
 
-    class PydanticEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if isinstance(obj, BaseModel):
-                return obj.dict()
-            return super().default(obj)
+    if not stream:
+        # synchronous run
+        result = svc.execute(
+            session_or_id=session_id,
+            inputs=inputs,
+            stream=False
+        )
+        return jsonify(result), 200
 
+    # streaming run
     def generate():
         for chunk in svc.execute(
                 session_or_id=session_id,
@@ -48,11 +58,13 @@ def stream_user_session(session_id, inputs, stream_mode):
                 stream=True,
                 stream_mode=stream_mode
         ):
-            # each `chunk` is a JSON‐serializable dict
-            yield json.dumps(chunk, cls=PydanticEncoder) + "\n"
+            # each chunk may include Pydantic models; use pydantic_encoder
+            yield json.dumps(chunk, default=pydantic_encoder) + "\n"
 
-    # Use chunked transfer; clients can parse as NDJSON or JSON‐lines
-    return Response(generate(), mimetype="application/json")
+    return Response(
+        generate(),
+        mimetype="application/x-ndjson"
+    )
 
 
 @sessions_bp.route("/session.state.get", methods=["GET"])
@@ -60,9 +72,9 @@ def stream_user_session(session_id, inputs, stream_mode):
     "session_id": fields.Str(data_key="sessionId", required=True),
 })
 def get_session_state(session_id):
-    try:
-        svc = current_app.container.session_service
-        session = svc.get(run_id=session_id)
-        return jsonify(session.get_state()), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    # try:
+    svc = current_app.container.session_service
+    session = svc.get(run_id=session_id)
+    return jsonify(session.get_state().model_dump(mode="json")), 200
+    # except Exception as e:
+    #     return jsonify({"error": str(e)}), 500
