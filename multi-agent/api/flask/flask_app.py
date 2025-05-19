@@ -1,9 +1,3 @@
-import os
-import sys
-
-# Add the parent directory of 'multi-agent' (the root of the project) to the Python path
-# sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
-
 from flask import Flask, jsonify
 from config.app_config import AppConfig
 from core.app_container import AppContainer
