@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -6,33 +6,57 @@ import ReactFlow, {
   Background,
   MiniMap,
   NodeTypes,
-  EdgeTypes,
   useNodesState,
   useEdgesState,
   MarkerType,
   Position,
+  NodeProps,
+  Handle 
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from 'framer-motion';
-import { Plus, Activity, Database, FileText, Zap, Filter, GitBranch, Share2 } from 'lucide-react';
+import { Plus, Activity, Database, FileText, Zap, Filter, GitBranch, MessageSquare, Bot, BookOpen, LucideIcon, Key } from 'lucide-react';
+import { NodeData, GraphFlow, FlowObject } from './graphs/interfaces'
+import { latestExampleGraphFlow } from './graphs/static-data/exampleGraphFlow'
+import axios from '../../http/axiosAgentConfig'
 
 // Custom node components
-const AgentNode = ({ data, selected }: any) => {
+const AgentNode: React.FC<NodeProps<NodeData>> = ({ data, selected }) => {
+  // Match the hex color code inside bg-[#...]
+  const bgmatcher = data.style.match(/bg-\[#([0-9A-Fa-f]{6})\]/);
+  const bgcolor = bgmatcher ? bgmatcher[1] : null;
+
   return (
-    <motion.div 
-      className={`px-4 py-2 rounded-lg shadow-md ${data.style} flex items-center transition-all`}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1, scale: selected ? 1.05 : 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      <div className="mr-2">{data.icon}</div>
-      <div>
-        <div className="font-medium text-sm">{data.label}</div>
-        {data.description && <div className="text-xs text-gray-400">{data.description}</div>}
-      </div>
-    </motion.div>
+    <>
+      {/* Explicit top handle using ReactFlow's Handle component */}
+      <Handle
+        type="target"
+        position={Position.Top}
+        style={{ background: `#${bgcolor}`, width: 10, height: 10 }}
+      />
+      
+      <motion.div 
+        className={`px-4 py-2 rounded-lg shadow-md ${data.style} flex items-center transition-all`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1, scale: selected ? 1.05 : 1 }}
+        transition={{ duration: 0.3 }}
+      >
+        <div className="mr-2">{data.icon}</div>
+        <div>
+          <div className="font-medium text-sm">{data.label}</div>
+          {data.description && <div className={`text-xs ${data.style.includes("text-white") ? "text-gray-400" : "text-white"}`}>{data.description}</div>}
+        </div>
+      </motion.div>
+      
+      {/* Explicit bottom handle using ReactFlow's Handle component */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        style={{ background: `#${bgcolor}`, width: 10, height: 10 }}
+      />
+    </>
   );
 };
 
@@ -40,8 +64,243 @@ const nodeTypes: NodeTypes = {
   agent: AgentNode,
 };
 
-// Initial nodes configuration
-const initialNodes: Node[] = [
+// Function to generate a random icon
+const getRandomIcon = (nodeType: string): React.ReactNode => {
+  // Handle specific node types with consistent icons
+  if (nodeType === 'user_question_node') {
+    return <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">💬</div>;
+  } else if (nodeType === 'final_answer_node') {
+    return <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">🤖</div>;
+  }
+  
+  // For other node types, select from a predefined set of icons
+  const icons: React.ReactNode[] = [
+    <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">🔍</div>,
+    <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">📚</div>,
+    <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">🧠</div>,
+    <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">🔎</div>,
+    <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">🔧</div>,
+    <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">✍️</div>,
+  ];
+  
+  // Generate a deterministic index based on the node type
+  const hash = nodeType.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return icons[hash % icons.length];
+};
+
+// Get node style based on node type
+const getNodeStyle = (nodeType: string): string => {
+  if (nodeType === 'user_question_node') {
+    return 'bg-[#8A2BE2] text-white';
+  } else if (nodeType === 'final_answer_node') {
+    return 'bg-[#FF5722] text-white';
+  } else {
+    return 'bg-[#03DAC6] text-gray-800';
+  }
+};
+
+
+// Function to generate edge color based on source node type
+const getEdgeStyle = (sourceNodeType: string): { stroke: string; color: string } => {
+  if (sourceNodeType === 'user_question_node') {
+    return { stroke: '#8A2BE2', color: '#8A2BE2' };
+  } else if (sourceNodeType === 'final_answer_node') {
+    return { stroke: '#FF5722', color: '#FF5722' };
+  } else {
+    return { stroke: '#03DAC6', color: '#03DAC6' };
+  }
+};
+
+
+// Function to parse the JSON graph flow into ReactFlow nodes and edges
+const parseGraphFlow = (graphFlow: GraphFlow): { nodes: Node<NodeData>[]; edges: Edge[] } => {
+  if (!graphFlow || !graphFlow.plan) {
+    return { nodes: [], edges: [] };
+  }
+
+  // Create a map to store node types for edge styling
+  const nodeTypeMap: Record<string, string> = {};
+  
+  // Create maps to build the layout
+  const nodesByLevel: Record<number, string[]> = {}; // Level -> Node IDs
+  const nodeLevel: Record<string, number> = {}; // Node ID -> Level
+  const nodePredecessors: Record<string, string[]> = {}; // Node ID -> Predecessor IDs
+  const nodeSuccessors: Record<string, string[]> = {}; // Node ID -> Successor IDs
+  
+  // First pass: Identify predecessors and successors
+  graphFlow.plan.forEach(item => {
+    const nodeId = item.name;
+    const nodeType = item.node?.type || 'custom_agent_node';
+    nodeTypeMap[nodeId] = nodeType;
+    
+    if (item.after) {
+      // Handle both string and array 'after' properties
+      const predecessors = Array.isArray(item.after) ? item.after : [item.after];
+      nodePredecessors[nodeId] = predecessors;
+      
+      // Record this node as a successor to each predecessor
+      predecessors.forEach(predecessorId => {
+        if (!nodeSuccessors[predecessorId]) {
+          nodeSuccessors[predecessorId] = [];
+        }
+        nodeSuccessors[predecessorId].push(nodeId);
+      });
+    } else {
+      // No predecessors, this is a root node
+      nodePredecessors[nodeId] = [];
+      nodeLevel[nodeId] = 0;
+      if (!nodesByLevel[0]) {
+        nodesByLevel[0] = [];
+      }
+      nodesByLevel[0].push(nodeId);
+    }
+  });
+  
+  // Second pass: Determine node levels
+  let allNodesAssigned = false;
+  while (!allNodesAssigned) {
+    allNodesAssigned = true;
+    graphFlow.plan.forEach(item => {
+      const nodeId = item.name;
+      
+      // Skip nodes that already have a level assigned
+      if (nodeLevel[nodeId] !== undefined) {
+        return;
+      }
+      
+      const predecessors = nodePredecessors[nodeId] || [];
+      
+      // Check if all predecessors have levels assigned
+      const allPredecessorsHaveLevels = predecessors.every(predId => 
+        nodeLevel[predId] !== undefined
+      );
+      
+      if (allPredecessorsHaveLevels) {
+        // Find the maximum level among predecessors
+        const maxPredLevel = Math.max(...predecessors.map(predId => nodeLevel[predId]));
+        const level = maxPredLevel + 1;
+        
+        // Assign this node to the next level
+        nodeLevel[nodeId] = level;
+        if (!nodesByLevel[level]) {
+          nodesByLevel[level] = [];
+        }
+        nodesByLevel[level].push(nodeId);
+      } else {
+        allNodesAssigned = false;
+      }
+    });
+  }
+  
+  // Create nodes with the calculated positions
+  const nodes: Node<NodeData>[] = graphFlow.plan.map(item => {
+    const nodeId = item.name;
+    const nodeType = item.node?.type || 'custom_agent_node';
+    const nodeLabel = item.node?.meta?.display_name || item.node?._meta.display_name || "General Node";
+    const nodeDescription = item.node?.meta?.description || item.node?._meta.description || null;
+    
+    // Get level information
+    const level = nodeLevel[nodeId];
+    const nodesInSameLevel = nodesByLevel[level] || [];
+    const indexInLevel = nodesInSameLevel.indexOf(nodeId);
+    const totalInLevel = nodesInSameLevel.length;
+    
+    // Calculate position
+    // Horizontal spacing increases with the number of nodes in the level
+    const levelWidth = Math.max(totalInLevel * 300, 400);
+    const xSpacing = levelWidth / totalInLevel;
+    const xOffset = (xSpacing / 2) + (indexInLevel * xSpacing);
+    const yOffset = level * 150;
+    
+    // Determine node style and icon
+    const style = getNodeStyle(nodeType);
+    const icon = getRandomIcon(nodeType);
+    
+    // Always set sourcePosition and targetPosition to ensure edges connect properly
+    const sourcePosition = Position.Bottom;
+    const targetPosition = Position.Top;
+    
+    return {
+      id: nodeId,
+      type: 'agent',
+      data: {
+        label: nodeLabel,
+        description: nodeDescription,
+        style: style,
+        icon: icon
+      },
+      position: { x: xOffset, y: yOffset },
+      sourcePosition,
+      targetPosition
+    };
+  });
+  
+  // Create edges between nodes
+  const edges: Edge[] = [];
+  
+  graphFlow.plan.forEach(item => {
+    if (item.after) {
+      // Handle both string and array 'after' properties
+      const predecessors = Array.isArray(item.after) ? item.after : [item.after];
+      
+      predecessors.forEach(predecessorId => {
+        const sourceNodeType = nodeTypeMap[predecessorId] || 'custom_agent_node';
+        const edgeStyle = getEdgeStyle(sourceNodeType);
+        
+        edges.push({
+          id: `${predecessorId}-to-${item.name}`,
+          source: predecessorId,
+          target: item.name,
+          animated: true,
+          type: 'default', // Simpler edge type for reliability
+          style: { 
+            stroke: edgeStyle.stroke, 
+            strokeWidth: 2
+          },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            color: edgeStyle.color,
+            width: 10,
+            height: 10
+          },
+          zIndex: 1000 // Ensure edges are on top
+        });
+      });
+    }
+  });
+
+  return { nodes, edges };
+};
+
+// Function to convert graph flow JSON to flow object
+const convertGraphFlowToFlowObject = (graphFlow: GraphFlow, index: number): FlowObject => {
+  if (!graphFlow) return null;
+  
+  // Extract metadata
+  const name = graphFlow.display_name || `Flow ${index + 1}`;
+  const description = graphFlow.display_description || 'No description available';
+  
+  // Generate a random icon for the flow
+  const iconOptions: React.FC<{ className?: string }>[] = [Activity, Database, FileText, Zap, Filter, GitBranch, MessageSquare, BookOpen];
+  const IconComponent = iconOptions[index % iconOptions.length];
+  
+  // Parse the graph flow into nodes and edges
+  const { nodes, edges } = parseGraphFlow(graphFlow);
+  
+  return {
+    id: `flow-${index}`,
+    name,
+    description,
+    icon: <IconComponent className="h-4 w-4 mr-2" />,
+    flow: {
+      nodes,
+      edges
+    }
+  };
+};
+
+// Fallback initial nodes and edges for demo
+const initialNodes: Node<NodeData>[] = [
   {
     id: 'user-query',
     type: 'agent',
@@ -56,84 +315,6 @@ const initialNodes: Node[] = [
     targetPosition: Position.Top,
   },
   {
-    id: 'query-parser',
-    type: 'agent',
-    data: { 
-      label: 'Query Parser', 
-      description: 'Analyzes user intent',
-      style: 'bg-[#03DAC6] text-gray-800',
-      icon: <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">🔍</div>
-    },
-    position: { x: 250, y: 80 },
-    sourcePosition: Position.Bottom,
-    targetPosition: Position.Top,
-  },
-  {
-    id: 'context-retriever',
-    type: 'agent',
-    data: { 
-      label: 'Context Retriever', 
-      description: 'Fetches relevant data',
-      style: 'bg-[#03DAC6] text-gray-800',
-      icon: <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">📚</div>
-    },
-    position: { x: 100, y: 160 },
-    sourcePosition: Position.Bottom,
-    targetPosition: Position.Top,
-  },
-  {
-    id: 'planning-agent',
-    type: 'agent',
-    data: { 
-      label: 'Planning Agent', 
-      description: 'Creates execution plan',
-      style: 'bg-[#03DAC6] text-gray-800',
-      icon: <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">🧠</div>
-    },
-    position: { x: 250, y: 160 },
-    sourcePosition: Position.Bottom,
-    targetPosition: Position.Top,
-  },
-  {
-    id: 'research-agent',
-    type: 'agent',
-    data: { 
-      label: 'Research Agent', 
-      description: 'Gathers information',
-      style: 'bg-[#03DAC6] text-gray-800',
-      icon: <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">🔎</div>
-    },
-    position: { x: 400, y: 160 },
-    sourcePosition: Position.Bottom,
-    targetPosition: Position.Top,
-  },
-  {
-    id: 'tool-agent',
-    type: 'agent',
-    data: { 
-      label: 'Tool Agent', 
-      description: 'Uses external tools',
-      style: 'bg-[#03DAC6] text-gray-800',
-      icon: <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">🔧</div>
-    },
-    position: { x: 250, y: 240 },
-    sourcePosition: Position.Bottom,
-    targetPosition: Position.Top,
-  },
-  {
-    id: 'response-generator',
-    type: 'agent',
-    data: { 
-      label: 'Response Generator', 
-      description: 'Creates final answer',
-      style: 'bg-[#03DAC6] text-gray-800',
-      icon: <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">✍️</div>
-    },
-    position: { x: 250, y: 320 },
-    sourcePosition: Position.Bottom,
-    targetPosition: Position.Top,
-  },
-  {
     id: 'llm-response',
     type: 'agent',
     data: { 
@@ -142,17 +323,16 @@ const initialNodes: Node[] = [
       style: 'bg-[#FF5722] text-white',
       icon: <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">🤖</div>
     },
-    position: { x: 250, y: 400 },
+    position: { x: 250, y: 80 },
     targetPosition: Position.Top,
   },
 ];
 
-// Initial edges configuration
 const initialEdges: Edge[] = [
   {
-    id: 'user-to-parser',
+    id: 'user-to-llm',
     source: 'user-query',
-    target: 'query-parser',
+    target: 'llm-response',
     animated: true,
     style: { stroke: '#8A2BE2' },
     markerEnd: {
@@ -160,169 +340,65 @@ const initialEdges: Edge[] = [
       color: '#8A2BE2',
     },
   },
-  {
-    id: 'parser-to-context',
-    source: 'query-parser',
-    target: 'context-retriever',
-    animated: true,
-    style: { stroke: '#03DAC6' },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: '#03DAC6',
-    },
-  },
-  {
-    id: 'parser-to-planning',
-    source: 'query-parser',
-    target: 'planning-agent',
-    animated: true,
-    style: { stroke: '#03DAC6' },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: '#03DAC6',
-    },
-  },
-  {
-    id: 'parser-to-research',
-    source: 'query-parser',
-    target: 'research-agent',
-    animated: true,
-    style: { stroke: '#03DAC6' },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: '#03DAC6',
-    },
-  },
-  {
-    id: 'context-to-tool',
-    source: 'context-retriever',
-    target: 'tool-agent',
-    animated: true,
-    style: { stroke: '#03DAC6' },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: '#03DAC6',
-    },
-  },
-  {
-    id: 'planning-to-tool',
-    source: 'planning-agent',
-    target: 'tool-agent',
-    animated: true,
-    style: { stroke: '#03DAC6' },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: '#03DAC6',
-    },
-  },
-  {
-    id: 'research-to-tool',
-    source: 'research-agent',
-    target: 'tool-agent',
-    animated: true,
-    style: { stroke: '#03DAC6' },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: '#03DAC6',
-    },
-  },
-  {
-    id: 'tool-to-response',
-    source: 'tool-agent',
-    target: 'response-generator',
-    animated: true,
-    style: { stroke: '#03DAC6' },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: '#03DAC6',
-    },
-  },
-  {
-    id: 'response-to-llm',
-    source: 'response-generator',
-    target: 'llm-response',
-    animated: true,
-    style: { stroke: '#FF5722' },
-    markerEnd: {
-      type: MarkerType.ArrowClosed,
-      color: '#FF5722',
-    },
-  },
 ];
 
-// Sample graph flow variations
-const graphFlows = [
-  {
-    id: 'default',
-    name: 'Default Pipeline',
-    description: 'Standard processing pipeline',
-    icon: <Activity className="h-4 w-4 mr-2" />,
-    flow: {
-      nodes: initialNodes,
-      edges: initialEdges
-    }
-  },
-  {
-    id: 'data-extraction',
-    name: 'Data Extraction',
-    description: 'Extract and process structured data',
-    icon: <Database className="h-4 w-4 mr-2" />,
-    flow: {
-      nodes: initialNodes, // Using same nodes/edges for demo
-      edges: initialEdges
-    }
-  },
-  {
-    id: 'document-analysis',
-    name: 'Document Analysis',
-    description: 'Process PDF and text documents',
-    icon: <FileText className="h-4 w-4 mr-2" />,
-    flow: {
-      nodes: initialNodes,
-      edges: initialEdges
-    }
-  },
-  {
-    id: 'rapid-response',
-    name: 'Rapid Response',
-    description: 'Optimized for quick answers',
-    icon: <Zap className="h-4 w-4 mr-2" />,
-    flow: {
-      nodes: initialNodes,
-      edges: initialEdges
-    }
-  },
-  {
-    id: 'data-filtering',
-    name: 'Data Filtering',
-    description: 'Advanced filtering pipeline',
-    icon: <Filter className="h-4 w-4 mr-2" />,
-    flow: {
-      nodes: initialNodes,
-      edges: initialEdges
-    }
-  },
-  {
-    id: 'branching-logic',
-    name: 'Branching Logic',
-    description: 'Complex decision tree',
-    icon: <GitBranch className="h-4 w-4 mr-2" />,
-    flow: {
-      nodes: initialNodes,
-      edges: initialEdges
-    }
-  }
-];
-
-export default function AgentFlowGraph() {
-  const [selectedFlow, setSelectedFlow] = useState(graphFlows[0]);
-  const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+export default function AgentFlowGraph(): React.ReactElement {
+  // State for available graph flows
+  const [graphFlows, setGraphFlows] = useState<FlowObject[]>([]);
+  const [selectedFlow, setSelectedFlow] = useState<FlowObject | null>(null);
+  const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
-  const handleFlowSelect = (flow: any) => {
+  // Effect to load graph flows from API or mock data
+  useEffect(() => {
+    // For now, we'll use the example graph flow
+    // const mockGraphFlows: GraphFlow[] = latestExampleGraphFlow.flatMap((plan) => Object.values(plan))
+
+    const fetchGraphFlows = async () => {
+      try {
+        const response = await axios.get('/api/blueprints/available.blueprints.get');
+        const mockGraphFlows: GraphFlow[] = response.data.flatMap((plan) => Object.values(plan))
+
+        // Convert the mock graph flows to the format expected by the component
+        const processedFlows = mockGraphFlows.map(convertGraphFlowToFlowObject);
+        setGraphFlows(processedFlows);
+        
+        // Select the first flow by default
+        if (processedFlows.length > 0) {
+          setSelectedFlow(processedFlows[0]);
+          setNodes(processedFlows[0].flow.nodes);
+          setEdges(processedFlows[0].flow.edges);
+        }
+      } catch (error) {
+        console.error('Error fetching avaliable plans:', error);
+      }
+    };
+    
+    fetchGraphFlows();
+  }, []);
+
+  const handleFlowSelect = (flow: FlowObject): void => {
     setSelectedFlow(flow);
     setNodes(flow.flow.nodes);
     setEdges(flow.flow.edges);
+  };
+
+  // Function to handle loading a new graph flow
+  const handleLoadGraphFlow = (graphFlowJson: string): void => {
+    try {
+      const parsedFlow = JSON.parse(graphFlowJson) as GraphFlow;
+      const newFlow = convertGraphFlowToFlowObject(parsedFlow, graphFlows.length);
+      
+      // Add the new flow to the list
+      setGraphFlows(prev => [...prev, newFlow]);
+      
+      // Select the new flow
+      setSelectedFlow(newFlow);
+      setNodes(newFlow.flow.nodes);
+      setEdges(newFlow.flow.edges);
+    } catch (error) {
+      console.error("Error parsing graph flow:", error);
+    }
   };
 
   return (
@@ -338,7 +414,7 @@ export default function AgentFlowGraph() {
           Build Graph
         </Button>
       </CardHeader>
-      <CardContent className="p-0" style={{ height: 500 }}>
+      <CardContent className="p-0" style={{ height: "80vh" }}>
         <div className="flex h-full">
           {/* Sidebar for graph selection */}
           <div className="w-1/5 border-r border-gray-800 bg-background-dark overflow-y-auto">
@@ -350,7 +426,7 @@ export default function AgentFlowGraph() {
                 <motion.div
                   key={flow.id}
                   className={`px-4 py-2 border-l-2 cursor-pointer ${
-                    selectedFlow.id === flow.id
+                    selectedFlow?.id === flow.id
                       ? 'border-[#8A2BE2] bg-[#8A2BE2] bg-opacity-10'
                       : 'border-transparent hover:bg-background-surface'
                   }`}
@@ -370,19 +446,35 @@ export default function AgentFlowGraph() {
           
           {/* Graph visualization */}
           <div className="flex-grow">
-            <ReactFlow
-              nodes={nodes}
-              edges={edges}
-              onNodesChange={onNodesChange}
-              onEdgesChange={onEdgesChange}
-              nodeTypes={nodeTypes}
-              fitView
-              attributionPosition="bottom-right"
-            >
-              <Controls />
-              <MiniMap />
-              <Background color="#aaa" gap={16} />
-            </ReactFlow>
+          <ReactFlow
+            nodes={nodes}
+            edges={edges}
+            onNodesChange={onNodesChange}
+            onEdgesChange={onEdgesChange}
+            nodeTypes={nodeTypes}
+            fitView
+            elementsSelectable={true}
+            nodesConnectable={true}
+            nodesDraggable={true}
+            edgesFocusable={true}
+            connectionLineType="smoothstep"
+            defaultEdgeOptions={{
+              type: 'smoothstep',
+              animated: true,
+              style: { stroke: '#8A2BE2', strokeWidth: 3 },
+              markerEnd: {
+                type: MarkerType.ArrowClosed,
+                width: 20,
+                height: 20,
+                color: '#8A2BE2'
+              }
+            }}
+            attributionPosition="bottom-right"
+          >
+            <Controls />
+            <MiniMap />
+            <Background color="#aaa" gap={16} />
+          </ReactFlow>
           </div>
         </div>
       </CardContent>
