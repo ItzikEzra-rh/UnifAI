@@ -1,4 +1,4 @@
-from .flask_app import create_app
+from api.flask.flask_app import create_app
 from config.app_config import AppConfig
 
 if __name__ == '__main__':
