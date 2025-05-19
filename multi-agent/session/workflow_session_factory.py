@@ -34,7 +34,6 @@ class WorkflowSessionFactory:
     ):
         self._elements = element_registry
         self._session_builder = SessionElementBuilder(element_registry)
-        self._engine_builder = GraphBuilderFactory(GraphState).create(engine_name)
         self._engine_name = engine_name
         # self._logger_factory = logger_factory
 
@@ -65,7 +64,8 @@ class WorkflowSessionFactory:
         print(graph_plan.pretty_print())
 
         # 3) Compile to executable graph ———
-        executable_graph = self._engine_builder.compile_from_plan(graph_plan)
+        _engine_builder = GraphBuilderFactory(GraphState).create(self._engine_name)
+        executable_graph = _engine_builder.compile_from_plan(graph_plan)
 
         # 4) Create logger, saver, modifier ———
         # logger = self._logger_factory(ctx)
@@ -78,7 +78,7 @@ class WorkflowSessionFactory:
             blueprint=blueprint_spec,
             graph_plan=graph_plan,
             executable_graph=executable_graph,
-            builder=self._engine_builder,
+            builder=_engine_builder,
             run_context=ctx,
             metadata=metadata or {},
             graph_state=graph_state,

@@ -1,7 +1,7 @@
 from typing import Type, Callable, TypedDict
 from langgraph.graph import StateGraph, END
-from runtime.state.base_state import BaseGraphState
 from .base_graph_builder import BaseGraphBuilder
+from graph.graph_state import GraphState
 from engine.executor.langgraph_executable import LangGraphExecutor
 
 from typing import Any, Dict
@@ -12,7 +12,7 @@ class LangGraphBuilder(BaseGraphBuilder):
     Concrete GraphBuilder that targets LangGraph’s StateGraph API.
     """
 
-    def __init__(self, state_cls: dict) -> None:
+    def __init__(self, state_cls: GraphState) -> None:
         self._graph = StateGraph(state_cls)
 
     def add_node(self, name: str, func: Any) -> None:
@@ -31,7 +31,6 @@ class LangGraphBuilder(BaseGraphBuilder):
         LangGraph supports conditional edges by providing a `guard` function.
         We wire one edge per branch outcome.
         """
-        print(branches)
         self._graph.add_conditional_edges(
             from_node,
             condition,

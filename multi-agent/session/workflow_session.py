@@ -48,3 +48,21 @@ class WorkflowSession:
         using the stored builder.
         """
         self.executable_graph = self.builder.compile_from_plan(self.graph_plan)
+
+    def get_user_id(self) -> str:
+        """
+        Returns the user ID associated with this session.
+        """
+        return self.run_context.user_id
+
+    def get_run_id(self) -> str:
+        """
+        Returns the user ID associated with this session.
+        """
+        return self.run_context.run_id
+
+    def get_state(self) -> GraphState:
+        """
+        Returns the current state of the graph.
+        """
+        return self.graph_state

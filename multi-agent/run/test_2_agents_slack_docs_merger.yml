@@ -4,6 +4,12 @@ description: |
   - A Slack Context Assistant that answers questions based on Slack messages.
   The responses from both agents are merged into a final answer.
 
+display_name: |
+  Document & Slack Search
+
+display_description: |
+  A pipeline that searches through docs and Slack messages to answer user queries
+
 # ----------------------------
 # LLM Definitions
 # ----------------------------
@@ -59,6 +65,10 @@ plan:
         • If you quote or paraphrase, include the source document name in brackets.
         • mention all the documents names you take the info from.
         • If no document passage is relevant, respond: “I’m sorry, I don’t know.”
+      meta:
+        display_name: Doc Agent
+        description: |
+          Retrieve doc data
 
   - name: slack_agent
     after: user_input
@@ -73,6 +83,10 @@ plan:
         • Answer the user’s question strictly based on those Slack messages.
         • If you refer to a specific message, indicate the timestamp or author.
         • If no Slack message is relevant, respond: “I’m sorry, I don’t know.”
+      meta:
+        display_name: Slack Agent
+        description: |
+          Retrieve slack data
 
   - name: agent_merger
     after:

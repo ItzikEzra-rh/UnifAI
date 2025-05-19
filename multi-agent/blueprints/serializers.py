@@ -1,24 +1,4 @@
-import logging
-from typing import Any, Dict, List, get_origin
-from pydantic import BaseModel
-
-# def meta_to_dict(config_cls: type) -> Dict[str, Any]:
-#     """
-#     Collect all annotated fields from all Meta classes in the MRO,
-#     so that subclass overrides win.
-#     """
-#     meta = getattr(config_cls, "Meta", None)
-#     if not meta:
-#         return {}
-#     result: Dict[str, Any] = {}
-#     # Walk base→subclass so overrides replace defaults
-#     for base in reversed(meta.__mro__):
-#         for key in getattr(base, "__annotations__", {}):
-#             result[key] = getattr(meta, key)
-#     return result
-
-
-from typing import Any, Dict, List
+from typing import Any, Dict
 from pydantic import BaseModel
 
 

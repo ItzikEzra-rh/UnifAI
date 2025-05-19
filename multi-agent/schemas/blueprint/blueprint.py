@@ -26,3 +26,5 @@ class BlueprintSpec(BaseModel):
     tools: List[ToolDef] = Field(default_factory=list)
     plan: List[StepDef]
     description: Optional[str] = "Blueprint description"
+    display_name: Optional[str] = "Display Name"
+    display_description: Optional[str] = "Display description"

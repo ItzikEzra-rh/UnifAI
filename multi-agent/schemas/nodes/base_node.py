@@ -10,6 +10,12 @@ class NodeMeta(Protocol):
     type: ClassVar[str]
 
 
+class NodeUserMeta(BaseModel):
+    description: Optional[str] = Field(None, description="Short title or label for the node instance")
+    display_name: Optional[str] = Field(None, description="Custom description for this node's purpose")
+    tags: Optional[List[str]] = Field(default_factory=list, description="User-defined tags for categorization")
+
+
 # Base node config with shared fields and default Meta
 class NodeBaseConfig(BaseModel):
     """
@@ -22,6 +28,7 @@ class NodeBaseConfig(BaseModel):
     tools: List[str] = Field(default_factory=list, description="List of tool keys")
     system_message: Optional[str] = Field(None, description="Custom system prompt")
     retries: Optional[int] = Field(1, description="Retry count if failure")
+    meta: Optional[NodeUserMeta] = Field(None, description="User-defined metadata for this node instance")
 
     class Config:
         extra = Extra.forbid
