@@ -59,7 +59,7 @@ def execute_user_session(session_id, inputs, stream_mode, stream):
                 stream_mode=stream_mode
         ):
             # each chunk may include Pydantic models; use pydantic_encoder
-            yield json.dumps(chunk, default=pydantic_encoder) + "\n"
+            yield json.dumps(chunk, default=pydantic_encoder)
 
     return Response(
         generate(),
@@ -72,9 +72,9 @@ def execute_user_session(session_id, inputs, stream_mode, stream):
     "session_id": fields.Str(data_key="sessionId", required=True),
 })
 def get_session_state(session_id):
-    # try:
-    svc = current_app.container.session_service
-    session = svc.get(run_id=session_id)
-    return jsonify(session.get_state().model_dump(mode="json")), 200
-    # except Exception as e:
-    #     return jsonify({"error": str(e)}), 500
+    try:
+        svc = current_app.container.session_service
+        session = svc.get(run_id=session_id)
+        return jsonify(session.get_state().model_dump(mode="json")), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
