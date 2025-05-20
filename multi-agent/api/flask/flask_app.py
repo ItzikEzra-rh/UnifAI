@@ -18,7 +18,10 @@ def create_app(config: AppConfig = None) -> Flask:
     """
     config = config or AppConfig()
     app = Flask(__name__)
-    CORS(app)
+    CORS(app, resources={r"/api/*": {"origins": "*",
+                                     "methods": ["GET", "POST", "OPTIONS"],
+                                     "allow_headers": ["Content-Type", "Authorization"],
+                                     "supports_credentials": True}})
 
     container = AppContainer(config)
     app.container = container  # attach for routes to use
