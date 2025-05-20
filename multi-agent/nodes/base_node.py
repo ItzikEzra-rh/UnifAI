@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Optional
-from graph.graph_state import GraphState
+from graph.state.graph_state import GraphState
+from llms.chat.message import ChatMessage
+
 StreamWriter = Callable[[Any], None]
 
 
@@ -53,7 +55,7 @@ class BaseNode(ABC):
 
     def call_llm(
             self,
-            messages: List[Dict[str, str]],
+            messages: List[ChatMessage],
             stream_event_type: str = "llm_token",
     ) -> str:
         """

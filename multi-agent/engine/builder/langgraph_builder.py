@@ -1,7 +1,7 @@
 from typing import Type, Callable, TypedDict
 from langgraph.graph import StateGraph, END
 from .base_graph_builder import BaseGraphBuilder
-from graph.graph_state import GraphState
+from graph.state.graph_state import GraphState
 from engine.executor.langgraph_executable import LangGraphExecutor
 
 from typing import Any, Dict

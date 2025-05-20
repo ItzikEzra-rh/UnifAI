@@ -2,6 +2,8 @@ from typing import Any, Dict, List, Optional, Iterator
 from langchain_openai import ChatOpenAI
 from langchain.schema import HumanMessage, AIMessage, SystemMessage
 from llms.base_llm import BaseLLM, SupportsStreaming
+from llms.chat.converter import LangChainConverter
+from llms.chat.message import ChatMessage
 
 
 class OpenAILLM(BaseLLM, SupportsStreaming):
@@ -37,7 +39,7 @@ class OpenAILLM(BaseLLM, SupportsStreaming):
 
     def chat(
             self,
-            messages: List[Dict[str, Any]],
+            messages: List[ChatMessage],
             *,
             temperature: Optional[float] = None,
             max_tokens: Optional[int] = None,
@@ -57,37 +59,22 @@ class OpenAILLM(BaseLLM, SupportsStreaming):
         call_params.update(kwargs)
 
         # Convert to LangChain message objects
-        lc_messages = self._to_lc_messages(messages)
+        lc_messages = LangChainConverter.to_lc(messages)
 
         response = self.client.invoke(lc_messages, stream=stream, **call_params)
         return response.content
 
     def stream(
             self,
-            messages: List[Dict[str, Any]],
+            messages: List[ChatMessage],
             **call_params
     ) -> Iterator[str]:
         """
         Pass stream=True through to LangChain and unwrap content token by token.
         """
-        lc_messages = self._to_lc_messages(messages)
+        lc_messages = LangChainConverter.to_lc(messages)
         for chunk in self.client.stream(lc_messages, stream=True, **call_params):
             yield chunk.content
-
-    @staticmethod
-    def _to_lc_messages(messages):
-        lc_msgs = []
-        for m in messages:
-            role, content = m["role"], m["content"]
-            if role == "user":
-                lc_msgs.append(HumanMessage(content=content))
-            elif role == "assistant":
-                lc_msgs.append(AIMessage(content=content))
-            elif role == "system":
-                lc_msgs.append(SystemMessage(content=content))
-            else:
-                raise ValueError(f"Unsupported role {role}")
-        return lc_msgs
 
     @property
     def name(self) -> str:

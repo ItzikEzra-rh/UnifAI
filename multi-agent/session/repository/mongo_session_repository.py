@@ -5,7 +5,7 @@ from session.status import SessionStatus
 from session.repository.repository import SessionRepository
 from session.workflow_session import WorkflowSession
 from core.run_context import RunContext
-from graph.graph_state import GraphState
+from graph.state.graph_state import GraphState
 from session.workflow_session_factory import WorkflowSessionFactory
 from schemas.blueprint.blueprint import BlueprintSpec
 
@@ -51,7 +51,7 @@ class MongoSessionRepository(SessionRepository):
             "run_context": ctx.to_dict(),
             "metadata": session.metadata,
             "blueprint_spec": session.blueprint.model_dump(mode="json"),
-            "graph_state": dict(session.graph_state),
+            "graph_state": session.graph_state.model_dump(mode="json"),
             "status": session.get_status(),
         }
 

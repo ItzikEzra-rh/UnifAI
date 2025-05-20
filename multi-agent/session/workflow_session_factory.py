@@ -6,7 +6,7 @@ from session.element_builder import SessionElementBuilder
 from composers.plan_composer import PlanComposer
 from engine.builder.graph_builder_factory import GraphBuilderFactory
 from session.workflow_session import WorkflowSession
-from graph.graph_state import GraphState
+from graph.state.graph_state import GraphState
 from core.run_context import RunContext
 from core.context import set_current_context
 from logs.logger_interface import LoggerInterface

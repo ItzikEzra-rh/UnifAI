@@ -1,5 +1,6 @@
 from nodes.base_node import BaseNode
-from graph.graph_state import GraphState
+from graph.state.graph_state import GraphState
+from llms.chat.message import ChatMessage, Role
 
 
 class UserQuestionNode(BaseNode):
@@ -16,10 +17,8 @@ class UserQuestionNode(BaseNode):
 
     def run(self, state: GraphState) -> GraphState:
         """
-        Log the incoming user_input and return the unmodified state.
-        Downstream nodes can read state["user_input"].
+        Run the node, which simply adds the user input to the chat history and returns the state.
         """
-        # print(state)
         user_input = state.get("user_prompt", "<no input provided>")
-        # print(f"UserQuestionNode: Prompt received: {user_input}")
+        state["messages"] = [ChatMessage(role=Role.USER, content=user_input)]
         return state

@@ -2,7 +2,7 @@ from typing import Any, Dict, Iterator, Optional, Union
 from session.user_session_manager import UserSessionManager
 from session.repository.repository import SessionRepository
 from session.workflow_session import WorkflowSession
-from graph.graph_state import GraphState
+from graph.state.graph_state import GraphState
 from core.context import set_current_context
 from .status import SessionStatus
 
@@ -48,7 +48,7 @@ class SessionExecutor:
         session.update_status(SessionStatus.RUNNING)
         self._repo.save(session)
 
-    def _post_run(self, session: WorkflowSession, final_state: GraphState) -> None:
+    def _post_run(self, session: WorkflowSession, final_state) -> None:
         """
         1) attach final state
         2) mark context finished
@@ -56,7 +56,7 @@ class SessionExecutor:
         4) update status
         5) persist
         """
-        session.graph_state = final_state
+        session.graph_state = GraphState(**final_state)
         session.run_context = session.run_context.mark_finished()
         set_current_context(session.run_context)
         session.update_status(SessionStatus.COMPLETED)

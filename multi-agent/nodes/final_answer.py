@@ -1,5 +1,5 @@
 from nodes.base_node import BaseNode
-from graph.graph_state import GraphState
+from graph.state.graph_state import GraphState
 
 
 class FinalAnswerNode(BaseNode):

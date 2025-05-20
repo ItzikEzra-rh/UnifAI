@@ -5,7 +5,7 @@ from engine.builder.base_graph_builder import BaseGraphBuilder
 from engine.executor.interfaces import GraphExecutor
 from core.run_context import RunContext
 from typing import Any, Dict
-from graph.graph_state import GraphState
+from graph.state.graph_state import GraphState
 from .status import SessionStatus
 
 

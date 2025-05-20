@@ -1,43 +1,8 @@
 from typing import Any, Dict, Iterator, List, Tuple
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field, ConfigDict
-
-
-def append_dict_to_list(existing: List[Dict[str, Any]], new_item) -> List[Dict[str, Any]]:
-    """
-    Merge strategy for nodes_output:
-    - Keeps existing list
-    - Flattens if new_item is a list
-    - Appends a dict if not already present
-    """
-    if not isinstance(existing, list):
-        existing = []
-
-    if isinstance(new_item, list):
-        out = existing
-        for single in new_item:
-            out = append_dict_to_list(out, single)
-        return out
-
-    if not isinstance(new_item, dict):
-        return existing
-
-    if new_item in existing:
-        return existing
-
-    return existing + [new_item]
-
-
-def merge_dynamic_fields(existing: Dict[str, Any], new_values: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Merge strategy for dynamic_fields:
-    - Starts with existing dictionary
-    - Updates with new values
-    """
-    merged = existing.copy() if existing else {}
-    if isinstance(new_values, dict):
-        merged.update(new_values)
-    return merged
+from llms.chat.message import ChatMessage
+from .merge_strategies import append_dict_to_list, append_chat_messages, merge_dynamic_fields
 
 
 class GraphState(BaseModel):
@@ -62,6 +27,9 @@ class GraphState(BaseModel):
     nodes_output: Annotated[List[Dict[str, Any]], append_dict_to_list] = Field(default_factory=list)
     # last-writer-wins for output:
     output: Annotated[str, lambda old, new: new] = ""
+
+    # appending messages to a list:
+    messages: Annotated[list[ChatMessage], append_chat_messages] = Field(default_factory=list)
 
     # Dynamic storage for extra fields (will be included in serialization)
     dynamic_fields: Annotated[Dict[str, Any], merge_dynamic_fields] = Field(default_factory=dict)

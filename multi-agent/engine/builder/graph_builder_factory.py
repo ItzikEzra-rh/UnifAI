@@ -1,7 +1,7 @@
 from typing import Dict, Type
 from engine.builder.base_graph_builder import BaseGraphBuilder
 from engine.builder.langgraph_builder import LangGraphBuilder
-from graph.graph_state import GraphState
+from graph.state.graph_state import GraphState
 
 
 class GraphBuilderFactory:

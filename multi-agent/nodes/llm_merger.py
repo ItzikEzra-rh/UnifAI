@@ -1,28 +1,37 @@
 from .base_node import BaseNode, StreamWriter
-from graph.graph_state import GraphState
+from graph.state.graph_state import GraphState
+from llms.chat.message import ChatMessage, Role
 
 
 class LLMMergerNode(BaseNode):
-    """this class is a node that merges the output of multiple Nodes using LLM and a custom system prompt."""
+    """
+    A node that merges the output of multiple nodes using an LLM and a custom system prompt.
+    """
 
     def run(self, state: GraphState) -> GraphState:
-        # 1) Build messages
-        messages = state.get("messages", [])
-        if self.system_message:
-            messages.append({"role": "system", "content": self.system_message})
-        # messages.append({"role": "user", "content": state.get("user_prompt", "")})
+        # Build messages
+        messages: list[ChatMessage] = state.get("messages", []).copy()
 
+        if self.system_message:
+            messages.insert(0, ChatMessage(role=Role.SYSTEM, content=self.system_message))
+
+        # Extract output from agents
         agents_output = state.get("nodes_output", [])
         agents_output_str = "context:\n"
-        for agent_dict in agents_output:
-            agents_output_str += f"{agent_dict}\n"
-        agents_output_str += f"""\nuser question: {state.get("user_prompt", "")}"""
-        messages.append({"role": "user", "content": agents_output_str})
-        # print(f"""agents_output: {agents_output_str}""")
-        # 2) Call LLM
+
+        for output in agents_output:
+            agents_output_str += f"{output}\n"
+
+        user_prompt = state.get("user_prompt", "")
+        agents_output_str += f"\nuser question: {user_prompt}"
+
+        messages.append(ChatMessage(role=Role.USER, content=agents_output_str))
+
+        # Call LLM
         response = self.call_llm(messages)
-        # print(f"""response: {response}""")
 
+        state["messages"] = [response]
+
+        # Save to state
         state["output"] = response
-
         return state
