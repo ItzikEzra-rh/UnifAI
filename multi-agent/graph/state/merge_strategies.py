@@ -2,32 +2,23 @@ from typing import Any, Dict, List, Tuple, Set
 from llms.chat.message import ChatMessage, Role
 
 
-def append_dict_to_list(
-        existing: List[Dict[str, Any]], new_item: Any
-) -> List[Dict[str, Any]]:
+def merge_string_dicts(existing: Dict[str, str], new_item: Any) -> Dict[str, str]:
     """
-    • Flattens any nested lists/tuples in `new_item`
-    • Appends each dict exactly once (by identity/equality)
+    Merge strategy for Dict[str, str]:
+    - Accepts new_item as dict[str, str]
+    - Overwrites or adds keys
+    - Returns merged result
     """
-    out = existing if isinstance(existing, list) else []
-    seen = out.__contains__  # local binding
-
-    def _flatten(seq):
-        for el in seq:
-            if isinstance(el, (list, tuple)):
-                yield from _flatten(el)
-            else:
-                yield el
-
-    if isinstance(new_item, (list, tuple)):
-        for candidate in _flatten(new_item):
-            if isinstance(candidate, dict) and not seen(candidate):
-                out.append(candidate)
-    elif isinstance(new_item, dict):
-        if not seen(new_item):
-            out.append(new_item)
-
-    return out
+    if not isinstance(existing, dict):
+        existing = {}
+    if isinstance(new_item, dict):
+        # filter only str->str keys for safety
+        merged = existing.copy()
+        for k, v in new_item.items():
+            if isinstance(k, str) and isinstance(v, str):
+                merged[k] = v
+        return merged
+    return existing
 
 
 def merge_dynamic_fields(

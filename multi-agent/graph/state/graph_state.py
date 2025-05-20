@@ -2,7 +2,7 @@ from typing import Any, Dict, Iterator, List, Tuple
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field, ConfigDict
 from llms.chat.message import ChatMessage
-from .merge_strategies import append_dict_to_list, append_chat_messages, merge_dynamic_fields
+from .merge_strategies import merge_string_dicts, append_chat_messages, merge_dynamic_fields
 
 
 class GraphState(BaseModel):
@@ -23,8 +23,8 @@ class GraphState(BaseModel):
     # —————– Channels (with merge strategies) —————–
     # last-writer-wins for user_prompt:
     user_prompt: Annotated[str, lambda old, new: new] = ""
-    # accumulate dicts into a list:
-    nodes_output: Annotated[List[Dict[str, Any]], append_dict_to_list] = Field(default_factory=list)
+    # merge dicts into a new dict:
+    nodes_output: Annotated[Dict[str, str], merge_string_dicts] = Field(default_factory=dict)
     # last-writer-wins for output:
     output: Annotated[str, lambda old, new: new] = ""
 

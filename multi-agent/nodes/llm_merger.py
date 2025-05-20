@@ -16,11 +16,11 @@ class LLMMergerNode(BaseNode):
             messages.insert(0, ChatMessage(role=Role.SYSTEM, content=self.system_message))
 
         # Extract output from agents
-        agents_output = state.get("nodes_output", [])
+        agents_output = state.get("nodes_output", {})
         agents_output_str = "context:\n"
 
-        for output in agents_output:
-            agents_output_str += f"{output}\n"
+        for agent_name, output in agents_output.items():
+            agents_output_str += f"{agent_name}: {output}\n"
 
         user_prompt = state.get("user_prompt", "")
         agents_output_str += f"\nuser question: {user_prompt}"
@@ -30,7 +30,7 @@ class LLMMergerNode(BaseNode):
         # Call LLM
         response = self.call_llm(messages)
 
-        state["messages"] = [response]
+        state["messages"] = [ChatMessage(role=Role.ASSISTANT, content=response)]
 
         # Save to state
         state["output"] = response
