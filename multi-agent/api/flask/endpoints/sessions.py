@@ -78,3 +78,16 @@ def get_session_state(session_id):
         return jsonify(session.get_state().model_dump(mode="json")), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@sessions_bp.route("/session.status.get", methods=["GET"])
+@from_query({
+    "session_id": fields.Str(data_key="sessionId", required=True),
+})
+def get_session_status(session_id):
+    try:
+        svc = current_app.container.session_service
+        status = svc.get_status(run_id=session_id)
+        return jsonify(status), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

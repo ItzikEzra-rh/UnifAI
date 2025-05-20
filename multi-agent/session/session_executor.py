@@ -4,6 +4,7 @@ from session.repository.repository import SessionRepository
 from session.workflow_session import WorkflowSession
 from graph.graph_state import GraphState
 from core.context import set_current_context
+from .status import SessionStatus
 
 SessionOrId = Union[WorkflowSession, str]
 
@@ -38,20 +39,38 @@ class SessionExecutor:
         """
         1) bind RunContext into ContextVar
         2) seed input into the GraphState
+        3) mark context as running
+        4) update status
+        5) persist
         """
         set_current_context(session.run_context)
         session.graph_state.update(inputs)
+        session.update_status(SessionStatus.RUNNING)
+        self._repo.save(session)
 
     def _post_run(self, session: WorkflowSession, final_state: GraphState) -> None:
         """
         1) attach final state
         2) mark context finished
         3) re‐bind new context
-        4) persist
+        4) update status
+        5) persist
         """
         session.graph_state = final_state
         session.run_context = session.run_context.mark_finished()
         set_current_context(session.run_context)
+        session.update_status(SessionStatus.COMPLETED)
+        self._repo.save(session)
+
+    def _error_run(self, session: WorkflowSession, error: Exception) -> None:
+        """
+        1) attach error state
+        2) mark context finished
+        3) update status
+        4) persist
+        """
+        session.run_context = session.run_context.mark_finished()
+        session.update_status(SessionStatus.FAILED)
         self._repo.save(session)
 
     def run(
@@ -68,9 +87,7 @@ class SessionExecutor:
         try:
             final_state = session.executable_graph.run(session.graph_state)
         except Exception as e:
-            # delegate to node‐level logger if present
-            # if getattr(session, "logger", None):
-            #     session.logger.log_node_error("SessionExecutor", e)
+            self._error_run(session, e)
             raise e
 
         self._post_run(session, final_state)
@@ -98,14 +115,12 @@ class SessionExecutor:
                     # will work only if custom is enabled in stream_kwargs
                     session.graph_state = chunk[1].get("state") if isinstance(chunk, (list, tuple)) and isinstance(
                         chunk[1], dict) else None
-                except Exception:
-                    session.graph_state = None
+                except Exception as e:
+                    raise e
 
         except Exception as e:
-            # if getattr(session, "logger", None):
-            #     session.logger.log_node_error("SessionExecutor", e)
+            self._error_run(session, e)
             raise e
 
         # once the generator ends, finalize
-
         self._post_run(session, session.graph_state)

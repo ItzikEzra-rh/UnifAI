@@ -1,7 +1,7 @@
 import pymongo
 from pymongo.collection import Collection
 from typing import List
-
+from session.status import SessionStatus
 from session.repository.repository import SessionRepository
 from session.workflow_session import WorkflowSession
 from core.run_context import RunContext
@@ -52,6 +52,7 @@ class MongoSessionRepository(SessionRepository):
             "metadata": session.metadata,
             "blueprint_spec": session.blueprint.model_dump(mode="json"),
             "graph_state": dict(session.graph_state),
+            "status": session.get_status(),
         }
 
         self._col.replace_one(
@@ -65,20 +66,24 @@ class MongoSessionRepository(SessionRepository):
         if not doc:
             raise KeyError(f"No session for {run_id}")
 
-        # 1) Rehydrate RunContext
+        # Rehydrate RunContext
         ctx = RunContext.from_dict(doc["run_context"])
 
-        # 2) Re-create fresh session via factory
+        # Re-create fresh session via factory
         session = self._factory.create(
             user_id=ctx.user_id,
             blueprint_spec=BlueprintSpec.model_validate(doc["blueprint_spec"]),
             metadata=doc.get("metadata", {}),
         )
 
-        # 3) Override run_context (so we keep the same run_id, timestamps)
+        # Override run_context (so we keep the same run_id, timestamps)
         session.run_context = ctx
 
-        # 4) Restore GraphState in one shot
+        # Override session status
+        status_str = doc.get("status", SessionStatus.PENDING.name)
+        session.status = SessionStatus[status_str]
+
+        # Restore GraphState in one shot
         session.graph_state = GraphState(**doc["graph_state"])
 
         return session

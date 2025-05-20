@@ -68,3 +68,10 @@ class SessionService:
         Fetch a session object by its run_id.
         """
         return self._manager.get_session(run_id)
+
+    def get_status(self, run_id: str) -> str:
+        """
+        Get the status of a session by its run_id.
+        """
+        session = self.get(run_id)
+        return session.get_status() if session else None

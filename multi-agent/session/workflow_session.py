@@ -6,6 +6,7 @@ from engine.executor.interfaces import GraphExecutor
 from core.run_context import RunContext
 from typing import Any, Dict
 from graph.graph_state import GraphState
+from .status import SessionStatus
 
 
 class WorkflowSession:
@@ -41,6 +42,7 @@ class WorkflowSession:
         self.run_context = run_context
         self.metadata = metadata or {}
         self.graph_state = graph_state
+        self.status: SessionStatus = SessionStatus.PENDING
 
     def recompile(self) -> None:
         """
@@ -66,3 +68,12 @@ class WorkflowSession:
         Returns the current state of the graph.
         """
         return self.graph_state
+
+    def get_status(self) -> SessionStatus:
+        """
+        Returns the current status of the session.
+        """
+        return self.status.name
+
+    def update_status(self, new: SessionStatus) -> None:
+        self.status = new
