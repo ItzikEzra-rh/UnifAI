@@ -273,13 +273,13 @@ const parseGraphFlow = (graphFlow: GraphFlow): { nodes: Node<NodeData>[]; edges:
 };
 
 // Function to convert graph flow JSON to flow object
-const convertGraphFlowToFlowObject = (graphFlow: GraphFlow, index: number): FlowObject => {
+const convertGraphFlowToFlowObject = (graphFlow: GraphFlow, index: number, graphId?: string): FlowObject => {
   if (!graphFlow) return null;
-  
+
   // Extract metadata
   const name = graphFlow.display_name || `Flow ${index + 1}`;
   const description = graphFlow.display_description || 'No description available';
-  
+
   // Generate a random icon for the flow
   const iconOptions: React.FC<{ className?: string }>[] = [Activity, Database, FileText, Zap, Filter, GitBranch, MessageSquare, BookOpen];
   const IconComponent = iconOptions[index % iconOptions.length];
@@ -288,7 +288,7 @@ const convertGraphFlowToFlowObject = (graphFlow: GraphFlow, index: number): Flow
   const { nodes, edges } = parseGraphFlow(graphFlow);
   
   return {
-    id: `flow-${index}`,
+    id: graphId || `flow-${index}`,
     name,
     description,
     icon: <IconComponent className="h-4 w-4 mr-2" />,
@@ -342,10 +342,14 @@ const initialEdges: Edge[] = [
   },
 ];
 
-export default function AgentFlowGraph(): React.ReactElement {
+type AgentFlowGraphProps = {
+  selectedFlow: FlowObject | null;
+  setSelectedFlow: (flow: FlowObject | null) => void;
+};
+
+export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlowGraphProps): React.ReactElement {
   // State for available graph flows
   const [graphFlows, setGraphFlows] = useState<FlowObject[]>([]);
-  const [selectedFlow, setSelectedFlow] = useState<FlowObject | null>(null);
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
 
@@ -357,10 +361,13 @@ export default function AgentFlowGraph(): React.ReactElement {
     const fetchGraphFlows = async () => {
       try {
         const response = await axios.get('/api/blueprints/available.blueprints.get');
-        const mockGraphFlows: GraphFlow[] = response.data.flatMap((plan) => Object.values(plan))
+        const planKeys: string[] = response.data.flatMap((plan) => Object.keys(plan));
+        const mockGraphFlows: GraphFlow[] = response.data.flatMap((plan) => Object.values(plan));
 
         // Convert the mock graph flows to the format expected by the component
-        const processedFlows = mockGraphFlows.map(convertGraphFlowToFlowObject);
+        const processedFlows = mockGraphFlows.map((flow, index) =>
+          convertGraphFlowToFlowObject(flow, index, planKeys[index])
+        );
         setGraphFlows(processedFlows);
         
         // Select the first flow by default
@@ -405,14 +412,6 @@ export default function AgentFlowGraph(): React.ReactElement {
     <Card className="bg-background-card shadow-card border-gray-800">
       <CardHeader className="py-4 px-6 flex flex-row justify-between items-center">
         <CardTitle className="text-lg font-heading">Agent Flow Visualization</CardTitle>
-        <Button 
-          className="bg-[#8A2BE2] hover:bg-opacity-80 flex items-center gap-2"
-          size="sm"
-          onClick={() => console.log('Build Graph clicked')}
-        >
-          <Plus className="h-4 w-4" />
-          Build Graph
-        </Button>
       </CardHeader>
       <CardContent className="p-0" style={{ height: "80vh" }}>
         <div className="flex h-full">

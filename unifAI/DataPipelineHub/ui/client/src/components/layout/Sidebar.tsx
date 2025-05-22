@@ -41,7 +41,7 @@ export default function Sidebar() {
       </div>
 
       {/* Project Selector */}
-      <div className="px-4 py-3">
+      {/* <div className="px-4 py-3">
         <div className="bg-background-card rounded-md p-2 flex items-center justify-between cursor-pointer hover:bg-opacity-80 transition-all">
           <div className="flex items-center space-x-2">
             <div className="w-6 h-6 rounded-md bg-primary flex items-center justify-center">
@@ -53,12 +53,12 @@ export default function Sidebar() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
           </svg>
         </div>
-      </div>
+      </div> */}
 
       {/* Navigation Menu */}
       <nav className="mt-4 flex-grow">
         <div className="px-3 mb-2">
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Main</span>
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Data Preparation</span>
         </div>
         <ul>
           <NavItem 
@@ -66,13 +66,6 @@ export default function Sidebar() {
             label="Overview" 
             to="/"
             isActive={location === '/'}
-            status={null}
-          />
-          <NavItem 
-            icon={<FaCogs className="sidebar-icon" />} 
-            label="Configuration" 
-            to="/configuration"
-            isActive={location === '/configuration'}
             status={null}
           />
           <NavItem 
@@ -96,6 +89,12 @@ export default function Sidebar() {
             isActive={location === '/documents'}
             status={null}
           />
+        </ul>
+
+        <div className="px-3 mt-6 mb-2">
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Agentic AI</span>
+        </div>
+        <ul>
           <NavItem 
             icon={<FaRobot className="sidebar-icon" />} 
             label="Agentic AI" 
@@ -109,6 +108,13 @@ export default function Sidebar() {
           <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">System</span>
         </div>
         <ul>
+          <NavItem 
+              icon={<FaCogs className="sidebar-icon" />} 
+              label="Configuration" 
+              to="/configuration"
+              isActive={location === '/configuration'}
+              status={null}
+          />
           <NavItem 
             icon={<FaChartLine className="sidebar-icon" />} 
             label="Analytics" 

@@ -70,10 +70,10 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
           </button>
         </SimpleTooltip>
         
-        <Button size="sm" className="ml-2 bg-primary hover:bg-opacity-80">
+        {/* <Button size="sm" className="ml-2 bg-primary hover:bg-opacity-80">
           <FaPlus className="mr-2 h-3 w-3" />
           <span>New Pipeline</span>
-        </Button>
+        </Button> */}
       </div>
     </header>
   );
