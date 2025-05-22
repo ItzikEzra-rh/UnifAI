@@ -5,12 +5,13 @@ from nodes.base_node import BaseNode
 from nodes.mixins.llm_capable import LlmCapableMixin
 from nodes.mixins.retriever_capable import RetrieverCapableMixin
 from nodes.mixins.tool_capable import ToolCapableMixin
+from typing import Any
 
 
-class CustomAgentNode(LlmCapableMixin,
+class CustomAgentNode(BaseNode,
+                      LlmCapableMixin,
                       RetrieverCapableMixin,
-                      ToolCapableMixin,
-                      BaseNode):
+                      ToolCapableMixin):
     """
     Full agent: LLM + optional retriever + optional tools.
     MRO guarantees LlmCapableMixin sees _stream() and uid from BaseNode.
@@ -20,18 +21,21 @@ class CustomAgentNode(LlmCapableMixin,
                  *,
                  step_ctx: StepContext,
                  name: str,
-                 llm,
-                 retriever=None,
+                 llm: Any,
+                 retriever: Any = None,
                  tools=(),
-                 system_message="",
-                 retries=1):
+                 system_message: str = "",
+                 retries: int = 1,
+                 **kwargs: Any):
 
-        LlmCapableMixin.__init__(self, llm=llm,
-                                 system_message=system_message,
-                                 retries=retries)
-        RetrieverCapableMixin.__init__(self, retriever=retriever)
-        ToolCapableMixin.__init__(self, tools=tools)
-        BaseNode.__init__(self, step_ctx=step_ctx, name=name)
+        super().__init__(step_ctx=step_ctx,
+                         name=name,
+                         llm=llm,
+                         system_message=system_message,
+                         retries=retries,
+                         retriever=retriever,
+                         tools=tools,
+                         **kwargs)
 
     def _prepare_messages(self, state: GraphState) -> list[ChatMessage]:
         msgs = state.get("messages", []).copy()
@@ -54,5 +58,6 @@ class CustomAgentNode(LlmCapableMixin,
         msgs = self._prepare_messages(state)
         answer = self._chat(msgs)
         answer = self._apply_tools(answer)
-        state["nodes_output"] = {self.name: answer}
+        state["nodes_output"] = {self.uid: answer}
+
         return state

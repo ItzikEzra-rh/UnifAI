@@ -9,9 +9,9 @@ from graph.step_context import StepContext
 class PlanComposer:
     """
     Converts a list of StepDef objects (from BlueprintSpec.plan)
-    into a fully-populated GraphPlan of Step(name, func, ...).
+    into a fully-populated GraphPlan of Step(uid, func, ...).
 
-    - Resolves static nodes by name via ElementRegistry → NodeConfig templates.
+    - Resolves static nodes by uid via ElementRegistry → NodeConfig templates.
     - Builds dynamic nodes (NodeSpec) via NodeFactory + SessionRegistry.
     - Enforces SOLID separation: only composes plan structure.
     """
@@ -35,7 +35,7 @@ class PlanComposer:
                     after = sd.after
 
             # make the step context
-            step_ctx = StepContext(uid=sd.uid, name=sd.name)
+            step_ctx = StepContext(uid=sd.uid, metadata=sd.meta)
 
             # get the condition callable
             cond_fn = self.session.get_condition(sd.exit_condition) if sd.exit_condition else None
@@ -45,11 +45,12 @@ class PlanComposer:
 
             # 3) add into plan
             plan.add_step(
-                name=sd.name,
+                uid=sd.uid,
                 func=func,
                 after=after,
                 exit_condition=cond_fn,
-                branches=sd.branches
+                branches=sd.branches,
+                metadata=sd.meta,
             )
 
         # 4) sanity-check references

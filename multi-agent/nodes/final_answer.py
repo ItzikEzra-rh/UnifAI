@@ -9,8 +9,12 @@ class FinalAnswerNode(BaseNode):
     stores it under state["final_output"].
     """
 
-    def __init__(self, *, step_ctx: StepContext, name: str = "final_answer"):
-        super().__init__(step_ctx=step_ctx, name=name)
+    def __init__(self,
+                 *,
+                 step_ctx: StepContext,
+                 name: str = "final_answer",
+                 **kwargs):
+        super().__init__(step_ctx=step_ctx, name=name, **kwargs)
 
     def run(self, state: GraphState) -> GraphState:
         state["final_output"] = state.get("output")

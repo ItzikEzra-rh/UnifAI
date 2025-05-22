@@ -5,7 +5,7 @@ from graph.state.graph_state import GraphState
 from llms.chat.message import ChatMessage, Role
 
 
-class LLMMergerNode(LlmCapableMixin, BaseNode):
+class LLMMergerNode(BaseNode, LlmCapableMixin):
     """
     Uses an LLM to merge outputs from multiple agents.
     """
@@ -16,12 +16,14 @@ class LLMMergerNode(LlmCapableMixin, BaseNode):
                  name: str = "llm_merger",
                  llm,
                  system_message: str = "",
-                 retries: int = 1):
-        LlmCapableMixin.__init__(self,
-                                 llm=llm,
-                                 system_message=system_message,
-                                 retries=retries)
-        BaseNode.__init__(self, step_ctx=step_ctx, name=name)
+                 retries: int = 1,
+                 **kwargs):
+        super().__init__(step_ctx=step_ctx,
+                         name=name,
+                         llm=llm,
+                         system_message=system_message,
+                         retries=retries,
+                         **kwargs)
 
     def run(self, state: GraphState) -> GraphState:
         messages: list[ChatMessage] = state.get("messages", []).copy()

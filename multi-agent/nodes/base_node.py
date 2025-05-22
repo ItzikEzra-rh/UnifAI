@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from graph.step_context import StepContext
 from graph.state.graph_state import GraphState
 from core.types import StreamWriter
-from typing import Optional
+from typing import Optional, Any
 
 
 class BaseNode(ABC):
@@ -12,7 +12,8 @@ class BaseNode(ABC):
     • NO domain-specific logic
     """
 
-    def __init__(self, *, step_ctx: StepContext, name: str):
+    def __init__(self, *, step_ctx: StepContext, name: str, **kwargs: Any):
+        super().__init__(**kwargs)  # MRO
         self._ctx = step_ctx
         self.name = name
         self._stream_writer: Optional[StreamWriter] = None
@@ -25,12 +26,12 @@ class BaseNode(ABC):
                  state: GraphState,
                  writer: StreamWriter = None) -> GraphState:
         self._stream_writer = writer
-        try:
-            result = self.run(state)
-            self._stream({"node": self.uid, "type": "complete", "state": result})
-            return result
-        finally:
-            self._stream_writer = None  # avoid cross-request leakage
+        result = self.run(state)
+        self._stream({"node": self.uid,
+                      "display_name": self.display_name,
+                      "type": "complete",
+                      "state": result})
+        return result
 
     def _stream(self, payload: dict):
         if self._stream_writer:
@@ -39,3 +40,7 @@ class BaseNode(ABC):
     @property
     def uid(self) -> str:
         return self._ctx.uid
+
+    @property
+    def display_name(self) -> str:
+        return self._ctx.metadata.display_name
