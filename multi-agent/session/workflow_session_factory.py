@@ -61,7 +61,7 @@ class WorkflowSessionFactory:
         graph_plan = composer.compose(blueprint_spec.plan)
 
         # Optional: visualize
-        print(graph_plan.pretty_print())
+        graph_plan.pretty_print()
 
         # 3) Compile to executable graph ———
         _engine_builder = GraphBuilderFactory(GraphState).create(self._engine_name)
