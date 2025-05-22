@@ -3,6 +3,14 @@ from typing import Any
 
 
 class LlmCapableMixin:
+    """
+    LlmCapableMixin requires the host class to implement:
+    - `self._stream(dict)`
+    - `self.uid: str`
+    - `self.display_name: str`
+    Typically provided by BaseNode.
+    """
+
     def __init__(self, *, llm: Any, system_message: str = "", retries: int = 1, **kwargs: Any):
         super().__init__(**kwargs)  # MRO
         self.llm = llm
