@@ -1,9 +1,9 @@
 from typing import List, Union
-from registry.element_registry import ElementRegistry
 from session.session_registry import SessionRegistry
 from schemas.blueprint.blueprint import StepDef, NodeSpec
 from graph.graph_plan import GraphPlan
 from .node_factory import NodeFactory
+from graph.step_context import StepContext
 
 
 class PlanComposer:
@@ -26,7 +26,7 @@ class PlanComposer:
         plan = GraphPlan()
 
         for sd in step_defs:
-            # 1) normalize 'after' to list
+            # normalize 'after' to list
             after = []
             if sd.after:
                 if isinstance(sd.after, str):
@@ -34,11 +34,14 @@ class PlanComposer:
                 else:
                     after = sd.after
 
-            # 2) get the condition callable
+            # make the step context
+            step_ctx = StepContext(uid=sd.uid, name=sd.name)
+
+            # get the condition callable
             cond_fn = self.session.get_condition(sd.exit_condition) if sd.exit_condition else None
 
-            # 3) instantiate the node
-            func = self._resolve_node(sd.node)
+            # instantiate the node
+            func = self._resolve_node(sd.node, step_ctx)
 
             # 3) add into plan
             plan.add_step(
@@ -53,7 +56,7 @@ class PlanComposer:
         plan.validate()
         return plan
 
-    def _resolve_node(self, node_field: Union[str, NodeSpec]):
+    def _resolve_node(self, node_field: Union[str, NodeSpec], step_ctx: StepContext):
         """
         Returns a callable node instance for the plan.
 
@@ -73,7 +76,7 @@ class PlanComposer:
             spec = node_field
 
         # Build a BaseNode subclass instance
-        node_instance = NodeFactory.build(spec, self.session)
+        node_instance = NodeFactory.build(spec, self.session, step_ctx)
 
         # Return the callable (we assume BaseNode.__call__ invokes run())
         return node_instance

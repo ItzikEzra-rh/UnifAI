@@ -4,7 +4,7 @@ from blueprints.loader.yaml_blueprint_loader import YAMLBlueprintLoader
 from session.workflow_session_factory import WorkflowSessionFactory
 from session.user_session_manager import UserSessionManager
 from session.session_executor import SessionExecutor
-from services.service import BlueprintService
+from blueprints.service import BlueprintService
 from blueprints.repository.mongo_blueprint_repository import MongoBlueprintRepository
 
 from typing import Iterator, Any, Dict, List
@@ -140,6 +140,6 @@ if __name__ == "__main__":
 
     # print(service.delete("707f3ac8-3d09-41dd-90c3-d3ce0a6dacb2"))
     # print(json.dumps(service.get_dict("81bdd223-4dba-4bb3-81d1-20fbaf19dd01")))
-    main_new_session()
+    # main_new_session()
     # main_resume_session(get_current_context().run_id)
     # main_resume_session("64fc9af1-2dd8-405d-a491-925639a4100f")

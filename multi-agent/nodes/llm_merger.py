@@ -1,37 +1,43 @@
-from .base_node import BaseNode, StreamWriter
+from nodes.base_node import BaseNode
+from nodes.mixins.llm_capable import LlmCapableMixin
+from graph.step_context import StepContext
 from graph.state.graph_state import GraphState
 from llms.chat.message import ChatMessage, Role
 
 
-class LLMMergerNode(BaseNode):
+class LLMMergerNode(LlmCapableMixin, BaseNode):
     """
-    A node that merges the output of multiple nodes using an LLM and a custom system prompt.
+    Uses an LLM to merge outputs from multiple agents.
     """
 
+    def __init__(self,
+                 *,
+                 step_ctx: StepContext,
+                 name: str = "llm_merger",
+                 llm,
+                 system_message: str = "",
+                 retries: int = 1):
+        LlmCapableMixin.__init__(self,
+                                 llm=llm,
+                                 system_message=system_message,
+                                 retries=retries)
+        BaseNode.__init__(self, step_ctx=step_ctx, name=name)
+
     def run(self, state: GraphState) -> GraphState:
-        # Build messages
         messages: list[ChatMessage] = state.get("messages", []).copy()
 
         if self.system_message:
-            messages.insert(0, ChatMessage(role=Role.SYSTEM, content=self.system_message))
+            messages.insert(0, ChatMessage(role=Role.SYSTEM,
+                                           content=self.system_message))
 
-        # Extract output from agents
+        # collate upstream outputs
         agents_output = state.get("nodes_output", {})
-        agents_output_str = "context:\n"
+        user_q = state.get("user_prompt", "")
+        user_block = "\n".join(f"{k}: {v}" for k, v in agents_output.items())
+        merged_prompt = f"context:\n{user_block}\n\nuser question: {user_q}"
+        messages.append(ChatMessage(role=Role.USER, content=merged_prompt))
 
-        for agent_name, output in agents_output.items():
-            agents_output_str += f"{agent_name}: {output}\n"
-
-        user_prompt = state.get("user_prompt", "")
-        agents_output_str += f"\nuser question: {user_prompt}"
-
-        messages.append(ChatMessage(role=Role.USER, content=agents_output_str))
-
-        # Call LLM
-        response = self.call_llm(messages)
-
-        state["messages"] = [ChatMessage(role=Role.ASSISTANT, content=response)]
-
-        # Save to state
-        state["output"] = response
+        answer = self._chat(messages)
+        state["messages"] = [ChatMessage(role=Role.ASSISTANT, content=answer)]
+        state["output"] = answer
         return state

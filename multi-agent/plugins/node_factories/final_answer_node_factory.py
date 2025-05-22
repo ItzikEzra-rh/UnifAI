@@ -1,9 +1,8 @@
-from typing import Any, List
 from plugins.decorators import register_element
-from schemas.nodes.base_node import FinalAnswerNodeConfig
-from nodes.final_answer import FinalAnswerNode
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
+from schemas.nodes.base_node import FinalAnswerNodeConfig
+from nodes.final_answer import FinalAnswerNode
 
 
 @register_element(
@@ -13,36 +12,19 @@ from plugins.exceptions import PluginConfigurationError
     description=FinalAnswerNodeConfig.Meta.description,
 )
 class FinalAnswerNodeFactory(BaseFactory[FinalAnswerNodeConfig, FinalAnswerNode]):
-    """
-    Factory for creating FinalAnswerNode instances.
-    """
+    """Builds a FinalAnswerNode (no LLM / retriever / tools needed)."""
 
     def accepts(self, cfg: FinalAnswerNodeConfig) -> bool:
         return cfg.type == "final_answer_node"
 
-    def create(
-            self,
-            cfg: FinalAnswerNodeConfig,
-            *,
-            llm: Any = None,
-            retriever: Any = None,
-            tools: List[Any] = None
-    ) -> FinalAnswerNode:
-        """
-        Instantiate a FinalAnswerNode.
-
-        :param cfg: Merged BaseNodeConfig (with .type, .name).
-        :param llm:       Unused
-        :param retriever: Unused
-        :param tools:     Unused
-        :raises PluginConfigurationError: if instantiation fails
-        """
+    def create(self, cfg: FinalAnswerNodeConfig, **deps) -> FinalAnswerNode:
         try:
-            node_name = cfg.name or cfg.type
-            node = FinalAnswerNode(name=node_name)
-            return node
-        except Exception as e:
+            return FinalAnswerNode(
+                step_ctx=deps.pop("step_ctx"),
+                name=cfg.name or cfg.type
+            )
+        except Exception as exc:
             raise PluginConfigurationError(
-                f"FinalAnswerNodeFactory.create failed: {e}",
+                f"FinalAnswerNodeFactory.create failed: {exc}",
                 cfg.dict()
-            ) from e
+            ) from exc

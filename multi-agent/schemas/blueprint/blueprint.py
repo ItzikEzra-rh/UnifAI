@@ -4,6 +4,7 @@ from schemas.nodes.base_node import NodeSpec
 from schemas.llm.base_llm import LLMsSpec
 from schemas.retriever.retriever_config import RetrieversSpec
 from schemas.condition.base_condition import ConditionSpec
+from uuid import uuid4
 
 
 class ToolDef(BaseModel):
@@ -12,6 +13,7 @@ class ToolDef(BaseModel):
 
 
 class StepDef(BaseModel):
+    uid: str = Field(default_factory=lambda: str(uuid4()))
     name: str
     after: Optional[Union[str, List[str]]] = None
     exit_condition: Optional[str] = None

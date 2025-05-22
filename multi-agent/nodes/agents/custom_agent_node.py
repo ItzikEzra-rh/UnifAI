@@ -1,42 +1,58 @@
-from typing import Any, Dict, List, Optional
-from nodes.base_node import BaseNode, StreamWriter
 from graph.state.graph_state import GraphState
+from graph.step_context import StepContext
 from llms.chat.message import ChatMessage, Role
+from nodes.base_node import BaseNode
+from nodes.mixins.llm_capable import LlmCapableMixin
+from nodes.mixins.retriever_capable import RetrieverCapableMixin
+from nodes.mixins.tool_capable import ToolCapableMixin
 
 
-class CustomAgentNode(BaseNode):
+class CustomAgentNode(LlmCapableMixin,
+                      RetrieverCapableMixin,
+                      ToolCapableMixin,
+                      BaseNode):
     """
-    An LLM-based agent node that can optionally retrieve context,
-    build structured prompts, post-process responses with tools,
-    and support both streaming and synchronous execution.
+    Full agent: LLM + optional retriever + optional tools.
+    MRO guarantees LlmCapableMixin sees _stream() and uid from BaseNode.
     """
 
-    def _prepare_messages(self, state: GraphState) -> List[ChatMessage]:
-        """Constructs system + user messages. Optionally retrieves context."""
-        messages: List[ChatMessage] = state.get("messages", []).copy()
-        if not messages:
-            raise ValueError("State must contain at least one message.")
+    def __init__(self,
+                 *,
+                 step_ctx: StepContext,
+                 name: str,
+                 llm,
+                 retriever=None,
+                 tools=(),
+                 system_message="",
+                 retries=1):
 
-        # Add optional context
+        LlmCapableMixin.__init__(self, llm=llm,
+                                 system_message=system_message,
+                                 retries=retries)
+        RetrieverCapableMixin.__init__(self, retriever=retriever)
+        ToolCapableMixin.__init__(self, tools=tools)
+        BaseNode.__init__(self, step_ctx=step_ctx, name=name)
+
+    def _prepare_messages(self, state: GraphState) -> list[ChatMessage]:
+        msgs = state.get("messages", []).copy()
+        if not msgs:
+            raise ValueError("state['messages'] missing")
+
         if self.retriever:
-            user_prompt = messages[-1].content
-            context = self.retriever.retrieve(user_prompt)
-            message_with_context = ChatMessage(role=Role.USER, content=f"context: {context}\nuser:\n{user_prompt}")
-            messages[-1] = message_with_context
+            prompt = msgs[-1].content
+            ctx = self._retrieve(prompt)
+            msgs[-1] = ChatMessage(
+                role=Role.USER,
+                content=f"context: {ctx}\nuser:\n{prompt}"
+            )
 
-        # Prepend system message
         if self.system_message:
-            messages.insert(0, ChatMessage(role=Role.SYSTEM, content=self.system_message))
-
-        return messages
+            msgs.insert(0, ChatMessage(role=Role.SYSTEM, content=self.system_message))
+        return msgs
 
     def run(self, state: GraphState) -> GraphState:
-        """Main execution logic, shared by run and stream."""
-        messages = self._prepare_messages(state)
-        response = self.call_llm(messages)
-
-        for tool in self.tools:
-            response = tool.invoke(response)
-
-        state["nodes_output"] = {self.name: response}
+        msgs = self._prepare_messages(state)
+        answer = self._chat(msgs)
+        answer = self._apply_tools(answer)
+        state["nodes_output"] = {self.name: answer}
         return state

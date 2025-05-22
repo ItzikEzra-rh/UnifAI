@@ -11,31 +11,23 @@ from nodes.llm_merger import LLMMergerNode
     config_schema=MergerLLMNodeConfig,
     description=MergerLLMNodeConfig.Meta.description,
 )
-class CustomAgentNodeFactory(BaseFactory[MergerLLMNodeConfig, LLMMergerNode]):
-    """
-    Factory for creating CustomAgentNode instances.
-    """
+class LLMMergerNodeFactory(BaseFactory[MergerLLMNodeConfig, LLMMergerNode]):
+    """Factory for LLMMergerNode."""
 
     def accepts(self, cfg: MergerLLMNodeConfig) -> bool:
         return cfg.type == "merger_node"
 
-    def create(self,
-               cfg: MergerLLMNodeConfig,
-               *,
-               llm=None,
-               retriever=None,
-               tools=None
-               ) -> LLMMergerNode:
+    def create(self, cfg: MergerLLMNodeConfig, **deps) -> LLMMergerNode:
         try:
-            node = LLMMergerNode(
-                name=cfg.name,
-                llm=llm,
+            return LLMMergerNode(
+                step_ctx=deps.pop("step_ctx"),
+                llm=deps.pop("llm"),
+                name=cfg.name or cfg.type,
                 system_message=cfg.system_message,
-                retries=cfg.retries
+                retries=cfg.retries,
             )
-            return node
-        except Exception as e:
+        except Exception as exc:
             raise PluginConfigurationError(
-                f"CustomAgentNodeFactory.create failed: {e}",
+                f"LLMMergerNodeFactory.create failed: {exc}",
                 cfg.dict()
-            ) from e
+            ) from exc

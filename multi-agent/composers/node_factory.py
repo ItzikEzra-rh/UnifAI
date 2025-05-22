@@ -1,8 +1,6 @@
-# graph/node_factory.py
-
 from typing import Any, Dict
 from pydantic import ValidationError
-
+from graph.step_context import StepContext
 from registry import element_registry
 from session.session_registry import SessionRegistry
 from schemas.nodes.base_node import NodeBaseConfig
@@ -25,7 +23,8 @@ class NodeFactory:
     @staticmethod
     def build(
             node_spec: NodeSpec,
-            session: SessionRegistry
+            session: SessionRegistry,
+            step_ctx: StepContext
     ) -> BaseNode:
         # 1) Lookup the factory class & config schema by (category, type_key)
         try:
@@ -58,6 +57,7 @@ class NodeFactory:
             "llm": session.get_llm(cfg.llm) if cfg.llm else None,
             "retriever": session.get_retriever(cfg.retriever) if cfg.retriever else None,
             "tools": [session.get_tool(t) for t in cfg.tools],
+            "step_ctx": step_ctx
         }
 
         # 4) Instantiate via the factory

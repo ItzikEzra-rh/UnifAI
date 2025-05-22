@@ -14,7 +14,6 @@ class LangGraphExecutor(GraphExecutor):
     def run(self, initial_state):
         # delegate to LangGraph’s invoke API
         return self._compiled.invoke(initial_state)
-        # return self._compiled.invoke(initial_state)
 
     def stream(self, initial_state, *args, **kwargs):
         """

@@ -54,7 +54,7 @@ plan:
   - name: docs_agent
     after: user_input
     node:
-      name: docs_agent_node
+      name: docs_agent
       type: custom_agent_node
       llm: openai_llm
       retriever: my_docs
@@ -73,7 +73,7 @@ plan:
   - name: slack_agent
     after: user_input
     node:
-      name: slack_agent_node
+      name: slack_agent
       type: custom_agent_node
       llm: openai_llm
       retriever: my_slack
@@ -93,7 +93,7 @@ plan:
       - docs_agent
       - slack_agent
     node:
-      name: agent_merger_node
+      name: agent_merger
       type: merger_node
       llm: openai_llm
       system_message: |
