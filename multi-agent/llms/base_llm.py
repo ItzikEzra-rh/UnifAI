@@ -21,12 +21,3 @@ class BaseLLM(ABC):
         Returns the identifier for the LLM (for logging/debug).
         """
         pass
-
-
-class SupportsStreaming(ABC):
-    @abstractmethod
-    def stream(self, messages: list[Any], **kwargs) -> Iterator[str]:
-        """
-        Yields each token (or chunk) as it arrives.
-        """
-        ...

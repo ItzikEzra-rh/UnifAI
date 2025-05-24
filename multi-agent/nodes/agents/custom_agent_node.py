@@ -8,10 +8,10 @@ from nodes.mixins.tool_capable import ToolCapableMixin
 from typing import Any
 
 
-class CustomAgentNode(BaseNode,
-                      LlmCapableMixin,
+class CustomAgentNode(LlmCapableMixin,
                       RetrieverCapableMixin,
-                      ToolCapableMixin):
+                      ToolCapableMixin,
+                      BaseNode):
     """
     Full agent: LLM + optional retriever + optional tools.
     MRO guarantees LlmCapableMixin sees _stream() and uid from BaseNode.

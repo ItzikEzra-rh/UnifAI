@@ -5,7 +5,7 @@ from graph.state.graph_state import GraphState
 from llms.chat.message import ChatMessage, Role
 
 
-class LLMMergerNode(BaseNode, LlmCapableMixin):
+class LLMMergerNode(LlmCapableMixin, BaseNode):
     """
     Uses an LLM to merge outputs from multiple agents.
     """

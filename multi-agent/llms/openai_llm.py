@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional, Iterator
 from langchain_openai import ChatOpenAI
-from langchain.schema import HumanMessage, AIMessage, SystemMessage
-from llms.base_llm import BaseLLM, SupportsStreaming
+from llms.base_llm import BaseLLM
+from core.contracts import SupportsStreaming
 from llms.chat.converter import LangChainConverter
 from llms.chat.message import ChatMessage
 
