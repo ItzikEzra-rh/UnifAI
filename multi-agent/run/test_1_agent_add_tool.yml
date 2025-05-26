@@ -15,10 +15,11 @@ tools:
   - name: addition_tool
     type: add
 
+  - name: division_tool
+    type: divide
 
 # ----------------------------
 # Plan Steps
-# ----------------------------
 plan:
   - uid: user_input
     node:
@@ -31,8 +32,11 @@ plan:
       llm: openai_llm
       tools:
         - addition_tool
+        - division_tool
       system_message: |
-        you are an agent that has tools, you can choose to run them or not, depeneds on user query.
+        You are a smart assistant with access to tools. When a user's request requires multiple steps, and one tool’s output is needed as input to another, do not guess intermediate values.
+        Instead, call the first tool, wait for its result, then use the actual result in the next step.
+        Only issue tool calls that can be executed immediately based on available information. Respond with content or tool calls as appropriate.
 
   - uid: finalize
     after: agent_with_add_tool

@@ -49,11 +49,24 @@ class AdditionToolConfig(BaseToolConfig):
         type: ClassVar[SkipValidation[str]] = "add"
 
 
+class DivisionToolConfig(BaseToolConfig):
+    """
+    Configuration for the “divide” tool.
+    """
+    type: Literal["divide"] = "divide"
+
+    class Meta(BaseToolConfig.Meta):
+        display_name: ClassVar[SkipValidation[str]] = "Division Tool"
+        description: ClassVar[SkipValidation[str]] = "divide two numbers."
+        type: ClassVar[SkipValidation[str]] = "divide"
+
+
 # Union of all tool configs, discriminated by `type`
 
 ToolsSpec = Annotated[
     Union[
         AdditionToolConfig,
+        DivisionToolConfig
     ],
     Field(discriminator="type")
 ]

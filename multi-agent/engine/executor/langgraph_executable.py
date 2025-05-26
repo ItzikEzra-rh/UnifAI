@@ -13,7 +13,7 @@ class LangGraphExecutor(GraphExecutor):
 
     def run(self, initial_state):
         # delegate to LangGraph’s invoke API
-        return self._compiled.invoke(initial_state)
+        return self._compiled.invoke(initial_state, config={"streaming": False})
 
     def stream(self, initial_state, *args, **kwargs):
         """
@@ -24,6 +24,7 @@ class LangGraphExecutor(GraphExecutor):
             for chunk in self._compiled.stream(
                     initial_state,
                     stream_mode=stream_mode,
+                    config={"streaming": True}
             ):
                 yield chunk
 

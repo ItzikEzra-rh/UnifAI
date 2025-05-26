@@ -18,6 +18,7 @@ class BaseNode(SupportsStreaming, ABC):
         self._ctx = step_ctx
         self.name = name
         self._stream_writer: Optional[StreamWriter] = None
+        self._is_streaming = False
 
     @abstractmethod
     def run(self, state: GraphState) -> GraphState:
@@ -25,8 +26,10 @@ class BaseNode(SupportsStreaming, ABC):
 
     def __call__(self,
                  state: GraphState,
+                 config,
                  writer: StreamWriter = None) -> GraphState:
         self._stream_writer = writer
+        self._is_streaming = config.get("metadata", {}).get("streaming", False)
         result = self.run(state)
         self._stream({"type": "complete",
                       "state": result})
@@ -57,7 +60,7 @@ class BaseNode(SupportsStreaming, ABC):
         """
         Check if the node is streaming.
         """
-        return self._stream_writer is not None
+        return self._is_streaming
 
     @property
     def uid(self) -> str:

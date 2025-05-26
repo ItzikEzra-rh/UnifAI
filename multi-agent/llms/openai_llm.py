@@ -4,6 +4,8 @@ from llms.base_llm import BaseLLM
 from core.contracts import SupportsStreaming
 from llms.chat.converter import LangChainConverter
 from llms.chat.message import ChatMessage
+from tools.base_tool import BaseTool
+from tools.converter import LangChainToolsConverter
 
 
 class OpenAILLM(BaseLLM, SupportsStreaming):
@@ -45,7 +47,7 @@ class OpenAILLM(BaseLLM, SupportsStreaming):
             max_tokens: Optional[int] = None,
             stream: bool = False,
             **kwargs: Any
-    ) -> str:
+    ) -> ChatMessage:
         """
         Send a chat request to the vLLM model.
 
@@ -62,7 +64,7 @@ class OpenAILLM(BaseLLM, SupportsStreaming):
         lc_messages = LangChainConverter.to_lc(messages)
 
         response = self.client.invoke(lc_messages, stream=stream, **call_params)
-        return response.content
+        return LangChainConverter.from_lc_message(response)
 
     def stream(
             self,
@@ -75,6 +77,9 @@ class OpenAILLM(BaseLLM, SupportsStreaming):
         lc_messages = LangChainConverter.to_lc(messages)
         for chunk in self.client.stream(lc_messages, stream=True, **call_params):
             yield chunk.content
+
+    def bind_tools(self, tools: List[BaseTool]) -> None:
+        self.client = self.client.bind_tools(LangChainToolsConverter.to_lc(tools))
 
     @property
     def name(self) -> str:

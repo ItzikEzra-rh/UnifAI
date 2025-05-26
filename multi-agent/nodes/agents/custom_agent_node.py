@@ -5,7 +5,7 @@ from nodes.base_node import BaseNode
 from nodes.mixins.llm_capable import LlmCapableMixin
 from nodes.mixins.retriever_capable import RetrieverCapableMixin
 from nodes.mixins.tool_capable import ToolCapableMixin
-from typing import Any
+from typing import Any, Optional
 
 
 class CustomAgentNode(LlmCapableMixin,
@@ -55,9 +55,42 @@ class CustomAgentNode(LlmCapableMixin,
         return msgs
 
     def run(self, state: GraphState) -> GraphState:
-        msgs = self._prepare_messages(state)
-        answer = self._chat(msgs)
-        # answer = self._apply_tools(answer)
-        state["nodes_output"] = {self.uid: answer}
+        # 1) Prepare initial history (system + retrieval + user)
+        history = self._prepare_messages(state)
 
+        # 2) If no tools, one simple chat and return
+        if not self.tools:
+            assistant = self._chat(messages=history)
+            state["nodes_output"] = {self.uid: assistant.content}
+            return state
+
+        # 3) Bind tools once
+        self._llm_bind_tools(self.tools)
+
+        max_rounds = 5
+        assistant: Optional[ChatMessage] = None
+        final_reply: Optional[ChatMessage] = None
+
+        # 4) Call–invoke loop
+        for _ in range(max_rounds):
+            assistant = self._llm_sync_chat(messages=history)
+            history.append(assistant)
+
+            if assistant.tool_calls:
+                tool_msgs = self.invoke_tools(assistant)
+                history.extend(tool_msgs)
+                # Loop so the LLM can see tool outputs
+                continue
+
+            # No further tool calls ⇒ this is our final answer
+            final_reply = assistant
+            break
+
+        # 5) Fallback: ensure we have something
+        assert assistant is not None, "LLM did not produce any response"
+        if final_reply is None:
+            final_reply = assistant
+
+        # 6) Write out final content
+        state["nodes_output"] = {self.uid: final_reply.content}
         return state

@@ -1,6 +1,8 @@
-from llms.chat.message import ChatMessage
-from typing import Any, TypeVar, Generic
+from llms.chat.message import ChatMessage, Role
+from typing import Any, TypeVar, Generic, List
 from core.contracts import SupportsStreaming
+from llms.base_llm import BaseLLM
+from tools.base_tool import BaseTool
 
 # -----------------------------------------------------------------------------
 # Type variable bound to the minimal "SupportsStreaming" Protocol.
@@ -47,7 +49,7 @@ class LlmCapableMixin(Generic[TSupportStream]):
     def __init__(
             self,
             *,
-            llm: Any,
+            llm: BaseLLM,
             system_message: str = "",
             retries: int = 1,
             **kwargs: Any,
@@ -64,12 +66,24 @@ class LlmCapableMixin(Generic[TSupportStream]):
         self.system_message = system_message
         self.retries = max(1, retries)
 
+    def _llm_stream(self: TSupportStream,
+                    messages: list[ChatMessage],
+                    *,
+                    event_type: str = "llm_token") -> ChatMessage:
+        """ Stream LLM response for a list of ChatMessage."""
+        out = ""
+        for chunk in self.llm.stream(messages):
+            out += chunk
+            self._stream({"type": event_type, "chunk": chunk})
+        return ChatMessage(role=Role.ASSISTANT, content=out)
+
+    def _llm_sync_chat(self, messages: list[ChatMessage]) -> ChatMessage:
+        """ Synchronous chat with the LLM for a list of ChatMessage."""
+        return self.llm.chat(messages)
+
     def _chat(
             self: TSupportStream,
-            messages: list[ChatMessage],
-            *,
-            event_type: str = "llm_token",
-    ) -> str:
+            messages: list[ChatMessage]) -> ChatMessage:
         """
         Send a list of ChatMessage to the LLM.
 
@@ -81,10 +95,8 @@ class LlmCapableMixin(Generic[TSupportStream]):
         :returns:          The complete generated response.
         """
         if self.is_streaming():
-            out = ""
-            for chunk in self.llm.stream(messages):
-                out += chunk
-                self._stream({"type": event_type, "chunk": chunk})
-            return out
+            return self._llm_stream(messages)
+        return self._llm_sync_chat
 
-        return self.llm.chat(messages)
+    def _llm_bind_tools(self, tools: List[BaseTool]) -> None:
+        self.llm.bind_tools(tools)
