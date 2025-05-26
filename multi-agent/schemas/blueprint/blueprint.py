@@ -4,6 +4,7 @@ from schemas.nodes.base_node import NodeSpec
 from schemas.llm.base_llm import LLMsSpec
 from schemas.retriever.retriever_config import RetrieversSpec
 from schemas.condition.base_condition import ConditionSpec
+from schemas.tools.tool_config import ToolsSpec
 from uuid import uuid4
 
 
@@ -11,11 +12,6 @@ class StepMeta(BaseModel):
     description: str = Field(default="", description="Short title or label for the step instance")
     display_name: str = Field(default="", description="Custom description for this step's purpose")
     tags: List[str] = Field(default_factory=list, description="Step-defined tags for categorization")
-
-
-class ToolDef(BaseModel):
-    name: str
-    type: str
 
 
 class StepDef(BaseModel):
@@ -39,7 +35,7 @@ class BlueprintSpec(BaseModel):
     llms: List[LLMsSpec] = Field(default_factory=list)
     retrievers: List[RetrieversSpec] = Field(default_factory=list)
     conditions: List[ConditionSpec] = Field(default_factory=list)
-    tools: List[ToolDef] = Field(default_factory=list)
+    tools: List[ToolsSpec] = Field(default_factory=list)
     plan: List[StepDef]
     description: Optional[str] = "Blueprint description"
     display_name: Optional[str] = "Display Name"

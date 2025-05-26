@@ -1,0 +1,40 @@
+# ----------------------------
+# LLM Definitions
+# ----------------------------
+llms:
+  - name: openai_llm
+    type: openai
+    model_name: Qwen/Qwen2.5-7B-Instruct
+    base_url: http://localhost:8000/v1
+
+
+# ----------------------------
+# Tool Stubs
+# ----------------------------
+tools:
+  - name: addition_tool
+    type: add
+
+
+# ----------------------------
+# Plan Steps
+# ----------------------------
+plan:
+  - uid: user_input
+    node:
+      type: user_question_node
+
+  - uid: agent_with_add_tool
+    after: user_input
+    node:
+      type: custom_agent_node
+      llm: openai_llm
+      tools:
+        - addition_tool
+      system_message: |
+        you are an agent that has tools, you can choose to run them or not, depeneds on user query.
+
+  - uid: finalize
+    after: agent_with_add_tool
+    node:
+      type: final_answer_node

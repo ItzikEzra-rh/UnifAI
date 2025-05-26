@@ -57,7 +57,7 @@ class CustomAgentNode(LlmCapableMixin,
     def run(self, state: GraphState) -> GraphState:
         msgs = self._prepare_messages(state)
         answer = self._chat(msgs)
-        answer = self._apply_tools(answer)
+        # answer = self._apply_tools(answer)
         state["nodes_output"] = {self.uid: answer}
 
         return state

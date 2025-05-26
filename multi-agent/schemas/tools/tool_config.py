@@ -1,50 +1,59 @@
-from pydantic import BaseModel, HttpUrl
-from typing import Literal, Optional, Dict
+from typing import (
+    ClassVar, Literal, Optional,
+    Type, Union, Annotated, Protocol
+)
+from pydantic import BaseModel, Field, Extra, SkipValidation
 
 
-class CalculatorConfig(BaseModel):
-    """
-    Configuration for a simple arithmetic calculator tool.
-    """
-    name: str
-    type: Literal["calculator"]
+# The Protocol your Meta classes share
+
+class ToolMeta(Protocol):
+    category: ClassVar[str]
+    display_name: ClassVar[str]
+    description: ClassVar[str]
+    type: ClassVar[str]  # discriminator
 
 
-class WeatherConfig(BaseModel):
+# base tool config
+
+class BaseToolConfig(BaseModel):
     """
-    Configuration for a mock weather data tool.
+    Common fields for any tool.
+    Subclasses must define a Literal `type` and can override Meta.
     """
-    name: str
-    type: Literal["weather"]
+    name: str = Field(..., description="Unique key for this tool instance")
+    type: Literal["base"] = Field(
+        ..., description="Discriminator: which tool to use"
+    )
+
+    class Config:
+        extra = Extra.forbid
+        arbitrary_types_allowed = True
+
+    class Meta(ToolMeta):
+        category: ClassVar[SkipValidation[str]] = "tool"
+        display_name: ClassVar[SkipValidation[str]] = "Generic Tool"
+        description: ClassVar[SkipValidation[str]] = "Base class for tool configurations"
+        type: ClassVar[SkipValidation[str]] = "base"
 
 
-class HTTPToolConfig(BaseModel):
+class AdditionToolConfig(BaseToolConfig):
     """
-    Configuration for an HTTP-based tool adapter.
+    Configuration for the “add” tool.
     """
-    name: str
-    type: Literal["http_tool"]
-    url: HttpUrl
-    headers: Optional[Dict[str, str]] = {}
+    type: Literal["add"] = "add"
+
+    class Meta(BaseToolConfig.Meta):
+        display_name: ClassVar[SkipValidation[str]] = "Addition Tool"
+        description: ClassVar[SkipValidation[str]] = "Adds two integers."
+        type: ClassVar[SkipValidation[str]] = "add"
 
 
-class MCPToolConfig(BaseModel):
-    """
-    Configuration for an MCP (multi-call protocol) tool adapter.
-    """
-    name: str
-    type: Literal["mcp"]
-    function: str  # Identifier of the MCP function/task
-    endpoint: HttpUrl  # MCP server endpoint
-    headers: Optional[Dict[str, str]] = {}
+# Union of all tool configs, discriminated by `type`
 
-
-class WebSearchConfig(BaseModel):
-    """
-    Configuration for an external web-search tool.
-    """
-    name: str
-    type: Literal["web_search"]
-    endpoint: HttpUrl
-    api_key: Optional[str] = None
-    headers: Optional[Dict[str, str]] = {}
+ToolsSpec = Annotated[
+    Union[
+        AdditionToolConfig,
+    ],
+    Field(discriminator="type")
+]

@@ -130,10 +130,12 @@ def main_resume_session(run_id: str):
 if __name__ == "__main__":
     # main_resume_session("64fc9af1-2dd8-405d-a491-925639a4100f")
     blueprint_loader = YAMLBlueprintLoader()
-    spec = blueprint_loader.load("run/test_2_agents_slack_docs_merger.yml")
+    spec1 = blueprint_loader.load("run/test_1_agent_add_tool.yml")
+    spec2 = blueprint_loader.load("run/test_2_agents_slack_docs_merger.yml")
     repo = MongoBlueprintRepository()
     service = BlueprintService(repo)
-    bid = service.register(spec)
+    bid1 = service.register(spec1)
+    bid2 = service.register(spec2)
     # print(service.count())
     # print(service.get_blueprint_spec("81bdd223-4dba-4bb3-81d1-20fbaf19dd01"))
     import json
