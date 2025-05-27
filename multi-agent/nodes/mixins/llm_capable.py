@@ -98,5 +98,5 @@ class LlmCapableMixin(Generic[TSupportStream]):
             return self._llm_stream(messages)
         return self._llm_sync_chat
 
-    def _llm_bind_tools(self, tools: List[BaseTool]) -> None:
+    def _bind_tools(self, tools: List[BaseTool]) -> None:
         self.llm.bind_tools(tools)
