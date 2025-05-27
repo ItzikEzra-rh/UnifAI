@@ -14,16 +14,16 @@ sessions_bp = Blueprint("sessions", __name__)
     "metadata": fields.Dict(data_key="metadata", required=False, missing=lambda: {}, default=lambda: {}, ),
 })
 def create_user_session(blueprint_id, user_id, metadata):
-    # try:
-    session_svc = current_app.container.session_service
-    blueprint_svc = current_app.container.blueprint_service
-    blueprint_spec = blueprint_svc.get_blueprint_spec(blueprint_id)
-    session = session_svc.create(user_id=user_id,
-                                 blueprint_spec=blueprint_spec,
-                                 metadata=metadata)
-    return jsonify(session.get_run_id()), 200
-    # except Exception as e:
-    #     return jsonify({"error": str(e)}), 500
+    try:
+        session_svc = current_app.container.session_service
+        blueprint_svc = current_app.container.blueprint_service
+        blueprint_spec = blueprint_svc.get_blueprint_spec(blueprint_id)
+        session = session_svc.create(user_id=user_id,
+                                     blueprint_spec=blueprint_spec,
+                                     metadata=metadata)
+        return jsonify(session.get_run_id()), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @sessions_bp.route("/user.session.execute", methods=["POST"])
@@ -89,5 +89,17 @@ def get_session_status(session_id):
         svc = current_app.container.session_service
         status = svc.get_status(run_id=session_id)
         return jsonify(status), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@sessions_bp.route("/session.user.chat.get", methods=["GET"])
+@from_query({
+    "user_id": fields.Str(data_key="userId", required=True),
+})
+def get_session_user_chat(user_id):
+    try:
+        svc = current_app.container.session_service
+        return jsonify(svc.get_user_sessions_chat_history(user_id)), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500

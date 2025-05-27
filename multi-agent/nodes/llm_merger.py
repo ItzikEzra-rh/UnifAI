@@ -40,6 +40,6 @@ class LLMMergerNode(LlmCapableMixin, BaseNode):
         messages.append(ChatMessage(role=Role.USER, content=merged_prompt))
 
         answer = self._chat(messages)
-        state["messages"] = [ChatMessage(role=Role.ASSISTANT, content=answer)]
-        state["output"] = answer
+        state["messages"] = [answer]
+        state["output"] = answer.content
         return state

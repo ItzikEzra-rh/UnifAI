@@ -1,7 +1,9 @@
 from global_utils.config import ConfigManager
+from typing import Any
 import json
 import os
 from pathlib import Path
+import asyncio
 
 
 def get_mongo_url():
@@ -63,3 +65,19 @@ def singleton(cls):
         return instances[cls]
 
     return get_instance
+
+
+def run_async(awaitable: Any) -> Any:
+    """
+    Run an awaitable from sync code.
+    - If no loop is running, uses asyncio.run().
+    - If already inside a loop, uses run_until_complete().
+    """
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        # no loop: safe to start a new one
+        return asyncio.run(awaitable)
+    else:
+        # loop already running (e.g. in a web framework), so block on it
+        return loop.run_until_complete(awaitable)

@@ -1,7 +1,8 @@
-from typing import Any, Dict, Iterator
+from typing import Any, Dict, Iterator, List
 from session.user_session_manager import UserSessionManager
 from session.session_executor import SessionExecutor
 from schemas.blueprint.blueprint import BlueprintSpec
+from session.workflow_session import WorkflowSession
 
 
 class SessionService:
@@ -75,3 +76,13 @@ class SessionService:
         """
         session = self.get(run_id)
         return session.get_status() if session else None
+
+    def get_user_sessions_chat_history(self, user_id: str) -> list:
+        """
+        Get chat history for all sessions created by a user.
+        """
+        sessions_ids = self._manager.list_sessions(user_id)
+        sessions: List[WorkflowSession] = [self.get(session_id) for session_id in sessions_ids]
+        return [{"state": session.graph_state.model_dump(mode="json"),
+                 "metadata": session.metadata,
+                 "startedTimeStamp": session.run_context.started_at} for session in sessions]

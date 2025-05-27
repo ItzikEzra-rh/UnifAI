@@ -1,7 +1,8 @@
-import asyncio
-from typing import Iterable, Any, Dict, List
+from typing import Any, Dict, List
 from llms.chat.message import ChatMessage, ToolCall, Role
 from tools.base_tool import BaseTool
+from global_utils.utils.util import run_async
+import asyncio
 
 
 class ToolCapableMixin:
@@ -20,7 +21,7 @@ class ToolCapableMixin:
             return []
 
         # run the async inner function on whatever event loop context we have
-        return self._run_async(self._ainvoke_tools(msg))
+        return run_async(self._ainvoke_tools(msg))
 
     async def _ainvoke_tools(self, msg: ChatMessage) -> List[ChatMessage]:
         """Async core: invoke each tool in parallel via tool.arun()."""
@@ -43,19 +44,3 @@ class ToolCapableMixin:
             )
 
         return list(await asyncio.gather(*(_call(tc) for tc in msg.tool_calls)))
-
-    @staticmethod
-    def _run_async(awaitable: Any) -> Any:
-        """
-        Run an awaitable from sync code.
-        - If no loop is running, uses asyncio.run().
-        - If already inside a loop, uses run_until_complete().
-        """
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            # no loop: safe to start a new one
-            return asyncio.run(awaitable)
-        else:
-            # loop already running (e.g. in a web framework), so block on it
-            return loop.run_until_complete(awaitable)

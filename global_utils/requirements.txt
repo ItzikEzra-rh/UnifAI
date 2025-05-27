@@ -4,6 +4,7 @@ celery
 celery-batches
 flask_pymongo
 pymongo
+asyncio
 # flask
 # flask-cors
 # scapy
