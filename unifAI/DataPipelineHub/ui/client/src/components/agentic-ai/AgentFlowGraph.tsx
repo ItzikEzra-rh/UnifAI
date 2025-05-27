@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import ReactFlow, {
   Node,
   Edge,
@@ -11,7 +11,8 @@ import ReactFlow, {
   MarkerType,
   Position,
   NodeProps,
-  Handle 
+  Handle,
+  useReactFlow 
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -129,7 +130,7 @@ const parseGraphFlow = (graphFlow: GraphFlow): { nodes: Node<NodeData>[]; edges:
   
   // First pass: Identify predecessors and successors
   graphFlow.plan.forEach(item => {
-    const nodeId = item.name;
+    const nodeId = item.uid;
     const nodeType = item.node?.type || 'custom_agent_node';
     nodeTypeMap[nodeId] = nodeType;
     
@@ -161,7 +162,7 @@ const parseGraphFlow = (graphFlow: GraphFlow): { nodes: Node<NodeData>[]; edges:
   while (!allNodesAssigned) {
     allNodesAssigned = true;
     graphFlow.plan.forEach(item => {
-      const nodeId = item.name;
+      const nodeId = item.uid;
       
       // Skip nodes that already have a level assigned
       if (nodeLevel[nodeId] !== undefined) {
@@ -194,10 +195,10 @@ const parseGraphFlow = (graphFlow: GraphFlow): { nodes: Node<NodeData>[]; edges:
   
   // Create nodes with the calculated positions
   const nodes: Node<NodeData>[] = graphFlow.plan.map(item => {
-    const nodeId = item.name;
+    const nodeId = item.uid;
     const nodeType = item.node?.type || 'custom_agent_node';
-    const nodeLabel = item.node?.meta?.display_name || item.node?._meta.display_name || "General Node";
-    const nodeDescription = item.node?.meta?.description || item.node?._meta.description || null;
+    const nodeLabel = item.meta?.display_name || item.node?._meta.display_name || "General Node";
+    const nodeDescription = item.meta?.description || item.node?._meta.description || null;
     
     // Get level information
     const level = nodeLevel[nodeId];
@@ -248,9 +249,9 @@ const parseGraphFlow = (graphFlow: GraphFlow): { nodes: Node<NodeData>[]; edges:
         const edgeStyle = getEdgeStyle(sourceNodeType);
         
         edges.push({
-          id: `${predecessorId}-to-${item.name}`,
+          id: `${predecessorId}-to-${item.uid}`,
           source: predecessorId,
-          target: item.name,
+          target: item.uid,
           animated: true,
           type: 'default', // Simpler edge type for reliability
           style: { 
@@ -350,8 +351,12 @@ type AgentFlowGraphProps = {
 export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlowGraphProps): React.ReactElement {
   // State for available graph flows
   const [graphFlows, setGraphFlows] = useState<FlowObject[]>([]);
+  const [isInitial, setIsInitial] = useState<boolean>(true);
   const [nodes, setNodes, onNodesChange] = useNodesState<NodeData>(initialNodes);
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+
+  const { fitView, zoomOut } = useReactFlow();
+  const initializedRef = useRef(false);
 
   // Effect to load graph flows from API or mock data
   useEffect(() => {
@@ -372,6 +377,7 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
         
         // Select the first flow by default
         if (processedFlows.length > 0) {
+          setIsInitial(false);
           setSelectedFlow(processedFlows[0]);
           setNodes(processedFlows[0].flow.nodes);
           setEdges(processedFlows[0].flow.edges);
@@ -383,6 +389,20 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
     
     fetchGraphFlows();
   }, []);
+
+  useEffect(() => {
+    if (!initializedRef.current && nodes.length > 0 && edges.length > 0 && !isInitial) {
+      initializedRef.current = true;
+  
+      // Slight delay to let the graph render
+      setTimeout(() => {
+        fitView({ padding: 0.2 });
+        setTimeout(() => {
+          zoomOut(); // mimic one click on Zoom Out
+        }, 200);
+      }, 100);
+    }
+  }, [nodes, edges]);
 
   const handleFlowSelect = (flow: FlowObject): void => {
     setSelectedFlow(flow);

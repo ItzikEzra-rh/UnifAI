@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageSquare, Users, Clock, ArrowUpRight, SplitSquareVertical } from "lucide-react";
-import ChatInterface from "./ChatInterface";
+import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import { GraphNode } from "../../pages/AgenticAI"
 import axios, { AXIOS_AGENTS_IP } from '../../http/axiosAgentConfig'

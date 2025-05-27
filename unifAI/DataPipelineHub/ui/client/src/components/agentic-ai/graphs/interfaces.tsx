@@ -16,7 +16,6 @@ export interface NodeDefinition {
   type: string;
   name?: string | null;
   _meta: _NodeMetadata;
-  meta: NodeMetadata | null;
   llm?: string | null;
   retriever?: string | null;
   system_message?: string | null;
@@ -30,6 +29,8 @@ export interface PlanItem {
   after?: string | string[] | null;
   branches: null;
   exit_condition: null;
+  uid: string;
+  meta: NodeMetadata | null;
 }
 
 export interface GraphFlowMetadata {
