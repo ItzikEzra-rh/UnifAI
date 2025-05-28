@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="SshConfigs">
+    <configs>
+      <sshConfig authType="PASSWORD" host="bastion.9jk6c.sandbox1471.opentlc.com" id="f362db68-2f0b-4aff-9641-b44dfc910fa2" port="22" customName="1471" nameFormat="CUSTOM" username="instruct">
+        <option name="customName" value="1471" />
+      </sshConfig>
+    </configs>
+  </component>
+</project>
