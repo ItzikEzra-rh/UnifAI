@@ -1,25 +1,21 @@
-from typing import Any, Dict, List
 from nodes.base_node import BaseNode
-from runtime.state.graph_state import GraphState
+from graph.step_context import StepContext
+from graph.state.graph_state import GraphState
 
 
 class FinalAnswerNode(BaseNode):
     """
-    A node that picks the best answer from prior steps (critic or discussion)
-    and writes it into state["final_output"], then prints it.
+    Picks the best answer already produced by upstream steps and
+    stores it under state["final_output"].
     """
 
-    def __init__(self, name: str = "final_answer"):
-        # No LLM, retriever, or tools needed for finalization
-        super().__init__(name=name)
+    def __init__(self,
+                 *,
+                 step_ctx: StepContext,
+                 name: str = "final_answer",
+                 **kwargs):
+        super().__init__(step_ctx=step_ctx, name=name, **kwargs)
 
-    def run(self, state: dict) -> dict:
-        """
-        Selects the final answer and emits it.
-        """
-        # Prefer the critic's judgement if present; otherwise use the discussion result
-        result = state.get("output")
-
-        # Print or otherwise emit the final output
-        print("FinalAnswerNode: Final output:\n", result)
+    def run(self, state: GraphState) -> GraphState:
+        state["final_output"] = state.get("output")
         return state

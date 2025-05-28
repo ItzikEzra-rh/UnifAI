@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict
-from runtime.state.graph_state import GraphState
+from typing import Any
 
 
 class BaseCondition(ABC):

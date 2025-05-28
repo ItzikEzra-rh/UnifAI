@@ -1,10 +1,14 @@
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Iterator
 from langchain_openai import ChatOpenAI
-from langchain.schema import HumanMessage, AIMessage, SystemMessage
 from llms.base_llm import BaseLLM
+from core.contracts import SupportsStreaming
+from llms.chat.converter import LangChainConverter
+from llms.chat.message import ChatMessage
+from tools.base_tool import BaseTool
+from tools.converter import LangChainToolsConverter
 
 
-class OpenAILLM(BaseLLM):
+class OpenAILLM(BaseLLM, SupportsStreaming):
     """
     LLM client for vLLM-served Qwen model using LangChain's ChatOpenAI wrapper.
     """
@@ -37,13 +41,13 @@ class OpenAILLM(BaseLLM):
 
     def chat(
             self,
-            messages: List[Dict[str, Any]],
+            messages: List[ChatMessage],
             *,
             temperature: Optional[float] = None,
             max_tokens: Optional[int] = None,
             stream: bool = False,
             **kwargs: Any
-    ) -> str:
+    ) -> ChatMessage:
         """
         Send a chat request to the vLLM model.
 
@@ -57,24 +61,25 @@ class OpenAILLM(BaseLLM):
         call_params.update(kwargs)
 
         # Convert to LangChain message objects
-        lc_messages = []
-        for m in messages:
-            role = m["role"]
-            content = m["content"]
-            if role == "user":
-                lc_messages.append(HumanMessage(content=content))
-            elif role == "assistant":
-                lc_messages.append(AIMessage(content=content))
-            elif role == "system":
-                lc_messages.append(SystemMessage(content=content))
-            else:
-                raise ValueError(f"Unsupported message role: {role}")
+        lc_messages = LangChainConverter.to_lc(messages)
 
         response = self.client.invoke(lc_messages, stream=stream, **call_params)
-        return response.content
+        return LangChainConverter.from_lc_message(response)
 
-    def embed(self, text: str, **kwargs: Any) -> List[float]:
-        raise NotImplementedError("Embedding not supported by ChatOpenAI")
+    def stream(
+            self,
+            messages: List[ChatMessage],
+            **call_params
+    ) -> Iterator[str]:
+        """
+        Pass stream=True through to LangChain and unwrap content token by token.
+        """
+        lc_messages = LangChainConverter.to_lc(messages)
+        for chunk in self.client.stream(lc_messages, stream=True, **call_params):
+            yield chunk.content
+
+    def bind_tools(self, tools: List[BaseTool]) -> None:
+        self.client = self.client.bind_tools(LangChainToolsConverter.to_lc(tools))
 
     @property
     def name(self) -> str:

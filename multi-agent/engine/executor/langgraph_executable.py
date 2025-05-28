@@ -1,6 +1,5 @@
 from typing import Any, TypedDict
 from engine.executor.interfaces import GraphExecutor
-from runtime.state.base_state import BaseGraphState
 
 
 class LangGraphExecutor(GraphExecutor):
@@ -14,5 +13,23 @@ class LangGraphExecutor(GraphExecutor):
 
     def run(self, initial_state):
         # delegate to LangGraph’s invoke API
-        return self._compiled.invoke(initial_state)
-        # return self._compiled.invoke(initial_state)
+        return self._compiled.invoke(initial_state, config={"streaming": False})
+
+    def stream(self, initial_state, *args, **kwargs):
+        """
+        stream the graph’s output to the given stream.
+        """
+        stream_mode = kwargs.get("stream_mode", None)
+        if stream_mode:
+            for chunk in self._compiled.stream(
+                    initial_state,
+                    stream_mode=stream_mode,
+                    config={"streaming": True}
+            ):
+                yield chunk
+
+    def get_state(self):
+        """
+        Get the current state of the graph.
+        """
+        return self._compiled.get_state(None)

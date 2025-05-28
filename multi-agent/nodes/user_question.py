@@ -1,26 +1,22 @@
-from typing import Any, Dict, List
 from nodes.base_node import BaseNode
-from runtime.state.graph_state import GraphState
+from graph.step_context import StepContext
+from graph.state.graph_state import GraphState
+from llms.chat.message import ChatMessage, Role
 
 
 class UserQuestionNode(BaseNode):
     """
-    A node that “receives” or displays the user’s input.
-
-    In this simple implementation, it just logs whatever is already stored
-    in state["user_input"], then passes the state onward unchanged.
+    Injects the raw user prompt into the chat history.
     """
 
-    def __init__(self, name: str = "user_question"):
-        # No LLM, retriever, or tools needed here—just call BaseNode with defaults
-        super().__init__(name=name)
+    def __init__(self,
+                 *,
+                 step_ctx: StepContext,
+                 name: str = "user_question",
+                 **kwargs):
+        super().__init__(step_ctx=step_ctx, name=name, **kwargs)
 
-    def run(self, state: dict) -> dict:
-        """
-        Log the incoming user_input and return the unmodified state.
-        Downstream nodes can read state["user_input"].
-        """
-        print(state)
-        user_input = state.get("user_prompt", "<no input provided>")
-        print(f"UserQuestionNode: Prompt received: {user_input}")
+    def run(self, state: GraphState) -> GraphState:
+        prompt = state.get("user_prompt", "<no input>")
+        state["messages"] = [ChatMessage(role=Role.USER, content=prompt)]
         return state

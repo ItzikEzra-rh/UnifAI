@@ -6,10 +6,10 @@ from condition.threshold_condition import ThresholdCondition
 
 
 @register_element(
-    type_key=ThresholdConditionConfig.model_fields["type"].default,
-    category="condition",
+    type_key=ThresholdConditionConfig.Meta.type,
+    category=ThresholdConditionConfig.Meta.category,
     config_schema=ThresholdConditionConfig,
-    description="Threshold ConditionConfig"
+    description=ThresholdConditionConfig.Meta.description,
 )
 class ThresholdConditionFactory(BaseFactory[ThresholdConditionConfig, ThresholdCondition]):
     """

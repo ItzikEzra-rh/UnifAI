@@ -4,3 +4,11 @@ langchain>=0.1.14
 langchain-openai>=0.1.3
 openai>=1.0.0
 langgraph>=0.0.30
+gunicorn
+flask-cors
+rich
+PyYAML
+pymongo
+python-dotenv
+httptools
+git+ssh://git@gitlab.cee.redhat.com/nrashti/genie-ai.git@main#egg=global_utils&subdirectory=global_utils

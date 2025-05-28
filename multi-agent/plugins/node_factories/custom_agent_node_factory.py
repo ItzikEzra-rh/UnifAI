@@ -6,10 +6,10 @@ from nodes.agents.custom_agent_node import CustomAgentNode
 
 
 @register_element(
-    type_key=CustomAgentNodeConfig.model_fields["type"].default,
-    category="node",
+    type_key=CustomAgentNodeConfig.Meta.type,
+    category=CustomAgentNodeConfig.Meta.category,
     config_schema=CustomAgentNodeConfig,
-    description="CustomAgentNodeConfig"
+    description=CustomAgentNodeConfig.Meta.description,
 )
 class CustomAgentNodeFactory(BaseFactory[CustomAgentNodeConfig, CustomAgentNode]):
     """
@@ -19,24 +19,17 @@ class CustomAgentNodeFactory(BaseFactory[CustomAgentNodeConfig, CustomAgentNode]
     def accepts(self, cfg: CustomAgentNodeConfig) -> bool:
         return cfg.type == "custom_agent_node"
 
-    def create(self,
-               cfg: CustomAgentNodeConfig,
-               *,
-               llm=None,
-               retriever=None,
-               tools=None
-               ) -> CustomAgentNode:
+    def create(self, cfg, **deps):
         try:
-            tools = tools or []
-            node = CustomAgentNode(
+            return CustomAgentNode(
+                step_ctx=deps.pop("step_ctx"),
                 name=cfg.name,
-                llm=llm,
-                retriever=retriever,
-                tools=tools,
+                llm=deps.pop("llm"),
+                retriever=deps.pop("retriever"),
+                tools=deps.pop("tools"),
                 system_message=cfg.system_message,
-                retries=cfg.retries
+                retries=cfg.retries,
             )
-            return node
         except Exception as e:
             raise PluginConfigurationError(
                 f"CustomAgentNodeFactory.create failed: {e}",

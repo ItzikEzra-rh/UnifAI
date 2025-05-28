@@ -1,5 +1,5 @@
 from typing import Protocol
-from runtime.state.base_state import BaseGraphState
+from graph.state.graph_state import GraphState
 
 
 class GraphExecutor(Protocol):
@@ -12,3 +12,17 @@ class GraphExecutor(Protocol):
         Drive the graph from its entry to its exit and return the final state.
         """
         ...
+
+    def stream(self, initial_state, *args, **kwargs):
+        """
+        stream the graph’s output to the given stream.
+        """
+    ...
+
+    def get_state(self) -> GraphState:
+        """
+        Get the current state of the graph.
+        """
+        ...
+
+

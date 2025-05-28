@@ -1,11 +1,12 @@
-# core/workflow_session.py
-
 from session.session_registry import SessionRegistry
 from schemas.blueprint.blueprint import BlueprintSpec
 from graph.graph_plan import GraphPlan
 from engine.builder.base_graph_builder import BaseGraphBuilder
 from engine.executor.interfaces import GraphExecutor
+from core.run_context import RunContext
 from typing import Any, Dict
+from graph.state.graph_state import GraphState
+from .status import SessionStatus
 
 
 class WorkflowSession:
@@ -27,6 +28,9 @@ class WorkflowSession:
             graph_plan: GraphPlan,
             executable_graph: GraphExecutor,
             builder: BaseGraphBuilder,
+            run_context: RunContext,
+            # logger: LoggerInterface,
+            graph_state: GraphState,
             metadata: Dict[str, Any] = None,
     ) -> None:
         self.session_registry = session_registry
@@ -35,7 +39,10 @@ class WorkflowSession:
         self.executable_graph = executable_graph
         # self.logger = logger
         self.builder = builder
+        self.run_context = run_context
         self.metadata = metadata or {}
+        self.graph_state = graph_state
+        self.status: SessionStatus = SessionStatus.PENDING
 
     def recompile(self) -> None:
         """
@@ -43,3 +50,30 @@ class WorkflowSession:
         using the stored builder.
         """
         self.executable_graph = self.builder.compile_from_plan(self.graph_plan)
+
+    def get_user_id(self) -> str:
+        """
+        Returns the user ID associated with this session.
+        """
+        return self.run_context.user_id
+
+    def get_run_id(self) -> str:
+        """
+        Returns the user ID associated with this session.
+        """
+        return self.run_context.run_id
+
+    def get_state(self) -> GraphState:
+        """
+        Returns the current state of the graph.
+        """
+        return self.graph_state
+
+    def get_status(self) -> SessionStatus:
+        """
+        Returns the current status of the session.
+        """
+        return self.status.name
+
+    def update_status(self, new: SessionStatus) -> None:
+        self.status = new

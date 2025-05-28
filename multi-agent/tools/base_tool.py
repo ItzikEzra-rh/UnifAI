@@ -1,20 +1,39 @@
+from typing import Optional, Type, Any
 from abc import ABC, abstractmethod
+from pydantic import BaseModel
+
 
 class BaseTool(ABC):
     """
-    Standard tool interface.
+    A reusable base class for LangChain-compatible tools.
+    Subclass this and implement `run()` (and optionally `arun()`).
     """
 
-    @abstractmethod
-    def invoke(self, input_data: dict) -> dict:
-        """
-        Processes the input data and returns a dictionary as output.
-        """
-        pass
+    name: str
+    description: str
+    args_schema: Optional[Type[BaseModel]] = None
+
+    def __init__(
+            self,
+            name: str,
+            description: str,
+            args_schema: Optional[Type[BaseModel]] = None,
+    ):
+        self.name = name
+        self.description = description
+        self.args_schema = args_schema
 
     @abstractmethod
-    def name(self) -> str:
+    def run(
+            self,
+            *args: Any,
+            **kwargs: Any
+    ) -> Any:
         """
-        Unique name/identifier of the tool.
+        Synchronous execution logic. Must be implemented by subclass.
         """
-        pass
+        raise NotImplementedError("run must be implemented by subclasses")
+
+    async def arun(self, *args: Any, **kwargs: Any) -> int:
+        # For asynchronous execution, we can just call run for now
+        return self.run(*args, **kwargs)

@@ -1,0 +1,102 @@
+from typing import Any, Dict, Iterator, List, Tuple
+from typing_extensions import Annotated
+from pydantic import BaseModel, Field, ConfigDict
+from llms.chat.message import ChatMessage
+from .merge_strategies import merge_string_dicts, append_chat_messages, merge_dynamic_fields
+
+
+class GraphState(BaseModel):
+    """
+    Pydantic-backed execution state for LangGraph.
+
+    • Declares your main channels with merge-strategies via Annotated
+    • Allows arbitrary extra keys at runtime (extra="allow")
+    • Behaves like a dict: __getitem__, __setitem__, keys(), items(), etc.
+    • Properly handles state persistence across LangGraph nodes
+    • Raises KeyError for non-existent keys (like standard dict)
+    """
+    model_config = ConfigDict(
+        extra="allow",  # permit new keys on the fly
+        arbitrary_types_allowed=True  # in case you store non‐JSON types
+    )
+
+    # —————– Channels (with merge strategies) —————–
+    # last-writer-wins for user_prompt:
+    user_prompt: Annotated[str, lambda old, new: new] = ""
+    # merge dicts into a new dict:
+    nodes_output: Annotated[Dict[str, str], merge_string_dicts] = Field(default_factory=dict)
+    # last-writer-wins for output:
+    latest_node_output: Annotated[str, lambda old, new: new] = ""
+
+    # appending messages to a list:
+    messages: Annotated[list[ChatMessage], append_chat_messages] = Field(default_factory=list)
+
+    # Dynamic storage for extra fields (will be included in serialization)
+    dynamic_fields: Annotated[Dict[str, Any], merge_dynamic_fields] = Field(default_factory=dict)
+
+    # —————– Dict-like API —————–
+    def __getitem__(self, key: str) -> Any:
+        # 1) declared field?
+        if key in self.__class__.model_fields:
+            return getattr(self, key)
+        # 2) dynamic field?
+        if key in self.dynamic_fields:
+            return self.dynamic_fields[key]
+        # 3) not found anywhere - raise KeyError
+        raise KeyError(f"{key!r} not found in state.")
+
+    def __setitem__(self, key: str, value: Any) -> None:
+        if key in self.__class__.model_fields:
+            setattr(self, key, value)
+        else:
+            # Store in dynamic_fields which is preserved during serialization
+            self.dynamic_fields[key] = value
+
+    def __delitem__(self, key: str) -> None:
+        if key in self.__class__.model_fields:
+            delattr(self, key)
+        elif key in self.dynamic_fields:
+            del self.dynamic_fields[key]
+        else:
+            raise KeyError(f"{key!r} not found in state.")
+
+    def get(self, key: str, default: Any = None) -> Any:
+        """
+        Safe dictionary-like get method that doesn't raise KeyError
+        """
+        if key in self.__class__.model_fields:
+            return getattr(self, key)
+        return self.dynamic_fields.get(key, default)
+
+    def update(self, data: Dict[str, Any]) -> None:
+        for k, v in data.items():
+            self[k] = v
+
+    def keys(self) -> Iterator[str]:
+        return iter(list(self.__class__.model_fields.keys()) + list(self.dynamic_fields.keys()))
+
+    def items(self) -> Iterator[Tuple[str, Any]]:
+        for k in self.__class__.model_fields:
+            yield k, getattr(self, k)
+        for k, v in self.dynamic_fields.items():
+            yield k, v
+
+    def dict(self, *args, **kwargs) -> Dict[str, Any]:
+        """
+        Override Pydantic's model_dump() to include both
+        declared fields and dynamic extras.
+        """
+        base = super().model_dump(*args, **kwargs)
+        # Remove dynamic_fields from base if present to avoid duplication
+        if "dynamic_fields" in base:
+            base.pop("dynamic_fields")
+        return {**base, **self.dynamic_fields}
+
+    def model_dump(self, *args, **kwargs) -> Dict[str, Any]:
+        """
+        Override Pydantic's model_dump() for compatibility
+        """
+        return self.dict(*args, **kwargs)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.dict()})"

@@ -1,0 +1,101 @@
+# ---------------------
+# Python Bytecode
+# ---------------------
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ---------------------
+# Python Virtual Environments
+# ---------------------
+venv/
+.venv/
+env/
+ENV/
+bin/
+lib/
+lib64/
+pyvenv.cfg
+
+# ---------------------
+# Package Distribution
+# ---------------------
+build/
+dist/
+downloads/
+.eggs/
+*.egg-info/
+*.egg
+*.whl
+MANIFEST
+.Python
+
+# ---------------------
+# IDEs and Editors
+# ---------------------
+# VS Code
+.vscode/
+# PyCharm / JetBrains
+.idea/
+*.iml
+# Spyder
+.spyderproject
+.spyproject
+
+# ---------------------
+# Jupyter Notebooks
+# ---------------------
+.ipynb_checkpoints/
+
+# ---------------------
+# Testing and Coverage
+# ---------------------
+.tox/
+.nox/
+.pytest_cache/
+.coverage
+*.cover
+coverage.xml
+htmlcov/
+.hypothesis/
+
+# ---------------------
+# Mypy / Pyre / Type Checkers
+# ---------------------
+.mypy_cache/
+.dmypy.json
+.pyre/
+
+# ---------------------
+# Environment / Secrets
+# ---------------------
+.env
+.env.*
+*.env
+.envrc
+.conda
+*.sqlite3
+
+# ---------------------
+# Logs and Temp Files
+# ---------------------
+*.log
+*.tmp
+*.bak
+
+# ---------------------
+# Docker
+*.tar
+
+# ---------------------
+# System Files
+.DS_Store
+Thumbs.db
+
+# ---------------------
+# Yarn / Node
+.yarn-integrity
+
+# ---------------------
+# Global Python Utils
+*.egg-info/

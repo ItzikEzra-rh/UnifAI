@@ -1,5 +1,6 @@
 from graph.graph_plan import GraphPlan, Step
-from engine.base_graph_builder import BaseGraphBuilder
+from engine.builder.base_graph_builder import BaseGraphBuilder
+
 
 class GraphModifier:
     """

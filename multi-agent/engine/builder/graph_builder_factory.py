@@ -1,9 +1,7 @@
-# multi_agent/engine/graph_builder_factory.py
-
 from typing import Dict, Type
 from engine.builder.base_graph_builder import BaseGraphBuilder
 from engine.builder.langgraph_builder import LangGraphBuilder
-from runtime.state.base_state import BaseGraphState
+from graph.state.graph_state import GraphState
 
 
 class GraphBuilderFactory:
@@ -12,7 +10,7 @@ class GraphBuilderFactory:
     You inject the state class once, and every builder gets it.
     """
 
-    def __init__(self, state_cls: Type[BaseGraphState]) -> None:
+    def __init__(self, state_cls: Type[GraphState]) -> None:
         # store the injected state implementation
         self._state_cls = state_cls
 

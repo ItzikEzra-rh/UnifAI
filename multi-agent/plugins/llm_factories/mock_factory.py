@@ -8,10 +8,10 @@ from plugins.decorators import register_element
 
 
 @register_element(
-    type_key=MockLLMConfig.model_fields["type"].default,
-    category="llm",
+    type_key=MockLLMConfig.Meta.type,
+    category=MockLLMConfig.Meta.category,
     config_schema=MockLLMConfig,
-    description="Mock LLM"
+    description=MockLLMConfig.Meta.description
 )
 class MockLLMFactory(BaseFactory):
     """
