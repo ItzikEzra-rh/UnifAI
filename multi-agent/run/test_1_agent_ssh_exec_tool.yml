@@ -1,0 +1,43 @@
+# ----------------------------
+# LLM Definitions
+# ----------------------------
+llms:
+  - name: openai_llm
+    type: openai
+    model_name: Qwen/Qwen2.5-7B-Instruct
+    base_url: http://localhost:8000/v1
+
+
+# ----------------------------
+# Tool Stubs
+# ----------------------------
+tools:
+  - name: ssh_exec_tool
+    type: ssh_exec
+    host: bastion.9jk6c.sandbox1471.opentlc.com
+    username: instruct
+    password: MzM4MzE1
+
+# ----------------------------
+# Plan Steps
+plan:
+  - uid: user_input
+    node:
+      type: user_question_node
+
+  - uid: agent_with_exec_tool
+    after: user_input
+    node:
+      type: custom_agent_node
+      llm: openai_llm
+      tools:
+        - ssh_exec_tool
+      system_message: |
+        You are a smart assistant with access to tools. When a user's request requires multiple steps, and one tool’s output is needed as input to another, do not guess intermediate values.
+        Instead, call the first tool, wait for its result, then use the actual result in the next step.
+        Only issue tool calls that can be executed immediately based on available information. Respond with content or tool calls as appropriate.
+
+  - uid: finalize
+    after: agent_with_exec_tool
+    node:
+      type: final_answer_node
