@@ -1,0 +1,46 @@
+# Default values for qdrant
+
+nameOverride: ""
+fullnameOverride: "qdrant"
+
+## Additional labels for Deployment or StatefulSet
+customLabels: {}
+## Additional annotations for Deployment or StatefulSet
+customAnnotations: {}
+
+securityContext: {}
+
+image:
+  registry: "images.paas.redhat.com/genie"
+  repository: "qdrant"
+  tag: "latest"
+
+service:
+  type: LoadBalancer
+  port: 6333
+
+resources:
+  requests:
+    memory: "1Gi"
+    cpu: "1"
+  limits:
+    memory: "1Gi"
+    cpu: "1"
+
+storage:
+  volumeName: "unifiai-qdrant-volume"
+  requestedSize: 30Gi
+  className: aws-ebs
+  accessModes:
+    - ReadWriteOnce
+  annotations:
+    kubernetes.io/reclaimPolicy: Delete
+  labels:
+    paas.redhat.com/appcode: TAG-001
+
+networkPolicy:
+  ingress:
+    - ports:
+        - port: 6333
+          protocol: TCP
+  egress: {}

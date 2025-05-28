@@ -1,0 +1,25 @@
+helmDefaults:
+    createNamespace: false
+    wait: false
+
+releases:
+  - name: unifiai-mongodb
+    chart: ./mongodb
+    wait: true
+    timeout: 300
+    values:
+      - "./mongodb.yaml"
+
+  - name: unifiai-qdrant
+    chart: ./qdrant
+    wait: true
+    timeout: 300
+    values:
+      - "./qdrant.yaml"
+      
+  - name: unifiai-rabbitmq
+    chart: ./rabbitmq
+    wait: true
+    values:
+      - "./rabbitmq.yaml"
+
