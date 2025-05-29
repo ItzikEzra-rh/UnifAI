@@ -35,7 +35,9 @@ class SshExecTool(BaseTool):
                 port=self._port,
                 username=self._username,
                 password=self._password,
-                timeout=10
+                look_for_keys=False,
+                allow_agent=False,
+                timeout=30
             )
             stdin, stdout, stderr = ssh.exec_command(inp.cmd, timeout=30)
             out = stdout.read().decode()

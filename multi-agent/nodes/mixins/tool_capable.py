@@ -112,7 +112,7 @@ class ToolCapableMixin(Generic[T]):
             self: T,
             initial_history: List[ChatMessage],
             chat_function: Callable[[List[ChatMessage]], ChatMessage],
-            max_rounds: int = 5
+            max_rounds: int = 20
     ) -> ChatMessage:
         """
         Runs the “LLM → tool invokes → feed back → repeat” loop up to max_rounds.
