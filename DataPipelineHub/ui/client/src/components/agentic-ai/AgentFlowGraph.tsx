@@ -18,7 +18,7 @@ import 'reactflow/dist/style.css';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from 'framer-motion';
-import { Plus, Activity, Database, FileText, Zap, Filter, GitBranch, MessageSquare, Bot, BookOpen, LucideIcon, Key } from 'lucide-react';
+import { Plus, Activity, Database, FileText, Zap, Filter, GitBranch, MessageSquare, Bot, BookOpen, LucideIcon, Key, Wrench } from 'lucide-react';
 import { NodeData, GraphFlow, FlowObject } from './graphs/interfaces'
 import { latestExampleGraphFlow } from './graphs/static-data/exampleGraphFlow'
 import axios from '../../http/axiosAgentConfig'
@@ -28,6 +28,8 @@ const AgentNode: React.FC<NodeProps<NodeData>> = ({ data, selected }) => {
   // Match the hex color code inside bg-[#...]
   const bgmatcher = data.style.match(/bg-\[#([0-9A-Fa-f]{6})\]/);
   const bgcolor = bgmatcher ? bgmatcher[1] : null;
+  
+  const hasTools = data.tools && data.tools.length > 0;
 
   return (
     <>
@@ -39,16 +41,49 @@ const AgentNode: React.FC<NodeProps<NodeData>> = ({ data, selected }) => {
       />
       
       <motion.div 
-        className={`px-4 py-2 rounded-lg shadow-md ${data.style} flex items-center transition-all`}
+        className={`rounded-lg shadow-md ${data.style} transition-all ${hasTools ? 'min-w-[200px]' : 'px-4 py-2'}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1, scale: selected ? 1.05 : 1 }}
         transition={{ duration: 0.3 }}
       >
-        <div className="mr-2">{data.icon}</div>
-        <div>
-          <div className="font-medium text-sm">{data.label}</div>
-          {data.description && <div className={`text-xs ${data.style.includes("text-white") ? "text-gray-400" : "text-white"}`}>{data.description}</div>}
+        {/* Main node content - 75% of height when tools exist */}
+        <div className={`${hasTools ? 'px-4 py-2 border-b border-opacity-30' : 'px-4 py-2'} ${hasTools ? 'border-white' : ''} flex items-center`}>
+          <div className="mr-2">
+            {data.icon}
+          </div>
+          <div className="flex-1">
+            <div className="font-medium text-sm">{data.label}</div>
+            {data.description && (
+              <div className={`text-xs ${data.style.includes("text-white") ? "text-gray-400" : "text-white"}`}>
+                {data.description}
+              </div>
+            )}
+          </div>
         </div>
+        
+        {/* Tools section - 25% of height */}
+        {hasTools && (
+          <div className="px-4 py-2">
+            <div className={`text-xs font-medium mb-2 ${data.style.includes("text-white") ? "text-gray-400" : "text-gray-200"} text-center border-b border-opacity-20 border-current pb-1 flex items-center justify-center gap-1`}>
+              <Wrench className="w-3 h-3 opacity-75" />
+              Tools
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {data.tools.map((tool, index) => (
+                <div
+                  key={index}
+                  className={`px-2 py-1 rounded text-xs font-medium ${
+                    data.style.includes("text-white") 
+                      ? "bg-white bg-opacity-20 text-white" 
+                      : "bg-gray-800 bg-opacity-20 text-gray-800"
+                  }`}
+                >
+                  {tool}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </motion.div>
       
       {/* Explicit bottom handle using ReactFlow's Handle component */}
@@ -92,26 +127,24 @@ const getRandomIcon = (nodeType: string): React.ReactNode => {
 // Get node style based on node type
 const getNodeStyle = (nodeType: string): string => {
   if (nodeType === 'user_question_node') {
-    return 'bg-[#8A2BE2] text-white';
+    return 'bg-[#003f5c] text-white';
   } else if (nodeType === 'final_answer_node') {
-    return 'bg-[#FF5722] text-white';
+    return 'bg-[#ffa600] text-white';
   } else {
-    return 'bg-[#03DAC6] text-gray-800';
+    return 'bg-[#7E4794] text-gray-800';
   }
 };
-
 
 // Function to generate edge color based on source node type
 const getEdgeStyle = (sourceNodeType: string): { stroke: string; color: string } => {
   if (sourceNodeType === 'user_question_node') {
-    return { stroke: '#8A2BE2', color: '#8A2BE2' };
+    return { stroke: '#003f5c', color: '#003f5c' };
   } else if (sourceNodeType === 'final_answer_node') {
-    return { stroke: '#FF5722', color: '#FF5722' };
+    return { stroke: '#ffa600', color: '#ffa600' };
   } else {
-    return { stroke: '#03DAC6', color: '#03DAC6' };
+    return { stroke: '#7E4794', color: '#7E4794' };
   }
 };
-
 
 // Function to parse the JSON graph flow into ReactFlow nodes and edges
 const parseGraphFlow = (graphFlow: GraphFlow): { nodes: Node<NodeData>[]; edges: Edge[] } => {
@@ -199,6 +232,7 @@ const parseGraphFlow = (graphFlow: GraphFlow): { nodes: Node<NodeData>[]; edges:
     const nodeType = item.node?.type || 'custom_agent_node';
     const nodeLabel = item.meta?.display_name || item.node?._meta.display_name || "General Node";
     const nodeDescription = item.meta?.description || item.node?._meta.description || null;
+    const nodeTools = item.node?.tools || [];
     
     // Get level information
     const level = nodeLevel[nodeId];
@@ -228,7 +262,8 @@ const parseGraphFlow = (graphFlow: GraphFlow): { nodes: Node<NodeData>[]; edges:
         label: nodeLabel,
         description: nodeDescription,
         style: style,
-        icon: icon
+        icon: icon,
+        tools: nodeTools
       },
       position: { x: xOffset, y: yOffset },
       sourcePosition,
@@ -308,7 +343,7 @@ const initialNodes: Node<NodeData>[] = [
     data: { 
       label: 'User Query', 
       description: 'Input from user',
-      style: 'bg-[#8A2BE2] text-white',
+      style: 'bg-[#003f5c] text-white',
       icon: <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">💬</div>
     },
     position: { x: 250, y: 0 },
@@ -321,7 +356,7 @@ const initialNodes: Node<NodeData>[] = [
     data: { 
       label: 'LLM Response', 
       description: 'Output for user',
-      style: 'bg-[#FF5722] text-white',
+      style: 'bg-[#ffa600] text-white',
       icon: <div className="w-6 h-6 rounded-full bg-white bg-opacity-30 flex items-center justify-center text-xs">🤖</div>
     },
     position: { x: 250, y: 80 },
@@ -335,10 +370,10 @@ const initialEdges: Edge[] = [
     source: 'user-query',
     target: 'llm-response',
     animated: true,
-    style: { stroke: '#8A2BE2' },
+    style: { stroke: '#003f5c' },
     markerEnd: {
       type: MarkerType.ArrowClosed,
-      color: '#8A2BE2',
+      color: '#003f5c',
     },
   },
 ];
@@ -446,7 +481,7 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
                   key={flow.id}
                   className={`px-4 py-2 border-l-2 cursor-pointer ${
                     selectedFlow?.id === flow.id
-                      ? 'border-[#8A2BE2] bg-[#8A2BE2] bg-opacity-10'
+                      ? 'border-[#003f5c] bg-[#003f5c] bg-opacity-10'
                       : 'border-transparent hover:bg-background-surface'
                   }`}
                   onClick={() => handleFlowSelect(flow)}
@@ -480,12 +515,12 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
             defaultEdgeOptions={{
               type: 'smoothstep',
               animated: true,
-              style: { stroke: '#8A2BE2', strokeWidth: 3 },
+              style: { stroke: '#003f5c', strokeWidth: 3 },
               markerEnd: {
                 type: MarkerType.ArrowClosed,
                 width: 20,
                 height: 20,
-                color: '#8A2BE2'
+                color: '#003f5c'
               }
             }}
             attributionPosition="bottom-right"
