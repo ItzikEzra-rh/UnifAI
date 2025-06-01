@@ -107,7 +107,7 @@ export default function AgentRepository() {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-heading font-semibold">Agent Repository</h2>
-        <Button className="bg-[#8A2BE2] hover:bg-opacity-80 flex items-center gap-2">
+        <Button className="bg-primary hover:bg-opacity-80 flex items-center gap-2">
           <Plus className="h-4 w-4" />
           Create New Agent
         </Button>

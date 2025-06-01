@@ -12,6 +12,7 @@ export type NodeEntry = {
 type StreamingContextType = {
   nodeListRef: React.MutableRefObject<Map<string, NodeEntry>>;
   forceUpdate: () => void;
+  clearStream: () => void;
 };
 
 const StreamingDataContext = createContext<StreamingContextType | null>(null);
@@ -22,8 +23,13 @@ export const StreamingDataProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const forceUpdate = () => setTick(t => t + 1);
 
+  const clearStream = () => {
+    nodeListRef.current.clear(); // Clears the stream
+    forceUpdate();               // Triggers re-render if needed
+  };
+
   return (
-    <StreamingDataContext.Provider value={{ nodeListRef, forceUpdate }}>
+    <StreamingDataContext.Provider value={{ nodeListRef, forceUpdate, clearStream }}>
       {children}
     </StreamingDataContext.Provider>
   );

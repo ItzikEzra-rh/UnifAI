@@ -2,7 +2,6 @@ export interface Message {
     id: string;
     content: string;
     sender: 'user' | 'ai';
-    timestamp: Date;
     streamLogs?: StreamLogEntry[];
     finalAnswer?: string;
   }

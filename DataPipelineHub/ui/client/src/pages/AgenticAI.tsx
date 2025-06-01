@@ -52,7 +52,7 @@ export default function AgenticAI() {
 
       const selectedBlueprint = {
         'blueprintId': graphId,
-        'userId': "alice",
+        'userId': "bob",
       }
 
       const response = await axios.post('/api/sessions/user.session.create', selectedBlueprint);
@@ -125,7 +125,7 @@ export default function AgenticAI() {
                   <CardHeader className="py-2 px-6 flex flex-row justify-between items-center">
                     <CardTitle className="text-lg font-heading">Agent Flow Configuration</CardTitle>
                     <Button
-                      className="bg-[#8A2BE2] hover:bg-opacity-80 flex items-center gap-2"
+                      className="bg-primary hover:bg-opacity-80 flex items-center gap-2"
                       size="sm"
                       onClick={handleBuildGraph}
                     >
