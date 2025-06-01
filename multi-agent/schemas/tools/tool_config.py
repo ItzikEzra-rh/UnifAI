@@ -3,6 +3,7 @@ from typing import (
     Type, Union, Annotated, Protocol
 )
 from pydantic import BaseModel, Field, Extra, SkipValidation
+from core.enums import ResourceCategory
 
 
 # The Protocol your Meta classes share
@@ -31,7 +32,7 @@ class BaseToolConfig(BaseModel):
         arbitrary_types_allowed = True
 
     class Meta(ToolMeta):
-        category: ClassVar[SkipValidation[str]] = "tool"
+        category: ClassVar[SkipValidation[str]] = ResourceCategory.TOOL
         display_name: ClassVar[SkipValidation[str]] = "Generic Tool"
         description: ClassVar[SkipValidation[str]] = "Base class for tool configurations"
         type: ClassVar[SkipValidation[str]] = "base"

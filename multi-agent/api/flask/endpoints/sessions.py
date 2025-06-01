@@ -11,7 +11,8 @@ sessions_bp = Blueprint("sessions", __name__)
 @from_body({
     "blueprint_id": fields.Str(data_key="blueprintId", required=True),
     "user_id": fields.Str(data_key="userId", required=True),
-    "metadata": fields.Dict(data_key="metadata", required=False, missing=lambda: {}, default=lambda: {}, ),
+    "metadata": fields.Dict(data_key="metadata", required=False, load_default=lambda: {}, dump_default=lambda: {})
+    ,
 })
 def create_user_session(blueprint_id, user_id, metadata):
     try:
@@ -30,8 +31,8 @@ def create_user_session(blueprint_id, user_id, metadata):
 @from_body({
     "session_id": fields.Str(data_key="sessionId", required=True),
     "inputs": fields.Dict(data_key="inputs", required=True),
-    "stream_mode": fields.List(fields.Str, data_key="streamMode", missing=lambda: ["custom"]),
-    "stream": fields.Bool(data_key="stream", missing=False),
+    "stream_mode": fields.List(fields.Str(), data_key="streamMode", load_default=lambda: ["custom"]),
+    "stream": fields.Bool(data_key="stream", load_default=False)
 })
 def execute_user_session(session_id, inputs, stream_mode, stream):
     """

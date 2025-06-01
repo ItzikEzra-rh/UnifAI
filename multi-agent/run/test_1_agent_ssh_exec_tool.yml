@@ -4,7 +4,7 @@
 llms:
   - name: openai_llm
     type: openai
-    model_name: Qwen/Qwen2.5-7B-Instruct
+    model_name: Qwen/Qwen3-8B
     base_url: http://localhost:8000/v1
 
 

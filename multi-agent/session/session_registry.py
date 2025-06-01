@@ -1,54 +1,37 @@
 from typing import Any, Dict
+from core.enums import ResourceCategory
 
 
 class SessionRegistry:
     """
-    Per-session store for all instantiated components:
-      - llms
-      - tools
-      - retrievers
-      - conditions
-      - nodes (optional, if you want to cache Node instances)
+    IOC container for session-scoped resources (LLMs, Tools, Providers, …).
+
+    *One* dict keyed by ResourceCategory, then by user-chosen name.
     """
 
     def __init__(self) -> None:
-        self._llms: Dict[str, Any] = {}
-        self._tools: Dict[str, Any] = {}
-        self._retrievers: Dict[str, Any] = {}
-        self._nodes: Dict[str, Any] = {}
-        self._condition: Dict[str, Any] = {}
+        self._store: Dict[ResourceCategory, Dict[str, Any]] = {
+            cat: {} for cat in ResourceCategory
+        }
+        self._frozen = False  # to optionally lock after build
 
-    # ---- LLMs ----
-    def register_llm(self, name: str, instance: Any) -> None:
-        self._llms[name] = instance
+    # ─────────────── public, generic API ────────────────
+    def register(self, category: ResourceCategory, name: str, inst: Any) -> None:
+        self._assert_not_frozen()
+        self._store[category][name] = inst
 
-    def get_llm(self, name: str) -> Any:
-        return self._llms[name]
+    def get(self, category: ResourceCategory, name: str) -> Any:
+        return self._store[category][name]
 
-    # ---- Tools ----
-    def register_tool(self, name: str, instance: Any) -> None:
-        self._tools[name] = instance
+    def all_of(self, category: ResourceCategory) -> Dict[str, Any]:
+        """Read-only view of a whole bucket (useful in debugging)."""
+        return dict(self._store[category])
 
-    def get_tool(self, name: str) -> Any:
-        return self._tools[name]
+    # optional safety: freeze after build
+    def freeze(self) -> None:
+        self._frozen = True
 
-    # ---- Retrievers ----
-    def register_retriever(self, name: str, instance: Any) -> None:
-        self._retrievers[name] = instance
-
-    def get_retriever(self, name: str) -> Any:
-        return self._retrievers[name]
-
-    # ---- Nodes ----
-    def register_node(self, name: str, instance: Any) -> None:
-        self._nodes[name] = instance
-
-    def get_node(self, name: str) -> Any:
-        return self._nodes[name]
-
-    # ---- Nodes ----
-    def register_condition(self, name: str, instance: Any) -> None:
-        self._condition[name] = instance
-
-    def get_condition(self, name: str) -> Any:
-        return self._condition[name]
+    # internal helper
+    def _assert_not_frozen(self):
+        if self._frozen:
+            raise RuntimeError("SessionRegistry is frozen—no new registrations allowed.")

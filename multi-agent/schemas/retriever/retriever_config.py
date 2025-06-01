@@ -1,5 +1,6 @@
 from typing import ClassVar, Literal, Union, Annotated, Protocol
 from pydantic import BaseModel, Field, Extra, HttpUrl, SkipValidation
+from core.enums import ResourceCategory
 
 
 # Protocol for retriever metadata
@@ -26,10 +27,10 @@ class BaseRetrieverConfig(BaseModel):
         arbitrary_types_allowed = True
 
     class Meta(RetrieverMeta):
-        category:      ClassVar[SkipValidation[str]] = "retriever"
-        display_name:  ClassVar[SkipValidation[str]] = "Generic Retriever"
-        description:   ClassVar[SkipValidation[str]] = "Base configuration for all retrievers"
-        type:          ClassVar[SkipValidation[str]] = "base"
+        category: ClassVar[SkipValidation[str]] = ResourceCategory.RETRIEVER
+        display_name: ClassVar[SkipValidation[str]] = "Generic Retriever"
+        description: ClassVar[SkipValidation[str]] = "Base configuration for all retrievers"
+        type: ClassVar[SkipValidation[str]] = "base"
 
 
 # Slack retriever config with metadata
@@ -52,10 +53,9 @@ class SlackRetrieverConfig(BaseRetrieverConfig):
     )
 
     class Meta(BaseRetrieverConfig.Meta):
-        category:      ClassVar[SkipValidation[str]] = "retriever"
-        display_name:  ClassVar[SkipValidation[str]] = "Slack Retriever"
-        description:   ClassVar[SkipValidation[str]] = "Fetches recent messages matching a query from Slack"
-        type:          ClassVar[SkipValidation[str]] = "slack"
+        display_name: ClassVar[SkipValidation[str]] = "Slack Retriever"
+        description: ClassVar[SkipValidation[str]] = "Fetches recent messages matching a query from Slack"
+        type: ClassVar[SkipValidation[str]] = "slack"
 
 
 # Docs retriever config with metadata
@@ -78,10 +78,9 @@ class DocsRetrieverConfig(BaseRetrieverConfig):
     )
 
     class Meta(BaseRetrieverConfig.Meta):
-        category:      ClassVar[SkipValidation[str]] = "retriever"
-        display_name:  ClassVar[SkipValidation[str]] = "Docs Retriever"
-        description:   ClassVar[SkipValidation[str]] = "Fetches relevant document passages for a query"
-        type:          ClassVar[SkipValidation[str]] = "docs"
+        display_name: ClassVar[SkipValidation[str]] = "Docs Retriever"
+        description: ClassVar[SkipValidation[str]] = "Fetches relevant document passages for a query"
+        type: ClassVar[SkipValidation[str]] = "docs"
 
 
 # Discriminated union for retriever specifications

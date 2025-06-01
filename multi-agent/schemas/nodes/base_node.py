@@ -1,5 +1,6 @@
 from typing import ClassVar, Literal, List, Optional, Union, Annotated, Protocol
 from pydantic import BaseModel, Field, Extra, SkipValidation
+from core.enums import ResourceCategory
 
 
 # Protocol for node metadata
@@ -28,7 +29,7 @@ class NodeBaseConfig(BaseModel):
         arbitrary_types_allowed = True
 
     class Meta(NodeMeta):
-        category: ClassVar[SkipValidation[str]] = "node"
+        category: ClassVar[SkipValidation[str]] = ResourceCategory.NODE
         display_name: ClassVar[SkipValidation[str]] = "Base Node"
         description: ClassVar[SkipValidation[str]] = "Abstract base for all node configs"
         type: ClassVar[SkipValidation[str]] = "base"
@@ -46,7 +47,6 @@ class MockAgentNodeConfig(NodeBaseConfig):
     )
 
     class Meta(NodeBaseConfig.Meta):
-        category: ClassVar[SkipValidation[str]] = "node"
         display_name: ClassVar[SkipValidation[str]] = "Mock Agent Node"
         description: ClassVar[SkipValidation[str]] = "Returns mock responses for testing"
         type: ClassVar[SkipValidation[str]] = "mock_agent_node"
@@ -59,7 +59,6 @@ class CustomAgentNodeConfig(NodeBaseConfig):
     type: Literal["custom_agent_node"] = "custom_agent_node"
 
     class Meta(NodeBaseConfig.Meta):
-        category: ClassVar[SkipValidation[str]] = "node"
         display_name: ClassVar[SkipValidation[str]] = "Custom Agent Node"
         description: ClassVar[SkipValidation[str]] = "Agent node with LLM, retriever, tools, and prompt overrides"
         type: ClassVar[SkipValidation[str]] = "custom_agent_node"
@@ -72,7 +71,6 @@ class MergerLLMNodeConfig(NodeBaseConfig):
     type: Literal["merger_node"] = "merger_node"
 
     class Meta(NodeBaseConfig.Meta):
-        category: ClassVar[SkipValidation[str]] = "node"
         display_name: ClassVar[SkipValidation[str]] = "Merger Node"
         description: ClassVar[SkipValidation[str]] = "Aggregates and synthesizes agent outputs"
         type: ClassVar[SkipValidation[str]] = "merger_node"
@@ -85,7 +83,6 @@ class FinalAnswerNodeConfig(NodeBaseConfig):
     type: Literal["final_answer_node"] = "final_answer_node"
 
     class Meta(NodeBaseConfig.Meta):
-        category: ClassVar[SkipValidation[str]] = "node"
         display_name: ClassVar[SkipValidation[str]] = "Final Answer Node"
         description: ClassVar[SkipValidation[str]] = "Outputs the final response"
         type: ClassVar[SkipValidation[str]] = "final_answer_node"
@@ -98,7 +95,6 @@ class UserQuestionNodeConfig(NodeBaseConfig):
     type: Literal["user_question_node"] = "user_question_node"
 
     class Meta(NodeBaseConfig.Meta):
-        category: ClassVar[SkipValidation[str]] = "node"
         display_name: ClassVar[SkipValidation[str]] = "User Question Node"
         description: ClassVar[SkipValidation[str]] = "Captures and forwards the user’s question"
         type: ClassVar[SkipValidation[str]] = "user_question_node"

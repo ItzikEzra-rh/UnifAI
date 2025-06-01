@@ -36,6 +36,7 @@ class BlueprintSpec(BaseModel):
     retrievers: List[RetrieversSpec] = Field(default_factory=list)
     conditions: List[ConditionSpec] = Field(default_factory=list)
     tools: List[ToolsSpec] = Field(default_factory=list)
+    providers: list = Field(default_factory=list)
     plan: List[StepDef]
     description: Optional[str] = "Blueprint description"
     display_name: Optional[str] = "Display Name"

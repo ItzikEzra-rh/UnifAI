@@ -1,9 +1,10 @@
 from typing import ClassVar, Literal, Optional, Dict, Any, Union, Annotated, Protocol
 from pydantic import BaseModel, Field, HttpUrl, Extra, SkipValidation
+from core.enums import ResourceCategory
 
 
 class LLMMeta(Protocol):
-    category: ClassVar[str]
+    category: ClassVar[ResourceCategory]
     display_name: ClassVar[str]
     description: ClassVar[str]
     type: ClassVar[str]  # discriminator value for this config
@@ -24,7 +25,7 @@ class BaseLLMConfig(BaseModel):
         arbitrary_types_allowed = True
 
     class Meta(LLMMeta):
-        category: ClassVar[SkipValidation[str]] = "llm"
+        category: ClassVar[SkipValidation[ResourceCategory]] = ResourceCategory.LLM
         display_name: ClassVar[SkipValidation[str]] = "Generic LLM"
         description: ClassVar[SkipValidation[str]] = "Base class for LLM configurations"
         type: ClassVar[SkipValidation[str]] = "base"
