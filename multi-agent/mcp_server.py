@@ -25,6 +25,14 @@ def division(x: int, y: int):
     return x / y
 
 
+@mcp.tool()
+def substitute(x: int, y: int):
+    """
+    Returns a the substitution of two numbers
+    """
+    return x - y
+
+
 # Run the server using SSE transport
 if __name__ == "__main__":
     mcp.run(transport="sse")

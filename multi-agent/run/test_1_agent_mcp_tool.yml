@@ -30,6 +30,12 @@ tools:
     tool_name: division
     provider: mcp
 
+  - name: substitute_tool
+    type: mcp_proxy
+    tool_name: substitute
+    provider: mcp
+
+
 # ----------------------------
 # Plan Steps
 # ----------------------------
@@ -46,6 +52,7 @@ plan:
       tools:
         - addition_tool
         - division_tool
+        - substitute_tool
       system_message: |
         You are a smart assistant with access to tools. When a user's request requires multiple steps, and one tool’s output is needed as input to another, do not guess intermediate values.
         Instead, call the first tool, wait for its result, then use the actual result in the next step.
