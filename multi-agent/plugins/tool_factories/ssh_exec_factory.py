@@ -12,9 +12,9 @@ from tools.ssh_exec import SshExecTool
     config_schema=SshExecToolConfig,
     description=SshExecToolConfig.Meta.description
 )
-class DivisionToolFactory(BaseFactory[SshExecToolConfig, SshExecTool]):
+class SshExecToolFactory(BaseFactory[SshExecToolConfig, SshExecTool]):
     """
-    Factory for creating Division clients from an DivisionToolConfig.
+    Factory for creating SshExecTool clients from an SshExecToolConfig.
     """
 
     def accepts(self, cfg: SshExecToolConfig) -> bool:
@@ -35,6 +35,6 @@ class DivisionToolFactory(BaseFactory[SshExecToolConfig, SshExecTool]):
             return client
         except Exception as e:
             raise PluginConfigurationError(
-                f"DivisionToolConfig.create() failed: {e}",
+                f"SshExecToolFactory.create() failed: {e}",
                 cfg.dict()
             ) from e

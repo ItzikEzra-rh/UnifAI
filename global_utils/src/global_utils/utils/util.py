@@ -96,7 +96,7 @@ def run_async(awaitable: Any) -> Any:
 
 def json_schema_model(
         schema: dict,
-        model_name: str = "AdditionInput"
+        model_name: str
 ) -> Type[BaseModel]:
     """
     Generate and load a Pydantic model class from a given JSON Schema.
@@ -111,6 +111,7 @@ def json_schema_model(
     Raises:
         AttributeError: If the specified model class is not found.
     """
+    model_name = to_pascal_case(model_name)
     schema_str = json.dumps(schema)
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -145,7 +146,7 @@ def json_schema_model(
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
-            model_cls = getattr(module, model_name, None)
+            model_cls = getattr(module, f"{model_name}Arguments", None)
             if model_cls is None:
                 raise AttributeError(f"Model class '{model_name}' not found in generated code.")
             model_cls.model_rebuild()

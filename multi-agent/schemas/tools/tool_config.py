@@ -78,13 +78,28 @@ class SshExecToolConfig(BaseToolConfig):
         type: ClassVar[SkipValidation[str]] = "ssh_exec"
 
 
+class McpProxyToolConfig(BaseToolConfig):
+    """
+    Configuration for the Mcp Proxy tool.
+    """
+    type: Literal["mcp_proxy"] = "mcp_proxy"
+    tool_name: str = Field(..., description="mcp tool name")
+    provider: str = Field(..., description="MCP server provider")
+
+    class Meta(BaseToolConfig.Meta):
+        display_name: ClassVar[SkipValidation[str]] = "MCP Proxy Tool"
+        description: ClassVar[SkipValidation[str]] = "Execute a MCP tool through MCP Server Provider"
+        type: ClassVar[SkipValidation[str]] = "mcp_proxy"
+
+
 # Union of all tool configs, discriminated by `type`
 
 ToolsSpec = Annotated[
     Union[
         AdditionToolConfig,
         DivisionToolConfig,
-        SshExecToolConfig
+        SshExecToolConfig,
+        McpProxyToolConfig
     ],
     Field(discriminator="type")
 ]

@@ -1,10 +1,10 @@
 from typing import List, Union
-from session.session_registry import SessionRegistry
 from schemas.blueprint.blueprint import StepDef, NodeSpec
 from graph.graph_plan import GraphPlan
 from .node_factory import NodeFactory
 from graph.step_context import StepContext
 from core.enums import ResourceCategory
+from core.contracts import SessionRegistry
 
 
 class PlanComposer:

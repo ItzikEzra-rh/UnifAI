@@ -70,8 +70,9 @@ class ToolCapableMixin(Generic[T]):
 
         # Validate & coerce arguments if schema is attached
         args = tc.args
+
         if getattr(tool, "args_schema", None):
-            args = tool.args_schema(**args).dict()
+            args = tool.get_args_schema_model()(**args).dict()
 
         # Invoke—prefer async interface if available
         if asyncio.iscoroutinefunction(tool.arun):
