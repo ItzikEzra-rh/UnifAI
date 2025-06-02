@@ -1,12 +1,13 @@
+import asyncio
 import logging
 from typing import Dict, Any, Optional, List
 
 from mcp.types import Tool, CallToolResult, CreateMessageRequestParams, CreateMessageResult, TextContent
 
 from .transport_manager import TransportManager, McpConnectionError
-from .health_checker import HealthChecker
 from .tool_registry import ToolRegistry, McpToolError
-from schemas.providers.base_provider import McpProviderConfig
+
+logger = logging.getLogger(__name__)
 
 
 class McpProxyToolError(Exception):
@@ -21,43 +22,31 @@ class McpServerClient:
       - HealthChecker   (ping logic + automatic reconnect)
       - ToolRegistry    (list/get/call tools + minimal JSON‐schema validation)
 
-    Public interface:
-      - __init__(sse_endpoint, health_timeout, health_interval)
-      - async with client: …  # automatically connect/disconnect
-      - get_tools(refresh=False)
-      - get_tool_by_name(name)
-      - call_tool(name, arguments)
-      - health_check() → returns True/False
+    Now with internal locking and reference counting so that multiple
+    `async with same_client:` blocks can share one SSE connection.
     """
 
     def __init__(
             self,
             sse_endpoint: str,
-            health_check_timeout: float = 5.0,
-            health_check_interval: float = 30.0
     ):
         self.sse_endpoint = sse_endpoint
-        self._health_check_timeout = health_check_timeout
-        self._health_check_interval = health_check_interval
 
-        # 1) TransportManager: handles connect()/disconnect() of SSE + ClientSession
+        # TransportManager handles the low‐level SSE + ClientSession.
         self.transport = TransportManager(
             self.sse_endpoint,
             sampling_callback=self._default_sampling_callback
         )
 
-        # 2) HealthChecker: uses transport._session.list_tools() as a ping
-        self.health = HealthChecker(
-            transport=self.transport,
-            timeout=health_check_timeout,
-            interval=health_check_interval
-        )
-
-        # 3) ToolRegistry: list/get/call tools via the same transport + health
+        # ToolRegistry covers list/get/call operations, using the same transport & health.
         self.tools = ToolRegistry(
-            transport=self.transport,
-            health_checker=self.health
+            transport=self.transport
         )
+        # ─── New fields for reference counting & locking ───
+        # How many active “users” currently inside an async‐with block
+        self._refcount = 0
+        # Ensure that connect/disconnect and refcount adjustments are atomic
+        self._lock = asyncio.Lock()
 
     async def _default_sampling_callback(
             self, message: CreateMessageRequestParams
@@ -90,8 +79,9 @@ class McpServerClient:
 
     async def disconnect(self) -> None:
         """
-        Explicitly disconnect the transport & session. This is also called
-        automatically when you exit `async with …`.
+        Explicitly disconnect the transport & session. Typically called only when
+        the last “user” exits. Use caution—if you call this manually while others
+        still expect the connection, they may be disrupted.
         """
         await self.transport.disconnect()
 
@@ -132,32 +122,53 @@ class McpServerClient:
         except McpToolError as e:
             raise McpToolError(f"McpServerClient.call_tool('{tool_name}') failed: {e}")
 
-    async def health_check(self) -> bool:
-        """
-        Trigger a health check (ping). Returns True if the connection is live, else False.
-        """
-        try:
-            return await self.health.is_actually_connected()
-        except Exception as e:
-            print("McpServerClient.health_check() exception: %s", e)
-            return False
-
-    def clone(self) -> "McpServerClient":
-        """
-        Return a brand‐new McpServerClient with exactly the same configuration
-        (same sse_endpoint, same timeouts). The returned object will have no open
-        connection until you do `async with new_client:` or call `await new_client.connect()`.
-        """
-        return McpServerClient(
-            sse_endpoint=self.sse_endpoint,
-            health_check_timeout=self._health_check_timeout,
-            health_check_interval=self._health_check_interval
-        )
-
-    # Support `async with client:` to connect/disconnect automatically
     async def __aenter__(self):
-        await self.connect()
+        """
+        When entering `async with client:`, we:
+          1) Acquire the lock
+          2) If this is the very first entry (refcount == 0), actually connect
+          3) Increment refcount
+          4) Release the lock
+        """
+        async with self._lock:
+            if self._refcount == 0:
+                # Nobody’s connected yet → open the SSE + session
+                await self.transport.connect()
+            self._refcount += 1
         return self
 
     async def __aexit__(self, exc_type, exc, tb):
-        await self.disconnect()
+        """
+        When exiting an `async with client:` block, we:
+          1) Acquire the lock
+          2) Decrement refcount
+          3) If refcount has dropped to 0, disconnect
+          4) Release the lock
+        """
+        async with self._lock:
+            self._refcount -= 1
+            # Only the last exiting context actually tears down the connection
+            if self._refcount == 0:
+                await self.transport.disconnect()
+
+    def clone(self) -> "McpServerClient":
+        """
+        Create a new McpServerClient with the same configuration *and*
+        copy over any already‐fetched tool list (so clones start “warm”).
+        """
+        new_client = McpServerClient(
+            sse_endpoint=self.sse_endpoint
+        )
+
+        # Copy over the ToolRegistry cache, if any:
+        try:
+            new_client.tools._tools_cache = (
+                list(self.tools._tools_cache)
+                if self.tools._tools_cache is not None
+                else None
+            )
+        except AttributeError:
+            # If `_tools_cache` doesn’t exist or is None, ignore.
+            pass
+
+        return new_client

@@ -4,7 +4,7 @@ from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
 from schemas.tools.tool_config import McpProxyToolConfig
 from tools.mcp_tool import McpProxyTool
-from providers.mcp_client import McpServerClient
+from providers.mcp.mcp_server_client import McpServerClient
 
 
 @register_element(

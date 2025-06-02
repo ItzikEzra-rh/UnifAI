@@ -1,9 +1,6 @@
-import logging
 from typing import Dict, List, Any, Optional
-
 from mcp.types import Tool, CallToolResult
 from .transport_manager import TransportManager
-from .health_checker import HealthChecker
 
 
 class McpToolError(Exception):
@@ -25,9 +22,8 @@ class ToolRegistry:
         - Always call registry.get_tools() or registry.call_tool() inside an `await health.ensure_connected()`
     """
 
-    def __init__(self, transport: TransportManager, health_checker: HealthChecker):
+    def __init__(self, transport: TransportManager):
         self.transport = transport
-        self.health = health_checker
         self._tools_cache: Optional[List[Tool]] = None
 
     async def get_tools(self, refresh: bool = False) -> List[Tool]:
@@ -35,8 +31,6 @@ class ToolRegistry:
         Return a list of all available tools. Cache the result unless `refresh=True`.
         Internally calls `await health.ensure_connected(force_check=True)`.
         """
-        await self.health.ensure_connected(force_check=True)
-
         if not refresh and self._tools_cache is not None:
             return self._tools_cache
 
@@ -66,8 +60,6 @@ class ToolRegistry:
         4) Invoke `await session.call_tool(tool_name, arguments)` and return the raw CallToolResult.
            On any exception, disconnect transport and re‐raise as McpToolError.
         """
-        await self.health.ensure_connected(force_check=True)
-
         # 1) Find the tool definition
         tool = await self.get_tool_by_name(tool_name)
         if tool is None:
