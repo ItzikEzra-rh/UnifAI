@@ -41,5 +41,4 @@ class LLMMergerNode(LlmCapableMixin, BaseNode):
 
         answer = self._chat(messages)
         state["messages"] = [answer]
-        state["output"] = answer.content
         return state

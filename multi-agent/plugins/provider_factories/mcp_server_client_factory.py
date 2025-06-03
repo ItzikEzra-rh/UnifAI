@@ -28,7 +28,7 @@ class McpServerClientFactory(BaseFactory[McpProviderConfig, McpServerClient]):
         :raises PluginConfigurationError: if instantiation fails
         """
         try:
-            client = McpServerClient(sse_endpoint=str(cfg.sse_endpoint))
+            client = McpServerClient(sse_endpoint=cfg.sse_endpoint)
             return client
         except Exception as e:
             raise PluginConfigurationError(

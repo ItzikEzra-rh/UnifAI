@@ -2,9 +2,13 @@
 # Providers
 # ----------------------------
 providers:
-  - name: mcp
+  - name: mcp1
     type: mcp_server
     sse_endpoint: http://localhost:8004
+
+  - name: mcp2
+    type: mcp_server
+    sse_endpoint: http://localhost:8006
 
 # ----------------------------
 # LLM Definitions
@@ -23,17 +27,17 @@ tools:
   - name: addition_tool
     type: mcp_proxy
     tool_name: addition
-    provider: mcp
+    provider: mcp1
 
   - name: division_tool
     type: mcp_proxy
     tool_name: division
-    provider: mcp
+    provider: mcp1
 
   - name: substitute_tool
     type: mcp_proxy
     tool_name: substitute
-    provider: mcp
+    provider: mcp2
 
 
 # ----------------------------
