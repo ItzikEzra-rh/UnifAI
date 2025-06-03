@@ -46,3 +46,14 @@ export interface ProjectStats {
     };
   };
 }
+
+export interface Document {
+  id: string;
+  fileType: string;
+  title: string
+  description: string;
+  uploaded: string;
+  status:  string;
+  statusColor: string;
+  statusInfo:  string;
+}
