@@ -3,6 +3,7 @@ from typing import (
     Type, Union, Annotated, Protocol
 )
 from pydantic import BaseModel, Field, Extra, SkipValidation
+from core.enums import ResourceCategory
 
 
 # The Protocol your Meta classes share
@@ -31,7 +32,7 @@ class BaseToolConfig(BaseModel):
         arbitrary_types_allowed = True
 
     class Meta(ToolMeta):
-        category: ClassVar[SkipValidation[str]] = "tool"
+        category: ClassVar[SkipValidation[str]] = ResourceCategory.TOOL
         display_name: ClassVar[SkipValidation[str]] = "Generic Tool"
         description: ClassVar[SkipValidation[str]] = "Base class for tool configurations"
         type: ClassVar[SkipValidation[str]] = "base"
@@ -61,12 +62,44 @@ class DivisionToolConfig(BaseToolConfig):
         type: ClassVar[SkipValidation[str]] = "divide"
 
 
+class SshExecToolConfig(BaseToolConfig):
+    """
+    Configuration for the SSH-execution tool.
+    """
+    type: Literal["ssh_exec"] = "ssh_exec"
+    host: str = Field(..., description="IP or DNS name of the target VM")
+    port: int = Field(22, description="SSH port")
+    username: str = Field(..., description="SSH user name")
+    password: str = Field(..., description="SSH password (store in secret manager!)")
+
+    class Meta(BaseToolConfig.Meta):
+        display_name: ClassVar[SkipValidation[str]] = "SSH Exec"
+        description: ClassVar[SkipValidation[str]] = "Execute a shell command on a remote VM"
+        type: ClassVar[SkipValidation[str]] = "ssh_exec"
+
+
+class McpProxyToolConfig(BaseToolConfig):
+    """
+    Configuration for the Mcp Proxy tool.
+    """
+    type: Literal["mcp_proxy"] = "mcp_proxy"
+    tool_name: str = Field(..., description="mcp tool name")
+    provider: str = Field(..., description="MCP server provider")
+
+    class Meta(BaseToolConfig.Meta):
+        display_name: ClassVar[SkipValidation[str]] = "MCP Proxy Tool"
+        description: ClassVar[SkipValidation[str]] = "Execute a MCP tool through MCP Server Provider"
+        type: ClassVar[SkipValidation[str]] = "mcp_proxy"
+
+
 # Union of all tool configs, discriminated by `type`
 
 ToolsSpec = Annotated[
     Union[
         AdditionToolConfig,
-        DivisionToolConfig
+        DivisionToolConfig,
+        SshExecToolConfig,
+        McpProxyToolConfig
     ],
     Field(discriminator="type")
 ]

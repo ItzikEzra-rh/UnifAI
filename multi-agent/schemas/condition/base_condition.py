@@ -1,5 +1,6 @@
 from typing import ClassVar, Literal, Union, Annotated, Protocol
 from pydantic import BaseModel, Field, Extra, SkipValidation
+from core.enums import ResourceCategory
 
 
 # Protocol for condition metadata
@@ -29,7 +30,7 @@ class BaseConditionConfig(BaseModel):
         arbitrary_types_allowed = True
 
     class Meta(ConditionMeta):
-        category: ClassVar[SkipValidation[str]] = "Condition"
+        category: ClassVar[SkipValidation[str]] = ResourceCategory.CONDITION
         display_name: ClassVar[SkipValidation[str]] = "Base Condition"
         description: ClassVar[SkipValidation[str]] = "Abstract base for all condition configs"
         type: ClassVar[SkipValidation[str]] = "base"

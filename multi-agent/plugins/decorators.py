@@ -3,11 +3,12 @@ from registry.element_definition import ElementDefinition
 from typing import Optional, Type
 from pydantic import BaseModel
 from plugins.base_factory import BaseFactory
+from core.enums import ResourceCategory
 
 
 def register_element(
         *,
-        category: str,
+        category: ResourceCategory,
         type_key: str,
         description: str = "",
         config_schema: Optional[Type[BaseModel]] = None

@@ -70,8 +70,9 @@ class ToolCapableMixin(Generic[T]):
 
         # Validate & coerce arguments if schema is attached
         args = tc.args
+
         if getattr(tool, "args_schema", None):
-            args = tool.args_schema(**args).dict()
+            args = tool.get_args_schema_model()(**args).dict()
 
         # Invoke—prefer async interface if available
         if asyncio.iscoroutinefunction(tool.arun):
@@ -112,7 +113,7 @@ class ToolCapableMixin(Generic[T]):
             self: T,
             initial_history: List[ChatMessage],
             chat_function: Callable[[List[ChatMessage]], ChatMessage],
-            max_rounds: int = 5
+            max_rounds: int = 20
     ) -> ChatMessage:
         """
         Runs the “LLM → tool invokes → feed back → repeat” loop up to max_rounds.

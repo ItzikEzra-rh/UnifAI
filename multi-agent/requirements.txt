@@ -11,4 +11,5 @@ PyYAML
 pymongo
 python-dotenv
 httptools
-git+ssh://git@gitlab.cee.redhat.com/nrashti/genie-ai.git@main#egg=global_utils&subdirectory=global_utils
+mcp
+paramiko

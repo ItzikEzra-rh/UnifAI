@@ -8,6 +8,7 @@ from schemas.blueprint.blueprint import NodeSpec
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
 from nodes.base_node import BaseNode
+from core.enums import ResourceCategory
 
 
 class NodeFactory:
@@ -28,8 +29,8 @@ class NodeFactory:
     ) -> BaseNode:
         # 1) Lookup the factory class & config schema by (category, type_key)
         try:
-            factory_cls = element_registry.get_factory("node", node_spec.type)
-            schema_cls = element_registry.get_schema("node", node_spec.type)
+            factory_cls = element_registry.get_factory(ResourceCategory.NODE, node_spec.type)
+            schema_cls = element_registry.get_schema(ResourceCategory.NODE, node_spec.type)
         except ValueError:
             raise PluginConfigurationError(
                 f"No factory/schema registered for node type '{node_spec.type}'",
@@ -54,9 +55,9 @@ class NodeFactory:
 
         # 3) Resolve dependencies from the session
         deps: Dict[str, Any] = {
-            "llm": session.get_llm(cfg.llm) if cfg.llm else None,
-            "retriever": session.get_retriever(cfg.retriever) if cfg.retriever else None,
-            "tools": [session.get_tool(t) for t in cfg.tools],
+            "llm": session.get(ResourceCategory.LLM, cfg.llm) if cfg.llm else None,
+            "retriever": session.get(ResourceCategory.RETRIEVER, cfg.retriever) if cfg.retriever else None,
+            "tools": [session.get(ResourceCategory.TOOL, t) for t in cfg.tools],
             "step_ctx": step_ctx
         }
 

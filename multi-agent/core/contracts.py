@@ -1,5 +1,6 @@
 from typing import Protocol, runtime_checkable, Mapping, Any, Iterator
 from abc import ABC, abstractmethod
+from .enums import ResourceCategory
 
 
 @runtime_checkable
@@ -16,3 +17,9 @@ class LLMSupportsStreaming(ABC):
         Yields each token (or chunk) as it arrives.
         """
         ...
+
+
+class SessionRegistry(Protocol):
+    def register(self, category: ResourceCategory, name: str, inst: Any) -> None: ...
+
+    def get(self, category: ResourceCategory, name: str) -> Any: ...

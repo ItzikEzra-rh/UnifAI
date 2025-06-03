@@ -1,9 +1,20 @@
 from global_utils.config import ConfigManager
-from typing import Any
+from typing import Any, Type
+from pydantic import BaseModel
 import json
 import os
 from pathlib import Path
 import asyncio
+from datamodel_code_generator import (
+    generate,
+    InputFileType,
+    DataModelType,
+    PythonVersion
+)
+import tempfile
+import importlib.util
+import sys
+import re
 
 
 def get_mongo_url():
@@ -81,3 +92,70 @@ def run_async(awaitable: Any) -> Any:
     else:
         # loop already running (e.g. in a web framework), so block on it
         return loop.run_until_complete(awaitable)
+
+
+def json_schema_model(
+        schema: dict,
+        model_name: str
+) -> Type[BaseModel]:
+    """
+    Generate and load a Pydantic model class from a given JSON Schema.
+
+    Args:
+        schema (dict): The JSON schema dict to convert into a model.
+        model_name (str): The name of the model class to retrieve after generation.
+
+    Returns:
+        Type[BaseModel]: The generated Pydantic model class.
+
+    Raises:
+        AttributeError: If the specified model class is not found.
+    """
+    model_name = to_pascal_case(model_name)
+    schema_str = json.dumps(schema)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        module_name = "_generated_model"
+        output_file = Path(temp_dir) / f"{module_name}.py"
+
+        generate(
+            input_=schema_str,
+            input_file_type=InputFileType.JsonSchema,
+            output_model_type=DataModelType.PydanticV2BaseModel,
+            target_python_version=PythonVersion.PY_310,
+            use_annotated=False,
+            field_constraints=True,
+            use_field_description=True,
+            reuse_model=True,
+            use_title_as_name=True,
+            use_standard_collections=True,
+            use_union_operator=True,
+            strict_nullable=True,
+            keep_model_order=True,
+            output=output_file
+        )
+
+        sys.path.insert(0, temp_dir)
+        try:
+            # with open(output_file, "r") as f:
+            #     print(f.read())
+            spec = importlib.util.spec_from_file_location(module_name, str(output_file))
+            if not spec or not spec.loader:
+                raise ImportError(f"Could not create module spec for '{module_name}'")
+
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+
+            model_cls = getattr(module, f"{model_name}Arguments", None)
+            if model_cls is None:
+                raise AttributeError(f"Model class '{model_name}' not found in generated code.")
+            model_cls.model_rebuild()
+            return model_cls
+        finally:
+            sys.path.remove(temp_dir)
+
+
+def to_pascal_case(s: str) -> str:
+    # Split on underscores, hyphens, and capital word boundaries
+    words = re.findall(r'[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])', re.sub(r'[-_]', ' ', s))
+    return ''.join(word.capitalize() for word in words)

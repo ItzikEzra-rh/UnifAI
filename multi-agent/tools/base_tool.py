@@ -1,4 +1,4 @@
-from typing import Optional, Type, Any
+from typing import Optional, Type, Any, Union
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
 
@@ -11,7 +11,7 @@ class BaseTool(ABC):
 
     name: str
     description: str
-    args_schema: Optional[Type[BaseModel]] = None
+    args_schema: Optional[Union[Type[BaseModel], dict[str, Any], Any]] = None
 
     def __init__(
             self,
@@ -37,3 +37,9 @@ class BaseTool(ABC):
     async def arun(self, *args: Any, **kwargs: Any) -> int:
         # For asynchronous execution, we can just call run for now
         return self.run(*args, **kwargs)
+
+    def get_args_schema_json(self):
+        return self.args_schema.model_json_schema()
+
+    def get_args_schema_model(self):
+        return self.args_schema

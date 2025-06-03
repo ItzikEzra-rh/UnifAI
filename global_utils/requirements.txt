@@ -5,6 +5,8 @@ celery-batches
 flask_pymongo
 pymongo
 asyncio
+datamodel-code-generator
+pydantic>=2.0
 # flask
 # flask-cors
 # scapy

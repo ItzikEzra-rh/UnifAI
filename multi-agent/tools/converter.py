@@ -11,7 +11,7 @@ class LangChainToolsConverter:
         lc_tools = []
         for tool in tools:
             lc_tools.append(StructuredTool.from_function(func=tool.run,
-                                                         args_schema=tool.args_schema,
+                                                         args_schema=tool.get_args_schema_json(),
                                                          name=tool.name,
                                                          description=tool.description,
                                                          coroutine=tool.arun))
