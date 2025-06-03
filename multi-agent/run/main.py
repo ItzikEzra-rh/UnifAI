@@ -134,6 +134,7 @@ if __name__ == "__main__":
     spec2 = blueprint_loader.load("run/test_2_agents_slack_docs_merger.yml")
     spec3 = blueprint_loader.load("run/test_1_agent_ssh_exec_tool.yml")
     spec4 = blueprint_loader.load("run/test_1_agent_mcp_tool.yml")
+    spec4 = blueprint_loader.load("run/test_1_agent_2_mcp_providers.yml")
     repo = MongoBlueprintRepository()
     service = BlueprintService(repo)
     bid1 = service.register(spec1)
