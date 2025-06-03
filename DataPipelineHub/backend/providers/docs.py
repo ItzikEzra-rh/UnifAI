@@ -46,7 +46,7 @@ def embed_docs_flow(doc_list):
         "type": "qdrant",
         "collection_name": "pdf_doc_data",
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://localhost",
+        "url": "http://a89ba0e9b65b94d7aa954ec867cdabc2-466909602.us-east-1.elb.amazonaws.com",
         "port": 6333
     }
 
@@ -54,7 +54,7 @@ def embed_docs_flow(doc_list):
     vector_storage.initialize()
 
     # Create MongoDB client
-    mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
+    mongo_client = pymongo.MongoClient("mongodb://aaceb464183a343b996146435830cee4-2071725066.us-east-1.elb.amazonaws.com:27017/")
 
     # Create data pipeline with existing logger
     doc_pipeline = DocDataPipeline(mongo_client, logger=logger)

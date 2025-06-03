@@ -29,9 +29,9 @@ register_all_endpoints(app)
 # Following configuration is required to interact with global_utils such celery in other parts of the application  
 initial_config = {
   "rabbitmq_port": "5672",
-  "rabbitmq_ip": "0.0.0.0",
+  "rabbitmq_ip": "http://a54ec685d02ec403c88f56a6230bb391-1814247942.us-east-1.elb.amazonaws.com",
   "mongodb_port": "27017",
-  "mongodb_ip": "0.0.0.0"
+  "mongodb_ip": "http://aaceb464183a343b996146435830cee4-2071725066.us-east-1.elb.amazonaws.com"
 }
 
 config = ConfigManager(initial_config=initial_config)

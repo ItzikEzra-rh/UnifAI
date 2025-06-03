@@ -7,7 +7,7 @@ from providers.docs import get_available_doc_list, get_best_match_results
 
 docs_bp = Blueprint("docs", __name__)
 
-
+    
 @docs_bp.route("/available.docs.get", methods=["GET"])
 def available_doc_list():
     try:
