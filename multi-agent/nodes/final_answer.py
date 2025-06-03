@@ -48,19 +48,23 @@ class FinalAnswerNode(BaseNode):
 
     def run(self, state: GraphState) -> GraphState:
         messages = state.get("messages", [])
-        if self._last_is_assistant(messages):
-            return state
 
-        raw = state.get("nodes_output", {})
-        reply = self._formatter.format(raw)
-        return self._append_message(state, reply)
+        if not self._last_is_assistant(messages):
+            raw = state.get("nodes_output", {})
+            reply = self._formatter.format(raw)
+            self._append_message(state, reply)
+
+        messages = state.get("messages", [])
+        if messages:
+            state["output"] = messages[-1].content
+
+        return state
 
     @staticmethod
     def _last_is_assistant(messages: Sequence[ChatMessage]) -> bool:
         return bool(messages) and messages[-1].role == Role.ASSISTANT
 
-    def _append_message(self, state: GraphState, content: str) -> GraphState:
+    def _append_message(self, state: GraphState, content: str) -> None:
         new_msg = ChatMessage(role=Role.ASSISTANT, content=content)
         updated = list(state.get("messages", [])) + [new_msg]
         state["messages"] = updated
-        return state
