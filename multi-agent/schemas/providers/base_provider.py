@@ -42,7 +42,7 @@ class McpProviderConfig(ProviderBaseConfig):
     sse_endpoint: HttpUrl = Field(
         ...,
         description="HTTP(S) endpoint that streams SSE events",
-        example="https://api.example.com:8000/sse"
+        example="https://api.example.com:8000/"
     )
 
     class Meta(ProviderBaseConfig.Meta):

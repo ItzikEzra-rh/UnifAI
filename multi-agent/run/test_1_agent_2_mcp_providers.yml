@@ -4,11 +4,11 @@
 providers:
   - name: mcp1
     type: mcp_server
-    sse_endpoint: http://localhost:8004/sse
+    sse_endpoint: http://localhost:8004
 
   - name: mcp2
     type: mcp_server
-    sse_endpoint: http://localhost:8006/sse
+    sse_endpoint: http://localhost:8006
 
 # ----------------------------
 # LLM Definitions
