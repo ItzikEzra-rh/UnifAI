@@ -27,7 +27,7 @@ class UserSessionManager:
             self,
             user_id: str,
             blueprint_spec: BlueprintSpec,
-            metadata: dict = None
+            metadata: SessionMeta = None
     ) -> WorkflowSession:
         """Instantiate a fresh session and persist it. Returns run_id."""
         session = self._factory.create(
