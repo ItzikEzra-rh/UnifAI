@@ -3,21 +3,21 @@ helmDefaults:
     wait: false
 
 releases:
-  - name: unifiai-mongodb
+  - name: unifai-mongodb
     chart: ./mongodb
     wait: true
     timeout: 300
     values:
       - "./mongodb.yaml"
 
-  - name: unifiai-qdrant
+  - name: unifai-qdrant
     chart: ./qdrant
     wait: true
     timeout: 300
     values:
       - "./qdrant.yaml"
       
-  - name: unifiai-rabbitmq
+  - name: unifai-rabbitmq
     chart: ./rabbitmq
     wait: true
     values:

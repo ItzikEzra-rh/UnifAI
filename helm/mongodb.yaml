@@ -25,7 +25,7 @@ resources:
 
 storage:
   ## Internal volume name and prefix of a created PVC
-  volumeName: "unifiai-mongodb-volume"
+  volumeName: "unifai-mongodb-volume"
   ## Alternative set requestedSize to define a size for a dynamically created PVC
   requestedSize: 30G
   ## Default access mode (ReadWriteOnce)
