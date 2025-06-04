@@ -5,6 +5,7 @@ from session.workflow_session import WorkflowSession
 from graph.state.graph_state import GraphState
 from core.context import set_current_context
 from .status import SessionStatus
+from .utils import derive_title
 
 SessionOrId = Union[WorkflowSession, str]
 
@@ -37,12 +38,17 @@ class SessionExecutor:
 
     def _pre_run(self, session: WorkflowSession, inputs: Dict[str, Any]) -> None:
         """
-        1) bind RunContext into ContextVar
-        2) seed input into the GraphState
-        3) mark context as running
-        4) update status
-        5) persist
+        1) add title to session metadata
+        2) bind RunContext into ContextVar
+        3) seed input into the GraphState
+        4) mark context as running
+        5) update status
+        6) persist
         """
+        if session.metadata.title is None:
+            if title := derive_title(inputs):
+                session.metadata.title = title
+
         set_current_context(session.run_context)
         session.graph_state.update(inputs)
         session.update_status(SessionStatus.RUNNING)

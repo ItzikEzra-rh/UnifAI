@@ -75,8 +75,8 @@ def execute_user_session(session_id, inputs, stream_mode, stream):
 def get_session_state(session_id):
     try:
         svc = current_app.container.session_service
-        session = svc.get(run_id=session_id)
-        return jsonify(session.get_state().model_dump(mode="json")), 200
+        state = svc.get_state(run_id=session_id)
+        return jsonify(state), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

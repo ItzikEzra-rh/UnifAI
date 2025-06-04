@@ -1,8 +1,10 @@
-from typing import Any, Dict, Iterator, List
-from session.user_session_manager import UserSessionManager
-from session.session_executor import SessionExecutor
+from typing import Any, Dict, Iterator, List, Mapping
+from .user_session_manager import UserSessionManager
+from .session_executor import SessionExecutor
 from schemas.blueprint.blueprint import BlueprintSpec
-from session.workflow_session import WorkflowSession
+from .workflow_session import WorkflowSession
+from .dto import ChatHistoryItem
+from .models import SessionMeta
 
 
 class SessionService:
@@ -14,14 +16,15 @@ class SessionService:
         self._manager = manager
         self._executor = executor
 
-    def create(self, user_id: str, blueprint_spec: BlueprintSpec, metadata: Dict[str, Any] = None) -> Any:
+    def create(self, user_id: str, blueprint_spec: BlueprintSpec, metadata: SessionMeta = None) -> Any:
         """
         Create a new session and return its object (with run_id).
         """
+        # TODO, should metadata get from UI? maybe just tags
         return self._manager.create_session(
             user_id=user_id,
             blueprint_spec=blueprint_spec,
-            metadata=metadata or {}
+            metadata=metadata or SessionMeta()
         )
 
     def run(self, session_or_id: Any, inputs: Dict[str, Any]) -> Any:
@@ -62,9 +65,9 @@ class SessionService:
         """
         List all sessions created by a user.
         """
-        return self._manager.list_sessions(user_id)
+        return self._manager.list_sessions_ids(user_id)
 
-    def get(self, run_id: str) -> Any:
+    def get(self, run_id: str) -> WorkflowSession:
         """
         Fetch a session object by its run_id.
         """
@@ -74,15 +77,19 @@ class SessionService:
         """
         Get the status of a session by its run_id.
         """
-        session = self.get(run_id)
-        return session.get_status() if session else None
+        session_doc = self._manager.get_doc(run_id)
+        return session_doc.get("status", None)
+
+    def get_state(self, run_id: str) -> Dict[str, Any]:
+        """
+        Get the status of a session by its run_id.
+        """
+        session_doc = self._manager.get_doc(run_id)
+        return session_doc.get("graph_state", None)
 
     def get_user_sessions_chat_history(self, user_id: str) -> list:
         """
         Get chat history for all sessions created by a user.
         """
-        sessions_ids = self._manager.list_sessions(user_id)
-        sessions: List[WorkflowSession] = [self.get(session_id) for session_id in sessions_ids]
-        return [{"state": session.graph_state.model_dump(mode="json"),
-                 "metadata": session.metadata,
-                 "startedTimeStamp": session.run_context.started_at} for session in sessions]
+        docs = self._manager.list_docs(user_id)
+        return [ChatHistoryItem.from_doc(d) for d in docs]

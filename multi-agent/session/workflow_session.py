@@ -4,9 +4,9 @@ from graph.graph_plan import GraphPlan
 from engine.builder.base_graph_builder import BaseGraphBuilder
 from engine.executor.interfaces import GraphExecutor
 from core.run_context import RunContext
-from typing import Any, Dict
 from graph.state.graph_state import GraphState
 from .status import SessionStatus
+from .models import SessionMeta
 
 
 class WorkflowSession:
@@ -31,7 +31,7 @@ class WorkflowSession:
             run_context: RunContext,
             # logger: LoggerInterface,
             graph_state: GraphState,
-            metadata: Dict[str, Any] = None,
+            metadata: SessionMeta | None = None
     ) -> None:
         self.session_registry = session_registry
         self.blueprint = blueprint
@@ -40,7 +40,7 @@ class WorkflowSession:
         # self.logger = logger
         self.builder = builder
         self.run_context = run_context
-        self.metadata = metadata or {}
+        self.metadata = metadata
         self.graph_state = graph_state
         self.status: SessionStatus = SessionStatus.PENDING
 

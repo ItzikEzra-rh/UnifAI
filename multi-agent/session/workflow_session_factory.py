@@ -11,6 +11,7 @@ from core.run_context import RunContext
 from core.context import set_current_context
 from logs.logger_interface import LoggerInterface
 from schemas.blueprint.blueprint import BlueprintSpec
+from .models import SessionMeta
 
 
 class WorkflowSessionFactory:
@@ -42,7 +43,7 @@ class WorkflowSessionFactory:
             *,
             user_id: str,
             blueprint_spec: BlueprintSpec,
-            metadata: dict = None,
+            metadata: SessionMeta = None,
             graph_state: GraphState = GraphState(),
     ) -> WorkflowSession:
         # 0) Build and propagate RunContext ———
