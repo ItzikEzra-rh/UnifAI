@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Send, Trash2, Settings } from "lucide-react";
 import axios from '../../../http/axiosAgentConfig';
 import { SessionPayload } from '../ExecutionTab';
-import { useStreamingData, NodeEntry } from "../StreamingDataContext";
+import { useStreamingData } from "../StreamingDataContext";
 import { Message, StreamLogEntry } from './types';
 import { StreamLogDisplay } from './StreamLogDisplay';
 
@@ -131,6 +131,7 @@ export default function ChatInterface({
                     nodeId: entry.node_name,
                     nodeName: entry.node_name.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
                     message: newMessage,
+                    tools: entry?.tools || [],
                     status: newStatus,
                     isExpanded: existingLog?.isExpanded || false,
                   });
