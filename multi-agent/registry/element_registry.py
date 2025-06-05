@@ -3,6 +3,7 @@ import threading
 from typing import Dict, List
 import os
 from registry.element_definition import ElementDefinition
+from core.enums import ResourceCategory
 
 
 class ElementRegistry:
@@ -53,7 +54,7 @@ class ElementRegistry:
                 raise ValueError(f"Element already registered: {edef.category}/{edef.type_key}")
             cat_map[edef.type_key] = edef
 
-    def list_types(self, category: str) -> List[str]:
+    def list_types(self, category: ResourceCategory) -> List[str]:
         """
         List all registered type_keys for a given category.
 
@@ -62,7 +63,7 @@ class ElementRegistry:
         """
         return list(self._defs.get(category, {}).keys())
 
-    def get_definition(self, category: str, type_key: str) -> ElementDefinition:
+    def get_definition(self, category: ResourceCategory, type_key: str) -> ElementDefinition:
         """
         Retrieve the ElementDefinition for a given category and type_key.
 
@@ -75,7 +76,7 @@ class ElementRegistry:
         except KeyError:
             raise KeyError(f"No element registered under {category}/{type_key}")
 
-    def get_factory(self, category: str, type_key: str):
+    def get_factory(self, category: ResourceCategory, type_key: str):
         """
         Get the factory class for the specified element.
 
@@ -85,7 +86,7 @@ class ElementRegistry:
         """
         return self.get_definition(category, type_key).factory_cls
 
-    def get_schema(self, category: str, type_key: str):
+    def get_schema(self, category: ResourceCategory, type_key: str):
         """
         Get the Pydantic schema class for the specified element.
 
@@ -95,7 +96,7 @@ class ElementRegistry:
         """
         return self.get_definition(category, type_key).schema_cls
 
-    def get_description(self, category: str, type_key: str) -> str:
+    def get_description(self, category: ResourceCategory, type_key: str) -> str:
         """
         Get the human-readable description for the specified element.
 
@@ -125,6 +126,6 @@ class ElementRegistry:
                         module_name = f"plugins.{folder_name}.{filename[:-3]}"  # Remove '.py'
                         # try:
                         importlib.import_module(module_name)
-                            # print(f"Imported {module_name}")
+                        # print(f"Imported {module_name}")
                         # except Exception as e:
                         #     print(f"Failed to import {module_name}: {e}")

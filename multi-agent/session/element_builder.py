@@ -1,84 +1,120 @@
-from typing import Callable, Any, List, TypeVar
-from pydantic import BaseModel, ValidationError
+"""
+Builds a SessionRegistry from a BlueprintSpec by orchestrating one
+CategoryBuilder per resource category.
 
-from registry.element_registry import ElementRegistry
+Key features
+------------
+* **Data-driven** – Build order is derived from `depends_on` declared on each
+  CategoryBuilder subclass.  No hard-coded lists beyond registration.
+* **Validated** – Unknown dependencies and cyclic graphs raise ValueError
+  before any expensive objects are constructed.
+* **SOLID** – The class depends only on the CategoryBuilder abstraction and
+  SessionRegistry protocol; adding a new category means writing one new
+  builder and importing it here.
+"""
+
+from collections import deque
+from typing import Dict, List, Type
 from session.session_registry import SessionRegistry
 from schemas.blueprint.blueprint import BlueprintSpec
-from plugins.base_factory import BaseFactory
-from plugins.exceptions import PluginConfigurationError
-from schemas.blueprint.typing import BlueprintElementDef
+from core.enums import ResourceCategory
 
-T = TypeVar("T", bound=BlueprintElementDef)
+# concrete builders
+from .category_builders.provider_builder import ProviderBuilder
+from .category_builders.llm_builder import LLMBuilder
+from .category_builders.retriever_builder import RetrieverBuilder
+from .category_builders.condition_builder import ConditionBuilder
+from .category_builders.tool_builder import ToolBuilder
+
+from .category_builders.category_builder import CategoryBuilder
 
 
 class SessionElementBuilder:
     """
-    Builds session-scoped instances (LLMs, Tools, Retrievers, etc.)
-    by looking up factories & schemas in ElementRegistry under (category, type).
+    Orchestrates CategoryBuilders → returns a fully-populated SessionRegistry.
     """
 
-    def __init__(self, element_registry: ElementRegistry) -> None:
-        self._elements = element_registry
+    # Register all category builders once.  Order does *not* matter here.
+    _BUILDER_CLASSES: List[Type[CategoryBuilder]] = [
+        ProviderBuilder,
+        LLMBuilder,
+        RetrieverBuilder,
+        ConditionBuilder,
+        ToolBuilder,
+    ]
 
-    def build(self, spec: BlueprintSpec) -> SessionRegistry:
-        session = SessionRegistry()
-
-        # for each category in your blueprint, call the generic builder
-        self._build_category("llm", spec.llms, session.register_llm)
-        self._build_category("tool", spec.tools, session.register_tool)
-        self._build_category("retriever", spec.retrievers, session.register_retriever)
-        self._build_category("condition", spec.conditions, session.register_condition)
-
-        return session
-
-    def _build_category(
-            self,
-            category: str,
-            definitions: List[T],
-            register_fn: Callable[[str, Any], None]
-    ) -> None:
+    # --------------------------------------------------------------------- #
+    # Public API                                                            #
+    # --------------------------------------------------------------------- #
+    def __init__(self, element_registry):
         """
-        Generic builder for any component category.
-        :param category:     one of "llm", "tool", "retriever", "node", etc.
-        :param definitions:  list of ElementDefinition (with .name, .type, .dict())
-        :param register_fn:  e.g. session.register_llm(name, instance)
+        Parameters
+        ----------
+        element_registry : ElementRegistry
+            The plugin registry that knows every factory/schema pair.
+            It is forwarded to each CategoryBuilder.
         """
-        for d in definitions:
-            # 1) Lookup factory & schema by category + type
-            try:
-                factory_cls = self._elements.get_factory(category, d.type)
-                schema_cls = self._elements.get_schema(category, d.type)
-            except KeyError as e:
-                raise PluginConfigurationError(
-                    f"No plugin for {category!r} with type={d.type!r}",
-                    getattr(d, "dict", lambda **_: {})(exclude_unset=True)
-                ) from e
+        self._builders: Dict[ResourceCategory, CategoryBuilder] = {
+            cls.category: cls(element_registry) for cls in self._BUILDER_CLASSES
+        }
+        # raises early on unknown deps / cycles
+        self._ordered_builders: List[CategoryBuilder] = self._topological_order()
 
-            # 2) Validate & merge via Pydantic if we have a schema
-            raw = d.dict(exclude_unset=True)
-            try:
-                cfg = schema_cls(**raw) if schema_cls else raw
-            except ValidationError as ve:
-                raise PluginConfigurationError(
-                    f"Config validation failed for {category}/{d.type}: {ve}",
-                    raw
-                ) from ve
+    # -- main entry ------------------------------------------------------------
+    def build(self, blueprint: BlueprintSpec) -> SessionRegistry:
+        """Return a fully populated, optionally frozen SessionRegistry."""
+        registry = SessionRegistry()
 
-            # 3) Instantiate via the factory
-            factory: BaseFactory = factory_cls()
-            if not factory.accepts(cfg):
-                raise PluginConfigurationError(
-                    f"{factory_cls.__name__} rejects config for {category}/{d.type}",
-                    cfg.dict()  # type: ignore
-                )
+        for builder in self._ordered_builders:
+            builder.build(blueprint, registry)
 
-            try:
-                instance = factory.create(cfg)
-            except Exception as e:
-                raise PluginConfigurationError(
-                    f"Factory.create() failed for {category}/{d.type}: {e}",
-                    cfg.dict()  # type: ignore
-                ) from e
+        # optional: lock down to prevent run-time mutation
+        registry.freeze()
+        return registry
 
-            # 4) Register the instance under the user‐chosen name
-            register_fn(d.name, instance)
+    # --------------------------------------------------------------------- #
+    # Internal helpers                                                      #
+    # --------------------------------------------------------------------- #
+    def _topological_order(self) -> List[CategoryBuilder]:
+        """
+        Kahn’s algorithm topological sort.
+
+        Raises
+        ------
+        ValueError
+            • if any builder lists an unknown dependency
+            • if a cyclic dependency is found
+        """
+        # Build adjacency map: category -> deps
+        graph: Dict[ResourceCategory, set[ResourceCategory]] = {
+            cat: set(b.depends_on) for cat, b in self._builders.items()
+        }
+
+        # --- validation: unknown deps -----------------------------------
+        unknown = {d for deps in graph.values() for d in deps} - graph.keys()
+        if unknown:
+            cats = ", ".join(item.value for item in sorted(unknown))
+            raise ValueError(f"Unknown builder dependency(ies): {cats}")
+
+        # --- Kahn -------------------------------------------------------
+        queue = deque([cat for cat, deps in graph.items() if not deps])
+        ordered: List[CategoryBuilder] = []
+
+        while queue:
+            cat = queue.popleft()
+            ordered.append(self._builders[cat])
+
+            # remove edges
+            for tgt in list(graph):
+                if cat in graph[tgt]:
+                    graph[tgt].discard(cat)
+                    if not graph[tgt]:
+                        queue.append(tgt)
+            graph.pop(cat, None)
+
+        # --- cycle detection -------------------------------------------
+        if graph:  # any remaining nodes ⇒ cycle
+            cycle = " → ".join(cat.value for cat in graph)
+            raise ValueError(f"Cyclic builder dependencies detected: {cycle}")
+
+        return ordered

@@ -1,4 +1,5 @@
-from typing import Any, Dict, List, Tuple, Set
+from typing import Any, Dict, List, Sequence, Optional
+from itertools import islice
 from llms.chat.message import ChatMessage, Role
 
 
@@ -45,23 +46,44 @@ def _to_chat(msg: Any):
     return None
 
 
+def _same_history(a: Sequence[ChatMessage], b: Sequence[ChatMessage]) -> bool:
+    """
+    True when *all* messages in `a` equal the messages at the same positions in `b`.
+    Works because dataclasses give ChatMessage a value-based __eq__.
+    """
+    return all(x == y for x, y in zip(a, islice(b, len(a))))
+
+
 def append_chat_messages(
-        existing: List[ChatMessage], new_item: Any
+        existing: Optional[List[ChatMessage]],
+        new_item: Any
 ) -> List[ChatMessage]:
     """
-    • Normalizes inputs: ChatMessage | dict | str | list/tuple[...]
-    • De-duplicates by (role, content) tuple
+    Smart-merge for the `messages` channel.
+
+    • Accepts `ChatMessage`, str, dict, list/tuple[…].
+    • **If the node returned the full history**
+      (i.e. new list starts with all the old messages in the same order)
+      → replace the channel with that list.
+    • Otherwise **treat the input as incremental** and simply append.
+    • No cross-list de-duplication – duplicates are kept intentionally
+      so `[x, y, z] + x` becomes `[x, y, z, x]`.
     """
-    out = existing if isinstance(existing, list) else []
-    seen: Set[Tuple[str, str]] = {(m.role, m.content) for m in out}
-    to_process = new_item if isinstance(new_item, (list, tuple)) else [new_item]
+    existing = existing or []
+    # Normalise to a list[ChatMessage]
+    raw_list = new_item if isinstance(new_item, (list, tuple)) else [new_item]
+    incoming: List[ChatMessage] = [
+        cm for cm in (_to_chat(r) for r in raw_list) if cm is not None
+    ]
 
-    for raw in to_process:
-        cm = _to_chat(raw)
-        if cm:
-            key = (cm.role, cm.content)
-            if key not in seen:
-                out.append(cm)
-                seen.add(key)
+    if not incoming:
+        return existing
 
-    return out
+    # ── Case A: node returned the *entire* history ──────────────────────────
+    # e.g. existing = [x, y, z] • incoming = [x, y, z, x]
+    #      → keep incoming as the new canonical history.
+    if len(incoming) >= len(existing) and _same_history(existing, incoming):
+        return incoming
+
+    # ── Case B: node returned *only the new* messages ───────────────────────
+    return existing + incoming

@@ -25,8 +25,6 @@ class GraphState(BaseModel):
     user_prompt: Annotated[str, lambda old, new: new] = ""
     # merge dicts into a new dict:
     nodes_output: Annotated[Dict[str, str], merge_string_dicts] = Field(default_factory=dict)
-    # last-writer-wins for output:
-    latest_node_output: Annotated[str, lambda old, new: new] = ""
 
     # appending messages to a list:
     messages: Annotated[list[ChatMessage], append_chat_messages] = Field(default_factory=list)

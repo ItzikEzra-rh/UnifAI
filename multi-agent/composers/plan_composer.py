@@ -1,9 +1,10 @@
 from typing import List, Union
-from session.session_registry import SessionRegistry
 from schemas.blueprint.blueprint import StepDef, NodeSpec
 from graph.graph_plan import GraphPlan
 from .node_factory import NodeFactory
 from graph.step_context import StepContext
+from core.enums import ResourceCategory
+from core.contracts import SessionRegistry
 
 
 class PlanComposer:
@@ -38,7 +39,7 @@ class PlanComposer:
             step_ctx = StepContext(uid=sd.uid, metadata=sd.meta)
 
             # get the condition callable
-            cond_fn = self.session.get_condition(sd.exit_condition) if sd.exit_condition else None
+            cond_fn = self.session.get(ResourceCategory.CONDITION, sd.exit_condition) if sd.exit_condition else None
 
             # instantiate the node
             func = self._resolve_node(sd.node, step_ctx)

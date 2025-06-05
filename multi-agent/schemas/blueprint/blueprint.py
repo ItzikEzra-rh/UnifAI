@@ -5,6 +5,7 @@ from schemas.llm.base_llm import LLMsSpec
 from schemas.retriever.retriever_config import RetrieversSpec
 from schemas.condition.base_condition import ConditionSpec
 from schemas.tools.tool_config import ToolsSpec
+from schemas.providers.base_provider import ProviderSpec
 from uuid import uuid4
 
 
@@ -36,6 +37,7 @@ class BlueprintSpec(BaseModel):
     retrievers: List[RetrieversSpec] = Field(default_factory=list)
     conditions: List[ConditionSpec] = Field(default_factory=list)
     tools: List[ToolsSpec] = Field(default_factory=list)
+    providers: List[ProviderSpec] = Field(default_factory=list)
     plan: List[StepDef]
     description: Optional[str] = "Blueprint description"
     display_name: Optional[str] = "Display Name"
