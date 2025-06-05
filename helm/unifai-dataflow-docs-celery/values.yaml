@@ -1,4 +1,4 @@
-# Default values for dataflow.
+# Default values for unifai-dataflow-celery-docs.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
@@ -7,7 +7,7 @@ replicaCount: 1
 
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
-  repository: httpd
+  repository: nginx
   # This sets the pull policy for images.
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
@@ -89,11 +89,11 @@ resources: {}
 livenessProbe:
   httpGet:
     path: /
-    port: 8080
+    port: http
 readinessProbe:
   httpGet:
     path: /
-    port: 8080
+    port: http
 
 # This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
 autoscaling:

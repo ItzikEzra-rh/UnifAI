@@ -10,17 +10,20 @@ echo "------------------------------------------"
 case "$ROLE" in
   flask)
     echo "🟢 Starting Flask API (Server)..."
-    exec . ~/backend/venv/bin/activate && python app.py
+    . ~/backend/venv/bin/activate
+    exec python app.py
     ;;
     
   slack-celery)
     echo "🔧 Starting Slack Celery worker..."
-   exec . ~/backend/venv/bin/activate  && celery -A celery_app.init worker -c 1 --loglevel=info -Q slack_queue -n data_sources
+    . ~/backend/venv/bin/activate
+    exec celery -A celery_app.init worker -c 1 --loglevel=info -Q slack_queue -n data_sources
     ;;
 
   doc-celery)
     echo "⏰ Starting Docs Celery worker..."
-    exec . ~/backend/venv/bin/activate  && celery -A celery_app.init worker -c 1 --loglevel=info -Q docs_queue -n data_sources
+    . ~/backend/venv/bin/activate
+    exec celery -A celery_app.init worker -c 1 --loglevel=info -Q docs_queue -n data_sources
     ;;
 
   *)

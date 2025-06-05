@@ -13,24 +13,33 @@ releases:
   #   needs:
   #     - unifai-be
 
-  - name: unifai-dataflow
-    chart: ./unifai-dataflow
+  # - name: unifai-dataflow-server
+  #   chart: ./unifai-dataflow-server
+  #   wait: true
+  #   hooks:
+  #     - events: ["presync"]
+  #       showlogs: true
+  #       command: bash
+  #       args:
+  #         - "-c"
+  #         - |
+  #             MONGODB_ADDR=$(kubectl get svc mongodb -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+  #             QDRANT_ADDR=$(kubectl get svc qdrant -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+  #             RABBITMQ_ADDR=$(kubectl get svc rabbitmq -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
+  #             kubectl delete configmap shared-resources
+  #             kubectl create configmap shared-resources \
+  #             --from-literal=MONGO_EXT_ADDR="$MONGODB_ADDR" \
+  #             --from-literal=RABBITMQ_EXT_ADDR="$RABBITMQ_ADDR" \
+  #             --from-literal=QDRANT_EXT_ADDR="$QDRANT_ADDR" \
+  #             --dry-run=client -o yaml | kubectl apply -f -
+  #   values:
+  #     - "unifai-dataflow-server.yaml"
+
+  - name: unifai-dataflow-slack-celery
+    chart: ./unifai-dataflow-slack-celery
+    version: "0.9.0"
     wait: true
-    hooks:
-      - events: ["presync"]
-        showlogs: true
-        command: bash
-        args:
-          - "-c"
-          - |
-              MONGODB_ADDR=$(kubectl get svc mongodb -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-              QDRANT_ADDR=$(kubectl get svc qdrant -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-              RABBITMQ_ADDR=$(kubectl get svc rabbitmq -o jsonpath='{.status.loadBalancer.ingress[0].hostname}')
-              kubectl delete configmap shared-resources
-              kubectl create configmap shared-resources \
-              --from-literal=MONGO_EXT_ADDR="$MONGODB_ADDR" \
-              --from-literal=RABBITMQ_EXT_ADDR="$RABBITMQ_ADDR" \
-              --from-literal=QDRANT_EXT_ADDR="$QDRANT_ADDR" \
-              --dry-run=client -o yaml | kubectl apply -f -
     values:
-      - "unifai-dataflow.yaml"
+      - "./unifai-dataflow-slack-celery.yaml"
+    # needs:
+    #   - unifai-dataflow-server

@@ -11,10 +11,25 @@ image:
    tag: latest
    pullPolicy: Always
 
+service:
+  type: ClusterIP
+  port: 13456
+
+livenessProbe:
+  httpGet:
+    path: /api/slack/
+    port: 13456
+readinessProbe:
+  httpGet:
+    path: /api/slack/
+    port: 13456
+
+
+
 resources:
   limits:
     cpu: 4
-    memory: 6Gi
+    memory: 12Gi
   requests:
-    cpu: 2
-    memory: 4Gi
+    cpu: 4
+    memory: 12Gi

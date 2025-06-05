@@ -1,0 +1,35 @@
+env:
+  MONGODB_HOST: mongodb
+  #RABBITMQ_HOST: rabbitmq
+  BACKEND_ENV: "production"
+  ROLE: "flask"
+debug: false
+
+# replicaCount: 1
+image:
+   repository: images.paas.redhat.com/genie/unifai/unifai-dataflow
+   tag: latest
+   pullPolicy: Always
+
+service:
+  type: ClusterIP
+  port: 13456
+
+livenessProbe:
+  httpGet:
+    path: /api/slack/
+    port: 13456
+readinessProbe:
+  httpGet:
+    path: /api/slack/
+    port: 13456
+
+
+
+resources:
+  limits:
+    cpu: 4
+    memory: 12Gi
+  requests:
+    cpu: 4
+    memory: 12Gi
