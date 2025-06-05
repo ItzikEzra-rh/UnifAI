@@ -26,8 +26,6 @@ readinessProbe:
     path: /api/slack/
     port: 13456
 
-
-
 resources:
   limits:
     cpu: 4
