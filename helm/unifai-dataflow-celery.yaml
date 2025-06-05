@@ -18,6 +18,15 @@ image:
 service:
   enabled: false
 
+volumes:
+  - name: unifai-dataflow-shared-storage
+    persistentVolumeClaim:
+      claimName: unifai-dataflow-shared-storage
+
+volumeMounts:
+  - name: unifai-dataflow-shared-storage
+    mountPath: /app/shared
+
 livenessProbe:
   exec:
     command:
