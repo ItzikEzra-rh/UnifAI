@@ -1,0 +1,20 @@
+env:
+  MONGODB_HOST: mongodb
+  #RABBITMQ_HOST: rabbitmq
+  BACKEND_ENV: "production"
+  ROLE: "flask"
+debug: false
+
+# replicaCount: 1
+image:
+   repository: images.paas.redhat.com/genie/unifai/unifai-dataflow
+   tag: latest
+   pullPolicy: Always
+
+resources:
+  limits:
+    cpu: 4
+    memory: 6Gi
+  requests:
+    cpu: 2
+    memory: 4Gi
