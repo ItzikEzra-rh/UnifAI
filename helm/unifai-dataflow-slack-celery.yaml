@@ -1,8 +1,11 @@
 env:
-  MONGODB_HOST: mongodb
-  RABBITMQ_HOST: rabbitmq
+  MONGODB_IP: mongodb
+  MONGODB_PORT: 27017
+  RABBITMQ_IP: rabbitmq
+  RABBITMQ_PORT: 5672
   BACKEND_ENV: "production"
   ROLE: "slack-celery"
+  CELERY_WORKER: 4
 debug: false
 
 # replicaCount: 1
@@ -13,21 +16,34 @@ image:
 
 service:
   type: ClusterIP
-  port: 13456
+  port: 30300
 
 livenessProbe:
-  httpGet:
-    path: /api/slack/
-    port: 13456
+  exec:
+    command:
+      - sh
+      - -c
+      - "timeout 2 bash -c '</dev/tcp/$RABBITMQ_IP/$RABBITMQ_PORT'"
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
+
 readinessProbe:
-  httpGet:
-    path: /api/slack/
-    port: 13456
+  exec:
+    command:
+      - sh
+      - -c
+      - "timeout 2 bash -c '</dev/tcp/$RABBITMQ_IP/$RABBITMQ_PORT'"
+  initialDelaySeconds: 10
+  periodSeconds: 15
+  timeoutSeconds: 5
+  failureThreshold: 3
 
 resources:
   limits:
-    cpu: 4
-    memory: 12Gi
+    cpu: 2
+    memory: 2Gi
   requests:
-    cpu: 4
-    memory: 12Gi
+    cpu: 1
+    memory: 1Gi

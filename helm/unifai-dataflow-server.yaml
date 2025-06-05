@@ -1,6 +1,8 @@
 env:
-  MONGODB_HOST: mongodb
-  #RABBITMQ_HOST: rabbitmq
+  MONGODB_IP: mongodb
+  MONGODB_PORT: 27017
+  RABBITMQ_IP: rabbitmq
+  RABBITMQ_PORT: 5672
   BACKEND_ENV: "production"
   ROLE: "flask"
 debug: false
