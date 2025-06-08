@@ -1,3 +1,4 @@
+import os
 from .vector_storage import VectorStorage
 from .qdrant_storage import QdrantStorage
 from typing import Dict, Any
@@ -22,8 +23,8 @@ class VectorStorageFactory:
             return QdrantStorage(
                 collection_name=config.get("collection_name", "slack_data"),
                 embedding_dim=config.get("embedding_dim"),
-                url=config.get("url"),
-                port=config.get("port"),
+                url=os.environ.get("QDRANT_URL", config.get("url")),
+                port=int(os.environ.get("QDRANT_PORT", config.get("port", 6333))),
                 grpc_port=config.get("grpc_port"),
                 api_key=config.get("api_key"),
                 on_disk=config.get("on_disk", True),
