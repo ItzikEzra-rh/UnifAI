@@ -5,7 +5,7 @@ FROM registry.access.redhat.com/ubi9/python-311
 USER root
 RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
 
-COPY ./DataPipelineHub//backend/entrypoint.sh /entrypoint.sh
+COPY ./DataPipelineHub/backend/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 USER default
