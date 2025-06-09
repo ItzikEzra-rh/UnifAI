@@ -4,9 +4,11 @@ env:
   RABBITMQ_IP: rabbitmq
   RABBITMQ_PORT: 5672
   BACKEND_ENV: "production"
+  QDRANT_URL: "http://qdrant"
+  QDRANT_PORT: 6333
   ROLE: "celery"
   CELERY_QUEUES: "slack_queue,docs_queue"
-  CELERY_WORKER: 4
+  CELERY_WORKER: 1
 debug: false
 
 # replicaCount: 1
@@ -53,8 +55,8 @@ resources:
   limits:
     cpu: 2
     memory: 2Gi
-    nvidia.com/gpu: 1
+    #nvidia.com/gpu: 1
   requests:
     cpu: 1
     memory: 1Gi
-    nvidia.com/gpu: 1
+    #nvidia.com/gpu: 1
