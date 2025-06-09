@@ -34,7 +34,13 @@ initial_config = {
   "mongodb_ip": "0.0.0.0"
 }
 
-config = ConfigManager(initial_config=initial_config)
+#config = ConfigManager(initial_config=initial_config)
+
+config = (
+    ConfigManager()
+    if os.getenv("BACKEND_ENV") == "production"
+    else ConfigManager(initial_config=initial_config)
+)
 
 # Init before_request/after_request rules
 RequestRules(app)

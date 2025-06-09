@@ -26,6 +26,8 @@ def get_mongo_url():
 def get_rabbitmq_url(user=None, password=None):
     ip = ConfigManager().get("rabbitmq_ip", "0.0.0.0") or "0.0.0.0"
     port = ConfigManager().get("rabbitmq_port", "5672") or "5672"
+    user = ConfigManager().get("rabbitmq_user", None)
+    password = ConfigManager().get("rabbitmq_password", None)
 
     if user and password:
         return f'amqp://{user}:{password}@{ip}:{port}'
