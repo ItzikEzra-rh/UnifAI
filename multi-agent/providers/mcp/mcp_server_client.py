@@ -1,7 +1,8 @@
 import asyncio
 import logging
 from typing import Dict, Any, Optional, List
-
+from pydantic import HttpUrl
+from yarl import URL
 from mcp.types import Tool, CallToolResult, CreateMessageRequestParams, CreateMessageResult, TextContent
 
 from .transport_manager import TransportManager, McpConnectionError
@@ -28,9 +29,10 @@ class McpServerClient:
 
     def __init__(
             self,
-            sse_endpoint: str,
+            sse_endpoint: HttpUrl,
     ):
-        self.sse_endpoint = sse_endpoint
+        base = URL(str(sse_endpoint))
+        self.sse_endpoint = str(base if base.path.endswith("/sse") else base / "sse")
 
         # TransportManager handles the low‐level SSE + ClientSession.
         self.transport = TransportManager(
