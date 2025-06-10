@@ -16,8 +16,8 @@ display_description: |
 llms:
   - name: openai_llm
     type: openai
-    model_name: gemini-2.5-pro-preview-06-05
-    api_key: AIzaSyD9gW8PGuhV6l_4Au6glbw_dfxIoYN48AQ
+    model_name: gemini-2.0-flash
+    api_key: AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ
     base_url: https://generativelanguage.googleapis.com/v1beta/openai
 
 # ----------------------------

@@ -137,8 +137,6 @@ def json_schema_model(
 
         sys.path.insert(0, temp_dir)
         try:
-            # with open(output_file, "r") as f:
-            #     print(f.read())
             spec = importlib.util.spec_from_file_location(module_name, str(output_file))
             if not spec or not spec.loader:
                 raise ImportError(f"Could not create module spec for '{module_name}'")
@@ -146,10 +144,16 @@ def json_schema_model(
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 
-            model_cls = getattr(module, f"{model_name}Arguments", None)
-            if model_cls is None:
-                raise AttributeError(f"Model class '{model_name}' not found in generated code.")
-            model_cls.model_rebuild()
+            model_classes = [
+                cls for cls in module.__dict__.values()
+                if isinstance(cls, type) and issubclass(cls, BaseModel) and cls.__module__ == module_name
+            ]
+
+            if not model_classes:
+                raise AttributeError("No Pydantic BaseModel subclass found in generated code.")
+
+            model_cls = model_classes[-1]
+            model_cls.model_rebuild(force=True, _types_namespace=module.__dict__)
             return model_cls
         finally:
             sys.path.remove(temp_dir)
