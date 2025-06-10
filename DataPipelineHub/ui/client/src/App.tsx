@@ -3,13 +3,15 @@ import Dashboard from "@/pages/Dashboard";
 import Configuration from "@/pages/Configuration";
 import JiraIntegration from "@/pages/JiraIntegration";
 import SlackIntegration from "@/pages/SlackIntegration";
-
 import AgenticAI from "@/pages/AgenticAI";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import DocumentsPage from "./documents/DocumentsPage";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+
+const queryClient = new QueryClient();
 
 function App() {
   // Set document title
@@ -18,19 +20,21 @@ function App() {
   }, []);
 
   return (
-    <ThemeProvider>
-      <ProjectProvider>
-        <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/configuration" component={Configuration} />
-          <Route path="/jira" component={JiraIntegration} />
-          <Route path="/slack" component={SlackIntegration} />
-          <Route path="/documents" component={DocumentsPage} />
-          <Route path="/agentic-ai" component={AgenticAI} />
-          <Route component={NotFound} />
-        </Switch>
-      </ProjectProvider>
-    </ThemeProvider>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <ProjectProvider>
+          <Switch>
+            <Route path="/" component={Dashboard} />
+            <Route path="/configuration" component={Configuration} />
+            <Route path="/jira" component={JiraIntegration} />
+            <Route path="/slack" component={SlackIntegration} />
+            <Route path="/documents" component={DocumentsPage} />
+            <Route path="/agentic-ai" component={AgenticAI} />
+            <Route component={NotFound} />
+          </Switch>
+        </ProjectProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
