@@ -1,3 +1,4 @@
+from utils.monitor.pipeline_monitor import MongoDBPipelineRepository
 import pymongo
 import uuid
 from data_sources.docs.doc_connector import DocumentConnector
@@ -9,7 +10,10 @@ from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactor
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
 
+mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
+
 def get_available_doc_list():
+    
     # TODO: NotImplemented
     # Assuming we have a volume where all the docs which were uploaded by the users reside under
     # Scan the volume, return for each doc his name and location (path) 
@@ -17,6 +21,13 @@ def get_available_doc_list():
         "doc_name": "",
         "doc_path": ""
     }
+
+def get_documents():
+    # Create pipeline monitor
+    repo = MongoDBPipelineRepository(mongo_client)
+    docs = repo.get_pipeline_by_type("DOCUMENT")
+    print(docs)
+    return {}
 
 def embed_docs_flow(doc_list):
     config = DocConfigManager()
@@ -46,7 +57,7 @@ def embed_docs_flow(doc_list):
         "type": "qdrant",
         "collection_name": "pdf_doc_data",
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://a89ba0e9b65b94d7aa954ec867cdabc2-466909602.us-east-1.elb.amazonaws.com",
+        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
         "port": 6333
     }
 
@@ -54,8 +65,7 @@ def embed_docs_flow(doc_list):
     vector_storage.initialize()
 
     # Create MongoDB client
-    mongo_client = pymongo.MongoClient("mongodb://aaceb464183a343b996146435830cee4-2071725066.us-east-1.elb.amazonaws.com:27017/")
-
+    mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
     # Create data pipeline with existing logger
     doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
 
@@ -120,7 +130,7 @@ def get_best_match_results(query: str, top_k_results: int = 5):
         "type": "qdrant",
         "collection_name": "pdf_doc_data",
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://localhost",
+        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
         "port": 6333
     }
     vector_storage = VectorStorageFactory.create(storage_config)

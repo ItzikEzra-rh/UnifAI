@@ -188,3 +188,18 @@ class MongoDBPipelineRepository:
             "pending_pipelines": 0,
             "latest_update": None
         }
+    def get_pipeline_by_type(self, type: str, limit: int = 100) -> List[Dict]:
+        """
+        Get pipelines for a specific type.
+        
+        Args:
+            type: The datasource type
+            limit: Maximum number of pipelines entries to return
+            
+        Returns:
+            List of pipelines dictionaries
+        """
+        return list(self.pipelines.find(
+            {"source_type": type},
+            {"_id": 0}
+        ).sort("created_at", -1).limit(limit))
