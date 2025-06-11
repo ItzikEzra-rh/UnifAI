@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import asyncio
+from jsonschema import validate, ValidationError, Draft202012Validator
 from datamodel_code_generator import (
     generate,
     InputFileType,
@@ -127,7 +128,7 @@ def json_schema_model(
             field_constraints=True,
             use_field_description=True,
             reuse_model=True,
-            use_title_as_name=True,
+            use_title_as_name=False,
             use_standard_collections=True,
             use_union_operator=True,
             strict_nullable=True,
@@ -137,6 +138,8 @@ def json_schema_model(
 
         sys.path.insert(0, temp_dir)
         try:
+            # with open(output_file, "r") as f:
+            #     print(f.read())
             spec = importlib.util.spec_from_file_location(module_name, str(output_file))
             if not spec or not spec.loader:
                 raise ImportError(f"Could not create module spec for '{module_name}'")
@@ -152,7 +155,7 @@ def json_schema_model(
             if not model_classes:
                 raise AttributeError("No Pydantic BaseModel subclass found in generated code.")
 
-            model_cls = model_classes[-1]
+            model_cls = getattr(module, "Model", None)
             model_cls.model_rebuild(force=True, _types_namespace=module.__dict__)
             return model_cls
         finally:
@@ -163,3 +166,13 @@ def to_pascal_case(s: str) -> str:
     # Split on underscores, hyphens, and capital word boundaries
     words = re.findall(r'[A-Z]?[a-z0-9]+|[A-Z]+(?![a-z])', re.sub(r'[-_]', ' ', s))
     return ''.join(word.capitalize() for word in words)
+
+
+def validate_arguments(schema: dict, data: dict):
+    try:
+        # Validate the data against the JSON Schema
+        validate(instance=data, schema=schema)
+        return True
+    except ValidationError as e:
+        # Handle or raise
+        raise ValueError(f"Validation error: {e.message}")

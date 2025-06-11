@@ -4,7 +4,7 @@
 providers:
   - name: mcp
     type: mcp_server
-    sse_endpoint: http://127.0.0.1:8006
+    sse_endpoint: http://127.0.0.1:8006/servers/firecrawl-mcp
 
 # ----------------------------
 # LLM Definitions
@@ -21,9 +21,9 @@ llms:
 # Tool Stubs
 # ----------------------------
 tools:
-  - name: fetch_tool
+  - name: firecrawl_search_tool
     type: mcp_proxy
-    tool_name: fetch
+    tool_name: firecrawl_search
     provider: mcp
 
 
@@ -41,7 +41,7 @@ plan:
       type: custom_agent_node
       llm: openai_llm
       tools:
-        - fetch_tool
+        - firecrawl_search_tool
       system_message: |
         You are a smart assistant with access to tools. When a user's request requires multiple steps, and one tool’s output is needed as input to another, do not guess intermediate values.
         Instead, call the first tool, wait for its result, then use the actual result in the next step.
