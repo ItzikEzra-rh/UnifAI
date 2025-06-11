@@ -17,7 +17,8 @@ interface ChatMessage {
 
 interface ChatSessionData {
   metadata: Record<string, any>;
-  startedTimeStamp: string;
+  session_id: string;
+  started_at: string;
   state: {
     final_output: string;
     messages: ChatMessage[];
@@ -46,8 +47,11 @@ type ExecutionTabProps = {
 
 type ChunkData = {
   node: string;
-  type: 'llm_token' | 'complete';
+  type: 'llm_token' | 'complete' | 'tool_calling' | 'tool_result';
   chunk?: string;
+  tool?: string;
+  output?: string;
+  call_id?: string;
   state?: {
     user_prompt?: string;
   };
@@ -108,9 +112,9 @@ export default function ExecutionTab({
   const transformApiDataToSessions = (apiData: ChatSessionData[]): ChatSession[] => {
     return apiData.map((sessionData, index) => {
       const title = sessionData.metadata?.title || generateRandomTitle(index);
-      const id = sessionData.metadata?.id || generateRandomId();
-      const timestamp = new Date(sessionData.startedTimeStamp);
-      const lastActive = formatTimestamp(sessionData.startedTimeStamp);
+      const id = sessionData.session_id || generateRandomId();
+      const timestamp = new Date(sessionData.started_at);
+      const lastActive = formatTimestamp(sessionData.started_at);
       const preview = getPreviewText(sessionData.state.messages);
       
       return {
@@ -137,7 +141,7 @@ export default function ExecutionTab({
       setChatSessions(transformedSessions.sort((firstSession, secondSession) => secondSession.timestamp.getTime() - firstSession.timestamp.getTime()));
       
       // Auto-select the first session if available
-      if (transformedSessions.length > 0) {
+      if (transformedSessions.length > 0 && !selectedSession) {
         const firstSession = transformedSessions[0];
         setSelectedSession(firstSession);
         setCurrentSessionMessages(firstSession.messages);
@@ -154,6 +158,10 @@ export default function ExecutionTab({
   const handleSessionSelect = (session: ChatSession) => {
     setSelectedSession(session);
     setCurrentSessionMessages(session.messages);
+    
+    // TODO: For now, using a placeholder - replace with your actual user ID logic
+    const userId = "bob"; // Replace with actual userId
+    fetchChatSessions(userId);
   };
 
   // Initialize component with API call
@@ -168,7 +176,6 @@ export default function ExecutionTab({
   // Marks a node as DONE when a type: "complete" event is received for it.
   // Cleanly handles streaming via ReadableStream.
   // This follows clean architecture, maintains readability, and ensures correctness even in noisy or unpredictable stream outputs.
-
   // Extracts multiple well-formed ["custom", {...}] chunks from the stream text.
   const parseStreamChunk = (chunk: string): any[] => {
     const parsedChunks: any[] = [];
@@ -189,29 +196,62 @@ export default function ExecutionTab({
 
   // Maintains and updates a list of nodes and their stream state (PROGRESS or DONE) while aggregating text.
   const updateNodeList = (chunkData: ChunkData) => {
-    const { node, type, chunk, state } = chunkData;
+    const { node, type, chunk, state, tool, output, call_id } = chunkData;
     const currentText = chunk ?? state?.user_prompt ?? '';
     const map = nodeListRef.current;
   
-    const existing = map.get(node);
+    let existing = map.get(node);
   
+    // Initialize the node entry if it doesn't exist
     if (!existing) {
-      map.set(node, {
+      existing = {
         node_name: node,
         stream: type === 'complete' ? 'DONE' : 'PROGRESS',
         text: currentText,
-      });
-    } else {
-      if (type === 'llm_token' && chunk) {
-        existing.text += chunk;
-      } else if (type === 'complete') {
+        tools: [],
+      };
+      map.set(node, existing);
+    }
+  
+    switch (type) {
+      case 'llm_token':
+        if (chunk) {
+          existing.text += chunk;
+        }
+        break;
+  
+      case 'complete':
         existing.stream = 'DONE';
         if (state?.user_prompt && existing.text.trim() === '') {
           existing.text = state.user_prompt;
         }
-      }
+        break;
+  
+      case 'tool_calling':
+        if (call_id && tool) {
+          const existingTool = existing.tools?.find(t => t.id === call_id);
+          if (!existingTool) {
+            existing.tools?.push({ id: call_id, name: tool });
+          }
+        }
+        break;
+  
+      case 'tool_result':
+        if (call_id && tool && output) {
+          const toolEntry = existing.tools?.find(t => t.id === call_id);
+          if (toolEntry) {
+            toolEntry.output = output;
+          } else {
+            existing.tools?.push({ id: call_id, name: tool, output });
+          }
+        }
+        break;
+  
+      default:
+        break;
     }
-    // forceUpdate(); // trigger a re-render if needed
+  
+    // forceUpdate(); // Uncomment if needed to trigger a re-render
   };
 
   // Reads the stream, decodes it, parses chunks, and updates state cleanly.
@@ -368,7 +408,7 @@ export default function ExecutionTab({
         {/* ChatInterface with conditional className */}
         <div className={`col-span-12 ${showExecutionStream ? 'md:col-span-5 lg:col-span-5' : 'md:col-span-9 lg:col-span-10'} h-full`}>
           <ChatInterface 
-            runId={runId || selectedSession?.id || ''} 
+            runId={selectedSession?.id || ''} 
             triggerExecution={triggerExecution}
             initialMessages={currentSessionMessages}
           />
@@ -378,7 +418,7 @@ export default function ExecutionTab({
         {showExecutionStream && (
           <div className="col-span-12 md:col-span-4 lg:col-span-5 h-full">
             <ExecutionStream 
-              runId={runId || selectedSession?.id || ''} 
+              runId={selectedSession?.id || ''} 
               selectedGraphNodes={selectedGraphNodes} 
               isLiveRequest={isLiveRequest} 
             />
