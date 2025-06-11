@@ -52,11 +52,15 @@ def embed_slack_channels_flow(channel_list):
     vector_storage.initialize()
 
     # Create MongoDB client
+    # TODO: need to have a global_utils also for MongoDB just like celery.
     #mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
     if os.getenv("BACKEND_ENV") == "production":
-        mongo_client = f"mongodb://{os.getenv('MONGODB_IP', 'localhost')}:{os.getenv('MONGODB_PORT', '27017')}/"
+        mongo_url = f"mongodb://{os.getenv('MONGODB_IP', 'localhost')}:{os.getenv('MONGODB_PORT', '27017')}/"
     else:
-        mongo_client = "mongodb://localhost:27017/"
+        mongo_url = "mongodb://localhost:27017/"
+
+    mongo_client = pymongo.MongoClient(mongo_url)
+
 
 
     # Create data pipeline with existing logger
