@@ -1,11 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {  FaSearch } from "react-icons/fa";
+import { FaSearch, FaTh, FaList } from "react-icons/fa";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CardContainer } from "@shared/CardContainer";
 import { DocumentCard } from "./DocumentCard";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Document } from "@/types";
 import { UploadTab } from "./UploadTab";
 import Sidebar from "@/components/layout/Sidebar";
@@ -13,99 +13,44 @@ import Header from "@/components/layout/Header";
 import axiosInstance from "@/http/axiosConfig";
 import { useQuery } from "@tanstack/react-query";
 
+// Placeholder for ListView
+const DocumentTable = ({ documents }: { documents: Document[] }) => (
+  <div className="px-6 py-2 text-sm text-gray-300">
+    <table className="w-full border-collapse">
+      <thead>
+        <tr className="border-b border-gray-700">
+          <th className="text-left py-2">Name</th>
+          <th className="text-left py-2">Type</th>
+          <th className="text-left py-2">Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {documents.map((doc) => (
+          <tr key={doc.id} className="border-b border-gray-800">
+            <td className="py-2">{doc.title}</td>
+            <td className="py-2">{doc.fileType}</td>
+            <td className="py-2">{new Date(doc.uploaded).toLocaleDateString()}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
+);
+
 const fetchDocuments = async () => {
-  console.log("heys")
-  const response = await axiosInstance.get("/api/docs/available.docs.get");
-  return response.data; // Ensure it returns an array of Document[]
+  const response = await axiosInstance.get("/api/docs/docs.get");
+  return response.data.docs;
 };
 
 export default function Documents() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [displayedDoc, setDisplayedDoc] = useState('')
   const [showUploadModal, setShowUploadModal] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const { data: documents = [], isLoading, isError, error } = useQuery<Document[]>({
     queryKey: ['documents'],
     queryFn: fetchDocuments,
   });
-
-  // useEffect(() => {
-  //   const fetchDocuments = async () => {
-  //     // const response = await fetch('/api/documents'); // Adjust the endpoint as needed
-  //     // const data = await response.json();
-  //     // console.log(data);
-  //     // Process and set documents state here
-  //     const data = [
-  //       {
-  //         id: "1",
-  //         fileType: "pdf",
-  //         title: "Product Roadmap 2023.pdf",
-  //         description: "PDF • 12 pages • 2.4 MB",
-  //         uploaded: "1 day ago",
-  //         status: "Processed",
-  //         statusColor: "success",
-  //         statusInfo: "34 chunks"
-  //       },
-  //       {
-  //         id: "2",
-  //         fileType: "docx",
-  //         title: "Technical Specification.docx",
-  //         description: "DOCX • 23 pages • 1.8 MB",
-  //         uploaded: "3 days ago",
-  //         status: "Processing",
-  //         statusColor: "primary",
-  //         statusInfo: "78% complete"
-  //       },
-  //       {
-  //         id: "3",
-  //         fileType: "pptx",
-  //         title: "Quarterly Presentation.pptx",
-  //         description: "PPTX • 18 slides • 5.7 MB",
-  //         uploaded: "5 days ago",
-  //         status: "Queued",
-  //         statusColor: "accent",
-  //         statusInfo: "Position: 2 in queue"
-  //       },
-  //       {
-  //         id: "4",
-  //         fileType: "xlsx",
-  //         title: "Financial Analysis Q2.xlsx",
-  //         description: "XLSX • 5 sheets • 3.2 MB",
-  //         uploaded: "1 week ago",
-  //         status: "Processed",
-  //         statusColor: "success",
-  //         statusInfo: "28 chunks"
-  //       },
-  //       {
-  //         id: "5",
-  //         fileType: "txt",
-  //         title: "Release Notes v2.1.txt",
-  //         description: "TXT • 45 KB",
-  //         uploaded: "2 weeks ago",
-  //         status: "Processed",
-  //         statusColor: "success",
-  //         statusInfo: "5 chunks"
-  //       },
-  //       {
-  //         id: "6",
-  //         fileType: "pdf",
-  //         title: "API Documentation.pdf",
-  //         description: "PDF • 42 pages • 3.8 MB",
-  //         uploaded: "3 weeks ago",
-  //         status: "Processed",
-  //         statusColor: "success",
-  //         statusInfo: "76 chunks"
-  //       }
-  //     ];
-  //     setDocuments(data)
-  //   } 
-  //   fetchDocuments();
-  // }, []);
-
-  <div className="flex justify-between mb-4">
-    <Button onClick={() => setShowUploadModal(true)}>Upload Document</Button>
-  </div>
-
 
   const filters = (
     <div className="flex items-center space-x-2">
@@ -131,8 +76,10 @@ export default function Documents() {
   );
 
   const footer = (
-    <>
-      <span className="text-sm text-gray-400">Showing 6 of 23 documents</span>
+    <div className="flex items-center justify-between w-full px-4">
+      <span className="text-sm text-gray-400">
+        Showing {documents.length} {documents.length === 1 ? "document" : "documents"}
+      </span>
       <div className="flex items-center space-x-2">
         <Button variant="outline" size="sm" disabled>
           Previous
@@ -141,9 +88,8 @@ export default function Documents() {
           Next
         </Button>
       </div>
-    </>
+    </div>
   );
-
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -156,8 +102,24 @@ export default function Documents() {
             <UploadTab setShowUploadModal={setShowUploadModal} />
           ) : (
             <>
-              <div className="flex justify-between mb-4">
+              <div className="flex justify-between items-center mb-4 px-6">
                 <Button onClick={() => setShowUploadModal(true)}>Upload Document</Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant={viewMode === "grid" ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setViewMode("grid")}
+                  >
+                    <FaTh />
+                  </Button>
+                  <Button
+                    variant={viewMode === "list" ? "default" : "outline"}
+                    size="icon"
+                    onClick={() => setViewMode("list")}
+                  >
+                    <FaList />
+                  </Button>
+                </div>
               </div>
 
               {isLoading ? (
@@ -166,18 +128,20 @@ export default function Documents() {
                 <p className="text-sm text-red-500 px-6">Error: {(error as Error).message}</p>
               ) : (
                 <CardContainer title="" filters={filters} footer={footer}>
-                  {documents.map((file) => (
-                    <DocumentCard key={file.id} doc={file} />
-                  ))}
+                  {documents.length ? (
+                    viewMode === "grid" ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {documents.map((file) => (
+                          <DocumentCard key={file.id} doc={file} />
+                        ))}
+                      </div>
+                    ) : (
+                      <DocumentTable documents={documents} />
+                    )
+                  ) : (
+                    "No documents available."
+                  )}
                 </CardContainer>
-              )}
-
-              {displayedDoc && (
-                <Card className="bg-background-card shadow-card border-gray-800">
-                  <CardContent className="p-6">
-                    {/* Document detail content */}
-                  </CardContent>
-                </Card>
               )}
             </>
           )}
