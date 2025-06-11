@@ -168,10 +168,10 @@ def to_pascal_case(s: str) -> str:
     return ''.join(word.capitalize() for word in words)
 
 
-def validate_arguments(schema: dict, data: dict):
+def validate_arguments(schema: dict, args: dict):
     try:
         # Validate the data against the JSON Schema
-        validate(instance=data, schema=schema)
+        validate(instance=args, schema=schema)
         return True
     except ValidationError as e:
         # Handle or raise

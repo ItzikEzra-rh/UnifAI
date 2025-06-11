@@ -70,7 +70,7 @@ class ToolCapableMixin(Generic[T]):
         args = tc.args
 
         if getattr(tool, "args_schema", None):
-            validate_arguments(schema=tool.get_args_schema_json(), data=args)
+            validate_arguments(schema=tool.get_args_schema_json(), args=args)
 
         # Invoke—prefer async interface if available
         if asyncio.iscoroutinefunction(tool.arun):

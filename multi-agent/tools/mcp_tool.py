@@ -112,7 +112,7 @@ class McpProxyTool(BaseTool):
         if not kwargs or not self.args_schema:
             return kwargs or {}
 
-        validate_arguments(schema=self.get_args_schema_json(), data=kwargs)
+        validate_arguments(schema=self.get_args_schema_json(), args=kwargs)
         return kwargs
 
     def _extract_result_content(self, result) -> Any:
