@@ -6,22 +6,65 @@ helmDefaults:
 
 releases:
   - name: unifai-mongodb
-    chart: ./mongodb
+    chart: ./shared-resources/mongodb
     wait: true
     timeout: 300
     values:
-      - "./mongodb.yaml"
+      - "./shared-resources/mongodb.yaml"
 
   - name: unifai-qdrant
-    chart: ./qdrant
+    chart: ./shared-resources/qdrant
     wait: true
     timeout: 300
     values:
-      - "./qdrant.yaml"
+      - "./shared-resources/qdrant.yaml"
       
   - name: unifai-rabbitmq
-    chart: ./rabbitmq
+    chart: ./shared-resources/rabbitmq
     wait: true
     values:
-      - "./rabbitmq.yaml"
+      - "./shared-resources/rabbitmq.yaml"
 
+  - name: unifai-shared-config
+    chart: ./shared-resources/shared-config
+    wait: true
+    needs:
+      - unifai-mongodb
+      - unifai-qdrant
+      - unifai-rabbitmq
+    hooks:
+      - events: ["postsync"]
+        showlogs: true
+        command: bash
+        args:
+          - "-c"
+          - |
+              set -x  # Print each command
+              set +e  # Disable immediate exit on error
+              echo "Starting postsync hook..."
+
+              wait_for_ip() {
+                local svc=$1
+                local ip=""
+                for i in {1..60}; do
+                  ip=$(kubectl get svc "$svc" -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null)
+                  if [[ -n "$ip" ]]; then
+                    echo "$ip"
+                    return
+                  fi
+                  echo "Waiting for $svc LoadBalancer IP..."
+                  sleep 10
+                done
+                echo "pending"
+              }
+
+              MONGODB_ADDR=$(wait_for_ip mongodb)
+              QDRANT_ADDR=$(wait_for_ip qdrant)
+              RABBITMQ_ADDR=$(wait_for_ip rabbitmq)
+
+              kubectl delete configmap shared-config
+              kubectl create configmap shared-config \
+                --from-literal=MONGO_EXT_ADDR="$MONGODB_ADDR" \
+                --from-literal=RABBITMQ_EXT_ADDR="$RABBITMQ_ADDR" \
+                --from-literal=QDRANT_EXT_ADDR="$QDRANT_ADDR" \
+                --dry-run=client -o yaml | kubectl apply -f -
