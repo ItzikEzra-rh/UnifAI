@@ -5,16 +5,17 @@ import { FaSearch, FaTh, FaList } from "react-icons/fa";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CardContainer } from "@shared/CardContainer";
 import { DocumentCard } from "./DocumentCard";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Document } from "@/types";
 import { UploadTab } from "./UploadTab";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import axiosInstance from "@/http/axiosConfig";
 import { useQuery } from "@tanstack/react-query";
+import { usePaginationStore } from "@/stores/usePaginationStore";
 
 // Placeholder for ListView
-const DocumentTable = ({ documents }: { documents: Document[] }) => (
+const DocumentTable = ({ documents }: { documents: any[] }) => (
   <div className="px-6 py-2 text-sm text-gray-300">
     <table className="w-full border-collapse">
       <thead>
@@ -47,10 +48,22 @@ export default function Documents() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
-  const { data: documents = [], isLoading, isError, error } = useQuery<Document[]>({
+  const { data: documents = [], isLoading, isError, error } = useQuery<any[]>({
     queryKey: ['documents'],
     queryFn: fetchDocuments,
   });
+
+  const { currentPage, setPage, resetPage, itemsPerPage,} = usePaginationStore();
+
+  useEffect(() => {
+    resetPage();
+  }, []);
+
+  const totalPages = Math.ceil(documents.length / itemsPerPage);
+  const paginatedDocuments = documents.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const filters = (
     <div className="flex items-center space-x-2">
@@ -78,50 +91,64 @@ export default function Documents() {
   const footer = (
     <div className="flex items-center justify-between w-full px-4">
       <span className="text-sm text-gray-400">
-        Showing {documents.length} {documents.length === 1 ? "document" : "documents"}
+        Showing {documents.length < 6 ? documents.length : 6} of {documents.length} documents
       </span>
       <div className="flex items-center space-x-2">
-        <Button variant="outline" size="sm" disabled>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage(Math.max(currentPage - 1, 1))}
+          disabled={currentPage === 1}
+        >
           Previous
         </Button>
-        <Button variant="outline" size="sm">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setPage(Math.min(currentPage + 1, totalPages))}
+          disabled={currentPage === totalPages}
+        >
           Next
+        </Button>
+
+      </div>
+    </div>
+  );
+
+  const viewButtons = (
+    <div className="flex items-center space-x-4">
+      <Button onClick={() => setShowUploadModal(true)}>Upload Document</Button>
+      <div className="flex">
+        <Button
+          variant={viewMode === "grid" ? "default" : "outline"}
+          size="icon"
+          onClick={() => setViewMode("grid")}
+        >
+          <FaTh />
+        </Button>
+        <Button
+          variant={viewMode === "list" ? "default" : "outline"}
+          size="icon"
+          onClick={() => setViewMode("list")}
+        >
+          <FaList />
         </Button>
       </div>
     </div>
   );
 
+
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title="Document Library" onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
+        <Header title="Document Library" onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} rightSlot={showUploadModal ? null : viewButtons}/>
 
         <div className="grid grid-cols-1 gap-6">
           {showUploadModal ? (
             <UploadTab setShowUploadModal={setShowUploadModal} />
           ) : (
             <>
-              <div className="flex justify-between items-center mb-4 px-6">
-                <Button onClick={() => setShowUploadModal(true)}>Upload Document</Button>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant={viewMode === "grid" ? "default" : "outline"}
-                    size="icon"
-                    onClick={() => setViewMode("grid")}
-                  >
-                    <FaTh />
-                  </Button>
-                  <Button
-                    variant={viewMode === "list" ? "default" : "outline"}
-                    size="icon"
-                    onClick={() => setViewMode("list")}
-                  >
-                    <FaList />
-                  </Button>
-                </div>
-              </div>
-
               {isLoading ? (
                 <p className="text-sm text-gray-400 px-6">Loading documents...</p>
               ) : isError ? (
@@ -130,17 +157,19 @@ export default function Documents() {
                 <CardContainer title="" filters={filters} footer={footer}>
                   {documents.length ? (
                     viewMode === "grid" ? (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {documents.map((file) => (
+                      <>
+                        {paginatedDocuments.map((file) => (
                           <DocumentCard key={file.id} doc={file} />
                         ))}
-                      </div>
+                      </>
                     ) : (
                       <DocumentTable documents={documents} />
                     )
                   ) : (
                     "No documents available."
                   )}
+                 
+
                 </CardContainer>
               )}
             </>

@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { TabsContent } from "@/components/ui/tabs";
+import { FaChevronRight, FaChevronDown } from "react-icons/fa";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -81,19 +80,17 @@ export const UploadTab: React.FC<UploadTabProps> = ({ setShowUploadModal }) => {
             <Card className="bg-background-card shadow-card border-gray-800 w-full">
                 <CardContent className="p-6">
                     <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center">
-                            <FaFileAlt className="text-accent text-2xl mr-3" />
-                            <h3 className="text-lg font-heading font-semibold">
-                                Upload Documents
-                            </h3>
-                        </div>
-                        <Button variant="outline" onClick={() => setShowProcessingOptions(!showProcessingOptions)}>
-                            {showProcessingOptions ? 'Hide' : 'Show'} Options
-                        </Button>
+                    <div className="flex items-center">
+                        <FaFileAlt className="text-accent text-2xl mr-3" />
+                        <h3 className="text-lg font-heading font-semibold">
+                        Upload Documents
+                        </h3>
                     </div>
-<div className="flex justify-between mb-4">
-        <Button onClick={() => setShowUploadModal(false)}>Cancel</Button>
-      </div>
+                    <div className="flex justify-between mb-4">
+                        <Button onClick={() => setShowUploadModal(false)}>Cancel</Button>
+                    </div>
+                    </div>
+                    
                     <div
                         className={`h-56 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors ${isDragging ? 'border-primary bg-primary bg-opacity-5' : 'border-gray-700 hover:border-gray-600'}`}
                         onDragEnter={handleDragEnter}
@@ -102,6 +99,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({ setShowUploadModal }) => {
                         onDrop={handleDrop}
                         onClick={() => document.getElementById('file-upload')?.click()}
                     >
+                        
                         {!isUploading ? (
                             <>
                                 <div className="w-16 h-16 bg-background-surface rounded-full flex items-center justify-center mb-4">
@@ -138,7 +136,17 @@ export const UploadTab: React.FC<UploadTabProps> = ({ setShowUploadModal }) => {
                     </div>
                 </CardContent>
             </Card>
-
+            <div
+    className="flex items-center space-x-2 cursor-pointer text-primary text-sm font-medium mt-4"
+    onClick={() => setShowProcessingOptions(!showProcessingOptions)}
+>
+    {showProcessingOptions ? (
+        <FaChevronDown className="transition-transform duration-200" />
+    ) : (
+        <FaChevronRight className="transition-transform duration-200" />
+    )}
+    <span>Processing Options</span>
+</div>
             {showProcessingOptions && (
                 <Card className="bg-background-card shadow-card border-gray-800 w-full">
                     <CardContent className="p-6 space-y-6">
