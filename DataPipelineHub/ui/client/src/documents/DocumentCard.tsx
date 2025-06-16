@@ -8,11 +8,17 @@ import { getFileIcon } from "./helpers";
 
 interface DocumentCardProps {
   doc: Document;
+  activeDoc: Document | null;
+  setActiveDoc: any;
 }
 
-export const DocumentCard = ({doc}: DocumentCardProps) => 
-  {
-    return (
+export const DocumentCard = ({doc, activeDoc, setActiveDoc}: DocumentCardProps) => {
+  const onEyeClick = () => {
+    const newDoc = doc === activeDoc ? null : doc;
+    setActiveDoc(newDoc);
+  }
+
+  return (
     <motion.div
       whileHover={{ y: -5, transition: { duration: 0.2 } }}
       className="bg-background-dark p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-primary transition-colors"
@@ -35,8 +41,11 @@ export const DocumentCard = ({doc}: DocumentCardProps) =>
       <div className="mt-3 flex justify-between text-xs">
         <span className="text-gray-400">{doc.statusInfo}</span>
         <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-            <FaEye className="h-3 w-3" />
+          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { 
+            e.stopPropagation();
+            onEyeClick();
+          }}>
+            <FaEye />
           </Button>
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
             <FaTrash className="h-3 w-3" />

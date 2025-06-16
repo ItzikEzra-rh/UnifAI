@@ -8,111 +8,18 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { getFileIcon } from "./helpers";
 import { CardContainer } from "@shared/CardContainer";
+import { Document } from "@/types";
 import { DocumentCard } from "./DocumentCard";
 
 interface LibraryTabProps {
-
+  doc: Document
 }
 
 
-export const LibraryTab: React.FC<LibraryTabProps> = ({ }) => {
-  const filters = (
-    <div className="flex items-center space-x-2">
-      <Select defaultValue="all">
-        <SelectTrigger className="w-32 bg-background-dark">
-          <SelectValue placeholder="All Types" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Types</SelectItem>
-          <SelectItem value="pdf">PDF</SelectItem>
-          <SelectItem value="docx">Word</SelectItem>
-          <SelectItem value="pptx">PowerPoint</SelectItem>
-          <SelectItem value="xlsx">Excel</SelectItem>
-          <SelectItem value="txt">Text</SelectItem>
-        </SelectContent>
-      </Select>
-      <Input placeholder="Search documents..." className="w-64 bg-background-dark" />
-      <Button variant="outline">
-        <FaSearch className="mr-2" />
-        Search
-      </Button>
-    </div>
-  );
-
-  const footer = (
-    <>
-      <span className="text-sm text-gray-400">Showing 6 of 23 documents</span>
-      <div className="flex items-center space-x-2">
-        <Button variant="outline" size="sm" disabled>
-          Previous
-        </Button>
-        <Button variant="outline" size="sm">
-          Next
-        </Button>
-      </div>
-    </>
-  );
+export const LibraryTab: React.FC<LibraryTabProps> = ({ doc }) => {
 
   return (
-    <TabsContent value="library">
       <div className="grid grid-cols-1 gap-6">
-        <CardContainer title="Document Library" filters={filters} footer={footer}>
-          "ue"
-          {/* <DocumentCard
-            title="Product Roadmap 2023.pdf"
-            description="PDF • 12 pages • 2.4 MB"
-            uploaded="1 day ago"
-            status="Processed"
-            statusColor="success"
-            statusInfo="34 chunks"
-          />
-          <DocumentCard
-            title="Technical Specification.docx"
-            description="DOCX • 23 pages • 1.8 MB"
-            uploaded="3 days ago"
-            status="Processing"
-            statusColor="primary"
-            statusInfo="78% complete"
-          />
-          <DocumentCard
-            title="Quarterly Presentation.pptx"
-            description="PPTX • 18 slides • 5.7 MB"
-            uploaded="5 days ago"
-            status="Queued"
-            statusColor="accent"
-            statusInfo="Position: 2 in queue"
-          />
-
-          <DocumentCard
-            title="Financial Analysis Q2.xlsx"
-            description="XLSX • 5 sheets • 3.2 MB"
-            uploaded="1 week ago"
-            status="Processed"
-            statusColor="success"
-            statusInfo="28 chunks"
-          />
-
-          <DocumentCard
-            fileType="txt"
-            title="Release Notes v2.1.txt"
-            description="TXT • 45 KB"
-            uploaded="2 weeks ago"
-            status="Processed"
-            statusColor="success"
-            statusInfo="5 chunks"
-          />
-
-          <DocumentCard
-            fileType="pdf"
-            title="API Documentation.pdf"
-            description="PDF • 42 pages • 3.8 MB"
-            uploaded="3 weeks ago"
-            status="Processed"
-            statusColor="success"
-            statusInfo="76 chunks"
-          /> */}
-        </CardContainer>
-
         <Card className="bg-background-card shadow-card border-gray-800">
           <CardContent className="p-6">
             <h3 className="text-lg font-heading font-semibold mb-4">
@@ -264,6 +171,5 @@ export const LibraryTab: React.FC<LibraryTabProps> = ({ }) => {
           </CardContent>
         </Card>
       </div>
-    </TabsContent>
   )
 }

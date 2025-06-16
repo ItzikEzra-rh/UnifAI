@@ -13,6 +13,7 @@ import Header from "@/components/layout/Header";
 import axiosInstance from "@/http/axiosConfig";
 import { useQuery } from "@tanstack/react-query";
 import { usePaginationStore } from "@/stores/usePaginationStore";
+import { LibraryTab } from "./LibraryTab";
 
 // Placeholder for ListView
 const DocumentTable = ({ documents }: { documents: any[] }) => (
@@ -47,6 +48,7 @@ export default function Documents() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [activeDoc, setActiveDoc] = useState(null);
 
   const { data: documents = [], isLoading, isError, error } = useQuery<any[]>({
     queryKey: ['documents'],
@@ -159,8 +161,7 @@ export default function Documents() {
                     viewMode === "grid" ? (
                       <>
                         {paginatedDocuments.map((file) => (
-                          <DocumentCard key={file.id} doc={file} />
-                        ))}
+                          <DocumentCard key={file.id} doc={file} activeDoc={activeDoc} setActiveDoc={setActiveDoc} />))}
                       </>
                     ) : (
                       <DocumentTable documents={documents} />
@@ -169,7 +170,7 @@ export default function Documents() {
                     "No documents available."
                   )}
                  
-
+                {activeDoc && <LibraryTab doc={activeDoc} />}
                 </CardContainer>
               )}
             </>
