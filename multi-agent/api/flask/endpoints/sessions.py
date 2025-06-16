@@ -107,3 +107,15 @@ def get_session_user_chat(user_id):
         return jsonify(svc.get_user_sessions_chat_history(user_id)), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@sessions_bp.route("/session.user.blueprints.get", methods=["GET"])
+@from_query({
+    "user_id": fields.Str(data_key="userId", required=True),
+})
+def get_user_blueprints(user_id):
+    try:
+        svc = current_app.container.session_service
+        return jsonify(svc.get_user_blueprints(user_id)), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

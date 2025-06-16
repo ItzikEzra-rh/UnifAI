@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List, Mapping
+from typing import Any, Dict, Iterator, List
 from .user_session_manager import UserSessionManager
 from .session_executor import SessionExecutor
 from schemas.blueprint.blueprint import BlueprintSpec
@@ -98,3 +98,10 @@ class SessionService:
         """
         docs = self._manager.list_docs(user_id)
         return [ChatHistoryItem.from_doc(d) for d in docs]
+
+    def get_user_blueprints(self, user_id) -> List[str]:
+        """
+        Get all blueprints created by a user.
+        """
+        docs = self._manager.list_docs(user_id)
+        return list({d.get("blueprint_id") for d in docs})
