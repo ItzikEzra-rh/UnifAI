@@ -60,6 +60,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         }
 
         setIsUploading(false);
+        setShowUploadModal(false)
     };
 
     const submitToAPI = async (docs: { doc_name: string; doc_path: string }[]) => {
@@ -179,23 +180,19 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                             </ul>
                         )}
 
-                        {/* Submit to API button */}
-                        {selectedFiles.length > 0 && !isUploading && (
-                            <Button
-                                
-                                disabled={selectedFiles.length === 0}
-                                onClick={handleSubmit}
-                                className="mt-4"
-                            >
-                                Submit
-                            </Button>
-                        )}
 
                         {/* Error message if submission fails */}
                         {error && <p className="text-red-500 mt-4">{error}</p>}
 
                     </div>
                 </CardContent>
+                {selectedFiles.length > 0 && !isUploading && (
+                    <div className="flex justify-end p-4">
+                        <Button disabled={selectedFiles.length === 0} onClick={handleSubmit}>
+                            Submit
+                        </Button>
+                    </div>
+                )}
             </Card>
 
             {/* Processing options */}
