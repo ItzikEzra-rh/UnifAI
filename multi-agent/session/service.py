@@ -16,7 +16,8 @@ class SessionService:
         self._manager = manager
         self._executor = executor
 
-    def create(self, user_id: str, blueprint_spec: BlueprintSpec, metadata: SessionMeta = None) -> Any:
+    def create(self, user_id: str, blueprint_spec: BlueprintSpec, blueprint_id: str,
+               metadata: SessionMeta = None) -> Any:
         """
         Create a new session and return its object (with run_id).
         """
@@ -24,30 +25,34 @@ class SessionService:
         return self._manager.create_session(
             user_id=user_id,
             blueprint_spec=blueprint_spec,
+            blueprint_id=blueprint_id,
             metadata=metadata or SessionMeta()
         )
 
-    def run(self, session_or_id: Any, inputs: Dict[str, Any]) -> Any:
+    def run(self, session_or_id: Any, inputs: Dict[str, Any], scope: str = "public") -> Any:
         """
         Execute the session to completion, returning the final result.
         """
         return self._executor.run(
             session_or_id=session_or_id,
-            inputs=inputs or {}
+            inputs=inputs or {},
+            scope=scope
         )
 
-    def stream(self, session_or_id: Any, inputs: Dict[str, Any], stream_mode: list = None) -> Iterator[Any]:
+    def stream(self, session_or_id: Any, inputs: Dict[str, Any], stream_mode: list = None, scope: str = "public") -> \
+            Iterator[Any]:
         """
         Execute the session in streaming mode, yielding chunks.
         """
         return self._executor.stream(
             session_or_id=session_or_id,
             inputs=inputs or {},
-            stream_mode=stream_mode
+            stream_mode=stream_mode,
+            scope=scope
         )
 
     def execute(self, session_or_id: Any, inputs: Dict[str, Any], stream: bool = False,
-                stream_mode: list = None) -> Any:
+                stream_mode: list = None, scope: str = "public") -> Any:
         """
         Execute an existing session by run_id or session object.
 
@@ -58,8 +63,8 @@ class SessionService:
         :return: Final result or iterator of chunks.
         """
         if stream:
-            return self.stream(session_or_id=session_or_id, inputs=inputs, stream_mode=stream_mode)
-        return self.run(session_or_id=session_or_id, inputs=inputs)
+            return self.stream(session_or_id=session_or_id, inputs=inputs, stream_mode=stream_mode, scope=scope)
+        return self.run(session_or_id=session_or_id, inputs=inputs, scope=scope)
 
     def list_for_user(self, user_id: str) -> list:
         """

@@ -8,6 +8,7 @@ class ChatHistoryItem:
     state: Dict[str, Any]
     metadata: Dict[str, Any]
     started_at: str
+    blueprint_id: str
 
     @classmethod
     def from_doc(cls, doc: Mapping[str, Any]) -> "ChatHistoryItem":
@@ -17,6 +18,7 @@ class ChatHistoryItem:
             state=doc.get("graph_state", {}),
             metadata=doc.get("metadata", {}),
             started_at=rc.get("started_at"),
+            blueprint_id= doc.get("blueprint_id", "")
         )
 
     # optional helper

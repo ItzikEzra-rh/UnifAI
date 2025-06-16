@@ -36,7 +36,7 @@ class SessionExecutor:
         session = self._sessions.get_session(run_id)
         return session
 
-    def _pre_run(self, session: WorkflowSession, inputs: Dict[str, Any]) -> None:
+    def _pre_run(self, session: WorkflowSession, inputs: Dict[str, Any], scope: str) -> None:
         """
         1) add title to session metadata
         2) bind RunContext into ContextVar
@@ -48,8 +48,8 @@ class SessionExecutor:
         if session.metadata.title is None:
             if title := derive_title(inputs):
                 session.metadata.title = title
-
-        set_current_context(session.run_context)
+        ctx = session.run_context.change_scope(scope)  # TODO remove scope parameter from context
+        set_current_context(ctx)
         session.graph_state.update(inputs)
         session.update_status(SessionStatus.RUNNING)
         self._repo.save(session)
@@ -82,14 +82,14 @@ class SessionExecutor:
     def run(
             self,
             session_or_id: SessionOrId,
-            inputs: Dict[str, Any]
+            inputs: Dict[str, Any],
+            scope: str = "public"
     ) -> GraphState:
         """
         Run the graph to completion and return the final GraphState.
         """
         session = self._resolve_session(session_or_id)
-        self._pre_run(session, inputs)
-
+        self._pre_run(session, inputs, scope)
         try:
             final_state = session.executable_graph.run(session.graph_state)
         except Exception as e:
@@ -103,13 +103,14 @@ class SessionExecutor:
             self,
             session_or_id: SessionOrId,
             inputs: Dict[str, Any],
+            scope: str = "public",
             **stream_kwargs: Any
     ) -> Iterator[Any]:
         """
         Stream execution chunks, then persist at the end.
         """
         session = self._resolve_session(session_or_id)
-        self._pre_run(session, inputs)
+        self._pre_run(session, inputs, scope)
 
         try:
             for chunk in session.executable_graph.stream(

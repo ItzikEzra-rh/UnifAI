@@ -47,6 +47,7 @@ class MongoSessionRepository(SessionRepository):
             "run_context": ctx.to_dict(),
             "metadata": session.metadata.to_dict(),
             "blueprint_spec": session.blueprint.model_dump(mode="json"),
+            "blueprint_id": session.blueprint_id,
             "graph_state": session.graph_state.model_dump(mode="json"),
             "status": session.get_status(),
         }

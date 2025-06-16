@@ -43,6 +43,7 @@ class WorkflowSessionFactory:
             *,
             user_id: str,
             blueprint_spec: BlueprintSpec,
+            blueprint_id: str,
             metadata: SessionMeta = None,
             graph_state: GraphState = GraphState(),
     ) -> WorkflowSession:
@@ -77,6 +78,7 @@ class WorkflowSessionFactory:
         session = WorkflowSession(
             session_registry=session_registry,
             blueprint=blueprint_spec,
+            blueprint_id=blueprint_id,
             graph_plan=graph_plan,
             executable_graph=executable_graph,
             builder=_engine_builder,

@@ -27,11 +27,13 @@ class UserSessionManager:
             self,
             user_id: str,
             blueprint_spec: BlueprintSpec,
+            blueprint_id: str,
             metadata: SessionMeta = None
     ) -> WorkflowSession:
         """Instantiate a fresh session and persist it. Returns run_id."""
         session = self._factory.create(
             blueprint_spec=blueprint_spec,
+            blueprint_id=blueprint_id,
             user_id=user_id,
             metadata=metadata
         )
@@ -53,6 +55,7 @@ class UserSessionManager:
         session = self._factory.create(
             user_id=ctx.user_id,
             blueprint_spec=BlueprintSpec.model_validate(doc["blueprint_spec"]),
+            blueprint_id=doc.get("blueprint_id"),
             metadata=SessionMeta.from_dict(doc.get("metadata", {}))
         )
 

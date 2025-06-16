@@ -25,6 +25,7 @@ class WorkflowSession:
             self,
             session_registry: SessionRegistry,
             blueprint: BlueprintSpec,
+            blueprint_id: str,
             graph_plan: GraphPlan,
             executable_graph: GraphExecutor,
             builder: BaseGraphBuilder,
@@ -35,6 +36,7 @@ class WorkflowSession:
     ) -> None:
         self.session_registry = session_registry
         self.blueprint = blueprint
+        self.blueprint_id = blueprint_id
         self.graph_plan = graph_plan
         self.executable_graph = executable_graph
         # self.logger = logger
