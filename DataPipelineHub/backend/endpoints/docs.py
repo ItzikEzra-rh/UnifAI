@@ -17,6 +17,7 @@ def available_doc_list():
         logger.error(f"Failed to get available docs list: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
+
 @docs_bp.route("/embed.docs", methods=["PUT"])
 @from_body({
     "docs": fields.List(fields.Dict(), required=True)
@@ -45,3 +46,12 @@ def best_match_results(query, top_k_results):
     except Exception as e:
         logger.error(f"Failed to find best match for user query: {str(e)}")
         return jsonify({"error": str(e)}), 500
+    
+
+
+
+
+
+
+
+

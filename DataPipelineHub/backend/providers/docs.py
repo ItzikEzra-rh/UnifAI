@@ -13,21 +13,10 @@ from shared.logger import logger
 mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
 
 def get_available_doc_list():
-    
-    # TODO: NotImplemented
-    # Assuming we have a volume where all the docs which were uploaded by the users reside under
-    # Scan the volume, return for each doc his name and location (path) 
-    return {
-        "doc_name": "",
-        "doc_path": ""
-    }
-
-def get_documents():
-    # Create pipeline monitor
     repo = MongoDBPipelineRepository(mongo_client)
-    docs = repo.get_pipeline_by_type("DOCUMENT")
-    print(docs)
-    return {}
+    available_docs_query = {"source_type": "DOCUMENT", "status": {"$ne": "FAILED"} }
+    docs = repo.get_pipeline_by_query(available_docs_query)
+    return docs
 
 def embed_docs_flow(doc_list):
     config = DocConfigManager()

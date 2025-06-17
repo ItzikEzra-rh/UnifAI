@@ -40,7 +40,8 @@ const DocumentTable = ({ documents }: { documents: any[] }) => (
 );
 
 const fetchDocuments = async () => {
-  const response = await axiosInstance.get("/api/docs/docs.get");
+  const response = await axiosInstance.get("/api/docs/available.docs.get");
+  console.log(response)
   return response.data.docs;
 };
 
@@ -66,7 +67,7 @@ export default function Documents() {
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-
+  console.log(documents)
   const filters = (
     <div className="flex items-center space-x-2">
       <Select defaultValue="all">
