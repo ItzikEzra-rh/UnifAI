@@ -87,12 +87,8 @@ export const UploadTab: React.FC<UploadTabProps> = ({
     const handleSubmit = async () => {
         if (selectedFiles.length === 0) return;
 
-        // First upload files
         await uploadFiles(selectedFiles);
 
-        // After upload, submit their paths to API
-        // Here we are simulating with their names
-        // Ideally, you would replace this with URLs or server-side paths
         const docs = selectedFiles.map((file) => ({
             doc_name: file.name,
             doc_path: `home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs/${file.name}`

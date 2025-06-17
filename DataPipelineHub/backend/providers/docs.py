@@ -1,3 +1,5 @@
+from datetime import time
+from utils.storage.storage_manager import StorageManager
 from utils.monitor.pipeline_monitor import MongoDBPipelineRepository
 import pymongo
 import uuid
@@ -58,13 +60,17 @@ def embed_docs_flow(doc_list):
     # Create data pipeline with existing logger
     doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
 
+    qstore = VectorStorageFactory.create(storage_config)
+    qstore.initialize()
+    manager = StorageManager(qstore, mongo_uri="mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017")
     response = []
+    
     for doc in doc_list:
         try:
             doc_path = doc["doc_path"]
             doc_name = doc["doc_name"]
             doc_id = str(uuid.uuid4())
-
+            start = time.time()
             # Process the slack channel using our pipeline
             doc_pipeline.process_doc(doc_id, doc_name)
 
@@ -83,9 +89,29 @@ def embed_docs_flow(doc_list):
             )
             
             embedding_ready_docs = doc_processor.prepare_for_single_doc_embedding(processed_documents)
-
+            
             chunks = pdf_chunker.chunk_content([embedding_ready_docs])
             enriched_chunks = embedding_generator.generate_embeddings(chunks)
+            common_summary = {
+                "chunks_generated":   len(chunks),
+                "embeddings_created": len(enriched_chunks),
+                "processing_time_s":  time.time() - start,
+                "last_pipeline_id":   f"doc_{doc_id}"
+            }
+            slack_type_data = {
+                "message_count": result.metadata.get("page_count", 0),
+            }
+
+
+            manager.persist(
+                source_id=doc_id,
+                source_name=doc_name,
+                source_type="DOCUMENT",
+                enriched_chunks=enriched_chunks,
+                summary=common_summary,
+                type_data=slack_type_data
+            )
+            
             vector_storage.store_embeddings(enriched_chunks)
 
             response.append({

@@ -39,6 +39,7 @@ class MongoDBPipelineRepository:
         Args:
             pipeline_data: Dictionary containing pipeline information
         """
+        print("!")
         self.pipelines.update_one(
             {"pipeline_id": pipeline_data["pipeline_id"]},
             {"$set": pipeline_data},
@@ -203,3 +204,19 @@ class MongoDBPipelineRepository:
             {"source_type": type},
             {"_id": 0}
         ).sort("created_at", -1).limit(limit))
+        
+    def get_pipeline_by_query(self, query: object) -> List[Dict]:
+        """
+        Get pipelines for a specific type.
+        
+        Args:
+            type: The datasource type
+            limit: Maximum number of pipelines entries to return
+            
+        Returns:
+            List of pipelines dictionaries
+        """
+        return list(self.pipelines.find(
+            query,
+            {"_id": 0}
+        ).sort("created_at", -1))
