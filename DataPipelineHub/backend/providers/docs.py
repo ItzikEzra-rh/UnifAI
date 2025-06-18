@@ -21,8 +21,10 @@ def get_available_doc_list():
     docs = pipeline_repo.get_pipeline_by_query(available_docs_query)
     data_source_repo = MongoDBPipelineRepository(mongo_client, database_name="data_sources")
     for doc in docs:
+        doc["file_type"] = doc.get("name", "").rsplit(".", 1)[-1].lower()
         pipeline_id = doc["pipeline_id"]
         doc_data = data_source_repo.get_source_by_query({"last_pipeline_id": pipeline_id})[0]
+        doc["chunks"] = doc_data.get("chunks_generated", [])
         doc["page_count"] = doc_data.get("type_data", {}).get("page_count", 0)
         doc["full_text"] = doc_data.get("type_data", {}).get("full_text", "")
     return docs

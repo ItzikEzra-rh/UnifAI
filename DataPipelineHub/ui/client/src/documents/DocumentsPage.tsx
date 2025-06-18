@@ -13,7 +13,7 @@ import Header from "@/components/layout/Header";
 import axiosInstance from "@/http/axiosConfig";
 import { useQuery } from "@tanstack/react-query";
 import { usePaginationStore } from "@/stores/usePaginationStore";
-import { LibraryTab } from "./LibraryTab";
+import { DocumentData } from "./DocumentData";
 
 // Placeholder for ListView
 const DocumentTable = ({ documents }: { documents: any[] }) => (
@@ -56,7 +56,7 @@ export default function Documents() {
     queryFn: fetchDocuments,
   });
 
-  const { currentPage, setPage, resetPage, itemsPerPage,} = usePaginationStore();
+  const { currentPage, setPage, resetPage, itemsPerPage, } = usePaginationStore();
 
   useEffect(() => {
     resetPage();
@@ -145,34 +145,50 @@ export default function Documents() {
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title="Document Library" onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} rightSlot={showUploadModal ? null : viewButtons}/>
+        <Header
+          title="Document Library"
+          onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+          rightSlot={showUploadModal ? null : viewButtons}
+        />
 
-        <div className="grid grid-cols-1 gap-6">
+        <div className="flex-1 overflow-auto px-6 pb-6">
           {showUploadModal ? (
             <UploadTab setShowUploadModal={setShowUploadModal} />
           ) : (
             <>
               {isLoading ? (
-                <p className="text-sm text-gray-400 px-6">Loading documents...</p>
+                <p className="text-sm text-gray-400">Loading documents...</p>
               ) : isError ? (
-                <p className="text-sm text-red-500 px-6">Error: {(error as Error).message}</p>
+                <p className="text-sm text-red-500">Error: {(error as Error).message}</p>
               ) : (
-                <CardContainer title="" filters={filters} footer={footer}>
-                  {documents.length ? (
-                    viewMode === "grid" ? (
-                      <>
-                        {paginatedDocuments.map((file) => (
-                          <DocumentCard key={file.id} doc={file} activeDoc={activeDoc} setActiveDoc={setActiveDoc} />))}
-                      </>
+                <div className="mb-6">
+                  <CardContainer title="" filters={filters} footer={footer}>
+                    {documents.length ? (
+                      viewMode === "grid" ? (
+                        <>
+                          {paginatedDocuments.map((file) => (
+                            <DocumentCard
+                              key={file.id}
+                              doc={file}
+                              activeDoc={activeDoc}
+                              setActiveDoc={setActiveDoc}
+                            />
+                          ))}
+                        </>
+                      ) : (
+                        <DocumentTable documents={documents} />
+                      )
                     ) : (
-                      <DocumentTable documents={documents} />
-                    )
-                  ) : (
-                    "No documents available."
-                  )}
-                 
-                {activeDoc && <LibraryTab doc={activeDoc} />}
-                </CardContainer>
+                      "No documents available."
+                    )}
+                  </CardContainer>
+                </div>
+              )}
+
+              {activeDoc && (
+                <div className="mt-6">
+                  <DocumentData doc={activeDoc} />
+                </div>
               )}
             </>
           )}
