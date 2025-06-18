@@ -1,4 +1,5 @@
 import time
+from utils.storage.mongo_storage import MongoStorage
 from utils.storage.storage_manager import StorageManager
 from utils.monitor.pipeline_monitor import MongoDBPipelineRepository
 import pymongo
@@ -15,9 +16,15 @@ from shared.logger import logger
 mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
 
 def get_available_doc_list():
-    repo = MongoDBPipelineRepository(mongo_client)
+    pipeline_repo = MongoDBPipelineRepository(mongo_client)
     available_docs_query = {"source_type": "DOCUMENT", "status": {"$ne": "FAILED"} }
-    docs = repo.get_pipeline_by_query(available_docs_query)
+    docs = pipeline_repo.get_pipeline_by_query(available_docs_query)
+    data_source_repo = MongoDBPipelineRepository(mongo_client, database_name="data_sources")
+    for doc in docs:
+        pipeline_id = doc["pipeline_id"]
+        doc_data = data_source_repo.get_source_by_query({"last_pipeline_id": pipeline_id})[0]
+        doc["page_count"] = doc_data.get("type_data", {}).get("page_count", 0)
+        doc["full_text"] = doc_data.get("type_data", {}).get("full_text", "")
     return docs
 
 def embed_docs_flow(doc_list):

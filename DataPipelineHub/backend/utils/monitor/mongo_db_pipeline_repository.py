@@ -21,6 +21,7 @@ class MongoDBPipelineRepository:
         """
         self.client = mongo_client
         self.db = self.client[database_name]
+        self.sources = self.db.sources
         self.pipelines = self.db.pipelines
         self.metrics = self.db.metrics
         self.errors = self.db.errors
@@ -217,6 +218,22 @@ class MongoDBPipelineRepository:
             List of pipelines dictionaries
         """
         return list(self.pipelines.find(
+            query,
+            {"_id": 0}
+        ).sort("created_at", -1))
+        
+    def get_source_by_query(self, query: object) -> List[Dict]:
+        """
+        Get pipelines for a specific type.
+        
+        Args:
+            type: The datasource type
+            limit: Maximum number of pipelines entries to return
+            
+        Returns:
+            List of pipelines dictionaries
+        """
+        return list(self.sources.find(
             query,
             {"_id": 0}
         ).sort("created_at", -1))

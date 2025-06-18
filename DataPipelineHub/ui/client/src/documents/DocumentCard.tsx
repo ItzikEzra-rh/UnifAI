@@ -24,22 +24,29 @@ export const DocumentCard = ({doc, activeDoc, setActiveDoc}: DocumentCardProps) 
       className="bg-background-dark p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-primary transition-colors"
     >
       <div className="flex items-start">
-        <div className={`mr-3 bg-${doc.statusColor}-100 dark:bg-${doc.statusColor}-900 bg-opacity-20 p-2 rounded-md`}>
+        {/* <div className={`mr-3 bg-${doc.statusColor}-100 dark:bg-${doc.statusColor}-900 bg-opacity-20 p-2 rounded-md`}>
           {getFileIcon(doc.fileType)}
+        </div> */}
+        <div className={`mr-3 bg-green-100 dark:bg-green-900 bg-opacity-20 p-2 rounded-md`}>
+          {getFileIcon("pdf")}
         </div>
         <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-sm truncate">{doc.title}</h4>
-          <p className="text-xs text-gray-400 mt-1">{doc.description}</p>
+          <h4 className="font-medium text-sm truncate">{doc.name}</h4>
+          <p className="text-xs text-gray-400 mt-1">"doc.description"</p>
         </div>
       </div>
       <div className="mt-3 flex items-center justify-between">
-        <span className="text-xs text-gray-400">Uploaded {doc.uploaded}</span>
-        <Badge className={`bg-${doc.statusColor} bg-opacity-20 text-${doc.statusColor} text-xs`}>
+        <span className="text-xs text-gray-400">Uploaded {doc.created_at}</span>
+        {/* <Badge className={`bg-${doc.statusColor} bg-opacity-20 text-${doc.statusColor} text-xs`}>
           {status}
+        </Badge> */}
+        <Badge className={`bg-green bg-opacity-20 text-green text-xs`}>
+          "done"
         </Badge>
       </div>
       <div className="mt-3 flex justify-between text-xs">
-        <span className="text-gray-400">{doc.statusInfo}</span>
+        {/* <span className="text-gray-400">{doc.statusInfo}</span> */}
+        <span className="text-gray-400">run</span>
         <div className="flex items-center space-x-2">
           <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => { 
             e.stopPropagation();
