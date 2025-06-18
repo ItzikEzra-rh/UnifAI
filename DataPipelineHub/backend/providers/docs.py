@@ -1,4 +1,4 @@
-from datetime import time
+import time
 from utils.storage.storage_manager import StorageManager
 from utils.monitor.pipeline_monitor import MongoDBPipelineRepository
 import pymongo
@@ -98,10 +98,11 @@ def embed_docs_flow(doc_list):
                 "processing_time_s":  time.time() - start,
                 "last_pipeline_id":   f"doc_{doc_id}"
             }
-            slack_type_data = {
-                "message_count": result.metadata.get("page_count", 0),
-            }
 
+            doc_type_data = {
+                "page_count": result.get("metadata", {}).get("page_count", 0),
+                "full_text": result.get("text", ""),
+            }
 
             manager.persist(
                 source_id=doc_id,
@@ -109,7 +110,7 @@ def embed_docs_flow(doc_list):
                 source_type="DOCUMENT",
                 enriched_chunks=enriched_chunks,
                 summary=common_summary,
-                type_data=slack_type_data
+                type_data=doc_type_data
             )
             
             vector_storage.store_embeddings(enriched_chunks)

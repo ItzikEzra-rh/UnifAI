@@ -91,7 +91,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
 
         const docs = selectedFiles.map((file) => ({
             doc_name: file.name,
-            doc_path: `home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs/${file.name}`
+            doc_path: `/home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs/${file.name}`
         }));
 
         await submitToAPI(docs);
