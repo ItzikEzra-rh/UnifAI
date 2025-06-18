@@ -33,7 +33,7 @@ export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       {getFileIcon('pdf')}
-                      <span className="ml-2 font-medium">Product Roadmap 2023.pdf</span>
+                      <span className="ml-2 font-medium">{doc.name}</span>
                     </div>
                     <Button variant="ghost" size="sm">
                       <FaEye className="mr-2 h-4 w-4" />

@@ -23,10 +23,13 @@ def get_available_doc_list():
     for doc in docs:
         doc["file_type"] = doc.get("name", "").rsplit(".", 1)[-1].lower()
         pipeline_id = doc["pipeline_id"]
-        doc_data = data_source_repo.get_source_by_query({"last_pipeline_id": pipeline_id})[0]
-        doc["chunks"] = doc_data.get("chunks_generated", [])
-        doc["page_count"] = doc_data.get("type_data", {}).get("page_count", 0)
-        doc["full_text"] = doc_data.get("type_data", {}).get("full_text", "")
+        doc_data = data_source_repo.get_source_by_query({"last_pipeline_id": pipeline_id})
+        if not doc_data:
+            continue
+        doc["chunks"] = doc_data[0].get("chunks_generated", [])
+        doc["file_size"] = doc_data[0].get("type_data", {}).get("file_size", 0)
+        doc["page_count"] = doc_data[0].get("type_data", {}).get("page_count", 0)
+        doc["full_text"] = doc_data[0].get("type_data", {}).get("full_text", "")
     return docs
 
 def embed_docs_flow(doc_list):
@@ -111,6 +114,7 @@ def embed_docs_flow(doc_list):
             doc_type_data = {
                 "page_count": result.get("metadata", {}).get("page_count", 0),
                 "full_text": result.get("text", ""),
+                "file_size": result.get("size", "0 MB"),
             }
 
             manager.persist(
