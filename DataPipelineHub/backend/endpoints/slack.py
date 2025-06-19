@@ -12,12 +12,6 @@ from providers.slack import (
 
 slack_bp = Blueprint("slack", __name__)
 
-@slack_bp.route('/', methods=['GET'])
-def health_check():
-    return jsonify({"status": "ok", "message": "Server is healthy"}), 200
-
-
-
 @slack_bp.route("/available.slack.channels.get", methods=["GET"])
 @from_query({
     "types": fields.Str(required=True, data_key='types')
