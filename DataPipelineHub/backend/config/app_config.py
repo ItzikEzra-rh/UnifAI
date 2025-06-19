@@ -11,3 +11,5 @@ class AppConfig(SharedConfig):
     mongodb_ip: str = "0.0.0.0"
     hostname: str = "0.0.0.0"
     port: str = "13456"
+    qdrant_ip: str = "http://localhost"
+    qdrant_port: str = "6333"
