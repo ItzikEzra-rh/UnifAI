@@ -7,7 +7,9 @@ from data_sources.slack.slack_pipeline_scheduler import SlackDataPipeline
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
-import os 
+from config.app_config import AppConfig
+
+config = AppConfig()
 
 def _get_configured_connector() -> SlackConnector:
     config_manager = SlackConfigManager()
@@ -52,16 +54,7 @@ def embed_slack_channels_flow(channel_list):
     vector_storage.initialize()
 
     # Create MongoDB client
-    # TODO: need to have a global_utils also for MongoDB just like celery.
-    #mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
-    if os.getenv("BACKEND_ENV") == "production":
-        mongo_url = f"mongodb://{os.getenv('MONGODB_IP', 'localhost')}:{os.getenv('MONGODB_PORT', '27017')}/"
-    else:
-        mongo_url = "mongodb://localhost:27017/"
-
-    mongo_client = pymongo.MongoClient(mongo_url)
-
-
+    mongo_client = pymongo.MongoClient(f"mongodb://{config.mongodb_ip}:{config.mongodb_port}/")
 
     # Create data pipeline with existing logger
     slack_pipeline = SlackDataPipeline(mongo_client, logger=logger)
