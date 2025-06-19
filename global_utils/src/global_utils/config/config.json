@@ -1,8 +1,6 @@
 {
   "rabbitmq_port": "${RABBITMQ_PORT}",
   "rabbitmq_ip": "${RABBITMQ_IP}",
-  "rabbitmq_user": "genie",
-  "rabbitmq_password": "genie123",
   "mongodb_port": "${MONGODB_PORT}",
   "mongodb_ip": "${MONGODB_IP}"
 }
