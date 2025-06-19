@@ -24,7 +24,6 @@ CORS(app)
 # app.db = register_mongo(app)
 register_all_endpoints(app)
 config = AppConfig()
-app.config = {**app.config, **config.model_dump()}
 
 # Init before_request/after_request rules
 RequestRules(app)
