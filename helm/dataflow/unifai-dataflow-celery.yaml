@@ -4,8 +4,8 @@ env:
   RABBITMQ_IP: rabbitmq
   RABBITMQ_PORT: 5672
   BACKEND_ENV: "production"
-  QDRANT_URL: "http://qdrant"
-  QDRANT_PORT: 6333
+  qdrant_ip: "http://qdrant"
+  qdrant_port: "6333"
   ROLE: "celery"
   CELERY_QUEUES: "slack_queue,docs_queue"
   CELERY_WORKER: 1

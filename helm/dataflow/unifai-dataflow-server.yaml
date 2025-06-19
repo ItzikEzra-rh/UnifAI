@@ -3,8 +3,8 @@ env:
   MONGODB_PORT: 27017
   RABBITMQ_IP: rabbitmq
   RABBITMQ_PORT: 5672
-  QDRANT_URL: "http://qdrant"
-  QDRANT_PORT: 6333
+  qdrant_ip: "http://qdrant"
+  qdrant_port: "6333"
   BACKEND_ENV: "production"
   ROLE: "flask"
 debug: false
@@ -31,11 +31,11 @@ volumeMounts:
 
 livenessProbe:
   httpGet:
-    path: /api/slack/
+    path: /api/health/
     port: 13456
 readinessProbe:
   httpGet:
-    path: /api/slack/
+    path: /api/health/
     port: 13456
 
 resources:
