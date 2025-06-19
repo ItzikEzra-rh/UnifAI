@@ -23,7 +23,7 @@ RUN chmod -R g+w .
 RUN pip3 install --upgrade pip virtualenv
 
 
-RUN virtualenv venv
+RUN rm -rf venv && python3 -m venv venv
 
 
 RUN /bin/bash -c "source venv/bin/activate && \

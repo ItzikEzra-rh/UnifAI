@@ -20,9 +20,14 @@ case "$ROLE" in
     exec celery -A celery_app.init worker -c $CELERY_WORKER --loglevel=info -Q $CELERY_QUEUES -n data_sources
     ;;
 
+  debug)
+    echo "🐞 Debug mode activated — container will stay alive."
+    tail -f /dev/null
+    ;;
+
   *)
     echo "❌ ERROR: Unknown ROLE \"$ROLE\""
-    echo "Valid roles are: flask, celery"
+    echo "Valid roles are: flask, celery, debug"
     exit 1
     ;;
 esac
