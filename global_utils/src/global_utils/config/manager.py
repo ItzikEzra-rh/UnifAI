@@ -31,7 +31,6 @@ class ConfigManager:
         """
         Load configuration from the file.
         """
-        self.config_path = Path(self.config_path)  # Ensure it's a Path object
         if not self.config_path.exists():
             raise FileNotFoundError(f"Configuration file {self.config_path} not found.")
 
@@ -131,4 +130,4 @@ class ConfigManager:
         if not config_file_path.exists():
             raise FileNotFoundError(f"config.json not found at {config_file_path}")
 
-        return config_file_path  # ← return as Path object, not str
+        return str(config_file_path)
