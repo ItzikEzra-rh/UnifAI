@@ -1,11 +1,11 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Dict, Callable
 from .sources import DotEnvSource, YamlSource, JsonSource
+from ..utils.singleton import SingletonMeta
 
 SettingsSource = Callable[[], Dict[str, Any]]
-
-
-class SharedConfig(BaseSettings):
+    
+class SharedConfig(BaseSettings, metaclass=SingletonMeta):
     """
     Anything every app needs.
     """
@@ -13,7 +13,7 @@ class SharedConfig(BaseSettings):
     mongodb_ip: str = "localhost"
     rabbitmq_port: str = "5672"
     rabbitmq_ip: str = "localhost"
-
+    
     # shared loading order
     model_config = SettingsConfigDict(
         env_prefix="",

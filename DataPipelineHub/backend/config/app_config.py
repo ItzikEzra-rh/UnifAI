@@ -1,7 +1,5 @@
 from global_utils.config.config import SharedConfig
-from global_utils.utils.util import singleton
 
-@singleton
 class AppConfig(SharedConfig):
     rabbitmq_port: str = "5672"
     rabbitmq_ip: str = "0.0.0.0"
