@@ -5,6 +5,7 @@ from typing import List, Dict, Any, Mapping
 from pydantic import ValidationError
 from blueprints.models.blueprint import BlueprintSpec, BlueprintDraft
 from .repository import BlueprintRepository
+from core.enums import ResourceCategory
 
 
 class MongoBlueprintRepository(BlueprintRepository):
@@ -68,6 +69,17 @@ class MongoBlueprintRepository(BlueprintRepository):
             except ValidationError:
                 continue
         return specs
+
+    def count_usage(self, rid: str) -> int:
+        or_clauses = [
+            {
+                f"spec_dict.{cat.value}": {
+                    "$elemMatch": {"config.ref": rid}
+                }
+            }
+            for cat in list(ResourceCategory)
+        ]
+        return self._col.count_documents({"$or": or_clauses})
 
     def count(self) -> int:
         return self._col.count_documents({})

@@ -1,6 +1,6 @@
 import importlib
 import threading
-from typing import Dict, List
+from typing import Dict, List, Type
 from global_utils.utils.singleton import SingletonMeta
 import os
 from catalog.element_definition import ElementDefinition

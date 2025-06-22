@@ -1,6 +1,4 @@
 from .registry import ResourcesRegistry
-from core.enums import ResourceCategory
-from pydantic import BaseModel
 
 
 class ResourcesService:

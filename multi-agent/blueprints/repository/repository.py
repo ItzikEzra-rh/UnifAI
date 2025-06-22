@@ -35,6 +35,11 @@ class BlueprintRepository(ABC):
         ...
 
     @abstractmethod
+    def count_usage(self, rid: str) -> int:
+        """Count how many blueprints reference a resource by its ID."""
+        ...
+
+    @abstractmethod
     def count(self) -> int:
         """Return the total number of blueprints."""
         ...
