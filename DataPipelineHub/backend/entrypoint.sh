@@ -7,16 +7,17 @@ echo "------------------------------------------"
 echo "🚀 Starting container with ROLE=\"$ROLE\""
 echo "------------------------------------------"
 
+# Activate the Python virtual environment
+. ~/backend/venv/bin/activate
+
 case "$ROLE" in
   flask)
     echo "🟢 Starting Flask API (Server)..."
-    . ~/backend/venv/bin/activate
     exec python app.py
     ;;
     
   celery)
     echo "🔧 Starting Slack Celery worker with tasks concurrently : $CELERY_WORKER"
-    . ~/backend/venv/bin/activate
     exec celery -A celery_app.init worker -c $CELERY_WORKER --pool=solo --loglevel=info -Q $CELERY_QUEUES -n data_sources
     ;;
 
