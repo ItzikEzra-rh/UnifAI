@@ -12,6 +12,9 @@ from flask import request, jsonify, session, redirect, url_for, current_app
 from authlib.integrations.flask_client import OAuth
 from authlib.common.errors import AuthlibBaseError
 from shared.logger import logger
+from config.app_config import AppConfig
+
+config = AppConfig()
 
 class AuthManager:
     def __init__(self, app=None):
@@ -28,16 +31,16 @@ class AuthManager:
         
         # Set up secret key for sessions
         if not app.secret_key:
-            app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24))
+            app.secret_key = config.get('secret_key', os.urandom(24))
         
         # Configure OAuth
         self.oauth = OAuth(app)
         
         # Register Keycloak client
-        keycloak_base_url = os.environ.get('KEYCLOAK_BASE_URL')
-        client_id = os.environ.get('CLIENT_ID')
-        client_secret = os.environ.get('CLIENT_SECRET')
-        realm = os.environ.get('KEYCLOAK_REALM', 'master')
+        keycloak_base_url = config.keycloak_base_url
+        client_id = config.client_id
+        client_secret = config.client_secret
+        realm = config.get('keycloak_realm', 'master')
         
         if not all([keycloak_base_url, client_id, client_secret]):
             raise ValueError("Missing required Keycloak configuration")
@@ -70,9 +73,9 @@ class AuthManager:
         def login():
             """Initiate OAuth login flow"""
             # Hardcode or use an env variable to set the externally reachable redirect URI
-            redirect_uri = os.environ.get(
-                'REDIRECT_URI',
-                'http://127.0.0.1:13456/api/auth/callback'  # <--- This must match what's in Keycloak
+            redirect_uri = config.get(
+                'redirect_url',
+                'http://127.0.0.1:13456/api/auth/callback'
             )
 
             logger.info(f"[LOGIN] session before redirect: {session.items()}")
@@ -109,12 +112,12 @@ class AuthManager:
                 logger.info(f"Session will expire at: {session_expires_at.strftime('%Y-%m-%d %H:%M:%S')}")
                 
                 # Redirect to frontend
-                frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:5000')
+                frontend_url = config.get('frontend_url', 'http://localhost:5000')
                 return redirect(f"{frontend_url}?auth=success")
                 
             except AuthlibBaseError as e:
                 logger.error(f"Authentication error: {str(e)}")
-                frontend_url = os.environ.get('FRONTEND_URL', 'http://localhost:5000')
+                frontend_url = config.get('frontend_url', 'http://localhost:5000')
                 return redirect(f"{frontend_url}?auth=error")
         
         @self.app.route('/api/auth/logout', methods=['POST'])

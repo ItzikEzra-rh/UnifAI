@@ -42,24 +42,6 @@ config = AppConfig()
 RequestRules(app)
 
 if __name__ == '__main__':
-    # hostname = config_params.get_param_by_env('hostname')
-    # port = config_params.get_param_by_env('backend_port')
-
-    # Load environment variables for Keycloak
-    required_env_vars = [
-        'KEYCLOAK_BASE_URL',
-        'CLIENT_ID', 
-        'CLIENT_SECRET'
-    ]
-    
-    missing_vars = [var for var in required_env_vars if not os.environ.get(var)]
-    if missing_vars:
-        print(f"Missing required environment variables: {', '.join(missing_vars)}")
-        print("Please set these variables before running the application.")
-        sys.exit(1)
-    
-    hostname = "0.0.0.0"
-    port = "13456"
     app.run(host=config.hostname, port=config.port, debug=True)
 
     # cert_file = os.path.join(os.path.dirname(__file__), 'cert.pem')
