@@ -48,12 +48,11 @@ export interface ProjectStats {
 }
 
 export interface Document {
-  id: string;
-  fileType: string;
-  title: string
-  description: string;
-  uploaded: string;
-  status:  string;
-  statusColor: string;
-  statusInfo:  string;
+  name: string;
+  status: string
+  created_at: string;
+  file_type: string;
+  chunks: number;
+  page_count: number;
+  full_text: string;
 }
