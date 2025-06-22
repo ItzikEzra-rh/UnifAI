@@ -7,7 +7,6 @@ echo "------------------------------------------"
 echo "🚀 Starting container with ROLE=\"$ROLE\""
 echo "------------------------------------------"
 
-
 case "$ROLE" in
   flask)
     echo "🟢 Starting Flask API (Server)..."
@@ -17,6 +16,7 @@ case "$ROLE" in
     
   celery)
     echo "🔧 Starting Slack Celery worker with tasks concurrently : $CELERY_WORKER"
+    . ~/backend/venv/bin/activate
     exec celery -A celery_app.init worker -c $CELERY_WORKER --pool=solo --loglevel=info -Q $CELERY_QUEUES -n data_sources
     ;;
 
