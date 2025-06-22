@@ -1,7 +1,7 @@
 from pydantic import ValidationError
 import yaml
 from .base_blueprint_loader import BaseBlueprintLoader
-from schemas.blueprint.blueprint import BlueprintSpec
+from blueprints.models.blueprint import BlueprintSpec
 from .exceptions import InvalidBlueprintError
 
 

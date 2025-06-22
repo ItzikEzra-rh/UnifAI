@@ -2,7 +2,7 @@ from typing import Any
 from plugins.decorators import register_element
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
-from schemas.retriever.retriever_config import DocsRetrieverConfig
+from retrievers.models.retriever_config import DocsRetrieverConfig
 from retrievers.docs_retriever import DocsRetriever
 
 

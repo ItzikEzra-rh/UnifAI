@@ -1,7 +1,7 @@
 from plugins.decorators import register_element
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
-from schemas.nodes.base_node import FinalAnswerNodeConfig
+from nodes.models.base_node import FinalAnswerNodeConfig
 from nodes.final_answer import FinalAnswerNode
 
 

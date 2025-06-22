@@ -1,7 +1,4 @@
-from typing import Optional, Callable, Type
-from pathlib import Path
-from registry.element_registry import ElementRegistry
-from blueprints.loader.base_blueprint_loader import BaseBlueprintLoader
+from catalog.element_registry import ElementRegistry
 from session.element_builder import SessionElementBuilder
 from composers.plan_composer import PlanComposer
 from engine.builder.graph_builder_factory import GraphBuilderFactory
@@ -9,8 +6,7 @@ from session.workflow_session import WorkflowSession
 from graph.state.graph_state import GraphState
 from core.run_context import RunContext
 from core.context import set_current_context
-from logs.logger_interface import LoggerInterface
-from schemas.blueprint.blueprint import BlueprintSpec
+from blueprints.models.blueprint import BlueprintSpec
 from .models import SessionMeta
 
 

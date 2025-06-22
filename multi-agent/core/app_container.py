@@ -1,4 +1,4 @@
-from registry.element_registry import ElementRegistry
+from catalog.element_registry import ElementRegistry
 from blueprints.repository.mongo_blueprint_repository import MongoBlueprintRepository
 from blueprints.service import BlueprintService
 from session.workflow_session_factory import WorkflowSessionFactory

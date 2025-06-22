@@ -16,7 +16,7 @@ Key features
 from collections import deque
 from typing import Dict, List, Type
 from session.session_registry import SessionRegistry
-from schemas.blueprint.blueprint import BlueprintSpec
+from blueprints.models.blueprint import BlueprintSpec
 from core.enums import ResourceCategory
 
 # concrete builders

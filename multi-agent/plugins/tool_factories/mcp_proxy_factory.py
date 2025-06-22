@@ -2,7 +2,7 @@ from typing import Any
 from plugins.decorators import register_element
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
-from schemas.tools.tool_config import McpProxyToolConfig
+from tools.models.tool_config import McpProxyToolConfig
 from tools.mcp_tool import McpProxyTool
 from providers.mcp.mcp_server_client import McpServerClient
 

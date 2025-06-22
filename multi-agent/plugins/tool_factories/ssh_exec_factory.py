@@ -2,7 +2,7 @@ from typing import Any
 from plugins.decorators import register_element
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
-from schemas.tools.tool_config import SshExecToolConfig
+from tools.models.tool_config import SshExecToolConfig
 from tools.ssh_exec import SshExecTool
 
 

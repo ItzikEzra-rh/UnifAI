@@ -1,5 +1,5 @@
-from registry.element_registry import ElementRegistry
-from registry.element_definition import ElementDefinition
+from catalog.element_registry import ElementRegistry
+from catalog.element_definition import ElementDefinition
 from typing import Optional, Type
 from pydantic import BaseModel
 from plugins.base_factory import BaseFactory

@@ -1,5 +1,5 @@
 from typing import List, Dict, Optional, Any, Callable
-from schemas.blueprint.blueprint import StepMeta
+from blueprints.models.blueprint import StepMeta
 from .step import Step
 
 

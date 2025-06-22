@@ -1,5 +1,5 @@
 from session.session_registry import SessionRegistry
-from schemas.blueprint.blueprint import BlueprintSpec
+from blueprints.models.blueprint import BlueprintSpec
 from graph.graph_plan import GraphPlan
 from engine.builder.base_graph_builder import BaseGraphBuilder
 from engine.executor.interfaces import GraphExecutor

@@ -2,7 +2,7 @@ from typing import Any
 from plugins.decorators import register_element
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
-from schemas.tools.tool_config import AdditionToolConfig
+from tools.models.tool_config import AdditionToolConfig
 from tools.addition_tool import AdditionTool
 
 

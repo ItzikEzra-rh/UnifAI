@@ -1,7 +1,7 @@
 from typing import Any, Dict, Iterator, List
 from .user_session_manager import UserSessionManager
 from .session_executor import SessionExecutor
-from schemas.blueprint.blueprint import BlueprintSpec
+from blueprints.models.blueprint import BlueprintSpec
 from .workflow_session import WorkflowSession
 from .dto import ChatHistoryItem
 from .models import SessionMeta

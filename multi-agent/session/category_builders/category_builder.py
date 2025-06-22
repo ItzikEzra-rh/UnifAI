@@ -1,10 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Iterable, Sequence, Protocol
+from typing import Any, ClassVar, Iterable
 from plugins.exceptions import PluginConfigurationError
 from pydantic import ValidationError
 from core.enums import ResourceCategory
 from core.contracts import SessionRegistry
-from schemas.blueprint.blueprint import BlueprintSpec
+from blueprints.models.blueprint import BlueprintSpec
 
 
 class CategoryBuilder(ABC):

@@ -1,7 +1,7 @@
 from plugins.base_factory import BaseFactory
 from plugins.decorators import register_element
 from plugins.exceptions import PluginConfigurationError
-from schemas.nodes.base_node import MockAgentNodeConfig
+from nodes.models.base_node import MockAgentNodeConfig
 from nodes.agents.mock_agent import MockAgentNode
 
 

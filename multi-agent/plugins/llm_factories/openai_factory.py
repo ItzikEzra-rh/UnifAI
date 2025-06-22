@@ -2,7 +2,7 @@ from typing import Any
 from plugins.decorators import register_element
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
-from schemas.llm.base_llm import OpenAIConfig
+from llms.models.base_llm import OpenAIConfig
 from llms.openai_llm import OpenAILLM
 
 

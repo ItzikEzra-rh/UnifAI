@@ -1,11 +1,9 @@
-# mongo_blueprint_repository.py
-
 import pymongo
 from uuid import uuid4
 from datetime import datetime
-from typing import List
+from typing import List, Dict, Any, Mapping
 from pydantic import ValidationError
-from schemas.blueprint.blueprint import BlueprintSpec
+from blueprints.models.blueprint import BlueprintSpec, BlueprintDraft
 from .repository import BlueprintRepository
 
 
@@ -16,10 +14,11 @@ class MongoBlueprintRepository(BlueprintRepository):
         # Unique on blueprint_id alone now
         self._col.create_index([("blueprint_id", pymongo.ASCENDING)], unique=True)
 
-    def save(self, spec: BlueprintSpec) -> str:
+    def save(self, user_id, spec: BlueprintDraft) -> str:
         new_id = str(uuid4())
         doc = {
             "blueprint_id": new_id,
+            "user_id": user_id,
             "created_at": getattr(spec, "created_at", datetime.utcnow()),
             "updated_at": datetime.utcnow(),
             "spec_dict": spec.model_dump(mode="json"),
@@ -27,14 +26,15 @@ class MongoBlueprintRepository(BlueprintRepository):
         self._col.insert_one(doc)
         return new_id
 
-    def load(self, blueprint_id: str) -> BlueprintSpec:
+    def load(self, blueprint_id: str) -> Mapping[str, Any]:
         doc = self._col.find_one({"blueprint_id": blueprint_id})
         if not doc:
             raise KeyError(f"No blueprint with id={blueprint_id}")
-        try:
-            return BlueprintSpec.model_validate(doc["spec_dict"])
-        except ValidationError as ve:
-            raise RuntimeError(f"Corrupt blueprint {blueprint_id}: {ve}")
+        return doc
+        # try:
+        #     return BlueprintSpec.model_validate(doc["spec_dict"])
+        # except ValidationError as ve:
+        #     raise RuntimeError(f"Corrupt blueprint {blueprint_id}: {ve}")
 
     def delete(self, blueprint_id: str) -> bool:
         res = self._col.delete_one({"blueprint_id": blueprint_id})

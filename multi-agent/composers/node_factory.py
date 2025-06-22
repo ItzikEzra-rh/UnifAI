@@ -1,10 +1,10 @@
 from typing import Any, Dict
 from pydantic import ValidationError
 from graph.step_context import StepContext
-from registry import element_registry
+from catalog import element_registry
 from session.session_registry import SessionRegistry
 from schemas.nodes.base_node import NodeBaseConfig
-from schemas.blueprint.blueprint import NodeSpec
+from blueprints.models.blueprint import NodeSpec
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
 from nodes.base_node import BaseNode

@@ -1,7 +1,7 @@
 from plugins.decorators import register_element
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
-from schemas.condition.base_condition import ThresholdConditionConfig
+from condition.models.base_condition import ThresholdConditionConfig
 from condition.threshold_condition import ThresholdCondition
 
 

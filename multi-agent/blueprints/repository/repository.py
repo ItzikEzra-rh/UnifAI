@@ -1,16 +1,16 @@
 from abc import ABC, abstractmethod
-from typing import List
-from schemas.blueprint.blueprint import BlueprintSpec
+from typing import List, Mapping, Any
+from blueprints.models.blueprint import BlueprintSpec, BlueprintDraft
 
 
 class BlueprintRepository(ABC):
     @abstractmethod
-    def save(self, spec: BlueprintSpec) -> str:
+    def save(self, user_id, spec: BlueprintDraft) -> str:
         """Persist the spec, returning a generated blueprint_id."""
         ...
 
     @abstractmethod
-    def load(self, blueprint_id: str) -> BlueprintSpec:
+    def load(self, blueprint_id: str) -> Mapping[str, Any]:
         """Load by blueprint_id (or raise KeyError)."""
         ...
 

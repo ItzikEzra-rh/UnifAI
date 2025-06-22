@@ -1,5 +1,5 @@
 from typing import List, Union
-from schemas.blueprint.blueprint import StepDef, NodeSpec
+from blueprints.models.blueprint import StepDef, NodeSpec
 from graph.graph_plan import GraphPlan
 from .node_factory import NodeFactory
 from graph.step_context import StepContext

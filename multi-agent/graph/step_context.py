@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict
-from schemas.blueprint.blueprint import StepMeta
+from blueprints.models.blueprint import StepMeta
 
 
 # @dataclass(frozen=True, slots=True) slots in python3.10+

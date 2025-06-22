@@ -1,4 +1,4 @@
-from typing import Protocol, Dict, Any, Optional
+from typing import Protocol, Dict, Any
 
 
 class BlueprintElementDef(Protocol):

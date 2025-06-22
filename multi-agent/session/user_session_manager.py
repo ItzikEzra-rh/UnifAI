@@ -5,7 +5,7 @@ from session.workflow_session import WorkflowSession
 from core.run_context import RunContext
 from graph.state.graph_state import GraphState
 from session.status import SessionStatus
-from schemas.blueprint.blueprint import BlueprintSpec
+from blueprints.models.blueprint import BlueprintSpec
 from session.models import SessionMeta
 
 
