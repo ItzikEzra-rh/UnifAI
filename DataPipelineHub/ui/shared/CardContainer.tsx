@@ -6,14 +6,16 @@ interface CardContainerProps {
   children: ReactNode;
   filters?: ReactNode;
   footer?: ReactNode;
+  actions?: ReactNode; // <-- Add this
 }
 
-export const CardContainer = ({ title, children, filters, footer }: CardContainerProps) => (
+export const CardContainer = ({ title, children, filters, footer, actions }: CardContainerProps) => (
   <Card className="bg-background-card shadow-card border-gray-800">
     <CardContent className="p-6">
       <div className="flex items-center justify-between mb-6">
-        <h3 className="text-lg font-heading font-semibold">{title}</h3>
-        {filters}
+        {/* Left side: actions (e.g. viewButtons), Right side: filters */}
+        <div>{actions}</div>
+        <div>{filters}</div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -24,3 +26,4 @@ export const CardContainer = ({ title, children, filters, footer }: CardContaine
     </CardContent>
   </Card>
 );
+

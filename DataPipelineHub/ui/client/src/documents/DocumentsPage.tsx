@@ -148,7 +148,6 @@ export default function Documents() {
         <Header
           title="Document Library"
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
-          rightSlot={showUploadModal ? null : viewButtons}
         />
 
         <div className="flex-1 overflow-auto px-6 pb-6">
@@ -162,7 +161,8 @@ export default function Documents() {
                 <p className="text-sm text-red-500">Error: {(error as Error).message}</p>
               ) : (
                 <div className="mb-6">
-                  <CardContainer title="" filters={filters} footer={footer}>
+                  <CardContainer title="" filters={filters} footer={footer} actions={viewButtons}>
+
                     {documents.length ? (
                       viewMode === "grid" ? (
                         <>

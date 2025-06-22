@@ -12,10 +12,9 @@ import { useAuth } from '@/contexts/AuthContext';
 interface HeaderProps {
   title: string;
   onToggleSidebar: () => void;
-  rightSlot?: React.ReactNode;
 }
 
-export default function Header({ title, onToggleSidebar, rightSlot }: HeaderProps) {
+export default function Header({ title, onToggleSidebar }: HeaderProps) {
   const [hasNotifications] = useState(true);
   const { theme, toggleTheme } = useTheme();
 
@@ -48,7 +47,6 @@ export default function Header({ title, onToggleSidebar, rightSlot }: HeaderProp
         </motion.h1>
       </div>
       <div className="flex items-center space-x-4">
-        {rightSlot && <div className="flex items-center space-x-4">{rightSlot}</div>}
         <SimpleTooltip content={<p>Search</p>}>
           <button className="p-2 rounded-full hover:bg-background-card text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors">
             <FaSearch />
