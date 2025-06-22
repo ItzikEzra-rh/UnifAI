@@ -20,10 +20,7 @@ RUN pip3 install --upgrade pip virtualenv
 RUN python3 -m venv venv
 
 RUN /bin/bash -c "source venv/bin/activate && \
-    pip install -r requirements.txt "
-
-# Activate the virtual environment and install required global_utils
-RUN /bin/bash -c "source venv/bin/activate && \
+    pip install -r requirements.txt && \
     pip install -e ../global_utils/"
 
 ENTRYPOINT ["/entrypoint.sh"]
