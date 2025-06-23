@@ -22,10 +22,6 @@ class VectorStorageFactory:
         """
         storage_type = config.get("type", "qdrant")
 
-        # TODO @nrashti:
-        # The URL and port are currently fetched directly from environment variables using os.environ.
-        # This logic should be centralized and managed through a configuration manager
-        # currnt Env is 'http://qdrant' Instead, we should expose on the hostname like QDRANT_HOST="qdrant", and construct the full URL in code:
 
         if storage_type == "qdrant":
             return QdrantStorage(

@@ -10,7 +10,7 @@ echo "------------------------------------------"
 case "$ROLE" in
   flask)
     echo "🟢 Starting Flask API (Server)..."
-    exec venv/bin/python app.py
+    exec venv/bin/python3.11 app.py
     ;;
     
   celery)
