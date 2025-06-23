@@ -1,11 +1,12 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Dict, Callable
 from .sources import DotEnvSource, YamlSource, JsonSource
-from ..utils.singleton import SingletonMeta
+from functools import lru_cache
 
 SettingsSource = Callable[[], Dict[str, Any]]
 
-class SharedConfig(BaseSettings, metaclass=SingletonMeta):
+
+class SharedConfig(BaseSettings):
     """
     Anything every app needs.
     """
@@ -26,3 +27,8 @@ class SharedConfig(BaseSettings, metaclass=SingletonMeta):
             fs,
         ),
     )
+
+
+@lru_cache()
+def get_shared_config() -> SharedConfig:
+    return SharedConfig()

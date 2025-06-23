@@ -3,7 +3,7 @@ from pydantic import ValidationError
 from graph.step_context import StepContext
 from catalog import element_registry
 from session.session_registry import SessionRegistry
-from schemas.nodes.base_node import NodeBaseConfig
+from nodes.models.base_node import NodeBaseConfig
 from blueprints.models.blueprint import NodeSpec
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError

@@ -6,8 +6,12 @@ from session.user_session_manager import UserSessionManager
 from session.session_executor import SessionExecutor
 from blueprints.service import BlueprintService
 from blueprints.repository.mongo_blueprint_repository import MongoBlueprintRepository
-
+from resources.service import ResourcesService
+from resources.registry import ResourcesRegistry
+from resources.repository.mongo_repository import MongoResourceRepository
+from blueprints.resolver import BlueprintResolver
 from typing import Iterator, Any, Dict, List
+from config.app_config import get_app_config
 from rich.live import Live
 from rich.panel import Panel
 from rich.layout import Layout
@@ -129,21 +133,21 @@ def main_resume_session(run_id: str):
 
 if __name__ == "__main__":
     # main_resume_session("64fc9af1-2dd8-405d-a491-925639a4100f")
-    blueprint_loader = YAMLBlueprintLoader()
-    spec1 = blueprint_loader.load("run/test_1_agent_add_tool.yml")
-    spec2 = blueprint_loader.load("run/test_2_agents_slack_docs_merger.yml")
-    spec3 = blueprint_loader.load("run/test_1_agent_ssh_exec_tool.yml")
-    spec4 = blueprint_loader.load("run/test_1_agent_mcp_tool.yml")
-    spec5 = blueprint_loader.load("run/test_1_agent_mcp_tool_proxy.yml")
-    # spec5 = blueprint_loader.load("run/test_1_agent_2_mcp_providers.yml")
-    repo = MongoBlueprintRepository()
-    service = BlueprintService(repo)
-    bid1 = service.register(spec1)
-    bid2 = service.register(spec2)
-    bid3 = service.register(spec3)
-    bid4 = service.register(spec4)
-    bid5 = service.register(spec5)
+    # blueprint_loader = YAMLBlueprintLoader()
+    # spec1 = blueprint_loader.load("run/test_1_agent_add_tool.yml")
+    # spec2 = blueprint_loader.load("run/test_2_agents_slack_docs_merger.yml")
+    # spec3 = blueprint_loader.load("run/test_1_agent_ssh_exec_tool.yml")
+    # spec4 = blueprint_loader.load("run/test_1_agent_mcp_tool.yml")
+    # spec5 = blueprint_loader.load("run/test_1_agent_mcp_tool_proxy.yml")
+    # # spec5 = blueprint_loader.load("run/test_1_agent_2_mcp_providers.yml")
+    # repo = MongoBlueprintRepository()
+    # service = BlueprintService(repo)
+    # bid1 = service.register(spec1)
+    # bid2 = service.register(spec2)
+    # bid3 = service.register(spec3)
+    # bid4 = service.register(spec4)
     # bid5 = service.register(spec5)
+
     # print(service.count())
     # print(service.get_blueprint_spec("81bdd223-4dba-4bb3-81d1-20fbaf19dd01"))
     import json
@@ -153,3 +157,30 @@ if __name__ == "__main__":
     # main_new_session()
     # main_resume_session(get_current_context().run_id)
     # main_resume_session("64fc9af1-2dd8-405d-a491-925639a4100f")
+    config = get_app_config()
+    element_registry.auto_discover()
+    resource_repo = MongoResourceRepository()
+    blueprint_repo = MongoBlueprintRepository(coll_name=config.blueprint_coll)
+
+    resource_registry = ResourcesRegistry(
+        repo=resource_repo,
+        bp_repo=blueprint_repo,
+    )
+    resources_service = ResourcesService(
+        resource_registry=resource_registry,
+        element_registry=element_registry,
+    )
+
+    blueprint_resolver = BlueprintResolver(resources_service)
+    blueprint_service = BlueprintService(blueprint_repo, blueprint_resolver)
+    # resources_service.create(user_id="alice", category="llms", type="openai", name="my openai config",
+    #                          config={"name": "openai_llm",
+    #                                  "type": "openai",
+    #                                  "model_name": "gemini-2.0-flash",
+    #                                  "api_key": "AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ",
+    #                                  "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"})
+    blueprint_loader = YAMLBlueprintLoader()
+    raw = blueprint_loader.load("run/test_new_version.yml")
+    # blueprint_service.save_draft("alice", draft_dict=raw)
+    bp_spec = blueprint_service.load_resolved("0a1d8d1c-3f39-4266-a184-ac4ea36084a2")
+    print(json.dumps(bp_spec.model_dump(mode="json")))

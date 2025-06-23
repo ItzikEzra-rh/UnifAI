@@ -5,6 +5,7 @@ from global_utils.utils.singleton import SingletonMeta
 import os
 from catalog.element_definition import ElementDefinition
 from core.enums import ResourceCategory
+from global_utils.utils.util import singleton
 
 
 class ElementRegistry(metaclass=SingletonMeta):
@@ -26,16 +27,16 @@ class ElementRegistry(metaclass=SingletonMeta):
                          Dict[str, ElementDefinition]] = {}
 
         # Auto-discover once on construction
-        self._auto_discover_plugins()
 
     # ------------------------------------------------------------------ #
     #  Registration / Introspection
     # ------------------------------------------------------------------ #
     def register_element(self, edef: ElementDefinition) -> None:
+        print(f"[register] self id: {id(self)}")
         with self._lock:
             cat_map = self._defs.setdefault(edef.category, {})
             if edef.type_key in cat_map:
-                raise ValueError(f"Duplicate element: {edef.category}/{edef.type_key}")
+                raise ValueError(f"Element already registered: {edef.category}/{edef.type_key}")
             cat_map[edef.type_key] = edef
 
     def list_categories(self) -> List[ResourceCategory]:
@@ -62,16 +63,6 @@ class ElementRegistry(metaclass=SingletonMeta):
     # ------------------------------------------------------------------ #
     #  Utility used by Blueprint-resolver (tell which discriminator = which cat)
     # ------------------------------------------------------------------ #
-    def get_category_from_dict(self, raw: dict) -> ResourceCategory:
-        """
-        Examine typical config dicts that always contain a 'type'
-        discriminator and decide which catalogue it belongs to.
-        """
-        type_key = raw.get("type")
-        for cat, mapping in self._defs.items():
-            if type_key in mapping:
-                return cat
-        raise ValueError(f"Cannot infer category for type='{type_key}'")
 
     def auto_discover(self):
         """

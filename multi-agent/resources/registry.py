@@ -1,51 +1,44 @@
 from datetime import datetime
 from resources.models import ResourceDoc
 from resources.repository.base import ResourceRepository
+from blueprints.repository.repository import BlueprintRepository
 
 
 class ResourcesRegistry:
-    """
-    *Enforces* business rules:
-      • alias uniqueness per (user id, category, type)
-      • optimistic version bump on edits
-      • “cannot delete while referenced” guard
-    """
+    """Low-level CRUD + business rules (no Pydantic parsing)."""
 
-    def __init__(self, repo: ResourceRepository, bp_repo):
-        self.repo = repo
-        self.bp_repo = bp_repo  # injected BlueprintRepository
+    def __init__(
+            self,
+            repo: ResourceRepository,
+            bp_repo: BlueprintRepository,  # for delete guard
+    ):
+        self._repo = repo
+        self._bp_repo = bp_repo
 
     # ---------- write ----------
-    def create(self, user_id: str, category: str, type: str, name: str, cfg_dict: dict) -> ResourceDoc:
-        if self.repo.find_by_name(user_id, category, type, name):
-            raise ValueError(f"{category}:{type}:{name} already exists for user")
-        doc = ResourceDoc(user_id=user_id,
-                          category=category,
-                          type=type,
-                          name=name,
-                          cfg_dict=cfg_dict,
-                          version=1)
-        self.repo.save(doc)
+    def create(self, doc: ResourceDoc) -> ResourceDoc:
+        # uniqueness guard
+        if self._repo.find_by_name(doc.user_id, doc.category, doc.type, doc.name):
+            raise ValueError(f"{doc.category}:{doc.type}:{doc.name} exists for user")
+        self._repo.save(doc)
         return doc
 
-    def update(self, rid: str, cfg_dict) -> ResourceDoc:
-        doc = self.repo.get(rid)
-        doc.config = cfg_dict
+    def update(self, rid: str, new_cfg: dict) -> ResourceDoc:
+        doc = self._repo.get(rid)
+        doc.config = new_cfg
         doc.version += 1
         doc.updated = datetime.utcnow()
-        self.repo.save(doc)
+        self._repo.save(doc)
         return doc
 
-    def delete(self, rid: str):
-        if self.bp_repo.count_usage(rid) > 0:
-            raise RuntimeError("Resource still referenced by blueprints")
-        self.repo.delete(rid)
+    def delete(self, rid: str) -> None:
+        if self._bp_repo.count_usage(rid):
+            raise RuntimeError("Resource is referenced by blueprints")
+        self._repo.delete(rid)
 
     # ---------- read ----------
-    def resolve(self, rid: str) -> dict:
-        """Return *current* config dict; caller turns it into Pydantic model."""
-        return self.repo.get(rid).config
-
     def get(self, rid: str) -> ResourceDoc:
-        """Return the resource document."""
-        return self.repo.get(rid)
+        return self._repo.get(rid)
+
+    def raw_config(self, rid: str) -> dict:
+        return self.get(rid).config

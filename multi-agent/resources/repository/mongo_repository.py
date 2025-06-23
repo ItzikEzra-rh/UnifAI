@@ -1,21 +1,27 @@
-import json, pymongo
+import json
+import pymongo
 from resources.models import ResourceDoc
 from resources.repository.base import ResourceRepository
 
 
 class MongoResourceRepository(ResourceRepository):
-    def __init__(self, uri: str = "mongodb://localhost:27017/", db="UnifAI"):
-        client = pymongo.MongoClient(uri)
-        self.col = client[db]["resources"]
+    def __init__(self, mongodb_port: str = "27017",
+                 mongodb_ip: str = "localhost",
+                 db_name="UnifAI",
+                 coll_name="resources"):
+        mongo_uri = f"mongodb://{mongodb_ip}:{mongodb_port}/"
+        client = pymongo.MongoClient(mongo_uri)
+        self.col = client[db_name][coll_name]
 
     def save(self, doc: ResourceDoc) -> str:
-        self.col.replace_one({"_id": doc._id},
+        self.col.replace_one({"_id": doc.uuid},
                              json.loads(doc.model_dump_json()),
                              upsert=True)
-        return doc._id
+        return doc.uuid
 
     def get(self, rid: str) -> ResourceDoc:
         raw = self.col.find_one({"_id": rid})
+        print(raw)
         if not raw:
             raise KeyError(rid)
         return ResourceDoc(**raw)

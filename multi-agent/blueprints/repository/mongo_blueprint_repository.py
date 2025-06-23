@@ -9,8 +9,14 @@ from core.enums import ResourceCategory
 
 
 class MongoBlueprintRepository(BlueprintRepository):
-    def __init__(self, uri: str = "mongodb://localhost:27017/", db_name="UnifAI", coll_name="blueprints"):
-        client = pymongo.MongoClient(uri)
+    def __init__(self,
+                 mongodb_port: str = "27017",
+                 mongodb_ip: str = "localhost",
+                 db_name="UnifAI",
+                 coll_name="blueprints"):
+
+        mongo_uri = f"mongodb://{mongodb_ip}:{mongodb_port}/"
+        client = pymongo.MongoClient(mongo_uri)
         self._col = client[db_name][coll_name]
         # Unique on blueprint_id alone now
         self._col.create_index([("blueprint_id", pymongo.ASCENDING)], unique=True)

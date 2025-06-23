@@ -1,7 +1,6 @@
 from typing import Generic, List, TypeVar, Union
 from uuid import uuid4
 from pydantic import BaseModel, Field, Extra
-from pydantic.generics import GenericModel
 
 # -----------------------------------------------------------------------------
 # Import the *catalog* specs (single source of truth for field validation)
@@ -23,13 +22,13 @@ class Ref(BaseModel):
 
     class Config:
         extra = Extra.forbid
-        allow_population_by_field_name = True  # keep `$ref` key in JSON
+        validate_by_name = True  # keep `$ref` key in JSON
 
 
 T = TypeVar("T", bound=BaseModel)
 
 
-class Resource(GenericModel, Generic[T]):
+class Resource(BaseModel, Generic[T]):
     """
     Catalogue entry in a *draft* blueprint.
     • alias  – blueprint-local identifier (unique per catalogue/kind)
@@ -43,7 +42,7 @@ class Resource(GenericModel, Generic[T]):
         extra = Extra.forbid
 
 
-class ResourceSpec(GenericModel, Generic[T]):
+class ResourceSpec(BaseModel, Generic[T]):
     """Same shape after resolution – config is always the concrete spec."""
     alias: str
     config: T

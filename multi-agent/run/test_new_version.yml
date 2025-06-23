@@ -1,37 +1,14 @@
-global_config:
-  scope: "private"
 
 # ─────────────────────────────────────────────────────────────────────────
 # Resources -- one catalogue per kind
 # ─────────────────────────────────────────────────────────────────────────
-providers:
-  - alias: prov_mcp
-    config:
-      name: My MCP back-end
-      $ref: "provider:1aa3…"
+
 
 llms:
-  - alias: llm_live
+  - alias: llm_gemni_openai
     config:
-      $ref: "llm:bd85b7…"
+      ref: "58b3f168cbb64b6d8eac92732c6f7d70"
 
-  - alias: llm_frozen
-    config:
-      name: Flash (frozen)
-      type: openai
-      model_name: gemini-2.0-flash
-      temperature: 0.3
-      max_tokens: 1024
-      api_key: "key:AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ"
-      base_url: https://…
-
-tools:
-  - alias: add_tool
-    config:
-      name: Addition
-      type: mcp_proxy
-      tool_name: addition
-      provider: prov_mcp
 
 nodes:
   - alias: user_question
@@ -39,18 +16,15 @@ nodes:
       name: User Input
       type: user_question_node
 
-  - alias: agent
+  - alias: agent_node
     config:
       name: My Agent
       type: custom_agent_node
-      llm: llm_live
-      tools:
-        - add_tool
+      llm: llm_gemni_openai
       system_message: >
         You are a smart assistant …
 
   - alias: final_answer
-    name: Final Answer
     config:
       type: final_answer_node
 
@@ -58,11 +32,13 @@ nodes:
 # Graph plan – references node UIDs
 # ─────────────────────────────────────────────────────────────────────────
 plan:
-  - uid: user_question
+  - alias: user_question
+    node: user_question
 
-  - uid: agent_node
+  - alias: agent_node
     after: user_question
-    node: agent # alias of the node
+    node: agent_node
 
-  - uid: final_answer
+  - alias: final_answer
     after: agent
+    node: final_answer

@@ -2,7 +2,7 @@ from typing import Any, Dict
 from pydantic import ValidationError
 from plugins.base_factory import BaseFactory
 from plugins.exceptions import PluginConfigurationError
-from schemas.llm.base_llm import MockLLMConfig
+from llms.models.base_llm import MockLLMConfig
 from llms.mock_llm import MockLLM
 from plugins.decorators import register_element
 

@@ -11,17 +11,18 @@ class BlueprintService:
         self._repo = repo
         self._resolver = resolver
 
-    def save_draft(self, user_id: str, bpd: Dict[str, Any]) -> str:
-        draft = BlueprintDraft(**bpd)
+    def save_draft(self, user_id: str, draft_dict: dict) -> str:
+        draft = BlueprintDraft(**draft_dict)
         return self._repo.save(user_id, draft)
 
-    def get_blueprint_spec(self, bp_id: str) -> BlueprintSpec:
-        draft_doc = self._repo.load(bp_id)
-        bpd = BlueprintDraft(**draft_doc)
-        return self._resolver.resolve(bpd)
+    # Load & resolve ------------------------------------------------------
+    def load_resolved(self, bp_id: str) -> BlueprintSpec:
+        draft_dict = self._repo.load(bp_id)
+        draft = BlueprintDraft(**draft_dict["spec_dict"])
+        return self._resolver.resolve(draft)
 
     def to_dict(self, blueprint_id: str) -> Dict[str, Any]:
-        spec = self.get_blueprint_spec(blueprint_id)
+        spec = self.load_resolved(blueprint_id)
         return blueprint_to_dict_with_meta(spec)
 
     def list_ids(self, **pagination) -> List[str]:
