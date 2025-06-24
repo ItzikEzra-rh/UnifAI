@@ -150,13 +150,14 @@ if __name__ == "__main__":
 
     # print(service.count())
     # print(service.get_blueprint_spec("81bdd223-4dba-4bb3-81d1-20fbaf19dd01"))
-    import json
 
     # print(service.delete("707f3ac8-3d09-41dd-90c3-d3ce0a6dacb2"))
     # print(json.dumps(service.get_dict("81bdd223-4dba-4bb3-81d1-20fbaf19dd01")))
     # main_new_session()
     # main_resume_session(get_current_context().run_id)
     # main_resume_session("64fc9af1-2dd8-405d-a491-925639a4100f")
+    import json
+
     config = get_app_config()
     element_registry.auto_discover()
     resource_repo = MongoResourceRepository()
@@ -171,16 +172,18 @@ if __name__ == "__main__":
         element_registry=element_registry,
     )
 
-    blueprint_resolver = BlueprintResolver(resources_service)
-    blueprint_service = BlueprintService(blueprint_repo, blueprint_resolver)
-    # resources_service.create(user_id="alice", category="llms", type="openai", name="my openai config",
-    #                          config={"name": "openai_llm",
-    #                                  "type": "openai",
-    #                                  "model_name": "gemini-2.0-flash",
-    #                                  "api_key": "AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ",
-    #                                  "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"})
-    blueprint_loader = YAMLBlueprintLoader()
-    raw = blueprint_loader.load("run/test_new_version.yml")
+    blueprint_resolver = BlueprintResolver(resource_registry=resource_registry, element_registry=element_registry)
+    blueprint_service = BlueprintService(repo=blueprint_repo, resolver=blueprint_resolver)
+
+    # resources_service.create(user_id="alice", category="nodes", type="custom_agent_node", name="My Agent Node",
+    #                          config={"name": "My Agent",
+    #                                  "type": "custom_agent_node",
+    #                                  "llm": "db25a8fe290c458f9545ad35877c0b9a",
+    #                                  "system_message": "You are a smart assistant …"})
+
+    # blueprint_loader = YAMLBlueprintLoader()
+    # raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
     # blueprint_service.save_draft("alice", draft_dict=raw)
-    bp_spec = blueprint_service.load_resolved("0a1d8d1c-3f39-4266-a184-ac4ea36084a2")
+
+    bp_spec = blueprint_service.load_resolved("259e3aa9-81bc-47a8-806e-57174574a05a")
     print(json.dumps(bp_spec.model_dump(mode="json")))

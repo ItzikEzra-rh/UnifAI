@@ -30,7 +30,7 @@ class ResourcesService:
             category=category,
             type=type,
             name=name,
-            config=cfg_model.model_dump(mode="json"),
+            cfg_dict=cfg_model.model_dump(mode="json"),
         )
         return self._store.create(doc)
 
@@ -39,12 +39,9 @@ class ResourcesService:
 
     # ---------- resolve ----------
     def resolve(self, rid: str) -> BaseModel:
-        """Return the config as a *Pydantic model instance*."""
-        doc = self._store.get(rid)
-        model_cls = self._schema.get_schema(
-            ResourceCategory(doc.category), doc.type
-        )
-        return model_cls(**doc.config)
+        category, _type = self._store.meta(rid)
+        model_cls = self._schema.get_schema(ResourceCategory(category), _type)
+        return model_cls(**self._store.raw_config(rid))
 
     def get_dict(self, rid: str) -> dict:
         """Raw JSON for UI."""

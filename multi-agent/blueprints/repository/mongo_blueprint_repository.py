@@ -77,15 +77,15 @@ class MongoBlueprintRepository(BlueprintRepository):
         return specs
 
     def count_usage(self, rid: str) -> int:
-        or_clauses = [
-            {
-                f"spec_dict.{cat.value}": {
-                    "$elemMatch": {"config.ref": rid}
-                }
-            }
-            for cat in list(ResourceCategory)
-        ]
-        return self._col.count_documents({"$or": or_clauses})
+        fields = [
+                     f"spec_dict.{cat}.rid"  # direct catalogue entry
+                     for cat in ResourceCategory.list_values()
+                 ] + [
+                     f"spec_dict.{cat}.config.rid"  # nested inside another resource
+                     for cat in ResourceCategory.list_values()
+                 ]
+        ors = [{fld: rid} for fld in fields]
+        return self._col.count_documents({"$or": ors})
 
     def count(self) -> int:
         return self._col.count_documents({})

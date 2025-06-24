@@ -1,55 +1,88 @@
-from typing import TypeVar
+from typing import TypeVar, Dict, Any
 from pydantic import BaseModel
+from core.enums import ResourceCategory
 
 from .models.blueprint import (
-    Ref,
     Resource,
     ResourceSpec,
     BlueprintDraft,
     BlueprintSpec
 )
-from resources.service import ResourcesService
+from resources.registry import ResourcesRegistry
+from catalog.element_registry import ElementRegistry
 
 T = TypeVar("T", bound=BaseModel)
 
 
 class BlueprintResolver:
-    """
-    Turns BlueprintDraft (may contain $ref) into BlueprintSpec (concrete).
-    """
+    def __init__(self,
+                 resource_registry: ResourcesRegistry,
+                 element_registry: ElementRegistry):
+        self.resource_registry = resource_registry
+        self.element_registry = element_registry
+        self._visited: set[str] = set()
+        self._bucket: dict[str, list] = {}
 
-    def __init__(self, resources: ResourcesService):
-        self._resources = resources
-
-    # -----------------------------------------------------------------
-    def _resolve_cfg(self, cfg: Ref | T) -> T:
-        if isinstance(cfg, Ref):
-            # ResourcesService returns *model*, not dict
-            return self._resources.resolve(cfg.ref)  # type: ignore[return-value]
-        return cfg  # already inline/frozen
-
-    def _convert(self, items: list[Resource[T]]) -> list[ResourceSpec[T]]:
-        result: list[ResourceSpec[T]] = []
-        for entry in items:
-            concrete = self._resolve_cfg(entry.config)
-            result.append(
-                ResourceSpec[type(concrete)](
-                    alias=entry.alias,
-                    config=concrete
-                )
-            )
-        return result
-
-    # -----------------------------------------------------------------
     def resolve(self, draft: BlueprintDraft) -> BlueprintSpec:
+        self._bucket: dict[str, list] = {}
+        self._visited: set[str] = set()
+
+        # --- walk every catalogue in the draft ---------------------------
+        for cat in list(ResourceCategory):
+            for res in getattr(draft, cat.value):
+                if res.config is not None:  # ← INLINE
+                    self._stash_inline(cat, res)
+                else:  # ← LIVE REF
+                    self._walk_live(res.rid, res.name)
+
+        # --- build executable spec ---------------------------------------
         return BlueprintSpec(
-            providers=self._convert(draft.providers),
-            llms=self._convert(draft.llms),
-            retrievers=self._convert(draft.retrievers),
-            tools=self._convert(draft.tools),
-            nodes=self._convert(draft.nodes),
-            conditions=self._convert(draft.conditions),
+            **{cat.value: self._bucket.get(cat.value, []) for cat in list(ResourceCategory)},
             plan=draft.plan,
             name=draft.name,
             description=draft.description,
         )
+
+    # --------------------------------------------------------------------
+    # helpers
+    # --------------------------------------------------------------------
+    def _stash_inline(self, cat: ResourceCategory, res: Resource):
+        """Put an inline/frozen entry straight into the bucket."""
+        concrete = res.config  # already a validated Pydantic model
+        self._bucket.setdefault(cat.value, []).append(
+            ResourceSpec[type(concrete)](
+                rid=res.rid, name=res.name, config=concrete
+            )
+        )
+        # still inspect it for nested rids
+        self._scan_nested(concrete)
+
+    def _walk_live(self, rid: str, name: str | None):
+        """Fetch a live resource and recurse through its config."""
+        if rid in self._visited:
+            return
+        self._visited.add(rid)
+
+        cat, tp = self.resource_registry.meta(rid)
+        raw = self.resource_registry.raw_config(rid)
+        model_cls = self.element_registry.get_schema(ResourceCategory(cat), tp)
+        obj = model_cls(**raw)
+
+        if name is None:
+            # fallback to registry name, or obj.name if available
+            name = self.resource_registry.get(rid).name
+
+        self._bucket.setdefault(cat, []).append(
+            ResourceSpec[type(obj)](rid=rid, name=name, config=obj)
+        )
+        self._scan_nested(obj)
+
+    def _scan_nested(self, obj: BaseModel):
+        """Walk every attribute of the model looking for further rid strings."""
+        for val in obj.__dict__.values():
+            if isinstance(val, str) and self.resource_registry.exists(val):
+                self._walk_live(val, None)
+            elif isinstance(val, list):
+                for item in val:
+                    if isinstance(item, str) and self.resource_registry.exists(item):
+                        self._walk_live(item, None)

@@ -4,10 +4,6 @@
 # ─────────────────────────────────────────────────────────────────────────
 
 
-llms:
-  - rid: db25a8fe290c458f9545ad35877c0b9a
-    name: openai llm
-
 nodes:
   - rid: user_question
     name: user_question
@@ -15,14 +11,8 @@ nodes:
       name: User Input
       type: user_question_node
 
-  - rid: agent_node
+  - rid: 4e23484d528d441fba59692b6d514ac8
     name: agent
-    config:
-      name: My Agent
-      type: custom_agent_node
-      llm: db25a8fe290c458f9545ad35877c0b9a
-      system_message: >
-        You are a smart assistant …
 
   - rid: final_answer
     name: final_answer
@@ -38,7 +28,7 @@ plan:
 
   - uid: agent_node
     after: user_question
-    node: agent_node
+    node: 4e23484d528d441fba59692b6d514ac8
 
   - uid: final_answer
     after: agent

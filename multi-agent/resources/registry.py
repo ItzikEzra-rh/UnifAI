@@ -25,15 +25,16 @@ class ResourcesRegistry:
 
     def update(self, rid: str, new_cfg: dict) -> ResourceDoc:
         doc = self._repo.get(rid)
-        doc.config = new_cfg
+        doc.cfg_dict = new_cfg
         doc.version += 1
         doc.updated = datetime.utcnow()
         self._repo.save(doc)
         return doc
 
     def delete(self, rid: str) -> None:
-        if self._bp_repo.count_usage(rid):
-            raise RuntimeError("Resource is referenced by blueprints")
+        # guard against library & blueprint refs
+        if self._bp_repo.count_usage(rid) or self._repo.count_nested(rid):
+            raise RuntimeError("Resource still in use")
         self._repo.delete(rid)
 
     # ---------- read ----------
@@ -41,4 +42,10 @@ class ResourcesRegistry:
         return self._repo.get(rid)
 
     def raw_config(self, rid: str) -> dict:
-        return self.get(rid).config
+        return self.get(rid).cfg_dict
+
+    def meta(self, rid: str) -> tuple[str, str]:
+        return self._repo.meta(rid)
+
+    def exists(self, rid: str) -> bool:
+        return self._repo.exists(rid)

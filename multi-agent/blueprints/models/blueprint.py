@@ -1,4 +1,4 @@
-from typing import Generic, List, TypeVar, Union
+from typing import Generic, List, TypeVar, Optional
 from uuid import uuid4
 from pydantic import BaseModel, Field, Extra
 
@@ -12,39 +12,24 @@ from condition.models.base_condition import ConditionSpec
 from tools.models.tool_config import ToolsSpec
 from providers.models.base_provider import ProviderSpec
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 # Author-time helper types
 # ─────────────────────────────────────────────────────────────────────────────
-class Ref(BaseModel):
-    """Wraps a registry reference: {"$ref": "llm:abcd-1234"}"""
-    ref: str = Field(..., alias="$ref")
-
-    class Config:
-        extra = Extra.forbid
-        validate_by_name = True  # keep `$ref` key in JSON
-
-
 T = TypeVar("T", bound=BaseModel)
 
 
 class Resource(BaseModel, Generic[T]):
-    """
-    Catalogue entry in a *draft* blueprint.
-    • alias  – blueprint-local identifier (unique per catalogue/kind)
-    • name   – optional human label
-    • config – either a live `$ref` or a frozen inline spec (T)
-    """
-    alias: str
-    config: Union[Ref, T]
+    rid: str
+    name: str
+    config: T | None = None
 
     class Config:
         extra = Extra.forbid
 
 
 class ResourceSpec(BaseModel, Generic[T]):
-    """Same shape after resolution – config is always the concrete spec."""
-    alias: str
+    rid: str
+    name: str
     config: T
 
     class Config:
@@ -64,7 +49,7 @@ class StepMeta(BaseModel):
 
 
 class StepDef(BaseModel):
-    alias: str = Field(  # step id (local)
+    uid: str = Field(  # step id (local)
         default_factory=lambda: f"s_{uuid4().hex[:8]}"
     )
     after: str | List[str] | None = None  # depends-on
