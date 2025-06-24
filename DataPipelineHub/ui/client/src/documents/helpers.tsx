@@ -3,14 +3,14 @@ import { FaFileAlt, FaFileWord, FaFilePdf, FaFileExcel, FaFilePowerpoint } from 
 export const getFileIcon = (type: string) => {
     switch (type) {
       case 'pdf':
-        return <FaFilePdf className="text-accent" />;
+        return <FaFilePdf />;
       case 'docx':
-        return <FaFileWord className="text-blue-500" />;
+        return <FaFileWord />;
       case 'xlsx':
-        return <FaFileExcel className="text-green-500" />;
+        return <FaFileExcel />;
       case 'pptx':
-        return <FaFilePowerpoint className="text-orange-500" />;
+        return <FaFilePowerpoint />;
       default:
-        return <FaFileAlt className="text-gray-400" />;
+        return <FaFileAlt />;
     }
   };
