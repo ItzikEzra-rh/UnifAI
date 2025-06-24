@@ -18,7 +18,7 @@ mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-5
 
 def get_available_doc_list():
     pipeline_repo = MongoDBPipelineRepository(mongo_client)
-    available_docs_query = {"source_type": "DOCUMENT", "status": {"$ne": "FAILED"} }
+    available_docs_query = {"source_type": "DOCUMENT", "status": {"$ne": "FAILED"}, "deleted": {"$ne": True}}
     docs = pipeline_repo.get_pipeline_by_query(available_docs_query)
     data_source_repo = MongoDBPipelineRepository(mongo_client, database_name="data_sources")
     for doc in docs:
@@ -115,7 +115,7 @@ def embed_docs_flow(doc_list, upload_by):
             doc_type_data = {
                 "page_count": result.get("metadata", {}).get("page_count", 0),
                 "full_text": result.get("text", ""),
-                "file_size": result.get("size", "0 MB"),
+                "file_size": result.get("metadata", {}).get("file_size", 0),
             }
 
             manager.persist(
@@ -176,3 +176,16 @@ def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "pub
     )
 
     return search_results
+
+def delete_doc_pipeline(pipeline_id: str):
+    """
+    Delete a document pipeline by its ID.
+    
+    Args:
+        pipeline_id: The ID of the pipeline to delete.
+        
+    Returns:
+        True if deletion was successful, False otherwise.
+    """
+    pipeline_repo = MongoDBPipelineRepository(mongo_client)
+    return pipeline_repo.delete_pipeline(pipeline_id)

@@ -1,22 +1,41 @@
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { FaEye, FaTrash } from "react-icons/fa";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Document } from "@/types";
 import { getFileIcon } from "./helpers";
-
+import axiosInstance from '@/http/axiosConfig';
 
 interface DocumentCardProps {
   doc: Document;
   activeDoc: Document | null;
   setActiveDoc: any;
+  fetchDocuments: () => Promise<void>;
 }
 
-export const DocumentCard = ({ doc, activeDoc, setActiveDoc }: DocumentCardProps) => {
+export const DocumentCard = ({ doc, activeDoc, setActiveDoc, fetchDocuments }: DocumentCardProps) => {
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+
   const onEyeClick = () => {
     const newDoc = doc === activeDoc ? null : doc;
     setActiveDoc(newDoc);
-  }
+  };
+
+  const onDeleteConfirmed = async () => {
+    try {
+      setLoading(true);
+      await axiosInstance.post("/api/docs/delete", { pipelineId: doc.pipeline_id });
+      // need to refetch documents after deletion
+      setShowConfirmModal(false);
+    } catch (error) {
+      console.error("Error deleting document:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fileByColors: Record<string, string> = {
     pdf: "bg-red-500 dark:bg-red-600",
@@ -34,44 +53,63 @@ export const DocumentCard = ({ doc, activeDoc, setActiveDoc }: DocumentCardProps
     error: "bg-red-500 text-white",
   };
 
-
   return (
-    <motion.div
-      whileHover={{ y: -5, transition: { duration: 0.2 } }}
-      className="bg-background-dark p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-primary transition-colors"
-    >
+    <>
+      <motion.div
+        whileHover={{ y: -5, transition: { duration: 0.2 } }}
+        className="bg-background-dark p-4 rounded-lg border border-gray-800 cursor-pointer hover:border-primary transition-colors"
+      >
+        <div className="flex items-start">
+          <div className={`mr-3 p-2 rounded-md ${fileByColors[doc.file_type]}`}>
+            {getFileIcon(doc.file_type)}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-medium text-sm truncate">{doc.name}</h4>
+            <p className="text-xs text-gray-400 mt-1">{`${doc.page_count} pages | ${doc.file_type} | ${doc.file_size}`}</p>
+          </div>
+        </div>
 
-      <div className="flex items-start">
-        <div className={`mr-3 p-2 rounded-md ${fileByColors[doc.file_type]}`}>
-          {getFileIcon(doc.file_type)}
+        <div className="mt-3 flex items-center justify-between">
+          <span className="text-xs text-gray-400">Uploaded {doc.created_at}</span>
+          <Badge className={`text-xs ${statusByColors[doc.status]}`}>
+            {doc.status}
+          </Badge>
         </div>
-        <div className="flex-1 min-w-0">
-          <h4 className="font-medium text-sm truncate">{doc.name}</h4>
-          <p className="text-xs text-gray-400 mt-1">{`${doc.file_type} | ${doc.page_count} pages`}</p>
-        </div>
-      </div>
-      <div className="mt-3 flex items-center justify-between">
-        <span className="text-xs text-gray-400">Uploaded {doc.created_at}</span>
-        <Badge className={`text-xs ${statusByColors[doc.status]}`}>
-          {doc.status}
-        </Badge>
 
-      </div>
-      <div className="mt-3 flex justify-between text-xs">
-        <span className="text-gray-400">{`${doc.chunks} chunks`}</span>
-        <div className="flex items-center space-x-2">
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => {
-            e.stopPropagation();
-            onEyeClick();
-          }}>
-            <FaEye />
-          </Button>
-          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-            <FaTrash className="h-3 w-3" />
-          </Button>
+        <div className="mt-3 flex justify-between text-xs">
+          <span className="text-gray-400">{`${doc.chunks} chunks`}</span>
+          <div className="flex items-center space-x-2">
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => {
+              e.stopPropagation();
+              onEyeClick();
+            }}>
+              <FaEye />
+            </Button>
+            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => {
+              e.stopPropagation();
+              setShowConfirmModal(true);
+            }}>
+              <FaTrash className="h-3 w-3" />
+            </Button>
+          </div>
         </div>
-      </div>
-    </motion.div>
-  )
-}
-  ;
+      </motion.div>
+
+      {/* Delete Confirmation Modal */}
+      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Document</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm">Are you sure you want to delete <strong>{doc.name}</strong>?</p>
+          <DialogFooter className="mt-4">
+            <Button variant="ghost" onClick={() => setShowConfirmModal(false)}>Cancel</Button>
+            <Button variant="destructive" onClick={onDeleteConfirmed} disabled={loading}>
+              {loading ? "Deleting..." : "Yes, Delete"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+};

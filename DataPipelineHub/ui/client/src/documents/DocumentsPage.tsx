@@ -172,6 +172,7 @@ export default function Documents() {
                               doc={file}
                               activeDoc={activeDoc}
                               setActiveDoc={setActiveDoc}
+                              fetchDocuments={fetchDocuments}
                             />
                           ))}
                         </>

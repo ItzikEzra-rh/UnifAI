@@ -71,11 +71,11 @@ class DocumentConnector(DataConnector):
         if file_extension.lower() not in supported_extensions:
             logger.error(f"Unsupported file extension: {file_extension}. Supported types: {supported_extensions}")
             return None
-            
+
         # Check file size
         file_size_mb = os.path.getsize(document_path) / (1024 * 1024)
         max_size_mb = self._config_manager.get_config_value("max_file_size_mb")
-        
+
         if file_size_mb > max_size_mb:
             logger.error(f"File size ({file_size_mb:.2f} MB) exceeds maximum allowed size ({max_size_mb} MB)")
             return None
@@ -101,7 +101,7 @@ class DocumentConnector(DataConnector):
             
             # Add metadata if requested
             if self._config_manager.get_config_value("include_metadata"):
-                document_data["metadata"] = self._extract_metadata(result, upload_by)
+                document_data["metadata"] = self._extract_metadata(result, upload_by, file_size_mb)
                 
             logger.info(f"Document processed successfully: {document_path}")
             return document_data
@@ -170,7 +170,7 @@ class DocumentConnector(DataConnector):
             logger.error(f"Error processing document from URL {document_url}: {str(e)}")
             return None
     
-    def _extract_metadata(self, conversion_result: ConversionResult, upload_by="default") -> Dict[str, Any]:
+    def _extract_metadata(self, conversion_result: ConversionResult, upload_by="default", file_size=0) -> Dict[str, Any]:
         """
         Extract metadata from a conversion result.
         
@@ -194,6 +194,9 @@ class DocumentConnector(DataConnector):
 
             # Extract uploader
             metadata["upload_by"] = upload_by
+            
+            # Extract file size
+            metadata["file_size"] = f"{file_size:.2f} MB" if file_size > 0 else "Unknown size"
                 
             # Extract structural information
             metadata["page_count"] = len(doc.pages) if hasattr(doc, "pages") else 1

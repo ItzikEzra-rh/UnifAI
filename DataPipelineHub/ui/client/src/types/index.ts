@@ -48,6 +48,7 @@ export interface ProjectStats {
 }
 
 export interface Document {
+  pipeline_id: string;
   name: string;
   status: string
   created_at: string;
@@ -55,4 +56,15 @@ export interface Document {
   chunks: number;
   page_count: number;
   full_text: string;
+  file_size: string;
+  last_updated: string;
+  stats: {
+    total_tokens?: number;
+    avg_chunk_size?: number;
+    images_extracted?: number;
+    tables_extracted?: number;
+    embeddings_created?: number;
+    api_calls?: number;
+    processing_time?: number;
+  };
 }
