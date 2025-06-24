@@ -121,6 +121,7 @@ def embed_docs_flow(doc_list, upload_by):
             manager.persist(
                 source_id=doc_id,
                 source_name=doc_name,
+                upload_by=upload_by,
                 source_type="DOCUMENT",
                 enriched_chunks=enriched_chunks,
                 summary=common_summary,

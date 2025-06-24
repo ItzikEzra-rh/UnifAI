@@ -13,6 +13,7 @@ class StorageManager:
         source_name: str,
         source_type: str,
         enriched_chunks: List[Dict[str, Any]],
+        upload_by: str,
         summary: Dict[str, Any],
         type_data: Dict[str, Any]
     ):
@@ -23,6 +24,7 @@ class StorageManager:
         self.mstore.upsert_source_summary(
             source_id=source_id,
             source_name=source_name,
+            upload_by=upload_by,
             source_type=source_type,
             summary=summary,
             type_data=type_data

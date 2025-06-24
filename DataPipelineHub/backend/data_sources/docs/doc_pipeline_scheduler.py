@@ -45,7 +45,7 @@ class DocDataPipeline:
         
         # Register pipeline with monitor
         self.logger.info(f"Registering document pipeline: {pipeline_id}")
-        self.monitor.register_pipeline(pipeline_id, SourceType.DOCUMENT)
+        self.monitor.register_pipeline(pipeline_id, SourceType.DOCUMENT, doc_name)
         
         try:
             # Update status to active

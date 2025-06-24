@@ -45,7 +45,7 @@ class PipelineMonitor(PipelineMonitorBase):
         self.logger.addHandler(handler)
         self.logger.setLevel(logging.INFO)
     
-    def register_pipeline(self, pipeline_id: str, source_type: SourceType) -> None:
+    def register_pipeline(self, pipeline_id: str, source_type: SourceType, source_name: str = "") -> None:
         """
         Register a new pipeline in the monitoring system.
         
@@ -55,6 +55,7 @@ class PipelineMonitor(PipelineMonitorBase):
         """
         pipeline_data = {
             "pipeline_id": pipeline_id,
+            "name": source_name,
             "source_type": source_type.value,
             "status": PipelineStatus.PENDING.value,
             "created_at": datetime.now(),
