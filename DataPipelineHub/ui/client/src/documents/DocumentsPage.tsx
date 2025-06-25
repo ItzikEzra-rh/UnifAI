@@ -62,6 +62,10 @@ export default function Documents() {
     resetPage();
   }, []);
 
+  useEffect(() => {
+    fetchDocuments();
+  }, [showUploadModal, activeDoc])
+
   const totalPages = Math.ceil(documents.length / itemsPerPage);
   const paginatedDocuments = documents.slice(
     (currentPage - 1) * itemsPerPage,
@@ -152,7 +156,7 @@ export default function Documents() {
 
         <div className="flex-1 overflow-auto px-6 pb-6">
           {showUploadModal ? (
-            <UploadTab setShowUploadModal={setShowUploadModal} />
+            <UploadTab setShowUploadModal={setShowUploadModal} fetchDocuments={fetchDocuments} />
           ) : (
             <>
               {isLoading ? (

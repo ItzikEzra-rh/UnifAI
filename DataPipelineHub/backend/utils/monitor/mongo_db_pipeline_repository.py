@@ -237,3 +237,17 @@ class MongoDBPipelineRepository:
             query,
             {"_id": 0}
         ).sort("created_at", -1))
+        
+    def delete_pipeline(self, pipeline_id: str) -> List[Dict]:
+        """
+        Set pipeline as deleted.
+        
+        Args:
+            type: The datasource type
+            limit: Maximum number of pipelines entries to return
+            
+        Returns:
+            List of pipelines dictionaries
+        """
+        result = self.pipelines.update_one({pipeline_id: pipeline_id}, {"$set": {"deleted": True}})
+        return result.modified_count > 0

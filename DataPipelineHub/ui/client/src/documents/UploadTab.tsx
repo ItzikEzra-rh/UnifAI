@@ -10,10 +10,11 @@ import { Separator } from "@/components/ui/separator";
 
 interface UploadTabProps {
     setShowUploadModal: (showUploadModal: boolean) => void;
+    fetchDocuments: any;
 }
 
 export const UploadTab: React.FC<UploadTabProps> = ({
-    setShowUploadModal,
+    setShowUploadModal, fetchDocuments
 }) => {
     const [isDragging, setIsDragging] = useState(false);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -95,6 +96,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         }));
 
         await submitToAPI(docs);
+        await fetchDocuments();
         setSelectedFiles([]);
     };
 

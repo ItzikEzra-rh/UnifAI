@@ -34,6 +34,7 @@ export const DocumentCard = ({ doc, activeDoc, setActiveDoc, fetchDocuments }: D
       console.error("Error deleting document:", error);
     } finally {
       setLoading(false);
+      setActiveDoc(null);
     }
   };
 
