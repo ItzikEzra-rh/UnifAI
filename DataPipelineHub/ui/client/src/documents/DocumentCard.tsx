@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { FaEye, FaTrash } from "react-icons/fa";
+import { FaEye, FaTrash, FaSync } from "react-icons/fa";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -18,6 +18,7 @@ interface DocumentCardProps {
 export const DocumentCard = ({ doc, activeDoc, setActiveDoc, fetchDocuments }: DocumentCardProps) => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [retrying, setRetrying] = useState(false);
 
   const onEyeClick = () => {
     const newDoc = doc === activeDoc ? null : doc;
@@ -28,13 +29,24 @@ export const DocumentCard = ({ doc, activeDoc, setActiveDoc, fetchDocuments }: D
     try {
       setLoading(true);
       await axiosInstance.post("/api/docs/delete", { pipelineId: doc.pipeline_id });
-      // need to refetch documents after deletion
       setShowConfirmModal(false);
+      await fetchDocuments(); // Refresh document list after deletion
     } catch (error) {
       console.error("Error deleting document:", error);
     } finally {
       setLoading(false);
       setActiveDoc(null);
+    }
+  };
+
+  const handleRetry = async () => {
+    try {
+      setRetrying(true);
+      await axiosInstance.post("/api/docs/embed.docs", {docs: [{"doc_path": doc.path, "doc_name": doc.name}]});
+    } catch (error) {
+      console.error("Error retrying embedding:", error);
+    } finally {
+      setRetrying(false);
     }
   };
 
@@ -52,6 +64,17 @@ export const DocumentCard = ({ doc, activeDoc, setActiveDoc, fetchDocuments }: D
     paused: "bg-orange-500 text-white",
     DONE: "bg-green-500 text-white",
     error: "bg-red-500 text-white",
+    FAILED: "bg-red-500 text-white",
+  };
+
+  const statusByLabel: Record<string, string> = {
+    DONE: "DONE",
+    FAILED: "FAILED",
+    ACTIVE: "IN PROGRESS",
+    processing: "Processing",
+    waiting: "Waiting",
+    paused: "Paused",
+    error: "Error",
   };
 
   return (
@@ -72,9 +95,27 @@ export const DocumentCard = ({ doc, activeDoc, setActiveDoc, fetchDocuments }: D
 
         <div className="mt-3 flex items-center justify-between">
           <span className="text-xs text-gray-400">Uploaded {doc.created_at}</span>
-          <Badge className={`text-xs ${statusByColors[doc.status]}`}>
-            {doc.status}
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Badge className={`text-xs ${statusByColors[doc.status]}`}>
+              {statusByLabel[doc.status] || "Unknown"}
+            </Badge>
+
+            {doc.status === "FAILED" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-5 w-5 p-0"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRetry();
+                }}
+                disabled={retrying}
+              >
+                <FaSync className={`animate-spin ${retrying ? "" : "hidden"}`} />
+                {!retrying && <FaSync />}
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="mt-3 flex justify-between text-xs">

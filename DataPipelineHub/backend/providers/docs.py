@@ -18,7 +18,7 @@ mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-5
 
 def get_available_doc_list():
     pipeline_repo = MongoDBPipelineRepository(mongo_client)
-    available_docs_query = {"source_type": "DOCUMENT", "status": {"$ne": "FAILED"}, "deleted": {"$ne": True}}
+    available_docs_query = {"source_type": "DOCUMENT", "deleted": {"$ne": True}}
     docs = pipeline_repo.get_pipeline_by_query(available_docs_query)
     data_source_repo = MongoDBPipelineRepository(mongo_client, database_name="data_sources")
     for doc in docs:
@@ -84,8 +84,8 @@ def embed_docs_flow(doc_list, upload_by):
             doc_name = doc["doc_name"]
             doc_id = str(uuid.uuid4())
             start = time.time()
-            # Process the slack channel using our pipeline
-            doc_pipeline.process_doc(doc_id, doc_name)
+            # Process the document using our pipeline
+            doc_pipeline.process_doc(doc_id, doc_name, doc_path)
 
             # Start log monitoring - this will uses the event-driven handler system
             doc_pipeline.monitor.start_log_monitoring(target_logger=logger, pipeline_id=f"doc_{doc_id}")

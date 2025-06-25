@@ -57,6 +57,7 @@ export default function Documents() {
   const { data: documents = [], isLoading, isError, error } = useQuery<Document[]>({
     queryKey: ['documents'],
     queryFn: fetchDocuments,
+    refetchInterval: 10000,
   });
 
   const { currentPage, setPage, resetPage, itemsPerPage, } = usePaginationStore();

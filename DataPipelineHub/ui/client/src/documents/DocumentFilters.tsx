@@ -41,11 +41,6 @@ export function DocumentFilters({
         value={searchQuery}
         onChange={(e) => setSearchQuery(e.target.value)}
       />
-
-      <Button variant="outline" onClick={onSearch}>
-        <FaSearch className="mr-2" />
-        Search
-      </Button>
     </div>
   );
 }

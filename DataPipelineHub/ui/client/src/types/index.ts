@@ -50,6 +50,7 @@ export interface ProjectStats {
 export interface Document {
   pipeline_id: string;
   name: string;
+  path: string;
   status: string
   created_at: string;
   file_type: string;
