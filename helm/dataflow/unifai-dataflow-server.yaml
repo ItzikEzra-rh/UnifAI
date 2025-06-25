@@ -6,7 +6,7 @@ env:
   qdrant_ip: "http://qdrant"
   qdrant_port: "6333"
   BACKEND_ENV: "production"
-  ROLE: "debug"
+  ROLE: "flask"
 debug: false
 
 serviceAccount:
