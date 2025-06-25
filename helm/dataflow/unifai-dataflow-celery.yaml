@@ -11,6 +11,9 @@ env:
   CELERY_WORKER: 1
 debug: false
 
+serviceAccount:
+  create: false
+
 # replicaCount: 1
 image:
    repository: images.paas.redhat.com/genie/unifai/unifai-dataflow

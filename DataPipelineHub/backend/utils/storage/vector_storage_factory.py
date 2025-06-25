@@ -1,4 +1,3 @@
-import os
 from .vector_storage import VectorStorage
 from .qdrant_storage import QdrantStorage
 from typing import Dict, Any
