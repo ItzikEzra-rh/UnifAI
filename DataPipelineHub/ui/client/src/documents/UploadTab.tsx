@@ -7,6 +7,7 @@ import { Switch } from "@/components/ui/switch";
 import { FaFileAlt, FaUpload, FaTimes } from "react-icons/fa";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
+import axiosInstance from "@/http/axiosConfig";
 
 interface UploadTabProps {
     setShowUploadModal: (showUploadModal: boolean) => void;
@@ -66,18 +67,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
 
     const submitToAPI = async (docs: { doc_name: string; doc_path: string }[]) => {
         try {
-            const res = await fetch("http://10.46.254.113:13456/api/docs/embed.docs", {
-                method: "PUT",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({ docs })
-            });
-
-            if (!res.ok) {
-                throw new Error(await res.text()); // extract error
-            }
-
+            await axiosInstance.put("/api/docs/embed.docs", { docs });
             console.log("API submission successful!");
         } catch (error) {
             console.error(error);

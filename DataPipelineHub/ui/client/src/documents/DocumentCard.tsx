@@ -42,7 +42,8 @@ export const DocumentCard = ({ doc, activeDoc, setActiveDoc, fetchDocuments }: D
   const handleRetry = async () => {
     try {
       setRetrying(true);
-      await axiosInstance.post("/api/docs/embed.docs", {docs: [{"doc_path": doc.path, "doc_name": doc.name}]});
+      const docs = [{"doc_path": doc.path, "doc_name": doc.name, "doc_id": doc.pipeline_id}];
+      await axiosInstance.put("/api/docs/embed.docs", {docs: docs});
     } catch (error) {
       console.error("Error retrying embedding:", error);
     } finally {
