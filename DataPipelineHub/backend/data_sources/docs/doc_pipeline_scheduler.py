@@ -28,7 +28,41 @@ class DocDataPipeline:
         self.logger = logger if logger else logging.getLogger("doc_data_pipeline")
         self.logger.info("Initialized DocDataPipeline")
 
-    def process_doc(self, doc_id: str, doc_name: str) -> bool:
+    def insert_doc(self, doc_id: str, doc_name: str, doc_path: str) -> bool:
+        """
+        Insert a document to mongo.
+        
+        This method registers the document pipeline and updates its status to in queue.
+        
+        Args:
+            doc_id: The ID of the document to process
+            doc_name: The name/title of the document
+            
+        Returns:
+            Boolean indicating success or failure
+        """
+        pipeline_id = f"doc_{doc_id}"
+        
+        # Register pipeline with monitor
+        self.logger.info(f"Inserting document pipeline: {pipeline_id}")
+        self.monitor.register_pipeline(pipeline_id, SourceType.DOCUMENT, doc_name, doc_path)
+        
+        try:
+            # Update status to active
+            self.logger.info(f"Setting document pipeline {pipeline_id} to ACTIVE")
+            self.monitor.update_pipeline_status(pipeline_id, PipelineStatus.PENDING)
+            
+            # Log document processing start
+            self.logger.info(f"Moving to register document: {doc_name} (ID: {doc_id})")
+            return True
+        except Exception as e:
+            # Log error and update pipeline status
+            error_message = f"Error inserting document {doc_name}: {str(e)}"
+            self.logger.error(error_message)
+            self.monitor.record_error(pipeline_id, error_message)
+            return False
+        
+    def process_doc(self, doc_id: str) -> bool:
         """
         Process a document.
         
@@ -45,7 +79,6 @@ class DocDataPipeline:
         
         # Register pipeline with monitor
         self.logger.info(f"Registering document pipeline: {pipeline_id}")
-        self.monitor.register_pipeline(pipeline_id, SourceType.DOCUMENT, doc_name)
         
         try:
             # Update status to active
@@ -53,11 +86,11 @@ class DocDataPipeline:
             self.monitor.update_pipeline_status(pipeline_id, PipelineStatus.ACTIVE)
             
             # Log document processing start
-            self.logger.info(f"Starting to process document: {doc_name} (ID: {doc_id})")
+            self.logger.info(f"Starting to process document with ID: {doc_id})")
             return True
         except Exception as e:
             # Log error and update pipeline status
-            error_message = f"Error processing document {doc_name}: {str(e)}"
+            error_message = f"Error processing document {doc_id}: {str(e)}"
             self.logger.error(error_message)
             self.monitor.record_error(pipeline_id, error_message)
             return False

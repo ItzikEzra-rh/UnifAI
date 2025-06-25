@@ -34,6 +34,19 @@ def get_available_doc_list():
     return docs
 
 def embed_docs_flow(doc_list, upload_by):
+    # Create MongoDB client
+    mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
+    # Create data pipeline with existing logger
+    doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
+    for doc in doc_list:
+        doc_path = doc["doc_path"]
+        doc_name = doc["doc_name"]
+        doc_id = str(uuid.uuid4())
+        start = time.time()
+        # Process the document using our pipeline
+        doc["doc_id"] = doc_id
+        doc_pipeline.insert_doc(doc_id, doc_name, doc_path)
+        
     config = DocConfigManager()
     config.set_config_value("chunk_size", 800)
     config.set_config_value("chunk_overlap", 100)
@@ -68,30 +81,19 @@ def embed_docs_flow(doc_list, upload_by):
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()
 
-    # Create MongoDB client
-    mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
-    # Create data pipeline with existing logger
-    doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
-    
-    for doc in doc_list:
-        doc_path = doc["doc_path"]
-        doc_name = doc["doc_name"]
-        doc_id = str(uuid.uuid4())
-        start = time.time()
-        # Process the document using our pipeline
-        doc["doc_id"] = doc_id
-        doc_pipeline.insert_doc(doc_id, doc_name, doc_path)
-
     qstore = VectorStorageFactory.create(storage_config)
     qstore.initialize()
     manager = StorageManager(qstore, mongo_uri="mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017")
     response = []
-    
+
+
     for doc in doc_list:
         try:
             doc_id = doc["doc_id"]
+            doc_path = doc["doc_path"]
+            doc_name = doc["doc_name"]
             doc_pipeline.process_doc(doc_id)
-
+ 
             # Start log monitoring - this will uses the event-driven handler system
             doc_pipeline.monitor.start_log_monitoring(target_logger=logger, pipeline_id=f"doc_{doc_id}")
 
