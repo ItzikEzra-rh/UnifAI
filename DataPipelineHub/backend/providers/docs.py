@@ -20,7 +20,7 @@ def get_available_doc_list():
     pipeline_repo = MongoDBPipelineRepository(mongo_client)
     available_docs_query = {"source_type": "DOCUMENT", "deleted": {"$ne": True}}
     docs = pipeline_repo.get_pipeline_by_query(available_docs_query)
-    data_source_repo = MongoDBPipelineRepository(mongo_client, database_name="data_sources")
+    data_source_repo = MongoStorage("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/", db_name="data_sources")
     for doc in docs:
         doc["file_type"] = doc.get("name", "").rsplit(".", 1)[-1].lower()
         pipeline_id = doc["pipeline_id"]
@@ -72,6 +72,15 @@ def embed_docs_flow(doc_list, upload_by):
     mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
     # Create data pipeline with existing logger
     doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
+    
+    for doc in doc_list:
+        doc_path = doc["doc_path"]
+        doc_name = doc["doc_name"]
+        doc_id = str(uuid.uuid4())
+        start = time.time()
+        # Process the document using our pipeline
+        doc["doc_id"] = doc_id
+        doc_pipeline.insert_doc(doc_id, doc_name, doc_path)
 
     qstore = VectorStorageFactory.create(storage_config)
     qstore.initialize()
@@ -80,12 +89,8 @@ def embed_docs_flow(doc_list, upload_by):
     
     for doc in doc_list:
         try:
-            doc_path = doc["doc_path"]
-            doc_name = doc["doc_name"]
-            doc_id = str(uuid.uuid4())
-            start = time.time()
-            # Process the document using our pipeline
-            doc_pipeline.process_doc(doc_id, doc_name, doc_path)
+            doc_id = doc["doc_id"]
+            doc_pipeline.process_doc(doc_id)
 
             # Start log monitoring - this will uses the event-driven handler system
             doc_pipeline.monitor.start_log_monitoring(target_logger=logger, pipeline_id=f"doc_{doc_id}")

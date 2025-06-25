@@ -59,11 +59,9 @@ export const DocumentCard = ({ doc, activeDoc, setActiveDoc, fetchDocuments }: D
   };
 
   const statusByColors: Record<string, string> = {
-    processing: "bg-yellow-500 text-white",
-    waiting: "bg-blue-500 text-white",
-    paused: "bg-orange-500 text-white",
+    PENDING: "bg-grey-500 text-white",
+    ACTIVE: "bg-blue-500 text-white",
     DONE: "bg-green-500 text-white",
-    error: "bg-red-500 text-white",
     FAILED: "bg-red-500 text-white",
   };
 
@@ -71,10 +69,7 @@ export const DocumentCard = ({ doc, activeDoc, setActiveDoc, fetchDocuments }: D
     DONE: "DONE",
     FAILED: "FAILED",
     ACTIVE: "IN PROGRESS",
-    processing: "Processing",
-    waiting: "Waiting",
-    paused: "Paused",
-    error: "Error",
+    PENDING: "IN QUEUE",
   };
 
   return (

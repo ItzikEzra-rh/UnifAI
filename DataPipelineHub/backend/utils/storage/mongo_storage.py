@@ -78,3 +78,20 @@ class MongoStorage:
             query["source_type"] = source_type.upper()
         cursor = self.sources_col.find(query)
         return list(cursor)
+    
+    def get_source_by_query(self, query: object) -> List[Dict]:
+        """
+        Get pipelines for a specific type.
+        
+        Args:
+            type: The datasource type
+            limit: Maximum number of pipelines entries to return
+            
+        Returns:
+            List of pipelines dictionaries
+        """
+        return list(self.sources_col.find(
+            query,
+            {"_id": 0}
+        ))
+        
