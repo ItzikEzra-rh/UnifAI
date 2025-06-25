@@ -1,4 +1,3 @@
-import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { FaSearch, FaTh, FaList } from "react-icons/fa";
@@ -14,6 +13,7 @@ import axiosInstance from "@/http/axiosConfig";
 import { useQuery } from "@tanstack/react-query";
 import { usePaginationStore } from "@/stores/usePaginationStore";
 import { DocumentData } from "./DocumentData";
+import { DocumentFilters } from "./DocumentFilters";
 
 // Placeholder for ListView
 const DocumentTable = ({ documents }: { documents: any[] }) => (
@@ -50,8 +50,11 @@ export default function Documents() {
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [activeDoc, setActiveDoc] = useState(null);
+  const [fileTypeFilter, setFileTypeFilter] = useState("all");
+  const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: documents = [], isLoading, isError, error } = useQuery<any[]>({
+
+  const { data: documents = [], isLoading, isError, error } = useQuery<Document[]>({
     queryKey: ['documents'],
     queryFn: fetchDocuments,
   });
@@ -66,40 +69,25 @@ export default function Documents() {
     fetchDocuments();
   }, [showUploadModal, activeDoc])
 
-  const totalPages = Math.ceil(documents.length / itemsPerPage);
-  const paginatedDocuments = documents.slice(
+  const filteredDocuments = documents.filter((doc) => {
+  const matchesType = fileTypeFilter === "all" || doc.file_type === fileTypeFilter;
+  const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase());
+  return matchesType && matchesSearch;
+  });
+
+  const totalPages = Math.ceil(filteredDocuments.length / itemsPerPage);
+  const paginatedDocuments = filteredDocuments.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-  console.log(documents)
-  const filters = (
-    <div className="flex items-center space-x-2">
-      <Select defaultValue="all">
-        <SelectTrigger className="w-32 bg-background-dark">
-          <SelectValue placeholder="All Types" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">All Types</SelectItem>
-          <SelectItem value="pdf">PDF</SelectItem>
-          <SelectItem value="docx">Word</SelectItem>
-          <SelectItem value="pptx">PowerPoint</SelectItem>
-          <SelectItem value="xlsx">Excel</SelectItem>
-          <SelectItem value="txt">Text</SelectItem>
-        </SelectContent>
-      </Select>
-      <Input placeholder="Search documents..." className="w-64 bg-background-dark" />
-      <Button variant="outline">
-        <FaSearch className="mr-2" />
-        Search
-      </Button>
-    </div>
-  );
+
 
   const footer = (
     <div className="flex items-center justify-between w-full px-4">
       <span className="text-sm text-gray-400">
-        Showing {documents.length < 6 ? documents.length : 6} of {documents.length} documents
+        Showing {paginatedDocuments.length} of {filteredDocuments.length} documents
       </span>
+
       <div className="flex items-center space-x-2">
         <Button
           variant="outline"
@@ -120,6 +108,16 @@ export default function Documents() {
 
       </div>
     </div>
+  );
+
+  const filters = (
+    <DocumentFilters
+      fileTypeFilter={fileTypeFilter}
+      setFileTypeFilter={setFileTypeFilter}
+      searchQuery={searchQuery}
+      setSearchQuery={setSearchQuery}
+      onSearch={() => setPage(1)}
+    />
   );
 
   const viewButtons = (
@@ -172,7 +170,7 @@ export default function Documents() {
                         <>
                           {paginatedDocuments.map((file) => (
                             <DocumentCard
-                              key={file.id}
+                              key={file.pipeline_id}
                               doc={file}
                               activeDoc={activeDoc}
                               setActiveDoc={setActiveDoc}
