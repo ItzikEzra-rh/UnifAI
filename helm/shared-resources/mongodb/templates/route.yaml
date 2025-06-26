@@ -9,7 +9,7 @@ metadata:
 spec:
   host: 
   port:
-    targetPort: 27017
+    targetPort: {{ .Values.service.port }}
   to:
     kind: Service
     name: {{ include "mongodb.fullname" . }}

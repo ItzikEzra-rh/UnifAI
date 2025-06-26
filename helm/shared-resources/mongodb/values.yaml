@@ -2,7 +2,7 @@
 
 ## MongoDB docker image
 image:
-  registry: "docker.io"
+  registry: "images.paas.redhat.com/genie"
   repository: "mongo"
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
@@ -11,7 +11,7 @@ image:
 ## Pull secrets and name override options
 imagePullSecrets: []
 nameOverride: ""
-fullnameOverride: ""
+fullnameOverride: "mongodb"
 
 ## Additional labels for Deployment or StatefulSet
 customLabels: {}
@@ -77,13 +77,13 @@ service:
   labels: {}
 
 ## Resource limits and requests
-resources: 
-  limits:
-    cpu: 1000m
-    memory: 1024Mi
+resources:
   requests:
-    cpu: 1000m
-    memory: 1024Mi
+    memory: "1Gi"     
+    cpu: "1"       
+  limits:
+    memory: "1Gi"     
+    cpu: "1"  
 
 ## Custom startup probe (overwrites default startup probe)
 customStartupProbe: {}
@@ -291,13 +291,13 @@ storage:
   persistentVolumeClaimName:
 
   ## Internal volume name and prefix of a created PVC
-  volumeName: "mongodb-volume"
+  volumeName: "unifai-mongodb-volume"
 
   ## Alternative set requestedSize to define a size for a dynamically created PVC
-  requestedSize:
+  requestedSize: 30G
 
   ## the storage class name
-  className:
+  className: aws-ebs
 
   ## Default access mode (ReadWriteOnce)
   accessModes:
@@ -307,13 +307,17 @@ storage:
   keepPvc: false
 
   ## Additional storage annotations
-  annotations: {}
+  annotations: 
+    kubernetes.io/reclaimPolicy: Delete
+  labels:
+    paas.redhat.com/appcode: TAG-001
 
-  ## Additional storage labels
-  labels: {}
 
 ## Network policies
-networkPolicy: {}
+networkPolicy:
   ## Ingress and Egress policies
-  # ingress: {}
-  # egress: {}
+   ingress: 
+   - ports:
+      - port: 27017
+        protocol: TCP
+   egress: {}

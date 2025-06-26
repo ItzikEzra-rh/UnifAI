@@ -28,8 +28,8 @@ releases:
     chart: ./shared-resources/rabbitmq
     wait: true
     values:
-      - ./values/shared-resource-values.yaml
-      #- valuesKey: rabbitmq
+      - {{- toYaml .Values.rabbitmq | nindent 8 }}
+
   - name: unifai-shared-config
     chart: ./shared-resources/shared-config
     wait: true
