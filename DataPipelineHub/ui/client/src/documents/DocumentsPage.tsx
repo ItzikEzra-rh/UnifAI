@@ -14,30 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import { usePaginationStore } from "@/stores/usePaginationStore";
 import { DocumentData } from "./DocumentData";
 import { DocumentFilters } from "./DocumentFilters";
-
-// Placeholder for ListView
-const DocumentTable = ({ documents }: { documents: any[] }) => (
-  <div className="px-6 py-2 text-sm text-gray-300">
-    <table className="w-full border-collapse">
-      <thead>
-        <tr className="border-b border-gray-700">
-          <th className="text-left py-2">Name</th>
-          <th className="text-left py-2">Type</th>
-          <th className="text-left py-2">Date</th>
-        </tr>
-      </thead>
-      <tbody>
-        {documents.map((doc) => (
-          <tr key={doc.id} className="border-b border-gray-800">
-            <td className="py-2">{doc.title}</td>
-            <td className="py-2">{doc.fileType}</td>
-            <td className="py-2">{new Date(doc.uploaded).toLocaleDateString()}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  </div>
-);
+import { DocumentTable } from "./DocumentsTable";
 
 const fetchDocuments = async () => {
   const response = await axiosInstance.get("/api/docs/available.docs.get");
@@ -53,6 +30,8 @@ export default function Documents() {
   const [fileTypeFilter, setFileTypeFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
+  const [expandedDoc, setExpandedDoc] = useState<Document | null>(null);
+  
 
   const { data: documents = [], isLoading, isError, error } = useQuery<Document[]>({
     queryKey: ['documents'],
@@ -183,7 +162,10 @@ export default function Documents() {
                           ))}
                         </>
                       ) : (
-                        <DocumentTable documents={documents} />
+                        <div className="flex-1 overflow-auto px-6 pb-6 w-full">
+
+                        <DocumentTable documents={documents} fetchDocuments={fetchDocuments} activeDoc={activeDoc} />
+                      </div>
                       )
                     ) : (
                       "No documents available."
