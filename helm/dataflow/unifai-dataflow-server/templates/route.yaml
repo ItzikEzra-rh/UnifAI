@@ -10,6 +10,10 @@ spec:
   host: 
   port:
     targetPort: 13456
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: None
+
   to:
     kind: Service
     name: {{ include "dataflow.fullname" . }}

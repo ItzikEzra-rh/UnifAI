@@ -4,6 +4,7 @@
 env:
   qdrant_ip: "http://qdrant"
   qdrant_port: "6333"
+  backend_env: "production"
   ROLE: "flask"
   SHARED_STORAGE: "/app/shared"
 
