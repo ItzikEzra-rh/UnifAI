@@ -1,7 +1,5 @@
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { FaSearch, FaTh, FaList } from "react-icons/fa";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FaTh, FaList } from "react-icons/fa";
 import { CardContainer } from "@shared/CardContainer";
 import { DocumentCard } from "./DocumentCard";
 import { useState, useEffect } from "react";
@@ -18,7 +16,6 @@ import { DocumentTable } from "./DocumentsTable";
 
 const fetchDocuments = async () => {
   const response = await axiosInstance.get("/api/docs/available.docs.get");
-  console.log(response)
   return response.data.docs;
 };
 
@@ -107,14 +104,14 @@ export default function Documents() {
         <Button
           variant={viewMode === "grid" ? "default" : "outline"}
           size="icon"
-          onClick={() => {setViewMode("grid"); setActiveDoc(null)}}
+          onClick={() => { setViewMode("grid"); setActiveDoc(null) }}
         >
           <FaTh />
         </Button>
         <Button
           variant={viewMode === "list" ? "default" : "outline"}
           size="icon"
-          onClick={() => {setViewMode("list"); setActiveDoc(null)}}
+          onClick={() => { setViewMode("list"); setActiveDoc(null) }}
         >
           <FaList />
         </Button>
@@ -136,63 +133,63 @@ export default function Documents() {
           {showUploadModal ? (
             <UploadTab setShowUploadModal={setShowUploadModal} fetchDocuments={fetchDocuments} />
           ) : (
-<div className="mt-6">
-  {isLoading ? (
-    <div className="flex items-center justify-center h-40">
-      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-400"></div>
-    </div>
-  ) : isError ? (
-    <p className="text-sm text-red-500">Error: {(error as Error).message}</p>
-  ) : (
-    <>
-      {/* Top controls: filters only in grid view, viewButtons always */}
-      <div className="flex items-center justify-between mb-4">
-        {viewMode === "grid" ? (
-          <div className="flex-1">{filters}</div>
-        ) : (
-          <div className="flex-1" />
-        )}
-        {viewButtons}
-      </div>
+            <div className="mt-6">
+              {isLoading ? (
+                <div className="flex items-center justify-center h-40">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-400"></div>
+                </div>
+              ) : isError ? (
+                <p className="text-sm text-red-500">Error: {(error as Error).message}</p>
+              ) : (
+                <>
+                  {/* Top controls: filters only in grid view, viewButtons always */}
+                  <div className="flex items-center justify-between mb-4">
+                    {viewMode === "grid" ? (
+                      <div className="flex-1">{filters}</div>
+                    ) : (
+                      <div className="flex-1" />
+                    )}
+                    {viewButtons}
+                  </div>
 
-      {/* Documents listing */}
-      {documents.length ? (
-        viewMode === "grid" ? (
-          <CardContainer title="" footer={footer}>
-            {paginatedDocuments.map((file) => (
-              <DocumentCard
-                key={file.pipeline_id}
-                doc={file}
-                activeDoc={activeDoc}
-                setActiveDoc={setActiveDoc}
-                fetchDocuments={fetchDocuments}
-              />
-            ))}
-          </CardContainer>
-        ) : (
-          <>
-            <div className="w-full">
-              <DocumentTable
-                documents={documents}
-                fetchDocuments={fetchDocuments}
-                activeDoc={activeDoc}
-              />
-              {/* No footer here in list view */}
+                  {/* Documents listing */}
+                  {documents.length ? (
+                    viewMode === "grid" ? (
+                      <CardContainer title="" footer={footer}>
+                        {paginatedDocuments.map((file) => (
+                          <DocumentCard
+                            key={file.pipeline_id}
+                            doc={file}
+                            activeDoc={activeDoc}
+                            setActiveDoc={setActiveDoc}
+                            fetchDocuments={fetchDocuments}
+                          />
+                        ))}
+                      </CardContainer>
+                    ) : (
+                      <>
+                        <div className="w-full">
+                          <DocumentTable
+                            documents={documents}
+                            fetchDocuments={fetchDocuments}
+                            activeDoc={activeDoc}
+                          />
+                          {/* No footer here in list view */}
+                        </div>
+                      </>
+                    )
+                  ) : (
+                    <p>No documents available.</p>
+                  )}
+                </>
+              )}
+
+              {activeDoc && (
+                <div className="mt-6">
+                  <DocumentData doc={activeDoc} />
+                </div>
+              )}
             </div>
-          </>
-        )
-      ) : (
-        <p>No documents available.</p>
-      )}
-    </>
-  )}
-
-  {activeDoc && (
-    <div className="mt-6">
-      <DocumentData doc={activeDoc} />
-    </div>
-  )}
-</div>
 
           )}
         </div>

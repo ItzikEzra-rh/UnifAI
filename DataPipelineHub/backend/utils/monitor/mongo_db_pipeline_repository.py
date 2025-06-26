@@ -40,7 +40,6 @@ class MongoDBPipelineRepository:
         Args:
             pipeline_data: Dictionary containing pipeline information
         """
-        print("!")
         self.pipelines.update_one(
             {"pipeline_id": pipeline_data["pipeline_id"]},
             {"$set": pipeline_data},

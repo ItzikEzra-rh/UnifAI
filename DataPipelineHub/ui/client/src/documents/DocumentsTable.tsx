@@ -86,7 +86,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 if (doc.status === "ACTIVE") return <InlineLoader />;
                 if (doc.status === "PENDING") return "-";
 
-                // Extract numeric part from string, e.g. "12.5 MB" => "12.5"
                 const sizeMatch = doc.file_size?.match(/[\d.]+/);
                 return sizeMatch ? sizeMatch[0] : "-";
             },
