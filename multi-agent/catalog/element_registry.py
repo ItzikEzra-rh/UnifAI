@@ -5,7 +5,6 @@ from global_utils.utils.singleton import SingletonMeta
 import os
 from catalog.element_definition import ElementDefinition
 from core.enums import ResourceCategory
-from global_utils.utils.util import singleton
 
 
 class ElementRegistry(metaclass=SingletonMeta):
@@ -19,20 +18,13 @@ class ElementRegistry(metaclass=SingletonMeta):
     _lock = threading.RLock()
 
     def __init__(self) -> None:
-        # (re-)entrancy guard for SingletonMeta
-        if getattr(self, "_initialised", False):
-            return
-
         self._defs: Dict[ResourceCategory,
                          Dict[str, ElementDefinition]] = {}
-
-        # Auto-discover once on construction
 
     # ------------------------------------------------------------------ #
     #  Registration / Introspection
     # ------------------------------------------------------------------ #
     def register_element(self, edef: ElementDefinition) -> None:
-        print(f"[register] self id: {id(self)}")
         with self._lock:
             cat_map = self._defs.setdefault(edef.category, {})
             if edef.type_key in cat_map:

@@ -206,5 +206,5 @@ if __name__ == "__main__":
     blueprint_id = blueprint_service.save_draft("alice", draft_dict=raw)
 
     bp_spec = blueprint_service.load_resolved(blueprint_id)
-    print(bp_spec.model_dump(mode="json"))
+    print(json.dumps(bp_spec.model_dump(mode="json")))
 

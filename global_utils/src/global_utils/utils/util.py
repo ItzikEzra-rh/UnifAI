@@ -19,6 +19,7 @@ import re
 
 config = SharedConfig()
 
+
 def get_mongo_url():
     ip = config.mongodb_ip
     port = config.mongodb_port
@@ -67,17 +68,6 @@ def get_root_dir() -> Path:
     root_dir = current_file.parents[1]
 
     return root_dir
-
-
-def singleton(cls):
-    instances = {}
-
-    def get_instance(*args, **kwargs):
-        if cls not in instances:
-            instances[cls] = cls(*args, **kwargs)
-        return instances[cls]
-
-    return get_instance
 
 
 def run_async(awaitable: Any) -> Any:
