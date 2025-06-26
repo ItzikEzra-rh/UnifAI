@@ -38,10 +38,11 @@ export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
       <Card className="bg-background-card shadow-card border-gray-800">
         <CardContent className="p-6">
           <h3 className="text-lg font-heading font-semibold mb-4">Document Details</h3>
-          <div className="lg:flex gap-6">
+          <div className="lg:flex gap-6 h-[500px]">
+
             {/* Left side: document content */}
             <div className="flex-1 flex flex-col">
-              <div className="bg-background-dark rounded-lg border border-gray-800 overflow-hidden">
+              <div className="bg-background-dark rounded-lg border border-gray-800 overflow-hidden flex flex-col flex-1">
                 <div className="p-4 bg-background-surface border-b border-gray-800">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
@@ -54,7 +55,10 @@ export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
                     </Button>
                   </div>
                 </div>
-                <div className="p-4 h-80 overflow-y-auto font-mono text-xs whitespace-pre-line">
+                <div
+                  className="p-4 overflow-y-auto font-mono text-xs whitespace-pre-line max-w-[50vw] break-words flex-1"
+                  style={{ wordBreak: "break-word" }}
+                >
                   {doc.full_text ? (
                     <p>{doc.full_text}</p>
                   ) : (
@@ -63,6 +67,7 @@ export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
                 </div>
               </div>
             </div>
+
 
             {/* Right side: metadata and stats */}
             <div className="flex-1 flex flex-col">
