@@ -10,6 +10,7 @@ import ReactFlowGraph from "./graphs/ReactFlowGraph";
 import { GraphNode } from "../../pages/AgenticAI"
 import axios, { AXIOS_AGENTS_IP } from '../../http/axiosAgentConfig'
 import { useStreamingData } from './StreamingDataContext'
+import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 
 // Types for the API response
 interface ChatMessage {
@@ -218,7 +219,7 @@ export default function ExecutionTab({
       existing = {
         node_name: node,
         stream: type === 'complete' ? 'DONE' : 'PROGRESS',
-        text: currentText,
+        text: '',
         tools: [],
       };
       map.set(node, existing);
@@ -231,12 +232,12 @@ export default function ExecutionTab({
         }
         break;
   
-      case 'complete':
-        existing.stream = 'DONE';
-        if (state?.user_prompt && existing.text.trim() === '') {
-          existing.text = state.user_prompt;
-        }
-        break;
+      // case 'complete':
+      //   existing.stream = 'DONE';
+      //   if (state?.user_prompt && existing.text.trim() === '') {
+      //     existing.text = state.user_prompt;
+      //   }
+      //   break;
   
       case 'tool_calling':
         if (call_id && tool) {
@@ -267,6 +268,8 @@ export default function ExecutionTab({
 
   // Reads the stream, decodes it, parses chunks, and updates state cleanly.
   const triggerExecution = async (sessionPayload: SessionPayload) => {
+    let streamReader: EnhancedStreamReader | null = null;
+    
     try {
       setIsLiveRequest(true);
       const payloadWithScope = {
@@ -284,40 +287,37 @@ export default function ExecutionTab({
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       if (!response.body) throw new Error('ReadableStream not supported!');
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-
-      let buffer = '';
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const parsedObjects = parseStreamChunk(buffer);
-
-        if (parsedObjects.length === 0) continue;
-
-        for (const chunkData of parsedObjects) {
-          updateNodeList(chunkData);
-          // console.log(
-          //   JSON.stringify(Array.from(nodeListRef.current.entries()), null, 2)
-          // );
-        }
-
-        // Clear buffer after parsing
-        buffer = '';
-      }
-
+  
+      // Create stream reader with chunk processing callback
+      streamReader = new EnhancedStreamReader((chunkData: any) => {
+        updateNodeList(chunkData);
+        // console.log(JSON.stringify(Array.from(nodeListRef.current.entries()), null, 2));
+      });
+  
+      // Read the entire stream
+      await streamReader.readStream(response);
+  
       console.log('Streaming completed.');
       console.log('Final Node List:', nodeListRef.current);
     } catch (error) {
       console.error('Error communicating with chat API', error);
+      
+      // Cancel stream reading if there was an error
+      if (streamReader) {
+        await streamReader.cancel();
+      }
     } finally {
       setIsLiveRequest(false);
-      const session_response = await axios.get(`/api/sessions/session.state.get?sessionId=${sessionPayload.sessionId}`);
-      return session_response.data.output
+      
+      try {
+        const session_response = await axios.get(
+          `/api/sessions/session.state.get?sessionId=${sessionPayload.sessionId}`
+        );
+        return session_response.data.output;
+      } catch (error) {
+        console.error('Error fetching session state:', error);
+        throw error;
+      }
     }
   };
 
@@ -489,6 +489,7 @@ export default function ExecutionTab({
                   showMiniMap={false}
                   showBackground={true}
                   interactive={true}
+                  isLiveRequest={isLiveRequest}
                 />
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm">

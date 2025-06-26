@@ -119,9 +119,7 @@ export default function AgenticAI() {
                   </CardContent>
                 </Card>
                 
-                <ReactFlowProvider>
-                  <AgentFlowGraph selectedFlow={selectedFlow} setSelectedFlow={setSelectedFlow} />
-                </ReactFlowProvider>
+                <AgentFlowGraph selectedFlow={selectedFlow} setSelectedFlow={setSelectedFlow} />
               </TabsContent>
 
               {/* Execution Tab */}
