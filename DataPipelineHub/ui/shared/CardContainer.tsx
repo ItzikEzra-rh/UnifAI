@@ -2,21 +2,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ReactNode } from "react";
 
 interface CardContainerProps {
-  title: string;
+  title?: string; // optional, since you passed empty string before
   children: ReactNode;
-  filters?: ReactNode;
   footer?: ReactNode;
-  actions?: ReactNode; // <-- Add this
 }
 
-export const CardContainer = ({ title, children, filters, footer, actions }: CardContainerProps) => (
+export const CardContainer = ({ title, children, footer }: CardContainerProps) => (
   <Card className="bg-background-card shadow-card border-gray-800">
     <CardContent className="p-6">
-      <div className="flex items-center justify-between mb-6">
-        {/* Left side: actions (e.g. viewButtons), Right side: filters */}
-        <div>{actions}</div>
-        <div>{filters}</div>
-      </div>
+      {title && (
+        <h2 className="text-xl font-semibold mb-6">
+          {title}
+        </h2>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {children}
@@ -26,4 +24,3 @@ export const CardContainer = ({ title, children, filters, footer, actions }: Car
     </CardContent>
   </Card>
 );
-

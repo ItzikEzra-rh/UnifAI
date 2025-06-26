@@ -31,7 +31,7 @@ export default function Documents() {
   const [searchQuery, setSearchQuery] = useState("");
 
   const [expandedDoc, setExpandedDoc] = useState<Document | null>(null);
-  
+
 
   const { data: documents = [], isLoading, isError, error } = useQuery<Document[]>({
     queryKey: ['documents'],
@@ -50,9 +50,9 @@ export default function Documents() {
   }, [showUploadModal, activeDoc])
 
   const filteredDocuments = documents.filter((doc) => {
-  const matchesType = fileTypeFilter === "all" || doc.file_type === fileTypeFilter;
-  const matchesSearch = doc.name?.toLowerCase().includes(searchQuery.toLowerCase());
-  return matchesType && matchesSearch;
+    const matchesType = fileTypeFilter === "all" || doc.file_type === fileTypeFilter;
+    const matchesSearch = doc.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesType && matchesSearch;
   });
 
   const totalPages = Math.ceil(filteredDocuments.length / itemsPerPage);
@@ -107,14 +107,14 @@ export default function Documents() {
         <Button
           variant={viewMode === "grid" ? "default" : "outline"}
           size="icon"
-          onClick={() => setViewMode("grid")}
+          onClick={() => {setViewMode("grid"); setActiveDoc(null)}}
         >
           <FaTh />
         </Button>
         <Button
           variant={viewMode === "list" ? "default" : "outline"}
           size="icon"
-          onClick={() => setViewMode("list")}
+          onClick={() => {setViewMode("list"); setActiveDoc(null)}}
         >
           <FaList />
         </Button>
@@ -136,50 +136,64 @@ export default function Documents() {
           {showUploadModal ? (
             <UploadTab setShowUploadModal={setShowUploadModal} fetchDocuments={fetchDocuments} />
           ) : (
-            <>
-              {isLoading ? (
-                <div className="flex items-center justify-center h-40">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-400"></div>
-                </div>
+<div className="mt-6">
+  {isLoading ? (
+    <div className="flex items-center justify-center h-40">
+      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-400"></div>
+    </div>
+  ) : isError ? (
+    <p className="text-sm text-red-500">Error: {(error as Error).message}</p>
+  ) : (
+    <>
+      {/* Top controls: filters only in grid view, viewButtons always */}
+      <div className="flex items-center justify-between mb-4">
+        {viewMode === "grid" ? (
+          <div className="flex-1">{filters}</div>
+        ) : (
+          <div className="flex-1" />
+        )}
+        {viewButtons}
+      </div>
 
-              ) : isError ? (
-                <p className="text-sm text-red-500">Error: {(error as Error).message}</p>
-              ) : (
-                <div className="mb-6">
-                  <CardContainer title="" filters={filters} footer={footer} actions={viewButtons}>
+      {/* Documents listing */}
+      {documents.length ? (
+        viewMode === "grid" ? (
+          <CardContainer title="" footer={footer}>
+            {paginatedDocuments.map((file) => (
+              <DocumentCard
+                key={file.pipeline_id}
+                doc={file}
+                activeDoc={activeDoc}
+                setActiveDoc={setActiveDoc}
+                fetchDocuments={fetchDocuments}
+              />
+            ))}
+          </CardContainer>
+        ) : (
+          <>
+            <div className="w-full">
+              <DocumentTable
+                documents={documents}
+                fetchDocuments={fetchDocuments}
+                activeDoc={activeDoc}
+              />
+              {/* No footer here in list view */}
+            </div>
+          </>
+        )
+      ) : (
+        <p>No documents available.</p>
+      )}
+    </>
+  )}
 
-                    {documents.length ? (
-                      viewMode === "grid" ? (
-                        <>
-                          {paginatedDocuments.map((file) => (
-                            <DocumentCard
-                              key={file.pipeline_id}
-                              doc={file}
-                              activeDoc={activeDoc}
-                              setActiveDoc={setActiveDoc}
-                              fetchDocuments={fetchDocuments}
-                            />
-                          ))}
-                        </>
-                      ) : (
-                        <div className="flex-1 overflow-auto px-6 pb-6 w-full">
+  {activeDoc && (
+    <div className="mt-6">
+      <DocumentData doc={activeDoc} />
+    </div>
+  )}
+</div>
 
-                        <DocumentTable documents={documents} fetchDocuments={fetchDocuments} activeDoc={activeDoc} />
-                      </div>
-                      )
-                    ) : (
-                      "No documents available."
-                    )}
-                  </CardContainer>
-                </div>
-              )}
-
-              {activeDoc && (
-                <div className="mt-6">
-                  <DocumentData doc={activeDoc} />
-                </div>
-              )}
-            </>
           )}
         </div>
       </div>
