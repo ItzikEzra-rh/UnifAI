@@ -1,12 +1,28 @@
+import os
+from urllib import request
 from flask import Blueprint, jsonify, session
 from webargs import fields
 from shared.logger import logger
 from global_utils.helpers.apiargs import from_query, from_body
 from global_utils.celery_app.helpers import send_task
-from providers.docs import delete_doc_pipeline, get_available_doc_list, get_best_match_results
+from providers.docs import delete_doc_pipeline, get_available_doc_list, get_best_match_results, upload_docs
 
 docs_bp = Blueprint("docs", __name__)
+UPLOAD_FOLDER = "/home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs"
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+@docs_bp.route("/upload", methods=["POST"])
+@from_body({
+    "files": fields.List(fields.Dict(), required=True)
+})
+def upload_files_locally(files):
+    try:
+        upload_docs(files, UPLOAD_FOLDER)
+        return jsonify({"message": "Files uploaded successfully"}), 200
+    except Exception as e:
+        logger.error(f"Failed to upload files: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
     
 @docs_bp.route("/available.docs.get", methods=["GET"])
 def available_doc_list():
@@ -62,7 +78,21 @@ def remove_pipeline(pipeline_id):
         logger.error(f"Failed to get available docs list: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
-
+@docs_bp.route("/retry.embedding", methods=["PUT"])
+@from_body({
+    "pipeline_id": fields.Str(required=True, data_key="pipelineId")
+})
+def retry(pipeline_id):
+    try:
+        # get data from the mongo, set status of pipeline to RETRIED
+        # and we want to לדרוס the sources data with last_pipeline_id and update it
+        docs = []
+        embed_docs(docs)
+        return jsonify({"docs": docs}), 200
+    except Exception as e:
+        logger.error(f"Failed to get available docs list: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
 
 
 

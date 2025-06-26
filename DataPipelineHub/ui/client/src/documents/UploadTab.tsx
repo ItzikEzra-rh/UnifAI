@@ -49,21 +49,44 @@ export const UploadTab: React.FC<UploadTabProps> = ({
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        handleFiles(e.target.files? e.target.files : new FileList());
+        handleFiles(e.target.files ? e.target.files : new FileList());
     };
 
     const uploadFiles = async (files: File[]) => {
         setIsUploading(true);
         setUploadProgress(0);
+        let uploadedCount = 0;
 
-        for (let i = 0; i < files.length; i++) {
-            setUploadProgress(((i + 1) / files.length) * 100);
-            await new Promise((resolve) => setTimeout(resolve, 500)); // Simulating upload
+        try {
+            for (const file of files) {
+                const base64 = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const result = reader.result as string;
+                        resolve(result.split(",")[1]); // strip data header
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+
+                await axiosInstance.post("/api/docs/upload", {
+                    files: [{ name: file.name, content: base64 }]
+                });
+
+                uploadedCount += 1;
+                setUploadProgress(uploadedCount);
+            }
+
+            setIsUploading(false);
+            setShowUploadModal(false);
+        } catch (err) {
+            console.error("Upload failed", err);
+            setError("Upload failed. Please try again.");
+            setIsUploading(false);
         }
-
-        setIsUploading(false);
-        setShowUploadModal(false)
     };
+
+
 
     const submitToAPI = async (docs: { doc_name: string; doc_path: string }[]) => {
         try {
@@ -108,7 +131,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                     </div>
 
                     <div
-                        className={`h-56 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors ${isDragging ? "border-primary bg-primary bg-opacity-5" : "border-gray-700 hover:border-gray-600"}`}
+                        className={`max-h-[400px] overflow-y-auto border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors ${isDragging ? "border-primary bg-primary bg-opacity-5" : "border-gray-700 hover:border-gray-600"}`}
                         onDragEnter={handleDragEnter}
                         onDragLeave={handleDragLeave}
                         onDragOver={handleDragOver}
@@ -120,53 +143,71 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                         {!isUploading ? (
                             <>
                                 <div className="w-16 h-16 bg-background-surface rounded-full flex items-center justify-center mb-4">
-                                   <FaUpload className="text-accent text-xl" />
+                                    <FaUpload className="text-accent text-xl" />
                                 </div>
                                 <p className="font-semibold mb-1">
-                                   Drag and drop files here
+                                    Drag and drop files here
                                 </p>
                                 <p className="text-sm text-gray-400">
-                                   or click to browse files
+                                    or click to browse files
                                 </p>
                                 <p className="text-xs text-gray-500 mt-4">
-                                   Supported formats: PDF, DOCX, PPTX, XLSX, TXT, MD, CSV
+                                    Supported formats: PDF, DOCX, TXT
                                 </p>
                                 <input
-                                   id="file-upload"
-                                   type="file"
-                                   multiple
-                                   className="hidden"
-                                   onChange={handleFileSelect}
+                                    id="file-upload"
+                                    type="file"
+                                    multiple
+                                    className="hidden"
+                                    onChange={handleFileSelect}
                                 />
                             </>
                         ) : (
                             <div className="w-full px-8">
                                 <div className="flex items-center justify-between mb-2">
-                                   <span className="font-semibold">
-                                      Uploading files...
-                                   </span>
-                                   <Button variant="ghost" size="sm" onClick={() => setIsUploading(false)}>
-                                      <FaTimes className="h-4 w-4" />
-                                   </Button>
+                                    <span className="font-semibold">
+                                        Uploading files...
+                                    </span>
+                                    <Button variant="ghost" size="sm" onClick={() => setIsUploading(false)}>
+                                        <FaTimes className="h-4 w-4" />
+                                    </Button>
                                 </div>
-                                <Progress value={uploadProgress} className="h-2 mb-2" />
+                                <Progress value={(uploadProgress / selectedFiles.length) * 100} className="h-2 mb-2" />
+
                                 <div className="flex justify-between text-xs text-gray-400">
-                                   <span>{Math.round(uploadProgress)}% complete</span>
-                                   <span>{selectedFiles.length} files</span>
+                                    <span className="text-sm text-gray-300">
+                                        {uploadProgress === selectedFiles.length
+                                            ? "Upload complete!"
+                                            : `Uploading ${uploadProgress} of ${selectedFiles.length} files...`}
+                                    </span>
+
                                 </div>
                             </div>
                         )}
 
                         {/* File list after upload */}
                         {selectedFiles.length > 0 && (
-                            <ul className="list-inside list-decimal mt-4">
+                            <ul className="mt-4 space-y-2">
                                 {selectedFiles.map((file, idx) => (
-                                   <li key={idx} className="text-gray-300">
-                                      {file.name}
-                                   </li>
+                                    <li key={idx} className="flex items-center justify-between text-gray-300 bg-background-surface px-3 py-2 rounded">
+                                        <span className="truncate max-w-[80%]">{file.name}</span>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation(); // prevent triggering file input
+                                                setSelectedFiles((prev) =>
+                                                    prev.filter((_, i) => i !== idx)
+                                                );
+                                            }}
+                                            className="text-gray-400 hover:text-red-500 transition-colors"
+                                            title="Remove file"
+                                        >
+                                            <FaTimes className="w-4 h-4" />
+                                        </button>
+                                    </li>
                                 ))}
                             </ul>
                         )}
+
 
 
                         {/* Error message if submission fails */}
@@ -207,10 +248,10 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                         <div className="flex items-center justify-between">
                             <div>
                                 <Label htmlFor="auto-process" className="text-base">
-                                   Auto-Process Files
+                                    Auto-Process Files
                                 </Label>
                                 <p className="text-xs text-gray-400 mt-1">
-                                   Automatically start processing after upload
+                                    Automatically start processing after upload
                                 </p>
                             </div>
                             <Switch id="auto-process" defaultChecked />
@@ -219,10 +260,10 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                         <div className="flex items-center justify-between">
                             <div>
                                 <Label htmlFor="extract-metadata" className="text-base">
-                                   Extract Metadata
+                                    Extract Metadata
                                 </Label>
                                 <p className="text-xs text-gray-400 mt-1">
-                                   Extract file properties as metadata
+                                    Extract file properties as metadata
                                 </p>
                             </div>
                             <Switch id="extract-metadata" defaultChecked />
@@ -231,10 +272,10 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                         <div className="flex items-center justify-between">
                             <div>
                                 <Label htmlFor="ocr-enabled" className="text-base">
-                                   Enable OCR
+                                    Enable OCR
                                 </Label>
                                 <p className="text-xs text-gray-400 mt-1">
-                                   Extract text from images within documents
+                                    Extract text from images within documents
                                 </p>
                             </div>
                             <Switch id="ocr-enabled" />

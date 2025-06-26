@@ -57,7 +57,7 @@ export default function Documents() {
   const { data: documents = [], isLoading, isError, error } = useQuery<Document[]>({
     queryKey: ['documents'],
     queryFn: fetchDocuments,
-    refetchInterval: 10000,
+    refetchInterval: 1000,
   });
 
   const { currentPage, setPage, resetPage, itemsPerPage, } = usePaginationStore();
@@ -72,7 +72,7 @@ export default function Documents() {
 
   const filteredDocuments = documents.filter((doc) => {
   const matchesType = fileTypeFilter === "all" || doc.file_type === fileTypeFilter;
-  const matchesSearch = doc.name.toLowerCase().includes(searchQuery.toLowerCase());
+  const matchesSearch = doc.name?.toLowerCase().includes(searchQuery.toLowerCase());
   return matchesType && matchesSearch;
   });
 
@@ -159,7 +159,10 @@ export default function Documents() {
           ) : (
             <>
               {isLoading ? (
-                <p className="text-sm text-gray-400">Loading documents...</p>
+                <div className="flex items-center justify-center h-40">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-400"></div>
+                </div>
+
               ) : isError ? (
                 <p className="text-sm text-red-500">Error: {(error as Error).message}</p>
               ) : (

@@ -5,8 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Document } from "@/types";
-import { getFileIcon } from "./helpers";
+import { fileByColors, getFileIcon, statusByColors, statusByLabel } from "./helpers";
 import axiosInstance from '@/http/axiosConfig';
+import { InlineLoader } from "@/components/shared/InlineLoader";
 
 interface DocumentCardProps {
   doc: Document;
@@ -42,35 +43,12 @@ export const DocumentCard = ({ doc, activeDoc, setActiveDoc, fetchDocuments }: D
   const handleRetry = async () => {
     try {
       setRetrying(true);
-      const docs = [{"doc_path": doc.path, "doc_name": doc.name, "doc_id": doc.pipeline_id}];
-      await axiosInstance.put("/api/docs/embed.docs", {docs: docs});
+      await axiosInstance.put("/api/docs/retry.embedding", { "pipelineId": doc.pipeline_id });
     } catch (error) {
       console.error("Error retrying embedding:", error);
     } finally {
       setRetrying(false);
     }
-  };
-
-  const fileByColors: Record<string, string> = {
-    pdf: "bg-red-500 dark:bg-red-600",
-    docx: "bg-blue-500 dark:bg-blue-600",
-    pptx: "bg-orange-500 dark:bg-orange-600",
-    xlsx: "bg-green-500 dark:bg-green-600",
-    txt: "bg-gray-500 dark:bg-gray-600",
-  };
-
-  const statusByColors: Record<string, string> = {
-    PENDING: "bg-grey-500 text-white",
-    ACTIVE: "bg-blue-500 text-white",
-    DONE: "bg-green-500 text-white",
-    FAILED: "bg-red-500 text-white",
-  };
-
-  const statusByLabel: Record<string, string> = {
-    DONE: "DONE",
-    FAILED: "FAILED",
-    ACTIVE: "IN PROGRESS",
-    PENDING: "IN QUEUE",
   };
 
   return (
@@ -85,12 +63,16 @@ export const DocumentCard = ({ doc, activeDoc, setActiveDoc, fetchDocuments }: D
           </div>
           <div className="flex-1 min-w-0">
             <h4 className="font-medium text-sm truncate">{doc.name}</h4>
-            <p className="text-xs text-gray-400 mt-1">{`${doc.page_count} pages | ${doc.file_type} | ${doc.file_size}`}</p>
+            <p className="text-xs text-gray-400 mt-1">
+              {doc.status === "ACTIVE" ? (<InlineLoader />) : doc.status === "PENDING" ? ("-") : (`${doc.page_count} pages | ${doc.file_type} | ${doc.file_size}`)}
+            </p>
+
+
           </div>
         </div>
 
         <div className="mt-3 flex items-center justify-between">
-          <span className="text-xs text-gray-400">Uploaded {doc.created_at}</span>
+          <span className="text-xs text-gray-400">Uploaded {new Date(doc.created_at).toLocaleString("en-GB")}</span>
           <div className="flex items-center gap-2">
             <Badge className={`text-xs ${statusByColors[doc.status]}`}>
               {statusByLabel[doc.status] || "Unknown"}
@@ -115,7 +97,9 @@ export const DocumentCard = ({ doc, activeDoc, setActiveDoc, fetchDocuments }: D
         </div>
 
         <div className="mt-3 flex justify-between text-xs">
-          <span className="text-gray-400">{`${doc.chunks} chunks`}</span>
+          <span className="text-gray-400">
+            {doc.status === "ACTIVE" ? (<InlineLoader />) : doc.status === "PENDING" ? ("-") : (`${doc.chunks} chunks`)}
+          </span>
           <div className="flex items-center space-x-2">
             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={(e) => {
               e.stopPropagation();

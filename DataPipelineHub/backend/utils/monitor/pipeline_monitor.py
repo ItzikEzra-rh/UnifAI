@@ -45,7 +45,7 @@ class PipelineMonitor(PipelineMonitorBase):
         self.logger.addHandler(handler)
         self.logger.setLevel(logging.INFO)
     
-    def register_pipeline(self, pipeline_id: str, source_type: SourceType, source_name: str = "", path: str = "") -> None:
+    def register_pipeline(self, pipeline_id: str, source_type: SourceType, source_name: str = "") -> None:
         """
         Register a new pipeline in the monitoring system.
         
@@ -70,8 +70,6 @@ class PipelineMonitor(PipelineMonitorBase):
         
         if source_name:
             pipeline_data["name"] = source_name
-        if path:
-            pipeline_data["path"] = path
         
         self.repository.save_pipeline(pipeline_data)
         self.logger.info(f"Registered new pipeline: {pipeline_id} for source: {source_type.value}")

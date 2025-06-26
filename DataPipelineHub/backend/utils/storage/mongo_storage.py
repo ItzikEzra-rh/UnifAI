@@ -94,4 +94,13 @@ class MongoStorage:
             query,
             {"_id": 0}
         ))
-        
+    
+    def delete_source(self, pipeline_id: object) -> bool:
+        """
+        Remove source by pipeline ID.
+
+        Returns:
+            True if a document was deleted, False otherwise.
+        """
+        result = self.sources_col.delete_one({"last_pipeline_id": pipeline_id})
+        return result.deleted_count > 0

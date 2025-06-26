@@ -1,10 +1,12 @@
+import base64
+import os
 import time
 from utils.storage.mongo_storage import MongoStorage
 from utils.storage.storage_manager import StorageManager
 from utils.monitor.pipeline_monitor import MongoDBPipelineRepository
 import pymongo
 import uuid
-from flask import session
+from flask import session, jsonify
 from data_sources.docs.doc_connector import DocumentConnector
 from data_sources.docs.doc_config_manager import DocConfigManager
 from data_sources.docs.document_processor import DocumentProcessor
@@ -15,19 +17,32 @@ from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
 
 mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
+pipeline_repo = MongoDBPipelineRepository(mongo_client)
+data_source_repo = MongoStorage("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/", db_name="data_sources")
+
+def upload_docs(files, UPLOAD_FOLDER):
+    try:
+        for file in files:
+            filename = file["name"]
+            content = base64.b64decode(file["content"])
+            with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as f:
+                f.write(content)
+    except Exception as e:
+        logger.error(f"Failed to upload files: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 def get_available_doc_list():
-    pipeline_repo = MongoDBPipelineRepository(mongo_client)
     available_docs_query = {"source_type": "DOCUMENT", "deleted": {"$ne": True}}
     docs = pipeline_repo.get_pipeline_by_query(available_docs_query)
-    data_source_repo = MongoStorage("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/", db_name="data_sources")
     for doc in docs:
         doc["file_type"] = doc.get("name", "").rsplit(".", 1)[-1].lower()
         pipeline_id = doc["pipeline_id"]
         doc_data = data_source_repo.get_source_by_query({"last_pipeline_id": pipeline_id})
         if not doc_data:
             continue
+        doc_name = doc_data[0].get("source_name", "")
         doc["chunks"] = doc_data[0].get("chunks_generated", [])
+        doc["path"] = doc_data[0].get("type_data", {}).get("source_path", "")
         doc["file_size"] = doc_data[0].get("type_data", {}).get("file_size", 0)
         doc["page_count"] = doc_data[0].get("type_data", {}).get("page_count", 0)
         doc["full_text"] = doc_data[0].get("type_data", {}).get("full_text", "")
@@ -39,13 +54,12 @@ def embed_docs_flow(doc_list, upload_by):
     # Create data pipeline with existing logger
     doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
     for doc in doc_list:
-        doc_path = doc["doc_path"]
-        doc_name = doc["doc_name"]
-        doc_id = str(uuid.uuid4())
+        doc_name = doc.get("doc_name", "")
+        doc_id = doc["doc_id"] if doc.get("doc_id", "") else str(uuid.uuid4())
         start = time.time()
         # Process the document using our pipeline
         doc["doc_id"] = doc_id
-        doc_pipeline.insert_doc(doc_id, doc_name, doc_path)
+        doc_pipeline.insert_doc(doc_id, doc_name)
         
     config = DocConfigManager()
     config.set_config_value("chunk_size", 800)
@@ -120,6 +134,7 @@ def embed_docs_flow(doc_list, upload_by):
             }
 
             doc_type_data = {
+                "doc_path": doc_path,
                 "page_count": result.get("metadata", {}).get("page_count", 0),
                 "full_text": result.get("text", ""),
                 "file_size": result.get("metadata", {}).get("file_size", 0),
@@ -193,6 +208,8 @@ def delete_doc_pipeline(pipeline_id: str):
         
     Returns:
         True if deletion was successful, False otherwise.
-    """
-    pipeline_repo = MongoDBPipelineRepository(mongo_client)
-    return pipeline_repo.delete_pipeline(pipeline_id)
+    """    
+    source = data_source_repo.delete_source(pipeline_id)
+    pipeline = pipeline_repo.delete_pipeline(pipeline_id)
+    # add here removal from qdrant!!!
+    return source and pipeline
