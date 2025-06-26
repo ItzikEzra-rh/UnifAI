@@ -175,15 +175,36 @@ if __name__ == "__main__":
     blueprint_resolver = BlueprintResolver(resource_registry=resource_registry, element_registry=element_registry)
     blueprint_service = BlueprintService(repo=blueprint_repo, resolver=blueprint_resolver)
 
+    # llm_rid = resources_service.create(user_id="alice", category="llms", type="openai",
+    #                                    name="openai_llm",
+    #                                    config={"name": "openai_llm",
+    #                                            "type": "openai",
+    #                                            "model_name": "gemini-2.0-flash",
+    #                                            "api_key": "AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ",
+    #                                            "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"}).rid
+    # mcp_rid = resources_service.create(user_id="alice", category="providers", type="mcp_server",
+    #                                    name="My mcp server Node",
+    #                                    config={"name": "mcp1",
+    #                                            "type": "mcp_server",
+    #                                            "sse_endpoint": "http://localhost:8004"}).rid
+    # tool_rid = resources_service.create(user_id="alice", category="tools", type="mcp_proxy",
+    #                                     name="My mcp addition tool",
+    #                                     config={"name": "addition_tool",
+    #                                             "type": "mcp_proxy",
+    #                                             "tool_name": "addition",
+    #                                             "provider": f"$ref:{mcp_rid}"}).rid
     # resources_service.create(user_id="alice", category="nodes", type="custom_agent_node", name="My Agent Node",
     #                          config={"name": "My Agent",
     #                                  "type": "custom_agent_node",
-    #                                  "llm": "db25a8fe290c458f9545ad35877c0b9a",
+    #                                  "llm": f"$ref:{llm_rid}",
+    #                                  "tools": [f"$ref:{tool_rid}"],
     #                                  "system_message": "You are a smart assistant …"})
 
-    # blueprint_loader = YAMLBlueprintLoader()
-    # raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
-    # blueprint_service.save_draft("alice", draft_dict=raw)
+    blueprint_loader = YAMLBlueprintLoader()
+    raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
+    # raw = blueprint_loader.load("run/test_new_version.yml")
+    blueprint_id = blueprint_service.save_draft("alice", draft_dict=raw)
 
-    bp_spec = blueprint_service.load_resolved("259e3aa9-81bc-47a8-806e-57174574a05a")
-    print(json.dumps(bp_spec.model_dump(mode="json")))
+    bp_spec = blueprint_service.load_resolved(blueprint_id)
+    print(bp_spec.model_dump(mode="json"))
+

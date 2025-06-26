@@ -11,8 +11,7 @@ nodes:
       name: User Input
       type: user_question_node
 
-  - rid: 4e23484d528d441fba59692b6d514ac8
-    name: agent
+  - rid: $ref:a59e8ed3da48407bbd379ed3d189fbaf
 
   - rid: final_answer
     name: final_answer
@@ -28,7 +27,7 @@ plan:
 
   - uid: agent_node
     after: user_question
-    node: 4e23484d528d441fba59692b6d514ac8
+    node: a59e8ed3da48407bbd379ed3d189fbaf
 
   - uid: final_answer
     after: agent

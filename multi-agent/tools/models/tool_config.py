@@ -4,6 +4,7 @@ from typing import (
 )
 from pydantic import BaseModel, Field, Extra, SkipValidation
 from core.enums import ResourceCategory
+from core.models import Ref
 
 
 # The Protocol your Meta classes share
@@ -84,7 +85,7 @@ class McpProxyToolConfig(BaseToolConfig):
     """
     type: Literal["mcp_proxy"] = "mcp_proxy"
     tool_name: str = Field(..., description="mcp tool name")
-    provider: str = Field(..., description="MCP server provider")
+    provider: Ref = Field(..., description="MCP server provider")
 
     class Meta(BaseToolConfig.Meta):
         display_name: ClassVar[SkipValidation[str]] = "MCP Proxy Tool"

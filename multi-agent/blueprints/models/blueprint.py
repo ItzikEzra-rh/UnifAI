@@ -1,4 +1,4 @@
-from typing import Generic, List, TypeVar, Optional
+from typing import Generic, List, TypeVar, Optional, Union
 from uuid import uuid4
 from pydantic import BaseModel, Field, Extra
 
@@ -11,6 +11,7 @@ from retrievers.models.retriever_config import RetrieversSpec
 from condition.models.base_condition import ConditionSpec
 from tools.models.tool_config import ToolsSpec
 from providers.models.base_provider import ProviderSpec
+from core.models import Ref
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Author-time helper types
@@ -19,8 +20,8 @@ T = TypeVar("T", bound=BaseModel)
 
 
 class Resource(BaseModel, Generic[T]):
-    rid: str
-    name: str
+    rid: Ref
+    name: str | None = None
     config: T | None = None
 
     class Config:
@@ -28,7 +29,7 @@ class Resource(BaseModel, Generic[T]):
 
 
 class ResourceSpec(BaseModel, Generic[T]):
-    rid: str
+    rid: Ref
     name: str
     config: T
 

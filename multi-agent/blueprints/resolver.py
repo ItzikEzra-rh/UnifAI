@@ -1,7 +1,7 @@
 from typing import TypeVar, Dict, Any
 from pydantic import BaseModel
 from core.enums import ResourceCategory
-
+from core.models import Ref
 from .models.blueprint import (
     Resource,
     ResourceSpec,
@@ -30,10 +30,14 @@ class BlueprintResolver:
         # --- walk every catalogue in the draft ---------------------------
         for cat in list(ResourceCategory):
             for res in getattr(draft, cat.value):
-                if res.config is not None:  # ← INLINE
+                raw_rid = res.rid.ref if isinstance(res.rid, Ref) else res.rid
+
+                if res.config is not None:
+                    # inline resource → keep its config in the bucket
                     self._stash_inline(cat, res)
                 else:  # ← LIVE REF
-                    self._walk_live(res.rid, res.name)
+                    # external Ref → fetch from registry
+                    self._walk_live(raw_rid, res.name)
 
         # --- build executable spec ---------------------------------------
         return BlueprintSpec(
@@ -77,12 +81,31 @@ class BlueprintResolver:
         )
         self._scan_nested(obj)
 
-    def _scan_nested(self, obj: BaseModel):
-        """Walk every attribute of the model looking for further rid strings."""
-        for val in obj.__dict__.values():
-            if isinstance(val, str) and self.resource_registry.exists(val):
-                self._walk_live(val, None)
-            elif isinstance(val, list):
-                for item in val:
-                    if isinstance(item, str) and self.resource_registry.exists(item):
-                        self._walk_live(item, None)
+    def _scan_nested(self, node: Any):
+        """
+        Recursively walk any BaseModel, dict, list/tuple or Ref.
+        Whenever we hit an external Ref, call _walk_live.
+        """
+        # 1) If it’s a Ref → chase external ones
+        if isinstance(node, Ref):
+            if node.is_external_ref():
+                self._walk_live(node.ref, None)
+            return
+
+        # 2) If it’s a Pydantic model → recurse into its __dict__
+        if isinstance(node, BaseModel):
+            for val in node.__dict__.values():
+                self._scan_nested(val)
+            return
+
+        # 3) If it’s a dict → recurse into its values
+        if isinstance(node, dict):
+            for v in node.values():
+                self._scan_nested(v)
+            return
+
+        # 4) If it’s a list or tuple → recurse into its items
+        if isinstance(node, (list, tuple)):
+            for v in node:
+                self._scan_nested(v)
+            return

@@ -15,7 +15,7 @@ class MongoResourceRepository(ResourceRepository):
 
     def save(self, doc: ResourceDoc) -> str:
         self.col.replace_one({"_id": doc.rid},
-                             json.loads(doc.model_dump_json()),
+                             doc.model_dump(mode="json"),
                              upsert=True)
         return doc.rid
 

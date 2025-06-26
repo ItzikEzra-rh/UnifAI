@@ -5,9 +5,14 @@
 
 
 llms:
-  - rid: db25a8fe290c458f9545ad35877c0b9a
-    name: openai llm
-
+  - rid: f4f604ecf6a74186bf8d387158724b12
+    name: openai_llm
+    config:
+      name: my openai llm
+      type: openai
+      model_name: gpt-4o
+      api_key: sk-1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
+      base_url: https://api.openai.com/v1
 nodes:
   - rid: user_question
     name: user_question
@@ -20,7 +25,7 @@ nodes:
     config:
       name: My Agent
       type: custom_agent_node
-      llm: db25a8fe290c458f9545ad35877c0b9a
+      llm: f4f604ecf6a74186bf8d387158724b12
       system_message: >
         You are a smart assistant …
 
