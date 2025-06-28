@@ -14,6 +14,6 @@ class AppConfig(SharedConfig):
     engine_name: str = "langgraph"
 
 
-@lru_cache()
+@lru_cache(maxsize=1)
 def get_app_config() -> AppConfig:
     return AppConfig()
