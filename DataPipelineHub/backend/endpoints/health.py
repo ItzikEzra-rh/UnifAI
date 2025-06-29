@@ -1,5 +1,4 @@
 from flask import Blueprint, jsonify
-from webargs import fields
 
 health_bp = Blueprint("health", __name__)
 

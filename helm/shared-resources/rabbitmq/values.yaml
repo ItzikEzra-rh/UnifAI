@@ -12,6 +12,37 @@
 ## @param global.defaultStorageClass Global default StorageClass for Persistent Volume(s)
 ## @param global.storageClass DEPRECATED: use global.defaultStorageClass instead
 ##
+extraSecrets:
+  load-definition:
+    load_definition.json: |
+      {
+        "users": [
+          {
+            "name": "{{ .Values.auth.username }}",
+            "password": "{{ .Values.auth.password }}",
+            "tags": "administrator"
+          }
+        ],
+        "vhosts": [
+          {
+            "name": "/"
+          }
+        ],
+        "permissions": [
+          {
+            "user": "{{ .Values.auth.username }}",
+            "vhost": "/",
+            "configure": ".*",
+            "write": ".*",
+            "read": ".*"
+          }
+        ]
+      }
+loadDefinition:
+  enabled: true
+  file: "/app/load_definition.json"
+  existingSecret: load-definition
+extraConfiguration: ""
 global:
   imageRegistry: ""
   ## E.g.
@@ -25,7 +56,7 @@ global:
   ##
   security:
     ## @param global.security.allowInsecureImages Allows skipping image verification
-    allowInsecureImages: false
+    allowInsecureImages: true
   ## Compatibility adaptations for Kubernetes platforms
   ##
   compatibility:
@@ -47,8 +78,8 @@ global:
 ## @param image.debug Set to true if you would like to see extra information on logs
 ##
 image:
-  registry: docker.io
-  repository: bitnami/rabbitmq
+  registry: images.paas.redhat.com/genie
+  repository: rabbitmq
   tag: 4.0.5-debian-12-r0
   digest: ""
   ## set to true if you would like to see extra information on logs
@@ -58,7 +89,7 @@ image:
   ## Specify a imagePullPolicy
   ## ref: https://kubernetes.io/docs/concepts/containers/images/#pre-pulled-images
   ##
-  pullPolicy: IfNotPresent
+  pullPolicy: Always
   ## Optionally specify an array of imagePullSecrets.
   ## Secrets must be manually created in the namespace.
   ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -75,7 +106,7 @@ image:
 nameOverride: ""
 ## @param fullnameOverride String to fully override rabbitmq.fullname template
 ##
-fullnameOverride: ""
+fullnameOverride: "rabbitmq"
 ## @param namespaceOverride String to fully override common.names.namespace
 ##
 namespaceOverride: ""
@@ -90,7 +121,8 @@ clusterDomain: cluster.local
 extraDeploy: []
 ## @param commonAnnotations Annotations to add to all deployed objects
 ##
-commonAnnotations: {}
+commonAnnotations:
+  kubernetes.io/reclaimPolicy: Delete
 ## @param servicenameOverride String to partially override headless service name
 ##
 servicenameOverride: ""
@@ -152,15 +184,15 @@ auth:
   ## @param auth.username RabbitMQ application username
   ## ref: https://github.com/bitnami/containers/tree/main/bitnami/rabbitmq#environment-variables
   ##
-  username: user
+  username: guest
   ## @param auth.password RabbitMQ application password
   ## ref: https://github.com/bitnami/containers/tree/main/bitnami/rabbitmq#environment-variables
   ##
-  password: ""
+  password: "guest"
   ## @param auth.securePassword Whether to set the RabbitMQ password securely. This is incompatible with loading external RabbitMQ definitions and 'true' when not setting the auth.password parameter.
   ## ref: https://github.com/bitnami/containers/tree/main/bitnami/rabbitmq#environment-variables
   ##
-  securePassword: true
+  securePassword: false
   ## @param auth.updatePassword Update RabbitMQ password on secret change
   ## ref: https://github.com/bitnami/containers/tree/main/bitnami/rabbitmq#environment-variables
   ##
@@ -302,18 +334,18 @@ clustering:
   partitionHandling: autoheal
 ## Loading a RabbitMQ definitions file to configure RabbitMQ
 ##
-loadDefinition:
+#loadDefinition:
   ## @param loadDefinition.enabled Enable loading a RabbitMQ definitions file to configure RabbitMQ
   ##
-  enabled: false
+  #enabled: false
   ## @param loadDefinition.file Name of the definitions file
   ##
-  file: "/app/load_definition.json"
+  #file: "/app/load_definition.json"
   ## @param loadDefinition.existingSecret Existing secret with the load definitions file
   ## Can be templated if needed, e.g:
   ## existingSecret: "{{ .Release.Name }}-load-definition"
   ##
-  existingSecret: ""
+  #existingSecret: ""
 ## @param command Override default container command (useful when using custom images)
 ##
 command: []
@@ -532,7 +564,7 @@ configurationExistingSecret: ""
 ## Use this instead of `configuration` to add more configuration
 ## Do not use simultaneously with `extraConfigurationExistingSecret`
 ##
-extraConfiguration: |-
+#extraConfiguration: |-
   #default_vhost = {{ .Release.Namespace }}-vhost
   #disk_free_limit.absolute = 50MB
 ## @param extraConfigurationExistingSecret Existing secret with the extra configuration to append to `configuration`.
@@ -650,7 +682,7 @@ extraVolumes: []
 ##         ...
 ##       }
 ##
-extraSecrets: {}
+#extraSecrets: {}
 ## @param extraSecretsPrependReleaseName Set this flag to true if extraSecrets should be created with <release-name> prepended.
 ##
 extraSecretsPrependReleaseName: false
@@ -806,7 +838,8 @@ containerSecurityContext:
 ## @param resourcesPreset Set container resources according to one common preset (allowed values: none, nano, micro, small, medium, large, xlarge, 2xlarge). This is ignored if resources is set (resources is recommended for production).
 ## More information: https://github.com/bitnami/charts/blob/main/bitnami/common/templates/_resources.tpl#L15
 ##
-resourcesPreset: "micro"
+#resourcesPreset: "micro"
+resourcesPreset: "medium"
 ## @param resources Set container requests and limits for different resources like CPU or memory (essential for production workloads)
 ## Example:
 ## resources:
@@ -817,7 +850,13 @@ resourcesPreset: "micro"
 ##     cpu: 3
 ##     memory: 1024Mi
 ##
-resources: {}
+resources:
+  requests:
+    memory: "1Gi"
+    cpu: "1" 
+  limits:
+    memory: "1Gi"
+    cpu: "1"
 ## Configure RabbitMQ containers' extra options for liveness probe
 ## ref: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#configure-probes
 ## @param livenessProbe.enabled Enable livenessProbe
@@ -966,7 +1005,7 @@ persistence:
   ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
   ##   GKE, AWS & OpenStack)
   ##
-  storageClass: ""
+  storageClass: "aws-ebs"
   ## @param persistence.selector Selector to match an existing Persistent Volume
   ## selector:
   ##   matchLabels:
@@ -993,7 +1032,7 @@ persistence:
   ## @param persistence.size PVC Storage Request for RabbitMQ data volume
   ## If you change this value, you might have to adjust `rabbitmq.diskFreeLimit` as well
   ##
-  size: 8Gi
+  size: 28Gi
   ## @param persistence.annotations Persistence annotations. Evaluated as a template
   ## Example:
   ## annotations:
@@ -1032,7 +1071,7 @@ persistentVolumeClaimRetentionPolicy:
 service:
   ## @param service.type Kubernetes Service type
   ##
-  type: ClusterIP
+  type: LoadBalancer
   ## @param service.portEnabled Amqp port. Cannot be disabled when `auth.tls.enabled` is `false`. Listener can be disabled with `listeners.tcp = none`.
   ##
   portEnabled: true

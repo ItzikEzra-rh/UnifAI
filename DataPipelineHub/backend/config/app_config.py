@@ -21,6 +21,8 @@ class AppConfig(SharedConfig):
     # secret_key=your-super-secret-key-change-this-in-production
     frontend_url: str = "http://localhost:5000"
     # session_cookie_secure=True
+    backend_env: str = "production"
+    
     @classmethod
     def get(cls, key: str, default=None):
         instance = cls()  # safe because of SingletonMeta

@@ -44,7 +44,7 @@ data:
       max_request_size_mb: 32
       max_workers: 0
       host: 0.0.0.0
-      http_port: 6333
+      http_port: {{ .Values.service.port }}
       grpc_port: 6334
       enable_cors: true
       enable_tls: false

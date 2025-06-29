@@ -1,6 +1,6 @@
 helmDefaults:
-    createNamespace: false
-    wait: false
+  createNamespace: false
+  wait: false
 
 releases:
 
@@ -9,18 +9,24 @@ releases:
     version: "0.9.0"
     wait: true
     values:
-      - "./dataflow/unifai-dataflow-shared-storage.yaml"
+      - ./values/dataflow-resource-values.yaml
+      - valuesKey: unifai-dataflow-shared-storage
+
 
   - name: unifai-dataflow-server
     chart: ./dataflow/unifai-dataflow-server
     wait: true
     values:
-      - "./dataflow/unifai-dataflow-server.yaml"
+      - ./values/global-config.yaml
+      - ./values/dataflow-resource-values.yaml
+      - valuesKey: unifai-dataflow-server
 
   - name: unifai-dataflow-celery
     chart: ./dataflow/unifai-dataflow-celery
     version: "0.9.0"
     wait: true
     values:
-      - "./dataflow/unifai-dataflow-celery.yaml"
+      - ./values/global-config.yaml
+      - ./values/dataflow-resource-values.yaml
+      - valuesKey: unifai-dataflow-celery
 

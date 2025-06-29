@@ -45,6 +45,11 @@ spec:
           - name: "{{ $key }}"
             value: "{{ $value }}"
           {{- end }}
+          
+          envFrom:
+          - configMapRef:
+              name: {{ .Values.globalConfigMapName }}
+
           ports:
             - name: http
               containerPort: {{ .Values.service.port }}
