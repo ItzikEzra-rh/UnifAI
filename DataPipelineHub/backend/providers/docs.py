@@ -22,7 +22,7 @@ from utils.storage.mongo.mongo_helpers import get_mongo_storage
 
 mongo_client = pymongo.MongoClient(get_mongo_url())
 pipeline_repo = MongoDBPipelineRepository(mongo_client)
-data_source_repo = MongoStorage("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
+data_source_repo = MongoStorage(get_mongo_url())
 
 def upload_docs(files, UPLOAD_FOLDER):
     try:
