@@ -17,6 +17,7 @@ from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactor
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
 from global_utils.utils.util import get_mongo_url
+from utils.storage.mongo_helpers import get_mongo_storage
 
 
 mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
@@ -98,10 +99,8 @@ def embed_docs_flow(doc_list, upload_by):
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()
 
-    qstore = VectorStorageFactory.create(storage_config)
-    qstore.initialize()
-    mongo_storage= get_mongo_storage()
-    manager = StorageManager(qstore, mongo_storage)
+    mstore = get_mongo_storage()
+    manager = StorageManager(vector_storage, mstore)
     response = []
 
 

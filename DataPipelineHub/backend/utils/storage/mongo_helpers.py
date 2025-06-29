@@ -1,7 +1,8 @@
 from flask import current_app
 from utils.storage.mongo.mongo_storage import MongoStorage, SourceService 
+from global_utils.utils.util import get_mongo_url
 
-mongo_uri = "mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017"
+mongo_uri = get_mongo_url()
 
 def get_mongo_storage() -> MongoStorage:
     try:
