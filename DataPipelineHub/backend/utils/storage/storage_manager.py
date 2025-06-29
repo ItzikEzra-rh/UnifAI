@@ -1,11 +1,13 @@
-from typing import List, Dict, Any
+# storage_manager.py
+
+from typing import List, Dict, Any, Optional
 from .qdrant_storage import QdrantStorage
-from utils.storage.mongo_storage import MongoStorage
+from utils.storage.mongo.mongo_storage import MongoStorage 
 
 class StorageManager:
-    def __init__(self, qstore: QdrantStorage, mongo_uri: str):
+    def __init__(self, qstore: QdrantStorage, mstore: MongoStorage):
         self.qstore = qstore
-        self.mstore = MongoStorage(mongo_uri)
+        self.mstore = mstore
 
     def persist(
         self,
@@ -13,18 +15,15 @@ class StorageManager:
         source_name: str,
         source_type: str,
         enriched_chunks: List[Dict[str, Any]],
-        upload_by: str,
         summary: Dict[str, Any],
-        type_data: Dict[str, Any]
+        type_data: Optional[Dict[str, Any]] = None
     ):
-        # Delegate Qdrant upsert to your existing, working method
+        # write embeddings
         self.qstore.store_embeddings(enriched_chunks)
 
-        # Upsert the source summary, including type-specific data
         self.mstore.upsert_source_summary(
             source_id=source_id,
             source_name=source_name,
-            upload_by=upload_by,
             source_type=source_type,
             summary=summary,
             type_data=type_data
