@@ -1,9 +1,8 @@
 import base64
 import os
 import time
+from utils.storage.mongo.mongo_storage import MongoStorage
 from global_utils.utils.util import get_mongo_url
-from utils.storage.mongo_helpers import get_mongo_storage
-from utils.storage.mongo_storage import MongoStorage
 from utils.storage.storage_manager import StorageManager
 from utils.monitor.pipeline_monitor import MongoDBPipelineRepository
 import pymongo
@@ -18,13 +17,12 @@ from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactor
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
 from global_utils.utils.util import get_mongo_url
-from utils.storage.mongo_helpers import get_mongo_storage
-from global_utils.utils.util import get_mongo_url
+from utils.storage.mongo.mongo_helpers import get_mongo_storage
 
 
 mongo_client = pymongo.MongoClient(get_mongo_url())
 pipeline_repo = MongoDBPipelineRepository(mongo_client)
-data_source_repo = MongoStorage(get_mongo_url(), db_name="data_sources")
+data_source_repo = MongoStorage("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
 
 def upload_docs(files, UPLOAD_FOLDER):
     try:

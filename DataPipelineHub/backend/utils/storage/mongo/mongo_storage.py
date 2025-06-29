@@ -3,11 +3,10 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
 from bson import ObjectId
-from flask import Flask, jsonify, current_app
 from pymongo import MongoClient, UpdateOne
 from pymongo.collection import Collection
 
-# ─── Constants ────────────────────────────────────────────────────────────
+# ─── Constants ──────────────────────────────────────────────────────────────
 DATA_DB      = "data_sources"
 SOURCES_COL  = "sources"
 CHUNKS_COL   = "chunks"
@@ -36,20 +35,18 @@ def _make_json_safe(doc: Dict[str, Any]) -> Dict[str, Any]:
             safe[k] = v
     return safe
 
-# ─── Repository Interfaces ─────────────────────────────────────────────────
+# ─── Repository Interfaces ──────────────────────────────────────────────────
 class SourceRepository(ABC):
     @abstractmethod
     def get_all(self, source_type: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Fetch all source summaries, optionally filtered by type."""
         ...
 
 class PipelineRepository(ABC):
     @abstractmethod
     def get_status_map(self, pipeline_ids: List[str]) -> Dict[str, str]:
-        """Given a list of pipeline_ids, return a map {pipeline_id -> status}."""
         ...
 
-# ─── MongoStorage (implements both repos + old methods) ─────────────────────
+# ─── MongoStorage ───────────────────────────────────────────────────────────
 class MongoStorage(SourceRepository, PipelineRepository):
     def __init__(self, mongo_uri: str):
         self.client = MongoClient(mongo_uri)
@@ -71,27 +68,23 @@ class MongoStorage(SourceRepository, PipelineRepository):
             self._indexed_cols.add(key)
         return col
 
-    # — Existing methods —
-    def upsert_chunks(
-        self,
-        db_name: str,
-        source_id: str,
-        chunks: List[Dict[str, Any]]
-    ) -> None:
+    # ─── Chunk Handling ─────────────────────────────────────────────────────
+    def upsert_chunks(self, db_name: str, source_id: str, chunks: List[Dict[str, Any]]) -> None:
         col = self._get_collection(db_name, CHUNKS_COL)
         ops = []
         for idx, chunk in enumerate(chunks):
             doc_id = f"{source_id}_{idx}"
             doc = {
-                '_id':       doc_id,
-                'source_id': source_id,
-                'text':      chunk['text'],
-                **chunk.get('metadata', {})
+                "_id": doc_id,
+                "source_id": source_id,
+                "text": chunk["text"],
+                **chunk.get("metadata", {})
             }
-            ops.append(UpdateOne({'_id': doc_id}, {'$set': doc}, upsert=True))
+            ops.append(UpdateOne({"_id": doc_id}, {"$set": doc}, upsert=True))
         if ops:
             col.bulk_write(ops)
 
+    # ─── Source Summary ─────────────────────────────────────────────────────
     def upsert_source_summary(
         self,
         source_id: str,
@@ -104,31 +97,38 @@ class MongoStorage(SourceRepository, PipelineRepository):
         col = self._get_collection(DATA_DB, SOURCES_COL)
         now = datetime.utcnow()
         doc: Dict[str, Any] = {
-            'source_id':   source_id,
-            'source_name': source_name,
-            'source_type': source_type,
-            'upload_by':   upload_by,
-            'last_sync_at': now,
+            "source_id": source_id,
+            "source_name": source_name,
+            "source_type": source_type,
+            "upload_by": upload_by,
+            "last_sync_at": now,
             **summary
         }
         if type_data is not None:
-            doc['type_data'] = type_data
+            doc["type_data"] = type_data
         col.update_one(
-            {'source_id': source_id},
-            {'$set': doc, '$setOnInsert': {'created_at': now}},
+            {"source_id": source_id},
+            {"$set": doc, "$setOnInsert": {"created_at": now}},
             upsert=True
         )
 
-    def get_all_sources(
-        self,
-        source_type: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def get_all_sources(self, source_type: Optional[str] = None) -> List[Dict[str, Any]]:
         col = self._get_collection(DATA_DB, SOURCES_COL)
         query: Dict[str, Any] = {}
         if source_type:
-            query['source_type'] = source_type.upper()
+            query["source_type"] = source_type.upper()
         return list(col.find(query))
 
+    def get_source_by_query(self, query: object) -> List[Dict[str, Any]]:
+        col = self._get_collection(DATA_DB, SOURCES_COL)
+        return list(col.find(query, {"_id": 0}))
+
+    def delete_source(self, pipeline_id: object) -> bool:
+        col = self._get_collection(DATA_DB, SOURCES_COL)
+        result = col.delete_one({"last_pipeline_id": pipeline_id})
+        return result.deleted_count > 0
+
+    # ─── Generic Document Helpers ───────────────────────────────────────────
     def upsert_documents(
         self,
         db_name: str,
@@ -141,9 +141,7 @@ class MongoStorage(SourceRepository, PipelineRepository):
         for doc in docs:
             if key_field not in doc:
                 raise ValueError(f"Missing key field '{key_field}' in {doc}")
-            ops.append(
-                UpdateOne({key_field: doc[key_field]}, {'$set': doc}, upsert=True)
-            )
+            ops.append(UpdateOne({key_field: doc[key_field]}, {'$set': doc}, upsert=True))
         if ops:
             col.bulk_write(ops)
 
@@ -156,7 +154,7 @@ class MongoStorage(SourceRepository, PipelineRepository):
         col = self._get_collection(db_name, col_name)
         return list(col.find(filter_query or {}))
 
-    # — Implement repository interface —
+    # ─── Repository Implementations ─────────────────────────────────────────
     def get_all(self, source_type: Optional[str] = None) -> List[Dict[str, Any]]:
         return self.get_all_sources(source_type)
 
@@ -165,31 +163,24 @@ class MongoStorage(SourceRepository, PipelineRepository):
             return {}
         col = self._get_collection(PIPELINE_DB, PIPELINE_COL)
         cursor = col.find(
-            {'pipeline_id': {'$in': pipeline_ids}},
-            {'pipeline_id': 1, 'status': 1}
+            {"pipeline_id": {"$in": pipeline_ids}},
+            {"pipeline_id": 1, "status": 1}
         )
-        return {d['pipeline_id']: d.get('status', '') for d in cursor}
+        return {d["pipeline_id"]: d.get("status", "") for d in cursor}
 
-# ─── Service Layer ──────────────────────────────────────────────────────────
+# ─── Source Service ─────────────────────────────────────────────────────────
 class SourceService:
-    def __init__(
-        self,
-        src_repo: SourceRepository,
-        pl_repo: PipelineRepository
-    ):
+    def __init__(self, src_repo: SourceRepository, pl_repo: PipelineRepository):
         self._src = src_repo
         self._pl  = pl_repo
 
-    def list_sources_with_status(
-        self,
-        source_type: Optional[str] = None
-    ) -> List[Dict[str, Any]]:
+    def list_sources_with_status(self, source_type: Optional[str] = None) -> List[Dict[str, Any]]:
         raw = self._src.get_all(source_type)
-        ids = [s.get('last_pipeline_id') for s in raw if s.get('last_pipeline_id')]
+        ids = [s.get("last_pipeline_id") for s in raw if s.get("last_pipeline_id")]
         status_map = self._pl.get_status_map(ids)
 
         enriched: List[Dict[str, Any]] = []
         for s in raw:
-            s['status'] = status_map.get(s.get('last_pipeline_id'))
+            s["status"] = status_map.get(s.get("last_pipeline_id"))
             enriched.append(_make_json_safe(s))
         return enriched
