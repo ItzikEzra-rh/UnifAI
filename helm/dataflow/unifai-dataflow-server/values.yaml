@@ -2,9 +2,10 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 env:
-  qdrant_ip: "http://qdrant"
-  qdrant_port: "6333"
-  backend_env: "production"
+  QDRANT_IP: "http://qdrant"
+  QDRANT_PORT: "6333"
+  FRONTEND_URL: "http://10.46.253.0:5000"
+  BACKEND_ENV: "production"
   ROLE: "flask"
   SHARED_STORAGE: "/app/shared"
 
