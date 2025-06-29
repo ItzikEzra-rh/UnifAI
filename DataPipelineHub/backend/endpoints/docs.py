@@ -9,7 +9,7 @@ from providers.docs import delete_doc_pipeline, get_available_doc_list, get_best
 
 docs_bp = Blueprint("docs", __name__)
 UPLOAD_FOLDER = "/app/shared"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @docs_bp.route("/get.folder", methods=["GET"])
 def get_upload_folder():
