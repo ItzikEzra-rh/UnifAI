@@ -5,6 +5,7 @@ import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
 import { CardContainer } from "@shared/CardContainer";
 import { Button } from "@/components/ui/button";
+import { DocumentData } from "./DocumentData";
 
 interface DocumentGridProps {
   paginatedDocuments: Document[];
@@ -81,7 +82,7 @@ const getActions = (
 
 export const DocumentGrid = ({paginatedDocuments, activeDoc, setActiveDoc, deleteLoading, onDeleteConfirmed, retrying, handleRetry, footer}: DocumentGridProps) => {
   return (
-    <CardContainer title="" footer={footer} activeDoc={activeDoc}>
+    <CardContainer title="" footer={footer} activeCardComponent={DocumentData} activeCard={activeDoc}>
       {paginatedDocuments.map((doc) => (
         <DataCard
           key={doc.pipeline_id}
