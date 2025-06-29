@@ -19,11 +19,12 @@ from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
 from global_utils.utils.util import get_mongo_url
 from utils.storage.mongo_helpers import get_mongo_storage
+from global_utils.utils.util import get_mongo_url
 
 
-mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
+mongo_client = pymongo.MongoClient(get_mongo_url())
 pipeline_repo = MongoDBPipelineRepository(mongo_client)
-data_source_repo = MongoStorage("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/", db_name="data_sources")
+data_source_repo = MongoStorage(get_mongo_url(), db_name="data_sources")
 
 def upload_docs(files, UPLOAD_FOLDER):
     try:
@@ -92,8 +93,6 @@ def embed_docs_flow(doc_list, upload_by):
         "type": "qdrant",
         "collection_name": "pdf_doc_data",
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
-        "port": 6333
     }
 
     vector_storage = VectorStorageFactory.create(storage_config)
@@ -186,8 +185,6 @@ def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "pub
         "type": "qdrant",
         "collection_name": "pdf_doc_data",
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
-        "port": 6333
     }
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()

@@ -52,8 +52,6 @@ def embed_slack_channels_flow(channel_list, upload_by="default"):
         "type": "qdrant",
         "collection_name": "slack_data",
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
-        "port": 6333
     }
     qstore = VectorStorageFactory.create(storage_config)
     qstore.initialize()
@@ -304,8 +302,6 @@ def count_channel_chunks(channel_name: str) -> int:
         "type": "qdrant",
         "collection_name": "slack_data",
         "embedding_dim": 384,  # Must match embedding model
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
-        "port": 6333
     }
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()
@@ -325,8 +321,6 @@ def get_best_match_results(query: str, top_k_results: int = 5):
         "type": "qdrant",
         "collection_name": "slack_data",
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
-        "port": 6333
     }
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()
@@ -353,8 +347,6 @@ def _initialize_storage_components():
         "type": "qdrant",
         "collection_name": "slack_data", 
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
-        "port": 6333
     }
     qdrant_storage = VectorStorageFactory.create(storage_config)
     qdrant_storage.initialize()
