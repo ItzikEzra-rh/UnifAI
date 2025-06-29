@@ -1,7 +1,5 @@
 import { Button } from "@/components/ui/button";
 import { FaTh, FaList } from "react-icons/fa";
-import { CardContainer } from "@shared/CardContainer";
-import { DocumentCard } from "./DocumentCard";
 import { useState, useEffect } from "react";
 import { Document } from "@/types";
 import { UploadTab } from "./UploadTab";
@@ -10,9 +8,10 @@ import Header from "@/components/layout/Header";
 import axiosInstance from "@/http/axiosConfig";
 import { useQuery } from "@tanstack/react-query";
 import { usePaginationStore } from "@/stores/usePaginationStore";
-import { DocumentData } from "./DocumentData";
 import { DocumentFilters } from "./DocumentFilters";
 import { DocumentTable } from "./DocumentsTable";
+import { PageLoader } from "@/components/shared/PageLoader";
+import { DocumentGrid } from "./DocumentGrid";
 
 const fetchDocuments = async () => {
   const response = await axiosInstance.get("/api/docs/available.docs.get");
@@ -23,12 +22,10 @@ export default function Documents() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [activeDoc, setActiveDoc] = useState(null);
+  const [activeDoc, setActiveDoc] = useState<Document | null>(null);
   const [fileTypeFilter, setFileTypeFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
-
-  const [expandedDoc, setExpandedDoc] = useState<Document | null>(null);
-
+  const [deleteLoading, setDeleteLoading] = useState(false);
 
   const { data: documents = [], isLoading, isError, error } = useQuery<Document[]>({
     queryKey: ['documents'],
@@ -119,7 +116,30 @@ export default function Documents() {
     </div>
   );
 
+  const onDeleteConfirmed = async (id: string) => {
+    try {
+      setDeleteLoading(true);
+      await axiosInstance.post("/api/docs/delete", { pipelineId: id });
+      await fetchDocuments(); 
+    } catch (error) {
+      console.error("Error deleting document:", error);
+    } finally {
+      setDeleteLoading(false);
+      setActiveDoc(null);
+    }
+  };
 
+  const [retrying, setRetrying] = useState(false);
+  const handleRetry = async (id: string) => {
+    try {
+      setRetrying(true);
+      await axiosInstance.put("/api/docs/retry.embedding", { "pipelineId": id });
+    } catch (error) {
+      console.error("Error retrying embedding:", error);
+    } finally {
+      setRetrying(false);
+    }
+  };
   return (
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
@@ -135,37 +155,29 @@ export default function Documents() {
           ) : (
             <div className="mt-6">
               {isLoading ? (
-                <div className="flex items-center justify-center h-40">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-gray-400"></div>
-                </div>
+                <PageLoader />
               ) : isError ? (
                 <p className="text-sm text-red-500">Error: {(error as Error).message}</p>
               ) : (
                 <>
-                  {/* Top controls: filters only in grid view, viewButtons always */}
+                  {/* Top controls: filters only in grid view, view buttons and upload always */}
                   <div className="flex items-center justify-between mb-4">
-                    {viewMode === "grid" ? (
-                      <div className="flex-1">{filters}</div>
-                    ) : (
-                      <div className="flex-1" />
-                    )}
+                    {viewMode === "grid" ? (<div className="flex-1">{filters}</div>) : (<div className="flex-1" />)}
                     {viewButtons}
                   </div>
 
-                  {/* Documents listing */}
                   {documents.length ? (
                     viewMode === "grid" ? (
-                      <CardContainer title="" footer={footer}>
-                        {paginatedDocuments.map((file) => (
-                          <DocumentCard
-                            key={file.pipeline_id}
-                            doc={file}
-                            activeDoc={activeDoc}
-                            setActiveDoc={setActiveDoc}
-                            fetchDocuments={fetchDocuments}
-                          />
-                        ))}
-                      </CardContainer>
+                      <DocumentGrid
+                        paginatedDocuments={paginatedDocuments}
+                        activeDoc={activeDoc}
+                        setActiveDoc={setActiveDoc}
+                        deleteLoading={deleteLoading}
+                        onDeleteConfirmed={onDeleteConfirmed}
+                        retrying={retrying}
+                        handleRetry={handleRetry}
+                        footer={footer}
+                      />
                     ) : (
                       <>
                         <div className="w-full">
@@ -174,7 +186,6 @@ export default function Documents() {
                             fetchDocuments={fetchDocuments}
                             activeDoc={activeDoc}
                           />
-                          {/* No footer here in list view */}
                         </div>
                       </>
                     )
@@ -183,14 +194,7 @@ export default function Documents() {
                   )}
                 </>
               )}
-
-              {activeDoc && (
-                <div className="mt-6">
-                  <DocumentData doc={activeDoc} />
-                </div>
-              )}
             </div>
-
           )}
         </div>
       </div>

@@ -1,13 +1,16 @@
 import { Card, CardContent } from "@/components/ui/card";
+import { DocumentData } from "@/documents/DocumentData";
 import { ReactNode } from "react";
 
 interface CardContainerProps {
   title?: string; // optional, since you passed empty string before
   children: ReactNode;
   footer?: ReactNode;
+  activeDoc: any; // assuming Document is imported from your types
 }
 
-export const CardContainer = ({ title, children, footer }: CardContainerProps) => (
+export const CardContainer = ({ title, children, footer, activeDoc }: CardContainerProps) => (
+  <>
   <Card className="bg-background-card shadow-card border-gray-800">
     <CardContent className="p-6">
       {title && (
@@ -23,4 +26,10 @@ export const CardContainer = ({ title, children, footer }: CardContainerProps) =
       {footer && <div className="mt-6 flex justify-between items-center">{footer}</div>}
     </CardContent>
   </Card>
+  {activeDoc && (
+                <div className="mt-6">
+                  <DocumentData doc={activeDoc} />
+                </div>
+              )}
+              </>
 );
