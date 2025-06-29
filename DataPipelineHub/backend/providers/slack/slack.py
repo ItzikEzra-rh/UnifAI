@@ -10,6 +10,7 @@ from utils.storage.storage_manager import StorageManager
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
+from global_utils.utils.util import get_mongo_url
  
 def _get_configured_connector() -> SlackConnector:
     config_manager = SlackConfigManager()
@@ -33,7 +34,7 @@ def embed_slack_channels_flow(channel_list, upload_by="default"):
     if not connector.authenticate():
         raise RuntimeError("Slack authentication failed")
     
-    mongo_client   = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017")
+    mongo_client   = pymongo.MongoClient(get_mongo_url())
     slack_pipeline = SlackDataPipeline(mongo_client, logger=logger)
     
     processor = SlackProcessor()
@@ -400,7 +401,7 @@ def _delete_from_qdrant(qdrant_storage, channel_id: str) -> int:
 def _delete_from_mongodb(channel_id: str) -> tuple[bool, int]:
     """Delete channel data from MongoDB collections."""
     try:
-        client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017")
+        client = pymongo.MongoClient(get_mongo_url())
         
         # Delete from sources collection
         sources_col = client["data_sources"]["sources"]

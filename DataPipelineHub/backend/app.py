@@ -11,6 +11,7 @@ from flask_cors import CORS
 from global_utils.flask.request_rules import RequestRules
 from utils.auth_manager import AuthManager
 from config.app_config import AppConfig
+from global_utils.utils.util import get_mongo_url
 
 # from be_utils.db.flaks_db import register_mongo
 # from be_utils.utils import init_flask_logger
@@ -41,7 +42,7 @@ register_all_endpoints(app)
 
 # mongo_ip   = config.get_param_by_env("mongodb_ip")
 # mongo_port = config.get_param_by_env("mongodb_port")
-mongo_uri  = "mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017"
+mongo_uri = get_mongo_url()
 
 # ─── 3) Init your storage and stash it on the app ─────────────────────────
 #    We only pass the URI; the DB name can be chosen per-call later.
@@ -53,7 +54,7 @@ app.source_service  = SourceService(app.mongo_storage, app.mongo_storage)
 RequestRules(app)
 
 if __name__ == '__main__':
-    app.run(host=config.hostname, port=config.port, debug=True)
+    app.run(host="0.0.0.0", port=config.port, debug=True)
 
     # cert_file = os.path.join(os.path.dirname(__file__), 'cert.pem')
     # key_file = os.path.join(os.path.dirname(__file__), 'key.pem')

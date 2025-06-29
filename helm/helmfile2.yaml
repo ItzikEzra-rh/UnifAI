@@ -1,0 +1,26 @@
+helmDefaults:
+    createNamespace: false
+    wait: false
+
+releases:
+
+  - name: unifai-dataflow-shared-storage
+    chart: ./dataflow/unifai-dataflow-shared-storage
+    version: "0.9.0"
+    wait: true
+    values:
+      - "./dataflow/unifai-dataflow-shared-storage.yaml"
+
+  - name: unifai-dataflow-server
+    chart: ./dataflow/unifai-dataflow-server
+    wait: true
+    values:
+      - "./dataflow/unifai-dataflow-server.yaml"
+
+  - name: unifai-dataflow-celery
+    chart: ./dataflow/unifai-dataflow-celery
+    version: "0.9.0"
+    wait: true
+    values:
+      - "./dataflow/unifai-dataflow-celery.yaml"
+

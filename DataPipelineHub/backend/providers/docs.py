@@ -15,6 +15,8 @@ from data_sources.docs.doc_pipeline_scheduler import DocDataPipeline
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
+from global_utils.utils.util import get_mongo_url
+
 
 mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
 pipeline_repo = MongoDBPipelineRepository(mongo_client)
@@ -50,7 +52,7 @@ def get_available_doc_list():
 
 def embed_docs_flow(doc_list, upload_by):
     # Create MongoDB client
-    mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
+    mongo_client = pymongo.MongoClient(get_mongo_url())
     # Create data pipeline with existing logger
     doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
     for doc in doc_list:
@@ -97,7 +99,7 @@ def embed_docs_flow(doc_list, upload_by):
 
     qstore = VectorStorageFactory.create(storage_config)
     qstore.initialize()
-    manager = StorageManager(qstore, mongo_uri="mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017")
+    manager = StorageManager(qstore, mongo_uri=get_mongo_url())
     response = []
 
 
