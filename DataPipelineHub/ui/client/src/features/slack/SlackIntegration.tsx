@@ -76,9 +76,10 @@ export default function SlackIntegration() {
     refetchOnMount: true,
     refetchOnWindowFocus: true,
     // Dynamic polling - poll every 5 seconds when there are active operations
-    refetchInterval: (data: EmbedChannel[] | undefined) => {
-      const hasActive = hasActiveOperations(data) || activeEmbedding.size > 0;
-      return hasActive ? 5000 : false; // 5 seconds when active, no polling when idle
+    refetchInterval: (query) => {
+    const data = query.state.data as EmbedChannel[] | undefined;
+    const hasActive = hasActiveOperations(data) || activeEmbedding.size > 0;
+    return hasActive ? 5000 : false;
     },
   });
 

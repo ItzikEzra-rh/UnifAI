@@ -325,7 +325,7 @@ export function getColumns(
 }
 
 interface PaginatedChannelTableProps {
-  allChannels: EmbedChannel[] | any;
+  allChannels: EmbedChannel[];
   onSettingsClick: (channel: EmbedChannel) => void;
   onDeleteClick: (channel: EmbedChannel) => void;
   onRefresh: () => void;
