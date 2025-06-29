@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { FaChevronRight, FaChevronDown } from "react-icons/fa";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -23,7 +23,14 @@ export const UploadTab: React.FC<UploadTabProps> = ({
     const [uploadProgress, setUploadProgress] = useState(0);
     const [showProcessingOptions, setShowProcessingOptions] = useState(false);
     const [error, setError] = useState<string>("");
+    const [uploadFolder, setUploadFolder] = useState<string>("");
 
+    useEffect(() => {
+        axiosInstance.get("/api/docs/get.folder").then((res) => {
+            setUploadFolder(res.data.path);
+        })
+    }, [])
+    
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(true);
@@ -105,7 +112,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
 
         const docs = selectedFiles.map((file) => ({
             doc_name: file.name,
-            doc_path: `/home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs/${file.name}`
+            doc_path: `${uploadFolder}/${file.name}`
         }));
 
         await submitToAPI(docs);

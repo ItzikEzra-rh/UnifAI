@@ -21,12 +21,14 @@ interface DocumentGridProps {
 const getSubtitle = (doc: Document) => {
   if (doc.status === "ACTIVE") return <InlineLoader />;
   if (doc.status === "PENDING") return "-";
+  if (doc.status === "FAILED") return "-";
   return `${doc.page_count} pages | ${doc.file_type} | ${doc.file_size}`;
 };
 
 const getFooterText = (doc: Document) => {
   if (doc.status === "ACTIVE") return <InlineLoader />;
   if (doc.status === "PENDING") return "-";
+  if (doc.status === "FAILED") return "-";
   return `${doc.chunks} chunks`;
 };
 

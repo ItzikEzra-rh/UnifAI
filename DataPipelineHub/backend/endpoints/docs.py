@@ -11,6 +11,17 @@ docs_bp = Blueprint("docs", __name__)
 UPLOAD_FOLDER = "/home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+@docs_bp.route("/get.folder", methods=["GET"])
+def get_upload_folder():
+    """
+    Endpoint to get the upload folder path.
+    """
+    try:
+        return jsonify({"path": UPLOAD_FOLDER}), 200
+    except Exception as e:
+        logger.error(f"Failed to get upload folder: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 @docs_bp.route("/upload", methods=["POST"])
 @from_body({
     "files": fields.List(fields.Dict(), required=True)
