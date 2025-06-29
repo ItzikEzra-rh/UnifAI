@@ -1,34 +1,35 @@
-import React from "react";
+import React, { useState } from "react";
 import { FaEye, FaTrash, FaSync } from "react-icons/fa";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InlineLoader } from "@/components/shared/InlineLoader";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Document } from "@/types";
 import { getFileIcon, fileByColors, statusByLabel, statusByColors } from "./helpers";
 import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
 import axiosInstance from "@/http/axiosConfig";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 
 interface DocumentTableProps {
     documents: Document[];
     fetchDocuments: () => Promise<void>;
     activeDoc?: Document | null;
     setActiveDoc?: (doc: Document | null) => void;
+    deleteLoading?: boolean;
+    onDeleteConfirmed?: (id: string) => void;
+    retrying?: boolean;
+    handleRetry?: (id: string) => void;
 }
+
 
 export const DocumentTable: React.FC<DocumentTableProps> = ({
     documents,
     fetchDocuments,
     activeDoc,
-    setActiveDoc
+    setActiveDoc, deleteLoading, onDeleteConfirmed, retrying, handleRetry
 }) => {
-    const handleRetry = async (doc: Document) => {
-        try {
-            await axiosInstance.put("/api/docs/retry.embedding", { pipelineId: doc.pipeline_id });
-            await fetchDocuments();
-        } catch (error) {
-            console.error("Error retrying embedding:", error);
-        }
-    };
+    const [confirmDoc, setConfirmDoc] = useState<Document | null>(null);
+
 
     const handleDelete = async (doc: Document) => {
         try {
@@ -140,7 +141,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                                 variant="ghost"
                                 size="icon"
                                 className="h-6 w-6 p-0"
-                                onClick={() => handleRetry(doc)}
+                                onClick={() => handleRetry?.(doc.pipeline_id)}
+                                disabled={retrying}
                             >
                                 <FaSync />
                             </Button>
@@ -157,15 +159,18 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                             variant="ghost"
                             size="icon"
                             className="h-6 w-6 p-0"
-                            onClick={() => handleDelete(doc)}
+                            onClick={() => setConfirmDoc(doc)}
+                            disabled={deleteLoading}
                         >
                             <FaTrash className="h-3 w-3" />
                         </Button>
+
                     </div>
                 );
             },
             meta: { align: "right" }
         }
+
     ];
 
 
@@ -178,6 +183,22 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 enableColumnFilters={true}
                 enablePagination={true}
             />
+            {confirmDoc && (
+                <ConfirmDialog
+                    open={true}
+                    title="Delete Document"
+                    message={`Are you sure you want to delete "${confirmDoc.name}"?`}
+                    confirmLabel="Yes, Delete"
+                    onConfirm={async () => {
+                        await onDeleteConfirmed?.(confirmDoc.pipeline_id);
+                        setConfirmDoc(null);
+                    }}
+                    onCancel={() => setConfirmDoc(null)}
+                    loading={deleteLoading}
+                />
+            )}
+
+
         </div>
     );
 };

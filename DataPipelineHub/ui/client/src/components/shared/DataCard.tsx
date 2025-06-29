@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { ConfirmDialog } from "./ConfirmDialog";
 
 export interface CardAction {
     icon: React.ReactNode;
@@ -20,14 +21,14 @@ export interface CardAction {
 interface DataCardProps {
     icon?: React.ReactNode;
     iconRenderer?: () => React.ReactNode;
-    iconBgClass?: string; // NEW: dynamic class for icon background like fileByColors[]
+    iconBgClass?: string;
     title?: React.ReactNode;
     subtitle?: React.ReactNode;
     metadata?: React.ReactNode;
     footer?: React.ReactNode;
     actions?: CardAction[];
-    statusBadge?: { label: string; className?: string }; // NEW
-    extraTopRight?: React.ReactNode; // NEW
+    statusBadge?: { label: string; className?: string };
+    extraTopRight?: React.ReactNode;
     onClick?: () => void;
     selected?: boolean;
     hoverable?: boolean;
@@ -53,11 +54,11 @@ export const DataCard: React.FC<DataCardProps> = ({
     const [confirmAction, setConfirmAction] = useState<CardAction | null>(null);
 
     const cardClasses = `
-    bg-background-dark p-4 rounded-lg border 
-    ${selected ? "border-primary" : "border-gray-800"} 
-    ${hoverable ? "hover:border-primary transition-colors cursor-pointer" : ""}
-    ${className}
-  `;
+        bg-background-dark p-4 rounded-lg border 
+        ${selected ? "border-primary" : "border-gray-800"} 
+        ${hoverable ? "hover:border-primary transition-colors cursor-pointer" : ""}
+        ${className}
+    `;
 
     return (
         <>
@@ -113,7 +114,8 @@ export const DataCard: React.FC<DataCardProps> = ({
                                         className="h-7 w-7 p-0"
                                         onClick={(e) => {
                                             e.stopPropagation();
-                                            if (action.confirm) {setConfirmAction(action);} else {action.onClick();}}}>
+                                            if (action.confirm) { setConfirmAction(action); } else { action.onClick(); }
+                                        }}>
                                         {action.icon}
                                     </Button>
                                 ))}
@@ -125,30 +127,21 @@ export const DataCard: React.FC<DataCardProps> = ({
 
             {/* Confirm Modal */}
             {confirmAction && (
-                <Dialog open={true} onOpenChange={() => setConfirmAction(null)}>
-                    <DialogContent>
-                        <DialogHeader>
-                            <DialogTitle>{confirmAction.confirm?.title}</DialogTitle>
-                        </DialogHeader>
-                        <p className="text-sm">{confirmAction.confirm?.message}</p>
-                        <DialogFooter className="mt-4">
-                            <Button variant="ghost" onClick={() => setConfirmAction(null)}>
-                                {confirmAction.confirm?.cancelLabel || "Cancel"}
-                            </Button>
-                            <Button
-                                variant="destructive"
-                                onClick={() => {
-                                    confirmAction.confirm?.onConfirm();
-                                    setConfirmAction(null);
-                                }}
-                                disabled={confirmAction.confirm?.loading}
-                            >
-                                {confirmAction.confirm?.loading ? "Processing..." : confirmAction.confirm?.confirmLabel || "Confirm"}
-                            </Button>
-                        </DialogFooter>
-                    </DialogContent>
-                </Dialog>
+                <ConfirmDialog
+                    open={true}
+                    title={confirmAction.confirm?.title || ""}
+                    message={confirmAction.confirm?.message || ""}
+                    confirmLabel={confirmAction.confirm?.confirmLabel}
+                    cancelLabel={confirmAction.confirm?.cancelLabel}
+                    onConfirm={() => {
+                        confirmAction.confirm?.onConfirm();
+                        setConfirmAction(null);
+                    }}
+                    onCancel={() => setConfirmAction(null)}
+                    loading={confirmAction.confirm?.loading}
+                />
             )}
+
         </>
     );
 };
