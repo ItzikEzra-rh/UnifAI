@@ -182,15 +182,15 @@ export default function Documents() {
                       <>
                         <div className="w-full">
                           <DocumentTable
-  documents={documents}
-  fetchDocuments={fetchDocuments}
-  activeDoc={activeDoc}
-  setActiveDoc={setActiveDoc}
-  deleteLoading={deleteLoading}
-  onDeleteConfirmed={onDeleteConfirmed}
-  retrying={retrying}
-  handleRetry={handleRetry}
-/>
+                            documents={documents}
+                            fetchDocuments={fetchDocuments}
+                            activeDoc={activeDoc}
+                            setActiveDoc={setActiveDoc}
+                            deleteLoading={deleteLoading}
+                            onDeleteConfirmed={onDeleteConfirmed}
+                            retrying={retrying}
+                            handleRetry={handleRetry}
+                          />
 
                         </div>
                       </>

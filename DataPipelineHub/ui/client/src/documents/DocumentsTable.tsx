@@ -9,6 +9,7 @@ import { getFileIcon, fileByColors, statusByLabel, statusByColors } from "./help
 import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
 import axiosInstance from "@/http/axiosConfig";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { DocumentData } from "./DocumentData";
 
 interface DocumentTableProps {
     documents: Document[];
@@ -182,7 +183,11 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 enableGlobalFilter={true}
                 enableColumnFilters={true}
                 enablePagination={true}
+                expendedRow={activeDoc}
+                renderExpandedRow={(doc) => <DocumentData doc={doc} />}
             />
+          
+
             {confirmDoc && (
                 <ConfirmDialog
                     open={true}
@@ -197,8 +202,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                     loading={deleteLoading}
                 />
             )}
-
-
         </div>
     );
 };
