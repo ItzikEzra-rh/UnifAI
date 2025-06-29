@@ -8,8 +8,13 @@ from global_utils.celery_app.helpers import send_task
 from providers.docs import delete_doc_pipeline, get_available_doc_list, get_best_match_results, upload_docs
 
 docs_bp = Blueprint("docs", __name__)
-UPLOAD_FOLDER = "/home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# Local development
+# UPLOAD_FOLDER = "/home/cloud-user/Projects/unifai/DataPipelineHub/backend/data/pdfs"
+# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# OCP
+UPLOAD_FOLDER = "/app/shared"
 
 @docs_bp.route("/get.folder", methods=["GET"])
 def get_upload_folder():
