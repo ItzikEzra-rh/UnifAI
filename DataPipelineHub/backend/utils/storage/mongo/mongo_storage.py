@@ -97,9 +97,9 @@ class MongoStorage(SourceRepository, PipelineRepository):
         source_id: str,
         source_name: str,
         source_type: str,
-        upload_by: str,
         summary: Dict[str, Any],
-        type_data: Optional[Dict[str, Any]] = None
+        type_data: Optional[Dict[str, Any]] = None,
+        upload_by: str = "default"
     ) -> None:
         col = self._get_collection(DATA_DB, SOURCES_COL)
         now = datetime.utcnow()
