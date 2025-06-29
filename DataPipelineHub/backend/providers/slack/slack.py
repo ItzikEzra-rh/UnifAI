@@ -28,7 +28,7 @@ def get_available_slack_channels(channel_types: str):
     else:
         raise RuntimeError("Slack authentication failed")
 
-def embed_slack_channels_flow(channel_list):
+def embed_slack_channels_flow(channel_list, upload_by="default"):
     connector = _get_configured_connector()
     if not connector.authenticate():
         raise RuntimeError("Slack authentication failed")
