@@ -14,6 +14,7 @@ class StorageManager:
         source_id: str,
         source_name: str,
         source_type: str,
+        upload_by: str,
         enriched_chunks: List[Dict[str, Any]],
         summary: Dict[str, Any],
         type_data: Optional[Dict[str, Any]] = None
@@ -25,6 +26,7 @@ class StorageManager:
             source_id=source_id,
             source_name=source_name,
             source_type=source_type,
+            upload_by=upload_by,
             summary=summary,
             type_data=type_data
         )

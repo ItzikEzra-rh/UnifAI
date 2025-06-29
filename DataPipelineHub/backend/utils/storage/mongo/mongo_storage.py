@@ -97,6 +97,7 @@ class MongoStorage(SourceRepository, PipelineRepository):
         source_id: str,
         source_name: str,
         source_type: str,
+        upload_by: str,
         summary: Dict[str, Any],
         type_data: Optional[Dict[str, Any]] = None
     ) -> None:
@@ -106,6 +107,7 @@ class MongoStorage(SourceRepository, PipelineRepository):
             'source_id':   source_id,
             'source_name': source_name,
             'source_type': source_type,
+            'upload_by':   upload_by,
             'last_sync_at': now,
             **summary
         }

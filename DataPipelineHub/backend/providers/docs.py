@@ -1,6 +1,7 @@
 import base64
 import os
 import time
+from utils.storage.mongo_helpers import get_mongo_storage
 from utils.storage.mongo_storage import MongoStorage
 from utils.storage.storage_manager import StorageManager
 from utils.monitor.pipeline_monitor import MongoDBPipelineRepository
@@ -99,7 +100,8 @@ def embed_docs_flow(doc_list, upload_by):
 
     qstore = VectorStorageFactory.create(storage_config)
     qstore.initialize()
-    manager = StorageManager(qstore, mongo_uri=get_mongo_url())
+    mongo_storage= get_mongo_storage()
+    manager = StorageManager(qstore, mongo_storage)
     response = []
 
 
