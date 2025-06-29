@@ -2,7 +2,6 @@ import { Route, Switch } from "wouter";
 import Dashboard from "@/pages/Dashboard";
 import Configuration from "@/pages/Configuration";
 import JiraIntegration from "@/pages/JiraIntegration";
-import SlackIntegration from "@/pages/SlackIntegration";
 import Documents from "@/pages/Documents";
 import AgenticAI from "@/pages/AgenticAI";
 import AgentRepository from "@/pages/AgentRepository";
@@ -12,6 +11,8 @@ import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import SlackAddSourcePage from "./features/slack/SlackAddSourcePage";
+import SlackIntegration from "./features/slack/SlackIntegration";
 
 function App() {
   // Set document title
@@ -32,6 +33,7 @@ function App() {
               <Route path="/repository" component={AgentRepository} />
               <Route path="/agentic-ai" component={AgenticAI} />
               <Route path="/configuration" component={Configuration} />
+              <Route path="/slack/add-source" component={SlackAddSourcePage} />
               <Route component={NotFound} />
             </Switch>
           </ProtectedRoute>
