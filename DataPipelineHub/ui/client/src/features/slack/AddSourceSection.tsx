@@ -114,10 +114,21 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
     refetchOnWindowFocus: true, // Refetch when user comes back to the page
   });
 
+  const getSelectedChannels = useCallback(() => {
+    // grab the master lists from cache
+    const publicList = queryClient.getQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PUBLIC]) || [];
+    const privateList = queryClient.getQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PRIVATE]) || [];
+    const allList = [...publicList, ...privateList];
+
+    // if for some reason the cache is empty (first load), fallback to whatever we currently have
+    const pool = allList.length ? allList : channels;
+
+    return pool.filter(c => selectedChannels.includes(c.channel_name));
+  }, [queryClient, channels, selectedChannels]);
+
   useImperativeHandle(ref, () => ({
-    getSelectedChannels: () =>
-      channels.filter(c => selectedChannels.includes(c.channel_name)),
-  }));
+    getSelectedChannels,
+ }));
 
   // Check if a channel is already embedded
   const isChannelEmbedded = useCallback((channelName: string) => {
