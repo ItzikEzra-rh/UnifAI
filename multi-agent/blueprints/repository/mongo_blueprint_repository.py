@@ -12,7 +12,7 @@ from .repository import BlueprintRepository
 class MongoBlueprintRepository(BlueprintRepository):
     def __init__(self,
                  mongodb_port: str = "27017",
-                 mongodb_ip: str = "localhost",
+                 mongodb_ip: str = "ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com",
                  db_name="UnifAI",
                  coll_name="blueprints"):
 

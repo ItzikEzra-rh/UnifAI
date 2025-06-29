@@ -1,6 +1,7 @@
 import base64
 import os
 import time
+from global_utils.utils.util import get_mongo_url
 from utils.storage.mongo_helpers import get_mongo_storage
 from utils.storage.mongo_storage import MongoStorage
 from utils.storage.storage_manager import StorageManager
@@ -16,7 +17,6 @@ from data_sources.docs.doc_pipeline_scheduler import DocDataPipeline
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
-from global_utils.utils.util import get_mongo_url
 
 
 mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
@@ -43,7 +43,6 @@ def get_available_doc_list():
         doc_data = data_source_repo.get_source_by_query({"last_pipeline_id": pipeline_id})
         if not doc_data:
             continue
-        doc_name = doc_data[0].get("source_name", "")
         doc["chunks"] = doc_data[0].get("chunks_generated", [])
         doc["path"] = doc_data[0].get("type_data", {}).get("source_path", "")
         doc["file_size"] = doc_data[0].get("type_data", {}).get("file_size", 0)

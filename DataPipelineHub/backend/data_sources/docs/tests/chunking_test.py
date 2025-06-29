@@ -63,7 +63,7 @@ def chunk_pdf_document():
         "type": "qdrant",
         "collection_name": "pdf_doc_data",
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://localhost",
+        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
         "port": 6333
     }
     
