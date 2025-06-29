@@ -28,7 +28,6 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
-
 import {
   Table,
   TableHeader,
@@ -36,7 +35,9 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from './table'
+} from '@/components/ui/table'
+
+
 
 // ─── 1. SORT HELPERS ───────────────────────────────────────────────────────
 
