@@ -10,11 +10,11 @@ from providers.docs import delete_doc_pipeline, get_available_doc_list, get_best
 docs_bp = Blueprint("docs", __name__)
 
 # Local development
-UPLOAD_FOLDER = "/home/cloud-user/Projects/unifai/DataPipelineHub/backend/data/pdfs"
+# UPLOAD_FOLDER = "/home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs"
 # os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # OCP
-# UPLOAD_FOLDER = "/app/shared"
+UPLOAD_FOLDER = "/app/shared"
 
 @docs_bp.route("/get.folder", methods=["GET"])
 def get_upload_folder():
@@ -27,12 +27,24 @@ def get_upload_folder():
         logger.error(f"Failed to get upload folder: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@docs_bp.route("/upload", methods=["POST"])
+@from_body({
+    "files": fields.List(fields.Dict(), required=True)
+})
+def upload_files_locally(files):
+    try:
+        upload_docs(files, UPLOAD_FOLDER)
+        return jsonify({"message": "Files uploaded successfully"}), 200
+    except Exception as e:
+        logger.error(f"Failed to upload files: {str(e)}")
+        return jsonify({"error": str(e)}), 500
     
     
 @docs_bp.route("/available.docs.get", methods=["GET"])
 def available_doc_list():
     try:
-        docs = get_available_doc_list()
+        user = session.get('user', {}).get('name', 'default')
+        docs = get_available_doc_list(user)
         return jsonify({"docs": docs}), 200
     except Exception as e:
         logger.error(f"Failed to get available docs list: {str(e)}")
@@ -60,11 +72,12 @@ def embed_docs(docs):
 @from_query({
     "query": fields.Str(required=True),
     "top_k_results": fields.Int(required=False),
-    "scope": fields.Str(required=False, load_default="public")
+    "scope": fields.Str(required=False, load_default="public"),
+    "logged_in_user": fields.Str(required=False, load_default="default", data_key="loggedInUser")
 })
-def best_match_results(query, top_k_results, scope):
+def best_match_results(query, top_k_results, scope, logged_in_user):    
     try:
-        search_results = get_best_match_results(query, top_k_results, scope)
+        search_results = get_best_match_results(query, top_k_results, scope, logged_in_user)
         return jsonify({"search_results": search_results}), 200
     except Exception as e:
         logger.error(f"Failed to find best match for user query: {str(e)}")
@@ -97,10 +110,3 @@ def retry(pipeline_id):
     except Exception as e:
         logger.error(f"Failed to get available docs list: {str(e)}")
         return jsonify({"error": str(e)}), 500
-    
-
-
-
-
-
-

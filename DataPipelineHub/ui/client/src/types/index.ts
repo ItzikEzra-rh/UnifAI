@@ -58,6 +58,7 @@ export interface Document {
   page_count: number;
   full_text: string;
   file_size: string;
+  upload_by: string;
   last_updated: string;
   stats: {
     total_tokens?: number;

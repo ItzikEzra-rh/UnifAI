@@ -92,7 +92,7 @@ export const DocumentGrid = ({paginatedDocuments, activeDoc, setActiveDoc, delet
           iconBgClass={fileByColors[doc.file_type]}
           title={doc.name}
           subtitle={getSubtitle(doc)}
-          metadata={`Uploaded ${new Date(doc.created_at).toLocaleString("en-GB")}`}
+          metadata={`Uploaded ${new Date(doc.created_at).toLocaleString("en-GB")} by ${doc.upload_by}`}
           footer={getFooterText(doc)}
           selected={doc === activeDoc}
           onClick={() => setActiveDoc(doc === activeDoc ? null : doc)}

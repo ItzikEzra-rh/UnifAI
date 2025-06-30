@@ -1,7 +1,8 @@
 import base64
 import os
 import time
-from utils.storage.mongo_storage import MongoStorage
+from utils.storage.mongo.mongo_storage import MongoStorage
+from global_utils.utils.util import get_mongo_url
 from utils.storage.storage_manager import StorageManager
 from utils.monitor.pipeline_monitor import MongoDBPipelineRepository
 import pymongo
@@ -10,15 +11,18 @@ from flask import session, jsonify
 from data_sources.docs.doc_connector import DocumentConnector
 from data_sources.docs.doc_config_manager import DocConfigManager
 from data_sources.docs.document_processor import DocumentProcessor
-from data_sources.docs.pdf_chunker_strategy import PDFChunkerStrategy
+from data_sources.docs.pdf_chunker_strategy import NoChunksGeneratedError, PDFChunkerStrategy
 from data_sources.docs.doc_pipeline_scheduler import DocDataPipeline
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
+from global_utils.utils.util import get_mongo_url
+from utils.storage.mongo.mongo_helpers import get_mongo_storage
 
-mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
+
+mongo_client = pymongo.MongoClient(get_mongo_url())
 pipeline_repo = MongoDBPipelineRepository(mongo_client)
-data_source_repo = MongoStorage("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/", db_name="data_sources")
+data_source_repo = MongoStorage(get_mongo_url())
 
 def upload_docs(files, UPLOAD_FOLDER):
     try:
@@ -31,26 +35,31 @@ def upload_docs(files, UPLOAD_FOLDER):
         logger.error(f"Failed to upload files: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-def get_available_doc_list():
-    available_docs_query = {"source_type": "DOCUMENT", "deleted": {"$ne": True}}
+def get_available_doc_list(user):
+    available_docs_query = {"source_type": "DOCUMENT", "upload_by": user, "deleted": {"$ne": True}}
     docs = pipeline_repo.get_pipeline_by_query(available_docs_query)
+
     for doc in docs:
-        doc["file_type"] = doc.get("name", "").rsplit(".", 1)[-1].lower()
         pipeline_id = doc["pipeline_id"]
+        doc["file_type"] = doc.get("name", "").rsplit(".", 1)[-1].lower()
         doc_data = data_source_repo.get_source_by_query({"last_pipeline_id": pipeline_id})
+
         if not doc_data:
             continue
-        doc_name = doc_data[0].get("source_name", "")
-        doc["chunks"] = doc_data[0].get("chunks_generated", [])
-        doc["path"] = doc_data[0].get("type_data", {}).get("source_path", "")
-        doc["file_size"] = doc_data[0].get("type_data", {}).get("file_size", 0)
-        doc["page_count"] = doc_data[0].get("type_data", {}).get("page_count", 0)
-        doc["full_text"] = doc_data[0].get("type_data", {}).get("full_text", "")
+
+        source = doc_data[0]
+        doc["chunks"] = source.get("chunks_generated", [])
+        doc["path"] = source.get("type_data", {}).get("source_path", "")
+        doc["file_size"] = source.get("type_data", {}).get("file_size", 0)
+        doc["page_count"] = source.get("type_data", {}).get("page_count", 0)
+        doc["full_text"] = source.get("type_data", {}).get("full_text", "")
+
     return docs
+
 
 def embed_docs_flow(doc_list, upload_by):
     # Create MongoDB client
-    mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
+    mongo_client = pymongo.MongoClient(get_mongo_url())
     # Create data pipeline with existing logger
     doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
     for doc in doc_list:
@@ -59,7 +68,7 @@ def embed_docs_flow(doc_list, upload_by):
         start = time.time()
         # Process the document using our pipeline
         doc["doc_id"] = doc_id
-        doc_pipeline.insert_doc(doc_id, doc_name)
+        doc_pipeline.insert_doc(doc_id, doc_name, upload_by)
         
     config = DocConfigManager()
     config.set_config_value("chunk_size", 800)
@@ -88,16 +97,13 @@ def embed_docs_flow(doc_list, upload_by):
         "type": "qdrant",
         "collection_name": "pdf_doc_data",
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
-        "port": 6333
     }
 
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()
 
-    qstore = VectorStorageFactory.create(storage_config)
-    qstore.initialize()
-    manager = StorageManager(qstore, mongo_uri="mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017")
+    mstore = get_mongo_storage()
+    manager = StorageManager(vector_storage, mstore)
     response = []
 
 
@@ -112,7 +118,6 @@ def embed_docs_flow(doc_list, upload_by):
             doc_pipeline.monitor.start_log_monitoring(target_logger=logger, pipeline_id=f"doc_{doc_id}")
 
             result = doc_connector.process_document(doc_path, upload_by)
-            
             # Process with various options
             processed_documents = doc_processor.process(
                 result,
@@ -159,6 +164,17 @@ def embed_docs_flow(doc_list, upload_by):
             })
 
             doc_pipeline.monitor.finish_log_monitoring()
+            
+        except NoChunksGeneratedError as e:
+            logger.error(f"Chunking failed for doc {doc_name}: {str(e)}")
+            response.append({
+                "doc": doc_name,
+                "status": "failed",
+                "error": "No content could be chunked from this document."
+            })
+            doc_pipeline.monitor.finish_log_monitoring()
+            continue  # Skip to the next document
+
         except Exception as e:
             logger.error(f"Failed to embed doc {doc.get('doc_name')}: {str(e)}")
             response.append({
@@ -169,7 +185,7 @@ def embed_docs_flow(doc_list, upload_by):
 
     return response
 
-def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "public"):
+def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "public", logged_in_user: str = "default"):
     # Create embedding generator
     embedding_config = {
         "type": "sentence_transformer",
@@ -183,8 +199,6 @@ def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "pub
         "type": "qdrant",
         "collection_name": "pdf_doc_data",
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
-        "port": 6333
     }
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()
@@ -194,7 +208,7 @@ def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "pub
     search_results = vector_storage.search(
         query_embedding=query_embedding,
         top_k=top_k_results,
-        filters={"upload_by": session.get('user').get('name', 'default')} if scope == "private" else {}
+        filters={"upload_by": logged_in_user} if scope == "private" else {}
     )
 
     return search_results
