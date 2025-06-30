@@ -10,7 +10,7 @@ from providers.docs import delete_doc_pipeline, get_available_doc_list, get_best
 docs_bp = Blueprint("docs", __name__)
 
 # Local development
-# UPLOAD_FOLDER = "/home/cloud-user/Projects/unifai/DataPipelineHub/backend/data/pdfs"
+# UPLOAD_FOLDER = "/home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs"
 # os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # OCP
@@ -43,7 +43,8 @@ def upload_files_locally(files):
 @docs_bp.route("/available.docs.get", methods=["GET"])
 def available_doc_list():
     try:
-        docs = get_available_doc_list()
+        user = session.get('user', {}).get('name', 'default')
+        docs = get_available_doc_list(user)
         return jsonify({"docs": docs}), 200
     except Exception as e:
         logger.error(f"Failed to get available docs list: {str(e)}")

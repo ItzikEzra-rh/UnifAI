@@ -28,7 +28,7 @@ class DocDataPipeline:
         self.logger = logger if logger else logging.getLogger("doc_data_pipeline")
         self.logger.info("Initialized DocDataPipeline")
 
-    def insert_doc(self, doc_id: str, doc_name: str) -> bool:
+    def insert_doc(self, doc_id: str, doc_name: str, upload_by: str) -> bool:
         """
         Insert a document to mongo.
         
@@ -45,7 +45,7 @@ class DocDataPipeline:
         
         # Register pipeline with monitor
         self.logger.info(f"Inserting document pipeline: {pipeline_id}")
-        self.monitor.register_pipeline(pipeline_id, SourceType.DOCUMENT, doc_name)
+        self.monitor.register_pipeline(pipeline_id, SourceType.DOCUMENT, doc_name, upload_by)
         
         try:
             # Update status to active

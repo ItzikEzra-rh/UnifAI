@@ -5,6 +5,9 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from shared.logger import logger
 from utils.content_chunker import ContentChunker
 
+class NoChunksGeneratedError(Exception):
+    """Raised when no chunks are generated from the documents"""
+    pass
 class PDFChunkerStrategy(ContentChunker):
     """
     Implementation of ContentChunker for PDFs using langchain's RecursiveCharacterTextSplitter.
@@ -122,4 +125,9 @@ class PDFChunkerStrategy(ContentChunker):
             self._chunks.extend(doc_chunks)
         
         logger.info(f"Completed chunking with {len(self._chunks)} total chunks generated")
+
+        if len(self._chunks) == 0:
+            logger.error("No chunks were generated from the documents. Raising failure.")
+            raise NoChunksGeneratedError("Chunking failed: all documents were empty or unprocessable.")
+
         return self._chunks

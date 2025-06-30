@@ -11,7 +11,7 @@ from flask import session, jsonify
 from data_sources.docs.doc_connector import DocumentConnector
 from data_sources.docs.doc_config_manager import DocConfigManager
 from data_sources.docs.document_processor import DocumentProcessor
-from data_sources.docs.pdf_chunker_strategy import PDFChunkerStrategy
+from data_sources.docs.pdf_chunker_strategy import NoChunksGeneratedError, PDFChunkerStrategy
 from data_sources.docs.doc_pipeline_scheduler import DocDataPipeline
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
 from utils.storage.vector_storage_factory import VectorStorageFactory
@@ -35,21 +35,27 @@ def upload_docs(files, UPLOAD_FOLDER):
         logger.error(f"Failed to upload files: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-def get_available_doc_list():
-    available_docs_query = {"source_type": "DOCUMENT", "deleted": {"$ne": True}}
+def get_available_doc_list(user):
+    available_docs_query = {"source_type": "DOCUMENT", "upload_by": user, "deleted": {"$ne": True}}
     docs = pipeline_repo.get_pipeline_by_query(available_docs_query)
+
     for doc in docs:
-        doc["file_type"] = doc.get("name", "").rsplit(".", 1)[-1].lower()
         pipeline_id = doc["pipeline_id"]
+        doc["file_type"] = doc.get("name", "").rsplit(".", 1)[-1].lower()
         doc_data = data_source_repo.get_source_by_query({"last_pipeline_id": pipeline_id})
+
         if not doc_data:
             continue
-        doc["chunks"] = doc_data[0].get("chunks_generated", [])
-        doc["path"] = doc_data[0].get("type_data", {}).get("source_path", "")
-        doc["file_size"] = doc_data[0].get("type_data", {}).get("file_size", 0)
-        doc["page_count"] = doc_data[0].get("type_data", {}).get("page_count", 0)
-        doc["full_text"] = doc_data[0].get("type_data", {}).get("full_text", "")
+
+        source = doc_data[0]
+        doc["chunks"] = source.get("chunks_generated", [])
+        doc["path"] = source.get("type_data", {}).get("source_path", "")
+        doc["file_size"] = source.get("type_data", {}).get("file_size", 0)
+        doc["page_count"] = source.get("type_data", {}).get("page_count", 0)
+        doc["full_text"] = source.get("type_data", {}).get("full_text", "")
+
     return docs
+
 
 def embed_docs_flow(doc_list, upload_by):
     # Create MongoDB client
@@ -62,7 +68,7 @@ def embed_docs_flow(doc_list, upload_by):
         start = time.time()
         # Process the document using our pipeline
         doc["doc_id"] = doc_id
-        doc_pipeline.insert_doc(doc_id, doc_name)
+        doc_pipeline.insert_doc(doc_id, doc_name, upload_by)
         
     config = DocConfigManager()
     config.set_config_value("chunk_size", 800)
@@ -112,7 +118,6 @@ def embed_docs_flow(doc_list, upload_by):
             doc_pipeline.monitor.start_log_monitoring(target_logger=logger, pipeline_id=f"doc_{doc_id}")
 
             result = doc_connector.process_document(doc_path, upload_by)
-            
             # Process with various options
             processed_documents = doc_processor.process(
                 result,
@@ -159,6 +164,17 @@ def embed_docs_flow(doc_list, upload_by):
             })
 
             doc_pipeline.monitor.finish_log_monitoring()
+            
+        except NoChunksGeneratedError as e:
+            logger.error(f"Chunking failed for doc {doc_name}: {str(e)}")
+            response.append({
+                "doc": doc_name,
+                "status": "failed",
+                "error": "No content could be chunked from this document."
+            })
+            doc_pipeline.monitor.finish_log_monitoring()
+            continue  # Skip to the next document
+
         except Exception as e:
             logger.error(f"Failed to embed doc {doc.get('doc_name')}: {str(e)}")
             response.append({

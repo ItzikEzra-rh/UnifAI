@@ -55,6 +55,7 @@ export interface Document {
   created_at: string;
   file_type: string;
   chunks: number;
+  upload_by: string;
   page_count: number;
   full_text: string;
   file_size: string;

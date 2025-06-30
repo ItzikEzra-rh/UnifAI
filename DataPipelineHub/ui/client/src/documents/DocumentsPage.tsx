@@ -15,6 +15,7 @@ import { DocumentGrid } from "./DocumentGrid";
 
 const fetchDocuments = async () => {
   const response = await axiosInstance.get("/api/docs/available.docs.get");
+  console.log(response)
   return response.data.docs;
 };
 
@@ -55,11 +56,12 @@ export default function Documents() {
     currentPage * itemsPerPage
   );
 
-
+  const startIndex = (currentPage - 1) * itemsPerPage + 1;
+  const endIndex = Math.min(currentPage * itemsPerPage, filteredDocuments.length);
   const footer = (
     <div className="flex items-center justify-between w-full px-4">
       <span className="text-sm text-gray-400">
-        Showing {paginatedDocuments.length} of {filteredDocuments.length} documents
+        Showing {startIndex}-{endIndex} of {filteredDocuments.length} documents
       </span>
 
       <div className="flex items-center space-x-2">
