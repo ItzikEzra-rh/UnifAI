@@ -8,20 +8,25 @@ from global_utils.celery_app.helpers import send_task
 from providers.docs import delete_doc_pipeline, get_available_doc_list, get_best_match_results, upload_docs
 
 docs_bp = Blueprint("docs", __name__)
-UPLOAD_FOLDER = "/home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs"
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-@docs_bp.route("/upload", methods=["POST"])
-@from_body({
-    "files": fields.List(fields.Dict(), required=True)
-})
-def upload_files_locally(files):
+# Local development
+UPLOAD_FOLDER = "/home/cloud-user/Projects/unifai/DataPipelineHub/backend/data/pdfs"
+# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# OCP
+# UPLOAD_FOLDER = "/app/shared"
+
+@docs_bp.route("/get.folder", methods=["GET"])
+def get_upload_folder():
+    """
+    Endpoint to get the upload folder path.
+    """
     try:
-        upload_docs(files, UPLOAD_FOLDER)
-        return jsonify({"message": "Files uploaded successfully"}), 200
+        return jsonify({"path": UPLOAD_FOLDER}), 200
     except Exception as e:
-        logger.error(f"Failed to upload files: {str(e)}")
+        logger.error(f"Failed to get upload folder: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
     
     
 @docs_bp.route("/available.docs.get", methods=["GET"])
