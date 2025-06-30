@@ -9,16 +9,9 @@ interface DocumentFiltersProps {
   setFileTypeFilter: (value: string) => void;
   searchQuery: string;
   setSearchQuery: (value: string) => void;
-  onSearch: () => void;
 }
 
-export function DocumentFilters({
-  fileTypeFilter,
-  setFileTypeFilter,
-  searchQuery,
-  setSearchQuery,
-  onSearch,
-}: DocumentFiltersProps) {
+export function DocumentFilters({fileTypeFilter, setFileTypeFilter, searchQuery, setSearchQuery}: DocumentFiltersProps) {
   return (
     <div className="flex items-center space-x-2">
       <Select value={fileTypeFilter} onValueChange={setFileTypeFilter}>

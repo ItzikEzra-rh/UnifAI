@@ -104,6 +104,7 @@ def retry(pipeline_id):
     try:
         # get data from the mongo, set status of pipeline to RETRIED
         # and we want to לדרוס the sources data with last_pipeline_id and update it
+        # not implemented yet!
         docs = []
         embed_docs(docs)
         return jsonify({"docs": docs}), 200

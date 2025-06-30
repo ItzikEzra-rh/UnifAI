@@ -1,12 +1,5 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "./ConfirmDialog";

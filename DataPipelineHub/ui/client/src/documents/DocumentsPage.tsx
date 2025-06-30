@@ -15,7 +15,6 @@ import { DocumentGrid } from "./DocumentGrid";
 
 const fetchDocuments = async () => {
   const response = await axiosInstance.get("/api/docs/available.docs.get");
-  console.log(response)
   return response.data.docs;
 };
 
@@ -92,7 +91,6 @@ export default function Documents() {
       setFileTypeFilter={setFileTypeFilter}
       searchQuery={searchQuery}
       setSearchQuery={setSearchQuery}
-      onSearch={() => setPage(1)}
     />
   );
 
@@ -185,7 +183,6 @@ export default function Documents() {
                         <div className="w-full">
                           <DocumentTable
                             documents={documents}
-                            fetchDocuments={fetchDocuments}
                             activeDoc={activeDoc}
                             setActiveDoc={setActiveDoc}
                             deleteLoading={deleteLoading}

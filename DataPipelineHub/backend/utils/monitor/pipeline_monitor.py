@@ -60,7 +60,6 @@ class PipelineMonitor(PipelineMonitorBase):
             "status": PipelineStatus.PENDING.value,
             "created_at": datetime.now(),
             "last_updated": datetime.now(),
-            "upload_by": upload_by,
             "stats": {
                 "documents_retrieved": 0,
                 "chunks_generated": 0,
@@ -72,6 +71,8 @@ class PipelineMonitor(PipelineMonitorBase):
         
         if source_name:
             pipeline_data["name"] = source_name
+        if upload_by:
+            pipeline_data["upload_by"] = upload_by
         
         self.repository.save_pipeline(pipeline_data)
         self.logger.info(f"Registered new pipeline: {pipeline_id} for source: {source_type.value}")

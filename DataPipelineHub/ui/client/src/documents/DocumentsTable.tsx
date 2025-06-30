@@ -6,13 +6,11 @@ import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
 import { getFileIcon, fileByColors, statusByLabel, statusByColors } from "./helpers";
 import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
-import axiosInstance from "@/http/axiosConfig";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DocumentData } from "./DocumentData";
 
 interface DocumentTableProps {
   documents: Document[];
-  fetchDocuments: () => Promise<void>;
   activeDoc?: Document | null;
   setActiveDoc?: (doc: Document | null) => void;
   deleteLoading?: boolean; // Optional: legacy
@@ -21,16 +19,7 @@ interface DocumentTableProps {
   handleRetry?: (id: string) => void;
 }
 
-export const DocumentTable: React.FC<DocumentTableProps> = ({
-  documents,
-  fetchDocuments,
-  activeDoc,
-  setActiveDoc,
-  deleteLoading, // legacy fallback
-  onDeleteConfirmed,
-  retrying,
-  handleRetry,
-}) => {
+export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDoc, setActiveDoc, deleteLoading, onDeleteConfirmed, retrying, handleRetry}) => {
   const [confirmDoc, setConfirmDoc] = useState<Document | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
 

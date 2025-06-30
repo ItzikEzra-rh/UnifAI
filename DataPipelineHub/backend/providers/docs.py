@@ -225,5 +225,5 @@ def delete_doc_pipeline(pipeline_id: str):
     """    
     source = data_source_repo.delete_source(pipeline_id)
     pipeline = pipeline_repo.delete_pipeline(pipeline_id)
-    # add here removal from qdrant!!!
+    # add here removal from qdrant!!! not implemented yet
     return source and pipeline

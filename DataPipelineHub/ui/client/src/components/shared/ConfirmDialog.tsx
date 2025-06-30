@@ -1,10 +1,4 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import {Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 
 export interface ConfirmDialogProps {
@@ -18,16 +12,7 @@ export interface ConfirmDialogProps {
   loading?: boolean;
 }
 
-export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
-  open,
-  title,
-  message,
-  confirmLabel = "Confirm",
-  cancelLabel = "Cancel",
-  onConfirm,
-  onCancel,
-  loading = false,
-}) => {
+export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({open, title, message, confirmLabel = "Confirm", cancelLabel = "Cancel", onConfirm, onCancel, loading = false}) => {
   return (
     <Dialog open={open}>
       <DialogContent>
