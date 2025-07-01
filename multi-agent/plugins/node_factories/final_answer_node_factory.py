@@ -20,7 +20,6 @@ class FinalAnswerNodeFactory(BaseFactory[FinalAnswerNodeConfig, FinalAnswerNode]
     def create(self, cfg: FinalAnswerNodeConfig, **deps) -> FinalAnswerNode:
         try:
             return FinalAnswerNode(
-                step_ctx=deps.pop("step_ctx"),
                 name=cfg.name or cfg.type
             )
         except Exception as exc:

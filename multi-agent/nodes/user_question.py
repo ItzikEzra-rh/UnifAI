@@ -11,10 +11,9 @@ class UserQuestionNode(BaseNode):
 
     def __init__(self,
                  *,
-                 step_ctx: StepContext,
                  name: str = "user_question",
                  **kwargs):
-        super().__init__(step_ctx=step_ctx, name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
 
     def run(self, state: GraphState) -> GraphState:
         prompt = state.get("user_prompt", "<no input>")

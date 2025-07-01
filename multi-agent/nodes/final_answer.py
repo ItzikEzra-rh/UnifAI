@@ -40,11 +40,10 @@ class FinalAnswerNode(BaseNode):
     def __init__(
             self,
             *,
-            step_ctx: StepContext,
             name: str = "final_answer",
             **kwargs
     ):
-        super().__init__(step_ctx=step_ctx, name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
 
     def run(self, state: GraphState) -> GraphState:
         messages = state.get("messages", [])

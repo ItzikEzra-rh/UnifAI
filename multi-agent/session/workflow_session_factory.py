@@ -73,7 +73,6 @@ class WorkflowSessionFactory:
         # 5) Wire into WorkflowSession ———
         session = WorkflowSession(
             session_registry=session_registry,
-            blueprint=blueprint_spec,
             blueprint_id=blueprint_id,
             graph_plan=graph_plan,
             executable_graph=executable_graph,

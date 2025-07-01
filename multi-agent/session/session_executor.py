@@ -24,18 +24,6 @@ class SessionExecutor:
         self._sessions = session_manager
         self._repo = repository
 
-    def _resolve_session(self, session_or_id: SessionOrId) -> WorkflowSession:
-        """
-        If given a WorkflowSession, return it.
-        Otherwise treat it as run_id and load via the manager.
-        """
-        if isinstance(session_or_id, WorkflowSession):
-            return session_or_id
-
-        run_id = session_or_id
-        session = self._sessions.get_session(run_id)
-        return session
-
     def _pre_run(self, session: WorkflowSession, inputs: Dict[str, Any], scope: str) -> None:
         """
         1) add title to session metadata
@@ -81,14 +69,13 @@ class SessionExecutor:
 
     def run(
             self,
-            session_or_id: SessionOrId,
+            session: WorkflowSession,
             inputs: Dict[str, Any],
             scope: str = "public"
     ) -> GraphState:
         """
         Run the graph to completion and return the final GraphState.
         """
-        session = self._resolve_session(session_or_id)
         self._pre_run(session, inputs, scope)
         try:
             final_state = session.executable_graph.run(session.graph_state)
@@ -101,7 +88,7 @@ class SessionExecutor:
 
     def stream(
             self,
-            session_or_id: SessionOrId,
+            session: WorkflowSession,
             inputs: Dict[str, Any],
             scope: str = "public",
             **stream_kwargs: Any
@@ -109,7 +96,6 @@ class SessionExecutor:
         """
         Stream execution chunks, then persist at the end.
         """
-        session = self._resolve_session(session_or_id)
         self._pre_run(session, inputs, scope)
 
         try:

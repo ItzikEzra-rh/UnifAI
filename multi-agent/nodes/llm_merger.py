@@ -12,14 +12,12 @@ class LLMMergerNode(LlmCapableMixin, BaseNode):
 
     def __init__(self,
                  *,
-                 step_ctx: StepContext,
                  name: str = "llm_merger",
                  llm,
                  system_message: str = "",
                  retries: int = 1,
                  **kwargs):
-        super().__init__(step_ctx=step_ctx,
-                         name=name,
+        super().__init__(name=name,
                          llm=llm,
                          system_message=system_message,
                          retries=retries,

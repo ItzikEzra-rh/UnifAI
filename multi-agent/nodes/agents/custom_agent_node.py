@@ -25,7 +25,6 @@ class CustomAgentNode(
     def __init__(
             self,
             *,
-            step_ctx: StepContext,
             name: str,
             llm: Any,
             retriever: Any = None,
@@ -36,7 +35,6 @@ class CustomAgentNode(
             **kwargs: Any
     ):
         super().__init__(
-            step_ctx=step_ctx,
             name=name,
             llm=llm,
             retriever=retriever,

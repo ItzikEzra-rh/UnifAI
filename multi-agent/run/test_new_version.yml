@@ -10,9 +10,9 @@ llms:
     config:
       name: my openai llm
       type: openai
-      model_name: gpt-4o
-      api_key: sk-1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef
-      base_url: https://api.openai.com/v1
+      model_name: gemini-2.0-flash
+      api_key: AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ
+      base_url: https://generativelanguage.googleapis.com/v1beta/openai
 nodes:
   - rid: user_question
     name: user_question
@@ -46,5 +46,5 @@ plan:
     node: agent_node
 
   - uid: final_answer
-    after: agent
+    after: agent_node
     node: final_answer

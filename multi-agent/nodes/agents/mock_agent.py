@@ -11,11 +11,10 @@ class MockAgentNode(BaseNode):
 
     def __init__(self,
                  *,
-                 step_ctx: StepContext,
                  name: str = "mock_agent",
                  fixed_message: Optional[str] = None,
                  **kwargs):
-        super().__init__(step_ctx=step_ctx, name=name, **kwargs)
+        super().__init__(name=name, **kwargs)
         self.fixed_message = fixed_message
 
     def run(self, state: GraphState) -> GraphState:

@@ -4,7 +4,7 @@ from plugins.exceptions import PluginConfigurationError
 from pydantic import ValidationError
 from core.enums import ResourceCategory
 from core.contracts import SessionRegistry
-from blueprints.models.blueprint import BlueprintSpec
+from blueprints.models.blueprint import BlueprintSpec, ResourceSpec
 
 
 class CategoryBuilder(ABC):
@@ -18,14 +18,14 @@ class CategoryBuilder(ABC):
         self._registry_elements = registry_elements
 
     def build(self, blueprint: BlueprintSpec, registry: SessionRegistry) -> None:
-        for d in self._iter_specs(blueprint):
-            inst = self._create_instance(d, registry)
-            self._register(registry, d.name, inst)
+        for resource in self._iter_specs(blueprint):
+            inst = self._create_instance(resource.config, registry)
+            self._register(registry, resource.rid.ref, inst)
 
     # -------- protected helpers ----------------------------------------
 
     @abstractmethod
-    def _iter_specs(self, blueprint: BlueprintSpec) -> Iterable[Any]:
+    def _iter_specs(self, blueprint: BlueprintSpec) -> Iterable[ResourceSpec]:
         ...
 
     def _register(self, registry, name: str, inst: Any):

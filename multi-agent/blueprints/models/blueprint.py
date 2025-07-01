@@ -54,7 +54,7 @@ class StepDef(BaseModel):
         default_factory=lambda: f"s_{uuid4().hex[:8]}"
     )
     after: str | List[str] | None = None  # depends-on
-    node: str  # <-- node.alias
+    node: Ref  # <-- node reference
     exit_condition: str | None = None
     branches: dict | None = None
     meta: StepMeta = Field(default_factory=StepMeta)

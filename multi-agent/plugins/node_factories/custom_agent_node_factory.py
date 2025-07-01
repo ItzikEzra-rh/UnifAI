@@ -22,7 +22,6 @@ class CustomAgentNodeFactory(BaseFactory[CustomAgentNodeConfig, CustomAgentNode]
     def create(self, cfg, **deps):
         try:
             return CustomAgentNode(
-                step_ctx=deps.pop("step_ctx"),
                 name=cfg.name,
                 llm=deps.pop("llm"),
                 retriever=deps.pop("retriever"),

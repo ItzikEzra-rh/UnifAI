@@ -30,5 +30,5 @@ plan:
     node: a59e8ed3da48407bbd379ed3d189fbaf
 
   - uid: final_answer
-    after: agent
+    after: agent_node
     node: final_answer

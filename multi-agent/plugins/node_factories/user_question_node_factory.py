@@ -20,7 +20,6 @@ class UserQuestionNodeFactory(BaseFactory[UserQuestionNodeConfig, UserQuestionNo
     def create(self, cfg: UserQuestionNodeConfig, **deps) -> UserQuestionNode:
         try:
             return UserQuestionNode(
-                step_ctx=deps.pop("step_ctx"),
                 name=cfg.name or cfg.type
             )
         except Exception as exc:

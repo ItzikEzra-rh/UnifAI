@@ -1,5 +1,5 @@
 from typing import List, Union
-from blueprints.models.blueprint import StepDef, NodeSpec
+from blueprints.models.blueprint import StepDef, NodeSpec, ResourceSpec
 from graph.graph_plan import GraphPlan
 from .node_factory import NodeFactory
 from graph.step_context import StepContext
@@ -42,7 +42,11 @@ class PlanComposer:
             cond_fn = self.session.get(ResourceCategory.CONDITION, sd.exit_condition) if sd.exit_condition else None
 
             # instantiate the node
-            func = self._resolve_node(sd.node, step_ctx)
+            func = self.session.get(ResourceCategory.NODE, sd.node.ref)
+
+            # inject context if supported
+            if hasattr(func, 'set_context') and callable(func.set_context):
+                func.set_context(step_ctx)
 
             # 3) add into plan
             plan.add_step(
@@ -57,28 +61,3 @@ class PlanComposer:
         # 4) sanity-check references
         plan.validate()
         return plan
-
-    def _resolve_node(self, node_field: Union[str, NodeSpec], step_ctx: StepContext):
-        """
-        Returns a callable node instance for the plan.
-
-        If node_field is a string → static node:
-          • fetch config_schema & Node class from ElementRegistry
-          • build a NodeSpec → pass to NodeFactory
-
-        If node_field is a NodeSpec → inline:
-          • pass directly to NodeFactory
-
-        NodeFactory merges template defaults + overrides + session atoms.
-        """
-        if isinstance(node_field, str):
-            # static node: name=type
-            spec = NodeSpec(type=node_field, name=node_field)
-        else:
-            spec = node_field
-
-        # Build a BaseNode subclass instance
-        node_instance = NodeFactory.build(spec, self.session, step_ctx)
-
-        # Return the callable (we assume BaseNode.__call__ invokes run())
-        return node_instance

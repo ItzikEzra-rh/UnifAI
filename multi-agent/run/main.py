@@ -10,6 +10,7 @@ from resources.service import ResourcesService
 from resources.registry import ResourcesRegistry
 from resources.repository.mongo_repository import MongoResourceRepository
 from blueprints.resolver import BlueprintResolver
+from core.app_container import AppContainer
 from typing import Iterator, Any, Dict, List
 from config.app_config import get_app_config
 from rich.live import Live
@@ -132,49 +133,9 @@ def main_resume_session(run_id: str):
 
 
 if __name__ == "__main__":
-    # main_resume_session("64fc9af1-2dd8-405d-a491-925639a4100f")
-    # blueprint_loader = YAMLBlueprintLoader()
-    # spec1 = blueprint_loader.load("run/test_1_agent_add_tool.yml")
-    # spec2 = blueprint_loader.load("run/test_2_agents_slack_docs_merger.yml")
-    # spec3 = blueprint_loader.load("run/test_1_agent_ssh_exec_tool.yml")
-    # spec4 = blueprint_loader.load("run/test_1_agent_mcp_tool.yml")
-    # spec5 = blueprint_loader.load("run/test_1_agent_mcp_tool_proxy.yml")
-    # # spec5 = blueprint_loader.load("run/test_1_agent_2_mcp_providers.yml")
-    # repo = MongoBlueprintRepository()
-    # service = BlueprintService(repo)
-    # bid1 = service.register(spec1)
-    # bid2 = service.register(spec2)
-    # bid3 = service.register(spec3)
-    # bid4 = service.register(spec4)
-    # bid5 = service.register(spec5)
-
-    # print(service.count())
-    # print(service.get_blueprint_spec("81bdd223-4dba-4bb3-81d1-20fbaf19dd01"))
-
-    # print(service.delete("707f3ac8-3d09-41dd-90c3-d3ce0a6dacb2"))
-    # print(json.dumps(service.get_dict("81bdd223-4dba-4bb3-81d1-20fbaf19dd01")))
-    # main_new_session()
-    # main_resume_session(get_current_context().run_id)
-    # main_resume_session("64fc9af1-2dd8-405d-a491-925639a4100f")
-    import json
-
     config = get_app_config()
-    element_registry.auto_discover()
-    resource_repo = MongoResourceRepository()
-    blueprint_repo = MongoBlueprintRepository(coll_name=config.blueprint_coll)
 
-    resource_registry = ResourcesRegistry(
-        repo=resource_repo,
-        bp_repo=blueprint_repo,
-    )
-    resources_service = ResourcesService(
-        resource_registry=resource_registry,
-        element_registry=element_registry,
-    )
-
-    blueprint_resolver = BlueprintResolver(resource_registry=resource_registry, element_registry=element_registry)
-    blueprint_service = BlueprintService(repo=blueprint_repo, resolver=blueprint_resolver)
-
+    app = AppContainer(config)
     # llm_rid = resources_service.create(user_id="alice", category="llms", type="openai",
     #                                    name="openai_llm",
     #                                    config={"name": "openai_llm",
@@ -201,10 +162,13 @@ if __name__ == "__main__":
     #                                  "system_message": "You are a smart assistant …"})
 
     blueprint_loader = YAMLBlueprintLoader()
-    raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
-    # raw = blueprint_loader.load("run/test_new_version.yml")
-    blueprint_id = blueprint_service.save_draft("alice", draft_dict=raw)
-
-    bp_spec = blueprint_service.load_resolved(blueprint_id)
-    print(json.dumps(bp_spec.model_dump(mode="json")))
-
+    # raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
+    raw = blueprint_loader.load("run/test_new_version.yml")
+    blueprint_id = app.blueprint_service.save_draft("alice", draft_dict=raw)
+    print(f"Saved blueprint draft with id: {blueprint_id}")
+    session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
+    print(f"Created session with id: {session.run_context.run_id}")
+    print(app.session_service.execute(session_id=session.run_context.run_id,
+                                inputs={"user_prompt": "what is 53534534 + 8678675?"},
+                                stream=False,
+                                scope="public"))

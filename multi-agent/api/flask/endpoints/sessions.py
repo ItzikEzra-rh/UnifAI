@@ -17,7 +17,7 @@ def create_user_session(blueprint_id, user_id, metadata):
     try:
         session_svc = current_app.container.session_service
         blueprint_svc = current_app.container.blueprint_service
-        blueprint_spec = blueprint_svc.get_blueprint_spec(blueprint_id)
+        blueprint_spec = blueprint_svc.load_resolved(blueprint_id)
         session = session_svc.create(user_id=user_id,
                                      blueprint_spec=blueprint_spec,
                                      blueprint_id=blueprint_id,
@@ -46,7 +46,7 @@ def execute_user_session(session_id, inputs, stream_mode, stream, scope):
     if not stream:
         # synchronous run
         result = svc.execute(
-            session_or_id=session_id,
+            session_id=session_id,
             inputs=inputs,
             stream=False,
             scope=scope
@@ -56,7 +56,7 @@ def execute_user_session(session_id, inputs, stream_mode, stream, scope):
     # streaming run
     def generate():
         for chunk in svc.execute(
-                session_or_id=session_id,
+                session_id=session_id,
                 inputs=inputs,
                 stream=True,
                 stream_mode=stream_mode,

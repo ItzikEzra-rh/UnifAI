@@ -16,12 +16,12 @@ class SessionRegistry:
         self._frozen = False  # to optionally lock after build
 
     # ─────────────── public, generic API ────────────────
-    def register(self, category: ResourceCategory, name: str, inst: Any) -> None:
+    def register(self, category: ResourceCategory, rid: str, inst: Any) -> None:
         self._assert_not_frozen()
-        self._store[category][name] = inst
+        self._store[category][rid] = inst
 
-    def get(self, category: ResourceCategory, name: str) -> Any:
-        return self._store[category][name]
+    def get(self, category: ResourceCategory, rid: str) -> Any:
+        return self._store[category][rid]
 
     def all_of(self, category: ResourceCategory) -> Dict[str, Any]:
         """Read-only view of a whole bucket (useful in debugging)."""

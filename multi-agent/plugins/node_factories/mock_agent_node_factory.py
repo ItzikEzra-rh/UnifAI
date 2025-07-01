@@ -25,7 +25,6 @@ class MockAgentNodeFactory(BaseFactory[MockAgentNodeConfig, MockAgentNode]):
         """
         try:
             return MockAgentNode(
-                step_ctx=deps.pop("step_ctx"),
                 name=cfg.name or cfg.type,
                 fixed_message=getattr(cfg, "fixed_message", None)
             )

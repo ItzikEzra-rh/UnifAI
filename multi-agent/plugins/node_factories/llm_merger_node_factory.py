@@ -20,7 +20,6 @@ class LLMMergerNodeFactory(BaseFactory[MergerLLMNodeConfig, LLMMergerNode]):
     def create(self, cfg: MergerLLMNodeConfig, **deps) -> LLMMergerNode:
         try:
             return LLMMergerNode(
-                step_ctx=deps.pop("step_ctx"),
                 llm=deps.pop("llm"),
                 name=cfg.name or cfg.type,
                 system_message=cfg.system_message,

@@ -13,9 +13,9 @@ class BaseNode(SupportsStreaming, ABC):
     • NO domain-specific logic
     """
 
-    def __init__(self, *, step_ctx: StepContext, name: str, **kwargs: Any):
+    def __init__(self, *, name: str, **kwargs: Any):
         super().__init__(**kwargs)  # MRO
-        self._ctx = step_ctx
+        self._ctx: Optional[StepContext] = None
         self.name = name
         self._stream_writer: Optional[StreamWriter] = None
         self._is_streaming = False
@@ -61,6 +61,12 @@ class BaseNode(SupportsStreaming, ABC):
         Check if the node is streaming.
         """
         return self._is_streaming
+
+    def set_context(self, step_ctx: StepContext) -> None:
+        """
+        Set the step context for this node.
+        """
+        self._ctx = step_ctx
 
     @property
     def uid(self) -> str:
