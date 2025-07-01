@@ -173,7 +173,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       <DataTable
         columns={columns}
         data={documents}
-        enableGlobalFilter={true}
+        enableGlobalFilter={false}
         enableColumnFilters={true}
         enablePagination={true}
         expendedRow={activeDoc}

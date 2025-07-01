@@ -77,7 +77,7 @@ export const DataCard: React.FC<DataCardProps> = ({
             )}
             <div className="flex-1 min-w-0">
               {title && (
-                <h4 className="font-medium text-sm break-words line-clamp-2">
+                <h4 className="font-medium text-sm break-all line-clamp-2">
                   {title}
                 </h4>
               )}
