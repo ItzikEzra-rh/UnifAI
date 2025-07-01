@@ -1,5 +1,4 @@
 from datetime import datetime
-import re
 from typing import Dict, List, Optional, Any
 import logging
 from collections import deque

@@ -21,7 +21,6 @@ class MongoDBPipelineRepository:
         """
         self.client = mongo_client
         self.db = self.client[database_name]
-        self.sources = self.db.sources
         self.pipelines = self.db.pipelines
         self.metrics = self.db.metrics
         self.errors = self.db.errors
