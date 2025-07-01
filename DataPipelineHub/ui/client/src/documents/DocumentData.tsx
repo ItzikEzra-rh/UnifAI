@@ -8,9 +8,10 @@ interface LibraryTabProps {
   doc: Document;
 }
 
+// the commented out fields are placeholders for future enhancements
 export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
   const metadata = [
-    { label: "Title", value: doc.name }, // ← could add separate title field in future
+    { label: "Title", value: doc.name },
     // { label: "Author", value: "Product Management Team" },
     { label: "Created", value: new Date(doc.created_at).toLocaleDateString() },
     { label: "Modified", value: doc.last_updated ? new Date(doc.last_updated).toLocaleDateString() : "—" },
@@ -59,11 +60,7 @@ export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
                   className="p-4 overflow-y-auto font-mono text-xs whitespace-pre-line max-w-[50vw] break-words flex-1"
                   style={{ wordBreak: "break-word" }}
                 >
-                  {doc.full_text ? (
-                    <p>{doc.full_text}</p>
-                  ) : (
-                    <p className="text-gray-400 italic">No extracted text available.</p>
-                  )}
+                  {doc.full_text ? (<p>{doc.full_text}</p>) : (<p className="text-gray-400 italic">No extracted text available.</p>)}
                 </div>
               </div>
             </div>
@@ -86,18 +83,6 @@ export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
               <div className="mt-4 bg-background-dark p-4 rounded-lg border border-gray-800">
                 <h4 className="font-medium mb-3">Extraction Statistics</h4>
                 <div className="space-y-3">
-                  {/* Optional progress bars: */}
-                  {/* 
-                  <div>
-                    <div className="flex justify-between mb-1">
-                      <span className="text-sm text-gray-400">Text Quality:</span>
-                      <span className="text-sm">Excellent</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-gray-800 rounded-full overflow-hidden">
-                      <div className="h-full bg-success" style={{ width: '95%' }}></div>
-                    </div>
-                  </div> 
-                  */}
                   {statistics.map(({ label, value }) => (
                     <div className="flex justify-between" key={label}>
                       <span className="text-sm text-gray-400">{label}:</span>

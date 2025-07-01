@@ -70,7 +70,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                     const reader = new FileReader();
                     reader.onload = () => {
                         const result = reader.result as string;
-                        resolve(result.split(",")[1]); // strip data header
+                        resolve(result.split(",")[1]);
                     };
                     reader.onerror = reject;
                     reader.readAsDataURL(file);
@@ -92,8 +92,6 @@ export const UploadTab: React.FC<UploadTabProps> = ({
             setIsUploading(false);
         }
     };
-
-
 
     const submitToAPI = async (docs: { doc_name: string; doc_path: string }[]) => {
         try {
@@ -143,9 +141,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                         onDragLeave={handleDragLeave}
                         onDragOver={handleDragOver}
                         onDrop={handleDrop}
-                        onClick={() =>
-                            document.getElementById("file-upload")?.click()
-                        }
+                        onClick={() =>document.getElementById("file-upload")?.click()}
                     >
                         {!isUploading ? (
                             <>
@@ -161,13 +157,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                                 <p className="text-xs text-gray-500 mt-4">
                                     Supported formats: PDF, DOCX, TXT
                                 </p>
-                                <input
-                                    id="file-upload"
-                                    type="file"
-                                    multiple
-                                    className="hidden"
-                                    onChange={handleFileSelect}
-                                />
+                                <input id="file-upload" type="file" multiple className="hidden" onChange={handleFileSelect}/>
                             </>
                         ) : (
                             <div className="w-full px-8">
@@ -187,7 +177,6 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                                             ? "Upload complete!"
                                             : `Uploading ${uploadProgress} of ${selectedFiles.length} files...`}
                                     </span>
-
                                 </div>
                             </div>
                         )}
@@ -200,7 +189,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                                         <span className="truncate max-w-[80%]">{file.name}</span>
                                         <button
                                             onClick={(e) => {
-                                                e.stopPropagation(); // prevent triggering file input
+                                                e.stopPropagation(); 
                                                 setSelectedFiles((prev) =>
                                                     prev.filter((_, i) => i !== idx)
                                                 );
@@ -214,12 +203,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                                 ))}
                             </ul>
                         )}
-
-
-
-                        {/* Error message if submission fails */}
                         {error && <p className="text-red-500 mt-4">{error}</p>}
-
                     </div>
                 </CardContent>
                 {selectedFiles.length > 0 && !isUploading && (
@@ -231,27 +215,22 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                 )}
             </Card>
 
-            {/* Processing options */}
+            {/* Processing options to be implemented and enhanced in the future */}
             <div
                 className="flex items-center space-x-2 cursor-pointer text-primary text-sm font-semibold mt-4"
-                onClick={() =>
-                    setShowProcessingOptions((prev) => !prev)
-                }
+                onClick={() => setShowProcessingOptions((prev) => !prev)}
             >
                 {showProcessingOptions ? (
                     <FaChevronDown className="transition-transform duration-200" />
                 ) : (
                     <FaChevronRight className="transition-transform duration-200" />
                 )}
-
                 <span>Processing Options</span>
             </div>
 
             {showProcessingOptions && (
                 <Card className="bg-background-card shadow-card border-gray-800 w-full">
                     <CardContent className="p-6 space-y-6">
-                        {/* Your processing options here */}
-                        {/* Auto-Process, Extract Metadata, Enable OCR etc.*/}
                         <div className="flex items-center justify-between">
                             <div>
                                 <Label htmlFor="auto-process" className="text-base">
@@ -287,14 +266,10 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                             </div>
                             <Switch id="ocr-enabled" />
                         </div>
-
                         <Separator className="bg-gray-800" />
-
-                        {/* Add any other processing options you already had */}
                     </CardContent>
                 </Card>
             )}
-
         </div>
     )
 }

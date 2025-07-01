@@ -189,37 +189,18 @@ class MongoDBPipelineRepository:
             "pending_pipelines": 0,
             "latest_update": None
         }
-    def get_pipeline_by_type(self, type: str, limit: int = 100) -> List[Dict]:
-        """
-        Get pipelines for a specific type.
-        
-        Args:
-            type: The datasource type
-            limit: Maximum number of pipelines entries to return
-            
-        Returns:
-            List of pipelines dictionaries
-        """
-        return list(self.pipelines.find(
-            {"source_type": type},
-            {"_id": 0}
-        ).sort("created_at", -1).limit(limit))
         
     def get_pipeline_by_query(self, query: object) -> List[Dict]:
         """
-        Get pipelines for a specific type.
+        Get pipelines for a specific query.
         
         Args:
-            type: The datasource type
-            limit: Maximum number of pipelines entries to return
+            query: The mongo query to execute
             
         Returns:
             List of pipelines dictionaries
         """
-        return list(self.pipelines.find(
-            query,
-            {"_id": 0}
-        ).sort("created_at", -1))
+        return list(self.pipelines.find(query, {"_id": 0}).sort("created_at", -1))
         
     def delete_pipeline(self, pipeline_id: str) -> List[Dict]:
         """

@@ -36,37 +36,44 @@ def upload_docs(files, UPLOAD_FOLDER):
         return jsonify({"error": str(e)}), 500
 
 def get_available_doc_list(user):
-    available_docs_query = {"source_type": "DOCUMENT", "upload_by": user, "deleted": {"$ne": True}}
-    docs = pipeline_repo.get_pipeline_by_query(available_docs_query)
+    """
+    Fetches a list of available documents uploaded by a specific user.
+    Enriches each document with additional metadata from the data source.
+    """
+    docs = pipeline_repo.get_pipeline_by_query({"source_type": "DOCUMENT","upload_by": user, "deleted": {"$ne": True}})
+    if not docs:
+        return []
 
     for doc in docs:
-        pipeline_id = doc["pipeline_id"]
         doc["file_type"] = doc.get("name", "").rsplit(".", 1)[-1].lower()
+        
+        pipeline_id = doc.get("pipeline_id")
         doc_data = data_source_repo.get_source_by_query({"last_pipeline_id": pipeline_id})
-
         if not doc_data:
             continue
 
-        source = doc_data[0]
-        doc["chunks"] = source.get("chunks_generated", [])
-        doc["path"] = source.get("type_data", {}).get("source_path", "")
-        doc["file_size"] = source.get("type_data", {}).get("file_size", 0)
-        doc["page_count"] = source.get("type_data", {}).get("page_count", 0)
-        doc["full_text"] = source.get("type_data", {}).get("full_text", "")
+        type_data = doc_data[0].get("type_data", {})
+        doc.update({
+            "chunks": doc_data[0].get("chunks_generated", []),
+            "path": type_data.get("source_path", ""),
+            "file_size": type_data.get("file_size", 0),
+            "page_count": type_data.get("page_count", 0),
+            "full_text": type_data.get("full_text", "")
+        })
 
     return docs
 
 
+
 def embed_docs_flow(doc_list, upload_by):
-    # Create MongoDB client
-    mongo_client = pymongo.MongoClient(get_mongo_url())
     # Create data pipeline with existing logger
     doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
+    
+    # Insert the documents queue into the pipeline db
     for doc in doc_list:
         doc_name = doc.get("doc_name", "")
         doc_id = doc["doc_id"] if doc.get("doc_id", "") else str(uuid.uuid4())
         start = time.time()
-        # Process the document using our pipeline
         doc["doc_id"] = doc_id
         doc_pipeline.insert_doc(doc_id, doc_name, upload_by)
         
@@ -92,21 +99,18 @@ def embed_docs_flow(doc_list, upload_by):
     
     embedding_generator = EmbeddingGeneratorFactory.create(embedding_config)
 
-    # Create vector storage
+    # Create vector storage, mongo storage and manager
     storage_config = {
         "type": "qdrant",
         "collection_name": "pdf_doc_data",
         "embedding_dim": embedding_generator.embedding_dim,
     }
-
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()
-
-    mstore = get_mongo_storage()
-    manager = StorageManager(vector_storage, mstore)
+    mongo_storage = get_mongo_storage()
+    manager = StorageManager(vector_storage, mongo_storage)
+    
     response = []
-
-
     for doc in doc_list:
         try:
             doc_id = doc["doc_id"]
@@ -128,7 +132,6 @@ def embed_docs_flow(doc_list, upload_by):
             )
             
             embedding_ready_docs = doc_processor.prepare_for_single_doc_embedding(processed_documents)
-            
             chunks = pdf_chunker.chunk_content([embedding_ready_docs])
             enriched_chunks = embedding_generator.generate_embeddings(chunks)
             common_summary = {
@@ -173,7 +176,7 @@ def embed_docs_flow(doc_list, upload_by):
                 "error": "No content could be chunked from this document."
             })
             doc_pipeline.monitor.finish_log_monitoring()
-            continue  # Skip to the next document
+            continue 
 
         except Exception as e:
             logger.error(f"Failed to embed doc {doc.get('doc_name')}: {str(e)}")

@@ -37,6 +37,7 @@ class DocDataPipeline:
         Args:
             doc_id: The ID of the document to process
             doc_name: The name/title of the document
+            upload_by: The user who uploaded the document
             
         Returns:
             Boolean indicating success or failure
@@ -49,11 +50,11 @@ class DocDataPipeline:
         
         try:
             # Update status to active
-            self.logger.info(f"Setting document pipeline {pipeline_id} to ACTIVE")
+            self.logger.info(f"Setting document pipeline {pipeline_id} to PENDING")
             self.monitor.update_pipeline_status(pipeline_id, PipelineStatus.PENDING)
             
             # Log document processing start
-            self.logger.info(f"Moving to register document: {doc_id})")
+            self.logger.info(f"Moving to insert document: {doc_id})")
             return True
         except Exception as e:
             # Log error and update pipeline status

@@ -10,11 +10,8 @@ import { useEffect } from "react";
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import DocumentsPage from "./documents/DocumentsPage";
-import { QueryClient } from "@tanstack/react-query";
 import { AuthProvider } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-
-const queryClient = new QueryClient();
 
 function App() {
   // Set document title

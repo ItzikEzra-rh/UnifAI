@@ -12,7 +12,7 @@ export interface CardAction {
     message: string;
     confirmLabel?: string;
     cancelLabel?: string;
-    onConfirm: () => Promise<void>; // Ensure this is async
+    onConfirm: () => Promise<void>;
     loading?: boolean;
   };
 }
@@ -151,11 +151,10 @@ export const DataCard: React.FC<DataCardProps> = ({
           onConfirm={async () => {
             try {
               setConfirmLoading(true);
-              await confirmAction.confirm!.onConfirm(); // Await user-provided async action
-              setConfirmAction(null); // Close after success
+              await confirmAction.confirm!.onConfirm(); 
+              setConfirmAction(null); 
             } catch (error) {
               console.error("Confirmation action failed:", error);
-              // Optionally handle error UI
             } finally {
               setConfirmLoading(false);
             }
