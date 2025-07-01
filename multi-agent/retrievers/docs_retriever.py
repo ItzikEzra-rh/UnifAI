@@ -24,7 +24,7 @@ class DocsRetriever(BaseRetriever):
             "query": query,
             "top_k_results": self.top_k,
             "scope": get_current_context().scope,
-            "logged_in_user": get_current_context().logged_in_user
+            "loggedInUser": get_current_context().logged_in_user
         }
 
         resp = requests.get(self.api_url, params=params)
