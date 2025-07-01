@@ -274,6 +274,7 @@ export default function ChatInterface({
         "inputs": {"user_prompt": inputMessage},
         "stream": true,
         "scope": "public",
+        "loggedInUser": "default"
       };
 
       const response = await triggerExecution(sessionPayload);

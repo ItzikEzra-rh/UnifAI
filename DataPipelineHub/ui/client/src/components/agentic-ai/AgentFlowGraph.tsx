@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Activity, Database, FileText, Zap, Filter, GitBranch, MessageSquare, BookOpen } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StreamingDataProvider } from "@/components/agentic-ai/StreamingDataContext";
 import { GraphFlow, FlowObject } from './graphs/interfaces';
@@ -45,6 +46,8 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
   const [activeFlowIds, setActiveFlowIds] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  const { user } = useAuth();
+
   // Effect to load graph flows from API
   useEffect(() => {
     const fetchGraphFlows = async () => {
@@ -72,7 +75,7 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
 
     const fetchActiveFlows = async () => {
       try {
-        const response = await axios.get('/api/sessions/session.user.blueprints.get?userId=bob');
+        const response = await axios.get(`/api/sessions/session.user.blueprints.get?userId=${user?.username || "default"}`);
         setActiveFlowIds(response.data || []);
       } catch (error) {
         console.error('Error fetching active flows:', error);
