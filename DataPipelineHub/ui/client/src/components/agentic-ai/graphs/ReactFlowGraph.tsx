@@ -113,13 +113,13 @@ const AgentNode: React.FC<NodeProps<EnhancedNodeData>> = ({ data, selected }) =>
                     animate={{ opacity: [1, 0.3, 1] }}
                     transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
                   />
-                  <span className="text-xs font-medium text-blue-600">Processing</span>
+                  <span className="text-xs font-medium text-white-600">Processing</span>
                 </div>
               )}
               {isDone && (
                 <div className="flex items-center gap-1.5 px-2 py-0.5 bg-green-500 bg-opacity-20 rounded-full">
                   <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-                  <span className="text-xs font-medium text-green-600">Complete</span>
+                  <span className="text-xs font-medium text-white-600">Complete</span>
                 </div>
               )}
             </div>
@@ -145,7 +145,7 @@ const AgentNode: React.FC<NodeProps<EnhancedNodeData>> = ({ data, selected }) =>
                   className={`px-2 py-1 rounded text-xs font-medium truncate text-center ${
                     data.style.includes("text-white") 
                       ? "bg-white bg-opacity-20 text-white" 
-                      : "bg-gray-800 bg-opacity-20 text-gray-800"
+                      : "bg-gray-800 bg-opacity-20 text-white-200"
                   }`}
                   title={tool}
                 >
@@ -202,22 +202,22 @@ const getRandomIcon = (nodeType: string): React.ReactNode => {
 // Get node style based on node type
 const getNodeStyle = (nodeType: string): string => {
   if (nodeType === 'user_question_node') {
-    return 'bg-[#DCDCDC] text-white';
+    return 'bg-gradient-to-r from-accent to-[#003f5c] text-white';
   } else if (nodeType === 'final_answer_node') {
-    return 'bg-[#808080] text-white';
+    return 'bg-gradient-to-r from-accent to-[#003f5c] text-white';
   } else {
-    return 'bg-[#B0B0B0] text-gray-800';
+    return 'bg-gradient-to-r from-accent to-primary text-gray-300';
   }
 };
 
 // Function to generate edge color based on source node type
 const getEdgeStyle = (sourceNodeType: string): { stroke: string; color: string } => {
   if (sourceNodeType === 'user_question_node') {
-    return { stroke: '#DCDCDC', color: '#DCDCDC' };
+    return { stroke: '#003f5c', color: '#003f5c' };
   } else if (sourceNodeType === 'final_answer_node') {
-    return { stroke: '#808080', color: '#808080' };
+    return { stroke: '#003f5c', color: '#003f5c' };
   } else {
-    return { stroke: '#B0B0B0', color: '#B0B0B0' };
+    return { stroke: '#8A2BE2', color: '#8A2BE2' };
   }
 };
 
@@ -625,12 +625,12 @@ export default function ReactFlowGraph({
         defaultEdgeOptions={{
           type: 'smoothstep',
           animated: true,
-          style: { stroke: '#B0B0B0', strokeWidth: 3 },
+          style: { stroke: '#8A2BE2', strokeWidth: 3 },
           markerEnd: {
             type: MarkerType.ArrowClosed,
             width: 20,
             height: 20,
-            color: '#B0B0B0'
+            color: '#8A2BE2'
           }
         }}
         attributionPosition="bottom-right"

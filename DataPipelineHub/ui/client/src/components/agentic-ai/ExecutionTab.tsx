@@ -11,6 +11,7 @@ import { GraphNode } from "../../pages/AgenticAI"
 import axios, { AXIOS_AGENTS_IP } from '../../http/axiosAgentConfig'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
+import { useAuth } from "@/contexts/AuthContext";
 
 // Types for the API response
 interface ChatMessage {
@@ -44,6 +45,7 @@ export type SessionPayload = {
   inputs: {"user_prompt": string},
   stream: boolean,
   scope: 'public' | 'private';
+  loggedInUser: string;
 };
 
 type ExecutionTabProps = {
@@ -76,6 +78,7 @@ export default function ExecutionTab({
   const [globalScope, setGlobalScope] = useState<'public' | 'private'>('public');
   
   const { nodeListRef, forceUpdate } = useStreamingData();
+  const { user } = useAuth();
 
   // Utility functions
   const generateRandomId = (): string => {
@@ -141,11 +144,12 @@ export default function ExecutionTab({
   };
 
   // Fetch chat sessions from API
-  const fetchChatSessions = async (userId: string) => {
+  const fetchChatSessions = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
+      const userId = user?.username || "default";
       const response = await axios.get(`/api/sessions/session.user.chat.get?userId=${userId}`);
       const transformedSessions = transformApiDataToSessions(response.data);
       
@@ -172,14 +176,14 @@ export default function ExecutionTab({
     setCurrentSessionMessages(session.messages);
     
     // TODO: For now, using a placeholder - replace with your actual user ID logic
-    const userId = "bob"; // Replace with actual userId
+    const userId = user; // Replace with actual userId
     fetchChatSessions(userId);
   };
 
   // Initialize component with API call
   useEffect(() => {
     // TODO: For now, using a placeholder - replace with your actual user ID logic
-    const userId = "bob"; // Replace with actual userId
+    const userId = user?.username || "default"; // Replace with actual userId
     fetchChatSessions(userId);
   }, []);
 
@@ -274,7 +278,8 @@ export default function ExecutionTab({
       setIsLiveRequest(true);
       const payloadWithScope = {
         ...sessionPayload,
-        scope: globalScope
+        scope: globalScope,
+        loggedInUser: user?.username || "default",
       };
       
       const response = await fetch(`${AXIOS_AGENTS_IP}/api/sessions/user.session.execute`, {
