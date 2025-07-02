@@ -10,7 +10,8 @@ from utils.storage.storage_manager import StorageManager
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
- 
+from global_utils.utils.util import get_mongo_url
+
 def _get_configured_connector() -> SlackConnector:
     config_manager = SlackConfigManager()
     config_manager.set_project_tokens(
@@ -28,12 +29,12 @@ def get_available_slack_channels(channel_types: str):
     else:
         raise RuntimeError("Slack authentication failed")
 
-def embed_slack_channels_flow(channel_list):
+def embed_slack_channels_flow(channel_list, upload_by="default"):
     connector = _get_configured_connector()
     if not connector.authenticate():
         raise RuntimeError("Slack authentication failed")
     
-    mongo_client   = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017")
+    mongo_client   = pymongo.MongoClient(get_mongo_url())
     slack_pipeline = SlackDataPipeline(mongo_client, logger=logger)
     
     processor = SlackProcessor()
@@ -311,7 +312,8 @@ def count_channel_chunks(channel_name: str) -> int:
 
     return vector_storage.count(filters={"metadata.channel_name": channel_name})
 
-def get_best_match_results(query: str, top_k_results: int = 5):
+def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "public", logged_in_user: str = "default"):
+
     embedding_config = {
         "type": "sentence_transformer",
         "model_name": "all-MiniLM-L6-v2",
@@ -335,6 +337,7 @@ def get_best_match_results(query: str, top_k_results: int = 5):
     search_results = vector_storage.search(
         query_embedding=query_embedding,
         top_k=top_k_results,
+        filters={"upload_by": logged_in_user} if scope == "private" else {}
     )
 
     return search_results
@@ -400,7 +403,7 @@ def _delete_from_qdrant(qdrant_storage, channel_id: str) -> int:
 def _delete_from_mongodb(channel_id: str) -> tuple[bool, int]:
     """Delete channel data from MongoDB collections."""
     try:
-        client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017")
+        client = pymongo.MongoClient(get_mongo_url())
         
         # Delete from sources collection
         sources_col = client["data_sources"]["sources"]

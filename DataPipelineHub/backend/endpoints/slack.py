@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, session
 from providers.slack.stats import SlackStatsProvider
 from utils.storage.mongo.mongo_helpers import get_mongo_storage, get_source_service
 from webargs import fields
