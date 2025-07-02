@@ -31,8 +31,8 @@ class CeleryApp:
         )
 
         self.celery_app.conf.update(
-            task_acks_late=True,
-            task_reject_on_worker_lost=True,
+            # task_acks_late=True,
+            # task_reject_on_worker_lost=True,
             worker_hijack_root_logger=False,
             worker_log_format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             worker_task_log_format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
