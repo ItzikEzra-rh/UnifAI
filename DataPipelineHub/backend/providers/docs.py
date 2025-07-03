@@ -63,8 +63,6 @@ def get_available_doc_list(user):
 
     return docs
 
-
-
 def embed_docs_flow(doc_list, docs_path, upload_by):
     # Create data pipeline with existing logger
     doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
@@ -134,6 +132,7 @@ def embed_docs_flow(doc_list, docs_path, upload_by):
             )
             
             embedding_ready_docs = doc_processor.prepare_for_single_doc_embedding(processed_documents)
+            
             chunks = pdf_chunker.chunk_content([embedding_ready_docs])
             enriched_chunks = embedding_generator.generate_embeddings(chunks)
             common_summary = {
@@ -218,7 +217,7 @@ def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "pub
 
     return search_results
 
-def delete_doc_pipeline(pipeline_id: str):
+def delete_document(pipeline_id: str):
     """
     Delete a document pipeline by its ID.
     

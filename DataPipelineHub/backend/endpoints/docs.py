@@ -5,7 +5,7 @@ from webargs import fields
 from shared.logger import logger
 from global_utils.helpers.apiargs import from_query, from_body
 from global_utils.celery_app.helpers import send_task
-from providers.docs import delete_doc_pipeline, get_available_doc_list, get_best_match_results, upload_docs
+from providers.docs import delete_document, get_available_doc_list, get_best_match_results, upload_docs
 from config.app_config import AppConfig
 
 config = AppConfig()
@@ -76,24 +76,24 @@ def best_match_results(query, top_k_results, scope, logged_in_user):
 })
 def remove_pipeline(pipeline_id):
     try:
-        result = delete_doc_pipeline(pipeline_id)
+        result = delete_document(pipeline_id)
         return jsonify({"result": result}), 200
     except Exception as e:
         logger.error(f"Failed to remove the pipeline: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
-@docs_bp.route("/retry.embedding", methods=["PUT"])
-@from_body({
-    "pipeline_id": fields.Str(required=True, data_key="pipelineId")
-})
-def retry(pipeline_id):
-    try:
-        # get data from the mongo, set status of pipeline to RETRIED
-        # and we want to לדרוס the sources data with last_pipeline_id and update it
-        # not implemented yet!
-        docs = []
-        embed_docs(docs)
-        return jsonify({"docs": docs}), 200
-    except Exception as e:
-        logger.error(f"Failed to get available docs list: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+# @docs_bp.route("/retry.embedding", methods=["PUT"])
+# @from_body({
+#     "pipeline_id": fields.Str(required=True, data_key="pipelineId")
+# })
+# def retry(pipeline_id):
+#     try:
+#         # get data from the mongo, set status of pipeline to RETRIED
+#         # and we want to לדרוס the sources data with last_pipeline_id and update it
+#         # not implemented yet!
+#         docs = []
+#         embed_docs(docs)
+#         return jsonify({"docs": docs}), 200
+#     except Exception as e:
+#         logger.error(f"Failed to get available docs list: {str(e)}")
+#         return jsonify({"error": str(e)}), 500

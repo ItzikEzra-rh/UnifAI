@@ -35,26 +35,26 @@ const getStatusBadge = (doc: Document) => ({
   className: statusByColors[doc.status],
 });
 
-const getExtraTopRight = (
-  doc: Document,
-  handleRetry: (id: string) => void,
-  retrying: boolean
-) =>
-  doc.status === "FAILED" ? (
-    <Button
-      variant="ghost"
-      size="icon"
-      className="h-5 w-5 p-0"
-      onClick={(e) => {
-        e.stopPropagation();
-        handleRetry(doc.pipeline_id);
-      }}
-      disabled={retrying}
-    >
-      <FaSync className={`animate-spin ${retrying ? "" : "hidden"}`} />
-      {!retrying && <FaSync />}
-    </Button>
-  ) : null;
+// const getExtraTopRight = (
+//   doc: Document,
+//   handleRetry: (id: string) => void,
+//   retrying: boolean
+// ) =>
+//   doc.status === "FAILED" ? (
+//     <Button
+//       variant="ghost"
+//       size="icon"
+//       className="h-5 w-5 p-0"
+//       onClick={(e) => {
+//         e.stopPropagation();
+//         handleRetry(doc.pipeline_id);
+//       }}
+//       disabled={retrying}
+//     >
+//       <FaSync className={`animate-spin ${retrying ? "" : "hidden"}`} />
+//       {!retrying && <FaSync />}
+//     </Button>
+//   ) : null;
 
 const getActions = (
   doc: Document,
@@ -98,7 +98,7 @@ export const DocumentGrid = ({paginatedDocuments, activeDoc, setActiveDoc, delet
                 selected={doc === activeDoc}
                 onClick={() => setActiveDoc(doc === activeDoc ? null : doc)}
                 statusBadge={getStatusBadge(doc)}
-                extraTopRight={getExtraTopRight(doc, handleRetry, retrying)}
+                // extraTopRight={getExtraTopRight(doc, handleRetry, retrying)}
                 actions={getActions(doc, activeDoc, setActiveDoc, deleteLoading, onDeleteConfirmed)}
               />
             ))}
