@@ -1,6 +1,5 @@
 import { api } from '@/lib/queryClient';
-import type { Channel } from '@/features/slack/AddSourceSection';
-import { EmbedChannel } from '@/features/slack/SlackIntegration';
+import type { Channel, EmbedChannel } from '@/types';
 
 export interface SystemStats {
   id: number;

@@ -4,7 +4,7 @@ import { FaSearch, FaSpinner } from 'react-icons/fa';
 import { HiOutlineLockClosed } from 'react-icons/hi';
 
 import { fetchAvailableSlackChannels, fetchEmbeddedSlackChannels } from '@/api/slack';
-import { EmbedChannel } from './SlackIntegration';
+import type { EmbedChannel, Channel } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -44,12 +44,7 @@ const scopeOptions: { label: string; value: Scope }[] = [
   { label: 'Private', value: SCOPE.PRIVATE },
 ];
 
-// ── Channel Interface ─────────────────────────────────────────────────
-export interface Channel {
-  channel_name: string;
-  channel_id: string;
-  is_private: boolean;
-}
+// ── Interface ─────────────────────────────────────────────────
 export interface AddSourceSectionHandle {
   getSelectedChannels(): Channel[];
 }

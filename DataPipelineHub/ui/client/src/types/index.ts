@@ -46,3 +46,20 @@ export interface ProjectStats {
     };
   };
 }
+
+export interface Channel {
+  channel_name: string;
+  channel_id: string;
+  is_private: boolean;
+}
+
+export interface EmbedChannel {
+  name: string;
+  messages: string;
+  lastSync: string;
+  status: "ACTIVE" | "PAUSED" | "ARCHIVED" | "DONE" | "FAILED";
+  frequency: string;
+  channel_id: string;
+  created: string;
+  is_private: boolean;
+}
