@@ -50,10 +50,9 @@ def embed_slack_channels_flow(channel_list, upload_by="default"):
     # QdrantStorage via factory
     storage_config = {
         "type": "qdrant",
-        "collection_name": "slack_data",
-        "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
-        "port": 6333
+        "collection_name": "slack_data", 
+        "embedding_dim": embedding_generator.embedding_dim
+        # URL and port will come from app_config via VectorStorageFactory
     }
     qstore = VectorStorageFactory.create(storage_config)
     qstore.initialize()
@@ -303,9 +302,8 @@ def count_channel_chunks(channel_name: str) -> int:
     storage_config = {
         "type": "qdrant",
         "collection_name": "slack_data",
-        "embedding_dim": 384,  # Must match embedding model
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
-        "port": 6333
+        "embedding_dim": 384  # Must match embedding model
+        # URL and port will come from app_config via VectorStorageFactory
     }
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()
@@ -325,9 +323,8 @@ def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "pub
     storage_config = {
         "type": "qdrant",
         "collection_name": "slack_data",
-        "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
-        "port": 6333
+        "embedding_dim": embedding_generator.embedding_dim
+        # URL and port will come from app_config via VectorStorageFactory
     }
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()
@@ -342,8 +339,8 @@ def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "pub
 
     return search_results
 
-def _initialize_storage_components():
-    """Initialize and return storage components for deletion operations."""
+def _initialize_storage_manager():
+    """Initialize and return storage manager for operations."""
     embedding_config = {
         "type": "sentence_transformer", 
         "model_name": "all-MiniLM-L6-v2",
@@ -354,84 +351,22 @@ def _initialize_storage_components():
     storage_config = {
         "type": "qdrant",
         "collection_name": "slack_data", 
-        "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
-        "port": 6333
+        "embedding_dim": embedding_generator.embedding_dim
+        # URL and port will come from app_config via VectorStorageFactory
     }
     qdrant_storage = VectorStorageFactory.create(storage_config)
     qdrant_storage.initialize()
     
     mongo_storage = get_mongo_storage()
     
-    return qdrant_storage, mongo_storage
-
-def _get_channel_info(mongo_storage, channel_id: str) -> str:
-    """Get channel name from MongoDB before deletion."""
-    try:
-        channel_info = mongo_storage.find_documents("data_sources", "sources", {"source_id": channel_id})
-        return channel_info[0]["source_name"] if channel_info else "Unknown"
-    except Exception:
-        return "Unknown"
-
-def _delete_from_qdrant(qdrant_storage, channel_id: str) -> int:
-    """Delete channel embeddings from Qdrant storage."""
-    try:
-        # Count embeddings to be deleted (using correct metadata path)
-        deleted_count = qdrant_storage.count(filters={"metadata.source_id": channel_id})
-        logger.info(f"Found {deleted_count} embeddings to delete for channel {channel_id}")
-        
-        if deleted_count == 0:
-            logger.warning(f"No embeddings found in Qdrant for channel {channel_id} - this may indicate the filter isn't matching")
-            return 0
-        
-        # Delete embeddings (using correct metadata path)
-        qdrant_storage.delete(filters={"metadata.source_id": channel_id})
-        logger.info(f"Deleted {deleted_count} embeddings from Qdrant for channel {channel_id}")
-        
-        # Verify deletion by counting again
-        remaining_count = qdrant_storage.count(filters={"metadata.source_id": channel_id})
-        if remaining_count > 0:
-            logger.error(f"Deletion incomplete: {remaining_count} embeddings still remain for channel {channel_id}")
-        else:
-            logger.info(f"Successfully verified deletion - no embeddings remain for channel {channel_id}")
-        
-        return deleted_count
-    except Exception as e:
-        logger.error(f"Error deleting from Qdrant: {e}")
-        return 0
-
-def _delete_from_mongodb(channel_id: str) -> tuple[bool, int]:
-    """Delete channel data from MongoDB collections."""
-    try:
-        client = pymongo.MongoClient(get_mongo_url())
-        
-        # Delete from sources collection
-        sources_col = client["data_sources"]["sources"]
-        delete_result = sources_col.delete_one({"source_id": channel_id})
-        source_deleted = delete_result.deleted_count > 0
-        logger.info(f"Deleted {delete_result.deleted_count} document(s) from MongoDB sources for channel {channel_id}")
-        
-        # Delete from pipeline monitoring collection
-        pipeline_col = client["pipeline_monitoring"]["pipelines"]
-        pipeline_result = pipeline_col.delete_many({"pipeline_id": {"$regex": f"^slack_{channel_id}"}})
-        pipeline_deleted = pipeline_result.deleted_count
-        logger.info(f"Deleted {pipeline_deleted} pipeline document(s) from MongoDB for channel {channel_id}")
-        
-        return source_deleted, pipeline_deleted
-    except Exception as e:
-        logger.error(f"Error deleting from MongoDB: {e}")
-        raise e
-
-def _create_deletion_result(channel_id: str, channel_name: str, qdrant_count: int, mongo_deleted: bool, pipeline_count: int) -> dict:
-    """Create standardized deletion result dictionary."""
-    return {
-        "channel_id": channel_id,
-        "channel_name": channel_name,
-        "qdrant_embeddings_deleted": qdrant_count,
-        "mongo_source_deleted": mongo_deleted,
-        "mongo_pipelines_deleted": pipeline_count,
-        "success": True
-    }
+    from utils.storage.qdrant_storage import QdrantStorage
+    from utils.storage.storage_manager import StorageManager
+    
+    qdrant_store = qdrant_storage if isinstance(qdrant_storage, QdrantStorage) else None
+    if not qdrant_store:
+        raise RuntimeError("Expected QdrantStorage instance")
+    
+    return StorageManager(qdrant_store, mongo_storage)
 
 def delete_slack_channel(channel_id: str) -> dict:
     """
@@ -447,26 +382,24 @@ def delete_slack_channel(channel_id: str) -> dict:
         Exception: If deletion fails
     """
     try:
-        # Initialize storage components
-        qdrant_storage, mongo_storage = _initialize_storage_components()
+        # Initialize storage manager
+        storage_manager = _initialize_storage_manager()
         
-        # Get channel info before deletion
-        channel_name = _get_channel_info(mongo_storage, channel_id)
+        # Delete using the general storage manager method
+        result = storage_manager.delete_source(channel_id, "SLACK")
         
-        # Delete from Qdrant
-        qdrant_deleted_count = _delete_from_qdrant(qdrant_storage, channel_id)
-        
-        # Delete from MongoDB
-        mongo_deleted, pipeline_deleted_count = _delete_from_mongodb(channel_id)
-        
-        # Create result
-        result = _create_deletion_result(
-            channel_id, channel_name, qdrant_deleted_count, 
-            mongo_deleted, pipeline_deleted_count
-        )
-        
-        logger.info(f"Successfully deleted channel {channel_name} ({channel_id})")
-        return result
+        # Convert to the expected format for backward compatibility
+        summary = result.get("summary", {})
+        return {
+            "success": result.get("success", False),
+            "result": {
+                "channel_id": result.get("source_id"),
+                "channel_name": result.get("source_name"),
+                "qdrant_embeddings_deleted": summary.get("embeddings_deleted", 0),
+                "mongo_source_deleted": summary.get("source_deleted", False),
+                "mongo_pipelines_deleted": summary.get("pipelines_deleted", 0)
+            }
+        }
         
     except Exception as e:
         logger.error(f"Failed to delete channel {channel_id}: {e}")

@@ -168,6 +168,110 @@ class MongoStorage(SourceRepository, PipelineRepository):
         )
         return {d['pipeline_id']: d.get('status', '') for d in cursor}
 
+    def delete_source(self, source_id: str) -> Dict[str, Any]:
+        """
+        Delete a source from MongoDB.
+        
+        Args:
+            source_id: The ID of the source to delete
+            
+        Returns:
+            Dictionary with deletion results
+        """
+        try:
+            col = self._get_collection(DATA_DB, SOURCES_COL)
+            delete_result = col.delete_one({"source_id": source_id})
+            source_deleted = delete_result.deleted_count > 0
+            
+            from shared.logger import logger
+            logger.info(f"Deleted {delete_result.deleted_count} document(s) from MongoDB sources for source {source_id}")
+            
+            return {
+                "success": True,
+                "source_deleted": source_deleted,
+                "documents_deleted": delete_result.deleted_count,
+                "message": f"Successfully deleted source {source_id}" if source_deleted else f"Source {source_id} not found"
+            }
+        except Exception as e:
+            from shared.logger import logger
+            logger.error(f"Error deleting source {source_id} from MongoDB: {e}")
+            return {
+                "success": False,
+                "source_deleted": False,
+                "documents_deleted": 0,
+                "error": str(e)
+            }
+
+    def delete_pipeline(self, pipeline_id: str) -> Dict[str, Any]:
+        """
+        Delete a pipeline from MongoDB.
+        
+        Args:
+            pipeline_id: The ID of the pipeline to delete
+            
+        Returns:
+            Dictionary with deletion results
+        """
+        try:
+            col = self._get_collection(PIPELINE_DB, PIPELINE_COL)
+            delete_result = col.delete_many({"pipeline_id": {"$regex": f"^{pipeline_id}"}})
+            pipeline_deleted = delete_result.deleted_count
+            
+            from shared.logger import logger
+            logger.info(f"Deleted {pipeline_deleted} pipeline document(s) from MongoDB for pipeline {pipeline_id}")
+            
+            return {
+                "success": True,
+                "pipelines_deleted": pipeline_deleted,
+                "message": f"Successfully deleted {pipeline_deleted} pipeline documents for {pipeline_id}"
+            }
+        except Exception as e:
+            from shared.logger import logger
+            logger.error(f"Error deleting pipeline {pipeline_id} from MongoDB: {e}")
+            return {
+                "success": False,
+                "pipelines_deleted": 0,
+                "error": str(e)
+            }
+
+    def get_source_info(self, source_id: str) -> Dict[str, Any]:
+        """
+        Get source information from MongoDB.
+        
+        Args:
+            source_id: The ID of the source to get info for
+            
+        Returns:
+            Dictionary with source information
+        """
+        try:
+            col = self._get_collection(DATA_DB, SOURCES_COL)
+            source_info = col.find_one({"source_id": source_id})
+            
+            if source_info:
+                return {
+                    "success": True,
+                    "source_name": source_info.get("source_name", "Unknown"),
+                    "source_type": source_info.get("source_type", "Unknown"),
+                    "source_info": _make_json_safe(source_info)
+                }
+            else:
+                return {
+                    "success": False,
+                    "source_name": "Unknown",
+                    "source_type": "Unknown",
+                    "message": f"Source {source_id} not found"
+                }
+        except Exception as e:
+            from shared.logger import logger
+            logger.error(f"Error getting source info for {source_id}: {e}")
+            return {
+                "success": False,
+                "source_name": "Unknown",
+                "source_type": "Unknown",
+                "error": str(e)
+            }
+
 # ─── Service Layer ──────────────────────────────────────────────────────────
 class SourceService:
     def __init__(
