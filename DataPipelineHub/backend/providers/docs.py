@@ -24,12 +24,12 @@ mongo_client = pymongo.MongoClient(get_mongo_url())
 pipeline_repo = MongoDBPipelineRepository(mongo_client)
 data_source_repo = MongoStorage(get_mongo_url())
 
-def upload_docs(files, UPLOAD_FOLDER):
+def upload_docs(files, upload_folder):
     try:
         for file in files:
             filename = file["name"]
             content = base64.b64decode(file["content"])
-            with open(os.path.join(UPLOAD_FOLDER, filename), "wb") as f:
+            with open(os.path.join(upload_folder, filename), "wb") as f:
                 f.write(content)
     except Exception as e:
         logger.error(f"Failed to upload files: {str(e)}")
@@ -65,16 +65,18 @@ def get_available_doc_list(user):
 
 
 
-def embed_docs_flow(doc_list, upload_by):
+def embed_docs_flow(doc_list, docs_path, upload_by):
     # Create data pipeline with existing logger
     doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
     
     # Insert the documents queue into the pipeline db
     for doc in doc_list:
         doc_name = doc.get("doc_name", "")
+        doc_path = docs_path + "/" + doc_name
         doc_id = doc["doc_id"] if doc.get("doc_id", "") else str(uuid.uuid4())
         start = time.time()
         doc["doc_id"] = doc_id
+        doc["doc_path"] = doc_path
         doc_pipeline.insert_doc(doc_id, doc_name, upload_by)
         
     config = DocConfigManager()

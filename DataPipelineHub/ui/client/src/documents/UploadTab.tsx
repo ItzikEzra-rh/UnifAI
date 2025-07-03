@@ -23,13 +23,6 @@ export const UploadTab: React.FC<UploadTabProps> = ({
     const [uploadProgress, setUploadProgress] = useState(0);
     const [showProcessingOptions, setShowProcessingOptions] = useState(false);
     const [error, setError] = useState<string>("");
-    const [uploadFolder, setUploadFolder] = useState<string>("");
-
-    useEffect(() => {
-        axiosInstance.get("/api/docs/get.folder").then((res) => {
-            setUploadFolder(res.data.path);
-        })
-    }, [])
     
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
@@ -93,7 +86,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         }
     };
 
-    const submitToAPI = async (docs: { doc_name: string; doc_path: string }[]) => {
+    const submitToAPI = async (docs: {doc_name: string}[]) => {
         try {
             await axiosInstance.put("/api/docs/embed.docs", { docs });
             console.log("API submission successful!");
@@ -108,10 +101,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
 
         await uploadFiles(selectedFiles);
 
-        const docs = selectedFiles.map((file) => ({
-            doc_name: file.name,
-            doc_path: `${uploadFolder}/${file.name}`
-        }));
+        const docs = selectedFiles.map((file) => ({doc_name: file.name}));
 
         await submitToAPI(docs);
         await fetchDocuments();

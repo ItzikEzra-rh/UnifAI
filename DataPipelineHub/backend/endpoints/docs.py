@@ -11,16 +11,6 @@ from config.app_config import AppConfig
 config = AppConfig()
 
 docs_bp = Blueprint("docs", __name__)
-@docs_bp.route("/get.folder", methods=["GET"])
-def get_upload_folder():
-    """
-    Endpoint to get the upload folder path.
-    """
-    try:
-        return jsonify({"path": config.get("upload_folder", "")}), 200
-    except Exception as e:
-        logger.error(f"Failed to get upload folder: {str(e)}")
-        return jsonify({"error": str(e)}), 500
 
 @docs_bp.route("/upload", methods=["POST"])
 @from_body({
@@ -56,6 +46,7 @@ def embed_docs(docs):
             task_name="data_sources.docs.docs_tasks.embed_docs_task",
             celery_queue="docs_queue",
             doc_list=docs,
+            docs_path=config.get("upload_folder", ""),
             upload_by=session.get('user', {}).get('name', 'default')
         )
         return jsonify({"status": "task submitted"}), 202
