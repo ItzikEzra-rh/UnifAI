@@ -261,11 +261,11 @@ class PipelineMonitor(PipelineMonitorBase):
             if source_type == SourceType.SLACK:
                 # Extract channel ID to identify the pipeline
                 channel_id = SlackLogParser.extract_slack_channel_id(log_line)
-                pipeline_id = f"slack_{channel_id}"
+                pipeline_id = f"slack_{channel_id}" if channel_id else None
             elif source_type == SourceType.DOCUMENT:
                 # Extract document ID to identify the pipeline
                 doc_id = DocLogParser.extract_doc_id(log_line)
-                pipeline_id = f"doc_{doc_id}"
+                pipeline_id = f"doc_{doc_id}" if doc_id else None
         
         # Update recent logs cache
         self.recent_logs_cache[source_type].appendleft(log_line)

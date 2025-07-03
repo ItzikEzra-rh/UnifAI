@@ -10,11 +10,11 @@ from providers.docs import delete_doc_pipeline, get_available_doc_list, get_best
 docs_bp = Blueprint("docs", __name__)
 
 # Local development
-# UPLOAD_FOLDER = "/home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs"
+UPLOAD_FOLDER = "/home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs"
 # os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # OCP
-UPLOAD_FOLDER = "/app/shared"
+# UPLOAD_FOLDER = "/app/shared"
 
 @docs_bp.route("/get.folder", methods=["GET"])
 def get_upload_folder():
@@ -93,7 +93,7 @@ def remove_pipeline(pipeline_id):
         result = delete_doc_pipeline(pipeline_id)
         return jsonify({"result": result}), 200
     except Exception as e:
-        logger.error(f"Failed to get available docs list: {str(e)}")
+        logger.error(f"Failed to remove the pipeline: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
 @docs_bp.route("/retry.embedding", methods=["PUT"])
