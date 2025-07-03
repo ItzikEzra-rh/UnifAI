@@ -6,23 +6,18 @@ from shared.logger import logger
 from global_utils.helpers.apiargs import from_query, from_body
 from global_utils.celery_app.helpers import send_task
 from providers.docs import delete_doc_pipeline, get_available_doc_list, get_best_match_results, upload_docs
+from config.app_config import AppConfig
+
+config = AppConfig()
 
 docs_bp = Blueprint("docs", __name__)
-
-# Local development
-UPLOAD_FOLDER = "/home/cloud-user/unifai/DataPipelineHub/backend/data/pdfs"
-# os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-# OCP
-# UPLOAD_FOLDER = "/app/shared"
-
 @docs_bp.route("/get.folder", methods=["GET"])
 def get_upload_folder():
     """
     Endpoint to get the upload folder path.
     """
     try:
-        return jsonify({"path": UPLOAD_FOLDER}), 200
+        return jsonify({"path": config.get("upload_folder", "")}), 200
     except Exception as e:
         logger.error(f"Failed to get upload folder: {str(e)}")
         return jsonify({"error": str(e)}), 500
@@ -31,9 +26,9 @@ def get_upload_folder():
 @from_body({
     "files": fields.List(fields.Dict(), required=True)
 })
-def upload_files_locally(files):
+def upload_files(files):
     try:
-        upload_docs(files, UPLOAD_FOLDER)
+        upload_docs(files, config.get("upload_folder", ""))
         return jsonify({"message": "Files uploaded successfully"}), 200
     except Exception as e:
         logger.error(f"Failed to upload files: {str(e)}")
