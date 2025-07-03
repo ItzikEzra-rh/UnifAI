@@ -34,6 +34,7 @@ class CeleryApp:
             task_acks_late=False,
             task_reject_on_worker_lost=False,
             worker_hijack_root_logger=False,
+            worker_cancel_long_running_tasks_on_connection_loss=True
             worker_log_format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             worker_task_log_format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         )

@@ -148,7 +148,7 @@ class SlackConnector(DataConnector):
         # This should not be reached under normal circumstances
         raise Exception("Maximum retries exceeded when calling Slack API")
     
-    def get_available_slack_channels(self, types: Optional[str] = None, max_api_calls: int = 10) -> List[Dict[str, str]]:
+    def get_available_slack_channels(self, types: Optional[str] = None, max_api_calls: int = 5) -> List[Dict[str, str]]:
         """
         Get available Slack channels for the authenticated user/bot.
         
@@ -164,7 +164,7 @@ class SlackConnector(DataConnector):
         api_call_count = 0
         
         while api_call_count < max_api_calls:
-            params = {}
+            params = {"limit": 1000}
             if types:
                 params['types'] = types
             if cursor:
