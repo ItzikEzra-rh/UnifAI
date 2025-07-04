@@ -14,11 +14,9 @@ class MongoBlueprintRepository(BlueprintRepository):
                  mongodb_ip: str = "localhost",
                  db_name="UnifAI",
                  coll_name="blueprints"):
-
         mongo_uri = f"mongodb://{mongodb_ip}:{mongodb_port}/"
         client = pymongo.MongoClient(mongo_uri)
         self._col = client[db_name][coll_name]
-        # Unique on blueprint_id alone now
         self._col.create_index([("blueprint_id", pymongo.ASCENDING)], unique=True)
 
     def save(self, user_id, spec: BlueprintDraft) -> str:
@@ -38,10 +36,6 @@ class MongoBlueprintRepository(BlueprintRepository):
         if not doc:
             raise KeyError(f"No blueprint with id={blueprint_id}")
         return doc
-        # try:
-        #     return BlueprintSpec.model_validate(doc["spec_dict"])
-        # except ValidationError as ve:
-        #     raise RuntimeError(f"Corrupt blueprint {blueprint_id}: {ve}")
 
     def delete(self, blueprint_id: str) -> bool:
         res = self._col.delete_one({"blueprint_id": blueprint_id})
@@ -50,31 +44,37 @@ class MongoBlueprintRepository(BlueprintRepository):
     def exists(self, blueprint_id: str) -> bool:
         return self._col.count_documents({"blueprint_id": blueprint_id}, limit=1) == 1
 
-    def list_ids(self, skip=0, limit=100, sort_desc=True) -> List[str]:
-        cursor = (
-            self._col
-                .find({}, {"blueprint_id": 1})
-                .sort("updated_at", pymongo.DESCENDING if sort_desc else pymongo.ASCENDING)
-                .skip(skip)
-                .limit(limit)
-        )
-        return [d["blueprint_id"] for d in cursor]
+    # --------- listing & counting with optional user filter -------
+    def _user_q(self, user_id: str | None) -> Dict[str, Any]:
+        return {} if user_id is None else {"user_id": user_id}
 
-    def list_specs(self, skip=0, limit=100, sort_desc=True) -> List[BlueprintSpec]:
-        cursor = (
-            self._col
-                .find({})
+    def list_ids(
+            self, *, user_id: str | None = None, skip=0, limit=100, sort_desc=True
+    ) -> List[str]:
+        cur = (
+            self._col.find(self._user_q(user_id), {"blueprint_id": 1})
                 .sort("updated_at", pymongo.DESCENDING if sort_desc else pymongo.ASCENDING)
                 .skip(skip)
                 .limit(limit)
         )
-        specs = []
-        for d in cursor:
-            try:
-                specs.append(BlueprintSpec.model_validate(d["spec_dict"]))
-            except ValidationError:
-                continue
-        return specs
+        return [d["blueprint_id"] for d in cur]
+
+    def list_docs(
+            self,
+            *,
+            user_id: str | None = None,
+            skip: int = 0,
+            limit: int = 100,
+            sort_desc: bool = True,
+    ) -> List[Mapping[str, Any]]:
+        """Return raw Mongo documents (not validated) for bulk operations."""
+        cursor = (
+            self._col.find(self._user_q(user_id))
+                .sort("updated_at", pymongo.DESCENDING if sort_desc else pymongo.ASCENDING)
+                .skip(skip)
+                .limit(limit)
+        )
+        return list(cursor)
 
     def count_usage(self, rid: str) -> int:
         fields = [
@@ -87,5 +87,5 @@ class MongoBlueprintRepository(BlueprintRepository):
         ors = [{fld: rid} for fld in fields]
         return self._col.count_documents({"$or": ors})
 
-    def count(self) -> int:
-        return self._col.count_documents({})
+    def count(self, user_id: str | None = None) -> int:
+        return self._col.count_documents(self._user_q(user_id))

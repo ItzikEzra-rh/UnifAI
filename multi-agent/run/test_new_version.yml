@@ -4,15 +4,6 @@
 # ─────────────────────────────────────────────────────────────────────────
 
 
-llms:
-  - rid: f4f604ecf6a74186bf8d387158724b12
-    name: openai_llm
-    config:
-      name: my openai llm
-      type: openai
-      model_name: gemini-2.0-flash
-      api_key: AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ
-      base_url: https://generativelanguage.googleapis.com/v1beta/openai
 nodes:
   - rid: user_question
     name: user_question
@@ -25,7 +16,7 @@ nodes:
     config:
       name: My Agent
       type: custom_agent_node
-      llm: f4f604ecf6a74186bf8d387158724b12
+      llm: $ref:f4f604ecf6a74186bf8d387158724b12
       system_message: >
         You are a smart assistant …
 

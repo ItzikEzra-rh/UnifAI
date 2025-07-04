@@ -1,45 +1,67 @@
 from abc import ABC, abstractmethod
-from typing import List, Mapping, Any
+from typing import List, Mapping, Any, Optional
 from blueprints.models.blueprint import BlueprintSpec, BlueprintDraft
 
 
 class BlueprintRepository(ABC):
+    # ────────────────────────────── Writes ──────────────────────────────
     @abstractmethod
-    def save(self, user_id, spec: BlueprintDraft) -> str:
-        """Persist the spec, returning a generated blueprint_id."""
-        ...
+    def save(self, *, user_id: str, spec: BlueprintDraft) -> str:
+        """
+        Persist `spec` for the given user and return the generated blueprint_id.
+        """
 
+    # ────────────────────────────── Reads by ID ─────────────────────────
     @abstractmethod
     def load(self, blueprint_id: str) -> Mapping[str, Any]:
-        """Load by blueprint_id (or raise KeyError)."""
-        ...
+        """Load a blueprint document by its globally-unique ID or raise `KeyError`."""
 
     @abstractmethod
     def delete(self, blueprint_id: str) -> bool:
-        """Delete by blueprint_id. Return True if something was removed."""
-        ...
+        """Delete by ID.  Return `True` iff a document was removed."""
 
     @abstractmethod
     def exists(self, blueprint_id: str) -> bool:
-        """Return True if that ID is in the store."""
-        ...
+        """Return `True` if that ID is present in the store."""
+
+    # ────────────────────────────── Listings / Stats ────────────────────
+    @abstractmethod
+    def list_ids(
+            self,
+            *,
+            user_id: Optional[str] = None,
+            skip: int = 0,
+            limit: int = 100,
+            sort_desc: bool = True,
+    ) -> List[str]:
+        """
+        Return blueprint IDs, optionally restricted to `user_id`, with pagination.
+        """
 
     @abstractmethod
-    def list_ids(self, skip: int = 0, limit: int = 100, sort_desc: bool = True) -> List[str]:
-        """List all blueprint_ids, with pagination."""
-        ...
+    def list_docs(
+            self,
+            *,
+            user_id: Optional[str] = None,
+            skip: int = 0,
+            limit: int = 100,
+            sort_desc: bool = True,
+    ) -> List[Mapping[str, Any]]:
+        """
+        Return resolved `BlueprintSpec`s, optionally restricted to `user_id`,
+        with pagination.
+        """
 
     @abstractmethod
-    def list_specs(self, skip: int = 0, limit: int = 100, sort_desc: bool = True) -> List[BlueprintSpec]:
-        """List every BlueprintSpec, with pagination."""
-        ...
+    def count_usage(self, *, rid: str) -> int:
+        """
+        Count how many blueprints (optionally belonging to `user_id`) reference a
+        given resource ID `rid`.
+        """
 
     @abstractmethod
-    def count_usage(self, rid: str) -> int:
-        """Count how many blueprints reference a resource by its ID."""
-        ...
-
-    @abstractmethod
-    def count(self) -> int:
-        """Return the total number of blueprints."""
-        ...
+    def count(self, user_id: Optional[str] = None) -> int:
+        """
+        Return the total number of blueprints, or the number belonging to
+        `user_id` if provided.
+        """

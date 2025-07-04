@@ -162,9 +162,9 @@ if __name__ == "__main__":
     #                                  "system_message": "You are a smart assistant …"})
 
     blueprint_loader = YAMLBlueprintLoader()
-    # raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
-    raw = blueprint_loader.load("run/test_new_version.yml")
-    blueprint_id = app.blueprint_service.save_draft("alice", draft_dict=raw)
+    raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
+    # raw = blueprint_loader.load("run/test_new_version.yml")
+    blueprint_id = app.blueprint_service.save_draft(user_id="alice", draft_dict=raw)
     print(f"Saved blueprint draft with id: {blueprint_id}")
     session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
     print(f"Created session with id: {session.run_context.run_id}")
