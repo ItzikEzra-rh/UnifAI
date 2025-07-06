@@ -6,9 +6,6 @@ from shared.logger import logger
 from global_utils.helpers.apiargs import from_query, from_body
 from global_utils.celery_app.helpers import send_task
 from providers.docs import delete_document, get_available_doc_list, get_best_match_results, upload_docs
-from config.app_config import AppConfig
-
-config = AppConfig()
 
 docs_bp = Blueprint("docs", __name__)
 
@@ -18,7 +15,7 @@ docs_bp = Blueprint("docs", __name__)
 })
 def upload_files(files):
     try:
-        upload_docs(files, config.get("upload_folder", ""))
+        upload_docs(files)
         return jsonify({"message": "Files uploaded successfully"}), 200
     except Exception as e:
         logger.error(f"Failed to upload files: {str(e)}")
@@ -46,7 +43,6 @@ def embed_docs(docs):
             task_name="data_sources.docs.docs_tasks.embed_docs_task",
             celery_queue="docs_queue",
             doc_list=docs,
-            docs_path=config.get("upload_folder", ""),
             upload_by=session.get('user', {}).get('name', 'default')
         )
         return jsonify({"status": "task submitted"}), 202

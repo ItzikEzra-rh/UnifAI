@@ -1,6 +1,7 @@
 import base64
 import os
 import time
+from config.app_config import AppConfig
 from utils.storage.mongo.mongo_storage import MongoStorage
 from global_utils.utils.util import get_mongo_url
 from utils.storage.storage_manager import StorageManager
@@ -19,12 +20,14 @@ from shared.logger import logger
 from global_utils.utils.util import get_mongo_url
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
 
+app_config = AppConfig()
+upload_folder = app_config.get("upload_folder", "")
 
 mongo_client = pymongo.MongoClient(get_mongo_url())
 pipeline_repo = MongoDBPipelineRepository(mongo_client)
 data_source_repo = MongoStorage(get_mongo_url())
 
-def upload_docs(files, upload_folder):
+def upload_docs(files):
     try:
         for file in files:
             filename = file["name"]
@@ -63,14 +66,14 @@ def get_available_doc_list(user):
 
     return docs
 
-def embed_docs_flow(doc_list, docs_path, upload_by):
+def embed_docs_flow(doc_list, upload_by):
     # Create data pipeline with existing logger
     doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
     
     # Insert the documents queue into the pipeline db
     for doc in doc_list:
         doc_name = doc.get("doc_name", "")
-        doc_path = docs_path + "/" + doc_name
+        doc_path = os.path.join(upload_folder, doc_name)
         doc_id = doc["doc_id"] if doc.get("doc_id", "") else str(uuid.uuid4())
         start = time.time()
         doc["doc_id"] = doc_id
