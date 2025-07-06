@@ -78,7 +78,7 @@ def embed_docs_flow(doc_list, upload_by):
         start = time.time()
         doc["doc_id"] = doc_id
         doc["doc_path"] = doc_path
-        doc_pipeline.insert_doc(doc_id, doc_name, upload_by)
+        doc_pipeline.register_doc(doc_id, doc_name, upload_by)
         
     config = DocConfigManager()
     config.set_config_value("chunk_size", 800)

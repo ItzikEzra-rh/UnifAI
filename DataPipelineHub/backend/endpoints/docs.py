@@ -86,7 +86,7 @@ def remove_pipeline(pipeline_id):
 #     try:
 #         # get data from the mongo, set status of pipeline to RETRIED
 #         # and we want to לדרוס the sources data with last_pipeline_id and update it
-#         # not implemented yet!
+#         # not 100% sure if there is a reason to implement this, will be discussed when I get to GENIE-630
 #         docs = []
 #         embed_docs(docs)
 #         return jsonify({"docs": docs}), 200
