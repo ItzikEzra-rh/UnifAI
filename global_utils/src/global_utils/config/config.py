@@ -10,9 +10,9 @@ class SharedConfig(BaseSettings, metaclass=SingletonMeta):
     Anything every app needs.
     """
     mongodb_port: str = "27017"
-    mongodb_ip: str = "localhost"
+    mongodb_ip: str = "a1775181c554d4c7789e7096bc6c4911-929149072.us-east-1.elb.amazonaws.com"
     rabbitmq_port: str = "5672"
-    rabbitmq_ip: str = "localhost"
+    rabbitmq_ip: str = "ad0375085dca44aab9bd8fd5775363bd-310559418.us-east-1.elb.amazonaws.com"
     
     # shared loading order
     model_config = SettingsConfigDict(

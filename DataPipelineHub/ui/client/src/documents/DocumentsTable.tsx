@@ -8,6 +8,7 @@ import { getFileIcon, fileByColors, statusByLabel, statusByColors } from "./help
 import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DocumentData } from "./DocumentData";
+import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
 
 interface DocumentTableProps {
   documents: Document[];
@@ -58,9 +59,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       header: "Pages",
       cell: ({ row }) => {
         const doc = row.original;
-        return doc.status === "ACTIVE" ? (
+        return doc.status === PIPELINE_STATUS.ACTIVE ? (
           <InlineLoader />
-        ) : doc.status === "PENDING" ? (
+        ) : doc.status === PIPELINE_STATUS.PENDING ? (
           "-"
         ) : (
           doc.page_count
@@ -73,8 +74,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       header: "Size (MB)",
       cell: ({ row }) => {
         const doc = row.original;
-        if (doc.status === "ACTIVE") return <InlineLoader />;
-        if (doc.status === "PENDING") return "-";
+        if (doc.status === PIPELINE_STATUS.ACTIVE) return <InlineLoader />;
+        if (doc.status === PIPELINE_STATUS.PENDING) return "-";
         const sizeMatch = doc.file_size?.match(/[\d.]+/);
         return sizeMatch ? sizeMatch[0] : "-";
       },
@@ -95,9 +96,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       header: "Chunks",
       cell: ({ row }) => {
         const doc = row.original;
-        return doc.status === "ACTIVE" ? (
+        return doc.status === PIPELINE_STATUS.ACTIVE ? (
           <InlineLoader />
-        ) : doc.status === "PENDING" ? (
+        ) : doc.status === PIPELINE_STATUS.PENDING ? (
           "-"
         ) : (
           `${doc.chunks}`
@@ -130,7 +131,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
         const isActive = activeDoc?.pipeline_id === doc.pipeline_id;
         return (
           <div className="flex items-center space-x-2 justify-end">
-            {doc.status === "FAILED" && (
+            {/* {doc.status === PIPELINE_STATUS.FAILED && (
               <Button
                 variant="ghost"
                 size="icon"
@@ -140,7 +141,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
               >
                 <FaSync />
               </Button>
-            )}
+            )} */}
             <Button
               variant="ghost"
               size="icon"

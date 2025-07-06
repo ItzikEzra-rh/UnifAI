@@ -1,4 +1,5 @@
 import { FaFileAlt, FaFileWord, FaFilePdf, FaFileExcel, FaFilePowerpoint } from "react-icons/fa";
+import { PIPELINE_STATUS, PipelineStatus } from "@/constants/pipelineStatus";
 
 export const getFileIcon = (type: string) => {
     switch (type) {
@@ -23,16 +24,16 @@ export const fileByColors: Record<string, string> = {
   txt: "bg-gray-500 dark:bg-gray-600",
 };
 
-export const statusByColors: Record<string, string> = {
-  PENDING: "bg-grey-500 text-white",
-  ACTIVE: "bg-blue-500 text-white",
-  DONE: "bg-green-500 text-white",
-  FAILED: "bg-red-500 text-white",
+export const statusByColors: Record<PipelineStatus, string> = {
+  [PIPELINE_STATUS.PENDING]: "bg-grey-500 text-white",
+  [PIPELINE_STATUS.ACTIVE]: "bg-blue-500 text-white",
+  [PIPELINE_STATUS.DONE]: "bg-green-500 text-white",
+  [PIPELINE_STATUS.FAILED]: "bg-red-500 text-white",
 };
 
-export const statusByLabel: Record<string, string> = {
-  DONE: "DONE",
-  FAILED: "FAILED",
-  ACTIVE: "IN PROGRESS",
-  PENDING: "IN QUEUE",
+export const statusByLabel: Record<PipelineStatus, string> = {
+  [PIPELINE_STATUS.DONE]: "DONE",
+  [PIPELINE_STATUS.FAILED]: "FAILED",
+  [PIPELINE_STATUS.ACTIVE]: "IN PROGRESS",
+  [PIPELINE_STATUS.PENDING]: "IN QUEUE",
 };

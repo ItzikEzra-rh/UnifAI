@@ -1,3 +1,5 @@
+import { PipelineStatus } from '@/constants/pipelineStatus';
+
 export interface Pipeline {
   id: string;
   name: string;
@@ -51,7 +53,7 @@ export interface Document {
   pipeline_id: string;
   name: string;
   path: string;
-  status: string
+  status: PipelineStatus;
   created_at: string;
   file_type: string;
   chunks: number;

@@ -86,7 +86,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         }
     };
 
-    const submitToAPI = async (docs: {doc_name: string}[]) => {
+    const startPipeline = async (docs: {doc_name: string}[]) => {
         try {
             await axiosInstance.put("/api/docs/embed.docs", { docs });
             console.log("API submission successful!");
@@ -103,7 +103,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
 
         const docs = selectedFiles.map((file) => ({doc_name: file.name}));
 
-        await submitToAPI(docs);
+        await startPipeline(docs);
         await fetchDocuments();
         setSelectedFiles([]);
     };

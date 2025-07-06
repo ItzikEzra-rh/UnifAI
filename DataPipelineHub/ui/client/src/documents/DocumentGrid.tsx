@@ -6,6 +6,7 @@ import { Document } from "@/types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DocumentData } from "./DocumentData";
+import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
 
 interface DocumentGridProps {
   paginatedDocuments: Document[];
@@ -19,14 +20,14 @@ interface DocumentGridProps {
 }
 
 const getSubtitle = (doc: Document) => {
-  if (doc.status === "ACTIVE") return <InlineLoader />;
-  if (doc.status === "PENDING" || doc.status === "FAILED") return "-";
+  if (doc.status === PIPELINE_STATUS.ACTIVE) return <InlineLoader />;
+  if (doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
   return `${doc.page_count} pages | ${doc.file_type} | ${doc.file_size}`;
 };
 
 const getFooterText = (doc: Document) => {
-  if (doc.status === "ACTIVE") return <InlineLoader />;
-  if (doc.status === "PENDING" || doc.status === "FAILED") return "-";
+  if (doc.status === PIPELINE_STATUS.ACTIVE) return <InlineLoader />;
+  if (doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
   return `${doc.chunks} chunks`;
 };
 
@@ -40,7 +41,7 @@ const getStatusBadge = (doc: Document) => ({
 //   handleRetry: (id: string) => void,
 //   retrying: boolean
 // ) =>
-//   doc.status === "FAILED" ? (
+//   doc.status === PIPELINE_STATUS.FAILED ? (
 //     <Button
 //       variant="ghost"
 //       size="icon"

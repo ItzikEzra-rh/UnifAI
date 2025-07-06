@@ -2,14 +2,29 @@ import create from 'zustand';
 
 interface PaginationState {
   currentPage: number;
+  itemsPerPage: number;
   setPage: (page: number) => void;
   resetPage: () => void;
-  itemsPerPage: number;
+  setItemsPerPage: (itemsPerPage: number) => void;
+  resetPagination: () => void;
 }
 
-export const usePaginationStore = create<PaginationState>((set) => ({
-  currentPage: 1,
-  itemsPerPage: 6,
-  setPage: (page) => set({ currentPage: page }),
-  resetPage: () => set({ currentPage: 1 }),
-}));
+interface PaginationConfig {
+  initialItemsPerPage?: number;
+  initialPage?: number;
+}
+
+export const createPaginationStore = (config: PaginationConfig = {}) => {
+  const { initialItemsPerPage = 10, initialPage = 1 } = config;
+  
+  return create<PaginationState>((set) => ({
+    currentPage: initialPage,
+    itemsPerPage: initialItemsPerPage,
+    setPage: (page) => set({ currentPage: page }),
+    resetPage: () => set({ currentPage: initialPage }),
+    setItemsPerPage: (itemsPerPage) => set({ itemsPerPage, currentPage: initialPage }),
+    resetPagination: () => set({ currentPage: initialPage, itemsPerPage: initialItemsPerPage }),
+  }));
+};
+
+export const usePaginationStore = createPaginationStore({ initialItemsPerPage: 6 });

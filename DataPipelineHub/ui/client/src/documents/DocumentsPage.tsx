@@ -26,14 +26,15 @@ export default function Documents() {
   const [fileTypeFilter, setFileTypeFilter] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [retrying, setRetrying] = useState(false);
+
+  const { currentPage, setPage, resetPage, itemsPerPage, } = usePaginationStore();
 
   const { data: documents = [], isLoading, isError, error } = useQuery<Document[]>({
     queryKey: ['documents'],
     queryFn: fetchDocuments,
-    refetchInterval: 1000,
+    refetchInterval: 10000,
   });
-
-  const { currentPage, setPage, resetPage, itemsPerPage, } = usePaginationStore();
 
   useEffect(() => {
     resetPage();
@@ -129,7 +130,6 @@ export default function Documents() {
     }
   };
 
-  const [retrying, setRetrying] = useState(false);
   const handleRetry = async (id: string) => {
     try {
       setRetrying(true);
