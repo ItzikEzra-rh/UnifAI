@@ -4,6 +4,7 @@ from pathlib import Path
 from shared.logger import logger
 from utils.data_connector import DataConnector
 from .doc_config_manager import DocConfigManager
+from .pdf_chunker_strategy import DoclingProcessingError
 
 from docling.document_converter import DocumentConverter, ConversionResult
 
@@ -92,8 +93,15 @@ class DocumentConnector(DataConnector):
             self._conversion_results[document_path] = result
             
             # Extract text and metadata
+            text_content = result.document.export_to_text()
+            
+            # Validate that docling extracted content
+            if not text_content or not text_content.strip():
+                logger.error(f"Docling failed to extract text content from document: {document_path}")
+                raise DoclingProcessingError(f"Docling was unable to process the provided document '{os.path.basename(document_path)}'. Failed to extract text content from the document.")
+       
             document_data = {
-                "text": result.document.export_to_text(),
+                "text": text_content,
                 "markdown": result.document.export_to_markdown(),
                 "path": document_path,
                 "filename": os.path.basename(document_path),
@@ -106,6 +114,8 @@ class DocumentConnector(DataConnector):
             logger.info(f"Document processed successfully: {document_path}")
             return document_data
             
+        except DoclingProcessingError:
+            raise
         except Exception as e:
             logger.error(f"Error processing document {document_path}: {str(e)}")
             return None
@@ -153,8 +163,15 @@ class DocumentConnector(DataConnector):
             self._conversion_results[document_url] = result
             
             # Extract text and metadata
+            text_content = result.document.export_to_text()
+            
+            # Validate that docling extracted meaningful content
+            if not text_content or not text_content.strip():
+                logger.error(f"Docling failed to extract text content from document URL: {document_url}")
+                raise DoclingProcessingError(f"Docling was unable to process the provided document from URL '{document_url}'. Failed to extract text content from the document.")
+                        
             document_data = {
-                "text": result.document.export_to_text(),
+                "text": text_content,
                 "markdown": result.document.export_to_markdown(),
                 "url": document_url,
             }
@@ -166,6 +183,8 @@ class DocumentConnector(DataConnector):
             logger.info(f"Document from URL processed successfully: {document_url}")
             return document_data
             
+        except DoclingProcessingError:
+            raise
         except Exception as e:
             logger.error(f"Error processing document from URL {document_url}: {str(e)}")
             return None

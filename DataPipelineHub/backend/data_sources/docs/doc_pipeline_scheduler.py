@@ -45,7 +45,7 @@ class DocDataPipeline:
         pipeline_id = f"doc_{doc_id}"
         
         # Register pipeline with monitor
-        self.logger.info(f"Inserting document pipeline: {pipeline_id}")
+        self.logger.info(f"Registering document pipeline: {pipeline_id}")
         self.monitor.register_pipeline(pipeline_id, SourceType.DOCUMENT, doc_name, upload_by)
         
         try:
@@ -58,7 +58,7 @@ class DocDataPipeline:
             return True
         except Exception as e:
             # Log error and update pipeline status
-            error_message = f"Error inserting document {doc_id}: {str(e)}"
+            error_message = f"Error registering document {doc_id}: {str(e)}"
             self.logger.error(error_message)
             self.monitor.record_error(pipeline_id, error_message)
             return False

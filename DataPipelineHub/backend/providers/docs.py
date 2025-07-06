@@ -12,13 +12,14 @@ from flask import session, jsonify
 from data_sources.docs.doc_connector import DocumentConnector
 from data_sources.docs.doc_config_manager import DocConfigManager
 from data_sources.docs.document_processor import DocumentProcessor
-from data_sources.docs.pdf_chunker_strategy import NoChunksGeneratedError, PDFChunkerStrategy
+from data_sources.docs.pdf_chunker_strategy import DoclingProcessingError, PDFChunkerStrategy
 from data_sources.docs.doc_pipeline_scheduler import DocDataPipeline
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
 from global_utils.utils.util import get_mongo_url
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
+from werkzeug.utils import secure_filename
 
 app_config = AppConfig()
 upload_folder = app_config.get("upload_folder", "")
@@ -30,7 +31,7 @@ data_source_repo = MongoStorage(get_mongo_url())
 def upload_docs(files):
     try:
         for file in files:
-            filename = file["name"]
+            filename = secure_filename(file["name"])
             content = base64.b64decode(file["content"])
             with open(os.path.join(upload_folder, filename), "wb") as f:
                 f.write(content)
@@ -173,16 +174,6 @@ def embed_docs_flow(doc_list, upload_by):
 
             doc_pipeline.monitor.finish_log_monitoring()
             
-        except NoChunksGeneratedError as e:
-            logger.error(f"Chunking failed for doc {doc_name}: {str(e)}")
-            response.append({
-                "doc": doc_name,
-                "status": "failed",
-                "error": "No content could be chunked from this document."
-            })
-            doc_pipeline.monitor.finish_log_monitoring()
-            continue 
-
         except Exception as e:
             logger.error(f"Failed to embed doc {doc.get('doc_name')}: {str(e)}")
             response.append({
