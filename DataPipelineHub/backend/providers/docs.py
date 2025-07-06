@@ -74,10 +74,11 @@ def embed_docs_flow(doc_list, upload_by):
     for doc in doc_list:
         doc_name = doc.get("doc_name", "")
         doc_path = os.path.join(upload_folder, doc_name)
-        doc_id = doc["doc_id"] if doc.get("doc_id", "") else str(uuid.uuid4())
-        start = time.time()
+        doc_id = str(uuid.uuid4())
         doc["doc_id"] = doc_id
         doc["doc_path"] = doc_path
+        
+        start = time.time()
         doc_pipeline.register_doc(doc_id, doc_name, upload_by)
         
     config = DocConfigManager()
