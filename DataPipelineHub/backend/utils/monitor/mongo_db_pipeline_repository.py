@@ -201,7 +201,7 @@ class MongoDBPipelineRepository:
         """
         return list(self.pipelines.find(query, {"_id": 0}).sort("created_at", -1))
         
-    def delete_pipeline(self, pipeline_id: str) -> List[Dict]:
+    def delete_pipeline(self, pipeline_id: str) -> bool:
         """
         Set pipeline as deleted.
         
