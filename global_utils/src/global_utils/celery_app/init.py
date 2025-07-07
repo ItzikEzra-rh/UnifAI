@@ -31,6 +31,10 @@ class CeleryApp:
         )
 
         self.celery_app.conf.update(
+            broker_transport_options={
+                'heartbeat': 3600,              # overrides broker_heartbeat at transport level
+                'socket_keepalive': True,       # keep TCP socket alive
+            },
             task_acks_late=False,
             task_reject_on_worker_lost=False,
             worker_hijack_root_logger=False,
@@ -68,4 +72,3 @@ class CeleryApp:
 # )
 
 # app = celery_instance.app
-
