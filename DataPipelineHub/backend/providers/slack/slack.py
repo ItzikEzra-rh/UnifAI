@@ -5,6 +5,7 @@ from data_sources.slack.slack_connector import SlackConnector
 from data_sources.slack.slack_data_processor import SlackProcessor
 from data_sources.slack.slack_chunker_strategy import SlackChunkerStrategy
 from data_sources.slack.slack_pipeline_scheduler import SlackDataPipeline
+from config.constants import DataSource
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from utils.storage.storage_manager import StorageManager
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
@@ -134,7 +135,7 @@ def delete_slack_channel(channel_id: str) -> dict:
         storage_manager = _initialize_storage_manager()
         
         # Delete using the general storage manager method
-        result = storage_manager.delete_source(channel_id, "SLACK")
+        result = storage_manager.delete_source(channel_id, DataSource.SLACK.upper_name)
         
         # Convert to the expected format for backward compatibility
         summary = result.get("summary", {})

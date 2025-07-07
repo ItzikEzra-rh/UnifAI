@@ -5,6 +5,7 @@ from webargs import fields
 from shared.logger import logger
 from global_utils.helpers.apiargs import from_query, from_body
 from global_utils.celery_app.helpers import send_task
+from config.constants import DataSource
 from providers.slack.slack import (
     get_available_slack_channels,
     embed_slack_channels_flow,
@@ -93,7 +94,7 @@ def get_embed_channels():
     """
     Returns all stored channels, optionally filtered by source_type.
     """
-    source_type = "SLACK"
+    source_type = DataSource.SLACK.upper_name
     svc = get_source_service()
     channels = svc.list_sources_with_status(source_type)
     return jsonify(channels), 200

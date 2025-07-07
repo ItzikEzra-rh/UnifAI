@@ -4,6 +4,7 @@ from typing import Any, Dict, List, Optional
 
 import psutil
 from utils.storage.mongo.mongo_helpers import get_source_service
+from config.constants import DataSource
 
 
 class SlackStatsProvider:
@@ -13,7 +14,7 @@ class SlackStatsProvider:
 
     def _fetch_slack_sources(self) -> List[Dict[str, Any]]:
         """Fetch all SLACK sources enriched with their last pipeline status."""
-        return self._service.list_sources_with_status(source_type="SLACK")
+        return self._service.list_sources_with_status(source_type=DataSource.SLACK.upper_name)
 
     def _aggregate_counts(
         self, sources: List[Dict[str, Any]]

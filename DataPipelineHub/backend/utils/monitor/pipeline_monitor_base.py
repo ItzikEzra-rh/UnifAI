@@ -9,6 +9,8 @@ from abc import ABC, abstractmethod
 from typing import Dict, List, Optional, Any
 from enum import Enum
 
+from config.constants import DataSource
+
 
 class PipelineStatus(Enum):
     """Enum representing possible pipeline statuses."""
@@ -21,10 +23,10 @@ class PipelineStatus(Enum):
 
 class SourceType(Enum):
     """Enum representing different data source types."""
-    SLACK = "SLACK"
-    JIRA = "JIRA"
-    DOCUMENT = "DOCUMENT"
-    OTHER = "OTHER"
+    SLACK = DataSource.SLACK.upper_name
+    JIRA = DataSource.JIRA.upper_name
+    DOCUMENT = DataSource.DOCUMENT.upper_name
+    OTHER = DataSource.OTHER.upper_name
 
 
 class PipelineMonitorBase(ABC):

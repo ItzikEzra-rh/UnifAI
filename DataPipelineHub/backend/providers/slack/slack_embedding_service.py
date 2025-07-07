@@ -23,6 +23,7 @@ from data_sources.slack.slack_connector import SlackConnector
 from data_sources.slack.slack_data_processor import SlackProcessor
 from data_sources.slack.slack_chunker_strategy import SlackChunkerStrategy
 from data_sources.slack.slack_pipeline_scheduler import SlackDataPipeline
+from config.constants import DataSource
 
 @dataclass
 class ChannelData:
@@ -270,7 +271,7 @@ class SingleChannelProcessor:
         self.mongo_storage.upsert_source_summary(
             source_id=self.channel.channel_id,
             source_name=self.channel.channel_name,
-            source_type="SLACK",
+            source_type=DataSource.SLACK.upper_name,
             summary=self._create_summary(0, 0, 0),
             type_data=self._create_type_data(0, 0)
         )
@@ -280,7 +281,7 @@ class SingleChannelProcessor:
         self.mongo_storage.upsert_source_summary(
             source_id=self.channel.channel_id,
             source_name=self.channel.channel_name,
-            source_type="SLACK",
+            source_type=DataSource.SLACK.upper_name,
             summary=self._create_summary(0, 0, 0),
             type_data=self._create_type_data(message_count, 0)
         )
@@ -312,7 +313,7 @@ class SingleChannelProcessor:
             
             chunk["metadata"].update({
                 "source_id": self.channel.channel_id,
-                "source_type": "SLACK",
+                "source_type": DataSource.SLACK.upper_name,
                 "chunk_index": i
             })
         
@@ -331,7 +332,7 @@ class SingleChannelProcessor:
         self.mongo_storage.upsert_source_summary(
             source_id=self.channel.channel_id,
             source_name=self.channel.channel_name,
-            source_type="SLACK",
+            source_type=DataSource.SLACK.upper_name,
             summary=self._create_summary(chunk_count, embedding_count, 0),
             type_data=self._create_type_data(message_count, api_calls)
         )
@@ -341,7 +342,7 @@ class SingleChannelProcessor:
         self.mongo_storage.upsert_source_summary(
             source_id=self.channel.channel_id,
             source_name=self.channel.channel_name,
-            source_type="SLACK",
+            source_type=DataSource.SLACK.upper_name,
             summary={
                 "chunks_generated": 0,
                 "embeddings_created": 0,
