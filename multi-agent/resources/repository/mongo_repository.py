@@ -13,11 +13,27 @@ class MongoResourceRepository(ResourceRepository):
         client = pymongo.MongoClient(mongo_uri)
         self.col = client[db_name][coll_name]
         self.col.create_index("nested_refs")
+        self.col.create_index(
+            [("user_id", 1), ("category", 1), ("type", 1), ("name", 1)],
+            name="uq_user_cat_type_name",
+            unique=True)
 
     def save(self, doc: ResourceDoc) -> str:
-        self.col.replace_one({"_id": doc.rid},
-                             doc.model_dump(mode="json"),
-                             upsert=True)
+        """Insert a new resource document (create only)."""
+        result = self.col.insert_one({"_id": doc.rid,
+                                      **doc.model_dump(mode="json")})
+        if not result.acknowledged:
+            raise RuntimeError(f"Failed to insert document with rid: {doc.rid}")
+        return doc.rid
+
+    def update(self, doc: ResourceDoc) -> str:
+        """Update an existing resource document."""
+        result = self.col.replace_one(
+            {"_id": doc.rid},
+            doc.model_dump(mode="json")
+        )
+        if result.matched_count == 0:
+            raise KeyError(f"No document found with rid: {doc.rid}")
         return doc.rid
 
     def get(self, rid: str) -> ResourceDoc:
@@ -37,7 +53,7 @@ class MongoResourceRepository(ResourceRepository):
         return self.col.count_documents({"user_id": user_id, **filter})
 
     def meta(self, rid: str) -> tuple[str, str]:
-        doc = self.col.find_one({"rid": rid}, {"category": 1, "type": 1})
+        doc = self.col.find_one({"_id": rid}, {"category": 1, "type": 1})
         if not doc:
             raise KeyError(rid)
         return doc["category"], doc["type"]
@@ -50,4 +66,4 @@ class MongoResourceRepository(ResourceRepository):
         return [doc["_id"] for doc in cur]
 
     def exists(self, rid: str) -> bool:
-        return self.col.count_documents({"rid": rid}, limit=1) == 1
+        return self.col.count_documents({"_id": rid}, limit=1) == 1

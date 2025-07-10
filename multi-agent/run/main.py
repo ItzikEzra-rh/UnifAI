@@ -134,8 +134,8 @@ def main_resume_session(run_id: str):
 
 if __name__ == "__main__":
     config = get_app_config()
-
     app = AppContainer(config)
+
     # llm_rid = app.resources_service.create(user_id="alice", category="llms", type="openai",
     #                                        name="openai_llm",
     #                                        config={"name": "openai_llm",
@@ -173,4 +173,6 @@ if __name__ == "__main__":
     #                             stream=False,
     #                             scope="public"))
 
-    app.resources_service.delete(rid="d85053550c9e41d59dd3d6a163a9d340")
+    # app.blueprint_service.delete(blueprint_id="2eb153f4-cc11-43b8-847f-718ca4e40ea7")
+    app.resources_service.delete(rid="5b3a9a9a60104743a78cb0001ca5aa23")
+    app.resources_service.delete(rid="49f4170dd7da45289a500e43c6a7f8b5")

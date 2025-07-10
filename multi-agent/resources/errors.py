@@ -18,3 +18,6 @@ class ResourceInUseError(RuntimeError):
     # optional: for `str(exc)` explicitness in logs
     def __str__(self) -> str:
         return self.args[0]
+
+    def __repr__(self) -> str:
+        return self.__str__()

@@ -6,7 +6,12 @@ from resources.models import ResourceDoc
 class ResourceRepository(ABC):
     @abstractmethod
     def save(self, doc: ResourceDoc) -> str:
-        """Insert or replace a resource document."""
+        """Insert a new resource document."""
+        ...
+
+    @abstractmethod
+    def update(self, doc: ResourceDoc) -> str:
+        """Update an existing resource document."""
         ...
 
     @abstractmethod

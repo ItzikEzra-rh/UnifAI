@@ -11,6 +11,13 @@ class BlueprintRepository(ABC):
         Persist `spec` for the given user and return the generated blueprint_id.
         """
 
+    @abstractmethod
+    def update(self, *, blueprint_id: str, spec: BlueprintDraft,
+               rid_refs: list[str]) -> bool:
+        """
+        Replace an existing draft.  Return True if a document was modified.
+        """
+
     # ────────────────────────────── Reads by ID ─────────────────────────
     @abstractmethod
     def load(self, blueprint_id: str) -> Mapping[str, Any]:

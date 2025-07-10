@@ -33,6 +33,24 @@ class MongoBlueprintRepository(BlueprintRepository):
         self._col.insert_one(doc)
         return new_id
 
+    def update(self, *, blueprint_id: str, spec: BlueprintDraft,
+               rid_refs: list[str]) -> bool:
+        # Fetch current document to obtain user_id and run existence checks
+        existing = self._col.find_one({"blueprint_id": blueprint_id})
+        if existing is None:
+            raise KeyError(f"No blueprint with id={blueprint_id}")
+
+        res = self._col.update_one(
+            {"blueprint_id": blueprint_id},
+            {"$set": {
+                "spec_dict": spec.model_dump(mode="json"),
+                "rid_refs": rid_refs,
+                "updated_at": datetime.utcnow(),
+            }}
+        )
+
+        return res.modified_count == 1
+
     def load(self, blueprint_id: str) -> Mapping[str, Any]:
         doc = self._col.find_one({"blueprint_id": blueprint_id})
         if not doc:

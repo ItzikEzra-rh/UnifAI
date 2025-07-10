@@ -21,6 +21,13 @@ class BlueprintService:
         doc = self._repo.load(blueprint_id)
         return BlueprintDraft(**doc["spec_dict"])
 
+    def update_draft(self, *, blueprint_id: str, draft_dict: dict) -> bool:  # NEW
+        draft = BlueprintDraft(**draft_dict)
+        rid_refs = list(RefWalker.external_rids(draft))
+        return self._repo.update(
+            blueprint_id=blueprint_id, spec=draft, rid_refs=rid_refs
+        )
+
     def load_resolved(self, blueprint_id: str) -> BlueprintSpec:
         return self._resolver.resolve(self.load_draft(blueprint_id))
 
