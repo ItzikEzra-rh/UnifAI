@@ -1,5 +1,5 @@
-import React, { FC, useState, useMemo, useCallback, forwardRef, useImperativeHandle } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import React, { FC, useState, useMemo, useCallback, forwardRef, useImperativeHandle, useEffect, useRef } from 'react';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { FaSearch, FaSpinner } from 'react-icons/fa';
 import { HiOutlineLockClosed } from 'react-icons/hi';
 
@@ -18,6 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+
+// ── Pagination Constants ──────────────────────────────────────────────
+const CHANNELS_PER_PAGE = 50;
+
 // ── Scope Constants ────────────────────────────────────────────────────
 export const SCOPE = {
   ALL: 'all' as const,
@@ -50,6 +54,15 @@ export interface Channel {
   channel_id: string;
   is_private: boolean;
 }
+
+// ── Pagination Response Interface ──────────────────────────────────────
+export interface PaginatedChannelsResponse {
+  channels: Channel[];
+  nextCursor?: string;
+  hasMore: boolean;
+  total?: number;
+}
+
 export interface AddSourceSectionHandle {
   getSelectedChannels(): Channel[];
 }
@@ -66,6 +79,7 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
   const [scope, setScope] = useState<Scope>(SCOPE.ALL);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Slack API `types` param mapping
   const typesParam = useMemo<ChannelType | typeof ALL_CHANNEL_TYPES>(() => {
@@ -74,36 +88,72 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
     return ALL_CHANNEL_TYPES;
   }, [scope]);
 
+  // Reset selected channels when scope changes
+  useEffect(() => {
+    setSelectedChannels([]);
+  }, [scope]);
 
-  const qc = useQueryClient();
+  // Infinite query for channels
+  const {
+    data: channelsData,
+    isLoading,
+    isError,
+    error,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery<PaginatedChannelsResponse, Error>({
+    queryKey: [CACHE_KEY, typesParam],
+    queryFn: async ({ pageParam = undefined }) => {
+      if (scope === SCOPE.ALL) {
+        // For ALL scope, we need to fetch both public and private channels
+        const [pubResponse, privResponse] = await Promise.all([
+          fetchAvailableSlackChannels(CHANNEL_TYPE.PUBLIC, {
+            cursor: pageParam as string,
+            limit: Math.ceil(CHANNELS_PER_PAGE / 2),
+          }),
+          fetchAvailableSlackChannels(CHANNEL_TYPE.PRIVATE, {
+            cursor: pageParam as string,
+            limit: Math.ceil(CHANNELS_PER_PAGE / 2),
+          }),
+        ]);
 
-  const { data: channels = [], isLoading, isError, error } = useQuery<Channel[], Error>(
-    {
-      queryKey: [CACHE_KEY, typesParam],
-      queryFn: async () => {
-        if (scope === SCOPE.ALL) {
-          const [pub, priv] = await Promise.all([
-            fetchAvailableSlackChannels(CHANNEL_TYPE.PUBLIC),
-            fetchAvailableSlackChannels(CHANNEL_TYPE.PRIVATE),
-          ]);
+        // Merge and deduplicate channels
+        const mergedChannels = [...pubResponse.channels, ...privResponse.channels];
+        const uniqueChannels = Array.from(
+          new Map(mergedChannels.map(c => [c.channel_id, c])).values()
+        );
 
-          // ① prime the individual caches
-          qc.setQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PUBLIC], pub);
-          qc.setQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PRIVATE], priv);
+        return {
+          channels: uniqueChannels,
+          nextCursor: pubResponse.nextCursor || privResponse.nextCursor,
+          hasMore: pubResponse.hasMore || privResponse.hasMore,
+          total: (pubResponse.total || 0) + (privResponse.total || 0),
+        };
+      }
 
-          // ② return merged & deduped
-          const map = new Map<string, Channel>();
-          pub.concat(priv).forEach(c => map.set(c.channel_id, c));
-          return Array.from(map.values());
-        }
+      return fetchAvailableSlackChannels(typesParam as ChannelType, {
+        cursor: pageParam as string,
+        limit: CHANNELS_PER_PAGE,
+      });
+    },
+    getNextPageParam: (lastPage) => lastPage.nextCursor,
+    staleTime: 5 * 60 * 1000,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    initialPageParam: undefined,
+  });
 
-        return fetchAvailableSlackChannels(typesParam as ChannelType);
-      },
-      staleTime: 5 * 60 * 1000,
-      refetchOnMount: false,
-      refetchOnWindowFocus: false,
-    }
-  );
+  // Flatten all pages into a single array
+  const channels = useMemo(() => {
+    if (!channelsData?.pages) return [];
+    return channelsData.pages.flatMap(page => page.channels);
+  }, [channelsData]);
+
+  // Get total count from the first page
+  const totalChannels = useMemo(() => {
+    return channelsData?.pages?.[0]?.total || 0;
+  }, [channelsData]);
 
   // Get embedded channels to check for already embedded ones
   const { data: embedChannels = [] } = useQuery<EmbedChannel[], Error>({
@@ -115,20 +165,12 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
   });
 
   const getSelectedChannels = useCallback(() => {
-    // grab the master lists from cache
-    const publicList = queryClient.getQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PUBLIC]) || [];
-    const privateList = queryClient.getQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PRIVATE]) || [];
-    const allList = [...publicList, ...privateList];
-
-    // if for some reason the cache is empty (first load), fallback to whatever we currently have
-    const pool = allList.length ? allList : channels;
-
-    return pool.filter(c => selectedChannels.includes(c.channel_name));
-  }, [queryClient, channels, selectedChannels]);
+    return channels.filter(c => selectedChannels.includes(c.channel_name));
+  }, [channels, selectedChannels]);
 
   useImperativeHandle(ref, () => ({
     getSelectedChannels,
- }));
+  }));
 
   // Check if a channel is already embedded
   const isChannelEmbedded = useCallback((channelName: string) => {
@@ -143,7 +185,6 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
 
   // Toggle a channel selection
   const handleToggleChannel = useCallback((name: string) => {
-    // Don't allow toggling if channel is already embedded
     if (isChannelEmbedded(name)) {
       return;
     }
@@ -165,24 +206,43 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
     setSelectedChannels(prev => (allSelected ? [] : Array.from(new Set([...prev, ...allNames]))));
   }, [allNames, allSelected]);
 
+  // Infinite scroll handler
+  const handleScroll = useCallback(() => {
+    if (!scrollContainerRef.current || !hasNextPage || isFetchingNextPage) return;
+
+    const { scrollTop, scrollHeight, clientHeight } = scrollContainerRef.current;
+    const scrolledToBottom = scrollHeight - scrollTop - clientHeight < 100; // 100px threshold
+
+    if (scrolledToBottom) {
+      fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // Add scroll listener
+  useEffect(() => {
+    const container = scrollContainerRef.current;
+    if (!container) return;
+
+    container.addEventListener('scroll', handleScroll);
+    return () => container.removeEventListener('scroll', handleScroll);
+  }, [handleScroll]);
+
   // Compute counts for display
-  const counts: Record<Scope, number> = useMemo(
-    () => {
-      const publicChannels = queryClient.getQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PUBLIC]) ?? [];
-      const privateChannels = queryClient.getQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PRIVATE]) ?? [];
-      
-      // If we don't have cached data yet, fall back to current channels data
-      const totalCount = publicChannels.length + privateChannels.length;
-      const fallbackTotal = totalCount > 0 ? totalCount : channels.length;
-      
+  const counts: Record<Scope, number> = useMemo(() => {
+    if (scope === SCOPE.ALL) {
       return {
-        [SCOPE.ALL]: fallbackTotal,
-        [SCOPE.PUBLIC]: publicChannels.length || (scope === SCOPE.PUBLIC ? channels.length : 0),
-        [SCOPE.PRIVATE]: privateChannels.length || (scope === SCOPE.PRIVATE ? channels.length : 0),
+        [SCOPE.ALL]: totalChannels,
+        [SCOPE.PUBLIC]: 0,
+        [SCOPE.PRIVATE]: 0,
       };
-    },
-    [queryClient, channels.length, scope]
-  );
+    }
+
+    return {
+      [SCOPE.ALL]: 0,
+      [SCOPE.PUBLIC]: scope === SCOPE.PUBLIC ? totalChannels : 0,
+      [SCOPE.PRIVATE]: scope === SCOPE.PRIVATE ? totalChannels : 0,
+    };
+  }, [scope, totalChannels]);
 
   return (
     <Card className="bg-background-card shadow-card border-gray-800">
@@ -202,7 +262,7 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
                       : 'text-muted-foreground hover:text-foreground hover:bg-background'
                   }`}
                 >
-                  {`${label} (${counts[value]})`}
+                  {`${label} ${counts[value] > 0 ? `(${counts[value]})` : ''}`}
                 </button>
               ))}
             </div>
@@ -250,13 +310,34 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
         </div>
 
         <div className="text-sm text-gray-400">
-          Showing {filteredChannels.length} of {counts[scope]} {scopeOptions.find(o => o.value === scope)?.label.toLowerCase()} channels
+          Showing {filteredChannels.length} of {channels.length} loaded channels
+          {totalChannels > 0 && channels.length < totalChannels && (
+            <span> ({totalChannels} total)</span>
+          )}
         </div>
 
-        <div className="border border-gray-800 rounded-md h-48 overflow-y-auto bg-background-dark">
-          {isLoading && <div className="p-4 text-center text-gray-400">Loading…</div>}
-          {isError && <div className="p-4 text-center text-red-500">{error?.message}</div>}
-          {!isLoading && !isError && filteredChannels.length === 0 && <div className="p-4 text-center text-gray-500">No channels found</div>}
+        <div 
+          ref={scrollContainerRef}
+          className="border border-gray-800 rounded-md h-48 overflow-y-auto bg-background-dark"
+        >
+          {isLoading && channels.length === 0 && (
+            <div className="p-4 text-center text-gray-400">
+              <FaSpinner className="animate-spin inline mr-2" />
+              Loading channels...
+            </div>
+          )}
+          
+          {isError && (
+            <div className="p-4 text-center text-red-500">{error?.message}</div>
+          )}
+          
+          {!isLoading && !isError && filteredChannels.length === 0 && channels.length > 0 && (
+            <div className="p-4 text-center text-gray-500">No channels found matching your search</div>
+          )}
+          
+          {!isLoading && !isError && channels.length === 0 && (
+            <div className="p-4 text-center text-gray-500">No channels available</div>
+          )}
 
           {filteredChannels.map(c => {
             const isEmbedded = isChannelEmbedded(c.channel_name);
@@ -283,11 +364,35 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
               </div>
             );
           })}
+
+          {/* Loading indicator for infinite scroll */}
+          {isFetchingNextPage && (
+            <div className="p-4 text-center text-gray-400">
+              <FaSpinner className="animate-spin inline mr-2" />
+              Loading more channels...
+            </div>
+          )}
+
+          {/* Load more button as fallback */}
+          {hasNextPage && !isFetchingNextPage && (
+            <div className="p-4 text-center">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => fetchNextPage()}
+                className="w-full"
+              >
+                Load More Channels
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-between items-center">
           <span className="text-sm">{selectedChannels.length} channel{selectedChannels.length !== 1 && 's'} selected</span>
-          <Button variant="outline" size="sm" onClick={handleSelectAll}>{allSelected ? 'Clear All' : 'Select All'}</Button>
+          <Button variant="outline" size="sm" onClick={handleSelectAll}>
+            {allSelected ? 'Clear All' : 'Select All'}
+          </Button>
         </div>
 
         <div>
