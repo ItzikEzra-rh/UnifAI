@@ -11,19 +11,32 @@ from providers.slack.slack import (
     get_available_slack_channels,
     count_channel_chunks,
     get_best_match_results,
-    delete_slack_channel
+    delete_slack_channel,
+    fetch_available_slack_channels,
 )
 
 slack_bp = Blueprint("slack", __name__)
 
+@slack_bp.route("/fetch.available.slack.channels", methods=["PUT"])
+def fetch_slack_channels():
+    try:
+        channels = fetch_available_slack_channels()
+        return jsonify({"status": "channels fetched and cached", "count": len(channels)}), 200
+    except Exception as e:
+        logger.error(f"Failed to fetch available Slack channels: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
 @slack_bp.route("/available.slack.channels.get", methods=["GET"])
 @from_query({
-    "types": fields.Str(required=True, data_key='types')
+    "types": fields.Str(required=True, data_key='types'),
+    "cursor": fields.Str(required=False, data_key='cursor', load_default=""),
+    "limit": fields.Int(required=False, data_key='limit', load_default=50)
 })
-def available_slack_channels(types):
+def available_slack_channels(types, cursor="", limit=50):
     try:
-        channels = get_available_slack_channels(types)
-        return jsonify({"channels": channels}), 200
+        result = get_available_slack_channels(types, cursor=cursor, limit=limit)
+        return jsonify(result), 200
     except Exception as e:
         logger.error(f"Failed to get available Slack channels: {str(e)}")
         return jsonify({"error": str(e)}), 500

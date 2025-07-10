@@ -29,10 +29,17 @@ def _get_configured_connector() -> SlackConnector:
     config_manager.set_default_project("example-project")
     return SlackConnector(config_manager)
 
-def get_available_slack_channels(channel_types: str):
+def fetch_available_slack_channels():
     connector = _get_configured_connector()
     if connector.authenticate():
-        return connector.get_available_slack_channels(types=channel_types)
+        return connector.fetch_available_slack_channels()
+    else:
+        raise RuntimeError("Slack authentication failed")
+
+def get_available_slack_channels(channel_types: str, cursor: str = "", limit: int = 50):
+    connector = _get_configured_connector()
+    if connector.authenticate():
+        return connector.get_available_slack_channels(types=channel_types, cursor=cursor, limit=limit)
     else:
         raise RuntimeError("Slack authentication failed")
 
