@@ -8,6 +8,7 @@ from session.user_session_manager import UserSessionManager
 from session.session_executor import SessionExecutor
 from session.service import SessionService
 from resources.registry import ResourcesRegistry
+from resources.service import ResourcesService
 from resources.repository.mongo_repository import MongoResourceRepository
 from config.app_config import AppConfig
 from global_utils.utils.singleton import SingletonMeta
@@ -44,6 +45,10 @@ class AppContainer(metaclass=SingletonMeta):
                                                                            db_name=cfg.mongo_db,
                                                                            coll_name=cfg.resources_coll),
                                               bp_repo=self.blueprint_repo)
+
+        # resources service
+        self.resources_service = ResourcesService(resource_registry=resource_registry,
+                                                  element_registry=self.element_registry)
         # blueprint resolver
         self.blueprint_resolver = BlueprintResolver(resource_registry=resource_registry,
                                                     element_registry=self.element_registry)

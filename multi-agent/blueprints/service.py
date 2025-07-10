@@ -2,6 +2,7 @@ from typing import Any, Dict, List
 from .models.blueprint import BlueprintSpec, BlueprintDraft
 from .repository.repository import BlueprintRepository
 from .resolver import BlueprintResolver
+from core.ref import RefWalker
 
 
 class BlueprintService:
@@ -11,7 +12,9 @@ class BlueprintService:
 
     # ────────── Write ──────────
     def save_draft(self, *, user_id: str, draft_dict: dict) -> str:
-        return self._repo.save(user_id=user_id, spec=BlueprintDraft(**draft_dict))
+        draft_bp = BlueprintDraft(**draft_dict)
+        rid_refs = list(RefWalker.external_rids(draft_bp))
+        return self._repo.save(user_id=user_id, spec=draft_bp, rid_refs=rid_refs)
 
     # ────────── Single-blueprint reads (ID is globally unique) ──────────
     def load_draft(self, blueprint_id: str) -> BlueprintDraft:

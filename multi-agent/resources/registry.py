@@ -2,6 +2,7 @@ from datetime import datetime
 from resources.models import ResourceDoc
 from resources.repository.base import ResourceRepository
 from blueprints.repository.repository import BlueprintRepository
+from resources.errors import ResourceInUseError
 
 
 class ResourcesRegistry:
@@ -23,18 +24,19 @@ class ResourcesRegistry:
         self._repo.save(doc)
         return doc
 
-    def update(self, rid: str, new_cfg: dict) -> ResourceDoc:
-        doc = self._repo.get(rid)
-        doc.cfg_dict = new_cfg
+    def update(self, doc: ResourceDoc) -> ResourceDoc:
         doc.version += 1
         doc.updated = datetime.utcnow()
         self._repo.save(doc)
         return doc
 
     def delete(self, rid: str) -> None:
-        # guard against library & blueprint refs
-        if self._bp_repo.count_usage(rid) or self._repo.count_nested(rid):
-            raise RuntimeError("Resource still in use")
+        direct_bps = self._bp_repo.list_direct_usage(rid)
+        nested_res = self._repo.list_nested_usage(rid)
+
+        if direct_bps or nested_res:
+            raise ResourceInUseError(by_blueprints=direct_bps,
+                                     by_resources=nested_res)
         self._repo.delete(rid)
 
     # ---------- read ----------

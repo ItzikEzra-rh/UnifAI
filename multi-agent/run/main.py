@@ -136,39 +136,41 @@ if __name__ == "__main__":
     config = get_app_config()
 
     app = AppContainer(config)
-    # llm_rid = resources_service.create(user_id="alice", category="llms", type="openai",
-    #                                    name="openai_llm",
-    #                                    config={"name": "openai_llm",
-    #                                            "type": "openai",
-    #                                            "model_name": "gemini-2.0-flash",
-    #                                            "api_key": "AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ",
-    #                                            "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"}).rid
-    # mcp_rid = resources_service.create(user_id="alice", category="providers", type="mcp_server",
-    #                                    name="My mcp server Node",
-    #                                    config={"name": "mcp1",
-    #                                            "type": "mcp_server",
-    #                                            "sse_endpoint": "http://localhost:8004"}).rid
-    # tool_rid = resources_service.create(user_id="alice", category="tools", type="mcp_proxy",
-    #                                     name="My mcp addition tool",
-    #                                     config={"name": "addition_tool",
-    #                                             "type": "mcp_proxy",
-    #                                             "tool_name": "addition",
-    #                                             "provider": f"$ref:{mcp_rid}"}).rid
-    # resources_service.create(user_id="alice", category="nodes", type="custom_agent_node", name="My Agent Node",
-    #                          config={"name": "My Agent",
-    #                                  "type": "custom_agent_node",
-    #                                  "llm": f"$ref:{llm_rid}",
-    #                                  "tools": [f"$ref:{tool_rid}"],
-    #                                  "system_message": "You are a smart assistant …"})
+    # llm_rid = app.resources_service.create(user_id="alice", category="llms", type="openai",
+    #                                        name="openai_llm",
+    #                                        config={"name": "openai_llm",
+    #                                                "type": "openai",
+    #                                                "model_name": "gemini-2.0-flash",
+    #                                                "api_key": "AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ",
+    #                                                "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"}).rid
+    # mcp_rid = app.resources_service.create(user_id="alice", category="providers", type="mcp_server",
+    #                                        name="My mcp server Node",
+    #                                        config={"name": "mcp1",
+    #                                                "type": "mcp_server",
+    #                                                "sse_endpoint": "http://localhost:8004"}).rid
+    # tool_rid = app.resources_service.create(user_id="alice", category="tools", type="mcp_proxy",
+    #                                         name="My mcp addition tool",
+    #                                         config={"name": "addition_tool",
+    #                                                 "type": "mcp_proxy",
+    #                                                 "tool_name": "addition",
+    #                                                 "provider": f"$ref:{mcp_rid}"}).rid
+    # app.resources_service.create(user_id="alice", category="nodes", type="custom_agent_node", name="My Agent Node",
+    #                              config={"name": "My Agent",
+    #                                      "type": "custom_agent_node",
+    #                                      "llm": f"$ref:{llm_rid}",
+    #                                      "tools": [f"$ref:{tool_rid}"],
+    #                                      "system_message": "You are a smart assistant …"})
 
-    blueprint_loader = YAMLBlueprintLoader()
-    raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
-    # raw = blueprint_loader.load("run/test_new_version.yml")
-    blueprint_id = app.blueprint_service.save_draft(user_id="alice", draft_dict=raw)
-    print(f"Saved blueprint draft with id: {blueprint_id}")
-    session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
-    print(f"Created session with id: {session.run_context.run_id}")
-    print(app.session_service.execute(session_id=session.run_context.run_id,
-                                inputs={"user_prompt": "what is 53534534 + 8678675?"},
-                                stream=False,
-                                scope="public"))
+    # blueprint_loader = YAMLBlueprintLoader()
+    # raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
+    # # raw = blueprint_loader.load("run/test_new_version.yml")
+    # blueprint_id = app.blueprint_service.save_draft(user_id="alice", draft_dict=raw)
+    # print(f"Saved blueprint draft with id: {blueprint_id}")
+    # session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
+    # print(f"Created session with id: {session.run_context.run_id}")
+    # print(app.session_service.execute(session_id=session.run_context.run_id,
+    #                             inputs={"user_prompt": "what is 53534534 + 8678675?"},
+    #                             stream=False,
+    #                             scope="public"))
+
+    app.resources_service.delete(rid="d85053550c9e41d59dd3d6a163a9d340")

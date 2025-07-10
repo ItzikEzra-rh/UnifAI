@@ -1,9 +1,9 @@
-from typing import Any, Dict, Iterable, Mapping, Sequence
+from typing import Any, Dict, Iterable, Mapping
 from .category_builder import CategoryBuilder, BlueprintSpec
 from core.enums import ResourceCategory
 from nodes.models.base_node import NodeSpec
 from plugins.exceptions import PluginConfigurationError
-from core.models import Ref
+from core.ref.models import Ref
 from core.contracts import SessionRegistry
 
 

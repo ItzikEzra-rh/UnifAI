@@ -1,7 +1,8 @@
-from typing import TypeVar, Dict, Any
+from typing import TypeVar, Any
 from pydantic import BaseModel
 from core.enums import ResourceCategory
-from core.models import Ref
+from core.ref.models import Ref
+from core.ref import RefWalker
 from .models.blueprint import (
     Resource,
     ResourceSpec,
@@ -86,26 +87,5 @@ class BlueprintResolver:
         Recursively walk any BaseModel, dict, list/tuple or Ref.
         Whenever we hit an external Ref, call _walk_live.
         """
-        # 1) If it’s a Ref → chase external ones
-        if isinstance(node, Ref):
-            if node.is_external_ref():
-                self._walk_live(node.ref, None)
-            return
-
-        # 2) If it’s a Pydantic model → recurse into its __dict__
-        if isinstance(node, BaseModel):
-            for val in node.__dict__.values():
-                self._scan_nested(val)
-            return
-
-        # 3) If it’s a dict → recurse into its values
-        if isinstance(node, dict):
-            for v in node.values():
-                self._scan_nested(v)
-            return
-
-        # 4) If it’s a list or tuple → recurse into its items
-        if isinstance(node, (list, tuple)):
-            for v in node:
-                self._scan_nested(v)
-            return
+        for child_rid in RefWalker.external_rids(node):
+            self._walk_live(child_rid, None)

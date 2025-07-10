@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from typing import List
 from resources.models import ResourceDoc
 
 
@@ -33,6 +34,13 @@ class ResourceRepository(ABC):
 
     @abstractmethod
     def count_nested(self, rid: str) -> int: ...
+
+    @abstractmethod
+    def list_nested_usage(self, rid: str) -> List[str]:
+        """
+        Return resource IDs whose `nested_refs` array contains `rid`
+        (i.e. the resource depends on `rid` inside its own config).
+        """
 
     @abstractmethod
     def exists(self, rid: str) -> bool: ...

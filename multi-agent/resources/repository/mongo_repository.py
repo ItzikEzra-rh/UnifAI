@@ -1,4 +1,4 @@
-import json
+from typing import List
 import pymongo
 from resources.models import ResourceDoc
 from resources.repository.base import ResourceRepository
@@ -12,6 +12,7 @@ class MongoResourceRepository(ResourceRepository):
         mongo_uri = f"mongodb://{mongodb_ip}:{mongodb_port}/"
         client = pymongo.MongoClient(mongo_uri)
         self.col = client[db_name][coll_name]
+        self.col.create_index("nested_refs")
 
     def save(self, doc: ResourceDoc) -> str:
         self.col.replace_one({"_id": doc.rid},
@@ -43,6 +44,10 @@ class MongoResourceRepository(ResourceRepository):
 
     def count_nested(self, rid: str) -> int:
         return self.col.count_documents({"cfg_dict": {"$regex": rid}})
+
+    def list_nested_usage(self, rid: str) -> List[str]:
+        cur = self.col.find({"nested_refs": rid}, {"_id": 1})
+        return [doc["_id"] for doc in cur]
 
     def exists(self, rid: str) -> bool:
         return self.col.count_documents({"rid": rid}, limit=1) == 1

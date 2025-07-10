@@ -6,7 +6,7 @@ from blueprints.models.blueprint import BlueprintSpec, BlueprintDraft
 class BlueprintRepository(ABC):
     # ────────────────────────────── Writes ──────────────────────────────
     @abstractmethod
-    def save(self, *, user_id: str, spec: BlueprintDraft) -> str:
+    def save(self, user_id, spec: BlueprintDraft, rid_refs: list[str]) -> str:
         """
         Persist `spec` for the given user and return the generated blueprint_id.
         """
@@ -53,7 +53,15 @@ class BlueprintRepository(ABC):
         """
 
     @abstractmethod
-    def count_usage(self, *, rid: str) -> int:
+    def list_direct_usage(self, rid: str) -> List[str]:
+        """
+        Return blueprint IDs whose *catalogue entries* contain `rid`
+        directly.  Nested refs inside resources are not covered here;
+        those are handled by ResourceRepository.list_nested_usage().
+        """
+
+    @abstractmethod
+    def count_usage(self, rid: str) -> int:
         """
         Count how many blueprints (optionally belonging to `user_id`) reference a
         given resource ID `rid`.

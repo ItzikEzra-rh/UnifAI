@@ -1,10 +1,9 @@
 from typing import (
-    ClassVar, Literal, Optional,
-    Type, Union, Annotated, Protocol
+    ClassVar, Literal, Union, Annotated, Protocol
 )
 from pydantic import BaseModel, Field, Extra, SkipValidation
 from core.enums import ResourceCategory
-from core.models import Ref
+from core.ref.models import Ref
 
 
 # The Protocol your Meta classes share

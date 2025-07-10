@@ -18,8 +18,9 @@ class MongoBlueprintRepository(BlueprintRepository):
         client = pymongo.MongoClient(mongo_uri)
         self._col = client[db_name][coll_name]
         self._col.create_index([("blueprint_id", pymongo.ASCENDING)], unique=True)
+        self._col.create_index("rid_refs")
 
-    def save(self, user_id, spec: BlueprintDraft) -> str:
+    def save(self, user_id, spec: BlueprintDraft, rid_refs: list[str]) -> str:
         new_id = str(uuid4())
         doc = {
             "blueprint_id": new_id,
@@ -27,6 +28,7 @@ class MongoBlueprintRepository(BlueprintRepository):
             "created_at": getattr(spec, "created_at", datetime.utcnow()),
             "updated_at": datetime.utcnow(),
             "spec_dict": spec.model_dump(mode="json"),
+            "rid_refs": rid_refs
         }
         self._col.insert_one(doc)
         return new_id
@@ -75,6 +77,10 @@ class MongoBlueprintRepository(BlueprintRepository):
                 .limit(limit)
         )
         return list(cursor)
+
+    def list_direct_usage(self, rid: str) -> List[str]:
+        cur = self._col.find({"rid_refs": rid}, {"blueprint_id": 1})
+        return [doc["blueprint_id"] for doc in cur]
 
     def count_usage(self, rid: str) -> int:
         fields = [

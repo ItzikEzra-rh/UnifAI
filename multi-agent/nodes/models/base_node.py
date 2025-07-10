@@ -1,7 +1,7 @@
 from typing import ClassVar, Literal, List, Optional, Union, Annotated, Protocol
 from pydantic import BaseModel, Field, Extra, SkipValidation
 from core.enums import ResourceCategory
-from core.models import Ref
+from core.ref.models import Ref
 
 
 # Protocol for node metadata
