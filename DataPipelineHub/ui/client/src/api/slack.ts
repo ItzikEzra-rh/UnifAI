@@ -13,20 +13,47 @@ export interface SystemStats {
   updatedAt: string;
 }
 
-export async function fetchAvailableSlackChannels(
-  types: string
-): Promise<Channel[]> {
-  const { data } = await api.get<{
-    channels: Channel[];
-  }>('slack/available.slack.channels.get', {
-    params: { types },
-  });
+export interface PaginationParams {
+  cursor?: string;
+  limit?: number;
+}
 
-  return data.channels.map((c) => ({
-    channel_name: c.channel_name,
-    channel_id:   c.channel_id,
-    is_private:   c.is_private,
-  }));
+export interface PaginatedChannelsResponse {
+  channels: Channel[];
+  nextCursor?: string;
+  hasMore: boolean;
+  total?: number;
+}
+
+export async function fetchAvailableSlackChannels(
+  types: string,
+  pagination?: PaginationParams
+): Promise<PaginatedChannelsResponse> {
+  const params: any = { types };
+  
+  if (pagination?.cursor) {
+    params.cursor = pagination.cursor;
+  }
+  
+  if (pagination?.limit) {
+    params.limit = pagination.limit;
+  }
+
+  const { data } = await api.get<PaginatedChannelsResponse>(
+    'slack/available.slack.channels.get',
+    { params }
+  );
+
+  return {
+    channels: data.channels.map((c: Channel) => ({
+      channel_name: c.channel_name,
+      channel_id: c.channel_id,
+      is_private: c.is_private,
+    })),
+    nextCursor: data.nextCursor,
+    hasMore: data.hasMore,
+    total: data.total,
+  };
 }
 
 export async function submitSlackChannels(

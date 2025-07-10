@@ -1,11 +1,13 @@
 import requests
 import time
+import pymongo
 from typing import Dict, List, Optional, Any, Tuple
 from shared.logger import logger
 from .slack_config_manager import SlackConfigManager
 from utils.data_connector import DataConnector
 from .slack_thread_retriever import SlackThreadRetriever
 from .slack_thread_retriever_worker import ThreadRetrieverWorker
+from global_utils.utils.util import get_mongo_url
 
 class SlackConnector(DataConnector):
     """
@@ -148,23 +150,175 @@ class SlackConnector(DataConnector):
         # This should not be reached under normal circumstances
         raise Exception("Maximum retries exceeded when calling Slack API")
     
-    def get_available_slack_channels(self, types: Optional[str] = None, max_api_calls: int = 5) -> List[Dict[str, str]]:
+    def fetch_available_slack_channels(self) -> List[Dict[str, str]]:
         """
-        Get available Slack channels for the authenticated user/bot.
+        Fetch all available Slack channels (both public and private) and cache them in MongoDB.
+        This function fetches all channels without API call limits and stores them in the database.
+        
+        Returns:
+            List of dictionaries containing channel_id, channel_name, and type
+        """
+        channels = []
+        cursor = None
+        api_call_count = 0
+        
+        # Get MongoDB connection
+        mongo_client = pymongo.MongoClient(get_mongo_url())
+        db = mongo_client["data_sources"]
+        collection = db["slack_channels"]
+        
+        # Clear existing channels for this project to avoid duplicates
+        collection.delete_many({"project_id": self._project_id})
+        
+        # Fetch all channels (both public and private) until there's no next_cursor
+        while True:
+            params: Dict[str, Any] = {"limit": 1000, "types": "public_channel,private_channel"}
+            if cursor:
+                params['cursor'] = cursor
+            
+            response = self._make_api_request("conversations.list", params)
+            api_call_count += 1
+            
+            if not response.get('ok'):
+                logger.error(f"Failed to get channels: {response.get('error')}")
+                break
+            
+            # Process channels from current page
+            batch_channels = []
+            for channel in response.get('channels', []):
+                channel_data = {
+                    'channel_id': channel.get('id'),
+                    'channel_name': channel.get('name'),
+                    'type': 'Private' if channel.get('is_private', False) else 'Public',
+                    'is_private': channel.get('is_private', False),
+                    'project_id': self._project_id,
+                    'last_updated': time.time()
+                }
+                channels.append(channel_data)
+                batch_channels.append(channel_data)
+            
+            # Insert batch into MongoDB
+            if batch_channels:
+                collection.insert_many(batch_channels)
+                logger.info(f"Cached {len(batch_channels)} channels to MongoDB")
+            
+            # Check if there are more pages
+            response_metadata = response.get('response_metadata', {})
+            cursor = response_metadata.get('next_cursor')
+            
+            # If no next_cursor or it's empty, we've reached the end
+            if not cursor:
+                break
+        
+        logger.info(f"Retrieved and cached {len(channels)} Slack channels from {api_call_count} API calls")
+        return channels
+    
+    def get_available_slack_channels(self, types: Optional[str] = None, cursor: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+        """
+        Get available Slack channels from cache (MongoDB) with pagination support.
+        This function reads from the cached channels without making API calls.
         
         Args:
-            types: Optional channel types to filter by (e.g., 'public_channel,private_channel')
-            max_api_calls: Maximum number of API calls to make (default: 10)
+            types: Optional channel types to filter by ('private_channel', 'public_channel', or 'private_channel,public_channel')
+            cursor: Optional cursor for pagination (skip count)
+            limit: Number of channels to return (default: 50)
             
         Returns:
-            List of dictionaries containing channel_id and channel_name
+            Dictionary containing paginated channels data with pagination metadata
+        """
+        try:
+            # Get MongoDB connection
+            mongo_client = pymongo.MongoClient(get_mongo_url())
+            db = mongo_client["data_sources"]
+            collection = db["slack_channels"]
+            
+            # Build query filter
+            query_filter: Dict[str, Any] = {"project_id": self._project_id}
+            
+            if types:
+                # Convert types to cache types for querying
+                channel_types = [t.strip() for t in types.split(',')]
+                cache_types = []
+                for channel_type in channel_types:
+                    if channel_type == "private_channel":
+                        cache_types.append("Private")
+                    elif channel_type == "public_channel":
+                        cache_types.append("Public")
+                    else:
+                        cache_types.append(channel_type)  # fallback
+                query_filter['type'] = {"$in": cache_types}
+            
+            # Get total count for pagination metadata
+            total_count = collection.count_documents(query_filter)
+            
+            # Calculate skip value from cursor
+            skip = 0
+            if cursor:
+                try:
+                    skip = int(cursor)
+                except ValueError:
+                    logger.warning(f"Invalid cursor value: {cursor}, using 0")
+                    skip = 0
+            
+            # Fetch channels from cache with pagination
+            cached_channels = list(collection.find(query_filter, {'_id': 0})
+                                 .skip(skip)
+                                 .limit(limit))
+            
+            # Calculate next cursor and hasMore
+            next_cursor = None
+            has_more = False
+            
+            if len(cached_channels) == limit and (skip + limit) < total_count:
+                next_cursor = str(skip + limit)
+                has_more = True
+            
+            logger.info(f"Retrieved {len(cached_channels)} Slack channels from cache (page {skip}-{skip+limit} of {total_count})")
+            
+            return {
+                'channels': cached_channels,
+                'nextCursor': next_cursor,
+                'hasMore': has_more,
+                'total': total_count,
+            }
+            
+        except Exception as e:
+            logger.error(f"Error retrieving channels from cache: {str(e)}")
+            logger.warning("Falling back to API call with limited results")
+            
+            # Fallback to API call with limited results if cache fails
+            fallback_channels = self._fallback_get_channels(types, max_api_calls=5)
+            
+            # Transform fallback response to paginated format
+            start_idx = skip if cursor else 0
+            end_idx = start_idx + limit
+            paginated_channels = fallback_channels[start_idx:end_idx]
+            
+            return {
+                'channels': paginated_channels,
+                'nextCursor': str(end_idx) if end_idx < len(fallback_channels) else None,
+                'hasMore': end_idx < len(fallback_channels),
+                'total': len(fallback_channels),
+            }
+    
+    def _fallback_get_channels(self, types: Optional[str] = None, max_api_calls: int = 5) -> List[Dict[str, str]]:
+        """
+        Fallback method to get channels directly from API with limited calls.
+        Used when cache retrieval fails.
+        
+        Args:
+            types: Optional channel types to filter by (e.g., 'private_channel', 'public_channel')
+            max_api_calls: Maximum number of API calls to make
+            
+        Returns:
+            List of dictionaries containing channel_id, channel_name, and is_private
         """
         channels = []
         cursor = None
         api_call_count = 0
         
         while api_call_count < max_api_calls:
-            params = {"limit": 1000}
+            params: Dict[str, Any] = {"limit": 1000}
             if types:
                 params['types'] = types
             if cursor:
@@ -193,10 +347,7 @@ class SlackConnector(DataConnector):
             if not cursor:
                 break
         
-        logger.info(f"Retrieved {len(channels)} Slack channels from {api_call_count} API calls")
-        return channels
-        
-        logger.info(f"Retrieved {len(channels)} Slack channels")
+        logger.info(f"Retrieved {len(channels)} Slack channels from {api_call_count} fallback API calls")
         return channels
     
     def get_conversations_history(self, channel_id: str, limit: int = 1000, 
