@@ -13,7 +13,7 @@ TBDs:
   },
 
   
-  change teh nginx that once we see the 13456 (from env ) - send to the real BE
+  change the nginx that once we see the 13456 (from env ) - send to the real BE
   when seeing 5001 (from env) send to multiagent be
 
 

@@ -33,10 +33,19 @@ RUN whoami
 USER root
 #Install debugging tools
 RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
+
+# Copy and set permissions for entrypoint.sh while still root
+COPY entrypoint.sh /opt/app-root/src/entrypoint.sh
+RUN chmod +x /opt/app-root/src/entrypoint.sh
+
 USER default
 COPY --from=build /ui/build /usr/share/nginx/html
+
+COPY nginx.conf.template /etc/nginx/nginx.conf.template
 
 EXPOSE 8080
 #HEALTHCHECK CMD curl --fail http://localhost:8080 || exit 1
 #RUN ln -sf /dev/stdout /var/log/nginx/access.log && ln -sf /dev/stderr /var/log/nginx/error.log 
-CMD ["nginx", "-g", "daemon off;"]
+
+#CMD ["nginx", "-g", "daemon off;"]
+ENTRYPOINT ["/opt/app-root/src/entrypoint.sh"]
