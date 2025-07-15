@@ -29,7 +29,7 @@ class ElementRegistry(metaclass=SingletonMeta):
                 )
             categories_map[spec_cls.type_key] = spec_cls
 
-    def get_spec_class(
+    def get_spec(
             self, category: ResourceCategory, type_key: str
     ) -> Type[BaseElementSpec]:
         """Retrieve the spec class for a given category and type_key."""
@@ -74,21 +74,21 @@ class ElementRegistry(metaclass=SingletonMeta):
 
     def get_schema_json(self, category: ResourceCategory, type_key: str) -> dict:
         """Return the JSON schema of the config_model for the spec class."""
-        spec_cls = self.get_spec_class(category, type_key)
+        spec_cls = self.get_spec(category, type_key)
         return spec_cls.config_schema.model_json_schema()
 
     def get_schema(
             self, category: ResourceCategory, type_key: str
     ) -> Type:
         """Return the Pydantic model class (config_schema) for the spec."""
-        spec_cls = self.get_spec_class(category, type_key)
+        spec_cls = self.get_spec(category, type_key)
         return spec_cls.config_schema
 
     def get_factory_class(
             self, category: ResourceCategory, type_key: str
     ) -> Type[BaseFactory]:
         """Return the factory class associated with the spec."""
-        spec_cls = self.get_spec_class(category, type_key)
+        spec_cls = self.get_spec(category, type_key)
         return spec_cls.factory_cls
 
     # ------------------------------------------------------------------ #

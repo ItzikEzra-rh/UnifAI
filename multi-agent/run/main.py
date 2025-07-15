@@ -133,8 +133,9 @@ def main_resume_session(run_id: str):
 
 
 if __name__ == "__main__":
-    config = get_app_config()
-    app = AppContainer(config)
+    pass
+    # config = get_app_config()
+    # app = AppContainer(config)
     # llm_rid = app.resources_service.create(user_id="alice", category="llms", type="openai",
     #                                        name="openai_llm",
     #                                        config={"name": "openai_llm",
@@ -160,18 +161,59 @@ if __name__ == "__main__":
     #                                      "tools": [f"$ref:{tool_rid}"],
     #                                      "system_message": "You are a smart assistant …"})
 
-    blueprint_loader = YAMLBlueprintLoader()
-    # raw = blueprint_loader.load("run/test_new_version.yml")
-    raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
-    blueprint_id = app.blueprint_service.save_draft(user_id="alice", draft_dict=raw)
-    print(f"Saved blueprint draft with id: {blueprint_id}")
-    session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
-    print(f"Created session with id: {session.run_context.run_id}")
-    print(app.session_service.execute(session_id=session.run_context.run_id,
-                                inputs={"user_prompt": "what is 53534534 + 8678675?"},
-                                stream=False,
-                                scope="public"))
+    # blueprint_loader = YAMLBlueprintLoader()
+    # # raw = blueprint_loader.load("run/test_new_version.yml")
+    # raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
+    # blueprint_id = app.blueprint_service.save_draft(user_id="alice", draft_dict=raw)
+    # print(f"Saved blueprint draft with id: {blueprint_id}")
+    # session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
+    # print(f"Created session with id: {session.run_context.run_id}")
+    # print(app.session_service.execute(session_id=session.run_context.run_id,
+    #                             inputs={"user_prompt": "what is 53534534 + 8678675?"},
+    #                             stream=False,
+    #                             scope="public"))
 
     # app.blueprint_service.delete(blueprint_id="2af1b9b2900284ed79192e4ebbf8a05cf")
     # app.resources_service.delete(rid="af1b9b2900284ed79192e4ebbf8a05cf")
     # app.resources_service.delete(rid="49f4170dd7da45289a500e43c6a7f8b5")
+
+
+
+    # from config.app_config import AppConfig
+    # from api.flask.flask_app import create_app
+    # import json
+    #
+    # # Create test app
+    # config = AppConfig()
+    # app = create_app(config)
+    #
+    # # Test the catalog endpoints
+    # with app.test_client() as client:
+    #     # Test list all elements
+    #     print('Testing /api/catalog/elements.list')
+    #     response = client.get('/api/catalog/elements.list')
+    #     print(f'Status: {response.status_code}')
+    #     if response.status_code == 200:
+    #         data = response.get_json()
+    #         print(f'Categories found: {list(data["elements"].keys())}')
+    #         for category, elements in data['elements'].items():
+    #             print(f'  {category}: {len(elements)} elements')
+    #         if elements:
+    #             print(f'    Example: {elements[0]}')
+    #         else:
+    #             print(f'Error: {response.get_json()}')
+    #
+    #         print()
+    #
+    #         # Test get specific element spec
+    #         print('Testing /api/catalog/element.spec.get')
+    #         response = client.get('/api/catalog/element.spec.get?category=LLM&type=openai')
+    #         print(f'Status: {response.status_code}')
+    #         if response.status_code == 200:
+    #             data = response.get_json()
+    #             print(f'Element: {data["name"]}')
+    #             print(f'Description: {data["description"]}')
+    #             print(f'Tags: {data["tags"]}')
+    #             print(f'Config schema keys: {list(data["config_schema"].keys())}')
+    #         else:
+    #             print(f'Error: {response.get_json()}')

@@ -1,4 +1,5 @@
 from catalog.element_registry import ElementRegistry
+from catalog.service import CatalogService
 from blueprints.repository.mongo_blueprint_repository import MongoBlueprintRepository
 from blueprints.service import BlueprintService
 from blueprints.resolver import BlueprintResolver
@@ -30,6 +31,9 @@ class AppContainer(metaclass=SingletonMeta):
         # plugin discovery
         self.element_registry = ElementRegistry()
         self.element_registry.auto_discover()
+
+        # catalog service
+        self.catalog_service = CatalogService(self.element_registry)
 
         # blueprint catalog
         self.blueprint_repo = MongoBlueprintRepository(

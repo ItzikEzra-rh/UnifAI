@@ -1,11 +1,13 @@
 from .blueprints import blueprints_bp
 from .sessions import sessions_bp
+from .catalog import catalog_bp
 
 
 def register_all_endpoints(app):
     backend_blueprints = [
         {"bp": blueprints_bp, "parent": 'blueprints', "route": ''},
         {"bp": sessions_bp, "parent": 'sessions', "route": ''},
+        {"bp": catalog_bp, "parent": 'catalog', "route": ''},
     ]
 
     # register all other blueprints in the app
