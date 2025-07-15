@@ -5,12 +5,12 @@ from pydantic import BaseModel, Field, Extra
 # -----------------------------------------------------------------------------
 # Import the *catalog* specs (single source of truth for field validation)
 # -----------------------------------------------------------------------------
-from nodes.models.base_node import NodeSpec
-from llms.models.base_llm import LLMsSpec
-from retrievers.models.retriever_config import RetrieversSpec
-from condition.models.base_condition import ConditionSpec
-from tools.models.tool_config import ToolsSpec
-from providers.models.base_provider import ProviderSpec
+from elements.nodes.types import NodeSpec
+from elements.llms.types import LLMsSpec
+from elements.retrievers.types import RetrieversSpec
+from elements.conditions.types import ConditionSpec
+from elements.tools.types import ToolsSpec
+from elements.providers.types import ProviderSpec
 from core.ref.models import Ref
 
 # ─────────────────────────────────────────────────────────────────────────────

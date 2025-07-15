@@ -16,7 +16,7 @@ nodes:
     config:
       name: My Agent
       type: custom_agent_node
-      llm: $ref:f4f604ecf6a74186bf8d387158724b12
+      llm: $ref:af1b9b2900284ed79192e4ebbf8a05cf
       system_message: >
         You are a smart assistant …
 

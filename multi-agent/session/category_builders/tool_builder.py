@@ -1,6 +1,6 @@
 from .category_builder import CategoryBuilder, BlueprintSpec
 from core.enums import ResourceCategory
-from plugins.exceptions import PluginConfigurationError
+from elements.common.exceptions import PluginConfigurationError
 
 
 class ToolBuilder(CategoryBuilder):

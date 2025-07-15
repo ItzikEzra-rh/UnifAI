@@ -1,0 +1,22 @@
+from elements.common.base_factory import BaseFactory
+from elements.common.exceptions import PluginConfigurationError
+from .config import UserQuestionNodeConfig
+from .user_question import UserQuestionNode
+
+
+class UserQuestionNodeFactory(BaseFactory[UserQuestionNodeConfig, UserQuestionNode]):
+    """Factory for UserQuestionNode (needs no LLM/retriever/tools)."""
+
+    def accepts(self, cfg: UserQuestionNodeConfig) -> bool:
+        return cfg.type == "user_question_node"
+
+    def create(self, cfg: UserQuestionNodeConfig, **deps) -> UserQuestionNode:
+        try:
+            return UserQuestionNode(
+                name=cfg.name or cfg.type
+            )
+        except Exception as exc:
+            raise PluginConfigurationError(
+                f"UserQuestionNodeFactory.create failed: {exc}",
+                cfg.dict()
+            ) from exc

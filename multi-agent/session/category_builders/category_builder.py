@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Iterable
-from plugins.exceptions import PluginConfigurationError
+from elements.common.exceptions import PluginConfigurationError
 from pydantic import ValidationError
 from core.enums import ResourceCategory
 from core.contracts import SessionRegistry
@@ -35,7 +35,7 @@ class CategoryBuilder(ABC):
     def _create_instance(self, cfg, session_registry: SessionRegistry) -> Any:
         """Lookup factory, validate schema, create instance with extras."""
         try:
-            factory_cls = self._registry_elements.get_factory(self.category, cfg.type)
+            factory_cls = self._registry_elements.get_factory_class(self.category, cfg.type)
             schema_cls = self._registry_elements.get_schema(self.category, cfg.type)
         except KeyError as e:
             raise PluginConfigurationError(

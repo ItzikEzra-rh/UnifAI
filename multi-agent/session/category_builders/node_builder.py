@@ -1,8 +1,8 @@
 from typing import Any, Dict, Iterable, Mapping
 from .category_builder import CategoryBuilder, BlueprintSpec
 from core.enums import ResourceCategory
-from nodes.models.base_node import NodeSpec
-from plugins.exceptions import PluginConfigurationError
+from elements.nodes.types import NodeSpec
+from elements.common.exceptions import PluginConfigurationError
 from core.ref.models import Ref
 from core.contracts import SessionRegistry
 

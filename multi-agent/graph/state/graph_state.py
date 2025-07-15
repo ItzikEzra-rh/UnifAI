@@ -1,7 +1,7 @@
 from typing import Any, Dict, Iterator, List, Tuple
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field, ConfigDict
-from llms.chat.message import ChatMessage
+from elements.llms.common.chat.message import ChatMessage
 from .merge_strategies import merge_string_dicts, append_chat_messages, merge_dynamic_fields
 
 

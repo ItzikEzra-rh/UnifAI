@@ -135,7 +135,6 @@ def main_resume_session(run_id: str):
 if __name__ == "__main__":
     config = get_app_config()
     app = AppContainer(config)
-
     # llm_rid = app.resources_service.create(user_id="alice", category="llms", type="openai",
     #                                        name="openai_llm",
     #                                        config={"name": "openai_llm",
@@ -161,18 +160,18 @@ if __name__ == "__main__":
     #                                      "tools": [f"$ref:{tool_rid}"],
     #                                      "system_message": "You are a smart assistant …"})
 
-    # blueprint_loader = YAMLBlueprintLoader()
-    # raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
-    # # raw = blueprint_loader.load("run/test_new_version.yml")
-    # blueprint_id = app.blueprint_service.save_draft(user_id="alice", draft_dict=raw)
-    # print(f"Saved blueprint draft with id: {blueprint_id}")
-    # session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
-    # print(f"Created session with id: {session.run_context.run_id}")
-    # print(app.session_service.execute(session_id=session.run_context.run_id,
-    #                             inputs={"user_prompt": "what is 53534534 + 8678675?"},
-    #                             stream=False,
-    #                             scope="public"))
+    blueprint_loader = YAMLBlueprintLoader()
+    # raw = blueprint_loader.load("run/test_new_version.yml")
+    raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
+    blueprint_id = app.blueprint_service.save_draft(user_id="alice", draft_dict=raw)
+    print(f"Saved blueprint draft with id: {blueprint_id}")
+    session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
+    print(f"Created session with id: {session.run_context.run_id}")
+    print(app.session_service.execute(session_id=session.run_context.run_id,
+                                inputs={"user_prompt": "what is 53534534 + 8678675?"},
+                                stream=False,
+                                scope="public"))
 
-    # app.blueprint_service.delete(blueprint_id="2eb153f4-cc11-43b8-847f-718ca4e40ea7")
-    app.resources_service.delete(rid="5b3a9a9a60104743a78cb0001ca5aa23")
-    app.resources_service.delete(rid="49f4170dd7da45289a500e43c6a7f8b5")
+    # app.blueprint_service.delete(blueprint_id="2af1b9b2900284ed79192e4ebbf8a05cf")
+    # app.resources_service.delete(rid="af1b9b2900284ed79192e4ebbf8a05cf")
+    # app.resources_service.delete(rid="49f4170dd7da45289a500e43c6a7f8b5")
