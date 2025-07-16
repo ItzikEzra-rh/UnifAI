@@ -40,6 +40,13 @@ lock files are a more specific package deps files. in package json we usually gi
 
 nginx configurations
 
+rewrite vs. return vs. proxy_pass
+
+* proxy_pass - will just redirect the call to the location set
+* rewrite - works internally, the nginx will get the call, change according to the setting and will resume sending the call to the new updated location
+* return - nginx will return the status requested (in this case 3XX) and the url the client needs to now redirect to.
+
+NOTE: using the notebook namespace measn that routes/services aren't always available from outside the setup.
 
 
 
