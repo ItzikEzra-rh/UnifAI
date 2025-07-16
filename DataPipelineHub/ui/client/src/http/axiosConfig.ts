@@ -5,7 +5,7 @@ interface APIErrorResponse {
 }
 
 const axiosInstance = axios.create({
-  baseURL: 'http://127.0.0.1:13456',
+  baseURL: '/api1',
   // baseURL: '/',
   timeout: 20000, // 20 seconds
   withCredentials: true, // Important: This ensures cookies are sent with requests
@@ -32,11 +32,11 @@ axiosInstance.interceptors.response.use(
     // Handle authentication errors
     if (error.response?.status === 401) {
       // Check if we're not already on an auth-related endpoint
-      const isAuthEndpoint = error.config?.url?.includes('/api/auth');
+      const isAuthEndpoint = error.config?.url?.includes('/auth');
       
       if (!isAuthEndpoint) {
         // Redirect to login for non-auth endpoints
-        window.location.href = `${axiosInstance.defaults.baseURL}/api/auth/login`;
+        window.location.href = `${axiosInstance.defaults.baseURL}/auth/login`;
         return Promise.reject(new Error("Authentication required"));
       }
     }
