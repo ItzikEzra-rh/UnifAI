@@ -52,7 +52,7 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
   useEffect(() => {
     const fetchGraphFlows = async () => {
       try {
-        const response = await axios.get('/api/blueprints/available.blueprints.get');
+        const response = await axios.get('/blueprints/available.blueprints.get');
         const planKeys: string[] = response.data.flatMap((plan) => Object.keys(plan));
         const mockGraphFlows: GraphFlow[] = response.data.flatMap((plan) => Object.values(plan));
 
@@ -75,7 +75,7 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
 
     const fetchActiveFlows = async () => {
       try {
-        const response = await axios.get(`/api/sessions/session.user.blueprints.get?userId=${user?.username || "default"}`);
+        const response = await axios.get(`/sessions/session.user.blueprints.get?userId=${user?.username || "default"}`);
         setActiveFlowIds(response.data || []);
       } catch (error) {
         console.error('Error fetching active flows:', error);
