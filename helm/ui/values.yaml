@@ -4,12 +4,22 @@
 
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 #replicaCount: 1
+
+# env:
+#   NGINX_PORT: "8080"
+#   DATAPIPELINEHUB_PORT: "13456"
+#   DATAPIPELINEHUB_HOST: "unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
+#   MULTIAGENT_PORT: "8003"
+#   MULTIAGENT_HOST: "10.46.254.131"
+#   SCHEME: "https"
+
 env:
   NGINX_PORT: "8080"
-  DATAPIPELINEHUB_PORT: "13456"
+  DATAPIPELINEHUB_PORT: ""
   DATAPIPELINEHUB_HOST: "unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
   MULTIAGENT_PORT: "8003"
   MULTIAGENT_HOST: "10.46.254.131"
+  SCHEME: "https"
 
 command: ["/bin/sh", "-c", "sleep infinity"]
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/

@@ -49,42 +49,41 @@ http {
         }
 
         location /api1 {
-            rewrite ^/api1/(.*)$ http://${DATAPIPELINEHUB_HOST}:${DATAPIPELINEHUB_PORT}/api/$1 redirect;
-            rewrite ^/api1/(.*)$ http://127.0.0.1:13456/api/$1 redirect;
+            rewrite ^/api1/(.*)$ ${SCHEME}://${DATAPIPELINEHUB_HOST}:${DATAPIPELINEHUB_PORT}/api/$1 redirect;
         }
 
         location /api2 {
-            rewrite ^/api2/(.*)$ http://${MULTIAGENT_HOST}:${MULTIAGENT_PORT}/api/$1 redirect;
+            rewrite ^/api2/(.*)$ ${SCHEME}://${MULTIAGENT_HOST}:${MULTIAGENT_PORT}/api/$1 redirect;
         }
 
         location = /404.html {
         }
 
     }
+    # the section below might be unnecessary as we dont' directly access the be through the NGINX, we need to find the cases if we do.
+#    server {
+#        listen       ${DATAPIPELINEHUB_PORT} default_server;
+#        listen       [::]:${DATAPIPELINEHUB_PORT} default_server;
+#        server_name  _;
+#        index index.html index.htm;
+#
+#        location / {
+#            proxy_pass "http://${DATAPIPELINEHUB_HOST}:${DATAPIPELINEHUB_PORT}$request_uri";
+#        }
+#
+#    }
 
-    server {
-        listen       ${DATAPIPELINEHUB_PORT} default_server;
-        listen       [::]:${DATAPIPELINEHUB_PORT} default_server;
-        server_name  _;
-        index index.html index.htm;
-
-        location / {
-            proxy_pass "http://${DATAPIPELINEHUB_HOST}:${DATAPIPELINEHUB_PORT}$request_uri";
-        }
-
-    }
-
-    server {
-        listen       ${MULTIAGENT_PORT} default_server;
-        listen       [::]:${MULTIAGENT_PORT} default_server;
-        server_name  _;
-
-        location / {
-            proxy_pass "http://${MULTIAGENT_HOST}:${MULTIAGENT_PORT}$request_uri";
-        }
-
-
-    }
+#    server {
+#        listen       ${MULTIAGENT_PORT} default_server;
+#        listen       [::]:${MULTIAGENT_PORT} default_server;
+#        server_name  _;
+#
+#        location / {
+#            proxy_pass "http://${MULTIAGENT_HOST}:${MULTIAGENT_PORT}$request_uri";
+#        }
+#
+#
+#    }
 
 # Settings for a TLS enabled server.
 #

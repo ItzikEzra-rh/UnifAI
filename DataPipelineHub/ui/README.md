@@ -46,7 +46,15 @@ rewrite vs. return vs. proxy_pass
 * rewrite - works internally, the nginx will get the call, change according to the setting and will resume sending the call to the new updated location
 * return - nginx will return the status requested (in this case 3XX) and the url the client needs to now redirect to.
 
+when using the redirect from the axios
+the rewrite means that we'll reach the route, hence we only need the address of the route and the port isn't needed.
+
+when using directly to reach the BE, we want that anything of BE_port will reach the same route
+
+
 NOTE: using the notebook namespace measn that routes/services aren't always available from outside the setup.
+
+
 
 
 
@@ -70,3 +78,15 @@ here - set configurations in .json files
 pnpm build
 
 
+
+podman building
+
+Optional: clean the podman images and containers from irrelevant 
+
+for cont in $(podman ps -a --external |awk '{print $1}'); do podman rm -f $cont ; done
+for image in $(podman images | grep none |awk '{print $3}'); do podman rmi  $image ; done
+
+cd ./helm/ui
+podman build -f Dockerfile -t unifai-ui .
+podman tag localhost/unifai-ui images.paas.redhat.com/unifai/ui
+podman push images.paas.redhat.com/unifai/ui
