@@ -46,13 +46,15 @@ class PipelineMonitor(PipelineMonitorBase):
         self.logger.addHandler(handler)
         self.logger.setLevel(logging.INFO)
     
-    def register_pipeline(self, pipeline_id: str, source_type: SourceType) -> None:
+    def register_pipeline(self, pipeline_id: str, source_type: SourceType, source_name: str = "", upload_by: str = "") -> None:
         """
         Register a new pipeline in the monitoring system.
-        
+
         Args:
             pipeline_id: Unique identifier for the pipeline
             source_type: Type of data source the pipeline is processing
+            source_name: Optional name of the data source
+            upload_by: Optional identifier for the uploading user
         """
         pipeline_data = {
             "pipeline_id": pipeline_id,
@@ -66,11 +68,14 @@ class PipelineMonitor(PipelineMonitorBase):
                 "embeddings_created": 0,
                 "api_calls": 0,
                 "processing_time": 0,
-            }
+            },
+            **({ "name": source_name } if source_name else {}),
+            **({ "upload_by": upload_by } if upload_by else {})
         }
-        
+
         self.repository.save_pipeline(pipeline_data)
         self.logger.info(f"Registered new pipeline: {pipeline_id} for source: {source_type.value}")
+
     
     def update_pipeline_status(self, pipeline_id: str, status: PipelineStatus) -> None:
         """
@@ -312,6 +317,21 @@ class PipelineMonitor(PipelineMonitorBase):
             if api_endpoint:
                 metrics["api_calls"] = 1
         
+        # # Track chunk counts
+            # chunk_count = DocLogParser.extract_chunk_count(log_line)
+            # if chunk_count:
+            #     metrics["chunks_generated"] = chunk_count
+            
+            # # Track embedding counts
+            # embedding_count = DocLogParser.extract_embedding_count(log_line)
+            # if embedding_count:
+            #     metrics["embeddings_created"] = embedding_count
+            
+            # # Check for document processing status changes
+            # status = DocLogParser.extract_processing_status(log_line)
+            # if status:
+            #     self.update_pipeline_status(pipeline_id, status)
+            
         # Track chunk counts
         chunk_count = LogParser.extract_chunk_count(log_line)
         if chunk_count:

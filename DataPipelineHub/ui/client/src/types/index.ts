@@ -1,3 +1,5 @@
+import { PipelineStatus } from '@/constants/pipelineStatus';
+
 export interface Pipeline {
   id: string;
   name: string;
@@ -57,9 +59,32 @@ export interface EmbedChannel {
   name: string;
   messages: string;
   lastSync: string;
-  status: "ACTIVE" | "PAUSED" | "ARCHIVED" | "DONE" | "FAILED";
+  status: PipelineStatus;
   frequency: string;
   channel_id: string;
   created: string;
   is_private: boolean;
+}
+export interface Document {
+  pipeline_id: string;
+  name: string;
+  path: string;
+  status: PipelineStatus;
+  created_at: string;
+  file_type: string;
+  chunks: number;
+  page_count: number;
+  full_text: string;
+  file_size: string;
+  upload_by: string;
+  last_updated: string;
+  stats: {
+    total_tokens?: number;
+    avg_chunk_size?: number;
+    images_extracted?: number;
+    tables_extracted?: number;
+    embeddings_created?: number;
+    api_calls?: number;
+    processing_time?: number;
+  };
 }
