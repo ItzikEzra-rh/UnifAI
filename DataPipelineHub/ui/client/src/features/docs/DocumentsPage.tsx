@@ -44,7 +44,7 @@ export default function Documents() {
 
   const filteredDocuments = documents.filter((doc) => {
     const matchesType = fileTypeFilter === "all" || doc.file_type === fileTypeFilter;
-    const matchesSearch = doc.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = doc.source_name?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesType && matchesSearch;
   });
 
@@ -119,6 +119,7 @@ export default function Documents() {
     try {
       setDeleteLoading(true);
       await deleteDoc(id)
+      await axiosInstance.post("/api/docs/delete", { pipelineId: id });
       await fetchDocuments(); 
     } catch (error) {
       console.error("Error deleting document:", error);

@@ -44,27 +44,24 @@ def get_available_doc_list(user):
     Fetches a list of available documents uploaded by a specific user.
     Enriches each document with additional metadata from the data source.
     """
-    docs = pipeline_repo.get_pipeline_by_query({"source_type": "DOCUMENT","upload_by": user, "deleted": {"$ne": True}})
+    docs = data_source_repo.get_source_by_query({"source_type": "DOCUMENT","upload_by": user})
+
     if not docs:
         return []
 
     for doc in docs:
-        doc["file_type"] = doc.get("name", "").rsplit(".", 1)[-1].lower()
+        doc["file_type"] = doc.get("source_name", "").rsplit(".", 1)[-1].lower()
+
+        pipeline_id = doc.get("last_pipeline_id")
+        doc_data = pipeline_repo.get_pipeline_by_query({"pipeline_id": pipeline_id})
         
-        pipeline_id = doc.get("pipeline_id")
-        doc_data = data_source_repo.get_source_by_query({"last_pipeline_id": pipeline_id})
         if not doc_data:
             continue
 
-        type_data = doc_data[0].get("type_data", {})
         doc.update({
-            "chunks": doc_data[0].get("chunks_generated", []),
-            "path": type_data.get("source_path", ""),
-            "file_size": type_data.get("file_size", 0),
-            "page_count": type_data.get("page_count", 0),
-            "full_text": type_data.get("full_text", "")
+            "status": doc_data[0].get("status", ""),
+            "stats": doc_data[0].get("stats", {})
         })
-
     return docs
 
 def embed_docs_flow(doc_list, upload_by):

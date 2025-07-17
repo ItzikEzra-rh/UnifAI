@@ -66,19 +66,21 @@ export interface EmbedChannel {
   is_private: boolean;
 }
 export interface Document {
-  pipeline_id: string;
-  name: string;
-  path: string;
+  last_pipeline_id: string;
+  source_name: string;
   status: PipelineStatus;
   created_at: string;
   file_type: string;
-  chunks: number;
-  page_count: number;
-  full_text: string;
-  file_size: string;
+  chunks_generated: number;
+  type_data: {
+    doc_path: string;
+    page_count: number;
+    full_text: string;
+    file_size: string;
+  };
   upload_by: string;
   last_updated: string;
-  stats: {
+  stats?: {
     total_tokens?: number;
     avg_chunk_size?: number;
     images_extracted?: number;

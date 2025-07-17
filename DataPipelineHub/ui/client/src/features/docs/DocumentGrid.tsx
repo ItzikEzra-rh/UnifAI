@@ -21,13 +21,13 @@ interface DocumentGridProps {
 const getSubtitle = (doc: Document) => {
   if (doc.status === PIPELINE_STATUS.ACTIVE) return <InlineLoader />;
   if (doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
-  return `${doc.page_count} pages | ${doc.file_type} | ${doc.file_size}`;
+  return `${doc.type_data.page_count} pages | ${doc.file_type} | ${doc.type_data.file_size}`;
 };
 
 const getFooterText = (doc: Document) => {
   if (doc.status === PIPELINE_STATUS.ACTIVE) return <InlineLoader />;
   if (doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
-  return `${doc.chunks} chunks`;
+  return `${doc.chunks_generated} chunks`;
 };
 
 // const getExtraTopRight = (
@@ -67,8 +67,8 @@ const getActions = (
     onClick: () => {},
     confirm: {
       title: "Delete Document",
-      message: `Are you sure you want to delete "${doc.name}"?`,
-      onConfirm: () => onDeleteConfirmed(doc.pipeline_id),
+      message: `Are you sure you want to delete "${doc.source_name}"?`,
+      onConfirm: () => onDeleteConfirmed(doc.last_pipeline_id),
       loading: deleteLoading,
       confirmLabel: "Yes, Delete",
     },
@@ -83,10 +83,10 @@ export const DocumentGrid = ({paginatedDocuments, activeDoc, setActiveDoc, delet
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {paginatedDocuments.map((doc) => (
               <DataCard
-                key={doc.pipeline_id}
+                key={doc.last_pipeline_id}
                 iconRenderer={() => getFileIcon(doc.file_type)}
                 iconBgClass={fileByColors[doc.file_type]}
-                title={doc.name}
+                title={doc.source_name}
                 status={doc.status}
                 subtitle={getSubtitle(doc)}
                 metadata={`Uploaded ${new Date(doc.created_at).toLocaleString("en-GB")} by ${doc.upload_by}`}

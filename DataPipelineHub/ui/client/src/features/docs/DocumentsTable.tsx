@@ -35,7 +35,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
             <div className={`p-1.5 rounded ${fileByColors[doc.file_type]}`}>
               {getFileIcon(doc.file_type)}
             </div>
-            <div className="truncate max-w-[200px]">{doc.name}</div>
+            <div className="truncate max-w-[200px]">{doc.source_name}</div>
           </div>
         );
       },
@@ -64,7 +64,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
         ) : doc.status === PIPELINE_STATUS.PENDING ? (
           "-"
         ) : (
-          doc.page_count
+          doc.type_data.page_count
         );
       },
       meta: { align: "center" },
@@ -76,7 +76,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
         const doc = row.original;
         if (doc.status === PIPELINE_STATUS.ACTIVE) return <InlineLoader />;
         if (doc.status === PIPELINE_STATUS.PENDING) return "-";
-        const sizeMatch = doc.file_size?.match(/[\d.]+/);
+        const sizeMatch = doc.type_data.file_size?.match(/[\d.]+/);
         return sizeMatch ? sizeMatch[0] : "-";
       },
       meta: { align: "center" },
@@ -101,7 +101,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
         ) : doc.status === PIPELINE_STATUS.PENDING ? (
           "-"
         ) : (
-          `${doc.chunks}`
+          `${doc.chunks_generated}`
         );
       },
       meta: { align: "center" },
@@ -126,7 +126,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       header: "",
       cell: ({ row }) => {
         const doc = row.original;
-        const isActive = activeDoc?.pipeline_id === doc.pipeline_id;
+        const isActive = activeDoc?.last_pipeline_id === doc.last_pipeline_id;
         return (
           <div className="flex items-center space-x-2 justify-end">
             {/* {doc.status === PIPELINE_STATUS.FAILED && (
@@ -183,7 +183,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
         <ConfirmDialog
           open={true}
           title="Delete Document"
-          message={`Are you sure you want to delete "${confirmDoc.name}"?`}
+          message={`Are you sure you want to delete "${confirmDoc.source_name}"?`}
           confirmLabel="Yes, Delete"
           loading={confirmLoading}
           onCancel={() => {
@@ -192,7 +192,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
           onConfirm={async () => {
             try {
               setConfirmLoading(true);
-              await onDeleteConfirmed?.(confirmDoc.pipeline_id);
+              await onDeleteConfirmed?.(confirmDoc.last_pipeline_id);
               setConfirmDoc(null);
             } catch (err) {
               console.error("Delete failed:", err);
