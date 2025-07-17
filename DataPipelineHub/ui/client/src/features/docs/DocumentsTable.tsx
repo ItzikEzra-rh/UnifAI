@@ -3,7 +3,7 @@ import { FaEye, FaTrash, FaSync } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
 import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
-import { getFileIcon, fileByColors, statusByLabel } from "./helpers";
+import { getFileIcon, fileByColors, statusByLabel } from "../helpers";
 import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DocumentData } from "./DocumentData";

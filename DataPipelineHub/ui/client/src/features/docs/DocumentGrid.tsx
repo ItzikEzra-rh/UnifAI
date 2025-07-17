@@ -1,6 +1,6 @@
 import { FaEye, FaSync, FaTrash } from "react-icons/fa";
 import { DataCard } from "@/components/shared/DataCard";
-import { fileByColors, getFileIcon } from "@/documents/helpers";
+import { fileByColors, getFileIcon } from "@/features/helpers";
 import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";

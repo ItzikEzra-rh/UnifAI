@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FaEye, FaSync, FaTrash } from "react-icons/fa";
-import { getFileIcon } from "./helpers";
+import { getFileIcon } from "../helpers";
 import { Document } from "@/types";
 
 interface LibraryTabProps {

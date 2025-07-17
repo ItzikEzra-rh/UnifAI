@@ -8,7 +8,7 @@ import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-import DocumentsPage from "./documents/DocumentsPage";
+import DocumentsPage from "./features/docs/DocumentsPage";
 import { AuthProvider } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import SlackAddSourcePage from "./features/slack/SlackAddSourcePage";

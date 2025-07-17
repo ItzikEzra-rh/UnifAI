@@ -32,3 +32,16 @@ export const statusByLabel: Record<PipelineStatus, string> = {
   [PIPELINE_STATUS.ARCHIVED]: "ARCHIVED",
   [PIPELINE_STATUS.PAUSED]: "PAUSED",
 };
+
+export function formatDate(dateStr: string): string {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  return date.toLocaleString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+}

@@ -37,7 +37,6 @@ import {
   TableHead,
   TableCell,
 } from '../ui/table'
-import { DocumentData } from '@/documents/DocumentData'
 
 // ─── 1. SORT HELPERS ───────────────────────────────────────────────────────
 

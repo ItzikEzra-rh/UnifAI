@@ -12,11 +12,7 @@ import { DocumentFilters } from "./DocumentFilters";
 import { DocumentTable } from "./DocumentsTable";
 import { PageLoader } from "@/components/shared/PageLoader";
 import { DocumentGrid } from "./DocumentGrid";
-
-const fetchDocuments = async () => {
-  const response = await axiosInstance.get("/api/docs/available.docs.get");
-  return response.data.docs;
-};
+import { fetchDocuments } from "@/api/docs";
 
 export default function Documents() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -34,6 +30,8 @@ export default function Documents() {
     queryKey: ['documents'],
     queryFn: fetchDocuments,
     refetchInterval: 10000,
+    refetchOnMount: true, 
+    refetchOnWindowFocus: true, 
   });
 
   useEffect(() => {

@@ -5,10 +5,9 @@ import { FaSync, FaCog, FaPlus, FaTrash } from "react-icons/fa";
 import { HiOutlineLockClosed } from "react-icons/hi";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
-import { cn } from "@/lib/utils";
 import { EmbedChannel } from "./SlackIntegration";
 import { Badge } from "@/components/ui/badge";
-import { DataTable, DataTableColumn } from "@/shared/DataTable";
+import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 
 export function isChannelNew(createdAt: Date): boolean {
@@ -57,10 +56,11 @@ export function getColumns(
       header: "Status",
       cell: (info) => {
         const channel = info.row.original;
+        console.log(channel)
         const isActivelyEmbedding = activeEmbeddingIds.includes(channel.channel_id);
         return (
           <StatusBadge 
-            status={info.getValue<EmbedChannel["status"]>()} 
+            status={channel.status} 
             isActivelyEmbedding={isActivelyEmbedding}
           />
         );

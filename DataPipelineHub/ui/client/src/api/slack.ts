@@ -1,3 +1,4 @@
+import { formatDate } from '@/features/helpers';
 import { api } from '@/lib/queryClient';
 import type { Channel, EmbedChannel } from '@/types';
 
@@ -41,7 +42,7 @@ export async function submitSlackChannels(
 
 export async function fetchEmbeddedSlackChannels(): Promise<EmbedChannel[]> {
   const { data } = await api.get<any[]>("slack/embed.channels");
-
+  console.log(data)
   return data.map((item) => ({
     name: item.source_name || '', 
     messages: String(item.type_data?.message_count || item.message_count || 0),
@@ -78,15 +79,3 @@ function timeAgo(dateStr: string): string {
   return `${days} day${days > 1 ? "s" : ""} ago`;
 }
 
-function formatDate(dateStr: string): string {
-  if (!dateStr) return '';
-  const date = new Date(dateStr);
-  return date.toLocaleString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false
-  });
-}
