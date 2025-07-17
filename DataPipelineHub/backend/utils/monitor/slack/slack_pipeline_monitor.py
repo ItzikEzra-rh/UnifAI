@@ -19,18 +19,18 @@ class SlackPipelineMonitor:
         """
         self.monitor = monitor
     
-    def get_channel_stats(self, channel_id: str) -> Dict:
-        """
-        Get statistics for a specific Slack channel.
+    # def get_channel_stats(self, channel_id: str) -> Dict:
+    #     """
+    #     Get statistics for a specific Slack channel.
         
-        Args:
-            channel_id: The ID of the Slack channel
+    #     Args:
+    #         channel_id: The ID of the Slack channel
             
-        Returns:
-            Dictionary containing channel statistics
-        """
-        pipeline_id = f"slack_{channel_id}"
-        return self.monitor.get_pipeline_stats(pipeline_id)
+    #     Returns:
+    #         Dictionary containing channel statistics
+    #     """
+    #     pipeline_id = f"slack_{channel_id}"
+    #     return self.monitor.get_pipeline_stats(pipeline_id)
     
     def get_all_slack_stats(self) -> Dict:
         """
@@ -41,14 +41,14 @@ class SlackPipelineMonitor:
         """
         return self.monitor.get_source_stats(SourceType.SLACK)
     
-    def get_active_channels(self) -> List[Dict]:
-        """
-        Get all active Slack channel pipelines.
+    # def get_active_channels(self) -> List[Dict]:
+    #     """
+    #     Get all active Slack channel pipelines.
         
-        Returns:
-            List of active Slack pipeline dictionaries
-        """
-        return self.monitor.get_active_pipelines(SourceType.SLACK)
+    #     Returns:
+    #         List of active Slack pipeline dictionaries
+    #     """
+    #     return self.monitor.get_active_pipelines(SourceType.SLACK)
     
     def get_recent_slack_activity(self, limit: int = 10) -> List[str]:
         """

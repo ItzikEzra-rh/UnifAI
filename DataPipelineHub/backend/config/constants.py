@@ -23,4 +23,22 @@ class DataSource(Enum):
         """Get uppercase name for legacy compatibility"""
         return self.value.upper()
     
-   
+class PipelineStatus(Enum):
+    """Enum representing possible pipeline statuses."""
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+    DONE = "DONE"
+    FAILED = "FAILED"
+    PAUSED = "PAUSED"
+    CHUNKING_AND_EMBEDDING = "CHUNKING_AND_EMBEDDING"
+    STORING = "STORING"
+    COLLECTING = "COLLECTING"
+    PROCESSING = "PROCESSING"
+    ORCHESTRATING = "ORCHESTRATING"
+    
+class SourceType(Enum):
+    """Enum representing different data source types."""
+    SLACK = DataSource.SLACK.upper_name
+    JIRA = DataSource.JIRA.upper_name
+    DOCUMENT = DataSource.DOCUMENT.upper_name
+    OTHER = DataSource.OTHER.upper_name

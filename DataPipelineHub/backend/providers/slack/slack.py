@@ -1,4 +1,11 @@
+from dataclasses import asdict
 import time
+from pipeline.pipeline_repository import PipelineRepository
+from pipeline.pipeline_executor import PipelineExecutor
+from pipeline.pipeline_factory import PipelineFactory
+from data_sources.slack.types import SlackMetadata
+from pipeline.slack_pipline_factory import SlackPipelineFactory
+from pipeline.config import ChunkerConfig, EmbeddingConfig, StorageConfig
 import pymongo
 from data_sources.slack.slack_config_manager import SlackConfigManager
 from data_sources.slack.slack_connector import SlackConnector
@@ -12,6 +19,7 @@ from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactor
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
 from global_utils.utils.util import get_mongo_url
+from utils.storage.qdrant_storage import QdrantStorage
 
 def _get_configured_connector() -> SlackConnector:
     config_manager = SlackConfigManager()
@@ -30,22 +38,245 @@ def get_available_slack_channels(channel_types: str):
     else:
         raise RuntimeError("Slack authentication failed")
 
+def embed_slack_channel(channel_list: str, upload_by: str = "default"):
+    results = []
+
+    for ch in channel_list:
+        # Normalize incoming metadata to SlackMetadata
+        if isinstance(ch, SlackMetadata):
+            meta = ch
+        elif isinstance(ch, dict):
+            meta = SlackMetadata(
+                channel_id=ch.get("channel_id", ""),
+                channel_name=ch.get("channel_name", ""),
+                is_private=ch.get("is_private", False)
+            )
+        else:
+            meta = SlackMetadata(channel_id=str(ch))
+
+        try:
+            # Lookup and build the factory for this source_type
+            factory = PipelineFactory.create(DataSource.SLACK.upper_name, meta)
+            executor = PipelineExecutor(factory, pipeline_id=f"slack_{meta.channel_id}")
+            pipeline_result = executor.run()
+
+            results.append({
+                "channel_id": meta.channel_id,
+                "status": "success",
+                "result": pipeline_result
+            })
+
+        except Exception as exc:
+            # Capture error per-channel but continue processing others
+            results.append({
+                "channel_id": meta.channel_id,
+                "status": "error",
+                "error": str(exc)
+            })
+
+    return {
+        "upload_by": upload_by,
+        "results": results
+    }
+
+
 def embed_slack_channels_flow(channel_list, upload_by="default"):
     """
     Slack embedding flow function using the SlackEmbeddingService.
     """
-    from providers.slack.slack_embedding_service import SlackEmbeddingService, EmbeddingConfig
-    
     connector = _get_configured_connector()
-    config = EmbeddingConfig()
+    if not connector.authenticate():
+        raise RuntimeError("Slack authentication failed")
     
-    service = SlackEmbeddingService(
-        connector=connector,
-        config=config,
-        upload_by=upload_by
-    )
+    mongo_client   = pymongo.MongoClient(get_mongo_url())
+    slack_pipeline = SlackDataPipeline(mongo_client, logger=logger)
     
-    return service.embed_channels(channel_list)
+    processor = SlackProcessor()
+    chunker = SlackChunkerStrategy(max_tokens_per_chunk=500, overlap_tokens=50, time_window_seconds=300)
+    
+    embedding_config = {
+        "type": "sentence_transformer",
+        "model_name": "all-MiniLM-L6-v2",
+        "batch_size": 32
+    }
+    embedding_generator = EmbeddingGeneratorFactory.create(embedding_config)
+        # QdrantStorage via factor  y
+    storage_config = {
+        "type": "qdrant",
+        "collection_name": "slack_data", 
+        "embedding_dim": embedding_generator.embedding_dim
+        # URL and port will come from app_config via VectorStorageFactory
+    }
+    qstore = VectorStorageFactory.create(storage_config)
+    qstore.initialize()
+    mongo_storage= get_mongo_storage()
+        # Cast to QdrantStorage since we know it's a Qdrant instance
+    from utils.storage.qdrant_storage import QdrantStorage
+    qdrant_store = qstore if isinstance(qstore, QdrantStorage) else None
+    if not qdrant_store:
+        raise RuntimeError("Expected QdrantStorage instance")
+    
+        # Wrap Qdrant + MongoStorage in a manager
+    # manager = StorageManager(qdrant_store, mongo_storage)
+
+    response = []
+    for channel in channel_list:
+        cid  = channel["channel_id"]
+        cname= channel["channel_name"]
+
+        # 1️⃣ Register & start monitoring
+        # pipeline_id = slack_pipeline.process_slack_channel(cid, cname)
+        slack_pipeline.monitor.start_log_monitoring(target_logger=logger, pipeline_id=f"slack_{cid}")
+
+        # 2️⃣ Register channel in source data collection IMMEDIATELY
+        try:
+            initial_summary = {
+                "chunks_generated": 0,
+                "embeddings_created": 0,
+                "processing_time_s": 0,
+                "last_pipeline_id": pipeline_id,
+            }
+
+            slack_type_data = {
+                "message_count": 0,
+                "api_calls": 0,
+                "is_private": channel["is_private"]
+            }
+
+            # Register the source immediately with initial data
+            mongo_storage.upsert_source_summary(
+                source_id=cid,
+                source_name=cname,
+                source_type="SLACK",
+                summary=initial_summary,
+                type_data=slack_type_data
+            )
+
+            # 3️⃣ Fetch messages first
+            messages, thread_msgs = connector.get_conversations_history(cid) # done
+            
+            # Update source with message count immediately after fetching
+            fetched_summary = {
+                "chunks_generated": 0,
+                "embeddings_created": 0,
+                "processing_time_s": 0,
+                "last_pipeline_id": pipeline_id,
+            }
+
+            fetched_slack_type_data = {
+                "message_count": len(messages),
+                "api_calls": 0,
+                "is_private": channel["is_private"]
+            }
+
+            # Update source with message count
+            mongo_storage.upsert_source_summary(
+                source_id=cid,
+                source_name=cname,
+                source_type="SLACK",
+                summary=fetched_summary,
+                type_data=fetched_slack_type_data
+            )
+            
+            # 4️⃣ Process, chunk, embed
+            processed_main  = processor.process(messages,  channel_name=cname)
+            processed_threads = [processor.process(t, channel_name=cname) for t in thread_msgs]
+
+            all_chunks   = chunker.chunk_content(processed_main) + \
+                           [chunk for t in processed_threads for chunk in t]
+            
+            # Add source_id to all chunks for Qdrant filtering/deletion
+            for chunk in all_chunks:
+                if "metadata" not in chunk:
+                    chunk["metadata"] = {}
+                chunk["metadata"]["source_id"] = cid
+                chunk["metadata"]["source_type"] = "SLACK"
+                # Ensure chunk_index for easier identification
+                if "chunk_index" not in chunk["metadata"]:
+                    chunk["metadata"]["chunk_index"] = len([c for c in all_chunks if c is chunk])
+            
+            embeddings   = embedding_generator.generate_embeddings(all_chunks)
+
+            # 5️⃣ Build summary
+            if hasattr(slack_pipeline.slack_monitor, "get_api_calls"):
+                slack_api_calls = slack_pipeline.slack_monitor.get_api_calls(pipeline_id)
+            else:
+                slack_api_calls = 0
+            start = time.time()
+
+            # 6️⃣ Store embeddings in Qdrant
+            enriched = embedding_generator.generate_embeddings(all_chunks)
+            qstore.store_embeddings(enriched)
+
+            # 7️⃣ Update source summary with final data
+            final_summary = {
+                "chunks_generated":   len(all_chunks),
+                "embeddings_created": len(enriched),
+                "processing_time_s":  time.time() - start,
+                "last_pipeline_id":   pipeline_id,
+            }
+
+            final_slack_type_data = {
+                "message_count": len(messages),
+                "api_calls":     slack_api_calls,
+                "is_private":    channel["is_private"]
+            }
+
+            # Update the source with final processing results
+            mongo_storage.upsert_source_summary(
+                source_id=cid,
+                source_name=cname,
+                source_type="SLACK",
+                summary=final_summary,
+                type_data=final_slack_type_data
+            )
+
+            # 8️⃣ Mark success in monitor
+            slack_pipeline.monitor.finish_log_monitoring()
+
+            response.append({
+              "channel":     cname,
+              "status":      "success",
+              "chunks_stored": len(all_chunks)
+            })
+
+        except Exception as e:
+            # 9️⃣ On error, record it and update source status
+            logger.error(f"Error embedding {cname}: {e}")
+            if pipeline_id:
+                slack_pipeline.monitor.record_error(pipeline_id, str(e))
+            
+            # Update source status to failed
+            error_summary = {
+                "chunks_generated": 0,
+                "embeddings_created": 0,
+                "processing_time_s": 0,
+                "last_pipeline_id": pipeline_id,
+                "status": "failed",
+                "error": str(e)
+            }
+
+            error_slack_type_data = {
+                "message_count": 0,
+                "api_calls": 0,
+                "is_private": channel["is_private"]
+            }
+
+            mongo_storage.upsert_source_summary(
+                source_id=cid,
+                source_name=cname,
+                source_type="SLACK",
+                summary=error_summary,
+                type_data=error_slack_type_data
+            )
+            
+            response.append({
+              "channel":     cname,
+              "status":      "failed",
+              "error":       str(e)
+            })
+
+    return response
 
 def count_channel_chunks(channel_name: str) -> int:
     storage_config = {
