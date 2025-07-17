@@ -28,9 +28,7 @@ class StorageManager:
             source_type=source_type,
             upload_by=upload_by,
             summary=summary,
-            type_data=type_data,
             pipeline_id=pipeline_id,
-            summary=summary
         )
 
     def delete_source(self, source_id: str, source_type: Optional[str] = None) -> Dict[str, Any]:

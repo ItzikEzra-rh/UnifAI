@@ -109,7 +109,7 @@ class MongoStorage(SourceRepository, PipelineRepository):
         return list(col.find(query))
     
     def get_source_by_query(self, query: object) -> List[Dict[str, Any]]:
-        col = self._get_collection(DATA_DB, SOURCES_COL)
+        col = self._get_collection(Database.DATA.value, CollectionName.SOURCES.value)
         return list(col.find(query, {"_id": 0}))
 
     def upsert_documents(
