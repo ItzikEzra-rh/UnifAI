@@ -2,7 +2,9 @@ export const PIPELINE_STATUS = {
   PENDING: 'PENDING',
   ACTIVE: 'ACTIVE',
   DONE: 'DONE',
+  ARCHIVED: 'ARCHIVED',
   FAILED: 'FAILED',
+  PAUSED: 'PAUSED'
 } as const;
 
 export type PipelineStatus = typeof PIPELINE_STATUS[keyof typeof PIPELINE_STATUS];

@@ -1,14 +1,14 @@
 import React, { useState } from "react";
 import { FaEye, FaTrash, FaSync } from "react-icons/fa";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
-import { getFileIcon, fileByColors, statusByLabel, statusByColors } from "./helpers";
+import { getFileIcon, fileByColors, statusByLabel } from "./helpers";
 import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DocumentData } from "./DocumentData";
 import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 
 interface DocumentTableProps {
   documents: Document[];
@@ -112,9 +112,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       cell: ({ row }) => {
         const doc = row.original;
         return (
-          <Badge className={`text-xs ${statusByColors[doc.status]}`}>
-            {statusByLabel[doc.status] || "Unknown"}
-          </Badge>
+          <StatusBadge status={doc.status} />
         );
       },
       meta: {

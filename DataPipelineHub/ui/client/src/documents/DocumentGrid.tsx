@@ -1,9 +1,8 @@
 import { FaEye, FaSync, FaTrash } from "react-icons/fa";
 import { DataCard } from "@/components/shared/DataCard";
-import { fileByColors, getFileIcon, statusByColors, statusByLabel } from "@/documents/helpers";
+import { fileByColors, getFileIcon } from "@/documents/helpers";
 import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { DocumentData } from "./DocumentData";
 import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
@@ -30,11 +29,6 @@ const getFooterText = (doc: Document) => {
   if (doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
   return `${doc.chunks} chunks`;
 };
-
-const getStatusBadge = (doc: Document) => ({
-  label: statusByLabel[doc.status] || "Unknown",
-  className: statusByColors[doc.status],
-});
 
 // const getExtraTopRight = (
 //   doc: Document,
@@ -93,12 +87,12 @@ export const DocumentGrid = ({paginatedDocuments, activeDoc, setActiveDoc, delet
                 iconRenderer={() => getFileIcon(doc.file_type)}
                 iconBgClass={fileByColors[doc.file_type]}
                 title={doc.name}
+                status={doc.status}
                 subtitle={getSubtitle(doc)}
                 metadata={`Uploaded ${new Date(doc.created_at).toLocaleString("en-GB")} by ${doc.upload_by}`}
                 footer={getFooterText(doc)}
                 selected={doc === activeDoc}
                 onClick={() => setActiveDoc(doc === activeDoc ? null : doc)}
-                statusBadge={getStatusBadge(doc)}
                 // extraTopRight={getExtraTopRight(doc, handleRetry, retrying)}
                 actions={getActions(doc, activeDoc, setActiveDoc, deleteLoading, onDeleteConfirmed)}
               />

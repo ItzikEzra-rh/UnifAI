@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "./ConfirmDialog";
+import { PipelineStatus } from "@/constants/pipelineStatus";
+import { StatusBadge } from "./StatusBadge";
 
 export interface CardAction {
   icon: React.ReactNode;
@@ -23,10 +25,10 @@ interface DataCardProps {
   iconBgClass?: string;
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
+  status?: PipelineStatus;
   metadata?: React.ReactNode;
   footer?: React.ReactNode;
   actions?: any[];
-  statusBadge?: { label: string; className?: string };
   extraTopRight?: React.ReactNode;
   onClick?: () => void;
   selected?: boolean;
@@ -40,10 +42,10 @@ export const DataCard: React.FC<DataCardProps> = ({
   iconBgClass = "bg-muted",
   title,
   subtitle,
+  status,
   metadata,
   footer,
   actions = [],
-  statusBadge,
   extraTopRight,
   onClick,
   selected = false,
@@ -92,13 +94,11 @@ export const DataCard: React.FC<DataCardProps> = ({
         </div>
 
         {/* Metadata and Status */}
-        {(metadata || statusBadge) && (
+        {(metadata || status) && (
           <div className="mt-3 flex items-center justify-between text-xs">
             {metadata && <div className="text-gray-400">{metadata}</div>}
-            {statusBadge && (
-              <Badge className={`text-xs ${statusBadge.className || ""}`}>
-                {statusBadge.label}
-              </Badge>
+            {status && (
+              <StatusBadge status={status} />
             )}
           </div>
         )}

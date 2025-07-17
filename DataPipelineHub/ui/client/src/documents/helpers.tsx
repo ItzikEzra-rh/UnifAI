@@ -24,16 +24,11 @@ export const fileByColors: Record<string, string> = {
   txt: "bg-gray-500 dark:bg-gray-600",
 };
 
-export const statusByColors: Record<PipelineStatus, string> = {
-  [PIPELINE_STATUS.PENDING]: "bg-grey-500 text-white",
-  [PIPELINE_STATUS.ACTIVE]: "bg-blue-500 text-white",
-  [PIPELINE_STATUS.DONE]: "bg-green-500 text-white",
-  [PIPELINE_STATUS.FAILED]: "bg-red-500 text-white",
-};
-
 export const statusByLabel: Record<PipelineStatus, string> = {
   [PIPELINE_STATUS.DONE]: "DONE",
   [PIPELINE_STATUS.FAILED]: "FAILED",
   [PIPELINE_STATUS.ACTIVE]: "IN PROGRESS",
   [PIPELINE_STATUS.PENDING]: "IN QUEUE",
+  [PIPELINE_STATUS.ARCHIVED]: "ARCHIVED",
+  [PIPELINE_STATUS.PAUSED]: "PAUSED",
 };

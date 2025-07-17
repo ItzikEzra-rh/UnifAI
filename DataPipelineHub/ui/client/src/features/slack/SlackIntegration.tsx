@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StatsCard, StatsCardProps } from "./StatsCard";
+import { PipelineStatus } from "@/constants/pipelineStatus";
 
 // ── Interfaces from your update ─────────────────────────────
 export interface SlackTypeData {
@@ -33,7 +34,7 @@ export interface EmbedChannel {
   // is_private: boolean;
   messages: string
   lastSync: string
-  status: "ACTIVE" | "PAUSED" | "ARCHIVED" | "DONE" | "FAILED"
+  status: PipelineStatus;
   frequency: string
   channel_id: string;
   created: string;
