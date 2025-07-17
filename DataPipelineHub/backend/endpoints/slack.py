@@ -5,9 +5,10 @@ from webargs import fields
 from shared.logger import logger
 from global_utils.helpers.apiargs import from_query, from_body
 from global_utils.celery_app.helpers import send_task
+from config.constants import DataSource
 from providers.slack.slack import (
+    embed_slack_channel,
     get_available_slack_channels,
-    embed_slack_channels_flow,
     count_channel_chunks,
     get_best_match_results,
     delete_slack_channel
@@ -40,6 +41,7 @@ def embed_channels(channels):
             channel_list=channels,
             upload_by=session.get('user', {}).get('name', 'default')
         )
+        # embed_slack_channel(channels)
         return jsonify({"status": "task submitted"}), 202
     except Exception as e:
         logger.error(f"Failed to submit Slack embedding task: {str(e)}")
@@ -93,7 +95,7 @@ def get_embed_channels():
     """
     Returns all stored channels, optionally filtered by source_type.
     """
-    source_type = "SLACK"
+    source_type = DataSource.SLACK.upper_name
     svc = get_source_service()
     channels = svc.list_sources_with_status(source_type)
     return jsonify(channels), 200

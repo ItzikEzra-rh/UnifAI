@@ -16,8 +16,8 @@ class StorageManager:
         source_type: str,
         upload_by: str,
         enriched_chunks: List[Dict[str, Any]],
-        summary: Dict[str, Any],
-        type_data: Optional[Dict[str, Any]] = None
+        pipeline_id: str,
+        summary: Dict[str, Any]
     ):
         # write embeddings
         self.qstore.store_embeddings(enriched_chunks)
@@ -28,7 +28,9 @@ class StorageManager:
             source_type=source_type,
             upload_by=upload_by,
             summary=summary,
-            type_data=type_data
+            type_data=type_data,
+            pipeline_id=pipeline_id,
+            summary=summary
         )
 
     def delete_source(self, source_id: str, source_type: Optional[str] = None) -> Dict[str, Any]:

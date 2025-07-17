@@ -7,12 +7,7 @@ from flask import Flask, jsonify, current_app
 from pymongo import MongoClient, UpdateOne
 from pymongo.collection import Collection
 
-# ─── Constants ────────────────────────────────────────────────────────────
-DATA_DB      = "data_sources"
-SOURCES_COL  = "sources"
-CHUNKS_COL   = "chunks"
-PIPELINE_DB  = "pipeline_monitoring"
-PIPELINE_COL = "pipelines"
+from config.constants import Database, Collection as CollectionName
 
 # ─── JSON Safety Helper ─────────────────────────────────────────────────────
 def _make_json_safe(doc: Dict[str, Any]) -> Dict[str, Any]:
@@ -54,9 +49,8 @@ class MongoStorage(SourceRepository, PipelineRepository):
     def __init__(self, mongo_uri: str):
         self.client = MongoClient(mongo_uri)
         self._collection_index_map: Dict[str, List[Dict[str, Any]]] = {
-            CHUNKS_COL:   [{'keys': [('source_id', 1), ('chunk_index', 1)], 'unique': True}],
-            SOURCES_COL: [{'keys': [('source_id', 1)],              'unique': True}],
-            PIPELINE_COL:[{'keys': [('pipeline_id', 1)],            'unique': True}],
+            CollectionName.SOURCES.value: [{'keys': [('source_id', 1)],              'unique': True}],
+            CollectionName.PIPELINES.value:[{'keys': [('pipeline_id', 1)],            'unique': True}],
         }
         self._indexed_cols: set[Tuple[str, str]] = set()
 
@@ -71,59 +65,44 @@ class MongoStorage(SourceRepository, PipelineRepository):
             self._indexed_cols.add(key)
         return col
 
-    # — Existing methods —
-    def upsert_chunks(
-        self,
-        db_name: str,
-        source_id: str,
-        chunks: List[Dict[str, Any]]
-    ) -> None:
-        col = self._get_collection(db_name, CHUNKS_COL)
-        ops = []
-        for idx, chunk in enumerate(chunks):
-            doc_id = f"{source_id}_{idx}"
-            doc = {
-                '_id':       doc_id,
-                'source_id': source_id,
-                'text':      chunk['text'],
-                **chunk.get('metadata', {})
-            }
-            ops.append(UpdateOne({'_id': doc_id}, {'$set': doc}, upsert=True))
-        if ops:
-            col.bulk_write(ops)
-
     def upsert_source_summary(
         self,
         source_id: str,
         source_name: str,
         source_type: str,
-        summary: Dict[str, Any],
-        type_data: Optional[Dict[str, Any]] = None,
-        upload_by: str = "default"
+        upload_by: str,
+        pipeline_id: str,
+        summary: Dict[str, Any]
     ) -> None:
-        col = self._get_collection(DATA_DB, SOURCES_COL)
-        now = datetime.utcnow()
-        doc: Dict[str, Any] = {
-            'source_id':   source_id,
-            'source_name': source_name,
-            'source_type': source_type,
-            "upload_by": upload_by,
+        col = self._get_collection(Database.DATA.value, CollectionName.SOURCES.value)
+        now = datetime.now()
+        update_fields = {
             'last_sync_at': now,
             **summary
         }
-        if type_data is not None:
-            doc['type_data'] = type_data
+        insert_fields = {
+            'source_id':   source_id,
+            'source_name': source_name,
+            'source_type': source_type,
+            'pipeline_id': pipeline_id,
+            'upload_by': upload_by,
+            'created_at':  now,
+        }
+
         col.update_one(
-            {'source_id': source_id},
-            {'$set': doc, '$setOnInsert': {'created_at': now}},
+            {'pipeline_id': pipeline_id},
+            {
+                '$set': update_fields,
+                '$setOnInsert': insert_fields
+            },
             upsert=True
         )
-
+        
     def get_all_sources(
         self,
         source_type: Optional[str] = None
     ) -> List[Dict[str, Any]]:
-        col = self._get_collection(DATA_DB, SOURCES_COL)
+        col = self._get_collection(Database.DATA.value, CollectionName.SOURCES.value)
         query: Dict[str, Any] = {}
         if source_type:
             query['source_type'] = source_type.upper()
@@ -167,7 +146,7 @@ class MongoStorage(SourceRepository, PipelineRepository):
     def get_status_map(self, pipeline_ids: List[str]) -> Dict[str, str]:
         if not pipeline_ids:
             return {}
-        col = self._get_collection(PIPELINE_DB, PIPELINE_COL)
+        col = self._get_collection(Database.PIPELINE.value, CollectionName.PIPELINES.value)
         cursor = col.find(
             {'pipeline_id': {'$in': pipeline_ids}},
             {'pipeline_id': 1, 'status': 1}
@@ -185,7 +164,7 @@ class MongoStorage(SourceRepository, PipelineRepository):
             Dictionary with deletion results
         """
         try:
-            col = self._get_collection(DATA_DB, SOURCES_COL)
+            col = self._get_collection(Database.DATA.value, CollectionName.SOURCES.value)
             delete_result = col.delete_one({"source_id": source_id})
             source_deleted = delete_result.deleted_count > 0
             
@@ -219,7 +198,7 @@ class MongoStorage(SourceRepository, PipelineRepository):
             Dictionary with deletion results
         """
         try:
-            col = self._get_collection(PIPELINE_DB, PIPELINE_COL)
+            col = self._get_collection(Database.PIPELINE.value, CollectionName.PIPELINES.value)
             delete_result = col.delete_many({"pipeline_id": {"$regex": f"^{pipeline_id}"}})
             pipeline_deleted = delete_result.deleted_count
             
@@ -251,7 +230,7 @@ class MongoStorage(SourceRepository, PipelineRepository):
             Dictionary with source information
         """
         try:
-            col = self._get_collection(DATA_DB, SOURCES_COL)
+            col = self._get_collection(Database.DATA.value, CollectionName.SOURCES.value)
             source_info = col.find_one({"source_id": source_id})
             
             if source_info:
@@ -293,11 +272,14 @@ class SourceService:
         source_type: Optional[str] = None
     ) -> List[Dict[str, Any]]:
         raw = self._src.get_all(source_type)
-        ids = [s.get('last_pipeline_id') for s in raw if s.get('last_pipeline_id')]
-        status_map = self._pl.get_status_map(ids)
+        ids = [s.get('pipeline_id') for s in raw if s.get('pipeline_id')]
+        # Filter out None values for type safety
+        valid_ids = [id for id in ids if id is not None]
+        status_map = self._pl.get_status_map(valid_ids)
 
         enriched: List[Dict[str, Any]] = []
         for s in raw:
-            s['status'] = status_map.get(s.get('last_pipeline_id'))
+            pipeline_id = s.get('pipeline_id')
+            s['status'] = status_map.get(pipeline_id) if pipeline_id else None
             enriched.append(_make_json_safe(s))
         return enriched

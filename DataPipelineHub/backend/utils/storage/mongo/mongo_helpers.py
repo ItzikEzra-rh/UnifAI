@@ -1,17 +1,21 @@
-from flask import current_app
-from utils.storage.mongo.mongo_storage import MongoStorage, SourceService 
+"""
+MongoDB Storage Helper Functions
+
+Uses @lru_cache for simple singleton behavior that works in any context.
+"""
+
+from functools import lru_cache
+from utils.storage.mongo.mongo_storage import MongoStorage, SourceService
 from global_utils.utils.util import get_mongo_url
 
+@lru_cache(maxsize=1)
 def get_mongo_storage() -> MongoStorage:
-    try:
-        return current_app.mongo_storage
-    except RuntimeError:
-        return MongoStorage(get_mongo_url())
+    """Get cached MongoDB storage - works in any context"""
+    return MongoStorage(get_mongo_url())
 
 
+@lru_cache(maxsize=1)
 def get_source_service() -> SourceService:
-    try:
-        return current_app.source_service
-    except RuntimeError:
-        store = MongoStorage(get_mongo_url())
-        return SourceService(store, store)
+    """Get cached source service - works in any context"""
+    storage = get_mongo_storage()
+    return SourceService(storage, storage)

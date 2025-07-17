@@ -46,63 +46,62 @@ class PipelineMonitor(PipelineMonitorBase):
         self.logger.addHandler(handler)
         self.logger.setLevel(logging.INFO)
     
-    def register_pipeline(self, pipeline_id: str, source_type: SourceType, source_name: str = "", upload_by: str = "") -> None:
-        """
-        Register a new pipeline in the monitoring system.
+    # def register_pipeline(self, pipeline_id: str, source_type: SourceType, source_name: str = "", upload_by: str = "") -> None:
+    #     """
+    #     Register a new pipeline in the monitoring system.
 
-        Args:
-            pipeline_id: Unique identifier for the pipeline
-            source_type: Type of data source the pipeline is processing
-            source_name: Optional name of the data source
-            upload_by: Optional identifier for the uploading user
-        """
-        pipeline_data = {
-            "pipeline_id": pipeline_id,
-            "source_type": source_type.value,
-            "status": PipelineStatus.PENDING.value,
-            "created_at": datetime.now(),
-            "last_updated": datetime.now(),
-            "stats": {
-                "documents_retrieved": 0,
-                "chunks_generated": 0,
-                "embeddings_created": 0,
-                "api_calls": 0,
-                "processing_time": 0,
-            },
-            **({ "name": source_name } if source_name else {}),
-            **({ "upload_by": upload_by } if upload_by else {})
-        }
+    #     Args:
+    #         pipeline_id: Unique identifier for the pipeline
+    #         source_type: Type of data source the pipeline is processing
+    #         source_name: Optional name of the data source
+    #         upload_by: Optional identifier for the uploading user
+    #     """
+    #     pipeline_data = {
+    #         "pipeline_id": pipeline_id,
+    #         "source_type": source_type.value,
+    #         "status": PipelineStatus.PENDING.value,
+    #         "created_at": datetime.now(),
+    #         "last_updated": datetime.now(),
+    #         "stats": {
+    #             "documents_retrieved": 0,
+    #             "chunks_generated": 0,
+    #             "embeddings_created": 0,
+    #             "api_calls": 0,
+    #             "processing_time": 0,
+    #         },
+    #         **({ "name": source_name } if source_name else {}),
+    #         **({ "upload_by": upload_by } if upload_by else {})
+    #     }
 
-        self.repository.save_pipeline(pipeline_data)
-        self.logger.info(f"Registered new pipeline: {pipeline_id} for source: {source_type.value}")
+    #     self.repository.save_pipeline(pipeline_data)
+    #     self.logger.info(f"Registered new pipeline: {pipeline_id} for source: {source_type.value}")
 
-    
-    def update_pipeline_status(self, pipeline_id: str, status: PipelineStatus) -> None:
-        """
-        Update the status of a pipeline.
+    # def update_pipeline_status(self, pipeline_id: str, status: PipelineStatus) -> None:
+    #     """
+    #     Update the status of a pipeline.
         
-        Args:
-            pipeline_id: The ID of the pipeline to update
-            status: The new status of the pipeline
-        """
-        pipeline = self.repository.get_pipeline(pipeline_id)
-        if not pipeline:
-            self.logger.warning(f"Attempted to update non-existent pipeline: {pipeline_id}")
-            return
+    #     Args:
+    #         pipeline_id: The ID of the pipeline to update
+    #         status: The new status of the pipeline
+    #     """
+    #     pipeline = self.repository.get_pipeline(pipeline_id)
+    #     if not pipeline:
+    #         self.logger.warning(f"Attempted to update non-existent pipeline: {pipeline_id}")
+    #         return
         
-        pipeline["status"] = status.value
-        pipeline["last_updated"] = datetime.now()
+    #     pipeline["status"] = status.value
+    #     pipeline["last_updated"] = datetime.now()
         
-        # If the pipeline is done, calculate the total processing time
-        if status == PipelineStatus.DONE:
-            created_at = pipeline.get("created_at", datetime.now())
-            if isinstance(created_at, str):
-                created_at = datetime.fromisoformat(created_at)
-            processing_time = (datetime.now() - created_at).total_seconds()
-            pipeline["stats"]["processing_time"] = processing_time
+    #     # If the pipeline is done, calculate the total processing time
+    #     if status == PipelineStatus.DONE:
+    #         created_at = pipeline.get("created_at", datetime.now())
+    #         if isinstance(created_at, str):
+    #             created_at = datetime.fromisoformat(created_at)
+    #         processing_time = (datetime.now() - created_at).total_seconds()
+    #         pipeline["stats"]["processing_time"] = processing_time
         
-        self.repository.save_pipeline(pipeline)
-        self.logger.info(f"Updated pipeline {pipeline_id} status to {status.value}")
+    #     self.repository.save_pipeline(pipeline)
+    #     self.logger.info(f"Updated pipeline {pipeline_id} status to {status.value}")
     
     def log_metrics(self, pipeline_id: str, metrics: Dict[str, Any]) -> None:
         """
@@ -116,7 +115,7 @@ class PipelineMonitor(PipelineMonitorBase):
         if not pipeline:
             self.logger.warning(f"Attempted to log metrics for non-existent pipeline: {pipeline_id}")
             return
-        
+        print(f"Logging metrics for pipeline {pipeline_id}: {metrics}")
         # Update pipeline stats with new metrics
         updated_stats = pipeline.get("stats", {})
         for key, value in metrics.items():
@@ -154,7 +153,7 @@ class PipelineMonitor(PipelineMonitorBase):
             return
         
         # Update pipeline status to FAILED
-        self.update_pipeline_status(pipeline_id, PipelineStatus.FAILED)
+        # self.update_pipeline_status(pipeline_id, PipelineStatus.FAILED)
         
         # Save detailed error record
         error_data = {
@@ -166,47 +165,47 @@ class PipelineMonitor(PipelineMonitorBase):
         self.repository.save_error(error_data)
         self.logger.error(f"Error in pipeline {pipeline_id}: {error_message}")
     
-    def get_active_pipelines(self, source_type: Optional[SourceType] = None) -> List[Dict]:
-        """
-        Get all active pipelines, optionally filtered by source type.
+    # def get_active_pipelines(self, source_type: Optional[SourceType] = None) -> List[Dict]:
+    #     """
+    #     Get all active pipelines, optionally filtered by source type.
         
-        Args:
-            source_type: Optional filter by source type
+    #     Args:
+    #         source_type: Optional filter by source type
             
-        Returns:
-            List of active pipeline dictionaries
-        """
-        return self.repository.get_pipelines_by_status(PipelineStatus.ACTIVE, source_type)
+    #     Returns:
+    #         List of active pipeline dictionaries
+    #     """
+    #     return self.repository.get_pipelines_by_status(PipelineStatus.ACTIVE, source_type)
     
-    def get_pipeline_stats(self, pipeline_id: str) -> Dict:
-        """
-        Get comprehensive statistics for a specific pipeline.
+    # def get_pipeline_stats(self, pipeline_id: str) -> Dict:
+    #     """
+    #     Get comprehensive statistics for a specific pipeline.
         
-        Args:
-            pipeline_id: The ID of the pipeline
+    #     Args:
+    #         pipeline_id: The ID of the pipeline
             
-        Returns:
-            Dictionary containing pipeline statistics
-        """
-        pipeline = self.repository.get_pipeline(pipeline_id)
-        if not pipeline:
-            self.logger.warning(f"Attempted to get stats for non-existent pipeline: {pipeline_id}")
-            return {}
+    #     Returns:
+    #         Dictionary containing pipeline statistics
+    #     """
+    #     pipeline = self.repository.get_pipeline(pipeline_id)
+    #     if not pipeline:
+    #         self.logger.warning(f"Attempted to get stats for non-existent pipeline: {pipeline_id}")
+    #         return {}
         
-        # Get the latest metrics and errors
-        metrics = self.repository.get_pipeline_metrics(pipeline_id, limit=10)
-        errors = self.repository.get_pipeline_errors(pipeline_id, limit=10)
+    #     # Get the latest metrics and errors
+    #     metrics = self.repository.get_pipeline_metrics(pipeline_id, limit=10)
+    #     errors = self.repository.get_pipeline_errors(pipeline_id, limit=10)
         
-        return {
-            "pipeline_id": pipeline_id,
-            "source_type": pipeline["source_type"],
-            "status": pipeline["status"],
-            "created_at": pipeline["created_at"],
-            "last_updated": pipeline["last_updated"],
-            "stats": pipeline.get("stats", {}),
-            "recent_metrics": metrics,
-            "recent_errors": errors
-        }
+    #     return {
+    #         "pipeline_id": pipeline_id,
+    #         "source_type": pipeline["source_type"],
+    #         "status": pipeline["status"],
+    #         "created_at": pipeline["created_at"],
+    #         "last_updated": pipeline["last_updated"],
+    #         "stats": pipeline.get("stats", {}),
+    #         "recent_metrics": metrics,
+    #         "recent_errors": errors
+    #     }
     
     def get_source_stats(self, source_type: SourceType) -> Dict:
         """
@@ -284,12 +283,12 @@ class PipelineMonitor(PipelineMonitorBase):
         }
         self.repository.save_log_entry(log_data)
         
-        # Check if this pipeline is already registered - do this before early return
-        if pipeline_id:
-            pipeline = self.repository.get_pipeline(pipeline_id)
-            if not pipeline and ("Starting" in message or "Processing" in message):
-                # Auto-register new pipeline
-                self.register_pipeline(pipeline_id, source_type)
+        # # Check if this pipeline is already registered - do this before early return
+        # if pipeline_id:
+        #     pipeline = self.repository.get_pipeline(pipeline_id)
+        #     if not pipeline and ("Starting" in message or "Processing" in message):
+        #         # Auto-register new pipeline
+        #         self.register_pipeline(pipeline_id, source_type)
             
         
         # Extract and update metrics
@@ -317,20 +316,21 @@ class PipelineMonitor(PipelineMonitorBase):
             if api_endpoint:
                 metrics["api_calls"] = 1
         
-        # # Track chunk counts
-            # chunk_count = DocLogParser.extract_chunk_count(log_line)
-            # if chunk_count:
-            #     metrics["chunks_generated"] = chunk_count
-            
-            # # Track embedding counts
-            # embedding_count = DocLogParser.extract_embedding_count(log_line)
-            # if embedding_count:
-            #     metrics["embeddings_created"] = embedding_count
-            
-            # # Check for document processing status changes
-            # status = DocLogParser.extract_processing_status(log_line)
-            # if status:
-            #     self.update_pipeline_status(pipeline_id, status)
+    
+        # Track chunk counts
+        chunk_count = DocLogParser.extract_chunk_count(log_line)
+        if chunk_count:
+            metrics["chunks_generated"] = chunk_count
+        
+        # Track embedding counts
+        embedding_count = DocLogParser.extract_embedding_count(log_line)
+        if embedding_count:
+            metrics["embeddings_created"] = embedding_count
+        
+        # # Check for document processing status changes
+        # status = DocLogParser.extract_processing_status(log_line)
+        # if status:
+        #     self.update_pipeline_status(pipeline_id, status)
             
         # Track chunk counts
         chunk_count = LogParser.extract_chunk_count(log_line)
@@ -347,9 +347,9 @@ class PipelineMonitor(PipelineMonitorBase):
             self.log_metrics(pipeline_id, metrics)
         
         # Check for status changes (in the future we can handle it by source-specific parser)
-        status = LogParser.extract_pipeline_status(log_line)
-        if status and pipeline_id:
-            self.update_pipeline_status(pipeline_id, status)
+        # status = LogParser.extract_pipeline_status(log_line)
+        # if status and pipeline_id:
+        #     self.update_pipeline_status(pipeline_id, status)
     
     # def start_log_monitoring(self, log_file_path: str):
     #     """
