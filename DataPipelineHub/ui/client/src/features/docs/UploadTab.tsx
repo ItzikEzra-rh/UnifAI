@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FaFileAlt, FaUpload, FaTimes } from "react-icons/fa";
 import { Progress } from "@/components/ui/progress";
-import axiosInstance from "@/http/axiosConfig";
 import { ProcessingOptions } from "./ProcessingOptions";
+import { embedDocs, uploadDocs } from "@/api/docs";
 
 interface UploadTabProps {
     setShowUploadModal: (showUploadModal: boolean) => void;
@@ -64,10 +64,8 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                     reader.onerror = reject;
                     reader.readAsDataURL(file);
                 });
-
-                await axiosInstance.post("/api/docs/upload", {
-                    files: [{ name: file.name, content: base64 }]
-                });
+                
+                await uploadDocs([{ name: file.name, content: base64 }])
 
                 uploadedCount += 1;
                 setUploadProgress(uploadedCount);
@@ -84,7 +82,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
 
     const startPipeline = async (docs: {doc_name: string}[]) => {
         try {
-            await axiosInstance.put("/api/docs/embed.docs", { docs });
+            await embedDocs(docs)
             console.log("API submission successful!");
         } catch (error) {
             console.error(error);

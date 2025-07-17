@@ -1,8 +1,28 @@
 import { api } from '@/lib/queryClient';
-import type { Channel, Document, EmbedChannel } from '@/types';
+import type { Document } from '@/types';
 
 export async function fetchDocuments(): Promise<Document[]> {
-  const response = await api.get<Document[]>("docs/available.docs.get");
-  console.log(response)
+  const response = await api.get<any>("docs/available.docs.get");
   return response.data.docs;
 };
+
+export async function uploadDocs(files: {name: string, content: string}[]): Promise<any> {
+    const uploaded = await api.post<any>(
+        'docs/upload',
+        { files: files }
+      );
+}
+
+export async function embedDocs(docs: {doc_name: string}[]): Promise<any> {
+    const embedded = await api.post<any>(
+        'docs/embed.docs',
+        { docs: docs }
+      );
+}
+
+export async function deleteDoc(pipelineId: string): Promise<any> {
+    const deleted = await api.post<any>(
+        'docs/delete',
+        { pipelineId: pipelineId }
+      );
+}

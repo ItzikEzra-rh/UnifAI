@@ -12,7 +12,7 @@ import { DocumentFilters } from "./DocumentFilters";
 import { DocumentTable } from "./DocumentsTable";
 import { PageLoader } from "@/components/shared/PageLoader";
 import { DocumentGrid } from "./DocumentGrid";
-import { fetchDocuments } from "@/api/docs";
+import { deleteDoc, fetchDocuments } from "@/api/docs";
 
 export default function Documents() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -118,7 +118,7 @@ export default function Documents() {
   const onDeleteConfirmed = async (id: string) => {
     try {
       setDeleteLoading(true);
-      await axiosInstance.post("/api/docs/delete", { pipelineId: id });
+      await deleteDoc(id)
       await fetchDocuments(); 
     } catch (error) {
       console.error("Error deleting document:", error);
