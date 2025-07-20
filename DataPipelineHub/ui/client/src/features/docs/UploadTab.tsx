@@ -80,7 +80,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         }
     };
 
-    const startPipeline = async (docs: {doc_name: string}[]) => {
+    const startPipeline = async (docs: {source_name: string}[]) => {
         try {
             await embedDocs(docs)
             console.log("API submission successful!");
@@ -95,7 +95,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
 
         await uploadFiles(selectedFiles);
 
-        const docs = selectedFiles.map((file) => ({doc_name: file.name}));
+        const docs = selectedFiles.map((file) => ({source_name: file.name}));
 
         await startPipeline(docs);
         await fetchDocuments();
