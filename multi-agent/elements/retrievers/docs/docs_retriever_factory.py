@@ -6,8 +6,8 @@ from .docs_retriever import DocsRetriever
 
 
 class DocsRetrieverFactory(BaseFactory[DocsRetrieverConfig, DocsRetriever]):
-    def accepts(self, cfg: DocsRetrieverConfig) -> bool:
-        return cfg.type == "docs"
+    def accepts(self, cfg: DocsRetrieverConfig, element_type: str) -> bool:
+        return element_type == "docs"
 
     def create(self, cfg: DocsRetrieverConfig, **kwargs: Any) -> DocsRetriever:
         try:

@@ -13,12 +13,7 @@ class BaseConditionConfig(BaseModel):
     name: str = Field(
         None, description="Optional identifier for this condition"
     )
-    type: str = Field(
-        ..., description="Discriminator: which condition to evaluate"
-    )
 
     class Config:
         extra = Extra.forbid
         arbitrary_types_allowed = True
-
-

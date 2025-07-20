@@ -9,8 +9,8 @@ class ThresholdConditionFactory(BaseFactory[ThresholdConditionConfig, ThresholdC
     Factory that builds a ThresholdCondition from its config.
     """
 
-    def accepts(self, cfg: ThresholdConditionConfig) -> bool:
-        return cfg.type == "threshold"
+    def accepts(self, cfg: ThresholdConditionConfig, element_type: str) -> bool:
+        return element_type == "threshold"
 
     def create(self, cfg: ThresholdConditionConfig, **deps) -> ThresholdCondition:
         try:

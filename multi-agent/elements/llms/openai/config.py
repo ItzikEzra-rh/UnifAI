@@ -8,7 +8,6 @@ class OpenAIConfig(BaseLLMConfig):
     Configuration for the official OpenAI API.
     Extracted from legacy structure and cleaned up.
     """
-    type: Literal["openai"] = "openai"
     model_name: str = Field(
         "Qwen/Qwen3-8B",
         description="The OpenAI model ID to use for completions"

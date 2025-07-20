@@ -7,8 +7,8 @@ from .llm_merger import LLMMergerNode
 class LLMMergerNodeFactory(BaseFactory[MergerLLMNodeConfig, LLMMergerNode]):
     """Factory for LLMMergerNode."""
 
-    def accepts(self, cfg: MergerLLMNodeConfig) -> bool:
-        return cfg.type == "merger_node"
+    def accepts(self, cfg: MergerLLMNodeConfig, element_type: str) -> bool:
+        return element_type == "merger_node"
 
     def create(self, cfg: MergerLLMNodeConfig, **deps) -> LLMMergerNode:
         try:

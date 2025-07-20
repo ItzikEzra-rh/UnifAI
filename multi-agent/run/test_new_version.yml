@@ -7,23 +7,24 @@
 nodes:
   - rid: user_question
     name: user_question
+    type: user_question_node
     config:
       name: User Input
-      type: user_question_node
 
   - rid: agent_node
     name: agent
+    type: custom_agent_node
     config:
       name: My Agent
-      type: custom_agent_node
-      llm: $ref:af1b9b2900284ed79192e4ebbf8a05cf
+      llm: $ref:22ab2710e8a748f99c6e9b54f406031c
       system_message: >
         You are a smart assistant …
 
   - rid: final_answer
     name: final_answer
+    type: final_answer_node
     config:
-      type: final_answer_node
+      name: Final Answer
 
 # ─────────────────────────────────────────────────────────────────────────
 # Graph plan – references node UIDs

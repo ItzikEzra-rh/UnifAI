@@ -7,7 +7,6 @@ class MockLLMConfig(BaseLLMConfig):
     """
     A "mock" LLM for testing—returns a constant or echo.
     """
-    type: Literal["mock"] = "mock"
     model_name: Optional[str] = Field(
         None,
         description="Ignored by the mock implementation"

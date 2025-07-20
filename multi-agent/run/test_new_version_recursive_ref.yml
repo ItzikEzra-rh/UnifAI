@@ -7,16 +7,17 @@
 nodes:
   - rid: user_question
     name: user_question
+    type: user_question_node
     config:
       name: User Input
-      type: user_question_node
 
-  - rid: $ref:1bed437865fd4676aec346b14b4d898d
+  - rid: $ref:459be4bb23c448c395239a12e3e8451c
 
   - rid: final_answer
     name: final_answer
+    type: final_answer_node
     config:
-      type: final_answer_node
+      name: Final Answer
 
 # ─────────────────────────────────────────────────────────────────────────
 # Graph plan – references node UIDs
@@ -27,7 +28,7 @@ plan:
 
   - uid: agent_node
     after: user_question
-    node: 1bed437865fd4676aec346b14b4d898d
+    node: 459be4bb23c448c395239a12e3e8451c
 
   - uid: final_answer
     after: agent_node

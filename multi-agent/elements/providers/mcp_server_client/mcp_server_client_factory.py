@@ -10,8 +10,8 @@ class McpServerClientFactory(BaseFactory[McpProviderConfig, McpServerClient]):
     Factory for creating AdditionTool clients from an AdditionToolConfig.
     """
 
-    def accepts(self, cfg: McpProviderConfig) -> bool:
-        return cfg.type == "mcp_server"
+    def accepts(self, cfg: McpProviderConfig, element_type: str) -> bool:
+        return element_type == "mcp_server"
 
     def create(self, cfg: McpProviderConfig, **kwargs: Any) -> McpServerClient:
         """

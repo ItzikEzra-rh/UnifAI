@@ -10,9 +10,6 @@ class BaseRetrieverConfig(BaseModel):
     UI metadata is now handled by ElementSpec classes.
     """
     name: str = Field(..., description="Unique key for this retriever instance")
-    type: str = Field(
-        ..., description="Discriminator: which retriever provider to use"
-    )
 
     class Config:
         extra = Extra.forbid

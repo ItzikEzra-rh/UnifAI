@@ -22,12 +22,19 @@ class BaseFactory(ABC, Generic[Cfg, Out]):
     """
 
     @abstractmethod
-    def accepts(self, cfg: Cfg) -> bool:
+    def accepts(self, cfg: Cfg, element_type: str) -> bool:
         """
         Return True if this factory can build an instance from the given config.
 
-        :param cfg: A validated configuration object (Pydantic model).
-        :return: True if create(cfg, **deps) will succeed.
+        GUIDELINES:
+        1. PRIMARY: Use element_type for main factory selection (99% of cases)
+        2. SECONDARY: Use cfg for advanced validation only when needed
+        3. PERFORMANCE: Keep cfg inspection lightweight
+        4. CLARITY: Document any cfg-based logic clearly
+
+        :param cfg: Validated configuration object
+        :param element_type: Primary element type identifier
+        :return: True if this factory can handle this config
         """
         ...
 

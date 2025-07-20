@@ -11,8 +11,8 @@ class McpProxyToolFactory(BaseFactory[McpProxyToolConfig, McpProxyTool]):
     Factory for creating Division clients from an DivisionToolConfig.
     """
 
-    def accepts(self, cfg: McpProxyToolConfig) -> bool:
-        return cfg.type == "mcp_proxy"
+    def accepts(self, cfg: McpProxyToolConfig, element_type: str) -> bool:
+        return element_type == "mcp_proxy"
 
     def create(self, cfg: McpProxyToolConfig, **kwargs: Any) -> McpProxyTool:
         try:

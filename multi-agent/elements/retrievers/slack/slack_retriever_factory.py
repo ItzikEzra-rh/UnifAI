@@ -6,8 +6,8 @@ from .slack_retriever import SlackRetriever
 
 
 class SlackRetrieverFactory(BaseFactory[SlackRetrieverConfig, SlackRetriever]):
-    def accepts(self, cfg: SlackRetrieverConfig) -> bool:
-        return cfg.type == "slack"
+    def accepts(self, cfg: SlackRetrieverConfig, element_type: str) -> bool:
+        return element_type == "slack"
 
     def create(self, cfg: SlackRetrieverConfig, **kwargs: Any) -> SlackRetriever:
         try:

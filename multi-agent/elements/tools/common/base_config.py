@@ -11,9 +11,6 @@ class BaseToolConfig(BaseModel):
     UI metadata is now handled by ElementSpec classes.
     """
     name: str = Field(..., description="Unique key for this tool instance")
-    type: Literal["add", "divide", "ssh_exec", "mcp_proxy"] = Field(
-        ..., description="Discriminator: which tool to use"
-    )
 
     class Config:
         extra = Extra.forbid

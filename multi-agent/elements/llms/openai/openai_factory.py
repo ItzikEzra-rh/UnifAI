@@ -12,11 +12,11 @@ class OpenAIFactory(BaseFactory[OpenAIConfig, OpenAILLM]):
     Validates configuration and creates OpenAILLM with API key, model, etc.
     """
 
-    def accepts(self, cfg: OpenAIConfig) -> bool:
+    def accepts(self, cfg: OpenAIConfig, element_type: str) -> bool:
         """
         Recognize configs with 'type': 'openai'.
         """
-        return cfg.type == "openai"
+        return element_type == "openai"
 
     def create(self, cfg: OpenAIConfig, **deps: Any) -> OpenAILLM:
         """

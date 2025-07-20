@@ -56,7 +56,7 @@ class BlueprintResolver:
         concrete = res.config  # already a validated Pydantic model
         self._bucket.setdefault(cat.value, []).append(
             ResourceSpec[type(concrete)](
-                rid=res.rid, name=res.name, config=concrete
+                rid=res.rid, name=res.name, type=res.type, config=concrete
             )
         )
         # still inspect it for nested rids
@@ -78,7 +78,7 @@ class BlueprintResolver:
             name = self.resource_registry.get(rid).name
 
         self._bucket.setdefault(cat, []).append(
-            ResourceSpec[type(obj)](rid=rid, name=name, config=obj)
+            ResourceSpec[type(obj)](rid=rid, name=name, type=tp, config=obj)
         )
         self._scan_nested(obj)
 

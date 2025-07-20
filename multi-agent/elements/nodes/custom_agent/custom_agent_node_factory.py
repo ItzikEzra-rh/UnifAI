@@ -9,8 +9,8 @@ class CustomAgentNodeFactory(BaseFactory[CustomAgentNodeConfig, CustomAgentNode]
     Factory for creating CustomAgentNode instances.
     """
 
-    def accepts(self, cfg: CustomAgentNodeConfig) -> bool:
-        return cfg.type == "custom_agent_node"
+    def accepts(self, cfg: CustomAgentNodeConfig, element_type: str) -> bool:
+        return element_type == "custom_agent_node"
 
     def create(self, cfg, **deps):
         try:

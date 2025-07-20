@@ -7,7 +7,6 @@ class SlackRetrieverConfig(BaseRetrieverConfig):
     """
     Retrieves messages from Slack via an API endpoint.
     """
-    type: Literal["slack"] = "slack"
     api_url: HttpUrl = Field(
         default_factory=lambda: HttpUrl("http://0.0.0.0:13456/api/slack/query.match"),
         description="URL for retrieving slack messages from the API"
@@ -19,4 +18,4 @@ class SlackRetrieverConfig(BaseRetrieverConfig):
     threshold: float = Field(
         0.3, ge=0.0, le=1.0,
         description="Minimum relevance score to include a message"
-    ) 
+    )

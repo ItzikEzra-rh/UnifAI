@@ -6,4 +6,4 @@ class FinalAnswerNodeConfig(NodeBaseConfig):
     """
     Emits the final aggregated answer without overrides.
     """
-    type: Literal["final_answer_node"] = "final_answer_node" 
+    pass

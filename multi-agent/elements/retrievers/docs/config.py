@@ -7,7 +7,6 @@ class DocsRetrieverConfig(BaseRetrieverConfig):
     """
     Retrieves document passages via an API endpoint.
     """
-    type: Literal["docs"] = "docs"
     api_url: HttpUrl = Field(
         default_factory=lambda: HttpUrl("http://0.0.0.0:13456/api/docs/query.match"),
         description="URL for retrieving docs from the API"
@@ -19,4 +18,4 @@ class DocsRetrieverConfig(BaseRetrieverConfig):
     threshold: float = Field(
         0.3, ge=0.0, le=1.0,
         description="Minimum relevance score to include a passage"
-    ) 
+    )

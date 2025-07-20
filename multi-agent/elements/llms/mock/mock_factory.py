@@ -12,11 +12,11 @@ class MockLLMFactory(BaseFactory[MockLLMConfig, MockLLM]):
     Ensures config is well-formed (type="mock") but otherwise returns a stateless mock.
     """
 
-    def accepts(self, cfg: MockLLMConfig) -> bool:
+    def accepts(self, cfg: MockLLMConfig, element_type: str) -> bool:
         """
         Recognize configs with 'type': 'mock'.
         """
-        return cfg.type == "mock"
+        return element_type == "mock"
 
     def create(self, cfg: MockLLMConfig, **deps: Any) -> MockLLM:
         """

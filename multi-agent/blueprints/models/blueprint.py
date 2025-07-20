@@ -22,6 +22,7 @@ T = TypeVar("T", bound=BaseModel)
 class Resource(BaseModel, Generic[T]):
     rid: Ref
     name: str | None = None
+    type: str | None = None
     config: T | None = None
 
     class Config:
@@ -31,6 +32,7 @@ class Resource(BaseModel, Generic[T]):
 class ResourceSpec(BaseModel, Generic[T]):
     rid: Ref
     name: str
+    type: str = Field(..., description="Element type identifier")
     config: T
 
     class Config:

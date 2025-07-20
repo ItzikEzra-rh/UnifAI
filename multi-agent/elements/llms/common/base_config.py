@@ -11,9 +11,6 @@ class BaseLLMConfig(BaseModel):
     UI metadata is now handled by ElementSpec classes.
     """
     name: str = Field(..., description="Unique key for this LLM instance")
-    type: Literal["openai", "mock", "llamastack"] = Field(
-        ..., description="Discriminator: which LLM provider to use"
-    )
 
     class Config:
         extra = Extra.forbid

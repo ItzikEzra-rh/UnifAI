@@ -7,8 +7,8 @@ from .mock_agent import MockAgentNode
 class MockAgentNodeFactory(BaseFactory[MockAgentNodeConfig, MockAgentNode]):
     """Factory for MockAgentNode (needs no LLM / retriever / tools)."""
 
-    def accepts(self, cfg: MockAgentNodeConfig) -> bool:
-        return cfg.type == "mock_agent_node"
+    def accepts(self, cfg: MockAgentNodeConfig, element_type: str) -> bool:
+        return element_type == "mock_agent_node"
 
     def create(self, cfg: MockAgentNodeConfig, **deps) -> MockAgentNode:
         """

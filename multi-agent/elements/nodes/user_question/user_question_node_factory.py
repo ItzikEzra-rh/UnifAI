@@ -7,13 +7,13 @@ from .user_question import UserQuestionNode
 class UserQuestionNodeFactory(BaseFactory[UserQuestionNodeConfig, UserQuestionNode]):
     """Factory for UserQuestionNode (needs no LLM/retriever/tools)."""
 
-    def accepts(self, cfg: UserQuestionNodeConfig) -> bool:
-        return cfg.type == "user_question_node"
+    def accepts(self, cfg: UserQuestionNodeConfig, element_type: str) -> bool:
+        return element_type == "user_question_node"
 
     def create(self, cfg: UserQuestionNodeConfig, **deps) -> UserQuestionNode:
         try:
             return UserQuestionNode(
-                name=cfg.name or cfg.type
+                name=cfg.name
             )
         except Exception as exc:
             raise PluginConfigurationError(

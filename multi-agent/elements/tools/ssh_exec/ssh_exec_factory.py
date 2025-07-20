@@ -10,8 +10,8 @@ class SshExecToolFactory(BaseFactory[SshExecToolConfig, SshExecTool]):
     Factory for creating SshExecTool clients from an SshExecToolConfig.
     """
 
-    def accepts(self, cfg: SshExecToolConfig) -> bool:
-        return cfg.type == "ssh_exec"
+    def accepts(self, cfg: SshExecToolConfig, element_type: str) -> bool:
+        return element_type == "ssh_exec"
 
     def create(self, cfg: SshExecToolConfig, **kwargs: Any) -> SshExecTool:
         """
