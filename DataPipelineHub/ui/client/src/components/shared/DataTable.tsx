@@ -28,6 +28,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select'
+
 import {
   Table,
   TableHeader,
@@ -35,9 +36,7 @@ import {
   TableRow,
   TableHead,
   TableCell,
-} from '@/components/ui/table'
-
-
+} from '../ui/table'
 
 // ─── 1. SORT HELPERS ───────────────────────────────────────────────────────
 
@@ -103,6 +102,8 @@ interface DataTableProps<T extends object> {
     pagination: { pageIndex: number; pageSize: number }
   }>
   onSortingChange?: (updater: SortingState) => void
+  expendedRow?: any;
+  renderExpandedRow?: (row: T) => React.ReactNode
 }
 
 export function DataTable<T extends object>({
@@ -114,6 +115,8 @@ export function DataTable<T extends object>({
   enablePagination = true,
   initialState,
   onSortingChange,
+  expendedRow,
+  renderExpandedRow
 }: DataTableProps<T>) {
   // ─── State Hooks
   const [sorting, setSorting] = React.useState<SortingState>(
@@ -313,31 +316,46 @@ export function DataTable<T extends object>({
 
         <TableBody>
           {table.getRowModel().rows.length ? (
-            table.getRowModel().rows.map((row, index) => (
-              <TableRow
-                key={row.id}
-                className={cn(
-                  "animate-stagger-in border-b border-border/50 hover:bg-muted/50 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300",
-                  index < 6 && `delay-[${index * 100}ms]`
-                )}
-              >
-                {row.getVisibleCells().map(cell => {
-                  const align = (cell.column.columnDef.meta as any)?.align
-                  return (
-                    <TableCell
-                      key={cell.id}
-                      className={cn(
-                        "text-foreground",
-                        align === 'center' ? 'text-center' :
-                          align === 'right' ? 'text-right' : undefined
-                      )}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </TableCell>
-                  )
-                })}
-              </TableRow>
-            ))
+            table.getRowModel().rows.map((row, index) => {
+  const doc = row.original as Document;
+
+  return (
+    <React.Fragment key={row.id}>
+      <TableRow
+        className={cn(
+          "animate-stagger-in border-b border-border/50 hover:bg-muted/50 hover:-translate-y-0.5 hover:shadow-lg transition-all duration-300",
+          index < 6 && `delay-[${index * 100}ms]`
+        )}
+      >
+        {row.getVisibleCells().map(cell => {
+          const align = (cell.column.columnDef.meta as any)?.align;
+          return (
+            <TableCell
+              key={cell.id}
+              className={cn(
+                "text-foreground",
+                align === 'center' ? 'text-center' :
+                  align === 'right' ? 'text-right' : undefined
+              )}
+            >
+              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            </TableCell>
+          );
+        })}
+      </TableRow>
+
+      {expendedRow === row.original && (
+        <TableRow className="bg-muted/40 transition-all duration-300">
+          <TableCell colSpan={row.getVisibleCells().length}>
+            {renderExpandedRow?.(row.original)}
+          </TableCell>
+        </TableRow>
+      )}
+
+    </React.Fragment>
+  );
+})
+
           ) : (
             <TableRow>
               <TableCell colSpan={columns.length} className="text-center py-4 text-muted-foreground">

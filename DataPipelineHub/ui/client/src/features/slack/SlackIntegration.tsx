@@ -21,7 +21,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StatsCard, StatsCardProps } from "./StatsCard";
-import { EmbedChannel, EMBED_CHANNEL_STATUS } from "@/types";
+import { PipelineStatus } from "@/constants/pipelineStatus";
+import { EmbedChannel } from "@/types";
 import { formatNumber, getLastSyncTime } from "@/utils";
 
 export interface SlackTypeData {
@@ -83,6 +84,7 @@ export default function SlackIntegration() {
   // Effect to trigger additional stats refresh when channels change or embedding state changes
   useEffect(() => {
     // Debounce the refresh to avoid too many calls
+    console.log(embedChannels)
     const timeoutId = setTimeout(() => {
       refetchStats();
     }, 1000);

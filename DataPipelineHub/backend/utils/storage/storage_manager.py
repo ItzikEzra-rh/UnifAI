@@ -14,6 +14,7 @@ class StorageManager:
         source_id: str,
         source_name: str,
         source_type: str,
+        upload_by: str,
         enriched_chunks: List[Dict[str, Any]],
         pipeline_id: str,
         summary: Dict[str, Any]
@@ -25,8 +26,9 @@ class StorageManager:
             source_id=source_id,
             source_name=source_name,
             source_type=source_type,
+            upload_by=upload_by,
+            summary=summary,
             pipeline_id=pipeline_id,
-            summary=summary
         )
 
     def delete_source(self, source_id: str, source_type: Optional[str] = None) -> Dict[str, Any]:

@@ -8,125 +8,13 @@ import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 import { EmbedChannel, EMBED_CHANNEL_STATUS } from "@/types";
 import { Badge } from "@/components/ui/badge";
-import { DataTable, DataTableColumn } from "@/shared/DataTable";
+import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
+import { StatusBadge } from "@/components/shared/StatusBadge";
 
 export function isChannelNew(createdAt: Date): boolean {
   const now = new Date()
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
   return createdAt > dayAgo
-}
-
-function StatusBadge({ 
-  status, 
-  isActivelyEmbedding = false 
-}: { 
-  status: EmbedChannel["status"];
-  isActivelyEmbedding?: boolean;
-}) {
-  const { bgColor, textColor, label, isActive } = useMemo(() => {
-    // Override status if actively embedding
-    if (isActivelyEmbedding) {
-      return {
-        bgColor: "bg-blue-500/15",
-        textColor: "text-blue-400",
-        label: "Embedding...",
-        isActive: true,
-      };
-    }
-
-    switch (status) {
-      case EMBED_CHANNEL_STATUS.ACTIVE:
-        return {
-          bgColor: "bg-emerald-500/15",
-          textColor: "text-emerald-400",
-          label: "In Progress",
-          isActive: true,
-        };
-      case EMBED_CHANNEL_STATUS.PAUSED:
-        return {
-          bgColor: "bg-amber-500/15",
-          textColor: "text-amber-400",
-          label: "Paused",
-          isActive: false,
-        };
-      case EMBED_CHANNEL_STATUS.DONE:
-        return {
-          bgColor: "bg-green-500/15",
-          textColor: "text-green-400",
-          label: "Done",
-          isActive: false,
-        };
-      case EMBED_CHANNEL_STATUS.FAILED:
-        return {
-          bgColor: "bg-red-500/15",
-          textColor: "text-red-400",
-          label: "Failed",
-          isActive: false,
-        };
-      case EMBED_CHANNEL_STATUS.ARCHIVED:
-        return {
-          bgColor: "bg-slate-600/10",
-          textColor: "text-slate-400",
-          label: "Archived",
-          isActive: false,
-        };
-      case EMBED_CHANNEL_STATUS.CHUNKING_AND_EMBEDDING:
-        return {
-          bgColor: "bg-blue-500/15",
-          textColor: "text-blue-400",
-          label: "Chunking and Embedding",
-          isActive: true,
-        };
-      case EMBED_CHANNEL_STATUS.STORING:
-        return {
-          bgColor: "bg-blue-500/15",
-          textColor: "text-blue-400",
-          label: "Storing data",
-          isActive: true,
-        };
-      case EMBED_CHANNEL_STATUS.COLLECTING:
-        return {
-          bgColor: "bg-blue-500/15",
-          textColor: "text-blue-400",
-          label: "Collecting data",
-          isActive: true,
-        };
-      case EMBED_CHANNEL_STATUS.PROCESSING:
-        return {
-          bgColor: "bg-blue-500/15",
-          textColor: "text-blue-400",
-          label: "Processing data",
-          isActive: true,
-        };
-      default:
-        return {
-          bgColor: "bg-slate-600/10",
-          textColor: "text-slate-400",
-          label: status,
-          isActive: false,
-        };
-    }
-  }, [status, isActivelyEmbedding]);
-
-  return (
-    <span
-      className={cn(
-        "inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border",
-        bgColor,
-        textColor,
-        isActive && "animate-pulse-glow border-emerald-400/30",
-        !isActive && "border-current/20",
-      )}
-    >
-      <span
-        className={cn(
-          "w-2 h-2 rounded-full mr-2",
-          isActive ? "bg-emerald-400 animate-pulse" : "bg-current",
-        )}
-      ></span>
-      {label}
-    </span>
-  );
 }
 
 export function getColumns(
@@ -169,10 +57,11 @@ export function getColumns(
       header: "Status",
       cell: (info) => {
         const channel = info.row.original;
+        console.log(channel)
         const isActivelyEmbedding = activeEmbeddingIds.includes(channel.channel_id);
         return (
           <StatusBadge 
-            status={info.getValue<EmbedChannel["status"]>()} 
+            status={channel.status} 
             isActivelyEmbedding={isActivelyEmbedding}
           />
         );

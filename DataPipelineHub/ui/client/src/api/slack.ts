@@ -1,3 +1,4 @@
+import { formatDate } from '@/features/helpers';
 import { api } from '@/lib/queryClient';
 import type { Channel, EmbedChannel } from '@/types';
 import { timeAgo, formatDate } from '@/utils';
@@ -40,7 +41,7 @@ export async function submitSlackChannels(
 
 export async function fetchEmbeddedSlackChannels(): Promise<EmbedChannel[]> {
   const { data } = await api.get<any[]>("slack/embed.channels");
-
+  console.log(data)
   return data.map((item) => ({
     name: item.source_name || '', 
     messages: String(item.type_data?.message_count || item.message_count || 0),

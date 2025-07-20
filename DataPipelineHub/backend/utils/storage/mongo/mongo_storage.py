@@ -70,6 +70,7 @@ class MongoStorage(SourceRepository, PipelineRepository):
         source_id: str,
         source_name: str,
         source_type: str,
+        upload_by: str,
         pipeline_id: str,
         summary: Dict[str, Any]
     ) -> None:
@@ -84,6 +85,7 @@ class MongoStorage(SourceRepository, PipelineRepository):
             'source_name': source_name,
             'source_type': source_type,
             'pipeline_id': pipeline_id,
+            'upload_by': upload_by,
             'created_at':  now,
         }
 
@@ -105,6 +107,10 @@ class MongoStorage(SourceRepository, PipelineRepository):
         if source_type:
             query['source_type'] = source_type.upper()
         return list(col.find(query))
+    
+    def get_source_by_query(self, query: object) -> List[Dict[str, Any]]:
+        col = self._get_collection(Database.DATA.value, CollectionName.SOURCES.value)
+        return list(col.find(query, {"_id": 0}))
 
     def upsert_documents(
         self,

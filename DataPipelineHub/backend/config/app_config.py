@@ -25,6 +25,7 @@ class AppConfig(SharedConfig):
     # Flask Configuration
     # secret_key=your-super-secret-key-change-this-in-production
     frontend_url: str = "http://localhost:5000"
+    upload_folder: str = "/app/shared"
     # session_cookie_secure=True
     backend_env: str = "development"
     @classmethod
