@@ -2,13 +2,14 @@ from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
 from .config import MergerLLMNodeConfig
 from .llm_merger import LLMMergerNode
+from .identifiers import ELEMENT_TYPE_KEY
 
 
 class LLMMergerNodeFactory(BaseFactory[MergerLLMNodeConfig, LLMMergerNode]):
     """Factory for LLMMergerNode."""
 
     def accepts(self, cfg: MergerLLMNodeConfig, element_type: str) -> bool:
-        return element_type == "merger_node"
+        return element_type == ELEMENT_TYPE_KEY
 
     def create(self, cfg: MergerLLMNodeConfig, **deps) -> LLMMergerNode:
         try:

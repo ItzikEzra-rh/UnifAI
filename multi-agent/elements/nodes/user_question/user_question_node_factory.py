@@ -2,13 +2,14 @@ from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
 from .config import UserQuestionNodeConfig
 from .user_question import UserQuestionNode
+from .identifiers import ELEMENT_TYPE_KEY
 
 
 class UserQuestionNodeFactory(BaseFactory[UserQuestionNodeConfig, UserQuestionNode]):
     """Factory for UserQuestionNode (needs no LLM/retriever/tools)."""
 
     def accepts(self, cfg: UserQuestionNodeConfig, element_type: str) -> bool:
-        return element_type == "user_question_node"
+        return element_type == ELEMENT_TYPE_KEY
 
     def create(self, cfg: UserQuestionNodeConfig, **deps) -> UserQuestionNode:
         try:

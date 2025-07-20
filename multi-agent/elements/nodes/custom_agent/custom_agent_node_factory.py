@@ -2,6 +2,7 @@ from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
 from .config import CustomAgentNodeConfig
 from .custom_agent import CustomAgentNode
+from .identifiers import ELEMENT_TYPE_KEY
 
 
 class CustomAgentNodeFactory(BaseFactory[CustomAgentNodeConfig, CustomAgentNode]):
@@ -10,7 +11,7 @@ class CustomAgentNodeFactory(BaseFactory[CustomAgentNodeConfig, CustomAgentNode]
     """
 
     def accepts(self, cfg: CustomAgentNodeConfig, element_type: str) -> bool:
-        return element_type == "custom_agent_node"
+        return element_type == ELEMENT_TYPE_KEY
 
     def create(self, cfg, **deps):
         try:

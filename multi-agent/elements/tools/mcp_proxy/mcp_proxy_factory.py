@@ -3,6 +3,7 @@ from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
 from .config import McpProxyToolConfig
 from .mcp_proxy_tool import McpProxyTool
+from .identifiers import ELEMENT_TYPE_KEY
 from elements.providers.mcp_server_client.mcp_server_client import McpServerClient
 
 
@@ -12,7 +13,7 @@ class McpProxyToolFactory(BaseFactory[McpProxyToolConfig, McpProxyTool]):
     """
 
     def accepts(self, cfg: McpProxyToolConfig, element_type: str) -> bool:
-        return element_type == "mcp_proxy"
+        return element_type == ELEMENT_TYPE_KEY
 
     def create(self, cfg: McpProxyToolConfig, **kwargs: Any) -> McpProxyTool:
         try:

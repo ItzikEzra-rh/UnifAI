@@ -3,6 +3,7 @@ from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
 from .config import SshExecToolConfig
 from .ssh_exec import SshExecTool
+from .identifiers import ELEMENT_TYPE_KEY
 
 
 class SshExecToolFactory(BaseFactory[SshExecToolConfig, SshExecTool]):
@@ -11,7 +12,7 @@ class SshExecToolFactory(BaseFactory[SshExecToolConfig, SshExecTool]):
     """
 
     def accepts(self, cfg: SshExecToolConfig, element_type: str) -> bool:
-        return element_type == "ssh_exec"
+        return element_type == ELEMENT_TYPE_KEY
 
     def create(self, cfg: SshExecToolConfig, **kwargs: Any) -> SshExecTool:
         """

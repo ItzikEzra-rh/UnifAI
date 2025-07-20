@@ -3,6 +3,7 @@ from ...common.base_factory import BaseFactory
 from ...common.exceptions import PluginConfigurationError
 from .config import MockLLMConfig
 from .mock import MockLLM
+from .identifiers import ELEMENT_TYPE_KEY
 
 
 class MockLLMFactory(BaseFactory[MockLLMConfig, MockLLM]):
@@ -16,7 +17,7 @@ class MockLLMFactory(BaseFactory[MockLLMConfig, MockLLM]):
         """
         Recognize configs with 'type': 'mock'.
         """
-        return element_type == "mock"
+        return element_type == ELEMENT_TYPE_KEY
 
     def create(self, cfg: MockLLMConfig, **deps: Any) -> MockLLM:
         """

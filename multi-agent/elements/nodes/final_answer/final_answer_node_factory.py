@@ -2,13 +2,14 @@ from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
 from .config import FinalAnswerNodeConfig
 from .final_answer import FinalAnswerNode
+from .identifiers import ELEMENT_TYPE_KEY
 
 
 class FinalAnswerNodeFactory(BaseFactory[FinalAnswerNodeConfig, FinalAnswerNode]):
     """Builds a FinalAnswerNode (no LLM / retriever / tools needed)."""
 
     def accepts(self, cfg: FinalAnswerNodeConfig, element_type: str) -> bool:
-        return element_type == "final_answer_node"
+        return element_type == ELEMENT_TYPE_KEY
 
     def create(self, cfg: FinalAnswerNodeConfig, **deps) -> FinalAnswerNode:
         try:

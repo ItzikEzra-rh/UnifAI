@@ -1,0 +1,1 @@
+ELEMENT_TYPE_KEY = "mock_agent_node" 

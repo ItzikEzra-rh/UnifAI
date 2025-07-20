@@ -1,6 +1,7 @@
 from typing import Literal, Dict, Any
 from pydantic import Field, HttpUrl
 from ..common.base_config import BaseLLMConfig
+from .identifiers import ELEMENT_TYPE_KEY
 
 
 class OpenAIConfig(BaseLLMConfig):
@@ -8,7 +9,7 @@ class OpenAIConfig(BaseLLMConfig):
     Configuration for the official OpenAI API.
     Extracted from legacy structure and cleaned up.
     """
-    type: Literal["openai"] = "openai"
+    type: Literal[ELEMENT_TYPE_KEY] = ELEMENT_TYPE_KEY
     temperature: float = Field(
         0.7, ge=0.0, le=1.0,
         description="Sampling temperature"

@@ -1,6 +1,7 @@
 from typing import Literal
 from pydantic import Field
 from ..common.base_config import BaseConditionConfig
+from .identifiers import ELEMENT_TYPE_KEY
 
 
 class ThresholdConditionConfig(BaseConditionConfig):
@@ -11,7 +12,7 @@ class ThresholdConditionConfig(BaseConditionConfig):
       - threshold: numeric cutoff
       - operator: comparison operator
     """
-    type: Literal["threshold"] = "threshold"
+    type: Literal[ELEMENT_TYPE_KEY] = ELEMENT_TYPE_KEY
     input_key: str = Field(
         ..., description="State key to fetch the value"
     )

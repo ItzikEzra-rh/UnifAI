@@ -1,0 +1,1 @@
+ELEMENT_TYPE_KEY = "merger_node" 
