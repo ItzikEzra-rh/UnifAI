@@ -8,10 +8,13 @@ from elements.nodes.final_answer.config import FinalAnswerNodeConfig
 from elements.nodes.user_question.config import UserQuestionNodeConfig
 
 # Union type for backward compatibility with blueprints
-NodeSpec = Union[
-    CustomAgentNodeConfig,
-    MockAgentNodeConfig,
-    MergerLLMNodeConfig,
-    FinalAnswerNodeConfig,
-    UserQuestionNodeConfig,
+NodeSpec = Annotated[
+    Union[
+        CustomAgentNodeConfig,
+        MockAgentNodeConfig,
+        MergerLLMNodeConfig,
+        FinalAnswerNodeConfig,
+        UserQuestionNodeConfig,
+    ],
+    Field(discriminator="type")
 ]

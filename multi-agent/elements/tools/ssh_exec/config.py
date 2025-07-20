@@ -7,6 +7,7 @@ class SshExecToolConfig(BaseToolConfig):
     """
     Configuration for the SSH-execution tool.
     """
+    type: Literal["ssh_exec"] = "ssh_exec"
     host: str = Field(..., description="IP or DNS name of the target VM")
     port: int = Field(22, description="SSH port")
     username: str = Field(..., description="SSH user name")

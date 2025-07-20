@@ -33,7 +33,9 @@ class BlueprintResolver:
             for res in getattr(draft, cat.value):
                 raw_rid = res.rid.ref if isinstance(res.rid, Ref) else res.rid
 
-                if res.config is not None:
+                external_ref = isinstance(res.rid, Ref) and res.rid.is_external_ref()
+
+                if not external_ref:
                     # inline resource → keep its config in the bucket
                     self._stash_inline(cat, res)
                 else:  # ← LIVE REF

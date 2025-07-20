@@ -4,7 +4,10 @@ from elements.llms.openai.config import OpenAIConfig
 from elements.llms.mock.config import MockLLMConfig
 
 # Union type for backward compatibility with blueprints
-LLMsSpec = Union[
-    OpenAIConfig,
-    MockLLMConfig,
+LLMsSpec = Annotated[
+    Union[
+        OpenAIConfig,
+        MockLLMConfig,
+    ],
+    Field(discriminator="type")
 ]

@@ -137,35 +137,47 @@ def save_resources(app):
                                            category="llms",
                                            type="openai",
                                            name="openai_llm",
-                                           config={"model_name": "gemini-2.0-flash",
-                                                   "api_key": "AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ",
-                                                   "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"}).rid
+                                           config={
+                                               "type": "openai",
+                                               "model_name": "gemini-2.0-flash",
+                                               "api_key": "AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ",
+                                               "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"
+                                           }).rid
 
     mcp_rid = app.resources_service.create(user_id="alice",
                                            category="providers",
                                            type="mcp_server",
                                            name="My mcp server Node",
-                                           config={"sse_endpoint": "http://localhost:8004"}).rid
+                                           config={
+                                               "type": "mcp_server",
+                                               "sse_endpoint": "http://localhost:8004"
+                                           }).rid
 
     tool_rid = app.resources_service.create(user_id="alice",
                                             category="tools",
                                             type="mcp_proxy",
                                             name="My mcp addition tool",
-                                            config={"tool_name": "addition",
-                                                    "provider": f"$ref:{mcp_rid}"}).rid
+                                            config={
+                                                "type": "mcp_proxy",
+                                                "tool_name": "addition",
+                                                "provider": f"$ref:{mcp_rid}"
+                                            }).rid
+
     app.resources_service.create(user_id="alice",
                                  category="nodes",
                                  type="custom_agent_node",
                                  name="My Agent Node",
-                                 config={"llm": f"$ref:{llm_rid}",
-                                         "tools": [f"$ref:{tool_rid}"],
-                                         "system_message": "You are a smart assistant …"})
+                                 config={
+                                     "type": "custom_agent_node",
+                                     "llm": f"$ref:{llm_rid}",
+                                     "tools": [f"$ref:{tool_rid}"],
+                                     "system_message": "You are a smart assistant …"})
 
 
 def run_test_new_version(app):
     blueprint_loader = YAMLBlueprintLoader()
-    # raw = blueprint_loader.load("run/test_new_version.yml")
-    raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
+    raw = blueprint_loader.load("run/test_new_version.yml")
+    # raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
     blueprint_id = app.blueprint_service.save_draft(user_id="alice", draft_dict=raw)
     print(f"Saved blueprint draft with id: {blueprint_id}")
     session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)

@@ -7,4 +7,4 @@ class UserQuestionNodeConfig(NodeBaseConfig):
     """
     Logs or passes through user input without modification.
     """
-    name: str = Field(None, description="Optional node instance name")
+    type: Literal["user_question_node"] = "user_question_node"

@@ -4,7 +4,10 @@ from elements.tools.ssh_exec.config import SshExecToolConfig
 from elements.tools.mcp_proxy.config import McpProxyToolConfig
 
 # Union type for backward compatibility with blueprints
-ToolsSpec = Union[
-    SshExecToolConfig,
-    McpProxyToolConfig,
+ToolsSpec = Annotated[
+    Union[
+        SshExecToolConfig,
+        McpProxyToolConfig,
+    ],
+    Field(discriminator="type")
 ]

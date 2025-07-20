@@ -8,6 +8,7 @@ class OpenAIConfig(BaseLLMConfig):
     Configuration for the official OpenAI API.
     Extracted from legacy structure and cleaned up.
     """
+    type: Literal["openai"] = "openai"
     temperature: float = Field(
         0.7, ge=0.0, le=1.0,
         description="Sampling temperature"

@@ -8,5 +8,6 @@ class McpProxyToolConfig(BaseToolConfig):
     """
     Configuration for the Mcp Proxy tool.
     """
+    type: Literal["mcp_proxy"] = "mcp_proxy"
     tool_name: str = Field(..., description="")
     provider: ProviderRef = Field(..., description="MCP server provider")

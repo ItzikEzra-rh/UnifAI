@@ -11,6 +11,7 @@ class ThresholdConditionConfig(BaseConditionConfig):
       - threshold: numeric cutoff
       - operator: comparison operator
     """
+    type: Literal["threshold"] = "threshold"
     input_key: str = Field(
         ..., description="State key to fetch the value"
     )

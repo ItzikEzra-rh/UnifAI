@@ -1,5 +1,6 @@
-from core.ref.models import LLMRef, RetrieverRef, ToolRef
+from core.ref.models import LLMRef
 from elements.nodes.common.base_config import NodeBaseConfig
+from typing import Literal
 from pydantic import Field
 
 
@@ -7,6 +8,7 @@ class MergerLLMNodeConfig(NodeBaseConfig):
     """
     Node that merges outputs from multiple agents.
     """
+    type: Literal["merger_node"] = "merger_node"
     llm: LLMRef = Field(description="LLM Ref UID to use")
     system_message: str = Field("""You are the Merger Agent. Your role is to combine answers from specialized agents into one clear, helpful response.
 
