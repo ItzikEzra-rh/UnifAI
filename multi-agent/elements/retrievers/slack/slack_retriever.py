@@ -10,11 +10,9 @@ class SlackRetriever(BaseRetriever):
     Calls an external Slack‐query API to fetch matching messages.
     """
 
-    def __init__(self, name: str,
-                 api_url: HttpUrl,
+    def __init__(self, api_url: HttpUrl,
                  top_k_results: int,
                  threshold: float):
-        self._name = name
         self.api_url = str(api_url)
         self.top_k = top_k_results
         self.threshold = threshold
@@ -34,7 +32,3 @@ class SlackRetriever(BaseRetriever):
         if isinstance(data, list):
             return [item for item in data if item.get("score", 0.0) >= self.threshold]
         return data
-
-    @property
-    def name(self) -> str:
-        return self._name

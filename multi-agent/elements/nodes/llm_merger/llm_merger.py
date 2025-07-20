@@ -11,13 +11,11 @@ class LLMMergerNode(LlmCapableMixin, BaseNode):
 
     def __init__(self,
                  *,
-                 name: str = "llm_merger",
                  llm,
                  system_message: str = "",
                  retries: int = 1,
                  **kwargs):
-        super().__init__(name=name,
-                         llm=llm,
+        super().__init__(llm=llm,
                          system_message=system_message,
                          retries=retries,
                          **kwargs)

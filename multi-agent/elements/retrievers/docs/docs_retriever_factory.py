@@ -11,8 +11,7 @@ class DocsRetrieverFactory(BaseFactory[DocsRetrieverConfig, DocsRetriever]):
 
     def create(self, cfg: DocsRetrieverConfig, **kwargs: Any) -> DocsRetriever:
         try:
-            return DocsRetriever(name=cfg.name,
-                                 api_url=cfg.api_url,
+            return DocsRetriever(api_url=cfg.api_url,
                                  top_k_results=cfg.top_k_results,
                                  threshold=cfg.threshold)
         except Exception as e:

@@ -11,8 +11,7 @@ class SlackRetrieverFactory(BaseFactory[SlackRetrieverConfig, SlackRetriever]):
 
     def create(self, cfg: SlackRetrieverConfig, **kwargs: Any) -> SlackRetriever:
         try:
-            return SlackRetriever(name=cfg.name,
-                                  api_url=cfg.api_url,
+            return SlackRetriever(api_url=cfg.api_url,
                                   top_k_results=cfg.top_k_results,
                                   threshold=cfg.threshold)
         except Exception as e:

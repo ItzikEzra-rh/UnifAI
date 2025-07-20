@@ -15,8 +15,8 @@ class OpenAILLM(BaseLLM, SupportsStreaming):
 
     def __init__(
             self,
-            base_url: str = "http://0.0.0.0:8000/v1",
-            model_name: str = "Qwen/Qwen1.5-7B-Chat",
+            base_url: str,
+            model_name: str,
             temperature: float = 0.7,
             max_tokens: int = 1024,
             api_key: str = "EMPTY",

@@ -1,9 +1,10 @@
-from typing import Literal
+from typing import Optional
 from elements.nodes.common.base_config import NodeBaseConfig
+from pydantic import Field
 
 
 class FinalAnswerNodeConfig(NodeBaseConfig):
     """
     Emits the final aggregated answer without overrides.
     """
-    pass
+    name: str = Field(None, description="Optional node instance name")

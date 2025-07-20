@@ -10,7 +10,6 @@ class BaseToolConfig(BaseModel):
     Subclasses must define a Literal `type` field and can add specific fields.
     UI metadata is now handled by ElementSpec classes.
     """
-    name: str = Field(..., description="Unique key for this tool instance")
 
     class Config:
         extra = Extra.forbid

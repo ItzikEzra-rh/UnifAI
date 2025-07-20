@@ -12,7 +12,8 @@ class UserQuestionNode(BaseNode):
                  *,
                  name: str = "user_question",
                  **kwargs):
-        super().__init__(name=name, **kwargs)
+        super().__init__(**kwargs)
+        self.name = name
 
     def run(self, state: GraphState) -> GraphState:
         prompt = state.get("user_prompt", "<no input>")

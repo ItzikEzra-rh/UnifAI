@@ -42,7 +42,8 @@ class FinalAnswerNode(BaseNode):
             name: str = "final_answer",
             **kwargs
     ):
-        super().__init__(name=name, **kwargs)
+        super().__init__(**kwargs)
+        self.name = name
 
     def run(self, state: GraphState) -> GraphState:
         messages = state.get("messages", [])

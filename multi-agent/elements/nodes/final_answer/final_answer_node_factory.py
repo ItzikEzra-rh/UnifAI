@@ -12,9 +12,7 @@ class FinalAnswerNodeFactory(BaseFactory[FinalAnswerNodeConfig, FinalAnswerNode]
 
     def create(self, cfg: FinalAnswerNodeConfig, **deps) -> FinalAnswerNode:
         try:
-            return FinalAnswerNode(
-                name=cfg.name
-            )
+            return FinalAnswerNode()
         except Exception as exc:
             raise PluginConfigurationError(
                 f"FinalAnswerNodeFactory.create failed: {exc}",

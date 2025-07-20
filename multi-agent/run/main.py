@@ -132,31 +132,37 @@ def main_resume_session(run_id: str):
     stream_with_rich(stream)
 
 
-if __name__ == "__main__":
-    pass
-    config = get_app_config()
-    app = AppContainer(config)
-    # llm_rid = app.resources_service.create(user_id="alice", category="llms", type="openai",
-    #                                        name="openai_llm",
-    #                                        config={"name": "openai_llm",
-    #                                                "model_name": "gemini-2.0-flash",
-    #                                                "api_key": "AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ",
-    #                                                "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"}).rid
-    # mcp_rid = app.resources_service.create(user_id="alice", category="providers", type="mcp_server",
-    #                                        name="My mcp server Node",
-    #                                        config={"name": "mcp1",
-    #                                                "sse_endpoint": "http://localhost:8004"}).rid
-    # tool_rid = app.resources_service.create(user_id="alice", category="tools", type="mcp_proxy",
-    #                                         name="My mcp addition tool",
-    #                                         config={"name": "addition_tool",
-    #                                                 "tool_name": "addition",
-    #                                                 "provider": f"$ref:{mcp_rid}"}).rid
-    # app.resources_service.create(user_id="alice", category="nodes", type="custom_agent_node", name="My Agent Node",
-    #                              config={"name": "My Agent",
-    #                                      "llm": f"$ref:{llm_rid}",
-    #                                      "tools": [f"$ref:{tool_rid}"],
-    #                                      "system_message": "You are a smart assistant …"})
+def save_resources(app):
+    llm_rid = app.resources_service.create(user_id="alice",
+                                           category="llms",
+                                           type="openai",
+                                           name="openai_llm",
+                                           config={"model_name": "gemini-2.0-flash",
+                                                   "api_key": "AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ",
+                                                   "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"}).rid
 
+    mcp_rid = app.resources_service.create(user_id="alice",
+                                           category="providers",
+                                           type="mcp_server",
+                                           name="My mcp server Node",
+                                           config={"sse_endpoint": "http://localhost:8004"}).rid
+
+    tool_rid = app.resources_service.create(user_id="alice",
+                                            category="tools",
+                                            type="mcp_proxy",
+                                            name="My mcp addition tool",
+                                            config={"tool_name": "addition",
+                                                    "provider": f"$ref:{mcp_rid}"}).rid
+    app.resources_service.create(user_id="alice",
+                                 category="nodes",
+                                 type="custom_agent_node",
+                                 name="My Agent Node",
+                                 config={"llm": f"$ref:{llm_rid}",
+                                         "tools": [f"$ref:{tool_rid}"],
+                                         "system_message": "You are a smart assistant …"})
+
+
+def run_test_new_version(app):
     blueprint_loader = YAMLBlueprintLoader()
     # raw = blueprint_loader.load("run/test_new_version.yml")
     raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
@@ -165,12 +171,20 @@ if __name__ == "__main__":
     session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
     print(f"Created session with id: {session.run_context.run_id}")
     print(app.session_service.execute(session_id=session.run_context.run_id,
-                                inputs={"user_prompt": "what is 53534534 + 8678675?"},
-                                stream=False,
-                                scope="public"))
+                                      inputs={"user_prompt": "what is 53534534 + 8678675?"},
+                                      stream=False,
+                                      scope="public"))
+
+
+if __name__ == "__main__":
+    pass
+    config = get_app_config()
+    app = AppContainer(config)
+
+    # save_resources(app)
+
+    run_test_new_version(app)
 
     # app.blueprint_service.delete(blueprint_id="2af1b9b2900284ed79192e4ebbf8a05cf")
     # app.resources_service.delete(rid="af1b9b2900284ed79192e4ebbf8a05cf")
     # app.resources_service.delete(rid="49f4170dd7da45289a500e43c6a7f8b5")
-
-

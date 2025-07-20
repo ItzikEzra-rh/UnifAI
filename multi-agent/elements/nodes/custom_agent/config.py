@@ -1,11 +1,14 @@
-from typing import Literal, Optional
 from elements.nodes.common.base_config import NodeBaseConfig
 from pydantic import Field
-from core.ref.models import Ref
+from typing import Optional, List
+from core.ref.models import LLMRef, RetrieverRef, ToolRef
 
 
 class CustomAgentNodeConfig(NodeBaseConfig):
     """
     Custom agent node with full override capabilities.
     """
-    llm: Ref = Field(description="LLM Ref UID to use")
+    llm: LLMRef = Field(description="LLM Ref UID to use")
+    retriever: Optional[RetrieverRef] = Field(None, description="Retriever key to use")
+    tools: Optional[List[ToolRef]] = Field(default_factory=list, description="List of tool keys")
+    system_message: str = Field(None, description="Custom system prompt")

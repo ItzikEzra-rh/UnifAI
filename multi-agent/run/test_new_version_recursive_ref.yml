@@ -11,7 +11,7 @@ nodes:
     config:
       name: User Input
 
-  - rid: $ref:459be4bb23c448c395239a12e3e8451c
+  - rid: $ref:45736e66d3074903b27689c4bf41b57b
 
   - rid: final_answer
     name: final_answer
@@ -28,7 +28,7 @@ plan:
 
   - uid: agent_node
     after: user_question
-    node: 459be4bb23c448c395239a12e3e8451c
+    node: 45736e66d3074903b27689c4bf41b57b
 
   - uid: final_answer
     after: agent_node

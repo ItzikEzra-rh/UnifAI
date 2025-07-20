@@ -9,7 +9,6 @@ class ProviderBaseConfig(BaseModel):
     
     UI metadata is now handled by ElementSpec classes.
     """
-    name: str = Field(..., description="Unique key for this provider instance")
 
     class Config:
         extra = Extra.forbid

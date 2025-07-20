@@ -23,20 +23,12 @@ class McpProxyTool(BaseTool):
             self,
             mcp_tool_name: str,
             mcp_client: McpServerClient,
-            custom_name: Optional[str] = None,
-            custom_description: Optional[str] = None
     ):
+        self.name = mcp_tool_name
         self.mcp_tool_name = mcp_tool_name
         self.mcp_client = mcp_client
         self._tool_info = None
         self._schema_initialized = False
-
-        # Call BaseTool.__init__ with placeholder schema; we'll overwrite once real info arrives.
-        super().__init__(
-            name=custom_name or mcp_tool_name,
-            description=custom_description or f"MCP proxy for {mcp_tool_name}",
-            args_schema=None
-        )
 
         # Fire off a one-time background task to fetch metadata
         run_async(self._ensure_tool_info())
@@ -181,4 +173,4 @@ class McpProxyTool(BaseTool):
         return (
             f"McpProxyTool(name='{self.name}', mcp_tool_name='{self.mcp_tool_name}', "
             f"description='{desc}', connected={self.mcp_client.is_connected})"
-        ) 
+        )

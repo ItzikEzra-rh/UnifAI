@@ -11,14 +11,15 @@ class MockAgentNode(BaseNode):
     def __init__(self,
                  *,
                  name: str = "mock_agent",
-                 fixed_message: Optional[str] = None,
+                 echo_message: Optional[str] = None,
                  **kwargs):
-        super().__init__(name=name, **kwargs)
-        self.fixed_message = fixed_message
+        super().__init__(**kwargs)
+        self.name = name
+        self.echo_message = echo_message
 
     def run(self, state: GraphState) -> GraphState:
-        response = (self.fixed_message
-                    if self.fixed_message is not None
+        response = (self.echo_message
+                    if self.echo_message is not None
                     else f"Mock echo: {state.get('input', '')}")
         state["output"] = response
         return state

@@ -13,10 +13,10 @@ class BaseNode(SupportsStreaming, ABC):
     • NO domain-specific logic
     """
 
-    def __init__(self, *, name: str, **kwargs: Any):
+    def __init__(self, *, retries: int = 1, **kwargs: Any):
         super().__init__(**kwargs)  # MRO
+        self.retries = retries
         self._ctx: Optional[StepContext] = None
-        self.name = name
         self._stream_writer: Optional[StreamWriter] = None
         self._is_streaming = False
 

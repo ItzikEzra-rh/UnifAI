@@ -1,5 +1,6 @@
-from typing import ClassVar
-from pydantic import RootModel, model_serializer, SerializerFunctionWrapHandler, SerializationInfo
+from typing import ClassVar, Literal, Annotated
+from pydantic import RootModel, model_serializer, SerializerFunctionWrapHandler, SerializationInfo, Field
+from core.enums import ResourceCategory
 
 
 class Ref(RootModel[str]):
@@ -38,3 +39,30 @@ class Ref(RootModel[str]):
         if info.mode == "json":
             return self.root
         return self.ref
+
+
+def _create_ref_type(category: ResourceCategory) -> type[Annotated[Ref, Field]]:
+    """
+    Factory function to create a typed reference for a specific resource category.
+
+    Args:
+        category: The resource category this reference points to
+
+    Returns:
+        An Annotated Ref type with category metadata
+    """
+    return Annotated[Ref, Field(
+        description=f"Reference to a {category.value} resource",
+        json_schema_extra={
+            "category": category.value,
+            "examples": [f"$ref:<rid> - resource reference from DB", f"<rid> - inline reference"]
+        }
+    )]
+
+
+LLMRef = _create_ref_type(ResourceCategory.LLM)
+NodeRef = _create_ref_type(ResourceCategory.NODE)
+RetrieverRef = _create_ref_type(ResourceCategory.RETRIEVER)
+ToolRef = _create_ref_type(ResourceCategory.TOOL)
+ProviderRef = _create_ref_type(ResourceCategory.PROVIDER)
+ConditionRef = _create_ref_type(ResourceCategory.CONDITION)

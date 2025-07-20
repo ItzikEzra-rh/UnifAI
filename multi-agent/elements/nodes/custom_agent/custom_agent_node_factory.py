@@ -15,7 +15,6 @@ class CustomAgentNodeFactory(BaseFactory[CustomAgentNodeConfig, CustomAgentNode]
     def create(self, cfg, **deps):
         try:
             return CustomAgentNode(
-                name=cfg.name,
                 llm=deps.pop("llm"),
                 retriever=deps.pop("retriever"),
                 tools=deps.pop("tools"),

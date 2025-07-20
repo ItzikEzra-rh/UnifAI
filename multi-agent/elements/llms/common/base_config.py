@@ -1,5 +1,4 @@
-from typing import Literal, Union, Annotated
-from pydantic import BaseModel, Field, Extra
+from pydantic import BaseModel, Field, Extra, HttpUrl
 
 
 class BaseLLMConfig(BaseModel):
@@ -10,7 +9,16 @@ class BaseLLMConfig(BaseModel):
     Subclasses must define a matching Literal type field for discrimination.
     UI metadata is now handled by ElementSpec classes.
     """
-    name: str = Field(..., description="Unique key for this LLM instance")
+    model_name: str = Field(
+        description="The OpenAI model ID to use for completions"
+    )
+    api_key: str = Field(
+        "EMPTY",
+        description="API key or token for OpenAI"
+    )
+    base_url: HttpUrl = Field(
+        description="Base URL for the OpenAI API"
+    )
 
     class Config:
         extra = Extra.forbid

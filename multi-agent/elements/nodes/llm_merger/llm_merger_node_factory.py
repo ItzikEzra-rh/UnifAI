@@ -14,7 +14,6 @@ class LLMMergerNodeFactory(BaseFactory[MergerLLMNodeConfig, LLMMergerNode]):
         try:
             return LLMMergerNode(
                 llm=deps.pop("llm"),
-                name=cfg.name or cfg.type,
                 system_message=cfg.system_message,
                 retries=cfg.retries,
             )

@@ -14,11 +14,3 @@ class BaseRetriever(ABC):
         E.g. look up state[input_key] and return list of contexts.
         """
         ...
-
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """
-        Returns identifier for this retriever (for logging/debug).
-        """
-        ...

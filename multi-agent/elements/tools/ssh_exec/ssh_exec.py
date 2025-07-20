@@ -12,13 +12,12 @@ class SshExecTool(BaseTool):
     """
     Synchronous + asynchronous execution over SSH.
     """
+    name: str = "SshExecTool"
+    description: str = "Execute a shell command on a remote VM via SSH"
+    args_schema = CommandInput
 
     def __init__(self, *, host: str, port: int, username: str, password: str):
-        super().__init__(
-            name="ssh_exec",
-            description="Execute a shell command on a remote VM",
-            args_schema=CommandInput
-        )
+        super().__init__()
         self._host = host
         self._port = port
         self._username = username

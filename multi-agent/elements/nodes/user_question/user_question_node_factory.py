@@ -12,9 +12,7 @@ class UserQuestionNodeFactory(BaseFactory[UserQuestionNodeConfig, UserQuestionNo
 
     def create(self, cfg: UserQuestionNodeConfig, **deps) -> UserQuestionNode:
         try:
-            return UserQuestionNode(
-                name=cfg.name
-            )
+            return UserQuestionNode()
         except Exception as exc:
             raise PluginConfigurationError(
                 f"UserQuestionNodeFactory.create failed: {exc}",

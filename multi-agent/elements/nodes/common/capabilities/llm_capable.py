@@ -51,7 +51,6 @@ class LlmCapableMixin(Generic[TSupportStream]):
             *,
             llm: BaseLLM,
             system_message: str = "",
-            retries: int = 1,
             **kwargs: Any,
     ):
         """
@@ -64,7 +63,6 @@ class LlmCapableMixin(Generic[TSupportStream]):
         super().__init__(**kwargs)  # cooperative MRO
         self.llm = llm
         self.system_message = system_message
-        self.retries = max(1, retries)
 
     def _llm_stream(
             self: TSupportStream,

@@ -18,7 +18,6 @@ class MockAgentNodeFactory(BaseFactory[MockAgentNodeConfig, MockAgentNode]):
         """
         try:
             return MockAgentNode(
-                name=cfg.name or cfg.type,
                 fixed_message=getattr(cfg, "fixed_message", None)
             )
         except Exception as exc:

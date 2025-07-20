@@ -24,7 +24,6 @@ class CustomAgentNode(
     def __init__(
             self,
             *,
-            name: str,
             llm: Any,
             retriever: Any = None,
             tools: List[Any] = (),
@@ -34,7 +33,6 @@ class CustomAgentNode(
             **kwargs: Any
     ):
         super().__init__(
-            name=name,
             llm=llm,
             retriever=retriever,
             tools=tools,
