@@ -1,7 +1,69 @@
+## Building the UI 
+
+### pre-reqs
+
+pnpm installed on your system
+
+- upgrade your npm
+  `npm install -g npm`
+
+- install pnpm via corepack (can be done via npmn as well instead)
+   `npm install -g corepack`
+   `corepack enable`
+
+- Install pnpm via Corepack
+   `corepack prepare pnpm@latest --activate`
+
+
+### install all required packages and build
+
+- make sure you have the package.json and  pnpm-lock.yaml file in place, this sould come with the cloning and should be under the ui main folder.
+  if you need to add a new package though don't foget to push the new lock file as well
+
+
+- Install all dependencies (including devDependencies needed for the build). `--frozen-lockfile` ensures reproducible builds based on pnpm-lock.yaml.
+  the lock file is the output of the last successful installation and we should use it, unless we specifically need to change packages or versions.
+  `pnpm install --frozen-lockfile`
+
+- build the UI
+  `pnpm build`
+
+
+
+
+
+ 
+
+## Appendixes
+
+
+### UI building infra
+
+ - package.json
+
+   includes all packages needed for our app
+   includes scripts part, in this part when we run a builder/installer it goes to the scripts part and if the arguments are there it takes it .
+   for example:
+
+    `
+    "scripts": {
+      "build:frontend": "vite build",
+      "build": "pnpm run build:frontend",
+    }
+    `
+
+   when we run 'pnpm build' it first goes to the scripts part and sees that it needs to run the command: pnpm run build:frontend
+   which in turn changes the build:frontend to vite build , so, the actual final command is 'pnpm run vite build'
+
+ - lock files
+
+   lock files are a more specific package deps files. in package json we usually give a range or general rules as to what versions are allowed/required. but when we actually install the packages we get specific versions, this is listed in the lock files, it allows us to use them as the base for future installations and prevent conflicts and problems due to version issues
+
+
+
 TBDs:
 
 1. create a docker ignore to not copy unneeded files/folders into the docker when building
-2. create a nginx configuration that fits sso.
 3. in package.json that was the scripts section:
 
   "scripts": {
@@ -11,49 +73,7 @@ TBDs:
     "check": "tsc",
     "db:push": "drizzle-kit push"
   },
-
   
-  change the nginx that once we see the 13456 (from env ) - send to the real BE
-  when seeing 5001 (from env) send to multiagent be
-
-
-package.json
-
-includes all packages needed for our app
-includes scripts part, in this part when we run a builder/installer it goes to the scripts part and if the arguments are there it takes it .
-for example:
-
-
-  "scripts": {
-    "build:frontend": "vite build",
-    "build": "pnpm run build:frontend",
-  }
-
-  when we run 'pnpm build' it first goes to the scripts part and sees that it needs to run the command: pnpm run build:frontend
-  which in turn changes the build:frontend to vite build , so, the actual final command is 'pnpm run vite build'
-
-lock files
-
-lock files are a more specific package deps files. in package json we usually give a range or general rules as to what versions are allowed/required. but when we actually install the packages we get specific versions, this is listed in the lock files, it allows us to use them as the base for future installations and prevent conflicts and problems due to version issues
-
-
-
-nginx configurations
-
-rewrite vs. return vs. proxy_pass
-
-* proxy_pass - will just redirect the call to the location set
-* rewrite - works internally, the nginx will get the call, change according to the setting and will resume sending the call to the new updated location
-* return - nginx will return the status requested (in this case 3XX) and the url the client needs to now redirect to.
-
-when using the redirect from the axios
-the rewrite means that we'll reach the route, hence we only need the address of the route and the port isn't needed.
-
-when using directly to reach the BE, we want that anything of BE_port will reach the same route
-
-
-NOTE: using the notebook namespace measn that routes/services aren't always available from outside the setup.
-
 
 
 
