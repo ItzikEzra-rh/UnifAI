@@ -3,8 +3,7 @@ import time
 from pipeline.pipeline_repository import PipelineRepository
 from pipeline.pipeline_executor import PipelineExecutor
 from pipeline.pipeline_factory import PipelineFactory
-from data_sources.slack.types import SlackMetadata
-from pipeline.slack_pipline_factory import SlackPipelineFactory
+from pipeline.types import SlackMetadata
 from pipeline.config import ChunkerConfig, EmbeddingConfig, StorageConfig
 import pymongo
 from data_sources.slack.slack_config_manager import SlackConfigManager
@@ -125,7 +124,7 @@ def embed_slack_channels_flow(channel_list, upload_by="default"):
         cname= channel["channel_name"]
 
         # 1️⃣ Register & start monitoring
-        # pipeline_id = slack_pipeline.process_slack_channel(cid, cname)
+        pipeline_id = slack_pipeline.process_slack_channel(cid, cname)
         slack_pipeline.monitor.start_log_monitoring(target_logger=logger, pipeline_id=f"slack_{cid}")
 
         # 2️⃣ Register channel in source data collection IMMEDIATELY

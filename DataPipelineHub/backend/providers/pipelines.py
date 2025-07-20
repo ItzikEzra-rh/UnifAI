@@ -1,44 +1,64 @@
-import base64
 import os
-import time
+import uuid
+from datetime import datetime
 from config.app_config import AppConfig
 from utils.storage.mongo.mongo_storage import MongoStorage
 from global_utils.utils.util import get_mongo_url
-from utils.storage.storage_manager import StorageManager
-from utils.monitor.pipeline_monitor import MongoDBPipelineRepository
-import pymongo
-import uuid
-from flask import session, jsonify
-from data_sources.docs.doc_connector import DocumentConnector
-from data_sources.docs.doc_config_manager import DocConfigManager
-from data_sources.docs.document_processor import DocumentProcessor
-from data_sources.docs.pdf_chunker_strategy import DoclingProcessingError, PDFChunkerStrategy
-from data_sources.docs.doc_pipeline_scheduler import DocDataPipeline
-from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
-from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
-from global_utils.utils.util import get_mongo_url
-from utils.storage.mongo.mongo_helpers import get_mongo_storage
 
 app_config = AppConfig()
 upload_folder = app_config.get("upload_folder", "")
 
-mongo_client = pymongo.MongoClient(get_mongo_url())
-pipeline_repo = MongoDBPipelineRepository(mongo_client)
 data_source_repo = MongoStorage(get_mongo_url())
 
 def register_data_sources(data, type, user):
+    """
+    Register data sources in the sources collection with minimal information.
+    
+    Args:
+        data: List of data sources to register
+        type: Type of data source (SLACK or DOCUMENT)
+        user: User registering the sources
+        
+    Returns:
+        List of registered sources with their generated source_ids added.
+    """
     try:
-        # Insert the data queue into the sources db
+        registered_sources = []
+        
         for instance in data:
-            source_name = instance.get("source_name", "")
             if type == "DOCUMENT":
+                source_id = str(uuid.uuid4())
+                source_name = instance.get("source_name", "")
                 doc_path = os.path.join(upload_folder, source_name)
                 instance["doc_path"] = doc_path
-                instance["source_id"] = str(uuid.uuid4())
+            elif type == "SLACK":
+                source_id = instance.get("channel_id", "")
+                source_name = instance.get("channel_name", "")
+
+            # Create basic source document
+            source_document = {
+                "source_id": source_id,
+                "source_name": source_name,
+                "upload_by": user,
+                "source_type": type.upper(),
+                "created_at": datetime.now()
+            }
             
-            start = time.time()
-        # return from here the ids there were generated for each one to be used for the pipeline id
+            # Store in sources collection
+            data_source_repo.upsert_documents(
+                db_name="data_sources",
+                col_name="sources", 
+                docs=[source_document],
+                key_field="source_id"
+            )
+            
+            instance["source_id"] = source_id
+            registered_sources.append(instance)
+        
+        logger.info(f"Successfully registered {len(registered_sources)} {type} sources for user {user}")
+        return registered_sources
+        
     except Exception as e:
-        logger.error(f"Failed to register data: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Failed to register data sources: {str(e)}")
+        raise e

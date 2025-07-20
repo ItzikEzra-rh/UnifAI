@@ -14,7 +14,17 @@ pipelines_bp = Blueprint("pipelines", __name__)
     "data": fields.Str(required=True, data_key='data'),
     "type": fields.Str(required=True, data_key='type'),
 })
-def available_slack_channels(data, type):
+def register_sources(data, type):
+    """
+    Register data sources in the sources collection.
+    
+    Args:
+        data: List of data sources to register
+        type: Type of data source (SLACK or DOCUMENT)
+        
+    Returns:
+        List of registered sources with their generated IDs.
+    """
     try:
         user = session.get('user', {}).get('name', 'default')
         data_sources = register_data_sources(data, type, user)
@@ -25,14 +35,46 @@ def available_slack_channels(data, type):
 
 
 @pipelines_bp.route("/embed", methods=["PUT"])
-@from_query({
-    "data": fields.Str(required=True, data_key='data'),
-    "type": fields.Str(required=True, data_key='type'),
+@from_body({
+    "data": fields.List(fields.Dict(), required=True),
+    "type": fields.Str(required=True),
 })
-def start_piepline(data, type):
+def start_pipeline(data, type):
+    """
+    Trigger the embedding pipeline for registered data sources.
+    
+    Args:
+        data: List of data sources with their IDs and metadata
+        type: Type of data source (SLACK, DOCUMENT, etc.)
+        
+    Returns:
+        JSON response indicating task submission status
+    """
     try:
-        # here the celery task should be called
-        return jsonify({"": ""}), 200
+        user = session.get('user', {}).get('name', 'default')
+        
+        # Use the general pipeline task for all source types
+        source_type = type.upper()  # Convert to uppercase for consistency
+        
+        # Submit individual pipeline tasks for each data source
+        for source_data in data:
+            send_task(
+                task_name="pipeline.pipeline_tasks.execute_pipeline_task",
+                celery_queue="pipeline_queue",
+                source_type=source_type,
+                source_data=source_data,
+                upload_by=user
+            )
+        
+        logger.info(f"Submitted {len(data)} {type} sources for pipeline processing using general pipeline task")
+        
+        return jsonify({
+            "status": "pipeline_started",
+            "message": f"Embedding pipeline started for {len(data)} {type} sources",
+            "task_submitted": True,
+            "source_count": len(data)
+        }), 202
+        
     except Exception as e:
-        logger.error(f"Failed to register data sources: {str(e)}")
+        logger.error(f"Failed to start embedding pipeline: {str(e)}")
         return jsonify({"error": str(e)}), 500
