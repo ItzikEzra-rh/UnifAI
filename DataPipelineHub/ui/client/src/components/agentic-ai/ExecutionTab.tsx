@@ -9,7 +9,6 @@ import ExecutionStream from "./ExecutionStream";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
 import { GraphNode } from "../../pages/AgenticAI"
 import axios, { AXIOS_AGENTS_IP } from '../../http/axiosAgentConfig'
-//import axiosInstance from '../../http/axiosAgentConfig';
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
@@ -283,15 +282,15 @@ export default function ExecutionTab({
         loggedInUser: user?.username || "default",
       };
       
-      // const response = await fetch(`${AXIOS_AGENTS_IP}/api/sessions/user.session.execute`, {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify(payloadWithScope),
-      // });
+      const response = await fetch(`${AXIOS_AGENTS_IP}/api/sessions/user.session.execute`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payloadWithScope),
+      });
 
-      const response  = await axios.post(`/sessions/user.session.execute`, payloadWithScope);
+
 
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       if (!response.body) throw new Error('ReadableStream not supported!');
