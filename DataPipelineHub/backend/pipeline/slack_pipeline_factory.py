@@ -1,15 +1,12 @@
 from functools import cached_property
 from typing import Dict, List, Tuple
 from pipeline.pipeline_factory import PipelineFactory
-from pipeline.decorators import inject
 from data_sources.slack.types import SlackMetadata
 from data_sources.slack.slack_config_manager import SlackConfigManager
 from data_sources.slack.slack_connector import SlackConnector
-from data_sources.slack.slack_pipeline_scheduler import SlackDataPipeline
 from data_sources.slack.slack_data_processor import SlackProcessor
 from data_sources.slack.slack_chunker_strategy import SlackChunkerStrategy
 from pipeline.config import ChunkerConfig
-from shared.logger import logger
 from config.constants import DataSource
 
 class SlackPipelineFactory(PipelineFactory):
@@ -39,10 +36,6 @@ class SlackPipelineFactory(PipelineFactory):
         return connector
 
     @cached_property
-    def slack_processor(self) -> SlackProcessor:
-        return SlackProcessor()
-
-    @cached_property
     def slack_chunker(self) -> SlackChunkerStrategy:
         cfg = ChunkerConfig()
         return SlackChunkerStrategy(
@@ -51,10 +44,10 @@ class SlackPipelineFactory(PipelineFactory):
             time_window_seconds=300
         )
 
-    def _get_source_id(self) -> str:
+    def get_source_id(self) -> str:
         return self.metadata.channel_id
 
-    def _get_source_name(self) -> str:
+    def get_source_name(self) -> str:
         return self.metadata.channel_name
         
     def _create_summary(self) -> Dict:
@@ -62,22 +55,17 @@ class SlackPipelineFactory(PipelineFactory):
             "is_private": self.metadata.is_private,
         }
         
-    def _create_orchestrator(self):
-        self._get_monitor().start_log_monitoring(target_logger=logger, pipeline_id=f"slack_{self.metadata.channel_id}")
- 
-    @inject('connector')
-    def _create_collector(self, connector) -> Tuple[List[Dict], List[List[Dict]]]:
-        return connector.get_conversations_history(
+    def _create_collector(self) -> Tuple[List[Dict], List[List[Dict]]]:
+        return self.connector.get_conversations_history(
             channel_id=self.metadata.channel_id
         )
 
-    @inject('slack_processor')
     def _create_processor(
         self,
         data: Tuple[List[Dict], List[List[Dict]]],
-        slack_processor
     ) -> Tuple[List[Dict], List[List[Dict]]]:
         messages, threads = data
+        slack_processor = SlackProcessor()
         main = slack_processor.process(
             messages, channel_name=self.metadata.channel_name
         )
@@ -87,17 +75,15 @@ class SlackPipelineFactory(PipelineFactory):
         ]
         return main, thrs
 
-    @inject('slack_chunker', 'embedder')
     def _create_chunker_and_embedder(
         self,
         processed: Tuple[List[Dict], List[List[Dict]]],
-        slack_chunker,
-        embedder
     ) -> List[Dict]:
         main, threads = processed
-        chunks = slack_chunker.chunk_content(main)
+        chunks = self.slack_chunker.chunk_content(main)
+        chunker = self.slack_chunker
         for t in threads:
-            chunks.extend(slack_chunker.chunk_content(t))
+            chunks.extend(chunker.chunk_content(t))
 
         for idx, c in enumerate(chunks):
             md = c.setdefault("metadata", {})
@@ -107,7 +93,4 @@ class SlackPipelineFactory(PipelineFactory):
                 "source_type":  DataSource.SLACK.upper_name,
             })
 
-        return embedder.generate_embeddings(chunks)
-
-    def _clean_orchestrator(self):
-        self._get_monitor().finish_log_monitoring()
+        return self.embedder.generate_embeddings(chunks)

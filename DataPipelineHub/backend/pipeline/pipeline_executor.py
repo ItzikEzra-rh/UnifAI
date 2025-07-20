@@ -1,9 +1,10 @@
 from typing import Any
+from pipeline.pipeline_repository import PipelineRepository
 from config.constants import PipelineStatus
-from pipeline.decorators import pipeline_step, monitor_pipeline
+from pipeline.decorators import pipeline_step
 from pipeline.pipeline_factory import PipelineFactory
+from config.constants import PipelineStatus
 
-@monitor_pipeline
 class PipelineExecutor:
     """
     Given a PipelineFactory (with its five steps already created),
@@ -17,49 +18,66 @@ class PipelineExecutor:
     """
     def __init__(
         self,
-        factory: PipelineFactory,
+        pipeline: PipelineFactory,
         pipeline_id: str
     ):
-        
-        self.factory     = factory
+        self.pipeline     = pipeline
         self.pipeline_id = pipeline_id
-
-    @pipeline_step(PipelineStatus.ORCHESTRATING.value)
+        self.repo = self._initialize_repo()
+        self.repo.register_pipeline()
+        self.repo.register_data_source(
+            summary=pipeline._create_summary()
+        )
+        
+    def _initialize_repo(self) -> PipelineRepository:
+        return PipelineRepository(
+            pipeline_id=self.pipeline_id,
+            source_type=self.pipeline.SOURCE_TYPE,
+            source_id=self.pipeline.get_source_id(),
+            source_name=self.pipeline.get_source_name()
+        )
+        
     def _orchestrate(self):
-        return self.factory.orchestrator()
+        return self.pipeline.orchestrator()
 
     @pipeline_step(PipelineStatus.COLLECTING.value)
     def _collect(self):
-        return self.factory.collector()
+        return self.pipeline.collector()
 
     @pipeline_step(PipelineStatus.PROCESSING.value)
     def _process(
         self,
         collected: Any
     ) -> Any:
-        return self.factory.processor(collected)
+        return self.pipeline.processor(collected)
 
     @pipeline_step(PipelineStatus.CHUNKING_AND_EMBEDDING.value)
     def _chunk_and_embed(
         self,
         processed: Any
     ) -> Any:
-        return self.factory.chunker_and_embedder(processed)
+        return self.pipeline.chunker_and_embedder(processed)
 
     @pipeline_step(PipelineStatus.STORING.value)
     def _store(
         self,
         embeddings: Any
     ) -> Any:
-        return self.factory.storage(self.pipeline_id, embeddings)
+        return self.pipeline.storage(embeddings)
+
+    def _clean_orchestrator(self):
+        self.pipeline.clean_orchestrator()
 
     def run(self) -> Any:
-       
-        orchestrated = self._orchestrate()
-        collected    = self._collect()            # status → "collecting"
-        processed    = self._process(collected)   # status → "processing"
-        embeddings   = self._chunk_and_embed(processed)
-        stored       = self._store(embeddings)
+        self._orchestrate()
         
-        return stored       
-      
+        collected   = self._collect()          
+        processed   = self._process(collected)   
+        embeddings  = self._chunk_and_embed(processed)
+        stored      = self._store(embeddings)
+        
+        self._clean_orchestrator()
+        self.repo.update_pipeline_status(
+            new_status=PipelineStatus.DONE.value
+        )
+        return stored

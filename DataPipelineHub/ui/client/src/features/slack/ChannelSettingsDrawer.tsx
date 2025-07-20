@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
 import { motion } from "framer-motion";
 import { FaHashtag, FaTimes } from "react-icons/fa";
-import { EmbedChannel } from "./SlackIntegration";
+import { EmbedChannel } from "@/types";
 import { StatItem, StatsSection } from "./StatsSection";
 import { HiOutlineLockClosed } from "react-icons/hi";
 import { Badge } from "@/components/ui/badge";

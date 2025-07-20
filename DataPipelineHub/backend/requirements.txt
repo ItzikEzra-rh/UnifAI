@@ -10,4 +10,3 @@ docling
 Authlib
 PyJWT
 python-dotenv
-psutil

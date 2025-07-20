@@ -413,7 +413,7 @@ class PipelineMonitor(PipelineMonitorBase):
         """
         Turn off monitoring a logger for pipeline information.
         """
-        if hasattr(self, "_monitoring_handler") and self._monitoring_handler:
+        if hasattr(self, "_monitoring_handler") and self._monitoring_handler and self._monitoring_logger:
             self._monitoring_logger.removeHandler(self._monitoring_handler)
             self._monitoring_handler = None
             self._monitoring_logger = None

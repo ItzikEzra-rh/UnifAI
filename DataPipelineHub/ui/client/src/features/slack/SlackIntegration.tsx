@@ -3,12 +3,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import StatusBar from "@/components/layout/StatusBar";
-import { PaginatedChannelTable } from "@/features/slack/ChannelTable";
+import { PaginatedChannelTable } from "@/features/slack/PaginatedChannelTable";
 import { ChannelSettingsDrawer } from "@/features/slack/ChannelSettingsDrawer";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { fetchEmbeddedSlackChannels, fetchSystemStats, deleteSlackChannel } from "@/api/slack";
-import { FaHashtag, FaComments, FaSync, FaServer, FaCalculator } from "react-icons/fa";
+import { FaHashtag, FaComments, FaSync, FaDatabase } from "react-icons/fa";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -21,23 +21,12 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StatsCard, StatsCardProps } from "./StatsCard";
+import { EmbedChannel, EMBED_CHANNEL_STATUS } from "@/types";
+import { formatNumber, getLastSyncTime } from "@/utils";
 
-// ── Interfaces from your update ─────────────────────────────
 export interface SlackTypeData {
   message_count: number;
   api_calls: number;
-};
-export interface EmbedChannel {
-  name: string
-  // channel_id: string;
-  // is_private: boolean;
-  messages: string
-  lastSync: string
-  status: "ACTIVE" | "PAUSED" | "ARCHIVED" | "DONE" | "FAILED"
-  frequency: string
-  channel_id: string;
-  created: string;
-  is_private: boolean;
 };
 
 const sharedTransition = {
@@ -46,8 +35,6 @@ const sharedTransition = {
   damping: 30,
 };
 
-
-// ── Main Component ──────────────────────────────────────────
 export default function SlackIntegration() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
@@ -62,9 +49,9 @@ export default function SlackIntegration() {
   // Check if there are any channels in progress or being embedded
   const hasActiveOperations = (channels: EmbedChannel[] | undefined) => {
     if (!channels || !Array.isArray(channels)) return false;
-    return channels.some(channel => 
-      channel.status === "ACTIVE" || 
-      channel.status === "PAUSED" ||
+    return channels.some(channel =>
+      channel.status === EMBED_CHANNEL_STATUS.ACTIVE ||
+      channel.status === EMBED_CHANNEL_STATUS.PAUSED ||
       activeEmbedding.has(channel.channel_id)
     );
   };
@@ -77,9 +64,9 @@ export default function SlackIntegration() {
     refetchOnWindowFocus: true,
     // Dynamic polling - poll every 5 seconds when there are active operations
     refetchInterval: (query) => {
-    const data = query.state.data as EmbedChannel[] | undefined;
-    const hasActive = hasActiveOperations(data) || activeEmbedding.size > 0;
-    return hasActive ? 5000 : false;
+      const data = query.state.data as EmbedChannel[] | undefined;
+      const hasActive = hasActiveOperations(data) || activeEmbedding.size > 0;
+      return hasActive ? 5000 : false;
     },
   });
 
@@ -116,10 +103,10 @@ export default function SlackIntegration() {
       // Invalidate and refetch the channels list
       queryClient.invalidateQueries({ queryKey: ["embeddedSlackChannels"] });
       queryClient.invalidateQueries({ queryKey: ["embeddedSlackChannelsStats"] });
-      
+
       const embeddingsDeleted = data.result?.qdrant_embeddings_deleted || 0;
       const pipelineRecordsDeleted = data.result?.mongo_pipelines_deleted || 0;
-      
+
       toast({
         title: "✅ Channel Deleted Successfully",
         description: `Removed ${embeddingsDeleted} embeddings and ${pipelineRecordsDeleted} pipeline records from storage.`,
@@ -130,7 +117,7 @@ export default function SlackIntegration() {
       // Clear loading state
       setDeletingChannelId(null);
       console.error('Delete failed:', error);
-      
+
       toast({
         title: "❌ Deletion Failed",
         description: `Unable to delete channel: ${error.response?.data?.error || error.message}`,
@@ -138,14 +125,6 @@ export default function SlackIntegration() {
       });
     },
   });
-
-  const handleSelectChannel = (channel: string) => {
-    setSelectedChannels((prev) =>
-      prev.includes(channel)
-        ? prev.filter((c) => c !== channel)
-        : [...prev, channel]
-    );
-  };
 
   const handleSave = (values: Record<string, string | boolean>) => {
     setSettingsChannel(null);
@@ -169,10 +148,10 @@ export default function SlackIntegration() {
       channelIds.forEach(id => newSet.add(id));
       return newSet;
     });
-    
+
     // Immediately refresh stats when embedding starts
     refetchStats();
-    
+
     // Show optimistic toast
     toast({
       title: "🚀 Embedding Started",
@@ -181,74 +160,74 @@ export default function SlackIntegration() {
     });
   };
 
-     // Remove channels from active tracking when they complete
-   const trackEmbeddingComplete = (channelIds: string[]) => {
-     setActiveEmbedding(prev => {
-       const newSet = new Set(prev);
-       channelIds.forEach(id => newSet.delete(id));
-       return newSet;
-     });
-     
-     // Immediately refresh stats when embedding completes
-     refetchStats();
-   };
+  // Remove channels from active tracking when they complete
+  const trackEmbeddingComplete = (channelIds: string[]) => {
+    setActiveEmbedding(prev => {
+      const newSet = new Set(prev);
+      channelIds.forEach(id => newSet.delete(id));
+      return newSet;
+    });
 
-      // Effect to clean up completed embeddings
-   useEffect(() => {
-     if (Array.isArray(embedChannels) && embedChannels.length > 0 && activeEmbedding.size > 0) {
-       const completedChannels: string[] = [];
-       
-       activeEmbedding.forEach(channelId => {
-         const channel = embedChannels.find(c => c.channel_id === channelId);
-         if (channel && (channel.status === "DONE" || channel.status === "FAILED")) {
-           completedChannels.push(channelId);
-         }
-       });
-       
-       if (completedChannels.length > 0) {
-         trackEmbeddingComplete(completedChannels);
-         
-         // Show completion toast
-         const completedCount = completedChannels.length;
-         const failedChannels = embedChannels.filter(c => 
-           completedChannels.includes(c.channel_id) && c.status === "FAILED"
-         );
-         
-         if (failedChannels.length > 0) {
-           toast({
-             title: "⚠️ Embedding Completed with Issues",
-             description: `${completedCount - failedChannels.length} channels completed successfully, ${failedChannels.length} failed.`,
-             variant: "destructive",
-           });
-         } else {
-           toast({
-             title: "✅ Embedding Completed",
-             description: `Successfully processed ${completedCount} channel${completedCount > 1 ? 's' : ''}.`,
-             variant: "default",
-           });
-         }
-       }
-     }
-   }, [embedChannels, activeEmbedding, toast]);
+    // Immediately refresh stats when embedding completes
+    refetchStats();
+  };
 
-   // Effect to detect if user came back from adding channels
-   useEffect(() => {
-     const urlParams = new URLSearchParams(window.location.search);
-     const newChannels = urlParams.get('newChannels');
-     
-     if (newChannels) {
-       try {
-         const channelIds = JSON.parse(decodeURIComponent(newChannels));
-         if (Array.isArray(channelIds) && channelIds.length > 0) {
-           trackEmbeddingStart(channelIds);
-           // Clean up URL
-           window.history.replaceState({}, '', window.location.pathname);
-         }
-       } catch (error) {
-         console.error('Error parsing new channels from URL:', error);
-       }
-     }
-   }, []);
+  // Effect to clean up completed embeddings
+  useEffect(() => {
+    if (Array.isArray(embedChannels) && embedChannels.length > 0 && activeEmbedding.size > 0) {
+      const completedChannels: string[] = [];
+
+      activeEmbedding.forEach(channelId => {
+        const channel = embedChannels.find(c => c.channel_id === channelId);
+        if (channel && (channel.status === EMBED_CHANNEL_STATUS.DONE || channel.status === EMBED_CHANNEL_STATUS.FAILED)) {
+          completedChannels.push(channelId);
+        }
+      });
+
+      if (completedChannels.length > 0) {
+        trackEmbeddingComplete(completedChannels);
+
+        // Show completion toast
+        const completedCount = completedChannels.length;
+        const failedChannels = embedChannels.filter(c =>
+          completedChannels.includes(c.channel_id) && c.status === EMBED_CHANNEL_STATUS.FAILED
+        );
+
+        if (failedChannels.length > 0) {
+          toast({
+            title: "⚠️ Embedding Completed with Issues",
+            description: `${completedCount - failedChannels.length} channels completed successfully, ${failedChannels.length} failed.`,
+            variant: "destructive",
+          });
+        } else {
+          toast({
+            title: "✅ Embedding Completed",
+            description: `Successfully processed ${completedCount} channel${completedCount > 1 ? 's' : ''}.`,
+            variant: "default",
+          });
+        }
+      }
+    }
+  }, [embedChannels, activeEmbedding, toast]);
+
+  // Effect to detect if user came back from adding channels
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const newChannels = urlParams.get('newChannels');
+
+    if (newChannels) {
+      try {
+        const channelIds = JSON.parse(decodeURIComponent(newChannels));
+        if (Array.isArray(channelIds) && channelIds.length > 0) {
+          trackEmbeddingStart(channelIds);
+          // Clean up URL
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      } catch (error) {
+        console.error('Error parsing new channels from URL:', error);
+      }
+    }
+  }, []);
 
   const handleRefresh = async () => {
     try {
@@ -261,30 +240,6 @@ export default function SlackIntegration() {
     } catch (error) {
       console.error('Error refreshing data:', error);
     }
-  };
-
-  const formatNumber = (num: number | string) => {
-    const n = typeof num === "string" ? parseFloat(num) : num;
-    if (!isNaN(n) && n >= 1000) {
-      return (n / 1000).toFixed(1) + 'K';
-    }
-    return !isNaN(n) ? n.toLocaleString() : String(num);
-  };
-
-  const getLastSyncTime = () => {
-    if (!stats?.lastSyncAt) return "Never";
-    const lastSync = new Date(stats.lastSyncAt);
-    const now = new Date();
-    const diffMinutes = Math.floor((now.getTime() - lastSync.getTime()) / 60000);
-
-    if (diffMinutes < 1) return "just now";
-    if (diffMinutes < 60) return `${diffMinutes}m ago`;
-
-    const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours}h ago`;
-
-    const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays}d ago`;
   };
 
   const statsItems: Omit<StatsCardProps, 'delay'>[] = [
@@ -311,10 +266,10 @@ export default function SlackIntegration() {
       color: 'amber'
     },
     {
-      icon: FaServer,
-      label: 'System Uptime',
-      value: stats?.systemUptime || '99.9%',
-      status: 'Healthy',
+      icon: FaDatabase,
+      label: 'Total Embeddings',
+      value: stats?.totalEmbeddings || 0,
+      formatValue: formatNumber,
       color: 'purple'
     }
   ];
@@ -357,48 +312,48 @@ export default function SlackIntegration() {
 
               {!isLoading && !isError && (
                 <div className="flex gap-4 min-h-[400px] relative">
-                {/* Table Container with dynamic shift using transform instead of margin */}
-                <motion.div
-                  className="flex transition-all duration-500 ease-in-out"
-                  style={{
-                    width: settingsChannel ? "calc(100% - 420px)" : "100%",
-                  }}
-                  animate={{
-                    width: settingsChannel ? "calc(100% - 420px)" : "100%",
-                  }}
-                  transition={sharedTransition}
-                >
-                  <PaginatedChannelTable
-                    allChannels={embedChannels}
-                    onSettingsClick={setSettingsChannel}
-                    onDeleteClick={handleDeleteChannel}
-                    onRefresh={handleRefresh}
-                    deletingChannelId={deletingChannelId || undefined}
-                    activeEmbeddingIds={Array.from(activeEmbedding)}
-                  />
-                </motion.div>
-              
-                {/* Settings Drawer */}
-                <AnimatePresence>
-                  {settingsChannel && (
-                    <motion.div
-                      className="absolute right-0 top-0 w-[400px] z-10"
-                      initial={{ x: 400, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      exit={{ x: 400, opacity: 0 }}
-                      transition={sharedTransition}
-                    >
-                      <ChannelSettingsDrawer
-                        channel={settingsChannel}
-                        isOpen={settingsChannel !== null}
-                        onClose={() => setSettingsChannel(null)}
-                        onSave={handleSave}
-                      />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              
+                  {/* Table Container with dynamic shift using transform instead of margin */}
+                  <motion.div
+                    className="flex transition-all duration-500 ease-in-out"
+                    style={{
+                      width: settingsChannel ? "calc(100% - 420px)" : "100%",
+                    }}
+                    animate={{
+                      width: settingsChannel ? "calc(100% - 420px)" : "100%",
+                    }}
+                    transition={sharedTransition}
+                  >
+                    <PaginatedChannelTable
+                      allChannels={embedChannels}
+                      onSettingsClick={setSettingsChannel}
+                      onDeleteClick={handleDeleteChannel}
+                      onRefresh={handleRefresh}
+                      deletingChannelId={deletingChannelId || undefined}
+                      activeEmbeddingIds={Array.from(activeEmbedding)}
+                    />
+                  </motion.div>
+
+                  {/* Settings Drawer */}
+                  <AnimatePresence>
+                    {settingsChannel && (
+                      <motion.div
+                        className="absolute right-0 top-0 w-[400px] z-10"
+                        initial={{ x: 400, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        exit={{ x: 400, opacity: 0 }}
+                        transition={sharedTransition}
+                      >
+                        <ChannelSettingsDrawer
+                          channel={settingsChannel}
+                          isOpen={settingsChannel !== null}
+                          onClose={() => setSettingsChannel(null)}
+                          onSave={handleSave}
+                        />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+
               )}
             </motion.div>
           </div>
