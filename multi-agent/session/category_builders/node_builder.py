@@ -76,6 +76,6 @@ class NodeBuilder(CategoryBuilder):
             return reg.get(category=category, rid=rid)
         except KeyError as exc:
             raise PluginConfigurationError(
-                f"Node {cfg.name!r}: unknown {attr_name!r} rid={rid!r} "
+                f"Node config: {cfg!r}: unknown {attr_name!r} rid={rid!r} "
                 f"in category={category.value}"
             ) from exc

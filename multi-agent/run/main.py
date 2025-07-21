@@ -177,13 +177,14 @@ def save_resources(app):
 def run_test_new_version(app):
     blueprint_loader = YAMLBlueprintLoader()
     # raw = blueprint_loader.load("run/test_new_version.yml")
-    raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
+    # raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
+    raw = blueprint_loader.load("run/blueprint_SDJ.yml")
     blueprint_id = app.blueprint_service.save_draft(user_id="alice", draft_dict=raw)
     print(f"Saved blueprint draft with id: {blueprint_id}")
     session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
     print(f"Created session with id: {session.run_context.run_id}")
     print(app.session_service.execute(session_id=session.run_context.run_id,
-                                      inputs={"user_prompt": "what is 53534534 + 8678675?"},
+                                      inputs={"user_prompt": "what is latest issues in GENIE project?"},
                                       stream=False,
                                       scope="public"))
 
@@ -193,9 +194,9 @@ if __name__ == "__main__":
     config = get_app_config()
     app = AppContainer(config)
 
-    save_resources(app)
+    # save_resources(app)
 
-    # run_test_new_version(app)
+    run_test_new_version(app)
 
     # app.blueprint_service.delete(blueprint_id="2af1b9b2900284ed79192e4ebbf8a05cf")
     # app.resources_service.delete(rid="af1b9b2900284ed79192e4ebbf8a05cf")
