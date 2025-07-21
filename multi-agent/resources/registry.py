@@ -1,8 +1,9 @@
 from datetime import datetime
-from resources.models import ResourceDoc
+from resources.models import ResourceDoc, ResourceQuery
 from resources.repository.base import ResourceRepository
 from blueprints.repository.repository import BlueprintRepository
 from resources.errors import ResourceInUseError
+from typing import List, Tuple
 
 
 class ResourcesRegistry:
@@ -45,6 +46,12 @@ class ResourcesRegistry:
     # ---------- read ----------
     def get(self, rid: str) -> ResourceDoc:
         return self._repo.get(rid)
+
+    def find_resources(self, query: ResourceQuery) -> Tuple[List[ResourceDoc], int]:
+        """Find resources with pagination info."""
+        resources = self._repo.find_resources(query)
+        total_count = self._repo.count_resources(query)
+        return resources, total_count
 
     def raw_config(self, rid: str) -> dict:
         return self.get(rid).cfg_dict

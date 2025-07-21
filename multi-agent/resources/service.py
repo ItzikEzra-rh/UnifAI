@@ -1,6 +1,7 @@
+from typing import List, Optional, Tuple
 from .registry import ResourcesRegistry
 from catalog.element_registry import ElementRegistry
-from .models import ResourceDoc
+from .models import ResourceDoc, ResourceQuery
 from core.enums import ResourceCategory
 from core.ref import RefWalker
 from pydantic import BaseModel
@@ -57,6 +58,27 @@ class ResourcesService:
 
     def delete(self, rid: str) -> None:
         self._store.delete(rid)
+
+    # ---------- READ ----------
+    def get(self, rid: str) -> ResourceDoc:
+        """Get a single resource by ID."""
+        return self._store.get(rid)
+
+    def find_resources(self, user_id: str, category: Optional[str] = None,
+                       type: Optional[str] = None, limit: int = 50,
+                       offset: int = 0) -> Tuple[List[ResourceDoc], int]:
+        """Find resources with optional filtering and pagination."""
+        # Convert string category to enum if provided
+        category_enum = ResourceCategory(category) if category else None
+
+        query = ResourceQuery(
+            user_id=user_id,
+            category=category_enum,
+            type=type,
+            limit=limit,
+            offset=offset
+        )
+        return self._store.find_resources(query)
 
     # ---------- resolve ----------
     def resolve(self, rid: str) -> BaseModel:

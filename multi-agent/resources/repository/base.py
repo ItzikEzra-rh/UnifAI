@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
-from resources.models import ResourceDoc
+from resources.models import ResourceDoc, ResourceQuery
 
 
 class ResourceRepository(ABC):
@@ -27,6 +27,16 @@ class ResourceRepository(ABC):
     @abstractmethod
     def find_by_name(self, user_id: str, category: str, type: str, name: str) -> ResourceDoc | None:
         """Find a resource document by alias."""
+        ...
+
+    @abstractmethod
+    def find_resources(self, query: ResourceQuery) -> List[ResourceDoc]:
+        """Find resources based on query criteria with pagination."""
+        ...
+
+    @abstractmethod
+    def count_resources(self, query: ResourceQuery) -> int:
+        """Count resources matching query criteria."""
         ...
 
     @abstractmethod

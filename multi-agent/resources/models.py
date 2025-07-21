@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional, Annotated
 from uuid import uuid4
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from core.enums import ResourceCategory
 
 
@@ -20,3 +20,24 @@ class ResourceDoc(BaseModel):
     nested_refs: List[str] = Field(default_factory=list)
     created: datetime = Field(default_factory=datetime.utcnow)
     updated: datetime = Field(default_factory=datetime.utcnow)
+
+
+class ResourceQuery(BaseModel):
+    """Query object for finding resources with pagination and filtering."""
+    user_id: str = Field(..., description="User ID to filter resources")
+    category: Optional[ResourceCategory] = Field(None, description="Resource category filter")
+    type: Optional[str] = Field(None, description="Resource type filter")
+
+    limit: Annotated[int, Field(50, ge=1, le=1000, description="Number of results to return")]
+    offset: Annotated[int, Field(0, ge=0, description="Number of results to skip")]
+
+    sort_by: str = Field("created", description="Field to sort by")
+    sort_order: Annotated[str, Field("desc", pattern="^(asc|desc)$", description="Sort direction")]
+
+    @classmethod
+    @field_validator('sort_by')
+    def validate_sort_by(cls, v: str) -> str:
+        allowed_fields = {'created', 'updated', 'name', 'type', 'category'}
+        if v not in allowed_fields:
+            raise ValueError(f"sort_by must be one of: {allowed_fields}")
+        return v

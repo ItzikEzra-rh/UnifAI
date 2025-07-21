@@ -193,9 +193,9 @@ if __name__ == "__main__":
     config = get_app_config()
     app = AppContainer(config)
 
-    # save_resources(app)
+    save_resources(app)
 
-    run_test_new_version(app)
+    # run_test_new_version(app)
 
     # app.blueprint_service.delete(blueprint_id="2af1b9b2900284ed79192e4ebbf8a05cf")
     # app.resources_service.delete(rid="af1b9b2900284ed79192e4ebbf8a05cf")

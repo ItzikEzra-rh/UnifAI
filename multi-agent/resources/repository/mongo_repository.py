@@ -1,6 +1,6 @@
 from typing import List
 import pymongo
-from resources.models import ResourceDoc
+from resources.models import ResourceDoc, ResourceQuery
 from resources.repository.base import ResourceRepository
 
 
@@ -17,6 +17,8 @@ class MongoResourceRepository(ResourceRepository):
             [("user_id", 1), ("category", 1), ("type", 1), ("name", 1)],
             name="uq_user_cat_type_name",
             unique=True)
+        # Add index for better query performance
+        self.col.create_index([("user_id", 1), ("created", -1)])
 
     def save(self, doc: ResourceDoc) -> str:
         """Insert a new resource document (create only)."""
@@ -48,6 +50,41 @@ class MongoResourceRepository(ResourceRepository):
     def find_by_name(self, user_id: str, category: str, type: str, name: str):
         raw = self.col.find_one({"user_id": user_id, "category": category, "type": type, "name": name})
         return ResourceDoc(**raw) if raw else None
+
+    def find_resources(self, query: ResourceQuery) -> List[ResourceDoc]:
+        """Find resources based on query criteria with pagination."""
+        filter_dict = {"user_id": query.user_id}
+        
+        if query.category:
+            filter_dict["category"] = query.category.value  # Use enum value
+        if query.type:
+            filter_dict["type"] = query.type
+            
+        # Build cursor with filtering
+        cursor = self.col.find(filter_dict)
+        
+        # Apply sorting
+        sort_direction = pymongo.DESCENDING if query.sort_order == "desc" else pymongo.ASCENDING
+        cursor = cursor.sort(query.sort_by, sort_direction)
+        
+        # Apply pagination
+        if query.offset:
+            cursor = cursor.skip(query.offset)
+        if query.limit:
+            cursor = cursor.limit(query.limit)
+            
+        return [ResourceDoc(**doc) for doc in cursor]
+
+    def count_resources(self, query: ResourceQuery) -> int:
+        """Count resources matching query criteria."""
+        filter_dict = {"user_id": query.user_id}
+        
+        if query.category:
+            filter_dict["category"] = query.category.value
+        if query.type:
+            filter_dict["type"] = query.type
+            
+        return self.col.count_documents(filter_dict)
 
     def count(self, user_id, filter):
         return self.col.count_documents({"user_id": user_id, **filter})
