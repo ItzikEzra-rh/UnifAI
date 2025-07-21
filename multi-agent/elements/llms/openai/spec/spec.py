@@ -2,7 +2,7 @@ from elements.common.base_element_spec import BaseElementSpec
 from ..openai_factory import OpenAIFactory
 from core.enums import ResourceCategory
 from ..config import OpenAIConfig
-from ..identifiers import ELEMENT_TYPE_KEY
+from ..identifiers import Identifier, META
 
 
 class OpenAIElementSpec(BaseElementSpec):
@@ -12,9 +12,9 @@ class OpenAIElementSpec(BaseElementSpec):
     Provides all metadata needed for UI integration and runtime configuration.
     """
     category = ResourceCategory.LLM
-    type_key = ELEMENT_TYPE_KEY
-    name = "OpenAI LLM"
-    description = "Official OpenAI API configuration for LLM interactions"
+    type_key = Identifier.TYPE
+    name = META.name
+    description = META.description
     config_schema = OpenAIConfig
     factory_cls = OpenAIFactory
-    tags = ["llm", "openai", "api", "chat"]
+    tags = META.tags

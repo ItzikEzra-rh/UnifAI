@@ -2,16 +2,16 @@ from elements.common.base_element_spec import BaseElementSpec
 from core.enums import ResourceCategory
 from ..config import SshExecToolConfig
 from ..ssh_exec_factory import SshExecToolFactory
-from ..identifiers import ELEMENT_TYPE_KEY
+from ..identifiers import Identifier, META
 
 
 class SshExecToolElementSpec(BaseElementSpec):
     """Element specification for SSH Exec Tool."""
 
     category = ResourceCategory.TOOL
-    type_key = ELEMENT_TYPE_KEY
-    name = "SSH Exec"
-    description = "Execute a shell command on a remote VM"
+    type_key = Identifier.TYPE
+    name = META.name
+    description = META.description
     config_schema = SshExecToolConfig
     factory_cls = SshExecToolFactory
-    tags = ["tool", "ssh", "exec", "remote", "execution"]
+    tags = META.tags

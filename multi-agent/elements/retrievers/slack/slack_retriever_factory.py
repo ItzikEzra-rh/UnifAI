@@ -3,11 +3,12 @@ from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
 from .config import SlackRetrieverConfig
 from .slack_retriever import SlackRetriever
+from .identifiers import Identifier
 
 
 class SlackRetrieverFactory(BaseFactory[SlackRetrieverConfig, SlackRetriever]):
     def accepts(self, cfg: SlackRetrieverConfig, element_type: str) -> bool:
-        return element_type == "slack"
+        return element_type == Identifier.TYPE
 
     def create(self, cfg: SlackRetrieverConfig, **kwargs: Any) -> SlackRetriever:
         try:

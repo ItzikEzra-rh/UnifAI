@@ -3,6 +3,7 @@ from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
 from .config import McpProviderConfig
 from .mcp_server_client import McpServerClient
+from .identifiers import Identifier
 
 
 class McpServerClientFactory(BaseFactory[McpProviderConfig, McpServerClient]):
@@ -11,7 +12,7 @@ class McpServerClientFactory(BaseFactory[McpProviderConfig, McpServerClient]):
     """
 
     def accepts(self, cfg: McpProviderConfig, element_type: str) -> bool:
-        return element_type == "mcp_server"
+        return element_type == Identifier.TYPE
 
     def create(self, cfg: McpProviderConfig, **kwargs: Any) -> McpServerClient:
         """

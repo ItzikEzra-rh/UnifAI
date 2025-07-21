@@ -3,11 +3,12 @@ from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
 from .config import DocsRetrieverConfig
 from .docs_retriever import DocsRetriever
+from .identifiers import Identifier
 
 
 class DocsRetrieverFactory(BaseFactory[DocsRetrieverConfig, DocsRetriever]):
     def accepts(self, cfg: DocsRetrieverConfig, element_type: str) -> bool:
-        return element_type == "docs"
+        return element_type == Identifier.TYPE
 
     def create(self, cfg: DocsRetrieverConfig, **kwargs: Any) -> DocsRetriever:
         try:

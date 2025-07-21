@@ -2,14 +2,14 @@ from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
 from .config import MockAgentNodeConfig
 from .mock_agent import MockAgentNode
-from .identifiers import ELEMENT_TYPE_KEY
+from .identifiers import Identifier
 
 
 class MockAgentNodeFactory(BaseFactory[MockAgentNodeConfig, MockAgentNode]):
     """Factory for MockAgentNode (needs no LLM / retriever / tools)."""
 
     def accepts(self, cfg: MockAgentNodeConfig, element_type: str) -> bool:
-        return element_type == ELEMENT_TYPE_KEY
+        return element_type == Identifier.TYPE
 
     def create(self, cfg: MockAgentNodeConfig, **deps) -> MockAgentNode:
         """

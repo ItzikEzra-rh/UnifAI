@@ -2,7 +2,7 @@ from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
 from .config import ThresholdConditionConfig
 from .threshold import ThresholdCondition
-from .identifiers import ELEMENT_TYPE_KEY
+from .identifiers import Identifier
 
 
 class ThresholdConditionFactory(BaseFactory[ThresholdConditionConfig, ThresholdCondition]):
@@ -11,7 +11,7 @@ class ThresholdConditionFactory(BaseFactory[ThresholdConditionConfig, ThresholdC
     """
 
     def accepts(self, cfg: ThresholdConditionConfig, element_type: str) -> bool:
-        return element_type == ELEMENT_TYPE_KEY
+        return element_type == Identifier.TYPE
 
     def create(self, cfg: ThresholdConditionConfig, **deps) -> ThresholdCondition:
         try:

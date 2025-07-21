@@ -3,7 +3,7 @@ from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
 from elements.llms.openai.config import OpenAIConfig
 from elements.llms.openai.openai import OpenAILLM
-from elements.llms.openai.identifiers import ELEMENT_TYPE_KEY
+from elements.llms.openai.identifiers import Identifier
 
 
 class OpenAIFactory(BaseFactory[OpenAIConfig, OpenAILLM]):
@@ -17,7 +17,7 @@ class OpenAIFactory(BaseFactory[OpenAIConfig, OpenAILLM]):
         """
         Recognize configs with 'type': 'openai'.
         """
-        return element_type == ELEMENT_TYPE_KEY
+        return element_type == Identifier.TYPE
 
     def create(self, cfg: OpenAIConfig, **deps: Any) -> OpenAILLM:
         """

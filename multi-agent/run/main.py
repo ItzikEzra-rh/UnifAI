@@ -176,8 +176,8 @@ def save_resources(app):
 
 def run_test_new_version(app):
     blueprint_loader = YAMLBlueprintLoader()
-    raw = blueprint_loader.load("run/test_new_version.yml")
-    # raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
+    # raw = blueprint_loader.load("run/test_new_version.yml")
+    raw = blueprint_loader.load("run/test_new_version_recursive_ref.yml")
     blueprint_id = app.blueprint_service.save_draft(user_id="alice", draft_dict=raw)
     print(f"Saved blueprint draft with id: {blueprint_id}")
     session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)

@@ -1,5 +1,5 @@
 from typing import Literal
-from .identifiers import ELEMENT_TYPE_KEY
+from .identifiers import Identifier
 from elements.nodes.common.base_config import NodeBaseConfig
 
 
@@ -7,4 +7,4 @@ class FinalAnswerNodeConfig(NodeBaseConfig):
     """
     Emits the final aggregated answer without overrides.
     """
-    type: Literal[ELEMENT_TYPE_KEY] = ELEMENT_TYPE_KEY
+    type: Literal[Identifier.TYPE] = Identifier.TYPE

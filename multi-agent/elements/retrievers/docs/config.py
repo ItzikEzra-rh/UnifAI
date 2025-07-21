@@ -1,4 +1,5 @@
 from typing import Literal
+from .identifiers import Identifier
 from pydantic import Field, HttpUrl
 from elements.retrievers.common.base_config import BaseRetrieverConfig
 
@@ -7,7 +8,7 @@ class DocsRetrieverConfig(BaseRetrieverConfig):
     """
     Retrieves document passages via an API endpoint.
     """
-    type: Literal["docs"] = "docs"
+    type: Literal[Identifier.TYPE] = Identifier.TYPE
     api_url: HttpUrl = Field(
         default_factory=lambda: HttpUrl("http://0.0.0.0:13456/api/docs/query.match"),
         description="URL for retrieving docs from the API"
