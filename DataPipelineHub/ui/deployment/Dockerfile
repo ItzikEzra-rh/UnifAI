@@ -12,24 +12,23 @@ RUN corepack prepare pnpm@latest --activate # Install pnpm via Corepack
 
 
 #copy the package.json and pnpm-lock.yaml files to the working folder
-COPY package.json pnpm-lock.yaml ./
+COPY ../package.json ../pnpm-lock.yaml ../vite.config.ts ./
 # Install all dependencies (including devDependencies needed for the build).
 # `--frozen-lockfile` ensures reproducible builds based on pnpm-lock.yaml.
 RUN pnpm install --frozen-lockfile
 
 #copy the rest of the project files to the working folder
-COPY . .
+COPY ../. .
 
 # Run our combined build command.
 # As per your package.json, this builds:
 # - Frontend (Vite) to /ui/build
-# - Backend (esbuild) to /app/dist/server - not being used
 RUN pnpm build
 
 
 
 FROM registry.access.redhat.com/ubi9/nginx-120 as serve
-RUN whoami
+#RUN whoami
 USER root
 #Install debugging tools
 RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
@@ -53,5 +52,5 @@ EXPOSE 8080
 #RUN ln -sf /dev/stdout /var/log/nginx/access.log && ln -sf /dev/stderr /var/log/nginx/error.log 
 
 #CMD ["nginx", "-g", "daemon off;"]
-#ENTRYPOINT ["/opt/app-root/src/entrypoint.sh"]
-ENTRYPOINT ["/bin/bash"]
+ENTRYPOINT ["/opt/app-root/src/entrypoint.sh"]
+#ENTRYPOINT ["/bin/bash"]

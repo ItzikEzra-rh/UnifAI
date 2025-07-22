@@ -30,9 +30,28 @@ pnpm installed on your system
 
 
 
+## Running the UI
+
+As we use usally existing backend or local ones depending on our work, we need a quick method to change the BEs we run against.
+till now we used to update axios config, this works properly but with some caveats:
+1. the changes must be removed before building the code so the axios won't change the UI behavior
+2. every change needs a rebuild if we want to check the UI as a package
+3. if we need to have a common api structure this might be complicated.
+
+Instead of using axios, we need to change the usage to vite.config.ts proxies. this is build for  development env.
+the vite.config.ts isn't going into the code so it's safe to build it, that way if the axios already have some config we just need to adjust the config to fit it (just like nginx config)
 
 
- 
+## analyzing the UI build
+
+In order to analyze the UI build bundle we need a build analyzer tool, sine vite (the tool for building and serving) is using rollup we can use the rollup-plugin-visualizer
+
+1. start by installing the plugin
+  `pnpm add -D rollup-plugin-visualizer`
+
+2. update teh vite.config.ts file with the plugin:
+
+
 
 ## Appendixes
 
@@ -52,13 +71,13 @@ pnpm installed on your system
     }
     `
 
-   when we run 'pnpm build' it first goes to the scripts part and sees that it needs to run the command: pnpm run build:frontend
+   when we run 'pnpm build' or 'pnpm run build' it first goes to the scripts part and sees that it needs to run the command: pnpm run build:frontend
    which in turn changes the build:frontend to vite build , so, the actual final command is 'pnpm run vite build'
+   NOTE: if your scripts line invludes pnpm run <command> this will send the pnpm again to the scripts part to look for a line names <command>
 
  - lock files
 
    lock files are a more specific package deps files. in package json we usually give a range or general rules as to what versions are allowed/required. but when we actually install the packages we get specific versions, this is listed in the lock files, it allows us to use them as the base for future installations and prevent conflicts and problems due to version issues
-
 
 
 TBDs:
@@ -73,7 +92,7 @@ TBDs:
     "check": "tsc",
     "db:push": "drizzle-kit push"
   },
-  
+
 
 
 
