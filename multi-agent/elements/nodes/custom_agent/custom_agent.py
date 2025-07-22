@@ -1,5 +1,6 @@
 from typing import Optional, Any, List
-from graph.state.graph_state import GraphState
+from graph.state.graph_state import Channel
+from graph.state.state_view import StateView
 from elements.llms.common.chat.message import ChatMessage, Role
 from elements.nodes.common.base_node import BaseNode
 from elements.nodes.common.capabilities.llm_capable import LlmCapableMixin
@@ -20,6 +21,8 @@ class CustomAgentNode(
       3. Pure LLM chat or LLM+tool loop
       4. Writes final output into GraphState
     """
+    READS = {Channel.USER_PROMPT, Channel.MESSAGES}
+    WRITES = {Channel.NODES_OUTPUT}
 
     def __init__(
             self,
@@ -42,10 +45,10 @@ class CustomAgentNode(
         )
         self.max_rounds = max_rounds
 
-    def _prepare_messages(self, state: GraphState) -> List[ChatMessage]:
-        msgs = state.get("messages", []).copy()
+    def _prepare_messages(self, state: StateView) -> List[ChatMessage]:
+        msgs = state.get(Channel.MESSAGES, []).copy()
         if not msgs:
-            raise ValueError("state['messages'] missing")
+            raise ValueError(F"state['{Channel.MESSAGES.value}'] missing")
 
         # 1) Optionally prepend context via retriever
         msgs[-1] = self.augment_with_context(msgs[-1])
@@ -60,7 +63,7 @@ class CustomAgentNode(
 
         return msgs
 
-    def run(self, state: GraphState) -> GraphState:
+    def run(self, state: StateView) -> StateView:
         # Build the initial chat history
         history = self._prepare_messages(state)
 
@@ -79,5 +82,5 @@ class CustomAgentNode(
             )
 
         # Persist only the final assistant content
-        state["nodes_output"] = {self.uid: assistant.content}
-        return state 
+        state[Channel.NODES_OUTPUT] = {self.uid: assistant.content}
+        return state

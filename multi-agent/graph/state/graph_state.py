@@ -3,6 +3,7 @@ from typing_extensions import Annotated
 from pydantic import BaseModel, Field, ConfigDict
 from elements.llms.common.chat.message import ChatMessage
 from .merge_strategies import merge_string_dicts, append_chat_messages, merge_dynamic_fields
+from enum import Enum
 
 
 class GraphState(BaseModel):
@@ -28,6 +29,9 @@ class GraphState(BaseModel):
 
     # appending messages to a list:
     messages: Annotated[list[ChatMessage], append_chat_messages] = Field(default_factory=list)
+
+    # last-writer-wins for output
+    output: Annotated[str, lambda old, new: new] = ""
 
     # Dynamic storage for extra fields (will be included in serialization)
     dynamic_fields: Annotated[Dict[str, Any], merge_dynamic_fields] = Field(default_factory=dict)
@@ -98,3 +102,11 @@ class GraphState(BaseModel):
 
     def __repr__(self) -> str:
         return f"{self.__class__.__name__}({self.dict()})"
+
+
+def _build_channel_enum() -> Enum:
+    mapping = {name.upper(): name for name in GraphState.model_fields}
+    return Enum("Channel", mapping, type=str)
+
+
+Channel = _build_channel_enum()

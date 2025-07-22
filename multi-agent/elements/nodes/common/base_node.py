@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from graph.step_context import StepContext
 from graph.state.graph_state import GraphState
+from graph.state.state_view import StateView
 from core.types import StreamWriter
-from typing import Optional, Any, Mapping
+from typing import Optional, Any, Mapping, ClassVar
 from core.contracts import SupportsStreaming
 
 
@@ -12,6 +13,8 @@ class BaseNode(SupportsStreaming, ABC):
     • Provides __call__ with streaming
     • NO domain-specific logic
     """
+    READS: ClassVar[set[str]] = set()
+    WRITES: ClassVar[set[str]] = set()
 
     def __init__(self, *, retries: int = 1, **kwargs: Any):
         super().__init__(**kwargs)  # MRO
@@ -21,7 +24,7 @@ class BaseNode(SupportsStreaming, ABC):
         self._is_streaming = False
 
     @abstractmethod
-    def run(self, state: GraphState) -> GraphState:
+    def run(self, state: StateView) -> StateView:
         ...
 
     def __call__(self,
@@ -30,9 +33,14 @@ class BaseNode(SupportsStreaming, ABC):
                  writer: StreamWriter = None) -> GraphState:
         self._stream_writer = writer
         self._is_streaming = config.get("metadata", {}).get("streaming", False)
-        result = self.run(state)
+
+        wrapped_state = StateView(state, reads=self.read_channels(), writes=self.write_channels())
+        self.run(wrapped_state)
+        result = wrapped_state.backing_state
+
         self._stream({"type": "complete",
                       "state": result})
+
         return result
 
     def _base_stream_data(self) -> dict[str, Any]:
@@ -67,6 +75,14 @@ class BaseNode(SupportsStreaming, ABC):
         Set the step context for this node.
         """
         self._ctx = step_ctx
+
+    @classmethod
+    def read_channels(cls) -> set[str]:
+        return cls.READS
+
+    @classmethod
+    def write_channels(cls) -> set[str]:
+        return cls.WRITES
 
     @property
     def uid(self) -> str:
