@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { Node, Edge, Connection, addEdge, useNodesState, useEdgesState } from 'reactflow';
 import { useToast } from "@/hooks/use-toast";
 import { CurrentGraph, BuildingBlock } from '@/types/graph';
-import { buildingBlocksData, getIconComponent } from '@/workspace/nodeData';
+import { buildingBlocksData } from '@/workspace/nodeData';
+import { getIconComponent } from '@/components/shared/helpers';
 
 export const useGraphLogic = () => {
   const { toast } = useToast();
@@ -159,6 +160,7 @@ export const useGraphLogic = () => {
 
       if (blockData) {
         const block = JSON.parse(blockData);
+        console.log(block)
         const position = {
           x: event.clientX - reactFlowBounds.left - 75,
           y: event.clientY - reactFlowBounds.top - 25,
@@ -173,7 +175,7 @@ export const useGraphLogic = () => {
             icon: getIconComponent(block.iconType),
             color: block.color,
             style: `bg-gray-800 text-white border`,
-            description: `${block.label} component for your graph`,
+            description: `${block.description}`,
             onDelete: deleteNode
           },
         };
@@ -212,6 +214,7 @@ export const useGraphLogic = () => {
       type: block.type,
       label: block.label,
       iconType: block.iconType,
+      description: block.description,
       color: block.color
     };
     event.dataTransfer.setData('application/reactflow', JSON.stringify(blockData));

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ReactFlowProvider, ReactFlow, Node, Edge, Connection, Background, Controls, MiniMap, NodeTypes, MarkerType, ConnectionLineType } from 'reactflow';
+import { ReactFlowProvider, ReactFlow, Node, Edge, Connection, Background, Controls, NodeTypes, MarkerType, ConnectionLineType } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus } from 'lucide-react';
@@ -65,7 +65,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
               >
                 <Background color="#aaa" gap={16} />
                 <Controls />
-                <MiniMap />
               </ReactFlow>
             </ReactFlowProvider>
             

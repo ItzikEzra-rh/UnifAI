@@ -7,8 +7,9 @@ export const buildingBlocksData: BuildingBlock[] = [
     id: 'node1',
     type: 'custom',
     label: 'Node1',
-    iconType: 'bot',
+    iconType: 'message-square',
     color: '#8A2BE2',
+    description: 'node for slack',
     connectIn: 'node2',
     connectOut: 'node2'
   },
@@ -16,8 +17,9 @@ export const buildingBlocksData: BuildingBlock[] = [
     id: 'node2',
     type: 'custom',
     label: 'Node2',
-    iconType: 'bot',
+    iconType: 'file-text',
     color: '#00B0FF',
+    description: 'node for docs',
     connectIn: ['node1', 'node3'],
     connectOut: ['node1', 'node3']
   },
@@ -27,6 +29,7 @@ export const buildingBlocksData: BuildingBlock[] = [
     label: 'Node3',
     iconType: 'bot',
     color: '#FFB300',
+    description: 'node for merging',
     connectIn: ['node1'],
     connectOut: ['node1']
   },
