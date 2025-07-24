@@ -167,8 +167,8 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
     refetchOnWindowFocus: true, // Refetch when user comes back to the page
   });
 
-  const getSelectedChannels = useCallback(() => {
-    return channels.filter(c => selectedChannels.includes(c.channel_name));
+  const getSelectedChannels = useCallback(async () => {
+    return channels.filter(c => selectedChannels.includes(getChannelUniqueId(c)));
   }, [channels, selectedChannels]);
 
   useImperativeHandle(ref, () => ({
@@ -187,8 +187,8 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
   );
 
   // Toggle a channel selection
-  const handleToggleChannel = useCallback((name: string) => {
-    if (isChannelEmbedded(name)) {
+  const handleToggleChannel = useCallback((channel: Channel) => {
+    if (isChannelEmbedded(channel)) {
       return;
     }
     
@@ -206,6 +206,13 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
   const selectableChannelIds = useMemo(() => 
     selectableChannels.map(c => getChannelUniqueId(c)), 
     [selectableChannels]
+  );
+  
+  const allNames = useMemo(() => 
+    filteredChannels
+      .filter(c => !isChannelEmbedded(c))
+      .map(c => getChannelUniqueId(c)), 
+    [filteredChannels, isChannelEmbedded]
   );
   const allSelected = selectableChannelIds.length > 0 && selectableChannelIds.every(id => selectedChannels.includes(id));
   const handleSelectAll = useCallback(() => {

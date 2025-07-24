@@ -336,7 +336,10 @@ class SlackConnector(DataConnector):
                 channels.append({
                     'channel_id': channel.get('id'),
                     'channel_name': channel.get('name'),
+                    'type': 'Private' if channel.get('is_private', False) else 'Public',
                     'is_private': channel.get('is_private', False),
+                    'project_id': self._project_id,
+                    'last_updated': time.time()
                 })
             
             # Check if there are more pages
