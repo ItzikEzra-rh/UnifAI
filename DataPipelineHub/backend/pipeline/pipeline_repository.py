@@ -91,7 +91,7 @@ class PipelineRepository:
 
     def register_data_source(
         self,
-        summary: Dict[str, Any]
+        summary: Dict[str, Any] = {}
     ) -> None:
         """
         Register or update a data source in the sources collection.
@@ -100,8 +100,12 @@ class PipelineRepository:
         now = datetime.now()
         update_fields = {
             'last_sync_at': now,
-            **summary
         }
+        
+        # Add each key from summary to type_data using dot notation
+        # This preserves existing keys while adding/updating specific ones
+        for key, value in summary.items():
+            update_fields[f'type_data.{key}'] = value
         insert_fields = {
             'source_id': self.source_id,
             'source_name': self.source_name,

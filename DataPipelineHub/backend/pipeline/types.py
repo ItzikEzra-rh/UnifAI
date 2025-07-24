@@ -6,6 +6,7 @@ class SlackMetadata:
     channel_id: str
     channel_name: Optional[str] = None
     is_private: Optional[bool] = None
+    upload_by: Optional[str] = None
 
 @dataclass(frozen=True)
 class DocumentMetadata:

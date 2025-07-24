@@ -40,8 +40,8 @@ class SourceRepository(ABC):
 
 class PipelineRepository(ABC):
     @abstractmethod
-    def get_status_map(self, pipeline_ids: List[str]) -> Dict[str, str]:
-        """Given a list of pipeline_ids, return a map {pipeline_id -> status}."""
+    def get_pipeline_stats(self, pipeline_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        """Given a list of pipeline_ids, return a map {pipeline_id -> stats_object}."""
         ...
 
 # ─── MongoStorage (implements both repos + old methods) ─────────────────────
@@ -72,14 +72,18 @@ class MongoStorage(SourceRepository, PipelineRepository):
         source_type: str,
         upload_by: str,
         pipeline_id: str,
-        summary: Dict[str, Any]
+        type_data: Dict[str, Any] = None
     ) -> None:
         col = self._get_collection(Database.DATA.value, CollectionName.SOURCES.value)
         now = datetime.now()
         update_fields = {
             'last_sync_at': now,
-            **summary
         }
+        
+        # Add type_data if provided
+        if type_data is not None:
+            update_fields['type_data'] = type_data
+        
         insert_fields = {
             'source_id':   source_id,
             'source_name': source_name,
@@ -143,15 +147,44 @@ class MongoStorage(SourceRepository, PipelineRepository):
     def get_all(self, source_type: Optional[str] = None) -> List[Dict[str, Any]]:
         return self.get_all_sources(source_type)
 
-    def get_status_map(self, pipeline_ids: List[str]) -> Dict[str, str]:
+    def get_pipeline_stats(self, pipeline_ids: List[str]) -> Dict[str, Dict[str, Any]]:
+        """Get comprehensive pipeline statistics for given pipeline IDs."""
         if not pipeline_ids:
             return {}
+        
         col = self._get_collection(Database.PIPELINE.value, CollectionName.PIPELINES.value)
         cursor = col.find(
             {'pipeline_id': {'$in': pipeline_ids}},
-            {'pipeline_id': 1, 'status': 1}
+            {
+                'pipeline_id': 1, 
+                'status': 1,
+                'stats': 1,
+            }
         )
-        return {d['pipeline_id']: d.get('status', '') for d in cursor}
+        
+        stats_map = {}
+        for doc in cursor:
+            pipeline_id = doc['pipeline_id']
+            
+            # Extract the stats object if it exists
+            pipeline_stats = doc.get('stats', {})
+            
+            # Build the comprehensive stats response
+            stats = {
+                'status': doc.get('status', ''),
+                # Include the actual stats from the pipeline
+                'documents_retrieved': pipeline_stats.get('documents_retrieved', 0),
+                'chunks_generated': pipeline_stats.get('chunks_generated', 0),
+                'embeddings_created': pipeline_stats.get('embeddings_created', 0),
+                'api_calls': pipeline_stats.get('api_calls', 0),
+                'processing_time': pipeline_stats.get('processing_time', 0.0)
+            }
+            
+            # Clean up None values to keep the response clean
+            stats = {k: v for k, v in stats.items() if v is not None}
+            stats_map[pipeline_id] = stats
+            
+        return stats_map
 
     def delete_source(self, source_id: str) -> Dict[str, Any]:
         """
@@ -267,7 +300,7 @@ class SourceService:
         self._src = src_repo
         self._pl  = pl_repo
 
-    def list_sources_with_status(
+    def list_sources(
         self,
         source_type: Optional[str] = None
     ) -> List[Dict[str, Any]]:
@@ -275,11 +308,18 @@ class SourceService:
         ids = [s.get('pipeline_id') for s in raw if s.get('pipeline_id')]
         # Filter out None values for type safety
         valid_ids = [id for id in ids if id is not None]
-        status_map = self._pl.get_status_map(valid_ids)
+        pipeline_stats = self._pl.get_pipeline_stats(valid_ids)
 
         enriched: List[Dict[str, Any]] = []
         for s in raw:
             pipeline_id = s.get('pipeline_id')
-            s['status'] = status_map.get(pipeline_id) if pipeline_id else None
+            if pipeline_id and pipeline_id in pipeline_stats:
+                # Add comprehensive pipeline stats
+                s['pipeline_stats'] = pipeline_stats[pipeline_id]
+                # Keep backward compatibility by also setting status directly
+                s['status'] = pipeline_stats[pipeline_id].get('status')
+            else:
+                s['pipeline_stats'] = None
+                s['status'] = None
             enriched.append(_make_json_safe(s))
         return enriched

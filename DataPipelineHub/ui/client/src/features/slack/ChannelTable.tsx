@@ -6,15 +6,31 @@ import { HiOutlineLockClosed } from "react-icons/hi";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
-import { EmbedChannel, EMBED_CHANNEL_STATUS } from "@/types";
+import { EmbedChannel } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
 
 export function isChannelNew(createdAt: Date): boolean {
   const now = new Date()
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
   return createdAt > dayAgo
+}
+
+// Helper function to check if a channel is actively processing
+export function isChannelActivelyProcessing(channel: EmbedChannel): boolean {
+  const activeStatuses = [
+    PIPELINE_STATUS.PENDING,
+    PIPELINE_STATUS.ACTIVE,
+    PIPELINE_STATUS.COLLECTING,
+    PIPELINE_STATUS.PROCESSING,
+    PIPELINE_STATUS.CHUNKING_AND_EMBEDDING,
+    PIPELINE_STATUS.STORING,
+    PIPELINE_STATUS.ORCHESTRATING,
+  ];
+  
+  return activeStatuses.includes(channel.status as any);
 }
 
 export function getColumns(
@@ -71,19 +87,19 @@ export function getColumns(
         let displayLabel: string;
         
         switch (status) {
-          case EMBED_CHANNEL_STATUS.ACTIVE:
+          case PIPELINE_STATUS.ACTIVE:
             displayLabel = "In Progress";
             break;
-          case EMBED_CHANNEL_STATUS.PAUSED:
+          case PIPELINE_STATUS.PAUSED:
             displayLabel = "Paused";
             break;
-          case EMBED_CHANNEL_STATUS.DONE:
+          case PIPELINE_STATUS.DONE:
             displayLabel = "Done";
             break;
-          case EMBED_CHANNEL_STATUS.FAILED:
+          case PIPELINE_STATUS.FAILED:
             displayLabel = "Failed";
             break;
-          case EMBED_CHANNEL_STATUS.ARCHIVED:
+          case PIPELINE_STATUS.ARCHIVED:
             displayLabel = "Archived";
             break;
           default:
@@ -220,11 +236,20 @@ export function getColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                disabled={isDeleting}
-                className={`p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-lg transition-all duration-200 ${
-                  isDeleting ? "opacity-50 cursor-not-allowed" : ""
+                disabled={isDeleting || isChannelActivelyProcessing(ch)}
+                className={`p-2 text-muted-foreground rounded-lg transition-all duration-200 ${
+                  isDeleting || isChannelActivelyProcessing(ch) 
+                    ? "opacity-50 cursor-not-allowed" 
+                    : "hover:text-destructive hover:bg-destructive/10"
                 }`}
-                onClick={() => !isDeleting && onDeleteClick(ch)}
+                onClick={() => !isDeleting && !isChannelActivelyProcessing(ch) && onDeleteClick(ch)}
+                title={
+                  isChannelActivelyProcessing(ch) 
+                    ? "Cannot delete channel while processing" 
+                    : isDeleting 
+                      ? "Deleting..." 
+                      : "Delete channel"
+                }
               >
                 {isDeleting ? (
                   <FaSync className="h-4 w-4 animate-spin" />

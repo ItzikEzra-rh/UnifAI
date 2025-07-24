@@ -1,4 +1,10 @@
-import { PipelineStatus } from '@/constants/pipelineStatus';
+import {
+   ActivityLogType,
+   DataSourceStatus,
+   DataSourceType,
+   PipelineStatus,
+   UserRole
+} from '@/constants/pipelineStatus';
 
 export interface Pipeline {
   id: string;

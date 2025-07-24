@@ -46,7 +46,7 @@ const scopeOptions: { label: string; value: Scope }[] = [
 
 // ── Interface ─────────────────────────────────────────────────
 export interface AddSourceSectionHandle {
-  getSelectedChannels(): Channel[];
+  getSelectedChannels: () => Promise<Channel[]>;
 }
 
 export interface AddSourceSectionProps {
@@ -55,12 +55,22 @@ export interface AddSourceSectionProps {
   isSubmitting?: boolean;
 }
 
+// Helper functions for unique channel identification
+const getChannelUniqueId = (channel: Channel) => `${channel.channel_id}_${channel.is_private ? 'private' : 'public'}`;
+const parseChannelUniqueId = (uniqueId: string) => {
+  const parts = uniqueId.split('_');
+  return {
+    channel_id: parts.slice(0, -1).join('_'), // Handle channel_ids that might contain underscores
+    is_private: parts[parts.length - 1] === 'private'
+  };
+};
+
 // ── Component ──────────────────────────────────────────────────────────
 const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProps>(({ onSave, onCancel, isSubmitting }, ref) => {
   const queryClient = useQueryClient();
   const [scope, setScope] = useState<Scope>(SCOPE.ALL);
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+  const [selectedChannels, setSelectedChannels] = useState<string[]>([]); // Now stores unique IDs
 
   // Slack API `types` param mapping
   const typesParam = useMemo<ChannelType | typeof ALL_CHANNEL_TYPES>(() => {
@@ -86,10 +96,23 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
           qc.setQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PUBLIC], pub);
           qc.setQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PRIVATE], priv);
 
-          // ② return merged & deduped
-          const map = new Map<string, Channel>();
-          pub.concat(priv).forEach(c => map.set(c.channel_id, c));
-          return Array.from(map.values());
+          // ② return merged & deduped by channel_id
+          // Use a more robust deduplication that preserves both if they have different channel_ids
+          const seenIds = new Set<string>();
+          const mergedChannels: Channel[] = [];
+          
+          // Process all channels and only add if channel_id hasn't been seen
+          [...pub, ...priv].forEach(channel => {
+            if (!seenIds.has(channel.channel_id)) {
+              seenIds.add(channel.channel_id);
+              mergedChannels.push(channel);
+            } else {
+              // Log potential duplicates for debugging
+              console.warn(`Duplicate channel_id found: ${channel.channel_id} (${channel.channel_name})`);
+            }
+          });
+          
+          return mergedChannels;
         }
 
         return fetchAvailableSlackChannels(typesParam as ChannelType);
@@ -110,13 +133,57 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
   });
 
   useImperativeHandle(ref, () => ({
-    getSelectedChannels: () =>
-      channels.filter(c => selectedChannels.includes(c.channel_name)),
+    getSelectedChannels: async () => {
+      // Instead of using only current 'channels', get ALL channels from cache
+      // to ensure we can find channels selected from different scopes
+      let publicChannels = queryClient.getQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PUBLIC]) ?? [];
+      let privateChannels = queryClient.getQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PRIVATE]) ?? [];
+      
+      // If either cache is empty, force-fetch the missing data
+      if (publicChannels.length === 0 || privateChannels.length === 0) {
+        try {
+          const [pub, priv] = await Promise.all([
+            publicChannels.length === 0 ? fetchAvailableSlackChannels(CHANNEL_TYPE.PUBLIC) : Promise.resolve(publicChannels),
+            privateChannels.length === 0 ? fetchAvailableSlackChannels(CHANNEL_TYPE.PRIVATE) : Promise.resolve(privateChannels),
+          ]);
+          publicChannels = pub;
+          privateChannels = priv;
+          queryClient.setQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PUBLIC], pub);
+          queryClient.setQueryData<Channel[]>([CACHE_KEY, CHANNEL_TYPE.PRIVATE], priv);
+          
+        } catch (error) {
+          // Fall back to current channels array as last resort
+          if (publicChannels.length === 0 && privateChannels.length === 0) {
+            return channels.filter(c => selectedChannels.includes(getChannelUniqueId(c)));
+          }
+        }
+      }
+      
+      let allAvailableChannels = [...publicChannels, ...privateChannels];
+      if (allAvailableChannels.length === 0) {
+        allAvailableChannels = channels;
+      }
+      const seenIds = new Set<string>();
+      const deduplicatedChannels: Channel[] = [];
+      allAvailableChannels.forEach(channel => {
+        if (!seenIds.has(channel.channel_id)) {
+          seenIds.add(channel.channel_id);
+          deduplicatedChannels.push(channel);
+        }
+      });
+            const result = deduplicatedChannels.filter(c => selectedChannels.includes(getChannelUniqueId(c)));
+
+      if (result.length !== selectedChannels.length) {
+        const foundIds = result.map(c => getChannelUniqueId(c));
+        const missingIds = selectedChannels.filter(id => !foundIds.includes(id));
+      }
+      return result;
+    },
   }));
 
   // Check if a channel is already embedded
-  const isChannelEmbedded = useCallback((channelName: string) => {
-    return embedChannels.some(embedded => embedded.name === channelName);
+  const isChannelEmbedded = useCallback((channel: Channel) => {
+    return embedChannels.some(embedded => embedded.name === channel.channel_name);
   }, [embedChannels]);
 
   // Filter channels by search term
@@ -126,28 +193,31 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
   );
 
   // Toggle a channel selection
-  const handleToggleChannel = useCallback((name: string) => {
+  const handleToggleChannel = useCallback((channel: Channel) => {
     // Don't allow toggling if channel is already embedded
-    if (isChannelEmbedded(name)) {
+    if (isChannelEmbedded(channel)) {
       return;
     }
     
+    const uniqueId = getChannelUniqueId(channel);
     setSelectedChannels(prev =>
-      prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]
+      prev.includes(uniqueId) ? prev.filter(n => n !== uniqueId) : [...prev, uniqueId]
     );
   }, [isChannelEmbedded]);
 
   // Select all or clear all (excluding embedded channels)
-  const allNames = useMemo(() => 
-    filteredChannels
-      .filter(c => !isChannelEmbedded(c.channel_name))
-      .map(c => c.channel_name), 
+  const selectableChannels = useMemo(() => 
+    filteredChannels.filter(c => !isChannelEmbedded(c)), 
     [filteredChannels, isChannelEmbedded]
   );
-  const allSelected = allNames.length > 0 && allNames.every(n => selectedChannels.includes(n));
+  const selectableChannelIds = useMemo(() => 
+    selectableChannels.map(c => getChannelUniqueId(c)), 
+    [selectableChannels]
+  );
+  const allSelected = selectableChannelIds.length > 0 && selectableChannelIds.every(id => selectedChannels.includes(id));
   const handleSelectAll = useCallback(() => {
-    setSelectedChannels(prev => (allSelected ? [] : Array.from(new Set([...prev, ...allNames]))));
-  }, [allNames, allSelected]);
+    setSelectedChannels(prev => (allSelected ? [] : Array.from(new Set([...prev, ...selectableChannelIds]))));
+  }, [selectableChannelIds, allSelected]);
 
   // Compute counts for display
   const counts: Record<Scope, number> = useMemo(
@@ -243,14 +313,15 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
           {!isLoading && !isError && filteredChannels.length === 0 && <div className="p-4 text-center text-gray-500">No channels found</div>}
 
           {filteredChannels.map(c => {
-            const isEmbedded = isChannelEmbedded(c.channel_name);
+            const isEmbedded = isChannelEmbedded(c);
+            const uniqueId = getChannelUniqueId(c);
             return (
               <div 
-                key={c.channel_id} 
+                key={uniqueId} 
                 className={`flex items-center justify-between p-3 border-b border-gray-800 ${
                   isEmbedded ? 'opacity-60 cursor-not-allowed' : 'hover:bg-background-surface cursor-pointer'
                 }`}
-                onClick={() => !isEmbedded && handleToggleChannel(c.channel_name)}
+                onClick={() => !isEmbedded && handleToggleChannel(c)}
               >
                 <div className="flex items-center">
                   <span className="text-gray-400 mr-2">{c.is_private ? <HiOutlineLockClosed className="inline" /> : '#'}</span>
@@ -260,9 +331,9 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
                   {isEmbedded && <Badge className="ml-2 bg-green-500/20 text-green-400 border border-green-400/30">Embedded</Badge>}
                 </div>
                 <Switch 
-                  checked={isEmbedded || selectedChannels.includes(c.channel_name)} 
+                  checked={isEmbedded || selectedChannels.includes(uniqueId)} 
                   disabled={isEmbedded}
-                  onCheckedChange={() => handleToggleChannel(c.channel_name)} 
+                  onCheckedChange={() => handleToggleChannel(c)} 
                 />
               </div>
             );

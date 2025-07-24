@@ -1,45 +1,146 @@
+import os
+import uuid
+from config.app_config import AppConfig
 from global_utils.celery_app import CeleryApp
 from pipeline.pipeline_factory import PipelineFactory
 from pipeline.pipeline_executor import PipelineExecutor
 from pipeline.types import SlackMetadata, DocumentMetadata
 from shared.logger import logger
 from config.constants import DataSource
+from utils.storage.mongo.mongo_storage import MongoStorage
+from global_utils.utils.util import get_mongo_url
 
 # Import the concrete factories to ensure they register themselves
 from pipeline.slack_pipeline_factory import SlackPipelineFactory
 from pipeline.doc_pipeline_factory import DocumentPipelineFactory
+app_config = AppConfig()
+upload_folder = app_config.get("upload_folder", "")
+
+# Initialize mongo storage for registration
+mongo_storage = MongoStorage(get_mongo_url())
+
+@CeleryApp().app.task(bind=True, max_retries=3, default_retry_delay=30)
+def register_sources_task(self, data_list: list, source_type: str, upload_by: str = "default"):
+    """
+    Registration-only task that processes all data sources, creates pipeline IDs,
+    and registers them in the mongo sources collection using upsert_source_summary.
+    
+    Args:
+        data_list: List of data sources to register
+        source_type: Type of data source (SLACK, DOCUMENT, etc.)
+        upload_by: User who initiated the registration
+        
+    Returns:
+        List of registered sources with their pipeline IDs added
+    """
+    try:
+        logger.info(f"Starting registration for {len(data_list)} {source_type} sources by user {upload_by}")
+        
+        registered_sources = []
+        
+        for instance in data_list:
+            # Generate source_id and pipeline_id based on source type
+            if source_type.upper() == DataSource.SLACK.upper_name:
+                source_id = instance.get("channel_id", "")
+                source_name = instance.get("channel_name", "")
+                pipeline_id = f"{DataSource.SLACK.value}_{source_id}"
+                
+                # Create metadata object
+                metadata = SlackMetadata(
+                    channel_id=source_id,
+                    channel_name=source_name,
+                    is_private=instance.get("is_private", False),
+                    upload_by=upload_by
+                )
+                
+                # Create type_data for Slack (only source-specific data)
+                type_data = {
+                    "is_private": instance.get("is_private", False),
+                }
+                
+            elif source_type.upper() == DataSource.DOCUMENT.upper_name:
+                source_id = str(uuid.uuid4())
+                source_name = instance.get("source_name", "")
+                doc_path = os.path.join(upload_folder, source_name)
+                pipeline_id = f"{DataSource.DOCUMENT.value}_{source_id}"
+                
+                # Create metadata object
+                metadata = DocumentMetadata(
+                    doc_id=source_id,
+                    doc_name=instance.get("source_name", ""),
+                    doc_path=os.path.join(upload_folder, source_name),
+                    upload_by=upload_by
+                )
+                
+                # Create type_data for Document (only source-specific data)
+                type_data = {
+                    "doc_path": doc_path,
+                    "page_count": 0,
+                    "full_text": "",
+                    "file_size": 0,
+                }
+                
+            else:
+                logger.error(f"Unsupported source type: {source_type}")
+                continue
+
+            # Register source using upsert_source_summary (only type_data now)
+            mongo_storage.upsert_source_summary(
+                source_id=source_id,
+                source_name=source_name,
+                source_type=source_type.upper(),
+                upload_by=upload_by,
+                pipeline_id=pipeline_id,
+                type_data=type_data
+            )
+            
+            # Return only essential data needed for pipeline execution
+            registered_source = {
+                "pipeline_id": pipeline_id,
+                "metadata": metadata.__dict__,  # Serialized metadata
+                "source_type": source_type.upper(),
+                "upload_by": upload_by
+            }
+            
+            registered_sources.append(registered_source)
+            logger.info(f"Registered {source_type} source: {source_name} with pipeline_id: {pipeline_id}")
+        
+        logger.info(f"Successfully registered {len(registered_sources)} {source_type} sources with pipeline IDs")
+        
+        return {
+            "status": "registration_complete",
+            "registered_sources": registered_sources
+        }
+        
+    except Exception as e:
+        logger.error(f"Registration task failed for {source_type}: {str(e)}", exc_info=True)
+        raise self.retry(exc=e)
 
 @CeleryApp().app.task(bind=True, max_retries=5, default_retry_delay=60)
-def execute_pipeline_task(self, source_type: str, source_data: dict, upload_by: str = "default"):
+def execute_pipeline_task(self, source_type: str, source_data: dict):
     """
     General pipeline execution task that works with any source type.
     
     Args:
         source_type: Type of source (SLACK, DOCUMENT, etc.)
-        source_data: Data for creating the metadata object
-        upload_by: User who initiated the pipeline
+        source_data: Clean data with pipeline_id, metadata, source_type from registration
     """
     try:
         logger.info(f"Starting pipeline execution for {source_type} source: {source_data}")
         
-        # Create metadata object based on source type
-        if source_type == DataSource.SLACK.upper_name:
-            metadata = SlackMetadata(
-                channel_id=source_data.get("channel_id", ""),
-                channel_name=source_data.get("channel_name", ""),
-                is_private=source_data.get("is_private", False)
-            )
-            pipeline_id = f"slack_{metadata.channel_id}"
+        # Extract data from the clean structure
+        pipeline_id = source_data.get("pipeline_id")
+        metadata_dict = source_data.get("metadata")
+        if not pipeline_id or not metadata_dict:
+            raise ValueError("Pipeline ID or metadata not found in source_data")
+
+        # Deserialize metadata based on source type
+        if source_type.upper() == DataSource.SLACK.upper_name:
+            metadata = SlackMetadata(**metadata_dict)
             
-        elif source_type == DataSource.DOCUMENT.upper_name:
-            metadata = DocumentMetadata(
-                doc_id=source_data.get("source_id", ""),
-                doc_name=source_data.get("source_name", ""),
-                doc_path=source_data.get("doc_path", ""),
-                upload_by=upload_by
-            )
-            pipeline_id = f"doc_{metadata.doc_id}"
-            
+        elif source_type.upper() == DataSource.DOCUMENT.upper_name:
+            metadata = DocumentMetadata(**metadata_dict)
+            logger.info(f"Document path: {metadata}")
         else:
             raise ValueError(f"Unsupported source type: {source_type}")
         

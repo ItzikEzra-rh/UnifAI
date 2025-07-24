@@ -4,7 +4,6 @@ from pipeline.pipeline_repository import PipelineRepository
 from pipeline.pipeline_executor import PipelineExecutor
 from pipeline.pipeline_factory import PipelineFactory
 from pipeline.types import SlackMetadata
-from pipeline.config import ChunkerConfig, EmbeddingConfig, StorageConfig
 import pymongo
 from data_sources.slack.slack_config_manager import SlackConfigManager
 from data_sources.slack.slack_connector import SlackConnector
@@ -129,17 +128,10 @@ def embed_slack_channels_flow(channel_list, upload_by="default"):
 
         # 2️⃣ Register channel in source data collection IMMEDIATELY
         try:
-            initial_summary = {
-                "chunks_generated": 0,
-                "embeddings_created": 0,
-                "processing_time_s": 0,
-                "last_pipeline_id": pipeline_id,
-            }
-
-            slack_type_data = {
+            # Create type_data for Slack (only source-specific data)
+            initial_type_data = {
+                "is_private": channel["is_private"],
                 "message_count": 0,
-                "api_calls": 0,
-                "is_private": channel["is_private"]
             }
 
             # Register the source immediately with initial data
@@ -147,25 +139,18 @@ def embed_slack_channels_flow(channel_list, upload_by="default"):
                 source_id=cid,
                 source_name=cname,
                 source_type="SLACK",
-                summary=initial_summary,
-                type_data=slack_type_data
+                upload_by=upload_by,
+                pipeline_id=pipeline_id,
+                type_data=initial_type_data
             )
 
             # 3️⃣ Fetch messages first
             messages, thread_msgs = connector.get_conversations_history(cid) # done
             
             # Update source with message count immediately after fetching
-            fetched_summary = {
-                "chunks_generated": 0,
-                "embeddings_created": 0,
-                "processing_time_s": 0,
-                "last_pipeline_id": pipeline_id,
-            }
-
-            fetched_slack_type_data = {
+            fetched_type_data = {
+                "is_private": channel["is_private"],
                 "message_count": len(messages),
-                "api_calls": 0,
-                "is_private": channel["is_private"]
             }
 
             # Update source with message count
@@ -173,8 +158,9 @@ def embed_slack_channels_flow(channel_list, upload_by="default"):
                 source_id=cid,
                 source_name=cname,
                 source_type="SLACK",
-                summary=fetched_summary,
-                type_data=fetched_slack_type_data
+                upload_by=upload_by,
+                pipeline_id=pipeline_id,
+                type_data=fetched_type_data
             )
             
             # 4️⃣ Process, chunk, embed
@@ -207,18 +193,10 @@ def embed_slack_channels_flow(channel_list, upload_by="default"):
             enriched = embedding_generator.generate_embeddings(all_chunks)
             qstore.store_embeddings(enriched)
 
-            # 7️⃣ Update source summary with final data
-            final_summary = {
-                "chunks_generated":   len(all_chunks),
-                "embeddings_created": len(enriched),
-                "processing_time_s":  time.time() - start,
-                "last_pipeline_id":   pipeline_id,
-            }
-
-            final_slack_type_data = {
+            # 7️⃣ Update source with final data (only source-specific)
+            final_type_data = {
+                "is_private": channel["is_private"],
                 "message_count": len(messages),
-                "api_calls":     slack_api_calls,
-                "is_private":    channel["is_private"]
             }
 
             # Update the source with final processing results
@@ -226,8 +204,9 @@ def embed_slack_channels_flow(channel_list, upload_by="default"):
                 source_id=cid,
                 source_name=cname,
                 source_type="SLACK",
-                summary=final_summary,
-                type_data=final_slack_type_data
+                upload_by=upload_by,
+                pipeline_id=pipeline_id,
+                type_data=final_type_data
             )
 
             # 8️⃣ Mark success in monitor
@@ -245,28 +224,19 @@ def embed_slack_channels_flow(channel_list, upload_by="default"):
             if pipeline_id:
                 slack_pipeline.monitor.record_error(pipeline_id, str(e))
             
-            # Update source status to failed
-            error_summary = {
-                "chunks_generated": 0,
-                "embeddings_created": 0,
-                "processing_time_s": 0,
-                "last_pipeline_id": pipeline_id,
-                "status": "failed",
-                "error": str(e)
-            }
-
-            error_slack_type_data = {
+            # Update source with error (only source-specific data)
+            error_type_data = {
+                "is_private": channel["is_private"],
                 "message_count": 0,
-                "api_calls": 0,
-                "is_private": channel["is_private"]
             }
 
             mongo_storage.upsert_source_summary(
                 source_id=cid,
                 source_name=cname,
                 source_type="SLACK",
-                summary=error_summary,
-                type_data=error_slack_type_data
+                upload_by=upload_by,
+                pipeline_id=pipeline_id,
+                type_data=error_type_data
             )
             
             response.append({

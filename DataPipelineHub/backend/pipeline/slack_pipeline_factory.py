@@ -1,7 +1,6 @@
 from functools import cached_property
 from typing import Dict, List, Tuple
 from pipeline.pipeline_factory import PipelineFactory
-from pipeline.decorators import inject
 from pipeline.types import SlackMetadata
 from data_sources.slack.slack_config_manager import SlackConfigManager
 from data_sources.slack.slack_connector import SlackConnector

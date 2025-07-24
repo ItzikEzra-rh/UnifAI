@@ -21,7 +21,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { StatsCard, StatsCardProps } from "./StatsCard";
-import { PipelineStatus } from "@/constants/pipelineStatus";
+import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
 import { EmbedChannel } from "@/types";
 import { formatNumber, getLastSyncTime } from "@/utils";
 
@@ -34,6 +34,32 @@ const sharedTransition = {
   type: "spring",
   stiffness: 300,
   damping: 30,
+};
+
+// Helper functions for pipeline status management
+const getActiveStatuses = () => [
+  PIPELINE_STATUS.PENDING,
+  PIPELINE_STATUS.ACTIVE,
+  PIPELINE_STATUS.COLLECTING,
+  PIPELINE_STATUS.PROCESSING,
+  PIPELINE_STATUS.CHUNKING_AND_EMBEDDING,
+  PIPELINE_STATUS.STORING,
+  PIPELINE_STATUS.ORCHESTRATING,
+];
+
+const getInactiveStatuses = () => [
+  PIPELINE_STATUS.DONE,
+  PIPELINE_STATUS.FAILED,
+  PIPELINE_STATUS.ARCHIVED,
+  PIPELINE_STATUS.PAUSED
+];
+
+const isChannelActivelyProcessing = (channel: EmbedChannel) => {
+  return getActiveStatuses().includes(channel.status as any);
+};
+
+const isChannelInactive = (channel: EmbedChannel) => {
+  return getInactiveStatuses().includes(channel.status as any);
 };
 
 export default function SlackIntegration() {
@@ -50,9 +76,9 @@ export default function SlackIntegration() {
   // Check if there are any channels in progress or being embedded
   const hasActiveOperations = (channels: EmbedChannel[] | undefined) => {
     if (!channels || !Array.isArray(channels)) return false;
+    
     return channels.some(channel =>
-      channel.status === EMBED_CHANNEL_STATUS.ACTIVE ||
-      channel.status === EMBED_CHANNEL_STATUS.PAUSED ||
+      isChannelActivelyProcessing(channel) ||
       activeEmbedding.has(channel.channel_id)
     );
   };
@@ -63,10 +89,18 @@ export default function SlackIntegration() {
     staleTime: 15 * 1000, // Fresh data for 15 seconds
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    // Dynamic polling - poll every 5 seconds when there are active operations
+    // Smart polling - poll every 5 seconds when there are active pipeline operations
     refetchInterval: (query) => {
       const data = query.state.data as EmbedChannel[] | undefined;
       const hasActive = hasActiveOperations(data) || activeEmbedding.size > 0;
+      
+      // Log the active channels for debugging
+      if (hasActive && data) {
+        const activeChannels = data.filter(isChannelActivelyProcessing);
+        console.log(`Live tracking enabled: ${activeChannels.length} channels actively processing`, 
+                   activeChannels.map(c => `${c.name}: ${c.status}`));
+      }
+      
       return hasActive ? 5000 : false;
     },
   });
@@ -77,14 +111,11 @@ export default function SlackIntegration() {
     staleTime: 5 * 1000, // Fresh data for 5 seconds
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    // Use a stable interval but trigger manual refetches when needed
     refetchInterval: 10000, // Poll every 10 seconds as baseline
   });
 
   // Effect to trigger additional stats refresh when channels change or embedding state changes
   useEffect(() => {
-    // Debounce the refresh to avoid too many calls
-    console.log(embedChannels)
     const timeoutId = setTimeout(() => {
       refetchStats();
     }, 1000);
@@ -178,10 +209,10 @@ export default function SlackIntegration() {
   useEffect(() => {
     if (Array.isArray(embedChannels) && embedChannels.length > 0 && activeEmbedding.size > 0) {
       const completedChannels: string[] = [];
-
+      
       activeEmbedding.forEach(channelId => {
         const channel = embedChannels.find(c => c.channel_id === channelId);
-        if (channel && (channel.status === EMBED_CHANNEL_STATUS.DONE || channel.status === EMBED_CHANNEL_STATUS.FAILED)) {
+        if (channel && isChannelInactive(channel)) {
           completedChannels.push(channelId);
         }
       });
@@ -192,7 +223,7 @@ export default function SlackIntegration() {
         // Show completion toast
         const completedCount = completedChannels.length;
         const failedChannels = embedChannels.filter(c =>
-          completedChannels.includes(c.channel_id) && c.status === EMBED_CHANNEL_STATUS.FAILED
+          completedChannels.includes(c.channel_id) && c.status === PIPELINE_STATUS.FAILED
         );
 
         if (failedChannels.length > 0) {

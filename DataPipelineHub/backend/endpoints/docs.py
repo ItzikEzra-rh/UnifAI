@@ -40,10 +40,10 @@ def available_doc_list():
 def embed_docs(docs):
     try:
         send_task(
-            task_name="data_sources.docs.docs_tasks.embed_docs_task",
+            task_name="pipeline.pipeline_tasks.execute_pipeline_task",
             celery_queue="docs_queue",
-            doc_list=docs,
-            upload_by=session.get('user', {}).get('name', 'default')
+            source_type="DOCUMENT",
+            source_data=docs
         )
         return jsonify({"status": "task submitted"}), 202
     except Exception as e:

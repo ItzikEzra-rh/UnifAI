@@ -137,13 +137,7 @@ def embed_docs_flow(doc_list, upload_by):
             
             chunks = pdf_chunker.chunk_content([embedding_ready_docs])
             enriched_chunks = embedding_generator.generate_embeddings(chunks)
-            common_summary = {
-                "chunks_generated":   len(chunks),
-                "embeddings_created": len(enriched_chunks),
-                "processing_time_s":  time.time() - start,
-                "last_pipeline_id":   f"doc_{doc_id}"
-            }
-
+            # Create type_data for Document (only source-specific data)
             doc_type_data = {
                 "doc_path": doc_path,
                 "page_count": result.get("metadata", {}).get("page_count", 0),
@@ -157,7 +151,7 @@ def embed_docs_flow(doc_list, upload_by):
                 upload_by=upload_by,
                 source_type="DOCUMENT",
                 enriched_chunks=enriched_chunks,
-                summary=common_summary,
+                pipeline_id=f"doc_{doc_id}",
                 type_data=doc_type_data
             )
             

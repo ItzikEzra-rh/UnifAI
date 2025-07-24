@@ -10,12 +10,12 @@ export function StatusBadge({
   isActivelyEmbedding?: boolean;
 }) {
   const { bgColor, textColor, label, isActive } = useMemo(() => {
-    // Override status if actively embedding
-    if (isActivelyEmbedding) {
+    // Show "Pending" if there's no real pipeline status yet, even if actively embedding
+    if (isActivelyEmbedding && !status) {
       return {
         bgColor: "bg-blue-500/15",
         textColor: "text-blue-400",
-        label: "Embedding...",
+        label: "Pending",
         isActive: true,
       };
     }
@@ -56,12 +56,65 @@ export function StatusBadge({
           label: "Archived",
           isActive: false,
         };
-      default:
+      case "PENDING":
         return {
-          bgColor: "bg-slate-600/10",
-          textColor: "text-slate-400",
-          label: status,
-          isActive: false,
+          bgColor: "bg-blue-500/15",
+          textColor: "text-blue-400",
+          label: "Pending",
+          isActive: true,
+        };
+      // Handle all the processing statuses as active states
+      case "CHUNKING_AND_EMBEDDING":
+        return {
+          bgColor: "bg-blue-500/15",
+          textColor: "text-blue-400",
+          label: "Chunking & Embedding",
+          isActive: true,
+        };
+      case "STORING":
+        return {
+          bgColor: "bg-purple-500/15",
+          textColor: "text-purple-400",
+          label: "Storing",
+          isActive: true,
+        };
+      case "COLLECTING":
+        return {
+          bgColor: "bg-cyan-500/15",
+          textColor: "text-cyan-400",
+          label: "Collecting",
+          isActive: true,
+        };
+      case "PROCESSING":
+        return {
+          bgColor: "bg-indigo-500/15",
+          textColor: "text-indigo-400",
+          label: "Processing",
+          isActive: true,
+        };
+      case "ORCHESTRATING":
+        return {
+          bgColor: "bg-pink-500/15",
+          textColor: "text-pink-400",
+          label: "Orchestrating",
+          isActive: true,
+        };
+      default:
+        // If actively embedding but no status, show pending
+        if (isActivelyEmbedding && !status) {
+          return {
+            bgColor: "bg-blue-500/15",
+            textColor: "text-blue-400",
+            label: "Pending",
+            isActive: true,
+          };
+        }
+        // For any other status, show it as-is or default to Pending
+        return {
+          bgColor: "bg-blue-500/15",
+          textColor: "text-blue-400",
+          label: status || "Pending",
+          isActive: true,
         };
     }
   }, [status, isActivelyEmbedding]);

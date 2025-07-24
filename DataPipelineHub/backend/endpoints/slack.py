@@ -97,7 +97,7 @@ def get_embed_channels():
     """
     source_type = DataSource.SLACK.upper_name
     svc = get_source_service()
-    channels = svc.list_sources_with_status(source_type)
+    channels = svc.list_sources(source_type)
     return jsonify(channels), 200
 
 @slack_bp.route("/stats", methods=["GET"])

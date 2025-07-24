@@ -25,9 +25,6 @@ class PipelineExecutor:
         self.pipeline_id = pipeline_id
         self.repo = self._initialize_repo()
         self.repo.register_pipeline()
-        self.repo.register_data_source(
-            summary=pipeline._create_summary()
-        )
         
     def _initialize_repo(self) -> PipelineRepository:
         return PipelineRepository(
@@ -79,5 +76,8 @@ class PipelineExecutor:
         self._clean_orchestrator()
         self.repo.update_pipeline_status(
             new_status=PipelineStatus.DONE.value
+        )
+        self.repo.register_data_source(
+            summary=self.pipeline._create_summary()
         )
         return stored

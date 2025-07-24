@@ -12,19 +12,31 @@ class SlackStatsProvider:
 
     def _fetch_slack_sources(self) -> List[Dict[str, Any]]:
         """Fetch all SLACK sources enriched with their last pipeline status."""
-        return self._service.list_sources_with_status(source_type=DataSource.SLACK.upper_name)
+        return self._service.list_sources(source_type=DataSource.SLACK.upper_name)
 
     def _aggregate_counts(
         self, sources: List[Dict[str, Any]]
     ) -> Dict[str, int]:
         """Compute channel counts, message totals, and api calls."""
+        
+        # Define active statuses that match the UI definition
+        active_statuses = [
+            "PENDING",
+            "ACTIVE",
+            "COLLECTING",
+            "PROCESSING",
+            "CHUNKING_AND_EMBEDDING",
+            "STORING",
+            "ORCHESTRATING"
+        ]
+        
         total_channels  = len(sources)
-        active_channels = sum(1 for s in sources if s.get("status") == "ACTIVE")
+        active_channels = sum(1 for s in sources if s.get("status") in active_statuses)
         total_messages  = sum(
-            s.get("type_data", {}).get("message_count", 0) for s in sources
+            s.get("pipeline_stats", {}).get("documents_retrieved", 0) for s in sources if s.get("pipeline_stats")
         )
         api_calls_count = sum(
-            s.get("type_data", {}).get("api_calls", 0) for s in sources
+            s.get("pipeline_stats", {}).get("api_calls", 0) for s in sources if s.get("pipeline_stats")
         )
         return {
             "totalChannels":   total_channels,

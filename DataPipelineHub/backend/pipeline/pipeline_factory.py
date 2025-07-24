@@ -67,7 +67,7 @@ class PipelineFactory(ABC):
     def _clean_orchestrator(self):
         """Clean up the orchestrator"""
         self.monitor.finish_log_monitoring()
-    
+
     @abstractmethod
     def get_source_id(self) -> str:
         """Return the source id of the data source"""

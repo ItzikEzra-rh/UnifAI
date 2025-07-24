@@ -4,7 +4,7 @@ import { FaSync, FaPlus } from "react-icons/fa";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
 import { EmbedChannel } from "@/types";
-import { DataTable } from "@/shared/DataTable";
+import { DataTable } from "@/components/shared/DataTable";
 import { getColumns } from "./ChannelTable";
 
 export interface PaginatedChannelTableProps {

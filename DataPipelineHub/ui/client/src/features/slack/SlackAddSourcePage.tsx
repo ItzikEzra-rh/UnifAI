@@ -58,9 +58,9 @@ export default function SlackAddSourcePage() {
     // ② Hold a ref to the AddSourceSection
     const sectionRef = useRef<AddSourceSectionHandle>(null);
 
-    // ③ When the page-level “Add Channel” button is clicked…
-    const handleSave = useCallback(() => {
-        const payload = sectionRef.current?.getSelectedChannels() ?? [];
+    // ③ When the page-level "Add Channel" button is clicked…
+    const handleSave = useCallback(async () => {
+        const payload = await sectionRef.current?.getSelectedChannels() ?? [];
         if (payload.length === 0) {
             toast({
                 title: "⚠️ No Channels Selected",

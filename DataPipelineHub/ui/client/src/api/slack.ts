@@ -1,7 +1,7 @@
 import { formatDate } from '@/features/helpers';
 import { api } from '@/lib/queryClient';
 import type { Channel, EmbedChannel } from '@/types';
-import { timeAgo, formatDate } from '@/utils';
+import { timeAgo } from '@/utils';
 export interface SystemStats {
   id: number;
   totalChannels: number;
@@ -33,20 +33,20 @@ export async function submitSlackChannels(
   channels: Channel[]
 ): Promise<{ status: string }> {
   const { data } = await api.put<{ status: string }>(
-    'slack/embed.channels',
-    { channels }
+    'pipelines/embed',
+    { data: channels,
+      type: 'slack' }
   );
   return data;
 };
 
 export async function fetchEmbeddedSlackChannels(): Promise<EmbedChannel[]> {
   const { data } = await api.get<any[]>("slack/embed.channels");
-  console.log(data)
   return data.map((item) => ({
     name: item.source_name || '', 
-    messages: String(item.type_data?.message_count || item.message_count || 0),
+    messages: String(item.pipeline_stats?.documents_retrieved || 0),
     lastSync: timeAgo(item.last_sync_at),
-    status: item.status ||  '',
+    status: item.status || 'PENDING',
     frequency: "", // No field provided, fallback to empty
     channel_id: item.source_id || '',
     created: formatDate(item.created_at || ''),
