@@ -2,6 +2,7 @@ from elements.common.base_element_spec import BaseElementSpec
 from core.enums import ResourceCategory
 from ..config import MockAgentNodeConfig
 from ..mock_agent_node_factory import MockAgentNodeFactory
+from ..mock_agent import MockAgentNode
 from ..identifiers import Identifier, META
 
 
@@ -14,4 +15,6 @@ class MockAgentNodeElementSpec(BaseElementSpec):
     description = META.description
     config_schema = MockAgentNodeConfig
     factory_cls = MockAgentNodeFactory
+    reads = MockAgentNode.READS
+    writes = MockAgentNode.WRITES
     tags = META.tags

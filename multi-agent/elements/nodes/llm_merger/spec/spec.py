@@ -2,6 +2,7 @@ from elements.common.base_element_spec import BaseElementSpec
 from core.enums import ResourceCategory
 from ..config import MergerLLMNodeConfig
 from ..llm_merger_node_factory import LLMMergerNodeFactory
+from ..llm_merger import LLMMergerNode
 from ..identifiers import Identifier, META
 
 
@@ -14,4 +15,6 @@ class LLMMergerNodeElementSpec(BaseElementSpec):
     description = META.description
     config_schema = MergerLLMNodeConfig
     factory_cls = LLMMergerNodeFactory
+    reads = LLMMergerNode.READS
+    writes = LLMMergerNode.WRITES
     tags = META.tags

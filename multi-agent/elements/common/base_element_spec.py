@@ -7,10 +7,12 @@ from typing import (
     get_origin,
     get_args,
     Union,
+    Set,
 )
 from pydantic import BaseModel
 from core.enums import ResourceCategory
 from .base_factory import BaseFactory
+from graph.state.graph_state import Channel
 
 
 class BaseElementSpec(ABC):
@@ -28,6 +30,8 @@ class BaseElementSpec(ABC):
     config_schema: ClassVar[Type[BaseModel]]
     factory_cls: ClassVar[Type[BaseFactory]]
     dependencies: ClassVar[List[ResourceCategory]] = []
+    reads: ClassVar[Set[Channel]] = set()
+    writes: ClassVar[Set[Channel]] = set()
     # ── optional metadata ------------------------------------------------
     version: ClassVar[str] = "1.0.0"
     tags: ClassVar[List[str]] = []
