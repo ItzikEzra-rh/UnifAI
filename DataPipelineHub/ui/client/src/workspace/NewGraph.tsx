@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import GraphCanvas from '@/components/graph/GraphCanvas';
-import BuildingBlocksSidebar from '@/components/graph/BuildingBlocksSidebar';
+import BuildingBlocksSidebar from '@/workspace/BuildingBlocksSidebar';
 import { useGraphLogic } from '@/hooks/use-graph-logic';
 
 export default function NewGraph() {

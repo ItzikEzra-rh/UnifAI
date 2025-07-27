@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BuildingBlock } from '@/types/graph';
-import { getCategoryDisplay, getCategoryDisplayName } from '../shared/helpers';
+import { getCategoryDisplay, getCategoryDisplayName } from '../components/shared/helpers';
 import { Eye } from 'lucide-react';
-import ResourceDetailsModal from '../../workspace/ResourceDetailsModal';
+import ResourceDetailsModal from './ResourceDetailsModal';
 
 interface BuildingBlocksSidebarProps {
   buildingBlocks: BuildingBlock[];

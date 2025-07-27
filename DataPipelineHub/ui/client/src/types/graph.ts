@@ -19,8 +19,6 @@ export interface BuildingBlock {
   label: string;
   color: string;
   description: string;
-  connectIn: string | string[];
-  connectOut: string | string[];
   workspaceData?: {
     rid: string;
     name: string;
