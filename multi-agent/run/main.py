@@ -189,14 +189,29 @@ def run_test_new_version(app):
                                       scope="public"))
 
 
+from graph.graph_plan import GraphPlan
+from graph.plan_builder import PlanBuilder
+from dataclasses import dataclass, asdict
+import json
+
 if __name__ == "__main__":
-    pass
     config = get_app_config()
     app = AppContainer(config)
 
+    blueprint_loader = YAMLBlueprintLoader()
+    raw = blueprint_loader.load("run/blueprint_SDJ.yml")
+    blueprint_id = app.blueprint_service.save_draft(user_id="alice", draft_dict=raw)
+    blueprint_spec = app.blueprint_service.load_resolved(blueprint_id=blueprint_id)
+
+    plan_builder = PlanBuilder(app.element_registry)
+    plan = plan_builder.build(blueprint_spec)
+    # channels = app.graph_validation_service.suggest_producers(plan)
+
+    result = app.graph_validation_service.validate(plan)
+    print(asdict(result))
     # save_resources(app)
 
-    run_test_new_version(app)
+    # run_test_new_version(app)
 
     # app.blueprint_service.delete(blueprint_id="2af1b9b2900284ed79192e4ebbf8a05cf")
     # app.resources_service.delete(rid="af1b9b2900284ed79192e4ebbf8a05cf")

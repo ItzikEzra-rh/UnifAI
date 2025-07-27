@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List, Tuple
+from typing import Any, Dict, Iterator, List, Tuple, Set
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field, ConfigDict
 from elements.llms.common.chat.message import ChatMessage
@@ -23,7 +23,7 @@ class GraphState(BaseModel):
 
     # —————– Channels (with merge strategies) —————–
     # last-writer-wins for user_prompt:
-    user_prompt: Annotated[str, lambda old, new: new] = ""
+    user_prompt: Annotated[str, lambda old, new: new] = Field(default="", json_schema_extra={'external': True})
     # merge dicts into a new dict:
     nodes_output: Annotated[Dict[str, str], merge_string_dicts] = Field(default_factory=dict)
 
@@ -76,6 +76,14 @@ class GraphState(BaseModel):
 
     def keys(self) -> Iterator[str]:
         return iter(list(self.__class__.model_fields.keys()) + list(self.dynamic_fields.keys()))
+
+    @classmethod
+    def get_external_channels(cls) -> Set[str]:
+        """
+        Returns names of all fields marked as external variables/channels
+        """
+        return set([field_name for field_name, field_info in cls.model_fields.items()
+                    if field_info.json_schema_extra and field_info.json_schema_extra.get('external', False)])
 
     def items(self) -> Iterator[Tuple[str, Any]]:
         for k in self.__class__.model_fields:
