@@ -75,23 +75,23 @@ export default function ExecutionStream({
   
     return graphFlow.plan.map(item => ({
       id: item.uid,
-      name: item.meta?.display_name || item.node?._meta.display_name || "General Node",
-      description: item.meta?.description || item.node?._meta.description || null
+      name: item.meta?.display_name || "General Node",
+      description: item.meta?.description || null
     }));
   };
   
   // Create agent nodes from selected graph nodes on component mount
   useEffect(() => {
     const getGraphNodes = async () => {
-      const response = await axios.get('/api/blueprints/available.blueprints.get');
-      const plans = response.data.flatMap((plan) => plan);
+      const response = await axios.get('/api/blueprints/available.blueprints.get?userId=alice');
+      const blueprints: GraphFlow[] = response.data;
       
-      // Find the specific graph flow by ID
-      const targetGraphFlow = plans.find(plan => 
-        Object.keys(plan).includes(blueprintId)
+      // Find the specific graph flow by name or index
+      const targetGraphFlow = blueprints.find((blueprint, index) => 
+        blueprint.name === blueprintId || index.toString() === blueprintId
       );
   
-      return extractNodeData(targetGraphFlow[blueprintId]);
+      return targetGraphFlow ? extractNodeData(targetGraphFlow) : [];
     }
   
     const fetchAndSetNodes = async () => {

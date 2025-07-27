@@ -12,19 +12,19 @@ import axios from '../../http/axiosAgentConfig';
 import { ReactFlowProvider } from 'reactflow';
 
 // Function to convert graph flow JSON to flow object
-const convertGraphFlowToFlowObject = (graphFlow: GraphFlow, index: number, graphId?: string): FlowObject => {
+const convertGraphFlowToFlowObject = (graphFlow: GraphFlow, index: number): FlowObject => {
   if (!graphFlow) return null;
 
   // Extract metadata
-  const name = graphFlow.display_name || `Flow ${index + 1}`;
-  const description = graphFlow.display_description || 'No description available';
+  const name = graphFlow.name || `Flow ${index + 1}`;
+  const description = graphFlow.description || 'No description available';
 
   // Generate a random icon for the flow
   const iconOptions: React.FC<{ className?: string }>[] = [Activity, Database, FileText, Zap, Filter, GitBranch, MessageSquare, BookOpen];
   const IconComponent = iconOptions[index % iconOptions.length];
   
   return {
-    id: graphId || `flow-${index}`,
+    id: `flow-${index}`,
     name,
     description,
     icon: <IconComponent className="h-4 w-4 mr-2" />,
@@ -52,13 +52,12 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
   useEffect(() => {
     const fetchGraphFlows = async () => {
       try {
-        const response = await axios.get('/api/blueprints/available.blueprints.get');
-        const planKeys: string[] = response.data.flatMap((plan) => Object.keys(plan));
-        const mockGraphFlows: GraphFlow[] = response.data.flatMap((plan) => Object.values(plan));
+        const response = await axios.get('/api/blueprints/available.blueprints.get?userId=alice');
+        const blueprints: GraphFlow[] = response.data;
 
-        // Convert the mock graph flows to the format expected by the component
-        const processedFlows = mockGraphFlows.map((flow, index) =>
-          convertGraphFlowToFlowObject(flow, index, planKeys[index])
+        // Convert the blueprints to the format expected by the component
+        const processedFlows = blueprints.map((blueprint, index) =>
+          convertGraphFlowToFlowObject(blueprint, index)
         );
         setGraphFlows(processedFlows);
         
@@ -85,7 +84,7 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
     
     fetchGraphFlows();
     fetchActiveFlows();
-  }, [setSelectedFlow]);
+  }, [setSelectedFlow, user]);
 
   const handleFlowSelect = (flow: FlowObject): void => {
     setSelectedFlow(flow);
@@ -157,7 +156,7 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
             <StreamingDataProvider>
               <ReactFlowProvider>
                 <ReactFlowGraph 
-                  blueprintId={selectedFlow?.id}
+                  blueprintId={selectedFlow?.name}
                   height="100%"
                   showControls={true}
                   showMiniMap={true}

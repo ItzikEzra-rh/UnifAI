@@ -17,7 +17,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import { motion } from 'framer-motion';
 import { Wrench } from 'lucide-react';
-import { NodeData, GraphFlow, FlowObject } from './interfaces';
+import { NodeData, GraphFlow, FlowObject, NodeDefinition, PlanItem } from './interfaces';
 import { useStreamingData } from '../StreamingDataContext';
 import axios from '../../../http/axiosAgentConfig'
 
@@ -227,19 +227,28 @@ const parseGraphFlow = (graphFlow: GraphFlow): { nodes: Node<EnhancedNodeData>[]
     return { nodes: [], edges: [] };
   }
 
+  // Create a map of node RIDs to node definitions for quick lookup
+  const nodeMap: Record<string, NodeDefinition> = {};
+  if (graphFlow.nodes) {
+    graphFlow.nodes.forEach(node => {
+      nodeMap[node.rid] = node;
+    });
+  }
+
   // Create a map to store node types for edge styling
   const nodeTypeMap: Record<string, string> = {};
   
   // Create maps to build the layout
-  const nodesByLevel: Record<number, string[]> = {}; // Level -> Node IDs
-  const nodeLevel: Record<string, number> = {}; // Node ID -> Level
-  const nodePredecessors: Record<string, string[]> = {}; // Node ID -> Predecessor IDs
-  const nodeSuccessors: Record<string, string[]> = {}; // Node ID -> Successor IDs
+  const nodesByLevel: Record<number, string[]> = {}; // Level -> Node UIDs
+  const nodeLevel: Record<string, number> = {}; // Node UID -> Level
+  const nodePredecessors: Record<string, string[]> = {}; // Node UID -> Predecessor UIDs
+  const nodeSuccessors: Record<string, string[]> = {}; // Node UID -> Successor UIDs
   
   // First pass: Identify predecessors and successors
   graphFlow.plan.forEach(item => {
     const nodeId = item.uid;
-    const nodeType = item.node?.type || 'custom_agent_node';
+    const nodeDefinition = nodeMap[item.node];
+    const nodeType = nodeDefinition?.type || 'custom_agent_node';
     nodeTypeMap[nodeId] = nodeType;
     
     if (item.after) {
@@ -304,10 +313,11 @@ const parseGraphFlow = (graphFlow: GraphFlow): { nodes: Node<EnhancedNodeData>[]
   // Create nodes with the calculated positions
   const nodes: Node<EnhancedNodeData>[] = graphFlow.plan.map(item => {
     const nodeId = item.uid;
-    const nodeType = item.node?.type || 'custom_agent_node';
-    const nodeLabel = item.meta?.display_name || item.node?._meta.display_name || "General Node";
-    const nodeDescription = item.meta?.description || item.node?._meta.description || null;
-    const nodeTools = item.node?.tools || [];
+    const nodeDefinition = nodeMap[item.node];
+    const nodeType = nodeDefinition?.type || 'custom_agent_node';
+    const nodeLabel = item.meta?.display_name || nodeDefinition?.name || "General Node";
+    const nodeDescription = item.meta?.description || null;
+    const nodeTools = nodeDefinition?.config?.tools || [];
     
     // Get level information
     const level = nodeLevel[nodeId];
@@ -338,7 +348,7 @@ const parseGraphFlow = (graphFlow: GraphFlow): { nodes: Node<EnhancedNodeData>[]
         description: nodeDescription,
         style: style,
         icon: icon,
-        tools: nodeTools,
+        tools: nodeTools || [],
         status: 'IDLE' as NodeStatus
       },
       position: { x: xOffset, y: yOffset },
@@ -492,17 +502,17 @@ export default function ReactFlowGraph({
   const convertGraphFlowToReactFlow = async (graphId: string) => {
     try {
       setIsLoading(true);
-      const response = await axios.get('/api/blueprints/available.blueprints.get');
-      const plans = response.data.flatMap((plan) => plan);
+      const response = await axios.get(`/api/blueprints/available.blueprints.get?userId=alice`);
+      const blueprints = response.data;
       
       // Find the specific graph flow by ID
-      const targetGraphFlow = plans.find(plan => 
-        Object.keys(plan).includes(graphId)
+      const targetGraphFlow = blueprints.find((blueprint: GraphFlow) => 
+        blueprint.name === graphId || 
+        blueprints.indexOf(blueprint).toString() === graphId
       );
       
-      if (targetGraphFlow && targetGraphFlow[graphId]) {
-        const graphFlow = targetGraphFlow[graphId] as GraphFlow;
-        const { nodes: newNodes, edges: newEdges } = parseGraphFlow(graphFlow);
+      if (targetGraphFlow) {
+        const { nodes: newNodes, edges: newEdges } = parseGraphFlow(targetGraphFlow);
         
         setNodes(newNodes);
         setEdges(newEdges);
