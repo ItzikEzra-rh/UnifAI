@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { BuildingBlock } from '@/types/graph';
-import { getIconComponent } from '../shared/helpers';
+import { getCategoryDisplay, getCategoryDisplayName } from '../shared/helpers';
+import { Eye } from 'lucide-react';
+import ResourceDetailsModal from '../../workspace/ResourceDetailsModal';
 
 interface BuildingBlocksSidebarProps {
   buildingBlocks: BuildingBlock[];
@@ -10,6 +13,14 @@ interface BuildingBlocksSidebarProps {
 }
 
 const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({ buildingBlocks, isLoading, onDragStart }) => {
+  const [selectedElement, setSelectedElement] = useState<BuildingBlock | null>(null);
+  const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
+
+  const handleViewDetails = (block: BuildingBlock) => {
+    setSelectedElement(block);
+    setIsDetailsModalOpen(true);
+  };
+
   return (
     <div className="w-80">
       <Card className="bg-background-card shadow-card border-gray-800 h-full">
@@ -22,7 +33,6 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({ buildingB
         <CardContent className="p-4">
           {isLoading ? (
             <div className="space-y-3">
-              {/* Loading skeleton */}
               {[...Array(3)].map((_, index) => (
                 <div key={index} className="bg-gray-800 rounded-lg p-4 animate-pulse">
                   <div className="flex items-center gap-3">
@@ -38,27 +48,47 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({ buildingB
           ) : (
             <div className="space-y-3">
               {buildingBlocks.map((block) => (
-                <div
-                  key={block.id}
-                  className="bg-gray-800 rounded-lg p-4 cursor-grab active:cursor-grabbing border border-gray-700 hover:border-gray-600 transition-colors"
-                  draggable
-                  onDragStart={(event: React.DragEvent) => onDragStart(event, block)}
-                >
-                  <div className="flex items-center gap-3">
-                    <div 
-                      className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
-                      style={{ backgroundColor: block.color }}
-                    >
-                      {getIconComponent(block.iconType)}
+                <Card key={block.id} className="bg-gray-800 border-gray-700 hover:border-gray-600 transition-colors">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex items-center gap-3 flex-1 cursor-grab active:cursor-grabbing"
+                        draggable
+                        onDragStart={(event: React.DragEvent) => onDragStart(event, block)}
+                      >
+                        <div 
+                          className="w-10 h-10 rounded-lg flex items-center justify-center text-white"
+                          style={{ backgroundColor: block.color }}
+                        >
+                          {block.workspaceData ? 
+                            getCategoryDisplay(block.workspaceData.category).icon : 
+                            getCategoryDisplay('default').icon
+                          }
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-medium text-white">{block.label}</h3>
+                          <p className="text-xs text-gray-400">
+                            {block.workspaceData ? 
+                              `${getCategoryDisplayName(block.workspaceData.category)} | ${block.workspaceData.type}` : 
+                              'Drag to add to graph'
+                            }
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {block.workspaceData && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-8 w-8 p-0 text-gray-400 hover:text-white"
+                          onClick={() => handleViewDetails(block)}
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                      )}
                     </div>
-                    <div>
-                      <h3 className="font-medium text-white">{block.label}</h3>
-                      <p className="text-xs text-gray-400">
-                        Drag to add to graph
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
@@ -78,6 +108,12 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({ buildingB
           )}
         </CardContent>
       </Card>
+
+      <ResourceDetailsModal 
+        isOpen={isDetailsModalOpen}
+        onClose={setIsDetailsModalOpen}
+        selectedElement={selectedElement}
+      />
     </div>
   );
 };

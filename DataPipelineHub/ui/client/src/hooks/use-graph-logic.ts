@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { Node, Edge, Connection, addEdge, useNodesState, useEdgesState } from 'reactflow';
 import { useToast } from "@/hooks/use-toast";
 import { CurrentGraph, BuildingBlock } from '@/types/graph';
-import { getIconComponent } from '@/components/shared/helpers';
+import { getCategoryDisplay } from '@/components/shared/helpers';
 import axios from '../http/axiosAgentConfig';
 
 export const useGraphLogic = () => {
@@ -31,26 +31,12 @@ export const useGraphLogic = () => {
   const USER_ID = 'alice';
 
   const transformResourceToBlock = (resource: any): BuildingBlock => {
-    const getCategoryDisplay = (category: string) => {
-      const categoryMap: { [key: string]: { icon: string; color: string } } = {
-        'llm': { icon: 'brain', color: '#8A2BE2' },
-        'tool': { icon: 'wrench', color: '#00B0FF' },
-        'node': { icon: 'circle', color: '#FFB300' },
-        'retriever': { icon: 'search', color: '#4CAF50' },
-        'provider': { icon: 'server', color: '#FF5722' },
-        'condition': { icon: 'git-branch', color: '#9C27B0' },
-        'default': { icon: 'box', color: '#607D8B' }
-      };
-      return categoryMap[category] || categoryMap.default;
-    };
-
     const display = getCategoryDisplay(resource.category);
     
     return {
       id: resource.rid,
       type: resource.type,
       label: resource.name,
-      iconType: display.icon,
       color: display.color,
       description: `${resource.category}/${resource.type} - ${resource.name}`,
       connectIn: 'any',  
@@ -228,7 +214,7 @@ export const useGraphLogic = () => {
           position,
           data: {
             label: block.label,
-            icon: getIconComponent(block.iconType),
+            icon: getCategoryDisplay(block.workspaceData?.category || 'default').icon,
             color: block.color,
             style: `bg-gray-800 text-white border`,
             description: `${block.description}`,
@@ -270,9 +256,9 @@ export const useGraphLogic = () => {
       id: block.id,
       type: block.type,
       label: block.label,
-      iconType: block.iconType,
       description: block.description,
-      color: block.color
+      color: block.color,
+      workspaceData: block.workspaceData
     };
     event.dataTransfer.setData('application/reactflow', JSON.stringify(blockData));
     event.dataTransfer.effectAllowed = 'move';

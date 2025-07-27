@@ -17,7 +17,6 @@ export interface BuildingBlock {
   id: string;
   type: string;
   label: string;
-  iconType: string;
   color: string;
   description: string;
   connectIn: string | string[];
