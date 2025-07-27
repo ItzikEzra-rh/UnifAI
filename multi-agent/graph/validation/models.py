@@ -17,10 +17,7 @@ class PathValidation:
     steps: List[str]
     missing_channels: Dict[str, Set[str]]  # step_id -> missing channels
     impossible_channels: Dict[str, Set[str]]  # step_id -> impossible channels
-
-    @property
-    def is_valid(self) -> bool:
-        return len(self.impossible_channels) == 0 and len(self.missing_channels) == 0
+    is_valid: bool = field(default_factory=False)
 
 
 @dataclass(frozen=True)
@@ -42,3 +39,11 @@ class DependencyMatrix:
     def can_produce(self, channel: str) -> bool:
         """Check if any element can produce this channel."""
         return channel in self.producer_map or channel in self.external_channels
+
+
+@dataclass(frozen=True)
+class NodeSuggestion:
+    """Suggestion for a specific node."""
+    node_type: str
+    category: str
+    reason: str

@@ -205,10 +205,11 @@ if __name__ == "__main__":
 
     plan_builder = PlanBuilder(app.element_registry)
     plan = plan_builder.build(blueprint_spec)
-    # channels = app.graph_validation_service.suggest_producers(plan)
 
     result = app.graph_validation_service.validate(plan)
-    print(asdict(result))
+    # result = app.graph_validation_service.suggest_next_nodes(plan)
+    print(result)
+    # print(asdict(result))
     # save_resources(app)
 
     # run_test_new_version(app)
