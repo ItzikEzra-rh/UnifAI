@@ -2,8 +2,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { Node, Edge, Connection, addEdge, useNodesState, useEdgesState } from 'reactflow';
 import { useToast } from "@/hooks/use-toast";
 import { CurrentGraph, BuildingBlock } from '@/types/graph';
-import { buildingBlocksData } from '@/workspace/nodeData';
 import { getIconComponent } from '@/components/shared/helpers';
+import axios from '../http/axiosAgentConfig';
 
 export const useGraphLogic = () => {
   const { toast } = useToast();
@@ -11,6 +11,8 @@ export const useGraphLogic = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [nodeId, setNodeId] = useState(1);
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
+  const [buildingBlocksData, setBuildingBlocksData] = useState<BuildingBlock[]>([]);
+  const [isLoadingBlocks, setIsLoadingBlocks] = useState(true);
   
   const [currentGraph, setCurrentGraph] = useState<CurrentGraph>({
     id: `graph-${Date.now()}`,
@@ -25,7 +27,72 @@ export const useGraphLogic = () => {
     }
   });
 
-  const isConnectionFeasible = useCallback((connection: Connection) => {
+  // Hard-coded user ID - will be made flexible later
+  const USER_ID = 'alice';
+
+  const transformResourceToBlock = (resource: any): BuildingBlock => {
+    const getCategoryDisplay = (category: string) => {
+      const categoryMap: { [key: string]: { icon: string; color: string } } = {
+        'llm': { icon: 'brain', color: '#8A2BE2' },
+        'tool': { icon: 'wrench', color: '#00B0FF' },
+        'node': { icon: 'circle', color: '#FFB300' },
+        'retriever': { icon: 'search', color: '#4CAF50' },
+        'provider': { icon: 'server', color: '#FF5722' },
+        'condition': { icon: 'git-branch', color: '#9C27B0' },
+        'default': { icon: 'box', color: '#607D8B' }
+      };
+      return categoryMap[category] || categoryMap.default;
+    };
+
+    const display = getCategoryDisplay(resource.category);
+    
+    return {
+      id: resource.rid,
+      type: resource.type,
+      label: resource.name,
+      iconType: display.icon,
+      color: display.color,
+      description: `${resource.category}/${resource.type} - ${resource.name}`,
+      connectIn: 'any',  
+      connectOut: 'any',
+      workspaceData: {
+        rid: resource.rid,
+        name: resource.name,
+        category: resource.category,
+        type: resource.type,
+        config: resource.cfg_dict,
+        version: resource.version,
+        created: resource.created,
+        updated: resource.updated,
+        nested_refs: resource.nested_refs
+      }
+    };
+  };
+
+  const loadBuildingBlocks = useCallback(async () => {
+    try {
+      setIsLoadingBlocks(true);
+      const response = await axios.get(`/api/resources/resources.list?userId=${USER_ID}`);
+      // Transform workspace resources to BuildingBlock format
+      const buildingBlocks = response.data.resources.map(transformResourceToBlock);
+      setBuildingBlocksData(buildingBlocks);
+    } catch (error) {
+      console.error('Error loading workspace resources:', error);
+      toast({
+        title: "❌ Error Loading Resources",
+        description: "Failed to load workspace resources from server",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoadingBlocks(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    loadBuildingBlocks();
+  }, [loadBuildingBlocks]);
+
+  const isConnectionFeasible = useCallback(async (connection: Connection): Promise<boolean> => {
     console.log('Testing edge feasibility between:', connection.source, 'and', connection.target);
     
     // Check if source and target exist
@@ -44,52 +111,41 @@ export const useGraphLogic = () => {
       return nodeId.split('-')[0];
     };
     
-    // Helper function to get block data by type
-    const getBlockData = (blockType: string) => {
-      return buildingBlocksData.find(block => block.id === blockType);
-    };
-    
     const sourceBlockType = getBlockType(connection.source!);
     const targetBlockType = getBlockType(connection.target!);
-    
-    const sourceBlockData = getBlockData(sourceBlockType);
-    const targetBlockData = getBlockData(targetBlockType);
-    
-    if (!sourceBlockData || !targetBlockData) {
+
+    try {
+      const response = await axios.post('/api/blueprints/check.connection', {
+        sourceBlockId: sourceBlockType,
+        targetBlockId: targetBlockType
+      });
+
+      if (!response.data.feasible) {
+        toast({
+          title: "❌ Connection Not Allowed",
+          description: `Can't connect ${sourceBlockType} to ${targetBlockType}: Connection not allowed by node configuration`,
+          variant: "destructive",
+        });
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error checking connection feasibility:', error);
       toast({
         title: "❌ Connection Error",
-        description: `Can't connect ${connection.source} to ${connection.target}: Unknown node type`,
+        description: "Failed to validate connection",
         variant: "destructive",
       });
       return false;
     }
-    
-    // Check if source can connect out to target
-    const sourceCanConnectOut = Array.isArray(sourceBlockData.connectOut) 
-      ? sourceBlockData.connectOut.includes(targetBlockType)
-      : sourceBlockData.connectOut === targetBlockType;
-    
-    // Check if target can accept connection from source
-    const targetCanConnectIn = Array.isArray(targetBlockData.connectIn)
-      ? targetBlockData.connectIn.includes(sourceBlockType)
-      : targetBlockData.connectIn === sourceBlockType;
-    
-    if (!sourceCanConnectOut || !targetCanConnectIn) {
-      toast({
-        title: "❌ Connection Not Allowed",
-        description: `Can't connect ${sourceBlockType} to ${targetBlockType}: Connection not allowed by node configuration`,
-        variant: "destructive",
-      });
-      return false;
-    }
-    
-    return true;
   }, [toast]);
 
   const onConnect = useCallback(
-    (params: Connection) => {
+    async (params: Connection) => {
       // Test if the connection is feasible
-      if (!isConnectionFeasible(params)) {
+      const isFeasible = await isConnectionFeasible(params);
+      if (!isFeasible) {
         console.log('Connection not feasible, rejecting edge creation');
         return;
       }
@@ -176,6 +232,7 @@ export const useGraphLogic = () => {
             color: block.color,
             style: `bg-gray-800 text-white border`,
             description: `${block.description}`,
+            workspaceData: block.workspaceData,
             onDelete: deleteNode
           },
         };
@@ -239,27 +296,76 @@ export const useGraphLogic = () => {
     }));
   };
 
-  const saveGraph = () => {
-    const graphToSave = {
-      ...currentGraph,
-      nodes,
-      edges,
-      metadata: {
-        ...currentGraph.metadata,
-        lastModified: new Date(),
-        nodeCount: nodes.length,
-        edgeCount: edges.length
+  const saveGraph = useCallback(async () => {
+    try {
+      const blueprint = {
+        display_name: currentGraph.name,
+        display_description: `Graph with ${nodes.length} nodes and ${edges.length} edges`,
+        plan: nodes.map(node => {
+          const nodeBlockType = node.id.split('-')[0];
+          const blockData = buildingBlocksData.find(block => block.id === nodeBlockType);
+          const workspaceData = node.data.workspaceData;
+          
+          const incomingEdges = edges.filter(edge => edge.target === node.id);
+          const after = incomingEdges.map(edge => edge.source);
+          
+          return {
+            uid: node.id,
+            node: {
+              type: workspaceData?.type || blockData?.type || 'custom_agent_node',
+              category: workspaceData?.category,
+              config: workspaceData?.config,
+              _meta: {
+                display_name: node.data.label,
+                description: node.data.description,
+                rid: workspaceData?.rid,
+                version: workspaceData?.version
+              }
+            },
+            meta: {
+              display_name: node.data.label,
+              description: node.data.description,
+              position: node.position
+            },
+            after: after.length > 0 ? after : undefined
+          };
+        })
+      };
+
+      const response = await axios.post('/api/blueprints/blueprint.save', {
+        blueprintRaw: JSON.stringify(blueprint)
+      });
+
+      if (response.data.status === 'success') {
+        toast({
+          title: "✅ Graph Saved Successfully",
+          description: `Graph "${currentGraph.name}" saved with ${nodes.length} nodes and ${edges.length} edges`,
+          variant: "default",
+        });
+        
+        // Update current graph with the saved blueprint ID
+        setCurrentGraph(prev => ({
+          ...prev,
+          id: response.data.blueprint_id,
+          metadata: {
+            ...prev.metadata,
+            lastModified: new Date(),
+            nodeCount: nodes.length,
+            edgeCount: edges.length
+          }
+        }));
+      } else {
+        throw new Error(response.data.error || 'Unknown error occurred');
       }
-    };
-    
-    console.log('Saving current graph:', graphToSave);
-    // Implement actual save functionality
-    toast({
-      title: "✅ Graph Saved Successfully",
-      description: `Graph "${currentGraph.name}" saved with ${nodes.length} nodes and ${edges.length} edges`,
-      variant: "default",
-    });
-  };
+    } catch (error) {
+      console.error('Error saving graph:', error);
+      toast({
+        title: "❌ Error Saving Graph",
+        description: "Failed to save graph to server",
+        variant: "destructive",
+      });
+    }
+  }, [currentGraph, nodes, edges, buildingBlocksData, toast]);
 
   // Handle keyboard events for deletion
   useEffect(() => {
@@ -278,6 +384,8 @@ export const useGraphLogic = () => {
     nodes,
     edges,
     currentGraph,
+    buildingBlocksData,
+    isLoadingBlocks,
     handleNodesChange,
     onEdgesChange,
     onConnect,

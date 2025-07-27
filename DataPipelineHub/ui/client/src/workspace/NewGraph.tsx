@@ -11,6 +11,8 @@ export default function NewGraph() {
   const {
     nodes,
     edges,
+    buildingBlocksData,
+    isLoadingBlocks,
     handleNodesChange,
     onEdgesChange,
     onConnect,
@@ -42,7 +44,11 @@ export default function NewGraph() {
               onSaveGraph={saveGraph}
             />
 
-            <BuildingBlocksSidebar onDragStart={onDragStart} />
+            <BuildingBlocksSidebar 
+              buildingBlocks={buildingBlocksData}
+              isLoading={isLoadingBlocks}
+              onDragStart={onDragStart} 
+            />
           </div>
         </main>
       </div>
