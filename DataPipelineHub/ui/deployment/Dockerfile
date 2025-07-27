@@ -1,6 +1,7 @@
 #FROM  registry.access.redhat.com/ubi9/nodejs-18-minimal as build
 FROM  registry.access.redhat.com/ubi9/nodejs-22 as build
 #create a working folder
+ENV NODE_ENV=production
 WORKDIR /ui
 
 RUN npm install -g npm
@@ -12,13 +13,13 @@ RUN corepack prepare pnpm@latest --activate # Install pnpm via Corepack
 
 
 #copy the package.json and pnpm-lock.yaml files to the working folder
-COPY ../package.json ../pnpm-lock.yaml ../vite.config.ts ./
+COPY package.json pnpm-lock.yaml vite.config.ts ./
 # Install all dependencies (including devDependencies needed for the build).
 # `--frozen-lockfile` ensures reproducible builds based on pnpm-lock.yaml.
 RUN pnpm install --frozen-lockfile
 
 #copy the rest of the project files to the working folder
-COPY ../. .
+COPY . .
 
 # Run our combined build command.
 # As per your package.json, this builds:
@@ -35,7 +36,7 @@ RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
 
 # Copy and set permissions for entrypoint.sh while still root
 
-COPY entrypoint.sh /opt/app-root/src/entrypoint.sh
+COPY /deployment/entrypoint.sh /opt/app-root/src/entrypoint.sh
 RUN chmod +x /opt/app-root/src/entrypoint.sh
 RUN chmod -R 7777 /opt/app-root/src/
 RUN chown default:root /opt/app-root/src/
@@ -45,7 +46,7 @@ USER default
 COPY --from=build /ui/build /usr/share/nginx/html
 
 
-COPY nginx.conf.template /etc/nginx/nginx.conf.template
+COPY deployment/nginx.conf.template /etc/nginx/nginx.conf.template
 
 EXPOSE 8080
 #HEALTHCHECK CMD curl --fail http://localhost:8080 || exit 1

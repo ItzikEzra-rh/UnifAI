@@ -18,7 +18,7 @@ export default defineConfig({
           ),
         ]
       : []),
-    visualizer({
+      process.env.NODE_ENV !== "production" && visualizer({
         open: true, // Automatically opens the report in your browser after build
         filename: 'bundle-report.html', // Name of the generated report file
         gzipSize: true, // Show sizes after gzip compression

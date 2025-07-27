@@ -26,3 +26,13 @@ It's possible to add it upon need.
 
 
 NOTE: using the notebook namespace means that routes/services aren't always available from outside the setup. hence use the pipeline or the runtime, namespace
+
+
+
+building the docker file
+
+from the ui folder run the command:
+podman build -f deployment/Dockerfile -t unifai-ui .
+podman tag localhost/unifai-ui images.paas.redhat.com/unifai/ui
+podman push images.paas.redhat.com/unifai/ui
+
