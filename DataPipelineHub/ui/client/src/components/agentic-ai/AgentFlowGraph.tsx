@@ -4,16 +4,15 @@ import { Activity, Database, FileText, Zap, Filter, GitBranch, MessageSquare, Bo
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StreamingDataProvider } from "@/components/agentic-ai/StreamingDataContext";
-import { useStreamingData } from './StreamingDataContext';
+import { GraphFlow, FlowObject } from './graphs/interfaces';
+import ReactFlowGraph from '../agentic-ai/graphs/ReactFlowGraph';
 import axios from '../../http/axiosAgentConfig';
 
 // Create a ReactFlow provider wrapper
 import { ReactFlowProvider } from 'reactflow';
-import ReactFlowGraph from './graphs/ReactFlowGraph';
-import { FlowObject, GraphFlow } from './graphs/interfaces';
 
 // Function to convert graph flow JSON to flow object
-const convertGraphFlowToFlowObject = (graphFlow: GraphFlow, index: number): FlowObject | null => {
+const convertGraphFlowToFlowObject = (graphFlow: GraphFlow, index: number): FlowObject => {
   if (!graphFlow) return null;
 
   // Extract metadata
@@ -41,22 +40,6 @@ type AgentFlowGraphProps = {
   setSelectedFlow: (flow: FlowObject | null) => void;
 };
 
-const StreamingContextWrapper: React.FC<{ selectedFlow: FlowObject | null }> = ({ selectedFlow }) => {
-  const streamingContext = useStreamingData();
-  
-  return (
-    <ReactFlowGraph 
-      blueprintId={selectedFlow?.id}
-      height="100%"
-      showControls={true}
-      showMiniMap={true}
-      showBackground={true}
-      interactive={true}
-      streamingDataContext={streamingContext}
-    />
-  );
-};
-
 export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlowGraphProps): React.ReactElement {
   // State for available graph flows
   const [graphFlows, setGraphFlows] = useState<FlowObject[]>([]);
@@ -79,7 +62,7 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
         setGraphFlows(processedFlows);
         
         // Select the first flow by default
-        if (processedFlows.length > 0 && processedFlows[0]) {
+        if (processedFlows.length > 0) {
           setSelectedFlow(processedFlows[0]);
         }
       } catch (error) {
@@ -172,7 +155,14 @@ export default function AgentFlowGraph({selectedFlow, setSelectedFlow}: AgentFlo
           <div className="flex-grow">
             <StreamingDataProvider>
               <ReactFlowProvider>
-                <StreamingContextWrapper selectedFlow={selectedFlow} />
+                <ReactFlowGraph 
+                  blueprintId={selectedFlow?.name}
+                  height="100%"
+                  showControls={true}
+                  showMiniMap={true}
+                  showBackground={true}
+                  interactive={true}
+                />
               </ReactFlowProvider>
             </StreamingDataProvider>
           </div>
