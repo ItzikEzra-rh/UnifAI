@@ -6,7 +6,6 @@ import SlackIntegration from "@/pages/SlackIntegration";
 import Documents from "@/pages/Documents";
 import AgenticAI from "@/pages/AgenticAI";
 import AgentRepository from "@/pages/AgentRepository";
-
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 import { ProjectProvider } from '@/contexts/ProjectContext';

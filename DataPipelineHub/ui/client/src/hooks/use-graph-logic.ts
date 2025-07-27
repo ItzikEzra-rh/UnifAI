@@ -57,7 +57,6 @@ export const useGraphLogic = () => {
     try {
       setIsLoadingBlocks(true);
       const response = await axios.get(`/api/resources/resources.list?userId=${USER_ID}`);
-      // Transform workspace resources to BuildingBlock format
       const buildingBlocks = response.data.resources.map(transformResourceToBlock);
       setBuildingBlocksData(buildingBlocks);
     } catch (error) {
@@ -76,10 +75,7 @@ export const useGraphLogic = () => {
     loadBuildingBlocks();
   }, [loadBuildingBlocks]);
 
-  const isConnectionFeasible = useCallback(async (connection: Connection): Promise<boolean> => {
-    console.log('Testing edge feasibility between:', connection.source, 'and', connection.target);
-    
-    // Check if source and target exist
+  const isConnectionFeasible = useCallback(async (connection: Connection): Promise<boolean> => {    
     if (!connection.source || !connection.target) {
       toast({
         title: "❌ Connection Error",
@@ -88,26 +84,17 @@ export const useGraphLogic = () => {
       });
       return false;
     }
-    
-    // Helper function to extract the block type from node id
-    const getBlockType = (nodeId: string) => {
-      // Node IDs are in format "node1-1", "node2-2", etc.
-      return nodeId.split('-')[0];
-    };
-    
-    const sourceBlockType = getBlockType(connection.source!);
-    const targetBlockType = getBlockType(connection.target!);
 
     try {
       const response = await axios.post('/api/blueprints/check.connection', {
-        sourceBlockId: sourceBlockType,
-        targetBlockId: targetBlockType
+        sourceBlockId: connection.source,
+        targetBlockId: connection.target
       });
 
       if (!response.data.feasible) {
         toast({
           title: "❌ Connection Not Allowed",
-          description: `Can't connect ${sourceBlockType} to ${targetBlockType}: Connection not allowed by node configuration`,
+          description: `Can't connect ${connection.source} to ${connection.target}: Connection not allowed by node configuration`,
           variant: "destructive",
         });
         return false;
@@ -225,7 +212,6 @@ export const useGraphLogic = () => {
         setNodes(updatedNodes);
         setNodeId(nodeId + 1);
         
-        // Update current graph state
         setCurrentGraph(prev => ({
           ...prev,
           nodes: updatedNodes,
@@ -261,7 +247,7 @@ export const useGraphLogic = () => {
     event.dataTransfer.setData('application/reactflow', JSON.stringify(blockData));
     event.dataTransfer.effectAllowed = 'move';
     
-    // Create a simpler drag preview to prevent visual issues
+    // Create a simpler drag preview
     const dragPreview = document.createElement('div');
     dragPreview.style.cssText = `
       position: absolute;
@@ -281,10 +267,7 @@ export const useGraphLogic = () => {
     dragPreview.textContent = block.label;
     document.body.appendChild(dragPreview);
     
-    // Set the custom drag image
     event.dataTransfer.setDragImage(dragPreview, 50, 20);
-    
-    // Clean up the drag preview after a short delay
     setTimeout(() => {
       if (document.body.contains(dragPreview)) {
         document.body.removeChild(dragPreview);
@@ -381,7 +364,6 @@ export const useGraphLogic = () => {
     }
   }, [currentGraph, nodes, edges, buildingBlocksData, toast]);
 
-  // Handle keyboard events for deletion
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if ((event.key === 'Delete') && selectedNodes.length > 0) {
