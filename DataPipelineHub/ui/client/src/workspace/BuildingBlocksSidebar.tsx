@@ -52,9 +52,23 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({ buildingB
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
                       <div
-                        className="flex items-center gap-3 flex-1 cursor-grab active:cursor-grabbing"
+                        className="flex items-center gap-3 flex-1 cursor-grab active:cursor-grabbing select-none transition-opacity duration-200"
                         draggable
-                        onDragStart={(event: React.DragEvent) => onDragStart(event, block)}
+                        onDragStart={(event: React.DragEvent) => {
+                          // Add visual feedback during drag
+                          const target = event.currentTarget as HTMLElement;
+                          target.style.opacity = '0.5';
+                          onDragStart(event, block);
+                        }}
+                        onDragEnd={(event: React.DragEvent) => {
+                          // Reset any visual effects after drag
+                          const target = event.currentTarget as HTMLElement;
+                          target.style.opacity = '1';
+                        }}
+                        style={{
+                          userSelect: 'none',
+                          WebkitUserSelect: 'none'
+                        } as React.CSSProperties}
                       >
                         <div 
                           className="w-10 h-10 rounded-lg flex items-center justify-center text-white"

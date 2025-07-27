@@ -260,6 +260,36 @@ export const useGraphLogic = () => {
     };
     event.dataTransfer.setData('application/reactflow', JSON.stringify(blockData));
     event.dataTransfer.effectAllowed = 'move';
+    
+    // Create a simpler drag preview to prevent visual issues
+    const dragPreview = document.createElement('div');
+    dragPreview.style.cssText = `
+      position: absolute;
+      top: -1000px;
+      left: -1000px;
+      padding: 8px 12px;
+      background: ${block.color || '#6B7280'};
+      color: white;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 500;
+      white-space: nowrap;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      pointer-events: none;
+      z-index: 1000;
+    `;
+    dragPreview.textContent = block.label;
+    document.body.appendChild(dragPreview);
+    
+    // Set the custom drag image
+    event.dataTransfer.setDragImage(dragPreview, 50, 20);
+    
+    // Clean up the drag preview after a short delay
+    setTimeout(() => {
+      if (document.body.contains(dragPreview)) {
+        document.body.removeChild(dragPreview);
+      }
+    }, 0);
   };
 
   const clearGraph = () => {
