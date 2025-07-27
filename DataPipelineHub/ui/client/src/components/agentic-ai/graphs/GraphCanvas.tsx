@@ -20,6 +20,7 @@ interface GraphCanvasProps {
   onDragOver: (event: React.DragEvent) => void;
   onClearGraph: () => void;
   onSaveGraph: () => void;
+  onBack?: () => void;
 }
 
 const GraphCanvas: React.FC<GraphCanvasProps> = ({
@@ -31,12 +32,13 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   onDrop,
   onDragOver,
   onClearGraph,
-  onSaveGraph
+  onSaveGraph,
+  onBack
 }) => {
   return (
     <div className="flex-1">
       <Card className="bg-background-card shadow-card border-gray-800 h-full">
-        <GraphHeader onClearGraph={onClearGraph} onSaveGraph={onSaveGraph} />
+        <GraphHeader onClearGraph={onClearGraph} onSaveGraph={onSaveGraph} onBack={onBack} />
         <CardContent className="p-0 h-full">
           <div className="h-full" style={{ height: 'calc(100vh - 180px)' }}>
             <ReactFlowProvider>
@@ -71,10 +73,12 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
             {/* Drop zone overlay when empty */}
             {nodes.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="text-center text-gray-500">
-                  <Plus className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-lg font-medium">Drag nodes and edges here to create your graph</p>
-                  <p className="text-sm">Start by dragging components from the right panel</p>
+                <div className="text-center">
+                  <Plus className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+                  <h3 className="mt-2 text-sm font-medium text-gray-300">No nodes yet</h3>
+                  <p className="mt-1 text-sm text-gray-400">
+                    Drag building blocks from the sidebar to get started
+                  </p>
                 </div>
               </div>
             )}

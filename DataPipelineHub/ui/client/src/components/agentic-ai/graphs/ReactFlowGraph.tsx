@@ -391,6 +391,7 @@ type ReactFlowGraphProps = {
   showMiniMap?: boolean;
   showBackground?: boolean;
   interactive?: boolean;
+  streamingDataContext?: any;
   isLiveRequest?: boolean; // Optional parameter for live tracking
 };
 
@@ -401,6 +402,7 @@ export default function ReactFlowGraph({
   showMiniMap = true,
   showBackground = true,
   interactive = true,
+  streamingDataContext = null,
   isLiveRequest = false
 }: ReactFlowGraphProps): React.ReactElement {
   const [nodes, setNodes, onNodesChange] = useNodesState<EnhancedNodeData>([]);
@@ -493,10 +495,10 @@ export default function ReactFlowGraph({
     try {
       setIsLoading(true);
       const response = await axios.get('/api/blueprints/available.blueprints.get');
-      const plans = response.data.flatMap((plan) => plan);
+      const plans = response.data.flatMap((plan: any) => plan);
       
       // Find the specific graph flow by ID
-      const targetGraphFlow = plans.find(plan => 
+      const targetGraphFlow = plans.find((plan: {}) => 
         Object.keys(plan).includes(graphId)
       );
       
@@ -621,7 +623,6 @@ export default function ReactFlowGraph({
         nodesConnectable={interactive}
         nodesDraggable={interactive}
         edgesFocusable={interactive}
-        connectionLineType="smoothstep"
         defaultEdgeOptions={{
           type: 'smoothstep',
           animated: true,

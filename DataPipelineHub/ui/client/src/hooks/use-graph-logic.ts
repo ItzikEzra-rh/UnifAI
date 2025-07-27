@@ -39,8 +39,6 @@ export const useGraphLogic = () => {
       label: resource.name,
       color: display.color,
       description: `${resource.category}/${resource.type} - ${resource.name}`,
-      connectIn: 'any',  
-      connectOut: 'any',
       workspaceData: {
         rid: resource.rid,
         name: resource.name,

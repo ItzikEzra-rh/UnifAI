@@ -92,10 +92,10 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({ buildingB
               ))}
             </div>
           )}
-          
+
           {/* Instructions */}
           {!isLoading && (
-            <div className="mt-6 p-4 bg-gray-900 rounded-lg border border-gray-700">
+            <div className="mt-4 p-4 bg-gray-900 rounded-lg border border-gray-700">
               <h4 className="font-medium text-white mb-2">How to use:</h4>
               <ul className="text-sm text-gray-400 space-y-1">
                 <li>• Drag blocks to the canvas</li>
@@ -109,10 +109,12 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({ buildingB
         </CardContent>
       </Card>
 
-      <ResourceDetailsModal 
+
+      {/* Resource Details Modal */}
+      <ResourceDetailsModal
         isOpen={isDetailsModalOpen}
-        onClose={setIsDetailsModalOpen}
-        selectedElement={selectedElement}
+        onClose={() => setIsDetailsModalOpen(false)}
+        element={selectedElement}
       />
     </div>
   );
