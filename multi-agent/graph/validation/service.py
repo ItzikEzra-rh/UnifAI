@@ -1,48 +1,67 @@
-from typing import Dict, List, Set
+from typing import List
 from catalog.element_registry import ElementRegistry
 from graph.graph_plan import GraphPlan
-from .models import ValidationResult, ValidationStatus, NodeSuggestion
-from .matrix_builder import MatrixBuilder
-from .graph_validator import GraphValidator
-from .node_suggester import NodeSuggester
+from .base import ValidationReport
+from .models import ValidationResult
+from .connectors.models import NodeSuggestion
+from .connectors.validator import ConnectorValidator
+from .connectors.matrix_builder import MatrixBuilder
+from .structural.validator import StructuralValidator
+from .semantic.validator import RequiredNodesValidator
+from .settings import ValidationSettings
 
 
 class GraphValidationService:
-    """Coordinates validation and suggestions for graph building."""
+    """Orchestrates all graph validators."""
 
     def __init__(self, element_registry: ElementRegistry):
-        self._matrix = MatrixBuilder(element_registry).build()
-        self._validator = GraphValidator()
-        self._suggester = NodeSuggester()
+        # Build matrix once and inject it
+        matrix = MatrixBuilder(element_registry).build()
 
-    def validate(self, plan: GraphPlan) -> ValidationResult:
-        """Validate complete graph plan."""
-        path_validations = self._validator.validate_all_paths(plan, self._matrix)
+        # Initialize all validators directly
+        self._connector_validator = ConnectorValidator(matrix)
+        self._structural_validator = StructuralValidator()
 
-        all_errors = []
-        all_warnings = []
+        # Load validation settings (env-configurable)
+        val_settings = ValidationSettings()
 
-        for validation in path_validations.values():
-            for step_id, channels in validation.impossible_channels.items():
-                all_errors.append(f"Step '{step_id}' requires impossible channels: {channels}")
-
-            for step_id, channels in validation.missing_channels.items():
-                all_warnings.append(f"Step '{step_id}' missing upstream channels: {channels}")
-
-        return ValidationResult(
-            is_valid=all(pv.is_valid for pv in path_validations.values()),
-            path_validations=path_validations,
-            errors=all_errors,
-            warnings=all_warnings
+        self._semantic_validator = RequiredNodesValidator(
+            required_start_nodes=val_settings.required_start_nodes,
+            required_end_nodes=val_settings.required_end_nodes,
+            required_any_nodes=val_settings.required_any_nodes,
         )
 
-    def suggest_next_nodes(self, current_plan: GraphPlan) -> List[NodeSuggestion]:
-        """
-        THE core method: suggest useful nodes to add to current plan.
-        Coordinates validator + suggester.
-        """
-        # 1. Find what channels are missing using validator
-        missing_channels = self._validator.find_missing_inputs(current_plan, self._matrix)
+    def validate_all(self, plan: GraphPlan) -> ValidationResult:
+        """Run all validators and return complete result."""
+        connector_report = self._connector_validator.validate(plan)
+        structural_report = self._structural_validator.validate(plan)
+        semantic_report = self._semantic_validator.validate(plan)
 
-        # 2. Get suggestions using suggester
-        return self._suggester.suggest_for_channels(missing_channels, self._matrix)
+        is_valid = all([
+            connector_report.is_valid,
+            structural_report.is_valid,
+            semantic_report.is_valid
+        ])
+
+        return ValidationResult(
+            is_valid=is_valid,
+            connector_report=connector_report,
+            structural_report=structural_report,
+            semantic_report=semantic_report
+        )
+
+    def validate_connectors(self, plan: GraphPlan) -> ValidationReport:
+        """Run only connector validation."""
+        return self._connector_validator.validate(plan)
+
+    def validate_structure(self, plan: GraphPlan) -> ValidationReport:
+        """Run only structural validation."""
+        return self._structural_validator.validate(plan)
+
+    def validate_semantics(self, plan: GraphPlan) -> ValidationReport:
+        """Run only semantic validation."""
+        return self._semantic_validator.validate(plan)
+
+    def suggest_fixes(self, plan: GraphPlan) -> List[NodeSuggestion]:
+        """Get node suggestions from connector validator."""
+        return self._connector_validator.suggest_fixes(plan)

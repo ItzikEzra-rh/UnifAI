@@ -207,9 +207,10 @@ if __name__ == "__main__":
     plan = plan_builder.build(blueprint_spec)
 
     # result = app.graph_validation_service.validate(plan)
-    result = app.graph_validation_service.suggest_next_nodes(plan)
-    print(result)
-    # print(asdict(result))
+    # result = app.graph_validation_service.validate_connectors(plan)
+    result = app.graph_validation_service.validate_all(plan)
+    # print(result)
+    print(result.model_dump_json())
     # save_resources(app)
 
     # run_test_new_version(app)
