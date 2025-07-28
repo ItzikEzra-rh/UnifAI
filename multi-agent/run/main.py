@@ -206,8 +206,8 @@ if __name__ == "__main__":
     plan_builder = PlanBuilder(app.element_registry)
     plan = plan_builder.build(blueprint_spec)
 
-    result = app.graph_validation_service.validate(plan)
-    # result = app.graph_validation_service.suggest_next_nodes(plan)
+    # result = app.graph_validation_service.validate(plan)
+    result = app.graph_validation_service.suggest_next_nodes(plan)
     print(result)
     # print(asdict(result))
     # save_resources(app)

@@ -69,3 +69,16 @@ def save_blueprint(blueprint_raw=None):
             "status": "error",
             "error": str(e)
         }), 500
+
+
+@blueprints_bp.route("/blueprint.draft.schema.get", methods=["GET"])
+def blueprint_draft_schema_get():
+    """
+    Returns the schema for blueprint drafts.
+    """
+    try:
+        svc = current_app.container.blueprint_service
+        schema = svc.get_draft_schema()
+        return jsonify(schema), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

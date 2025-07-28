@@ -56,3 +56,10 @@ class BlueprintService:
 
     def count(self, *, user_id: str | None = None) -> int:
         return self._repo.count(user_id=user_id)
+
+    @staticmethod
+    def get_draft_schema() -> Dict[str, Any]:
+        """
+        Return the JSON schema of the BlueprintDraft model.
+        """
+        return BlueprintDraft.model_json_schema()
