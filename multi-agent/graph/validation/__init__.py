@@ -1,14 +1,18 @@
 from .service import GraphValidationService
-from .base import ValidationReport, ValidationMessage, MessageSeverity, MessageCode
-from .models import ValidationResult
-from .connectors.models import NodeSuggestion
+from .models import ValidationReport, ValidationMessage, ValidationResult, MessageSeverity, MessageCode
+
+# Import validators to trigger registration
+from .dependency.validator import DependencyValidator
+from .cycle.validator import CycleValidator
+from .orphan.validator import OrphanValidator
+from .channel.validator import ChannelValidator
+from .required_nodes.validator import RequiredNodesValidator
 
 __all__ = [
     'GraphValidationService',
-    'ValidationReport', 
+    'ValidationReport',
     'ValidationMessage', 
-    'MessageSeverity', 
-    'MessageCode',
-    'ValidationResult', 
-    'NodeSuggestion'
+    'ValidationResult',
+    'MessageSeverity',
+    'MessageCode'
 ] 

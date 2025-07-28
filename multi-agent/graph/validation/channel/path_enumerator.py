@@ -59,4 +59,4 @@ class PathEnumerator:
         else:
             # Normal progression
             for next_step in adjacency[current]:
-                self._dfs(next_step, current_path, adjacency, plan, paths, counter)
+                self._dfs(next_step, current_path, adjacency, plan, paths, counter) 

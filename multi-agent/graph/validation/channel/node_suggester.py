@@ -23,4 +23,4 @@ class NodeSuggester:
                             reason=f"Produces '{channel}' needed by existing steps"
                         ))
 
-        return suggestions
+        return suggestions 

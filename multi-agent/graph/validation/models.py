@@ -1,32 +1,84 @@
-from typing import List
-from pydantic import BaseModel, ConfigDict, computed_field
+from typing import List, Dict, Any
+from enum import Enum
+from pydantic import BaseModel, Field, ConfigDict
 
-from .base import ValidationReport, ValidationMessage
+
+class MessageSeverity(str, Enum):
+    ERROR = "error"
+    WARNING = "warning"
+    INFO = "info"
+
+
+class MessageCode(str, Enum):
+    # Dependency codes
+    MISSING_DEPENDENCY = "MISSING_DEPENDENCY"
+    MISSING_BRANCH_TARGET = "MISSING_BRANCH_TARGET"
+    
+    # Cycle codes
+    CYCLE_DETECTED = "CYCLE_DETECTED"
+    
+    # Orphan codes
+    ORPHANED_STEP = "ORPHANED_STEP"
+    
+    # Channel codes
+    IMPOSSIBLE_CHANNELS = "IMPOSSIBLE_CHANNELS"
+    MISSING_CHANNELS = "MISSING_CHANNELS"
+    
+    # Required nodes codes
+    MISSING_START_NODE = "MISSING_START_NODE"
+    MISSING_END_NODE = "MISSING_END_NODE"
+    MISSING_REQUIRED_NODE = "MISSING_REQUIRED_NODE"
+
+
+class ValidationMessage(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    
+    text: str
+    severity: MessageSeverity
+    code: MessageCode | None = None
+    context: Dict[str, Any] = Field(default_factory=dict)
+
+
+class ValidationDetails(BaseModel):
+    """Base class for validation details."""
+    model_config = ConfigDict(frozen=True)
+
+
+class ValidationReport(BaseModel):
+    model_config = ConfigDict(frozen=True)
+    
+    validator_name: str
+    is_valid: bool
+    messages: List[ValidationMessage] = Field(default_factory=list)
+    details: Any = None
+
+    @property
+    def errors(self) -> List[ValidationMessage]:
+        return [msg for msg in self.messages if msg.severity == MessageSeverity.ERROR]
+    
+    @property
+    def warnings(self) -> List[ValidationMessage]:
+        return [msg for msg in self.messages if msg.severity == MessageSeverity.WARNING]
 
 
 class ValidationResult(BaseModel):
-    """Complete validation result from all validators."""
+    """Aggregate result from multiple validators."""
     model_config = ConfigDict(frozen=True)
     
     is_valid: bool
-    connector_report: ValidationReport
-    structural_report: ValidationReport
-    semantic_report: ValidationReport
+    reports: List[ValidationReport]
     
-    @computed_field
     @property
     def all_messages(self) -> List[ValidationMessage]:
         messages = []
-        for report in [self.connector_report, self.structural_report, self.semantic_report]:
+        for report in self.reports:
             messages.extend(report.messages)
         return messages
     
-    @computed_field
     @property
-    def all_errors(self) -> List[ValidationMessage]:
-        return [msg for msg in self.all_messages if msg.severity.value == "error"]
+    def errors(self) -> List[ValidationMessage]:
+        return [msg for msg in self.all_messages if msg.severity == MessageSeverity.ERROR]
     
-    @computed_field
     @property
-    def all_warnings(self) -> List[ValidationMessage]:
-        return [msg for msg in self.all_messages if msg.severity.value == "warning"]
+    def warnings(self) -> List[ValidationMessage]:
+        return [msg for msg in self.all_messages if msg.severity == MessageSeverity.WARNING]

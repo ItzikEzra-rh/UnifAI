@@ -1,14 +1,12 @@
 from typing import Set, List
 from graph.graph_plan import GraphPlan
-from ..base import Validator, ValidationReport, ValidationMessage, MessageSeverity, MessageCode, SuggestsFixes
-from .models import PathValidation, DependencyMatrix, NodeSuggestion, PathSuggestion
-from .models import ConnectorValidationDetails, ChannelSummary
-from .matrix_builder import MatrixBuilder
+from ..models import ValidationMessage, MessageSeverity, MessageCode
+from .models import PathValidation, DependencyMatrix, PathSuggestion, ChannelValidationDetails, ChannelSummary
 from .path_enumerator import PathEnumerator
 from .node_suggester import NodeSuggester
 
 
-class ConnectorValidator(Validator, SuggestsFixes):
+class ChannelAnalyzer:
     """Validates channel/data flow connections between nodes."""
 
     def __init__(self, matrix: DependencyMatrix):
@@ -16,11 +14,7 @@ class ConnectorValidator(Validator, SuggestsFixes):
         self._enumerator = PathEnumerator()
         self._suggester = NodeSuggester()
 
-    @property
-    def name(self) -> str:
-        return "connector"
-
-    def validate(self, plan: GraphPlan) -> ValidationReport:
+    def analyze(self, plan: GraphPlan) -> tuple[ChannelValidationDetails, List[ValidationMessage]]:
         """Validate channel dependencies across all paths."""
         messages = []
         path_validations = {}
@@ -65,11 +59,8 @@ class ConnectorValidator(Validator, SuggestsFixes):
                     }
                 ))
 
-        # Overall validation fails if any individual path is invalid (i.e., has missing or impossible channels).
-        is_valid = all(pv.is_valid for pv in path_validations.values())
-
         # Create typed details
-        details = ConnectorValidationDetails(
+        details = ChannelValidationDetails(
             path_validations=path_validations,
             summary=ChannelSummary(
                 missing=all_missing,
@@ -77,12 +68,7 @@ class ConnectorValidator(Validator, SuggestsFixes):
             )
         )
 
-        return ValidationReport(
-            validator_name=self.name,
-            is_valid=is_valid,
-            messages=messages,
-            details=details
-        )
+        return details, messages
 
     def _validate_single_path(self, path_id: str, steps: List[str], plan: GraphPlan) -> PathValidation:
         """Validate single path - reuse existing logic."""
@@ -121,11 +107,7 @@ class ConnectorValidator(Validator, SuggestsFixes):
     def suggest_fixes(self, plan: GraphPlan) -> List[PathSuggestion]:
         """Suggest nodes to fix connector issues, organized by path."""
         # Run validation to get detailed path analysis
-        validation_report = self.validate(plan)
-        details = validation_report.details
-
-        if not isinstance(details, ConnectorValidationDetails):
-            return []
+        details, _ = self.analyze(plan)
 
         path_suggestions = []
 
@@ -144,4 +126,4 @@ class ConnectorValidator(Validator, SuggestsFixes):
                     suggestions=suggestions
                 ))
 
-        return path_suggestions
+        return path_suggestions 

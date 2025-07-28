@@ -1,67 +1,67 @@
-from typing import List
+from typing import List, Optional
 from catalog.element_registry import ElementRegistry
 from graph.graph_plan import GraphPlan
-from .base import ValidationReport
-from .models import ValidationResult
-from .connectors.models import PathSuggestion
-from .connectors.validator import ConnectorValidator
-from .connectors.matrix_builder import MatrixBuilder
-from .structural.validator import StructuralValidator
-from .semantic.validator import RequiredNodesValidator
+from .validator import Validator
+from .models import ValidationReport, ValidationResult
 from .settings import ValidationSettings
 
 
 class GraphValidationService:
     """Orchestrates all graph validators."""
 
-    def __init__(self, element_registry: ElementRegistry):
-        # Build matrix once and inject it
-        matrix = MatrixBuilder(element_registry).build()
-
-        # Initialize all validators directly
-        self._connector_validator = ConnectorValidator(matrix)
-        self._structural_validator = StructuralValidator()
-
-        # Load validation settings (env-configurable)
-        val_settings = ValidationSettings()
-
-        self._semantic_validator = RequiredNodesValidator(
-            required_start_nodes=val_settings.required_start_nodes,
-            required_end_nodes=val_settings.required_end_nodes,
-            required_any_nodes=val_settings.required_any_nodes,
+    def __init__(self, element_registry: ElementRegistry, settings: ValidationSettings = None):
+        self._validators = self._create_validators(
+            element_registry=element_registry,
+            settings=settings or ValidationSettings()
         )
+
+    def _create_validators(self, *args, **kwargs) -> List[Validator]:
+        """Create all registered validators with provided dependencies."""
+        return [
+            validator_class(*args, **kwargs)
+            for validator_class in Validator.get_all_validators()
+        ]
 
     def validate_all(self, plan: GraphPlan) -> ValidationResult:
-        """Run all validators and return complete result."""
-        connector_report = self._connector_validator.validate(plan)
-        structural_report = self._structural_validator.validate(plan)
-        semantic_report = self._semantic_validator.validate(plan)
-
-        is_valid = all([
-            connector_report.is_valid,
-            structural_report.is_valid,
-            semantic_report.is_valid
-        ])
-
+        """Run all validators and return aggregate result."""
+        reports = [validator.validate(plan) for validator in self._validators]
+        is_valid = all(report.is_valid for report in reports)
+        
         return ValidationResult(
             is_valid=is_valid,
-            connector_report=connector_report,
-            structural_report=structural_report,
-            semantic_report=semantic_report
+            reports=reports
         )
 
-    def validate_connectors(self, plan: GraphPlan) -> ValidationReport:
-        """Run only connector validation."""
-        return self._connector_validator.validate(plan)
+    def get_validator(self, name: str) -> Optional[Validator]:
+        """Get validator by name."""
+        return next((v for v in self._validators if v.name == name), None)
 
-    def validate_structure(self, plan: GraphPlan) -> ValidationReport:
-        """Run only structural validation."""
-        return self._structural_validator.validate(plan)
+    def run_validator(self, name: str, plan: GraphPlan) -> ValidationReport:
+        """Run specific validator by name."""
+        validator = self.get_validator(name)
+        if not validator:
+            raise ValueError(f"Validator '{name}' not found")
+        return validator.validate(plan)
 
-    def validate_semantics(self, plan: GraphPlan) -> ValidationReport:
-        """Run only semantic validation."""
-        return self._semantic_validator.validate(plan)
+    # Convenience methods for backward compatibility
+    def validate_dependencies(self, plan: GraphPlan) -> ValidationReport:
+        return self.run_validator('dependency', plan)
+    
+    def validate_cycles(self, plan: GraphPlan) -> ValidationReport:
+        return self.run_validator('cycle', plan)
+    
+    def validate_orphans(self, plan: GraphPlan) -> ValidationReport:
+        return self.run_validator('orphan', plan)
+    
+    def validate_channels(self, plan: GraphPlan) -> ValidationReport:
+        return self.run_validator('channel', plan)
 
-    def suggest_fixes(self, plan: GraphPlan) -> List[PathSuggestion]:
-        """Get node suggestions from connector validator."""
-        return self._connector_validator.suggest_fixes(plan)
+    def suggest_fixes(self, plan: GraphPlan) -> List:
+        """Get fix suggestions from validators that support it."""
+        suggestions = []
+        
+        for validator in self._validators:
+            if hasattr(validator, 'suggest_fixes'):
+                suggestions.extend(validator.suggest_fixes(plan))
+        
+        return suggestions

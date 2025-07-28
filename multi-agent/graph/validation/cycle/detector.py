@@ -1,33 +1,33 @@
 from typing import List, Set, Dict, Tuple
 from collections import deque
 from graph.graph_plan import GraphPlan
-from ..base import ValidationMessage, MessageSeverity, MessageCode
+from ..models import ValidationMessage, MessageSeverity, MessageCode
 from .models import CycleInfo
 
 
 class CycleDetector:
     """Detects cycles in graph execution flow."""
-    
+
     def detect_cycles(self, plan: GraphPlan) -> Tuple[List[CycleInfo], List[ValidationMessage]]:
         """Detect all cycles using comprehensive graph traversal."""
         cycles = []
         messages = []
-        
+
         # Build complete adjacency graph including edge type metadata
         adjacency, edge_types = self._build_execution_graph(plan)
 
         # Pre-compute terminal (exit) nodes: nodes with no outgoing edges
         terminal_nodes = {node for node, neighbours in adjacency.items() if not neighbours}
-        
+
         # Detect cycles using DFS
         visited = set()
         rec_stack = set()
-        
+
         for node in adjacency:
             if node not in visited:
                 found_cycles = self._dfs_cycle_detection(node, adjacency, visited, rec_stack, [])
                 cycles.extend(found_cycles)
-        
+
         # Filter cycles based on edge types and exit paths
         filtered_cycles: List[CycleInfo] = []
         for cycle in cycles:
@@ -41,13 +41,13 @@ class CycleDetector:
                 severity=MessageSeverity.ERROR,
                 code=MessageCode.CYCLE_DETECTED,
                 context={
-                    "cycle_path": cycle.cycle_path, 
+                    "cycle_path": cycle.cycle_path,
                     "cycle_length": cycle.cycle_length
                 }
             ))
-        
+
         return filtered_cycles, messages
-    
+
     def _build_execution_graph(self, plan: GraphPlan) -> Tuple[Dict[str, Set[str]], Dict[Tuple[str, str], str]]:
         """Build execution graph plus edge-type mapping."""
         adjacency: Dict[str, Set[str]] = {}
@@ -73,24 +73,14 @@ class CycleDetector:
 
         return adjacency, edge_types
 
-    # ------------------------------------------------------------
-    # Cycle classification helpers
-    # ------------------------------------------------------------
-
     def _is_dangerous_cycle(
-        self,
-        cycle: CycleInfo,
-        adjacency: Dict[str, Set[str]],
-        edge_types: Dict[Tuple[str, str], str],
-        terminal_nodes: Set[str],
+            self,
+            cycle: CycleInfo,
+            adjacency: Dict[str, Set[str]],
+            edge_types: Dict[Tuple[str, str], str],
+            terminal_nodes: Set[str],
     ) -> bool:
-        """Determine if the given cycle is inescapable or unconditional.
-
-        A cycle is considered dangerous when:
-        1. It contains at least one unconditional ("after") edge, OR
-        2. All its edges are "branch" and there is no path from any node in
-           the cycle to a terminal node outside the cycle.
-        """
+        """Determine if the given cycle is inescapable or unconditional."""
 
         # Normalize cycle path (last element duplicates the first)
         path = cycle.cycle_path
@@ -99,19 +89,19 @@ class CycleDetector:
 
         cycle_nodes = set(path)
 
-        # --- Rule 1: unconditional edge inside cycle? ---
+        # Rule 1: unconditional edge inside cycle?
         for u, v in zip(path, path[1:] + [path[0]]):
             if edge_types.get((u, v)) == "after":
                 return True  # unconditional loop -> dangerous
 
-        # --- Rule 2: all edges are branch; check for exit path ---
+        # Rule 2: all edges are branch; check for exit path
         return not self._cycle_has_exit(cycle_nodes, adjacency, terminal_nodes)
 
     def _cycle_has_exit(
-        self,
-        cycle_nodes: Set[str],
-        adjacency: Dict[str, Set[str]],
-        terminal_nodes: Set[str],
+            self,
+            cycle_nodes: Set[str],
+            adjacency: Dict[str, Set[str]],
+            terminal_nodes: Set[str],
     ) -> bool:
         """Return True if a path exists from the cycle to any terminal node."""
         q = deque(cycle_nodes)
@@ -128,16 +118,16 @@ class CycleDetector:
                 q.append(neighbor)
 
         return False  # No exits found
-    
-    def _dfs_cycle_detection(self, node: str, adjacency: Dict[str, Set[str]], 
-                           visited: Set[str], rec_stack: Set[str], 
-                           path: List[str]) -> List[CycleInfo]:
+
+    def _dfs_cycle_detection(self, node: str, adjacency: Dict[str, Set[str]],
+                             visited: Set[str], rec_stack: Set[str],
+                             path: List[str]) -> List[CycleInfo]:
         """DFS-based cycle detection."""
         visited.add(node)
         rec_stack.add(node)
         current_path = path + [node]
         cycles = []
-        
+
         for neighbor in adjacency.get(node, set()):
             if neighbor not in visited:
                 cycles.extend(self._dfs_cycle_detection(
@@ -153,6 +143,6 @@ class CycleDetector:
                     # Handle edge case where neighbor not in current path
                     cycle_path = current_path + [neighbor]
                     cycles.append(CycleInfo(cycle_path=cycle_path))
-        
+
         rec_stack.remove(node)
         return cycles

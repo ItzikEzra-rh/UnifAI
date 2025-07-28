@@ -1,6 +1,5 @@
 from typing import Dict, List, Set, Tuple
 from pydantic import BaseModel, Field, ConfigDict, computed_field
-from ..base import ValidationDetails
 
 
 class PathValidation(BaseModel):
@@ -61,8 +60,10 @@ class ChannelSummary(BaseModel):
         return len(self.missing) + len(self.impossible)
 
 
-class ConnectorValidationDetails(ValidationDetails):
-    """Connector-specific validation details."""
+class ChannelValidationDetails(BaseModel):
+    """Channel-specific validation details."""
+    model_config = ConfigDict(frozen=True)
+    
     path_validations: Dict[str, PathValidation] = Field(default_factory=dict)
     summary: ChannelSummary = Field(default_factory=ChannelSummary)
     

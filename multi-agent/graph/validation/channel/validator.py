@@ -1,0 +1,41 @@
+from typing import List
+from catalog.element_registry import ElementRegistry
+from graph.graph_plan import GraphPlan
+from ..validator import Validator
+from ..models import ValidationReport
+from .analyzer import ChannelAnalyzer
+from .matrix_builder import MatrixBuilder
+from .models import PathSuggestion
+
+
+class ChannelValidator(Validator):
+    """Validates channel/data flow connections between nodes."""
+
+    def __init__(self, element_registry: ElementRegistry = None, *args, **kwargs):
+        # Extract element_registry from kwargs if not provided as positional arg
+        if element_registry is None:
+            element_registry = kwargs.get('element_registry')
+
+        if element_registry is None:
+            raise ValueError("ChannelValidator requires element_registry parameter")
+
+        # Build matrix from registry
+        matrix = MatrixBuilder(element_registry).build()
+        self._analyzer = ChannelAnalyzer(matrix)
+
+    def validate(self, plan: GraphPlan) -> ValidationReport:
+        details, messages = self._analyzer.analyze(plan)
+
+        # Overall validation fails if any individual path is invalid
+        is_valid = all(pv.is_valid for pv in details.path_validations.values())
+
+        return ValidationReport(
+            validator_name=self.name,
+            is_valid=is_valid,
+            messages=messages,
+            details=details
+        )
+
+    def suggest_fixes(self, plan: GraphPlan) -> List[PathSuggestion]:
+        """Suggest nodes to fix connector issues, organized by path."""
+        return self._analyzer.suggest_fixes(plan)

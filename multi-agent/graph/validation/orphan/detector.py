@@ -1,6 +1,6 @@
 from typing import Set, List, Tuple
 from graph.graph_plan import GraphPlan
-from ..base import ValidationMessage, MessageSeverity, MessageCode
+from ..models import ValidationMessage, MessageSeverity, MessageCode
 
 
 class OrphanDetector:
@@ -48,4 +48,4 @@ class OrphanDetector:
                     connected.add(step.uid)
                     connected.add(other.uid)
         
-        return connected
+        return connected 
