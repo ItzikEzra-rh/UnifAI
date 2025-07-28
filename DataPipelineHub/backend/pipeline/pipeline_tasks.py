@@ -7,9 +7,7 @@ from pipeline.pipeline_executor import PipelineExecutor
 from pipeline.types import SlackMetadata, DocumentMetadata
 from shared.logger import logger
 from config.constants import DataSource
-from utils.storage.mongo.mongo_storage import MongoStorage
-from global_utils.utils.util import get_mongo_url
-
+from utils.storage.mongo.mongo_helpers import get_mongo_storage
 # Import the concrete factories to ensure they register themselves
 from pipeline.slack_pipeline_factory import SlackPipelineFactory
 from pipeline.doc_pipeline_factory import DocumentPipelineFactory
@@ -17,7 +15,7 @@ app_config = AppConfig()
 upload_folder = app_config.get("upload_folder", "")
 
 # Initialize mongo storage for registration
-mongo_storage = MongoStorage(get_mongo_url())
+mongo_storage = get_mongo_storage()
 
 @CeleryApp().app.task(bind=True, max_retries=3, default_retry_delay=30)
 def register_sources_task(self, data_list: list, source_type: str, upload_by: str = "default"):

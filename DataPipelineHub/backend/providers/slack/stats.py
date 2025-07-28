@@ -1,14 +1,14 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
 
-from utils.storage.mongo.mongo_helpers import get_source_service
+from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from config.constants import DataSource
 
 
 class SlackStatsProvider:
     def __init__(self):
         # source_service implements both SourceRepository & PipelineRepository
-        self._service = get_source_service()
+        self._service = get_mongo_storage()
 
     def _fetch_slack_sources(self) -> List[Dict[str, Any]]:
         """Fetch all SLACK sources enriched with their last pipeline status."""

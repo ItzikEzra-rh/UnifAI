@@ -1,14 +1,13 @@
 from flask import Blueprint, jsonify, session
 from providers.slack.stats import SlackStatsProvider
 from providers.privacy_filter import get_filtered_sources_by_type
-from utils.storage.mongo.mongo_helpers import get_mongo_storage, get_source_service
+from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from webargs import fields
 from shared.logger import logger
 from global_utils.helpers.apiargs import from_query, from_body
 from global_utils.celery_app.helpers import send_task
 from config.constants import DataSource
 from providers.slack.slack import (
-    embed_slack_channel,
     get_available_slack_channels,
     count_channel_chunks,
     get_best_match_results,
@@ -111,7 +110,7 @@ def get_embed_channels():
     Private community channels are only visible to the user who uploaded them.
     """
     source_type = DataSource.SLACK.upper_name
-    svc = get_source_service()
+    svc = get_mongo_storage()
     current_user = session.get('user', {}).get('username', 'default')
     
     # Use the privacy filter provider to get filtered channels
