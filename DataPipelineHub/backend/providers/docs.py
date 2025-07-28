@@ -4,7 +4,6 @@ import time
 from config.app_config import AppConfig
 from utils.storage.mongo.mongo_storage import MongoStorage
 from global_utils.utils.util import get_mongo_url
-from utils.storage.storage_manager import StorageManager
 from utils.monitor.pipeline_monitor import MongoDBPipelineRepository
 import pymongo
 import uuid
@@ -64,116 +63,116 @@ def get_available_doc_list(user):
         })
     return docs
 
-def embed_docs_flow(doc_list, upload_by):
-    # Create data pipeline with existing logger
-    doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
+# def embed_docs_flow(doc_list, upload_by):
+#     # Create data pipeline with existing logger
+#     doc_pipeline = DocDataPipeline(mongo_client, logger=logger)
     
-    # Insert the documents queue into the pipeline db
-    for doc in doc_list:
-        doc_name = doc.get("doc_name", "")
-        doc_path = os.path.join(upload_folder, doc_name)
-        doc_id = str(uuid.uuid4())
-        doc["doc_id"] = doc_id
-        doc["doc_path"] = doc_path
+#     # Insert the documents queue into the pipeline db
+#     for doc in doc_list:
+#         doc_name = doc.get("doc_name", "")
+#         doc_path = os.path.join(upload_folder, doc_name)
+#         doc_id = str(uuid.uuid4())
+#         doc["doc_id"] = doc_id
+#         doc["doc_path"] = doc_path
         
-        start = time.time()
-        doc_pipeline.register_doc(doc_id, doc_name, upload_by)
+#         start = time.time()
+#         doc_pipeline.register_doc(doc_id, doc_name, upload_by)
         
-    config = DocConfigManager()
-    config.set_config_value("chunk_size", 800)
-    config.set_config_value("chunk_overlap", 100)
+#     config = DocConfigManager()
+#     config.set_config_value("chunk_size", 800)
+#     config.set_config_value("chunk_overlap", 100)
 
-    doc_connector = DocumentConnector(config)
-    doc_processor = DocumentProcessor()
+#     doc_connector = DocumentConnector(config)
+#     doc_processor = DocumentProcessor()
 
-    # Create PDF chunker
-    pdf_chunker = PDFChunkerStrategy(
-        max_tokens_per_chunk=config._config["chunk_size"],
-        overlap_tokens=config._config["chunk_overlap"]
-    )
+#     # Create PDF chunker
+#     pdf_chunker = PDFChunkerStrategy(
+#         max_tokens_per_chunk=config._config["chunk_size"],
+#         overlap_tokens=config._config["chunk_overlap"]
+#     )
 
-    # Create embedding generator
-    embedding_config = {
-        "type": "sentence_transformer",
-        "model_name": "all-MiniLM-L6-v2",
-        "batch_size": 32
-    }
+#     # Create embedding generator
+#     embedding_config = {
+#         "type": "sentence_transformer",
+#         "model_name": "all-MiniLM-L6-v2",
+#         "batch_size": 32
+#     }
     
-    embedding_generator = EmbeddingGeneratorFactory.create(embedding_config)
+#     embedding_generator = EmbeddingGeneratorFactory.create(embedding_config)
 
-    # Create vector storage, mongo storage and manager
-    storage_config = {
-        "type": "qdrant",
-        "collection_name": "pdf_doc_data",
-        "embedding_dim": embedding_generator.embedding_dim,
-    }
-    vector_storage = VectorStorageFactory.create(storage_config)
-    vector_storage.initialize()
-    mongo_storage = get_mongo_storage()
-    manager = StorageManager(vector_storage, mongo_storage)
+#     # Create vector storage, mongo storage and manager
+#     storage_config = {
+#         "type": "qdrant",
+#         "collection_name": "pdf_doc_data",
+#         "embedding_dim": embedding_generator.embedding_dim,
+#     }
+#     vector_storage = VectorStorageFactory.create(storage_config)
+#     vector_storage.initialize()
+#     mongo_storage = get_mongo_storage()
+#     manager = SourceDeletionManager(vector_storage, mongo_storage)
     
-    response = []
-    for doc in doc_list:
-        try:
-            doc_id = doc["doc_id"]
-            doc_path = doc["doc_path"]
-            doc_name = doc["doc_name"]
-            doc_pipeline.process_doc(doc_id)
+#     response = []
+#     for doc in doc_list:
+#         try:
+#             doc_id = doc["doc_id"]
+#             doc_path = doc["doc_path"]
+#             doc_name = doc["doc_name"]
+#             doc_pipeline.process_doc(doc_id)
  
-            # Start log monitoring - this will uses the event-driven handler system
-            doc_pipeline.monitor.start_log_monitoring(target_logger=logger, pipeline_id=f"doc_{doc_id}")
+#             # Start log monitoring - this will uses the event-driven handler system
+#             doc_pipeline.monitor.start_log_monitoring(target_logger=logger, pipeline_id=f"doc_{doc_id}")
 
-            result = doc_connector.process_document(doc_path, upload_by)
-            # Process with various options
-            processed_documents = doc_processor.process(
-                result,
-                clean_markdown=False, # Clean markdown content
-                clean_text=False,     # Leave text content as is for now
-                remove_references=False,  # Don't remove references yet
-                preserve_original=True  # Keep original content
-            )
+#             result = doc_connector.process_document(doc_path, upload_by)
+#             # Process with various options
+#             processed_documents = doc_processor.process(
+#                 result,
+#                 clean_markdown=False, # Clean markdown content
+#                 clean_text=False,     # Leave text content as is for now
+#                 remove_references=False,  # Don't remove references yet
+#                 preserve_original=True  # Keep original content
+#             )
             
-            embedding_ready_docs = doc_processor.prepare_for_single_doc_embedding(processed_documents)
+#             embedding_ready_docs = doc_processor.prepare_for_single_doc_embedding(processed_documents)
             
-            chunks = pdf_chunker.chunk_content([embedding_ready_docs])
-            enriched_chunks = embedding_generator.generate_embeddings(chunks)
-            # Create type_data for Document (only source-specific data)
-            doc_type_data = {
-                "doc_path": doc_path,
-                "page_count": result.get("metadata", {}).get("page_count", 0),
-                "full_text": result.get("text", ""),
-                "file_size": result.get("metadata", {}).get("file_size", 0),
-            }
+#             chunks = pdf_chunker.chunk_content([embedding_ready_docs])
+#             enriched_chunks = embedding_generator.generate_embeddings(chunks)
+#             # Create type_data for Document (only source-specific data)
+#             doc_type_data = {
+#                 "doc_path": doc_path,
+#                 "page_count": result.get("metadata", {}).get("page_count", 0),
+#                 "full_text": result.get("text", ""),
+#                 "file_size": result.get("metadata", {}).get("file_size", 0),
+#             }
 
-            manager.persist(
-                source_id=doc_id,
-                source_name=doc_name,
-                upload_by=upload_by,
-                source_type="DOCUMENT",
-                enriched_chunks=enriched_chunks,
-                pipeline_id=f"doc_{doc_id}",
-                type_data=doc_type_data
-            )
+#             manager.persist(
+#                 source_id=doc_id,
+#                 source_name=doc_name,
+#                 upload_by=upload_by,
+#                 source_type="DOCUMENT",
+#                 enriched_chunks=enriched_chunks,
+#                 pipeline_id=f"doc_{doc_id}",
+#                 type_data=doc_type_data
+#             )
             
-            vector_storage.store_embeddings(enriched_chunks)
+#             vector_storage.store_embeddings(enriched_chunks)
 
-            response.append({
-                "doc": doc_name,
-                "status": "success",
-                "chunks_stored": len(enriched_chunks)
-            })
+#             response.append({
+#                 "doc": doc_name,
+#                 "status": "success",
+#                 "chunks_stored": len(enriched_chunks)
+#             })
 
-            doc_pipeline.monitor.finish_log_monitoring()
+#             doc_pipeline.monitor.finish_log_monitoring()
             
-        except Exception as e:
-            logger.error(f"Failed to embed doc {doc.get('doc_name')}: {str(e)}")
-            response.append({
-                "doc": doc.get("doc_name"),
-                "status": "failed",
-                "error": str(e)
-            })
+#         except Exception as e:
+#             logger.error(f"Failed to embed doc {doc.get('doc_name')}: {str(e)}")
+#             response.append({
+#                 "doc": doc.get("doc_name"),
+#                 "status": "failed",
+#                 "error": str(e)
+#             })
 
-    return response
+#     return response
 
 def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "public", logged_in_user: str = "default"):
     # Create embedding generator
