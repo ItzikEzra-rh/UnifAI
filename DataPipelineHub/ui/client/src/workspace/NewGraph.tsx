@@ -1,16 +1,22 @@
 import React, { useState } from 'react';
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
-import GraphCanvas from '@/components/graph/GraphCanvas';
-import BuildingBlocksSidebar from '@/components/graph/BuildingBlocksSidebar';
+import BuildingBlocksSidebar from '@/workspace/BuildingBlocksSidebar';
 import { useGraphLogic } from '@/hooks/use-graph-logic';
+import GraphCanvas from '@/components/agentic-ai/graphs/GraphCanvas';
 
-export default function NewGraph() {
+interface NewGraphProps {
+  onBack?: () => void;
+}
+
+export default function NewGraph({ onBack }: NewGraphProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   
   const {
     nodes,
     edges,
+    buildingBlocksData,
+    isLoadingBlocks,
     handleNodesChange,
     onEdgesChange,
     onConnect,
@@ -21,13 +27,16 @@ export default function NewGraph() {
     saveGraph
   } = useGraphLogic();
 
+  const handleSaveGraph = async () => {
+    await saveGraph();
+    if (onBack) onBack();
+  };
+
+  const handleClearGraph = () => {
+    clearGraph();
+  };
+
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar />
-
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title="New Graph Builder" onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}/>
-
         <main className="flex-1 overflow-hidden p-4 bg-background-dark">
           <div className="flex h-full gap-4">
             <GraphCanvas
@@ -38,14 +47,17 @@ export default function NewGraph() {
               onConnect={onConnect}
               onDrop={onDrop}
               onDragOver={onDragOver}
-              onClearGraph={clearGraph}
-              onSaveGraph={saveGraph}
+              onClearGraph={handleClearGraph}
+              onSaveGraph={handleSaveGraph}
+              onBack={onBack}
             />
 
-            <BuildingBlocksSidebar onDragStart={onDragStart} />
+            <BuildingBlocksSidebar 
+              buildingBlocks={buildingBlocksData}
+              isLoading={isLoadingBlocks}
+              onDragStart={onDragStart} 
+            />
           </div>
         </main>
-      </div>
-    </div>
   );
 } 

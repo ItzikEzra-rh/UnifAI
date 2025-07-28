@@ -401,6 +401,7 @@ type ReactFlowGraphProps = {
   showMiniMap?: boolean;
   showBackground?: boolean;
   interactive?: boolean;
+  streamingDataContext?: any;
   isLiveRequest?: boolean; // Optional parameter for live tracking
 };
 
@@ -411,6 +412,7 @@ export default function ReactFlowGraph({
   showMiniMap = true,
   showBackground = true,
   interactive = true,
+  streamingDataContext = null,
   isLiveRequest = false
 }: ReactFlowGraphProps): React.ReactElement {
   const [nodes, setNodes, onNodesChange] = useNodesState<EnhancedNodeData>([]);
@@ -631,7 +633,6 @@ export default function ReactFlowGraph({
         nodesConnectable={interactive}
         nodesDraggable={interactive}
         edgesFocusable={interactive}
-        connectionLineType="smoothstep"
         defaultEdgeOptions={{
           type: 'smoothstep',
           animated: true,

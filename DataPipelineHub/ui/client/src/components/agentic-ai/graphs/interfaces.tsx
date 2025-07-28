@@ -10,6 +10,8 @@ export interface NodeData {
   style: string;
   icon: React.ReactNode;
   tools: string[];
+  workspaceData?: any;
+  onDelete?: (nodeId: string) => void;
 }
 
 // Define types for GraphFlow structure
@@ -115,3 +117,20 @@ export interface FlowObject {
     edges: Edge[];
   };
 }
+
+// Additional interfaces for the graph builder
+export interface EnhancedNodeData extends NodeData {
+  status?: 'IDLE' | 'PROGRESS' | 'DONE';
+  timestamp?: string;
+  execution_data?: any;
+}
+
+export interface ReactFlowGraphProps {
+  blueprintId?: string;
+  height?: string;
+  showControls?: boolean;
+  showMiniMap?: boolean;
+  showBackground?: boolean;
+  interactive?: boolean;
+  isLiveRequest?: boolean;
+} 

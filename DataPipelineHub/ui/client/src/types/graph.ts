@@ -17,11 +17,19 @@ export interface BuildingBlock {
   id: string;
   type: string;
   label: string;
-  iconType: string;
   color: string;
   description: string;
-  connectIn: string | string[];
-  connectOut: string | string[];
+  workspaceData?: {
+    rid: string;
+    name: string;
+    category: string;
+    type: string;
+    config: any;
+    version: number;
+    created: string;
+    updated: string;
+    nested_refs: string[];
+  };
 }
 
 export interface CustomNodeData {
@@ -30,5 +38,16 @@ export interface CustomNodeData {
   color: string;
   style: string;
   description: string;
+  workspaceData?: {
+    rid: string;
+    name: string;
+    category: string;
+    type: string;
+    config: any;
+    version: number;
+    created: string;
+    updated: string;
+    nested_refs: string[];
+  };
   onDelete?: (id: string) => void;
 } 
