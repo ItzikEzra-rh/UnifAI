@@ -167,6 +167,14 @@ export default function Sidebar() {
             status="New"
             isCollapsed={isCollapsed}
           />
+          <NavItem 
+            icon={<FaCogs className="sidebar-icon" />} 
+            label="New Graph" 
+            to="/new-graph"
+            isActive={location === '/new-graph'}
+            status="Beta"
+            isCollapsed={isCollapsed}
+          />
         </ul>
 
         {!isCollapsed && (
