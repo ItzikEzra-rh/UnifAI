@@ -3,7 +3,7 @@ from catalog.element_registry import ElementRegistry
 from graph.graph_plan import GraphPlan
 from .base import ValidationReport
 from .models import ValidationResult
-from .connectors.models import NodeSuggestion
+from .connectors.models import PathSuggestion
 from .connectors.validator import ConnectorValidator
 from .connectors.matrix_builder import MatrixBuilder
 from .structural.validator import StructuralValidator
@@ -62,6 +62,6 @@ class GraphValidationService:
         """Run only semantic validation."""
         return self._semantic_validator.validate(plan)
 
-    def suggest_fixes(self, plan: GraphPlan) -> List[NodeSuggestion]:
+    def suggest_fixes(self, plan: GraphPlan) -> List[PathSuggestion]:
         """Get node suggestions from connector validator."""
         return self._connector_validator.suggest_fixes(plan)

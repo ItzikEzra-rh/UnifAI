@@ -1,7 +1,7 @@
 from typing import Set, List
 from graph.graph_plan import GraphPlan
 from ..base import Validator, ValidationReport, ValidationMessage, MessageSeverity, MessageCode, SuggestsFixes
-from .models import PathValidation, DependencyMatrix, NodeSuggestion
+from .models import PathValidation, DependencyMatrix, NodeSuggestion, PathSuggestion
 from .models import ConnectorValidationDetails, ChannelSummary
 from .matrix_builder import MatrixBuilder
 from .path_enumerator import PathEnumerator
@@ -65,7 +65,8 @@ class ConnectorValidator(Validator, SuggestsFixes):
                     }
                 ))
 
-        is_valid = not any(msg.severity == MessageSeverity.ERROR for msg in messages)
+        # Overall validation fails if any individual path is invalid (i.e., has missing or impossible channels).
+        is_valid = all(pv.is_valid for pv in path_validations.values())
 
         # Create typed details
         details = ConnectorValidationDetails(
@@ -117,25 +118,30 @@ class ConnectorValidator(Validator, SuggestsFixes):
             is_valid=is_valid
         )
 
-    def suggest_fixes(self, plan: GraphPlan) -> List[NodeSuggestion]:
-        """Suggest nodes to fix connector issues."""
-        missing_channels = self.find_missing_inputs(plan)
-        return self._suggester.suggest_for_channels(missing_channels, self._matrix)
+    def suggest_fixes(self, plan: GraphPlan) -> List[PathSuggestion]:
+        """Suggest nodes to fix connector issues, organized by path."""
+        # Run validation to get detailed path analysis
+        validation_report = self.validate(plan)
+        details = validation_report.details
 
-    def find_missing_inputs(self, plan: GraphPlan) -> Set[str]:
-        """Find channels that current plan needs but doesn't have."""
-        all_missing: Set[str] = set()
-        available: Set[str] = self._matrix.external_channels.copy()
+        if not isinstance(details, ConnectorValidationDetails):
+            return []
 
-        for step in plan.steps:
-            available.update(step.writes)
+        path_suggestions = []
 
-        for step in plan.steps:
-            required: Set[str] = step.total_reads()
-            missing: Set[str] = required - available
+        for path_validation in details.invalid_paths.values():
+            # Collect all missing channels for this path
+            all_missing_for_path = set()
+            for missing_channels_set in path_validation.missing_channels.values():
+                all_missing_for_path.update(missing_channels_set)
 
-            for channel in missing:
-                if self._matrix.can_produce(channel):
-                    all_missing.add(channel)
+            # Generate suggestions for this path's missing channels
+            if all_missing_for_path:
+                suggestions = self._suggester.suggest_for_channels(all_missing_for_path, self._matrix)
+                path_suggestions.append(PathSuggestion(
+                    path_id=path_validation.path_id,
+                    missing_channels=all_missing_for_path,
+                    suggestions=suggestions
+                ))
 
-        return all_missing
+        return path_suggestions

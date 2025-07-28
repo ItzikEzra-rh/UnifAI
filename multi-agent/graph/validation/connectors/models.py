@@ -32,6 +32,21 @@ class NodeSuggestion(BaseModel):
     reason: str
 
 
+class PathSuggestion(BaseModel):
+    """Suggestions for fixing a specific path."""
+    model_config = ConfigDict(frozen=True)
+    
+    path_id: str
+    missing_channels: Set[str]
+    suggestions: List[NodeSuggestion]
+    
+    @computed_field
+    @property
+    def has_suggestions(self) -> bool:
+        """Whether this path has any suggestions."""
+        return len(self.suggestions) > 0
+
+
 class ChannelSummary(BaseModel):
     """Summary of channel validation across all paths."""
     model_config = ConfigDict(frozen=True)
