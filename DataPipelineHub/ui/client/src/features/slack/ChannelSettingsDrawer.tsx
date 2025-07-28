@@ -124,7 +124,6 @@ export function ChannelSettingsDrawer({
 
   const [values, setValues] = useState<Record<string, string | boolean>>({});
 
-  // Initialize defaults whenever `categories` or `isOpen` changes
   useEffect(() => {
     if (isOpen) {
       const initial: Record<string, string | boolean> = {};
@@ -137,12 +136,10 @@ export function ChannelSettingsDrawer({
     }
   }, [categories, isOpen]);
 
-  // Handler for select / switch changes
   const handleChange = (id: string, newValue: string | boolean) => {
     setValues((prev) => ({ ...prev, [id]: newValue }));
   };
 
-  // When "Save Changes" is clicked
   const handleSave = () => {
     onSave(values);
     onClose();
@@ -278,7 +275,6 @@ export function ChannelSettingsDrawer({
                       </div>
                     );
                   } else {
-                    // type === "switch"
                     const sw = setting as SwitchSetting;
                     return (
                       <div

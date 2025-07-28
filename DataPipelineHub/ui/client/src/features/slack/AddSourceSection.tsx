@@ -9,20 +9,11 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { ChannelSettings, ChannelSettingsData, defaultChannelSettings } from './ChannelSettings';
 
-// ── Pagination Constants ──────────────────────────────────────────────
 const CHANNELS_PER_PAGE = 50;
 
-// ── Scope Constants ────────────────────────────────────────────────────
 export const SCOPE = {
   ALL: 'all' as const,
   PUBLIC: 'public' as const,
@@ -30,7 +21,6 @@ export const SCOPE = {
 };
 export type Scope = typeof SCOPE[keyof typeof SCOPE];
 
-// ── Channel Type Constants ─────────────────────────────────────────────
 export const CHANNEL_TYPE = {
   PUBLIC: 'public_channel' as const,
   PRIVATE: 'private_channel' as const,
@@ -38,17 +28,14 @@ export const CHANNEL_TYPE = {
 export type ChannelType = typeof CHANNEL_TYPE[keyof typeof CHANNEL_TYPE];
 export const ALL_CHANNEL_TYPES = `${CHANNEL_TYPE.PUBLIC},${CHANNEL_TYPE.PRIVATE}` as const;
 
-// ── Cache Key ─────────────────────────────────────────────────────────
 const CACHE_KEY = 'slackChannels';
 
-// ── Scope Options ──────────────────────────────────────────────────────
 const scopeOptions: { label: string; value: Scope }[] = [
   { label: 'All', value: SCOPE.ALL },
   { label: 'Public', value: SCOPE.PUBLIC },
   { label: 'Private', value: SCOPE.PRIVATE },
 ];
 
-// ── Pagination Response Interface ──────────────────────────────────────
 export interface PaginatedChannelsResponse {
   channels: Channel[];
   nextCursor?: string;
@@ -56,8 +43,12 @@ export interface PaginatedChannelsResponse {
   total?: number;
 }
 
+export interface ChannelWithSettings extends Channel {
+  settings: ChannelSettingsData;
+}
+
 export interface AddSourceSectionHandle {
-  getSelectedChannels: () => Promise<Channel[]>;
+  getSelectedChannels: () => Promise<ChannelWithSettings[]>;
 }
 
 export interface AddSourceSectionProps {
@@ -66,7 +57,6 @@ export interface AddSourceSectionProps {
   isSubmitting?: boolean;
 }
 
-// Helper functions for unique channel identification
 const getChannelUniqueId = (channel: Channel) => `${channel.channel_id}_${channel.is_private ? 'private' : 'public'}`;
 const parseChannelUniqueId = (uniqueId: string) => {
   const parts = uniqueId.split('_');
@@ -76,27 +66,21 @@ const parseChannelUniqueId = (uniqueId: string) => {
   };
 };
 
-// ── Component ──────────────────────────────────────────────────────────
 const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProps>(({ onSave, onCancel, isSubmitting }, ref) => {
   const queryClient = useQueryClient();
   const [scope, setScope] = useState<Scope>(SCOPE.ALL);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
+  const [channelSettings, setChannelSettings] = useState<Record<string, ChannelSettingsData>>({});
+  const [lastSelectedChannel, setLastSelectedChannel] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Slack API `types` param mapping
   const typesParam = useMemo<ChannelType | typeof ALL_CHANNEL_TYPES>(() => {
     if (scope === SCOPE.PUBLIC) return CHANNEL_TYPE.PUBLIC;
     if (scope === SCOPE.PRIVATE) return CHANNEL_TYPE.PRIVATE;
     return ALL_CHANNEL_TYPES;
   }, [scope]);
 
-  // Reset selected channels when scope changes
-  useEffect(() => {
-    setSelectedChannels([]);
-  }, [scope]);
-
-  // Infinite query for channels
   const {
     data: channelsData,
     isLoading,
@@ -109,7 +93,6 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
     queryKey: [CACHE_KEY, typesParam],
     queryFn: async ({ pageParam = undefined }) => {
       if (scope === SCOPE.ALL) {
-        // For ALL scope, we need to fetch both public and private channels
         const [pubResponse, privResponse] = await Promise.all([
           fetchAvailableSlackChannels(CHANNEL_TYPE.PUBLIC, {
             cursor: pageParam as string,
@@ -121,7 +104,6 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
           }),
         ]);
 
-        // Merge and deduplicate channels
         const mergedChannels = [...pubResponse.channels, ...privResponse.channels];
         const uniqueChannels = Array.from(
           new Map(mergedChannels.map(c => [c.channel_id, c])).values()
@@ -147,58 +129,90 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
     initialPageParam: undefined,
   });
 
-  // Flatten all pages into a single array
   const channels = useMemo(() => {
     if (!channelsData?.pages) return [];
     return channelsData.pages.flatMap(page => page.channels);
   }, [channelsData]);
 
-  // Get total count from the first page
   const totalChannels = useMemo(() => {
     return channelsData?.pages?.[0]?.total || 0;
   }, [channelsData]);
 
-  // Get embedded channels to check for already embedded ones
   const { data: embedChannels = [] } = useQuery<EmbedChannel[], Error>({
     queryKey: ["embeddedSlackChannels"],
     queryFn: fetchEmbeddedSlackChannels,
-    staleTime: 30 * 1000, // Reduce stale time for more frequent updates
-    refetchOnMount: true, // Always refetch when component mounts
-    refetchOnWindowFocus: true, // Refetch when user comes back to the page
+    staleTime: 30 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
-  const getSelectedChannels = useCallback(async () => {
-    return channels.filter(c => selectedChannels.includes(getChannelUniqueId(c)));
-  }, [channels, selectedChannels]);
+  const getSelectedChannels = useCallback(async (): Promise<ChannelWithSettings[]> => {
+    // Use settings from the last selected channel for all selected channels
+    const settingsToUse = lastSelectedChannel 
+      ? (channelSettings[lastSelectedChannel] || defaultChannelSettings)
+      : defaultChannelSettings;
+      
+    return channels
+      .filter(c => selectedChannels.includes(getChannelUniqueId(c)))
+      .map(c => ({
+        ...c,
+        settings: settingsToUse
+      }));
+  }, [channels, selectedChannels, channelSettings, lastSelectedChannel]);
 
   useImperativeHandle(ref, () => ({
     getSelectedChannels,
   }));
 
-  // Check if a channel is already embedded
   const isChannelEmbedded = useCallback((channel: Channel) => {
     return embedChannels.some(embedded => embedded.name === channel.channel_name);
   }, [embedChannels]);
 
-  // Filter channels by search term
   const filteredChannels = useMemo(
     () => channels.filter(c => c.channel_name.toLowerCase().includes(searchTerm.toLowerCase())),
     [channels, searchTerm]
   );
 
-  // Toggle a channel selection
   const handleToggleChannel = useCallback((channel: Channel) => {
     if (isChannelEmbedded(channel)) {
       return;
     }
     
     const uniqueId = getChannelUniqueId(channel);
-    setSelectedChannels(prev =>
-      prev.includes(uniqueId) ? prev.filter(n => n !== uniqueId) : [...prev, uniqueId]
-    );
-  }, [isChannelEmbedded]);
+    setSelectedChannels(prev => {
+      const isCurrentlySelected = prev.includes(uniqueId);
+      const newSelected = isCurrentlySelected 
+        ? prev.filter(n => n !== uniqueId) 
+        : [...prev, uniqueId];
+      
+      // Initialize settings for newly selected channels and set as last selected
+      if (!isCurrentlySelected && newSelected.includes(uniqueId)) {
+        setChannelSettings(prevSettings => ({
+          ...prevSettings,
+          [uniqueId]: defaultChannelSettings
+        }));
+        // Set this as the last selected channel
+        setLastSelectedChannel(uniqueId);
+      } else if (isCurrentlySelected) {
+        // If deselecting this channel, update lastSelectedChannel
+        if (lastSelectedChannel === uniqueId) {
+          // Set last selected to the most recent remaining channel, or null if none
+          const remainingChannels = newSelected;
+          setLastSelectedChannel(remainingChannels.length > 0 ? remainingChannels[remainingChannels.length - 1] : null);
+        }
+      }
+      
+      return newSelected;
+    });
+  }, [isChannelEmbedded, lastSelectedChannel]);
 
-  // Select all or clear all (excluding embedded channels)
+  const handleChannelSettingsChange = useCallback((channelId: string, settings: ChannelSettingsData) => {
+    setChannelSettings(prev => ({
+      ...prev,
+      [channelId]: settings
+    }));
+  }, []);
+
   const selectableChannels = useMemo(() => 
     filteredChannels.filter(c => !isChannelEmbedded(c)), 
     [filteredChannels, isChannelEmbedded]
@@ -216,10 +230,37 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
   );
   const allSelected = selectableChannelIds.length > 0 && selectableChannelIds.every(id => selectedChannels.includes(id));
   const handleSelectAll = useCallback(() => {
-    setSelectedChannels(prev => (allSelected ? [] : Array.from(new Set([...prev, ...allNames]))));
+    setSelectedChannels(prev => {
+      if (allSelected) {
+        // Clear all selections
+        setLastSelectedChannel(null);
+        return [];
+      } else {
+        // Select all available channels
+        const newSelection = Array.from(new Set([...prev, ...allNames]));
+        
+        // Initialize settings for newly selected channels
+        const newChannels = allNames.filter(id => !prev.includes(id));
+        if (newChannels.length > 0) {
+          setChannelSettings(prevSettings => {
+            const newSettings = { ...prevSettings };
+            newChannels.forEach(id => {
+              if (!newSettings[id]) {
+                newSettings[id] = defaultChannelSettings;
+              }
+            });
+            return newSettings;
+          });
+          
+          // Set the last channel in the list as the last selected
+          setLastSelectedChannel(newChannels[newChannels.length - 1]);
+        }
+        
+        return newSelection;
+      }
+    });
   }, [allNames, allSelected]);
 
-  // Infinite scroll handler
   const handleScroll = useCallback(() => {
     if (!scrollContainerRef.current || !hasNextPage || isFetchingNextPage) return;
 
@@ -231,7 +272,6 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  // Add scroll listener
   useEffect(() => {
     const container = scrollContainerRef.current;
     if (!container) return;
@@ -240,7 +280,13 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
     return () => container.removeEventListener('scroll', handleScroll);
   }, [handleScroll]);
 
-  // Compute counts for display
+  // Ensure lastSelectedChannel is set when channels are selected
+  useEffect(() => {
+    if (selectedChannels.length > 0 && !lastSelectedChannel) {
+      setLastSelectedChannel(selectedChannels[selectedChannels.length - 1]);
+    }
+  }, [selectedChannels, lastSelectedChannel]);
+
   const counts: Record<Scope, number> = useMemo(() => {
     if (scope === SCOPE.ALL) {
       return {
@@ -290,8 +336,7 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
                 placeholder="" 
-                className={`pr-10 bg-input border-border ${searchTerm ? 'pl-3' : 'pl-28'}`}
-                style={{ color: 'hsl(var(--input-foreground))' }}
+                className={`input-dark-theme pr-10 bg-input border-border ${searchTerm ? 'pl-3' : 'pl-28'}`}
               />
               <FaSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             </div>
@@ -409,61 +454,36 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
           </Button>
         </div>
 
-        <div>
-          <Label htmlFor="date-range" className="text-sm">
-            Date Range
-          </Label>
-          <Select defaultValue="30d">
-            <SelectTrigger
-              id="date-range"
-              className="mt-1 bg-background-dark"
-            >
-              <SelectValue placeholder="Select date range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-              <SelectItem value="90d">Last 90 days</SelectItem>
-              <SelectItem value="180d">Last 6 months</SelectItem>
-              <SelectItem value="365d">Last year</SelectItem>
-              <SelectItem value="all">All time</SelectItem>
-            </SelectContent>
-          </Select>
-          <p className="text-xs text-gray-400 mt-1">
-            How far back to fetch messages
-          </p>
-        </div>
-
-        <div className="flex items-center justify-between pt-1">
-          <div>
-            <Label htmlFor="include-threads" className="text-base">
-              Include Threads
-            </Label>
-            <p className="text-xs text-gray-400 mt-1">
-              Process conversation threads
+        {selectedChannels.length > 0 && lastSelectedChannel ? (
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold">Channel Settings</h3>
+            <p className="text-sm text-gray-400">
+              Configure settings for the most recently selected channel
+              {selectedChannels.length > 1 && (
+                <span className="text-amber-400 ml-1">
+                  ({selectedChannels.length} channels selected total)
+                </span>
+              )}
             </p>
-          </div>
-          <Switch id="include-threads" defaultChecked />
-        </div>
-
-        <div className="flex items-start justify-between opacity-50 cursor-not-allowed">
-          <div>
-            <div className="flex items-center space-x-2">
-              <Label htmlFor="include-files" className="text-base">
-                Process File Content
-              </Label>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-white font-medium">
-                Soon
-              </span>
+            
+            <div className="space-y-4">
+              {(() => {
+                const channel = channels.find(c => getChannelUniqueId(c) === lastSelectedChannel);
+                if (!channel) return null;
+                
+                return (
+                  <ChannelSettings
+                    key={lastSelectedChannel}
+                    channelId={lastSelectedChannel}
+                    channelName={channel.channel_name}
+                    settings={channelSettings[lastSelectedChannel] || defaultChannelSettings}
+                    onSettingsChange={handleChannelSettingsChange}
+                  />
+                );
+              })()}
             </div>
-            <p className="text-xs text-gray-400 mt-1">
-              Extract text from shared files
-            </p>
           </div>
-          <div className="flex items-center space-x-2 pt-1">
-            <Switch id="include-files" disabled />
-          </div>
-        </div>
+        ) : null}
       </CardContent>
     </Card>
   );

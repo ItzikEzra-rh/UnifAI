@@ -97,7 +97,7 @@ class SlackConnector(DataConnector):
             The response from the API as a dictionary
             
         Raises:
-            Exception: If the request fails
+            Exception: If the request fails after all retries
         """
         url = f"{self.base_url}{endpoint}"
         token = self._user_token if use_user_token else self._bot_token
@@ -110,15 +110,16 @@ class SlackConnector(DataConnector):
         # Track retry attempts
         max_retries = 3
         retry_count = 0
+        last_error = None
         
         while retry_count <= max_retries:
             try:
-                logger.info(f"Making API request to Slack endpoint: {endpoint}")
+                logger.info(f"Making API request to Slack endpoint: {endpoint} (attempt {retry_count + 1}/{max_retries + 1})")
                 
                 if method.upper() == "GET":
-                    response = requests.get(url, headers=headers, params=params)
+                    response = requests.get(url, headers=headers, params=params, timeout=30)
                 else:  # POST
-                    response = requests.post(url, headers=headers, json=params)
+                    response = requests.post(url, headers=headers, json=params, timeout=30)
                 
                 response_data = response.json()
                 
@@ -130,25 +131,54 @@ class SlackConnector(DataConnector):
                     retry_count += 1
                     continue
                 
+                # Check for other API errors
                 if not response_data.get('ok'):
-                    logger.error(f"Slack API error: {response_data.get('error')}")
-                else:
-                    logger.info(f"Slack API request to {endpoint} successful")
+                    error_msg = response_data.get('error', 'unknown_error')
+                    logger.error(f"Slack API error for {endpoint}: {error_msg}")
                     
+                    # Some errors are worth retrying, others are not
+                    retryable_errors = ['ratelimited', 'timeout', 'internal_error', 'fatal_error']
+                    if error_msg in retryable_errors and retry_count < max_retries:
+                        wait_time = min(2 ** retry_count, 60)  # Cap at 60 seconds
+                        logger.info(f"Retryable error {error_msg}, waiting {wait_time} seconds before retry...")
+                        time.sleep(wait_time)
+                        retry_count += 1
+                        continue
+                    else:
+                        # Non-retryable error or max retries reached
+                        raise Exception(f"Slack API error: {error_msg}")
+                
+                logger.info(f"Slack API request to {endpoint} successful")
                 return response_data
                 
-            except Exception as e:
-                logger.error(f"Error making request to Slack API {endpoint}: {str(e)}")
+            except requests.exceptions.RequestException as e:
+                last_error = e
+                logger.error(f"Network error making request to Slack API {endpoint}: {str(e)}")
                 if retry_count < max_retries:
-                    wait_time = 2 ** retry_count  # Exponential backoff
+                    wait_time = min(2 ** retry_count, 60)  # Exponential backoff, capped at 60 seconds
                     logger.info(f"Retrying in {wait_time} seconds...")
                     time.sleep(wait_time)
                     retry_count += 1
                 else:
-                    raise
+                    break
+            except Exception as e:
+                last_error = e
+                logger.error(f"Unexpected error making request to Slack API {endpoint}: {str(e)}")
+                if retry_count < max_retries:
+                    wait_time = min(2 ** retry_count, 30)  # Shorter backoff for unexpected errors
+                    logger.info(f"Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+                    retry_count += 1
+                else:
+                    break
         
-        # This should not be reached under normal circumstances
-        raise Exception("Maximum retries exceeded when calling Slack API")
+        # All retries exhausted
+        error_msg = f"Maximum retries ({max_retries + 1}) exceeded when calling Slack API endpoint '{endpoint}'"
+        if last_error:
+            error_msg += f". Last error: {str(last_error)}"
+        
+        logger.error(error_msg)
+        raise Exception(error_msg)
     
     def fetch_available_slack_channels(self) -> List[Dict[str, str]]:
         """
@@ -251,6 +281,11 @@ class SlackConnector(DataConnector):
             # Get total count for pagination metadata
             total_count = collection.count_documents(query_filter)
             
+            # Check if cache is empty - if so, fall back to API
+            if total_count == 0:
+                logger.warning(f"No cached channels found for project {self._project_id}. Falling back to API call.")
+                return self._fallback_with_pagination(types, cursor, limit)
+            
             # Calculate skip value from cursor
             skip = 0
             if cursor:
@@ -286,20 +321,42 @@ class SlackConnector(DataConnector):
             logger.error(f"Error retrieving channels from cache: {str(e)}")
             logger.warning("Falling back to API call with limited results")
             
-            # Fallback to API call with limited results if cache fails
-            fallback_channels = self._fallback_get_channels(types, max_api_calls=5)
+            return self._fallback_with_pagination(types, cursor, limit)
+    
+    def _fallback_with_pagination(self, types: Optional[str] = None, cursor: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+        """
+        Fallback method that fetches channels from API and formats them with pagination.
+        
+        Args:
+            types: Optional channel types to filter by
+            cursor: Optional cursor for pagination (skip count)
+            limit: Number of channels to return
             
-            # Transform fallback response to paginated format
-            start_idx = skip if cursor else 0
-            end_idx = start_idx + limit
-            paginated_channels = fallback_channels[start_idx:end_idx]
-            
-            return {
-                'channels': paginated_channels,
-                'nextCursor': str(end_idx) if end_idx < len(fallback_channels) else None,
-                'hasMore': end_idx < len(fallback_channels),
-                'total': len(fallback_channels),
-            }
+        Returns:
+            Dictionary containing paginated channels data with pagination metadata
+        """
+        # Fallback to API call with limited results if cache fails
+        fallback_channels = self._fallback_get_channels(types, max_api_calls=5)
+        
+        # Transform fallback response to paginated format
+        skip = 0
+        if cursor:
+            try:
+                skip = int(cursor)
+            except ValueError:
+                logger.warning(f"Invalid cursor value: {cursor}, using 0")
+                skip = 0
+        
+        start_idx = skip
+        end_idx = start_idx + limit
+        paginated_channels = fallback_channels[start_idx:end_idx]
+        
+        return {
+            'channels': paginated_channels,
+            'nextCursor': str(end_idx) if end_idx < len(fallback_channels) else None,
+            'hasMore': end_idx < len(fallback_channels),
+            'total': len(fallback_channels),
+        }
     
     def _fallback_get_channels(self, types: Optional[str] = None, max_api_calls: int = 5) -> List[Dict[str, str]]:
         """

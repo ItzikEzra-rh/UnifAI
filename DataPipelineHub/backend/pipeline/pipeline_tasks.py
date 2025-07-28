@@ -25,8 +25,12 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
     Registration-only task that processes all data sources, creates pipeline IDs,
     and registers them in the mongo sources collection using upsert_source_summary.
     
+    Supports optional user-defined metadata (e.g., settings from frontend) that gets
+    stored in the type_data.user_settings field in MongoDB for later retrieval.
+    
     Args:
-        data_list: List of data sources to register
+        data_list: List of data sources to register. Each item can optionally contain
+                  a 'metadata' field with user-defined settings (dateRange, communityPrivacy, etc.)
         source_type: Type of data source (SLACK, DOCUMENT, etc.)
         upload_by: User who initiated the registration
         
@@ -39,6 +43,11 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
         registered_sources = []
         
         for instance in data_list:
+            # Extract optional user-defined metadata from frontend
+            user_metadata = instance.get("metadata", {})
+            if user_metadata:
+                logger.info(f"Processing user metadata: {user_metadata}")
+            
             # Generate source_id and pipeline_id based on source type
             if source_type.upper() == DataSource.SLACK.upper_name:
                 source_id = instance.get("channel_id", "")
@@ -53,10 +62,15 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                     upload_by=upload_by
                 )
                 
-                # Create type_data for Slack (only source-specific data)
+                # Create type_data for Slack (source-specific data + optional user metadata)
                 type_data = {
                     "is_private": instance.get("is_private", False),
                 }
+                
+                # Add user-defined metadata flattened into type_data if provided
+                # This will be stored in MongoDB as: type_data.{dateRange, communityPrivacy, includeThreads, etc.}
+                if user_metadata:
+                    type_data.update(user_metadata)
                 
             elif source_type.upper() == DataSource.DOCUMENT.upper_name:
                 source_id = str(uuid.uuid4())
@@ -72,13 +86,18 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                     upload_by=upload_by
                 )
                 
-                # Create type_data for Document (only source-specific data)
+                # Create type_data for Document (source-specific data + optional user metadata)
                 type_data = {
                     "doc_path": doc_path,
                     "page_count": 0,
                     "full_text": "",
                     "file_size": 0,
                 }
+                
+                # Add user-defined metadata flattened into type_data if provided
+                # This will be stored in MongoDB as: type_data.{dateRange, communityPrivacy, includeThreads, etc.}
+                if user_metadata:
+                    type_data.update(user_metadata)
                 
             else:
                 logger.error(f"Unsupported source type: {source_type}")
@@ -97,13 +116,14 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
             # Return only essential data needed for pipeline execution
             registered_source = {
                 "pipeline_id": pipeline_id,
-                "metadata": metadata.__dict__,  # Serialized metadata
+                "metadata": metadata.__dict__, 
                 "source_type": source_type.upper(),
                 "upload_by": upload_by
             }
             
             registered_sources.append(registered_source)
-            logger.info(f"Registered {source_type} source: {source_name} with pipeline_id: {pipeline_id}")
+            metadata_info = f" with user settings: {user_metadata}" if user_metadata else ""
+            logger.info(f"Registered {source_type} source: {source_name} with pipeline_id: {pipeline_id}{metadata_info}")
         
         logger.info(f"Successfully registered {len(registered_sources)} {source_type} sources with pipeline IDs")
         

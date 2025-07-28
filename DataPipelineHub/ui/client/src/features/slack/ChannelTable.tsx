@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { FaSync, FaCog, FaPlus, FaTrash } from "react-icons/fa";
+import { FaSync, FaCog, FaPlus, FaTrash, FaUsers, FaGlobe } from "react-icons/fa";
 import { HiOutlineLockClosed } from "react-icons/hi";
 import { useLocation } from "wouter";
 import { motion } from "framer-motion";
@@ -11,6 +11,12 @@ import { Badge } from "@/components/ui/badge";
 import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function isChannelNew(createdAt: Date): boolean {
   const now = new Date()
@@ -73,7 +79,6 @@ export function getColumns(
       header: "Status",
       cell: (info) => {
         const channel = info.row.original;
-        console.log(channel)
         const isActivelyEmbedding = activeEmbeddingIds.includes(channel.channel_id);
         return (
           <StatusBadge 
@@ -102,8 +107,26 @@ export function getColumns(
           case PIPELINE_STATUS.ARCHIVED:
             displayLabel = "Archived";
             break;
+          case PIPELINE_STATUS.PENDING:
+            displayLabel = "Pending";
+            break;
+          case PIPELINE_STATUS.CHUNKING_AND_EMBEDDING:
+            displayLabel = "Chunking & Embedding";
+            break;
+          case PIPELINE_STATUS.STORING:
+            displayLabel = "Storing";
+            break;
+          case PIPELINE_STATUS.COLLECTING:
+            displayLabel = "Collecting";
+            break;
+          case PIPELINE_STATUS.PROCESSING:
+            displayLabel = "Processing";
+            break;
+          case PIPELINE_STATUS.ORCHESTRATING:
+            displayLabel = "Orchestrating";
+            break;
           default:
-            displayLabel = status;
+            displayLabel = status || "Pending";
         }
         
         return displayLabel === filterValue;
@@ -111,7 +134,19 @@ export function getColumns(
       meta: {
         align: "center",
         filterType: "select",
-        filterOptions: ["In Progress", "Paused", "Done", "Failed", "Archived"],
+        filterOptions: [
+          "Pending",
+          "In Progress", 
+          "Collecting",
+          "Processing",
+          "Chunking & Embedding",
+          "Storing",
+          "Orchestrating",
+          "Done",
+          "Paused",
+          "Failed",
+          "Archived"
+        ],
       },
     },
     {
@@ -154,33 +189,112 @@ export function getColumns(
     },
     {
       accessorKey: "is_private",
-      header: "Privacy",
+      header: () => (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-help">Channel Privacy</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Slack channel's built-in privacy setting.<br/>Determines who can see and join the channel.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
       cell: (info) => {
         const isPrivate = info.getValue<boolean>();
-        const privacyText = isPrivate ? "Private" : "Public";
         return (
-          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-            isPrivate 
-              ? "bg-amber-500/15 text-amber-400 border border-amber-400/20" 
-              : "bg-blue-500/15 text-blue-400 border border-blue-400/20"
-          }`}>
-            {isPrivate ? (
-              <>
-                <HiOutlineLockClosed className="mr-1 h-3 w-3" />
-                Private
-              </>
-            ) : (
-              <>
-                <span className="mr-1">#</span>
-                Public
-              </>
-            )}
-          </span>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium cursor-help ${
+                  isPrivate 
+                    ? "bg-amber-500/15 text-amber-400 border border-amber-400/20" 
+                    : "bg-blue-500/15 text-blue-400 border border-blue-400/20"
+                }`}>
+                  {isPrivate ? (
+                    <>
+                      <HiOutlineLockClosed className="mr-1 h-3 w-3" />
+                      Private
+                    </>
+                  ) : (
+                    <>
+                      <span className="mr-1">#</span>
+                      Public
+                    </>
+                  )}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isPrivate ? "Private Slack channel - only invited members can see" : "Public Slack channel - visible to all workspace members"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         );
       },
       filterFn: (row, columnId, filterValue) => {
         const isPrivate = row.getValue(columnId) as boolean;
         const rowValue = isPrivate ? "Private" : "Public";
+        return rowValue === filterValue;
+      },
+      meta: {
+        align: "center",
+        filterType: "select",
+        filterOptions: [
+          "Private",
+          "Public"
+        ],
+      },
+    },
+    {
+      accessorKey: "communityPrivacy",
+      header: () => (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-help">Community Privacy</span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Community visibility setting chosen during setup.<br/>Controls how this channel's data is shared in the community.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      ),
+      cell: (info) => {
+        const communityPrivacy = info.getValue<'public' | 'private'>() || 'public';
+        const isPrivate = communityPrivacy === 'private';
+        return (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium cursor-help ${
+                  isPrivate 
+                    ? "bg-purple-500/15 text-purple-400 border border-purple-400/20" 
+                    : "bg-green-500/15 text-green-400 border border-green-400/20"
+                }`}>
+                  {isPrivate ? (
+                    <>
+                      <FaUsers className="mr-1 h-3 w-3" />
+                      Private
+                    </>
+                  ) : (
+                    <>
+                      <FaGlobe className="mr-1 h-3 w-3" />
+                      Public
+                    </>
+                  )}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isPrivate ? "Community Private - data not shared externally" : "Community Public - data may be shared with the community"}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        );
+      },
+      filterFn: (row, columnId, filterValue) => {
+        const communityPrivacy = row.getValue(columnId) as 'public' | 'private' || 'public';
+        const rowValue = communityPrivacy === 'private' ? "Private" : "Public";
         return rowValue === filterValue;
       },
       meta: {

@@ -1,5 +1,6 @@
 from flask import Blueprint, jsonify, session
 from providers.slack.stats import SlackStatsProvider
+from providers.privacy_filter import get_filtered_sources_by_type
 from utils.storage.mongo.mongo_helpers import get_mongo_storage, get_source_service
 from webargs import fields
 from shared.logger import logger
@@ -52,7 +53,7 @@ def embed_channels(channels):
             task_name="data_sources.slack.slack_tasks.embed_slack_channels_task",
             celery_queue="slack_queue",
             channel_list=channels,
-            upload_by=session.get('user', {}).get('name', 'default')
+            upload_by=session.get('user', {}).get('username', 'default')
         )
         # embed_slack_channel(channels)
         return jsonify({"status": "task submitted"}), 202
@@ -106,12 +107,17 @@ def best_match_results(query, top_k_results, scope, logged_in_user):
 @slack_bp.route('/embed.channels', methods=['GET'])
 def get_embed_channels():
     """
-    Returns all stored channels, optionally filtered by source_type.
+    Returns all stored channels, filtered by source_type and community privacy.
+    Private community channels are only visible to the user who uploaded them.
     """
     source_type = DataSource.SLACK.upper_name
     svc = get_source_service()
-    channels = svc.list_sources(source_type)
-    return jsonify(channels), 200
+    current_user = session.get('user', {}).get('username', 'default')
+    
+    # Use the privacy filter provider to get filtered channels
+    filtered_channels = get_filtered_sources_by_type(svc, source_type, current_user)
+    
+    return jsonify(filtered_channels), 200
 
 @slack_bp.route("/stats", methods=["GET"])
 def system_stats():

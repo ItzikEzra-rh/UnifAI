@@ -56,12 +56,35 @@ export async function fetchAvailableSlackChannels(
   };
 }
 
+export interface ChannelWithSettings extends Channel {
+  settings: {
+    dateRange: string;
+    communityPrivacy: 'public' | 'private';
+    includeThreads: boolean;
+    processFileContent: boolean;
+  };
+}
+
 export async function submitSlackChannels(
-  channels: Channel[]
+  channels: ChannelWithSettings[]
 ): Promise<{ status: string }> {
+  // Transform channels to include settings as metadata
+  const enrichedChannels = channels.map(channel => ({
+    channel_name: channel.channel_name,
+    channel_id: channel.channel_id,
+    is_private: channel.is_private,
+    // Include settings as additional metadata for backend processing
+    metadata: {
+      dateRange: channel.settings.dateRange,
+      communityPrivacy: channel.settings.communityPrivacy,
+      includeThreads: channel.settings.includeThreads,
+      processFileContent: channel.settings.processFileContent,
+    }
+  }));
+
   const { data } = await api.put<{ status: string }>(
     'pipelines/embed',
-    { data: channels,
+    { data: enrichedChannels,
       type: 'slack' }
   );
   return data;
@@ -78,6 +101,7 @@ export async function fetchEmbeddedSlackChannels(): Promise<EmbedChannel[]> {
     channel_id: item.source_id || '',
     created: formatDate(item.created_at || ''),
     is_private: item.type_data?.is_private || false,
+    communityPrivacy: item.type_data?.communityPrivacy || 'public',
   }));
 };
 

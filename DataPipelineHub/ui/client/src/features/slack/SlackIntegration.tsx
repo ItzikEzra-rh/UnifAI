@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
@@ -36,7 +36,6 @@ const sharedTransition = {
   damping: 30,
 };
 
-// Helper functions for pipeline status management
 const getActiveStatuses = () => [
   PIPELINE_STATUS.PENDING,
   PIPELINE_STATUS.ACTIVE,
@@ -63,8 +62,6 @@ const isChannelInactive = (channel: EmbedChannel) => {
 };
 
 export default function SlackIntegration() {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [settingsChannel, setSettingsChannel] = useState<EmbedChannel | null>(null);
   const [deletingChannelId, setDeletingChannelId] = useState<string | null>(null);
   const [channelToDelete, setChannelToDelete] = useState<EmbedChannel | null>(null);
@@ -73,7 +70,6 @@ export default function SlackIntegration() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Check if there are any channels in progress or being embedded
   const hasActiveOperations = (channels: EmbedChannel[] | undefined) => {
     if (!channels || !Array.isArray(channels)) return false;
     
@@ -86,21 +82,12 @@ export default function SlackIntegration() {
   const { data: embedChannels = [], isLoading, isError, error, refetch } = useQuery({
     queryKey: ["embeddedSlackChannels"],
     queryFn: fetchEmbeddedSlackChannels,
-    staleTime: 15 * 1000, // Fresh data for 15 seconds
+    staleTime: 15 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    // Smart polling - poll every 5 seconds when there are active pipeline operations
     refetchInterval: (query) => {
       const data = query.state.data as EmbedChannel[] | undefined;
       const hasActive = hasActiveOperations(data) || activeEmbedding.size > 0;
-      
-      // Log the active channels for debugging
-      if (hasActive && data) {
-        const activeChannels = data.filter(isChannelActivelyProcessing);
-        console.log(`Live tracking enabled: ${activeChannels.length} channels actively processing`, 
-                   activeChannels.map(c => `${c.name}: ${c.status}`));
-      }
-      
       return hasActive ? 5000 : false;
     },
   });
@@ -108,13 +95,12 @@ export default function SlackIntegration() {
   const { data: stats, isLoading: statsLoading, refetch: refetchStats } = useQuery({
     queryKey: ["embeddedSlackChannelsStats"],
     queryFn: fetchSystemStats,
-    staleTime: 5 * 1000, // Fresh data for 5 seconds
+    staleTime: 5 * 1000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
-    refetchInterval: 10000, // Poll every 10 seconds as baseline
+    refetchInterval: 10000,
   });
 
-  // Effect to trigger additional stats refresh when channels change or embedding state changes
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       refetchStats();
@@ -123,17 +109,13 @@ export default function SlackIntegration() {
     return () => clearTimeout(timeoutId);
   }, [embedChannels.length, activeEmbedding.size, refetchStats]);
 
-  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: deleteSlackChannel,
     onMutate: (channelId) => {
-      // Set loading state
       setDeletingChannelId(channelId);
     },
     onSuccess: (data, channelId) => {
-      // Clear loading state
       setDeletingChannelId(null);
-      // Invalidate and refetch the channels list
       queryClient.invalidateQueries({ queryKey: ["embeddedSlackChannels"] });
       queryClient.invalidateQueries({ queryKey: ["embeddedSlackChannelsStats"] });
 
@@ -146,14 +128,15 @@ export default function SlackIntegration() {
         variant: "default",
       });
     },
-    onError: (error: any, channelId) => {
-      // Clear loading state
+    onError: (error: Error, channelId) => {
       setDeletingChannelId(null);
-      console.error('Delete failed:', error);
 
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const apiError = (error as any)?.response?.data?.error;
+      
       toast({
         title: "❌ Deletion Failed",
-        description: `Unable to delete channel: ${error.response?.data?.error || error.message}`,
+        description: `Unable to delete channel: ${apiError || errorMessage}`,
         variant: "destructive",
       });
     },
@@ -174,38 +157,28 @@ export default function SlackIntegration() {
     }
   };
 
-  // Track embedding operations
-  const trackEmbeddingStart = (channelIds: string[]) => {
-    setActiveEmbedding(prev => {
-      const newSet = new Set(prev);
-      channelIds.forEach(id => newSet.add(id));
-      return newSet;
-    });
+  const trackEmbeddingStart = useCallback((channelIds: string[]) => {
+    setActiveEmbedding(prev => new Set([...Array.from(prev), ...channelIds]));
 
-    // Immediately refresh stats when embedding starts
     refetchStats();
 
-    // Show optimistic toast
     toast({
       title: "🚀 Embedding Started",
       description: `Processing ${channelIds.length} channel${channelIds.length > 1 ? 's' : ''}. This may take a few minutes.`,
       variant: "default",
     });
-  };
+  }, [refetchStats, toast]);
 
-  // Remove channels from active tracking when they complete
-  const trackEmbeddingComplete = (channelIds: string[]) => {
+  const trackEmbeddingComplete = useCallback((channelIds: string[]) => {
     setActiveEmbedding(prev => {
       const newSet = new Set(prev);
       channelIds.forEach(id => newSet.delete(id));
       return newSet;
     });
 
-    // Immediately refresh stats when embedding completes
     refetchStats();
-  };
+  }, [refetchStats]);
 
-  // Effect to clean up completed embeddings
   useEffect(() => {
     if (Array.isArray(embedChannels) && embedChannels.length > 0 && activeEmbedding.size > 0) {
       const completedChannels: string[] = [];
@@ -220,7 +193,6 @@ export default function SlackIntegration() {
       if (completedChannels.length > 0) {
         trackEmbeddingComplete(completedChannels);
 
-        // Show completion toast
         const completedCount = completedChannels.length;
         const failedChannels = embedChannels.filter(c =>
           completedChannels.includes(c.channel_id) && c.status === PIPELINE_STATUS.FAILED
@@ -241,9 +213,8 @@ export default function SlackIntegration() {
         }
       }
     }
-  }, [embedChannels, activeEmbedding, toast]);
+  }, [embedChannels, activeEmbedding, toast, trackEmbeddingComplete]);
 
-  // Effect to detect if user came back from adding channels
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const newChannels = urlParams.get('newChannels');
@@ -253,25 +224,26 @@ export default function SlackIntegration() {
         const channelIds = JSON.parse(decodeURIComponent(newChannels));
         if (Array.isArray(channelIds) && channelIds.length > 0) {
           trackEmbeddingStart(channelIds);
-          // Clean up URL
           window.history.replaceState({}, '', window.location.pathname);
         }
       } catch (error) {
-        console.error('Error parsing new channels from URL:', error);
+        // Silently handle URL parsing errors - not critical for user experience
       }
     }
-  }, []);
+  }, [trackEmbeddingStart]);
 
   const handleRefresh = async () => {
     try {
-      // Refresh both channels and stats
       await Promise.all([
         refetch(),
         refetchStats()
       ]);
-      console.log('Successfully refreshed embedded channels and stats');
     } catch (error) {
-      console.error('Error refreshing data:', error);
+      toast({
+        title: "❌ Refresh Failed",
+        description: "Unable to refresh data. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -311,7 +283,7 @@ export default function SlackIntegration() {
     <div className="flex h-screen overflow-hidden">
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
-        <Header title="Slack Integration" onToggleSidebar={() => setSidebarOpen((s) => !s)} />
+        <Header title="Slack Integration" onToggleSidebar={() => {}} />
 
         <main className="flex-1 overflow-y-auto p-4 bg-background-dark">
           <div className="w-full space-y-4">
@@ -334,7 +306,6 @@ export default function SlackIntegration() {
               ))}
             </div>
 
-            {/* Channel Table Section */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -345,7 +316,6 @@ export default function SlackIntegration() {
 
               {!isLoading && !isError && (
                 <div className="flex gap-4 min-h-[400px] relative">
-                  {/* Table Container with dynamic shift using transform instead of margin */}
                   <motion.div
                     className="flex transition-all duration-500 ease-in-out"
                     style={{
@@ -366,7 +336,6 @@ export default function SlackIntegration() {
                     />
                   </motion.div>
 
-                  {/* Settings Drawer */}
                   <AnimatePresence>
                     {settingsChannel && (
                       <motion.div
@@ -394,7 +363,6 @@ export default function SlackIntegration() {
         <StatusBar />
       </div>
 
-      {/* Delete Confirmation Dialog */}
       <AlertDialog open={channelToDelete !== null} onOpenChange={() => setChannelToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>

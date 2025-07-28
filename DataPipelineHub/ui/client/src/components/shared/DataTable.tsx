@@ -200,7 +200,7 @@ export function DataTable<T extends object>({
             value={table.getState().globalFilter ?? ''}
             onChange={e => table.setGlobalFilter(e.target.value)}
             placeholder="Search all columns..."
-            className="filter-input w-full"
+            className="input-dark-theme filter-input w-full"
           />
         </div>
       )}
@@ -275,14 +275,14 @@ export function DataTable<T extends object>({
                       >
                         {filterType === 'select' && filterOptions ? (
                           <Select
-                            value={(header.column.getFilterValue() as string) ?? undefined}
+                            value={(header.column.getFilterValue() as string) ?? '__CLEAR__'}
                             onValueChange={val => {
                               header.column.setFilterValue(
                                 val === '__CLEAR__' ? undefined : val
                               )
                             }}
                           >
-                            <SelectTrigger className="filter-input w-full h-8 bg-background border-border text-foreground">
+                            <SelectTrigger className="select-dark-theme filter-input w-full h-8 bg-background border-border text-foreground">
                               <SelectValue placeholder="All" />
                             </SelectTrigger>
                             <SelectContent>
@@ -302,7 +302,7 @@ export function DataTable<T extends object>({
                               header.column.setFilterValue(e.target.value)
                             }
                             placeholder="Filter…"
-                            className="filter-input w-full h-8 bg-background border-border text-foreground"
+                            className="input-dark-theme filter-input w-full h-8 bg-background border-border text-foreground"
                           />
                         )}
                       </TableCell>

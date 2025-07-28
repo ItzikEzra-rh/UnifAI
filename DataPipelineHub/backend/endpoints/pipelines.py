@@ -26,12 +26,14 @@ def start_pipeline(data, type):
         JSON response indicating task submission status
     """
     try:
+        user_session = session.get('user', {})
+        current_user = user_session.get('username', 'default')
         registration_result = celery_app.send_task(
             "pipeline.pipeline_tasks.register_sources_task",
             kwargs={
                 "data_list": data,
                 "source_type": type.upper(),
-                "upload_by": session.get('user', {}).get('name', 'default')
+                "upload_by": current_user
             },
             queue="registration_queue"  
         )

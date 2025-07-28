@@ -68,6 +68,7 @@ export interface EmbedChannel {
   channel_id: string;
   created: string;
   is_private: boolean;
+  communityPrivacy?: 'public' | 'private';
 }
 export interface Document {
   last_pipeline_id: string;

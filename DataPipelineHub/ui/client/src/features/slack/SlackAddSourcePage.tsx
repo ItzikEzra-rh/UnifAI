@@ -1,14 +1,12 @@
 import React, { useRef, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { submitSlackChannels } from '@/api/slack';
+import { submitSlackChannels, ChannelWithSettings } from '@/api/slack';
 import AddSourceSection, { AddSourceSectionHandle } from './AddSourceSection';
-import { Button } from '@/components/ui/button';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import StatusBar from '@/components/layout/StatusBar';
 import { motion } from 'framer-motion';
 import { useLocation } from 'wouter';
-import { FaSpinner } from 'react-icons/fa';
 import { useToast } from "@/hooks/use-toast";
 import { SlackSetupInfo } from './SlackSetupInfo';
 
@@ -17,7 +15,6 @@ export default function SlackAddSourcePage() {
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
-    // ① Create the mutation
     const {
         mutate: addChannels,
         isPending: isSubmitting,
@@ -26,7 +23,6 @@ export default function SlackAddSourcePage() {
     } = useMutation({
         mutationFn: submitSlackChannels,
         onSuccess: (data, variables) => {
-            // Invalidate both the available channels and embedded channels queries
             queryClient.invalidateQueries({ queryKey: ['slackChannels'] });
             queryClient.invalidateQueries({ queryKey: ['embeddedSlackChannels'] });
             queryClient.invalidateQueries({ queryKey: ['embeddedSlackChannelsStats'] });
@@ -37,16 +33,12 @@ export default function SlackAddSourcePage() {
                 variant: "default",
             });
             
-            // Extract channel IDs from the submitted data
             const channelIds = variables.map(channel => channel.channel_id);
             const channelIdsParam = encodeURIComponent(JSON.stringify(channelIds));
             
-            // Navigate back with channel IDs to trigger active tracking
             navigate(`/slack?newChannels=${channelIdsParam}`);
         },
         onError: (err: Error) => {
-            console.error('Submission failed', err);
-            
             toast({
                 title: "❌ Submission Failed",
                 description: `Unable to start embedding process: ${err.message}`,
@@ -55,12 +47,10 @@ export default function SlackAddSourcePage() {
         },
     });
 
-    // ② Hold a ref to the AddSourceSection
     const sectionRef = useRef<AddSourceSectionHandle>(null);
 
-    // ③ When the page-level "Add Channel" button is clicked…
     const handleSave = useCallback(async () => {
-        const payload = await sectionRef.current?.getSelectedChannels() ?? [];
+        const payload: ChannelWithSettings[] = await sectionRef.current?.getSelectedChannels() ?? [];
         if (payload.length === 0) {
             toast({
                 title: "⚠️ No Channels Selected",
@@ -87,7 +77,6 @@ export default function SlackAddSourcePage() {
                         transition={{ duration: 0.5 }}
                     >
                         <SlackSetupInfo />
-                        {/* ④ Attach the ref here */}
                         <div className="mt-6">
                             <AddSourceSection 
                                 ref={sectionRef} 
@@ -96,8 +85,6 @@ export default function SlackAddSourcePage() {
                                 isSubmitting={isSubmitting}
                             />
                         </div>
-
-
 
                         {isError && (
                             <div className="mt-4 p-4 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive">
