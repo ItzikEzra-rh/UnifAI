@@ -35,7 +35,7 @@ class StructuralValidator(Validator):
         all_messages.extend(orphan_messages)
         
         # Determine overall validity
-        is_valid = not any(msg.severity == MessageSeverity.ERROR for msg in all_messages)
+        is_valid = not dependency_issues and not cycles and not orphaned_steps
         
         # Create detailed results
         details = StructuralValidationDetails(

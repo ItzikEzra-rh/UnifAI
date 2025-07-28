@@ -208,10 +208,10 @@ if __name__ == "__main__":
 
     # result = app.graph_validation_service.validate(plan)
     # result = app.graph_validation_service.validate_connectors(plan)
-    # result = app.graph_validation_service.validate_all(plan)
-    # print(result.model_dump_json())
-    result = app.graph_validation_service.suggest_fixes(plan)
-    print(result)
+    result = app.graph_validation_service.validate_all(plan)
+    print(result.model_dump_json())
+    # result = app.graph_validation_service.suggest_fixes(plan)
+    # print(result)
     # print(result.model_dump_json())
     # save_resources(app)
 
