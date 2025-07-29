@@ -6,7 +6,7 @@ from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactor
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
 from utils.storage.qdrant_storage import QdrantStorage
-from utils.storage.storage_manager import SourceDeletionManager
+from utils.storage.storage_deletion_manager import SourceDeletionManager
 
 def _get_configured_connector() -> SlackConnector:
     config_manager = SlackConfigManager()

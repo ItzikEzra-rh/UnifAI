@@ -42,25 +42,6 @@ def available_slack_channels(types, cursor="", limit=50):
         return jsonify({"error": str(e)}), 500
 
 
-@slack_bp.route("/embed.channels", methods=["PUT"])
-@from_body({
-    "channels": fields.List(fields.Dict(), required=True)
-})
-def embed_channels(channels):
-    try:
-        send_task(
-            task_name="data_sources.slack.slack_tasks.embed_slack_channels_task",
-            celery_queue="slack_queue",
-            channel_list=channels,
-            upload_by=session.get('user', {}).get('username', 'default')
-        )
-        # embed_slack_channel(channels)
-        return jsonify({"status": "task submitted"}), 202
-    except Exception as e:
-        logger.error(f"Failed to submit Slack embedding task: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-    
-
 # @slack_bp.route("/embed.channels.direct", methods=["PUT"])
 # @from_body({
 #     "channels": fields.List(fields.Dict(), required=True)
