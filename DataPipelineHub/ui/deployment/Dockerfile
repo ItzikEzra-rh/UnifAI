@@ -11,15 +11,14 @@ RUN npm install -g corepack
 RUN corepack enable                         
 RUN corepack prepare pnpm@latest --activate # Install pnpm via Corepack
 
-
-#copy the package.json and pnpm-lock.yaml files to the working folder
-COPY package.json pnpm-lock.yaml vite.config.ts ./
+#copy the entire project to the working folder
+COPY . .
 # Install all dependencies (including devDependencies needed for the build).
 # `--frozen-lockfile` ensures reproducible builds based on pnpm-lock.yaml.
 RUN pnpm install --frozen-lockfile
 
 #copy the rest of the project files to the working folder
-COPY . .
+
 
 # Run our combined build command.
 # As per your package.json, this builds:
