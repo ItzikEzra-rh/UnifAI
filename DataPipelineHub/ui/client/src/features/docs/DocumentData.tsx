@@ -11,12 +11,12 @@ interface LibraryTabProps {
 // the commented out fields are placeholders for future enhancements
 export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
   const metadata = [
-    { label: "Title", value: doc.name },
+    { label: "Title", value: doc.source_name },
     // { label: "Author", value: "Product Management Team" },
     { label: "Created", value: new Date(doc.created_at).toLocaleDateString() },
     { label: "Modified", value: doc.last_updated ? new Date(doc.last_updated).toLocaleDateString() : "—" },
-    { label: "File Size", value: doc.file_size },
-    { label: "Pages", value: doc.page_count },
+    { label: "File Size", value: doc.type_data.file_size },
+    { label: "Pages", value: doc.type_data.page_count },
     { label: "Uploaded", value: new Date(doc.created_at).toLocaleDateString() },
     { label: "Processed", value: doc.last_updated ? new Date(doc.last_updated).toLocaleDateString() : "—" },
   ];
@@ -24,7 +24,7 @@ export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
   const statistics = [
     // { label: "Text Quality", value: "Excellent", progress: 95, color: "bg-success" },
     // { label: "Structure Preservation", value: "Good", progress: 85, color: "bg-primary" },
-    { label: "Total Chunks", value: doc.chunks },
+    { label: "Total Chunks", value: doc.chunks_generated },
     // { label: "Total Tokens", value: doc.stats?.total_tokens || "—" },
     // { label: "Avg. Chunk Size", value: doc.stats?.avg_chunk_size || "—" },
     // { label: "Images Extracted", value: doc.stats?.images_extracted || "—" },
@@ -48,7 +48,7 @@ export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
                       {getFileIcon(doc.file_type)}
-                      <span className="ml-2 font-medium truncate">{doc.name}</span>
+                      <span className="ml-2 font-medium truncate">{doc.source_name}</span>
                     </div>
                     <Button variant="ghost" size="sm">
                       <FaEye className="mr-2 h-4 w-4" />
@@ -60,7 +60,7 @@ export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
                   className="p-4 overflow-y-auto font-mono text-xs whitespace-pre-line max-w-[50vw] break-words flex-1"
                   style={{ wordBreak: "break-word" }}
                 >
-                  {doc.full_text ? (<p>{doc.full_text}</p>) : (<p className="text-gray-400 italic">No extracted text available.</p>)}
+                  {doc.type_data.full_text ? (<p>{doc.type_data.full_text}</p>) : (<p className="text-gray-400 italic">No extracted text available.</p>)}
                 </div>
               </div>
             </div>
