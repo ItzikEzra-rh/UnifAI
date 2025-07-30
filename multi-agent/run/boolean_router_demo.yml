@@ -103,7 +103,9 @@ plan:
 
   # Only mock agent 1 goes to final answer
   - uid: final_answer
-    after: mock_agent_1_step
+    after:
+      - mock_agent_1_step
+      - mock_agent_2_step
     node: final_answer
     meta:
       display_name: Final Answer
