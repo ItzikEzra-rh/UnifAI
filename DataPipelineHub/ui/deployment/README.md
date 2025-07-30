@@ -3,11 +3,11 @@
 ## Overview
 
 For the UI deployment we use an Nginx container to both serve the UI itself and route requests to the backends according to the uri path.
-In order to buikld the container we set a 2 stage dockerfile, the first for creating the Ui bundle, the 2nd for the actual run-time container.
+In order to buikld the container we set a 2 stage dockerfile, the first for creating the UI bundle, the 2nd for the actual run-time container.
 
 ## Building the UI
 
-In order to build the UI container image go to the ui folder (one level above the current folder) and run the commands below:
+In order to build the UI container image go to the UI folder (one level above the current folder) and run the commands below:
 
 1. `podman build -f deployment/Dockerfile -t <image_name> .`
 
@@ -15,7 +15,7 @@ In order to build the UI container image go to the ui folder (one level above th
 
 3. (Optional) `podman push <image_name_at_registry>`
 
-**NOTE: When pushig the image to a registry you need to make sure you're logged in to it, otherwise the upload will fail**
+**NOTE: When pushing the image to a registry you need to make sure you're logged in to it, otherwise the upload will fail**
 
 ## Nginx dynamic configuration 
 
