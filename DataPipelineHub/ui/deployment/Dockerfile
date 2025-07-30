@@ -1,7 +1,9 @@
 #FROM  registry.access.redhat.com/ubi9/nodejs-18-minimal as build
 FROM  registry.access.redhat.com/ubi9/nodejs-22 as build
-#create a working folder
+
 ENV NODE_ENV=production
+
+#create a working folder
 WORKDIR /ui
 
 RUN npm install -g npm
