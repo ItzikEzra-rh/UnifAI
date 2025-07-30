@@ -65,11 +65,9 @@ export function getColumns(
       header: "Status",
       cell: (info) => {
         const channel = info.row.original;
-        const isActivelyEmbedding = activeEmbeddingIds.includes(channel.channel_id);
         return (
           <StatusBadge 
             status={channel.status} 
-            isActivelyEmbedding={isActivelyEmbedding}
           />
         );
       },

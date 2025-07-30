@@ -97,9 +97,7 @@ export const DataCard: React.FC<DataCardProps> = ({
         {(metadata || status) && (
           <div className="mt-3 flex items-center justify-between text-xs">
             {metadata && <div className="text-gray-400">{metadata}</div>}
-            {status && (
-              <StatusBadge status={status} />
-            )}
+            <StatusBadge status={status} />
           </div>
         )}
 

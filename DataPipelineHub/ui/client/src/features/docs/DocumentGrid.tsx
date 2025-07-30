@@ -20,14 +20,14 @@ interface DocumentGridProps {
 
 const getSubtitle = (doc: Document) => {
   if (isEmbeddingActivelyProcessing(doc)) return <InlineLoader />;
-  if (doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
+  if (!doc.status || doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
   return `${doc.type_data.page_count} pages | ${doc.type_data.file_type} | ${doc.type_data.file_size}`;
 };
 
 const getFooterText = (doc: Document) => {
   if (isEmbeddingActivelyProcessing(doc)) return <InlineLoader />;
-  if (doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
-  return `${doc.pipeline_stats.chunks_generated} chunks`;
+  if (!doc.status || doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
+  return `${doc.pipeline_stats?.chunks_generated} chunks`;
 };
 
 // const getExtraTopRight = (

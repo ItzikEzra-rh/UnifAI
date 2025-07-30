@@ -50,10 +50,10 @@ export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
                       {getFileIcon(doc.type_data.file_type)}
                       <span className="ml-2 font-medium truncate">{doc.source_name}</span>
                     </div>
-                    <Button variant="ghost" size="sm">
+                    {/* <Button variant="ghost" size="sm">
                       <FaEye className="mr-2 h-4 w-4" />
                       <span>View Original</span>
-                    </Button>
+                    </Button> */}
                   </div>
                 </div>
                 <div

@@ -61,7 +61,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
         const doc = row.original;
         return isEmbeddingActivelyProcessing(doc) ? (
           <InlineLoader />
-        ) : doc.status === PIPELINE_STATUS.PENDING ? (
+        ) : doc.status === PIPELINE_STATUS.PENDING || !doc.status ? (
           "-"
         ) : (
           doc.type_data.page_count
@@ -98,7 +98,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
         const doc = row.original;
         return isEmbeddingActivelyProcessing(doc) ? (
           <InlineLoader />
-        ) : doc.status === PIPELINE_STATUS.PENDING ? (
+        ) : doc.status === PIPELINE_STATUS.PENDING || !doc.status ? (
           "-"
         ) : (
           `${doc.pipeline_stats.chunks_generated}`
