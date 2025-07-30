@@ -1,4 +1,4 @@
-import { Node, Edge } from 'reactflow';
+import { Node, Edge } from "reactflow";
 
 export interface CurrentGraph {
   id: string;
@@ -50,4 +50,5 @@ export interface CustomNodeData {
     nested_refs: string[];
   };
   onDelete?: (id: string) => void;
-} 
+  allBlocks?: BuildingBlock[];
+}
