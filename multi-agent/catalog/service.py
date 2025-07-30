@@ -43,13 +43,20 @@ class CatalogService:
         cat_enum = ResourceCategory(category)
         spec_cls = self.reg.get_spec(cat_enum, type_key)
 
+        # Check if the spec has an output_schema attribute (duck typing approach)
+        output_schema = None
+        if hasattr(spec_cls, 'output_schema'):
+            # Convert the output schema to JSON schema format
+            output_schema = spec_cls.output_schema.model_dump() if hasattr(spec_cls.output_schema, 'model_dump') else spec_cls.output_schema
+
         return ElementDetailDTO(
             name=spec_cls.name,
             category=category,
             description=spec_cls.description,
             type=type_key,
             config_schema=spec_cls.config_schema.model_json_schema(),
-            tags=spec_cls.tags
+            tags=spec_cls.tags,
+            output_schema=output_schema
         )
 
     def list_categories(self) -> List[str]:

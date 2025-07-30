@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 
 @dataclass(frozen=True)
@@ -25,6 +25,7 @@ class ElementDetailDTO:
     type: str  # Using 'type' instead of 'type_key' for better UI compatibility
     config_schema: Dict[str, Any]  # JSON schema for dynamic form generation
     tags: List[str]
+    output_schema: Optional[Dict[str, Any]] = None  # Output schema for conditions and other elements that define outputs
 
 
 @dataclass(frozen=True)
