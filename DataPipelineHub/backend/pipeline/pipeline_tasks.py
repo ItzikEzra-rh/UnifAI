@@ -79,8 +79,8 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                 # Create metadata object
                 metadata = DocumentMetadata(
                     doc_id=source_id,
-                    doc_name=instance.get("source_name", ""),
-                    doc_path=os.path.join(upload_folder, source_name),
+                    doc_name=source_name,
+                    doc_path=doc_path,
                     upload_by=upload_by
                 )
                 

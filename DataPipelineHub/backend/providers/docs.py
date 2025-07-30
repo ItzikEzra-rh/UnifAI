@@ -51,7 +51,7 @@ def get_available_doc_list(user):
     for doc in docs:
         doc["file_type"] = doc.get("source_name", "").rsplit(".", 1)[-1].lower()
 
-        pipeline_id = doc.get("last_pipeline_id")
+        pipeline_id = doc.get("pipeline_id")
         doc_data = pipeline_repo.get_pipeline_by_query({"pipeline_id": pipeline_id})
         
         if not doc_data:
