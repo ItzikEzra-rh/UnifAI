@@ -53,7 +53,7 @@ const getInactiveStatuses = () => [
   PIPELINE_STATUS.PAUSED
 ];
 
-const isChannelActivelyProcessing = (channel: EmbedChannel) => {
+const isEmbeddingActivelyProcessing = (channel: EmbedChannel) => {
   return getActiveStatuses().includes(channel.status as any);
 };
 
@@ -74,7 +74,7 @@ export default function SlackIntegration() {
     if (!channels || !Array.isArray(channels)) return false;
     
     return channels.some(channel =>
-      isChannelActivelyProcessing(channel) ||
+      isEmbeddingActivelyProcessing(channel) ||
       activeEmbedding.has(channel.channel_id)
     );
   };

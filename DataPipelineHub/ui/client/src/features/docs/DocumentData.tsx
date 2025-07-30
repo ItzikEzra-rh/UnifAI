@@ -14,24 +14,24 @@ export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
     { label: "Title", value: doc.source_name },
     // { label: "Author", value: "Product Management Team" },
     { label: "Created", value: new Date(doc.created_at).toLocaleDateString() },
-    { label: "Modified", value: doc.last_updated ? new Date(doc.last_updated).toLocaleDateString() : "—" },
+    { label: "Modified", value: doc.created_at ? new Date(doc.created_at).toLocaleDateString() : "—" },
     { label: "File Size", value: doc.type_data.file_size },
     { label: "Pages", value: doc.type_data.page_count },
     { label: "Uploaded", value: new Date(doc.created_at).toLocaleDateString() },
-    { label: "Processed", value: doc.last_updated ? new Date(doc.last_updated).toLocaleDateString() : "—" },
+    { label: "Processed", value: doc.created_at ? new Date(doc.created_at).toLocaleDateString() : "—" },
   ];
 
   const statistics = [
     // { label: "Text Quality", value: "Excellent", progress: 95, color: "bg-success" },
     // { label: "Structure Preservation", value: "Good", progress: 85, color: "bg-primary" },
-    { label: "Total Chunks", value: doc.chunks_generated },
+    { label: "Total Chunks", value: doc.pipeline_stats.chunks_generated },
     // { label: "Total Tokens", value: doc.stats?.total_tokens || "—" },
     // { label: "Avg. Chunk Size", value: doc.stats?.avg_chunk_size || "—" },
     // { label: "Images Extracted", value: doc.stats?.images_extracted || "—" },
     // { label: "Tables Extracted", value: doc.stats?.tables_extracted || "—" },
-    { label: "Embeddings Created", value: doc.stats?.embeddings_created ?? "—" },
-    { label: "API Calls", value: doc.stats?.api_calls ?? "—" },
-    { label: "Processing Time (s)", value: doc.stats?.processing_time?.toFixed(2) ?? "—" },
+    { label: "Embeddings Created", value: doc.pipeline_stats?.embeddings_created ?? "—" },
+    { label: "API Calls", value: doc.pipeline_stats?.api_calls ?? "—" },
+    { label: "Processing Time (s)", value: doc.pipeline_stats?.processing_time?.toFixed(2) ?? "—" },
   ];
 
   return (
@@ -47,7 +47,7 @@ export const DocumentData: React.FC<LibraryTabProps> = ({ doc }) => {
                 <div className="p-4 bg-background-surface border-b border-gray-800">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center">
-                      {getFileIcon(doc.file_type)}
+                      {getFileIcon(doc.type_data.file_type)}
                       <span className="ml-2 font-medium truncate">{doc.source_name}</span>
                     </div>
                     <Button variant="ghost" size="sm">

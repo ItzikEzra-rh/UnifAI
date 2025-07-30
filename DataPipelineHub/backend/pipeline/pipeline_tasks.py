@@ -86,6 +86,7 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                 
                 # Create type_data for Document (source-specific data + optional user metadata)
                 type_data = {
+                    "file_type": source_name.rsplit(".", 1)[-1].lower(),
                     "doc_path": doc_path,
                     "page_count": 0,
                     "full_text": "",

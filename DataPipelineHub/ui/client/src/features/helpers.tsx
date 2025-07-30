@@ -1,5 +1,6 @@
 import { FaFileAlt, FaFileWord, FaFilePdf, FaFileExcel, FaFilePowerpoint } from "react-icons/fa";
 import { PIPELINE_STATUS, PipelineStatus } from "@/constants/pipelineStatus";
+import { EmbedChannel, Document } from "@/types";
 
 export const getFileIcon = (type: string) => {
     switch (type) {
@@ -24,15 +25,6 @@ export const fileByColors: Record<string, string> = {
   txt: "bg-gray-500 dark:bg-gray-600",
 };
 
-export const statusByLabel: Record<PipelineStatus, string> = {
-  [PIPELINE_STATUS.DONE]: "DONE",
-  [PIPELINE_STATUS.FAILED]: "FAILED",
-  [PIPELINE_STATUS.ACTIVE]: "IN PROGRESS",
-  [PIPELINE_STATUS.PENDING]: "IN QUEUE",
-  [PIPELINE_STATUS.ARCHIVED]: "ARCHIVED",
-  [PIPELINE_STATUS.PAUSED]: "PAUSED",
-};
-
 export function formatDate(dateStr: string): string {
   if (!dateStr) return '';
   const date = new Date(dateStr);
@@ -44,4 +36,19 @@ export function formatDate(dateStr: string): string {
     minute: '2-digit',
     hour12: false
   });
+}
+
+// Helper function to check if a pipeline is actively processing
+export function isEmbeddingActivelyProcessing(source: EmbedChannel | Document): boolean {
+  const activeStatuses = [
+    PIPELINE_STATUS.PENDING,
+    PIPELINE_STATUS.ACTIVE,
+    PIPELINE_STATUS.COLLECTING,
+    PIPELINE_STATUS.PROCESSING,
+    PIPELINE_STATUS.CHUNKING_AND_EMBEDDING,
+    PIPELINE_STATUS.STORING,
+    PIPELINE_STATUS.ORCHESTRATING,
+  ];
+  
+  return activeStatuses.includes(source.status as any);
 }

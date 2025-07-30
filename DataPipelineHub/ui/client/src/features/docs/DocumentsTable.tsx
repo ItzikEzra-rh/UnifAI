@@ -3,7 +3,7 @@ import { FaEye, FaTrash, FaSync } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
 import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
-import { getFileIcon, fileByColors, statusByLabel } from "../helpers";
+import { getFileIcon, fileByColors } from "../helpers";
 import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DocumentData } from "./DocumentData";
@@ -32,8 +32,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
         const doc = row.original;
         return (
           <div className="flex items-center space-x-2">
-            <div className={`p-1.5 rounded ${fileByColors[doc.file_type]}`}>
-              {getFileIcon(doc.file_type)}
+            <div className={`p-1.5 rounded ${fileByColors[doc.type_data.file_type]}`}>
+              {getFileIcon(doc.type_data.file_type)}
             </div>
             <div className="truncate max-w-[200px]">{doc.source_name}</div>
           </div>
@@ -84,7 +84,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
     {
       accessorKey: "file_type",
       header: "File Type",
-      cell: ({ row }) => row.original.file_type.toUpperCase(),
+      cell: ({ row }) => row.original.type_data.file_type.toUpperCase(),
       meta: {
         align: "center",
         filterType: "select",
@@ -101,7 +101,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
         ) : doc.status === PIPELINE_STATUS.PENDING ? (
           "-"
         ) : (
-          `${doc.chunks_generated}`
+          `${doc.pipeline_stats.chunks_generated}`
         );
       },
       meta: { align: "center" },
@@ -118,7 +118,19 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       meta: {
         align: "center",
         filterType: "select",
-        filterOptions: Object.keys(statusByLabel),
+        filterOptions: [
+          "Pending",
+          "In Progress", 
+          "Collecting",
+          "Processing",
+          "Chunking & Embedding",
+          "Storing",
+          "Orchestrating",
+          "Done",
+          "Paused",
+          "Failed",
+          "Archived"
+        ],
       },
     },
     {
@@ -126,7 +138,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       header: "",
       cell: ({ row }) => {
         const doc = row.original;
-        const isActive = activeDoc?.last_pipeline_id === doc.last_pipeline_id;
+        const isActive = activeDoc?.pipeline_id === doc.pipeline_id;
         return (
           <div className="flex items-center space-x-2 justify-end">
             {/* {doc.status === PIPELINE_STATUS.FAILED && (
@@ -192,7 +204,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
           onConfirm={async () => {
             try {
               setConfirmLoading(true);
-              await onDeleteConfirmed?.(confirmDoc.last_pipeline_id);
+              await onDeleteConfirmed?.(confirmDoc.pipeline_id);
               setConfirmDoc(null);
             } catch (err) {
               console.error("Delete failed:", err);

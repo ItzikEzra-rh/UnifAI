@@ -43,7 +43,7 @@ export default function Documents() {
   }, [showUploadModal, activeDoc])
 
   const filteredDocuments = documents.filter((doc) => {
-    const matchesType = fileTypeFilter === "all" || doc.file_type === fileTypeFilter;
+    const matchesType = fileTypeFilter === "all" || doc.type_data.file_type === fileTypeFilter;
     const matchesSearch = doc.source_name?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesType && matchesSearch;
   });
