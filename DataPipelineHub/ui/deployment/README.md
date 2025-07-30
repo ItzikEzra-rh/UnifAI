@@ -1,49 +1,60 @@
-### UI deployment
+## UI Deployment Overview
 
-## Overview
+For UI deployment, we use an Nginx container to both serve the UI itself and route requests to the backends according to the URI path. In order to build the container, we use a two-stage Dockerfile: the first for creating the UI bundle, and the second for the actual runtime container.
 
-For the UI deployment we use an Nginx container to both serve the UI itself and route requests to the backends according to the uri path.
-In order to build the container we set a 2 stage dockerfile, the first for creating the UI bundle, the 2nd for the actual run-time container.
+## Building the UI Container
 
-## Building the UI
+In order to build the UI container image, go to the UI folder (one level above the current folder) and run the commands below:
 
-In order to build the UI container image go to the UI folder (one level above the current folder) and run the commands below:
+1.  `podman build -f deployment/Dockerfile -t <image_name> .`
 
-1. `podman build -f deployment/Dockerfile -t <image_name> .`
+2.  (Optional) `podman tag <image_name> <image_name_at_registry>`
 
-2. (Optional) `podman tag <image_name> <image_name_at_registry>`
+3.  (Optional) `podman push <image_name_at_registry>`
 
-3. (Optional) `podman push <image_name_at_registry>`
+**NOTE: When pushing the image to a registry, you need to make sure you're logged in to it; otherwise, the upload will fail.**
 
-**NOTE: When pushing the image to a registry you need to make sure you're logged in to it, otherwise the upload will fail**
+## Nginx Dynamic Configuration
 
-## Nginx dynamic configuration 
+Nginx doesn't support environment variables in its configuration files. To make the Nginx configuration dynamic, the common practice is to use a templating tool, most commonly `envsubst`. For that, we've created the `nginx.conf.template` in this folder. When the Nginx container starts, we first run the `envsubst` command, which creates the actual config file, and only after that do we start Nginx.
+envsubst command example:
 
-Nginx doesn't support environment variables in its configuration files. In order to make the nginx configuarion dynamic the common practice is to use some templating tool, most commonly envsubst
-for that we've created the nginx.conf.template in this folder.
-when the nginx container starts we first run the envsubst command which creates the actual config file and only after that we start the nginx.
+```bash envsubst '$VAR1,$VAR2' < nginx.conf.template > nginx.conf```
 
-NOTE: envsubst might sometime replace strings which are not desired, for example in our config we have a $uri, naturaly, envsubst will replce this with the env uri (which doesn't exist in our case).
-In order to overcome this we create a special env DOLLAR just to allow us to write ${DOLLAR}uri instead in the templare
+**NOTE: `nginx.conf` sometimes has internal parameters (for example: `$uri`) that are part of the regular work of Nginx (since URIs and traffic are dynamic). So, when templating the `.conf` file, you might have a `$uri` which shouldn't be replaced at all but stay as is for Nginx itself. However, `envsubst` goes over ALL occurrences that look like an environment variable (in that case, `$uri`) and tries to replace them. Since `uri` isn't being used as an environment variable, it will be empty. Thus, the `nginx.conf` will have a section like this:**
+```
+location / {
+    try_files /index.html;
+}
+```
+**instead of:**
+```
+location / {
+    try_files $uri /index.html;
+}
+```
+**In order to overcome this, there are two options: the first is to manually specify for `envsubst` all parameters which should be replaced; the second option is to replace the `$` which invokes `envsubst` with a string that will be later replaced to `$`. So the new section will look like the example below:**
+```
+location / {
+    try_files ${DOLLAR}uri /index.html;
+}
+```
+**so after replacement, the section will be correct.**
 
 
-## Nginx configurations
+## Nginx Configuration Parameters
 
-rewrite vs. return vs. proxy_pass
+* **`proxy_pass`**: Will just redirect the call to the location set.
+* **`rewrite`**: Works internally; Nginx will receive the call, change it according to the setting, and will resume sending the call to the new, updated location.
+* **`return`**: Nginx will return the requested status (in this case, 3XX) and the URL the client needs to now redirect to.
 
-- **proxy_pass** - will just redirect the call to the location set
-- **rewrite** - works internally, the nginx will get the call, change according to the setting and will resume sending the call to the new updated location
-- **return** - nginx will return the status requested (in this case 3XX) and the url the client needs to now redirect to.
-
-when using the redirect from the axios
-the rewrite means that we'll reach the route, hence we only need the address of the route and the port isn't needed.
-
-**NOTE: a listener to the BE ports wasn't added as we don't use the nginx as the proxy for the BEs directly but only when going through the UI, It's possible to add it upon need.**
-
-**NOTE: using the notebook namespace means that routes/services aren't always available from outside the setup. hence use the pipeline or the runtime, namespace**
+In our case we used the `rewrite` options it causes the client to be aware of the address change as we've added a redirect flag.
 
 
+**NOTE: A listener to the BE ports wasn't added as we don't use Nginx as the proxy for the backends directly, but only when going through the UI. the access to the backends is being done solely by the cline tafter getting a redirect from the UI**
+
+**NOTE: Using the `notebook` namespace means that routes/services aren't always available from outside the setup. Hence, use the `pipeline` or `runtime` namespace.**
 
 ## TBD
 
-- create a docker ignore to not copy unneeded files/folders into the docker when building
+* Create a `.dockerignore` to not copy unneeded files/folders into the Docker image when building.
