@@ -74,12 +74,12 @@ In order to run the UI locally follow these steps:
 
 ## analyzing the UI build (Optional)
 
-In order to analyze the UI build bundle we need a build analyzer tool, sine vite (the tool for building and serving) is using rollup we can use the rollup-plugin-visualizer
+In order to analyze the UI build bundle we need a build analyzer tool, since vite (the tool for building and serving) is using rollup we can use the rollup-plugin-visualizer
 
 1. start by installing the plugin
   `pnpm add -D rollup-plugin-visualizer`
 
-**NOTE: Currently the vite is being enabled only when building locally (when env var NODE_ENV !== "production"), in order to run the analyzer set the NODE_ENV="development" after the ybuild a new file will be created and opened automatically analyzing the bundle of the UI**
+**NOTE: Currently the vite is being enabled only when building locally (when env var NODE_ENV !== "production"), in order to run the analyzer set the NODE_ENV="development" after the build a new file will be created and opened automatically analyzing the bundle of the UI**
 
 
 
@@ -109,7 +109,7 @@ In order to analyze the UI build bundle we need a build analyzer tool, sine vite
 
    when we run 'pnpm build' or 'pnpm run build' it first goes to the scripts part and sees that it needs to run the command: pnpm run build:frontend
    which in turn changes the build:frontend to vite build , so, the actual final command is 'pnpm run vite build'
-   NOTE: if your scripts line invludes pnpm run <command> this will send the pnpm again to the scripts part to look for a line names <command>
+   NOTE: if your scripts line includes pnpm run <command> this will send the pnpm again to the scripts part to look for a line names <command>
 
  - pnpm-lock.yaml
 
@@ -117,7 +117,7 @@ In order to analyze the UI build bundle we need a build analyzer tool, sine vite
 
    In our case since we use pnpm the lock file to use is pnpm-lock.yaml
 
-   **NOTE: If you need to update a package an reinstall you'll need to update the lock file (or run install to overwrite the lock file and push it after install  + buikd are successful)**
+   **NOTE: If you need to update a package an reinstall you'll need to update the lock file (or run install to overwrite the lock file and push it after install  + build are successful)**
 
  - vite.config.ts
 
