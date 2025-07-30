@@ -3,7 +3,7 @@
 ## Overview
 
 For the UI deployment we use an Nginx container to both serve the UI itself and route requests to the backends according to the uri path.
-In order to buikld the container we set a 2 stage dockerfile, the first for creating the UI bundle, the 2nd for the actual run-time container.
+In order to build the container we set a 2 stage dockerfile, the first for creating the UI bundle, the 2nd for the actual run-time container.
 
 ## Building the UI
 
