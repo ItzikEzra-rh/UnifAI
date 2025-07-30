@@ -2,6 +2,7 @@
 Module for importing non-configured flask extensions
 """
 from celery import Celery
+from global_utils.celery_app.beat_tasks import get_beat_schedule
 from global_utils.utils.util import get_mongo_url, get_rabbitmq_url
 from global_utils.utils.logging_config import logger
 import logging
@@ -36,6 +37,7 @@ class CeleryApp:
             worker_hijack_root_logger=False,
             worker_log_format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
             worker_task_log_format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+            beat_schedule=get_beat_schedule()
         )
 
         celery_logger = logging.getLogger('celery')

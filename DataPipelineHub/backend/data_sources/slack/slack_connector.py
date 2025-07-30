@@ -411,7 +411,8 @@ class SlackConnector(DataConnector):
         return channels
     
     def get_conversations_history(self, channel_id: str, limit: int = 1000, 
-                               cursor: Optional[str] = None) -> Tuple[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
+                               cursor: Optional[str] = None, oldest: Optional[str] = None, 
+                               latest: Optional[str] = None) -> Tuple[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
         """
         Get conversation history for a Slack channel with pagination handling and concurrently fetches thread replies.
         
@@ -419,9 +420,11 @@ class SlackConnector(DataConnector):
             channel_id: The ID of the channel to fetch history for
             limit: Maximum number of messages to return per page
             cursor: Pagination cursor from a previous request
+            oldest: Oldest timestamp (inclusive) for message filtering
+            latest: Latest timestamp (exclusive) for message filtering
         
         Returns:
-            List of message objects from the conversation history
+            Tuple of (messages, thread_messages) from the conversation history
         """
         all_messages = []
         current_cursor = cursor
@@ -439,6 +442,11 @@ class SlackConnector(DataConnector):
             
             if current_cursor:
                 params['cursor'] = current_cursor
+            
+            if oldest:
+                params['oldest'] = oldest
+            if latest:
+                params['latest'] = latest
             
             logger.info(f"Fetching conversation history (page {page}) for channel {channel_id}")
             response = self._make_api_request("conversations.history", params)
@@ -470,3 +478,46 @@ class SlackConnector(DataConnector):
         logger.info(f"Retrieved a total of {len(thread_messages)} threads from channel {channel_id}")
 
         return all_messages, thread_messages
+    
+    def get_incremental_conversations_history(self, channel_id: str, since_timestamp: Optional[str] = None, 
+                                            limit: int = 1000) -> Tuple[List[Dict[str, Any]], List[List[Dict[str, Any]]]]:
+        """
+        Get incremental conversation history for a Slack channel since a specific timestamp.
+        
+        Args:
+            channel_id: The ID of the channel to fetch history for
+            since_timestamp: Get messages newer than this timestamp (exclusive)
+            limit: Maximum number of messages to return per page
+        
+        Returns:
+            Tuple of (messages, thread_messages) from the conversation history since timestamp
+        """
+        logger.info(f"Fetching incremental messages for channel {channel_id} since {since_timestamp}")
+        
+        # If no timestamp provided, get all messages
+        if not since_timestamp:
+            logger.info("No timestamp provided, fetching all messages")
+            return self.get_conversations_history(channel_id, limit=limit)
+        
+        # Fetch messages since the provided timestamp
+        # Note: Slack's oldest parameter is inclusive, but we want exclusive behavior
+        # So we'll filter out the exact timestamp match in post-processing
+        messages, thread_messages = self.get_conversations_history(
+            channel_id=channel_id,
+            limit=limit,
+            oldest=since_timestamp
+        )
+        
+        # Filter out messages with exactly the same timestamp to ensure exclusivity
+        filtered_messages = [msg for msg in messages if msg.get("ts") != since_timestamp]
+        
+        # Filter thread messages as well
+        filtered_thread_messages = []
+        for thread in thread_messages:
+            filtered_thread = [msg for msg in thread if msg.get("ts") != since_timestamp]
+            if filtered_thread:  # Only include non-empty threads
+                filtered_thread_messages.append(filtered_thread)
+        
+        logger.info(f"Retrieved {len(filtered_messages)} new messages and {len(filtered_thread_messages)} new threads")
+        
+        return filtered_messages, filtered_thread_messages

@@ -34,7 +34,6 @@ class PipelineCeleryService:
             current_user = session.get('user', {}).get('username', 'default')
             registered_sources = self._execute_registration_tasks_sync(data, source_type, current_user)
             pipeline_worker_tasks_submitted = self._dispatch_pipeline_worker_tasks(registered_sources, source_type)
-            
             response_data = {
                 "status": "pipeline_celery_workflow_started",
                 "message": f"Registration completed via Celery workers and pipeline started for {len(registered_sources)} {source_type} sources",
@@ -64,6 +63,7 @@ class PipelineCeleryService:
         Raises:
             Exception: If Celery registration task fails or worker timeout occurs
         """
+        print("1")
         celery_registration_result = self.celery_app.send_task(
             "pipeline.pipeline_tasks.register_sources_task",
             kwargs={
@@ -73,14 +73,15 @@ class PipelineCeleryService:
             },
             queue="registration_queue"  
         )
-        
+        print("2")
         # Wait for Celery worker registration completion with 5 minute timeout
         celery_registration_response = celery_registration_result.get(timeout=300)
+        print("3")
         registered_sources = celery_registration_response.get("registered_sources", [])
-        
+        print("4")
         if not registered_sources:
             raise ValueError("No sources were registered successfully by Celery workers")
-            
+        print("5")
         return registered_sources
     
     def _dispatch_pipeline_worker_tasks(self, registered_sources: List[Dict[str, Any]], source_type: str) -> int:

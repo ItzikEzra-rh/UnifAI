@@ -1,16 +1,15 @@
 import os
 import uuid
+from pipeline.webhook_slack_pipeline_factory import WebhookSlackPipelineFactory
 from config.app_config import AppConfig
 from global_utils.celery_app import CeleryApp
 from pipeline.pipeline_factory import PipelineFactory
 from pipeline.pipeline_executor import PipelineExecutor
 from pipeline.types import SlackMetadata, DocumentMetadata
 from shared.logger import logger
-from config.constants import DataSource
+from config.constants import DataSource, PipelineStatus
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
-# Import the concrete factories to ensure they register themselves
-from pipeline.slack_pipeline_factory import SlackPipelineFactory
-from pipeline.doc_pipeline_factory import DocumentPipelineFactory
+
 app_config = AppConfig()
 upload_folder = app_config.get("upload_folder", "")
 
@@ -36,6 +35,7 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
         List of registered sources with their pipeline IDs added
     """
     try:
+        print("??????")
         logger.info(f"Starting registration for {len(data_list)} {source_type} sources by user {upload_by}")
         
         registered_sources = []
@@ -179,4 +179,128 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
         
     except Exception as e:
         logger.error(f"Pipeline execution failed for {source_type}: {str(e)}", exc_info=True)
-        raise self.retry(exc=e) 
+        raise self.retry(exc=e)
+
+
+@CeleryApp().app.task(bind=True, max_retries=3, default_retry_delay=30)
+def daily_incremental_slack_task(self) -> dict:
+    """
+    Daily Celery task to process incremental Slack messages for all active channels.
+    
+    This task:
+    1. Finds all active Slack channels (DONE status)
+    2. For each channel, processes only new messages since last timestamp
+    3. Uses existing pipeline infrastructure
+    
+    Returns:
+        Dictionary containing processing results and summary
+    """
+    logger.info("Starting daily incremental Slack message processing")
+    
+    try:
+        mongo_storage = get_mongo_storage()
+        results = {
+            "task_status": "success",
+            "channels_processed": 0,
+            "channels_failed": 0,
+            "channels_skipped": 0,
+            "total_new_messages": 0,
+            "total_embeddings": 0,
+            "channel_results": []
+        }
+        
+        # Get all active Slack channels with DONE status
+        all_sources = mongo_storage.get_all_sources(DataSource.SLACK.upper_name)
+        active_channels = [
+            source for source in all_sources 
+            if source.get("status") == PipelineStatus.DONE.value
+        ]
+        
+        logger.info(f"Found {len(active_channels)} active Slack channels for incremental processing")
+        
+        if not active_channels:
+            logger.info("No active Slack channels found for processing")
+            return results
+        
+        # Process each channel incrementally
+        for channel in active_channels:
+            channel_id = channel.get("source_id")
+            channel_name = channel.get("source_name", channel_id)
+            
+            # Skip channels without valid IDs
+            if not channel_id:
+                logger.warning(f"Skipping channel with missing source_id: {channel}")
+                results["channels_skipped"] += 1
+                continue
+            
+            try:
+                logger.info(f"Processing incremental updates for channel: {channel_name}")
+                
+                # Create metadata for the channel
+                metadata = SlackMetadata(
+                    channel_id=channel_id,
+                    channel_name=channel_name or channel_id,
+                    is_private=channel.get("type_data", {}).get("is_private", False),
+                    upload_by=channel.get("upload_by", "system"),
+                    pipeline_id=channel.get("pipeline_id", f"slack_{channel_id}")
+                )
+                
+                # Create incremental pipeline factory
+                pipeline_factory = WebhookSlackPipelineFactory(metadata)
+                
+                # Check if there are new messages
+                last_timestamp = pipeline_factory.get_last_processed_timestamp()
+                
+                # Execute the pipeline
+                executor = PipelineExecutor(pipeline_factory)
+                result = executor.run()
+                
+                # Count results (this is approximate since we don't have exact counts from result)
+                channel_result = {
+                    "channel_id": channel_id,
+                    "channel_name": channel_name,
+                    "status": "success",
+                    "last_timestamp": last_timestamp,
+                    "new_timestamp": pipeline_factory.get_last_processed_timestamp(),
+                    "processed": True
+                }
+                
+                results["channels_processed"] += 1
+                results["channel_results"].append(channel_result)
+                
+                logger.info(f"Successfully processed incremental updates for channel: {channel_name}")
+                
+            except Exception as e:
+                error_msg = f"Failed to process channel {channel_name}: {str(e)}"
+                logger.error(error_msg)
+                
+                results["channels_failed"] += 1
+                results["channel_results"].append({
+                    "channel_id": channel_id,
+                    "channel_name": channel_name,
+                    "status": "error",
+                    "error": str(e),
+                    "processed": False
+                })
+        
+        total_channels = len(active_channels)
+        logger.info(f"Daily incremental Slack processing completed: "
+                   f"{results['channels_processed']}/{total_channels} channels processed successfully, "
+                   f"{results['channels_failed']} failed")
+        
+        return results
+        
+    except Exception as e:
+        error_msg = f"Daily incremental Slack task failed: {str(e)}"
+        logger.error(error_msg)
+        
+        return {
+            "task_status": "error",
+            "error": error_msg,
+            "channels_processed": 0,
+            "channels_failed": 0,
+            "channels_skipped": 0,
+            "total_new_messages": 0,
+            "total_embeddings": 0,
+            "channel_results": []
+        } 
