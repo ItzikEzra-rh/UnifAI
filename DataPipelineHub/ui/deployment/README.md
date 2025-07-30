@@ -51,7 +51,7 @@ location / {
 In our case we used the `rewrite` options it causes the client to be aware of the address change as we've added a redirect flag.
 
 
-**NOTE: A listener to the BE ports wasn't added as we don't use Nginx as the proxy for the backends directly, but only when going through the UI. the access to the backends is being done solely by the cline tafter getting a redirect from the UI**
+**NOTE: A listener to the BE ports wasn't added as we don't use Nginx as the proxy for the backends directly, but only when going through the UI. the access to the backends is being done solely by the client after getting a redirect from the UI so the traffic doesn't go via the nginx in that case**
 
 **NOTE: Using the `notebook` namespace means that routes/services aren't always available from outside the setup. Hence, use the `pipeline` or `runtime` namespace.**
 
