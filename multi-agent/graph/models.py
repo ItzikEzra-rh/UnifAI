@@ -50,6 +50,13 @@ class Step(BaseModel):
             reads.update(self.condition.reads)
         return reads
 
+    def total_writes(self) -> Set[str]:
+        """Get all channels this step writes (including condition)."""
+        writes = self.writes.copy()
+        if self.condition:
+            writes.update(getattr(self.condition, 'writes', set()))
+        return writes
+
 
 class RTStep(BaseModel):
     """Runtime-enabled step with bound callables."""

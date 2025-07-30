@@ -67,15 +67,8 @@ class PlanBuilder:
 
     def _extract_condition_reads(self, condition_spec: ResourceSpec) -> Set[str]:
         """Extract channels that a condition reads from its config."""
-        reads = set()
-
-        if condition_spec.type == "threshold":
-            if hasattr(condition_spec.config, 'input_key'):
-                reads.add(condition_spec.config.input_key)
-
-        # Add other condition types as needed
-
-        return reads
+        elem_spec = self._registry.get_spec(ResourceCategory.CONDITION, condition_spec.type)
+        return getattr(elem_spec, 'reads', set())
 
     def _find_node_by_ref(self, ref: str, blueprint: BlueprintSpec) -> ResourceSpec:
         """Find node by reference."""

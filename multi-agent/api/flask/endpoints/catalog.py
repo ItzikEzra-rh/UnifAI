@@ -61,6 +61,7 @@ def get_element_spec(category, type):
         "type": "openai",
         "config_schema": {...}, // JSON schema for configuration
         "tags": ["llm", "openai", "api", "chat"]
+        "output_schema": {...} // Optional output schema if available
     }
     """
     try:

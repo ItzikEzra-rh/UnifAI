@@ -194,15 +194,15 @@ if __name__ == "__main__":
 
     blueprint_loader = YAMLBlueprintLoader()
     # raw = blueprint_loader.load("run/branch_router_demo.yml")
-    raw = blueprint_loader.load("run/boolean_router_demo.yml")
+    # raw = blueprint_loader.load("run/boolean_router_demo.yml")
+    raw = blueprint_loader.load("run/blueprint_SDJ.yml")
     blueprint_id = app.blueprint_service.save_draft(user_id="alice", draft_dict=raw)
-    # blueprint_spec = app.blueprint_service.load_resolved(blueprint_id=blueprint_id)
+    blueprint_spec = app.blueprint_service.load_resolved(blueprint_id=blueprint_id)
     run_test_new_version(app, blueprint_id=blueprint_id)
 
-    # plan_builder = PlanBuilder(app.element_registry)
-    # plan = plan_builder.build(blueprint_spec)
+    plan_builder = PlanBuilder(app.element_registry)
+    plan = plan_builder.build(blueprint_spec)
 
-    # result = app.graph_validation_service.validate(plan)
     # result = app.graph_validation_service.validate_connectors(plan)
     # result = app.graph_validation_service.validate_all(plan)
     # print(result.model_dump_json())

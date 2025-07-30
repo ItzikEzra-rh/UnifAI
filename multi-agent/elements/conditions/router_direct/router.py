@@ -1,6 +1,7 @@
 from ..common.base_condition import BaseCondition
 from ..common.models import ConditionOutputSchema, BranchType, DirectBranchDef
 from graph.state.state_view import StateView
+from graph.state.graph_state import Channel
 from typing import Optional
 
 
@@ -11,7 +12,7 @@ class RouterDirectCondition(BaseCondition):
     """
     
     # Declare what channels this condition reads
-    READS = {"target_branch"}
+    READS = {Channel.TARGET_BRANCH}
 
     def __init__(self, default_target: Optional[str] = None):
         super().__init__()
@@ -22,7 +23,7 @@ class RouterDirectCondition(BaseCondition):
         Reads target_branch from state and returns it directly.
         Falls back to default_target if not found.
         """
-        target_branch = state["target_branch"]
+        target_branch = state[Channel.TARGET_BRANCH]
         
         if target_branch is None:
             if self.default_target is not None:

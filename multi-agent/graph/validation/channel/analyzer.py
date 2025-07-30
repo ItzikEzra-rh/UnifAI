@@ -82,7 +82,8 @@ class ChannelAnalyzer:
                 continue
 
             required = step.total_reads()
-            missing = required - produced
+            upstream_required = required - step.writes  # Channels needed from upstream steps
+            missing = upstream_required - produced
 
             if missing:
                 impossible = {ch for ch in missing if not self._matrix.can_produce(ch)}
@@ -93,7 +94,7 @@ class ChannelAnalyzer:
                 if impossible:
                     impossible_channels[step_id] = impossible
 
-            produced.update(step.writes)
+            produced.update(step.total_writes())
 
         is_valid = len(impossible_channels) == 0 and len(missing_channels) == 0
         return PathValidation(

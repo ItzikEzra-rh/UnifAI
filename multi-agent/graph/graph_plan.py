@@ -38,11 +38,15 @@ class GraphPlan:
         if step:
             self._steps = [s for s in self._steps if s.uid != uid]
 
-    # Remove validate() - moved to ValidationService
-
     def get_roots(self) -> List[Step]:
-        """Return steps with no dependencies."""
-        return [s for s in self._steps if not s.after]
+        """Return steps with no dependencies and are not branch targets."""
+        # Collect all branch targets across all steps
+        branch_targets = set()
+        for step in self._steps:
+            branch_targets.update(step.branches.values())
+
+        # A root is a step with no 'after' dependencies AND not a branch target
+        return [s for s in self._steps if not s.after and s.uid not in branch_targets]
 
     def get_leaves(self) -> List[Step]:
         """Return steps that nothing depends on."""

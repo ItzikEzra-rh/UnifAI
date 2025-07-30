@@ -15,5 +15,6 @@ class RouterDirectConditionElementSpec(BaseElementSpec):
     description = META.description
     config_schema = RouterDirectConditionConfig
     factory_cls = RouterDirectConditionFactory
+    reads = RouterDirectCondition.READS
     tags = META.tags
     output_schema = RouterDirectCondition.get_output_schema()
