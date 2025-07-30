@@ -1,9 +1,9 @@
-from typing import List, Dict, Optional, Iterator, Any, Set
+from typing import List, Dict, Optional, Iterator, Any
 from session.session_registry import SessionRegistry
 from core.enums import ResourceCategory
 from .graph_plan import GraphPlan
 from .models import Step, RTStep
-from .step_context import StepContext
+from .step_context import StepContext, BranchNodeInfo
 
 
 class RTGraphPlan:
@@ -73,21 +73,47 @@ class RTGraphPlan:
 
     def _create_runtime_step(self, step: Step) -> RTStep:
         """Create a runtime step from a logical step."""
-        # Bind node callable
-        node_func = self._session.get(ResourceCategory.NODE, step.rid)
+        # ------------------------------------------------------------------ #
+        # 1. Build rich StepContext (branches + target node info)
+        # ------------------------------------------------------------------ #
+        branches: Dict[str, str] = step.branches or {}
+        branch_infos: Dict[str, BranchNodeInfo] = {}
 
-        # Inject StepContext if supported
-        if hasattr(node_func, 'set_context'):
-            step_context = StepContext(uid=step.uid, metadata=step.meta)
+        for outcome, next_uid in branches.items():
+            tgt = self._logical_plan.get_step(next_uid)
+            if tgt is None:
+                continue
+            branch_infos[outcome] = BranchNodeInfo(
+                uid=tgt.uid,
+                type_key=tgt.type_key,
+                metadata=tgt.meta,
+                reads=tgt.total_reads(),
+                writes=tgt.writes,
+            )
+
+        step_context = StepContext(
+            uid=step.uid,
+            metadata=step.meta,
+            branches=branches,
+            branch_nodes=branch_infos,
+        )
+
+        # ------------------------------------------------------------------ #
+        # 2. Bind node & condition callables + inject context
+        # ------------------------------------------------------------------ #
+
+        node_func = self._session.get(ResourceCategory.NODE, step.rid)
+        if hasattr(node_func, "set_context"):
             node_func.set_context(step_context)
 
-        # Bind condition callable if needed
         condition_func = None
         if step.condition:
             condition_func = self._session.get(ResourceCategory.CONDITION, step.condition.rid)
+            if hasattr(condition_func, "set_context"):
+                condition_func.set_context(step_context)
 
         return RTStep(
             step=step,
             func=node_func,
-            exit_condition=condition_func
+            exit_condition=condition_func,
         )

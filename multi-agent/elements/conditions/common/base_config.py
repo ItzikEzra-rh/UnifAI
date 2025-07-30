@@ -10,9 +10,6 @@ class BaseConditionConfig(BaseModel):
     literal `type` field for discrimination.
     UI metadata is now handled by ElementSpec classes.
     """
-    name: str = Field(
-        None, description="Optional identifier for this condition"
-    )
 
     class Config:
         extra = Extra.forbid

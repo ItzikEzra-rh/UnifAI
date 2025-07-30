@@ -34,7 +34,7 @@ class FinalAnswerNode(BaseNode):
     can still override `_formatter` in a subclass if you want a different style.
     """
     READS = {Channel.MESSAGES, Channel.NODES_OUTPUT}
-    WRITES = {Channel.OUTPUT}
+    WRITES = {Channel.MESSAGES, Channel.OUTPUT}
 
     # default formatter instance; you can override in a subclass if needed
     _formatter = _DefaultFormatter()

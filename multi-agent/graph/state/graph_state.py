@@ -33,6 +33,8 @@ class GraphState(BaseModel):
     # last-writer-wins for output
     output: Annotated[str, lambda old, new: new] = ""
 
+    target_branch: Annotated[str, lambda old, new: new] = ""
+
     # Dynamic storage for extra fields (will be included in serialization)
     dynamic_fields: Annotated[Dict[str, Any], merge_dynamic_fields] = Field(default_factory=dict)
 

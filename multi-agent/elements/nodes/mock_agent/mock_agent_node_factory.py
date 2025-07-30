@@ -19,7 +19,7 @@ class MockAgentNodeFactory(BaseFactory[MockAgentNodeConfig, MockAgentNode]):
         """
         try:
             return MockAgentNode(
-                fixed_message=getattr(cfg, "fixed_message", None)
+                echo_message=getattr(cfg, "echo_message", None)
             )
         except Exception as exc:
             raise PluginConfigurationError(
