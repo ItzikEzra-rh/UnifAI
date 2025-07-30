@@ -25,7 +25,7 @@ const getSubtitle = (doc: Document) => {
 };
 
 const getFooterText = (doc: Document) => {
-  if (doc.status === PIPELINE_STATUS.ACTIVE) return <InlineLoader />;
+  if (isEmbeddingActivelyProcessing(doc)) return <InlineLoader />;
   if (doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
   return `${doc.pipeline_stats.chunks_generated} chunks`;
 };

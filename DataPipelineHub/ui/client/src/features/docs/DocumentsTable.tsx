@@ -3,7 +3,7 @@ import { FaEye, FaTrash, FaSync } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
 import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
-import { getFileIcon, fileByColors } from "../helpers";
+import { getFileIcon, fileByColors, isEmbeddingActivelyProcessing } from "../helpers";
 import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DocumentData } from "./DocumentData";
@@ -59,7 +59,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       header: "Pages",
       cell: ({ row }) => {
         const doc = row.original;
-        return doc.status === PIPELINE_STATUS.ACTIVE ? (
+        return isEmbeddingActivelyProcessing(doc) ? (
           <InlineLoader />
         ) : doc.status === PIPELINE_STATUS.PENDING ? (
           "-"
@@ -96,7 +96,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       header: "Chunks",
       cell: ({ row }) => {
         const doc = row.original;
-        return doc.status === PIPELINE_STATUS.ACTIVE ? (
+        return isEmbeddingActivelyProcessing(doc) ? (
           <InlineLoader />
         ) : doc.status === PIPELINE_STATUS.PENDING ? (
           "-"
