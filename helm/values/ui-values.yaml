@@ -5,6 +5,10 @@
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 #replicaCount: 1
 
+#The ports variables are left empty when using deployment over ocp as the routes usually direct to the target service which is port specific.
+#In cases where a backend resides on a separate server then a address and port are needed.
+#In addition when using the load balancerservice location instead of a route a port specification might be needed as well.
+#The current implementation covers these 2 "edge" cases. 
 env:
   NGINX_PORT: "8080"
   DATAPIPELINEHUB_PORT: ""
