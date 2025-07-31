@@ -1,14 +1,12 @@
-from typing import List
 from catalog.element_registry import ElementRegistry
 from graph.graph_plan import GraphPlan
-from ..validator import Validator
+from ..interfaces import ValidationProvider
 from ..models import ValidationReport
 from .analyzer import ChannelAnalyzer
 from .matrix_builder import MatrixBuilder
-from .models import PathSuggestion
 
 
-class ChannelValidator(Validator):
+class ChannelValidator(ValidationProvider):
     """Validates channel/data flow connections between nodes."""
 
     def __init__(self, element_registry: ElementRegistry = None, *args, **kwargs):
@@ -35,7 +33,3 @@ class ChannelValidator(Validator):
             messages=messages,
             details=details
         )
-
-    def suggest_fixes(self, plan: GraphPlan) -> List[PathSuggestion]:
-        """Suggest nodes to fix connector issues, organized by path."""
-        return self._analyzer.suggest_fixes(plan)

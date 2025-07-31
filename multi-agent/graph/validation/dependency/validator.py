@@ -1,10 +1,10 @@
 from graph.graph_plan import GraphPlan
-from ..validator import Validator
+from ..interfaces import ValidationProvider
 from ..models import ValidationReport
 from .checker import DependencyChecker
 
 
-class DependencyValidator(Validator):
+class DependencyValidator(ValidationProvider):
     """Validates step dependencies and branch targets."""
 
     def __init__(self, *args, **kwargs):

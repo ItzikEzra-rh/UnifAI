@@ -1,7 +1,7 @@
 from typing import List, Set, Tuple
 from graph.graph_plan import GraphPlan
 from ..models import ValidationMessage, MessageSeverity, MessageCode
-from .models import DependencyIssue
+from .models import DependencyIssue, DependencyIssueType
 
 
 class DependencyChecker:
@@ -20,7 +20,7 @@ class DependencyChecker:
                     issue = DependencyIssue(
                         step_id=step.uid,
                         missing_dependency=dep,
-                        issue_type="missing_step"
+                        issue_type=DependencyIssueType.MISSING_STEP
                     )
                     issues.append(issue)
                     messages.append(ValidationMessage(
@@ -36,7 +36,7 @@ class DependencyChecker:
                     issue = DependencyIssue(
                         step_id=step.uid,
                         missing_dependency=target,
-                        issue_type="missing_branch_target"
+                        issue_type=DependencyIssueType.MISSING_BRANCH_TARGET
                     )
                     issues.append(issue)
                     messages.append(ValidationMessage(

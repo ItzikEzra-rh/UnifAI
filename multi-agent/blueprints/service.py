@@ -31,6 +31,15 @@ class BlueprintService:
     def load_resolved(self, blueprint_id: str) -> BlueprintSpec:
         return self._resolver.resolve(self.load_draft(blueprint_id))
 
+    def load_draft_from_dict(self, draft_dict: dict) -> BlueprintDraft:
+        """Load a BlueprintDraft from a dictionary without saving to database."""
+        return BlueprintDraft(**draft_dict)
+
+    def resolve_draft_dict(self, draft_dict: dict) -> BlueprintSpec:
+        """Resolve a draft dictionary directly to BlueprintSpec without saving to database."""
+        draft_bp = BlueprintDraft(**draft_dict)
+        return self._resolver.resolve(draft_bp)
+
     def to_dict(self, blueprint_id: str) -> Dict[str, Any]:
         """Draft → JSON-serialisable dict (no meta)."""
         return self.load_draft(blueprint_id).model_dump(mode="json")

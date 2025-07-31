@@ -1,10 +1,10 @@
 from graph.graph_plan import GraphPlan
-from ..validator import Validator
+from ..interfaces import ValidationProvider
 from ..models import ValidationReport
 from .detector import OrphanDetector
 
 
-class OrphanValidator(Validator):
+class OrphanValidator(ValidationProvider):
     """Validates graph for orphaned steps."""
 
     def __init__(self, *args, **kwargs):

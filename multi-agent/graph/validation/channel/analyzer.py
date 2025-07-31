@@ -1,9 +1,8 @@
 from typing import Set, List
 from graph.graph_plan import GraphPlan
 from ..models import ValidationMessage, MessageSeverity, MessageCode
-from .models import PathValidation, DependencyMatrix, PathSuggestion, ChannelValidationDetails, ChannelSummary
+from .models import PathValidation, DependencyMatrix, ChannelValidationDetails, ChannelSummary
 from .path_enumerator import PathEnumerator
-from .node_suggester import NodeSuggester
 
 
 class ChannelAnalyzer:
@@ -12,7 +11,6 @@ class ChannelAnalyzer:
     def __init__(self, matrix: DependencyMatrix):
         self._matrix = matrix
         self._enumerator = PathEnumerator()
-        self._suggester = NodeSuggester()
 
     def analyze(self, plan: GraphPlan) -> tuple[ChannelValidationDetails, List[ValidationMessage]]:
         """Validate channel dependencies across all paths."""
@@ -105,26 +103,4 @@ class ChannelAnalyzer:
             is_valid=is_valid
         )
 
-    def suggest_fixes(self, plan: GraphPlan) -> List[PathSuggestion]:
-        """Suggest nodes to fix connector issues, organized by path."""
-        # Run validation to get detailed path analysis
-        details, _ = self.analyze(plan)
-
-        path_suggestions = []
-
-        for path_validation in details.invalid_paths.values():
-            # Collect all missing channels for this path
-            all_missing_for_path = set()
-            for missing_channels_set in path_validation.missing_channels.values():
-                all_missing_for_path.update(missing_channels_set)
-
-            # Generate suggestions for this path's missing channels
-            if all_missing_for_path:
-                suggestions = self._suggester.suggest_for_channels(all_missing_for_path, self._matrix)
-                path_suggestions.append(PathSuggestion(
-                    path_id=path_validation.path_id,
-                    missing_channels=all_missing_for_path,
-                    suggestions=suggestions
-                ))
-
-        return path_suggestions 
+ 

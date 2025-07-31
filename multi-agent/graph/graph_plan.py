@@ -49,8 +49,10 @@ class GraphPlan:
         return [s for s in self._steps if not s.after and s.uid not in branch_targets]
 
     def get_leaves(self) -> List[Step]:
-        """Return steps that nothing depends on."""
+        """Return steps that nothing depends on (including branch targets)."""
         dependents = {dep for s in self._steps for dep in s.after}
+        # Also include branch targets as dependents
+        dependents.update({target for s in self._steps for target in s.branches.values()})
         return [s for s in self._steps if s.uid not in dependents]
 
     def to_dict(self) -> Dict:

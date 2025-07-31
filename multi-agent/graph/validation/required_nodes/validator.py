@@ -1,12 +1,12 @@
 from typing import Set
 from graph.graph_plan import GraphPlan
-from ..validator import Validator
+from ..interfaces import ValidationProvider
 from ..models import ValidationReport
 from ..settings import ValidationSettings
 from .checker import RequiredNodesChecker
 
 
-class RequiredNodesValidator(Validator):
+class RequiredNodesValidator(ValidationProvider):
     """Validates that required node types are present in the graph."""
 
     def __init__(self, settings: ValidationSettings = None, *args, **kwargs):

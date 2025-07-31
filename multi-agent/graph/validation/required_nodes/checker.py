@@ -1,7 +1,7 @@
 from typing import Set, List, Tuple, AbstractSet
 from graph.graph_plan import GraphPlan
 from ..models import ValidationMessage, MessageSeverity, MessageCode
-from .models import RequiredNodeIssue
+from .models import RequiredNodeIssue, NodePosition
 
 
 class RequiredNodesChecker:
@@ -21,14 +21,14 @@ class RequiredNodesChecker:
 
         # Get node type sets
         root_types = {s.type_key for s in plan.get_roots()}
-        leaf_types = {s.type_key for s in plan.steps if s.uid in self._get_leaf_nodes(plan)}
+        leaf_types = {s.type_key for s in plan.get_leaves()}
         all_types = {s.type_key for s in plan.steps}
 
         # Check each group
         self._check_nodes(
             self._required_start_nodes,
             root_types,
-            "start",
+            NodePosition.START,
             MessageCode.MISSING_START_NODE,
             messages,
             required_node_issues
@@ -37,7 +37,7 @@ class RequiredNodesChecker:
         self._check_nodes(
             self._required_end_nodes,
             leaf_types,
-            "end",
+            NodePosition.END,
             MessageCode.MISSING_END_NODE,
             messages,
             required_node_issues
@@ -46,7 +46,7 @@ class RequiredNodesChecker:
         self._check_nodes(
             self._required_any_nodes,
             all_types,
-            "any",
+            NodePosition.ANY,
             MessageCode.MISSING_REQUIRED_NODE,
             messages,
             required_node_issues
@@ -54,14 +54,10 @@ class RequiredNodesChecker:
 
         return required_node_issues, messages
 
-    def _get_leaf_nodes(self, plan: GraphPlan) -> Set[str]:
-        """Find all leaf nodes (no outgoing edges)."""
-        outgoing_nodes = {parent_uid for step in plan.steps for parent_uid in step.after}
-        outgoing_nodes.update({step.uid for step in plan.steps if step.branches})
-        return {step.uid for step in plan.steps if step.uid not in outgoing_nodes}
+
 
     def _check_nodes(self, required_specs: AbstractSet[str], available_specs: AbstractSet[str],
-                    node_type: str, error_code: MessageCode, messages: List[ValidationMessage],
+                    node_type: NodePosition, error_code: MessageCode, messages: List[ValidationMessage],
                     required_node_issues: List[RequiredNodeIssue]) -> None:
         """Check for missing required nodes."""
         for spec in required_specs - available_specs:

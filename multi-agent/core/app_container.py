@@ -11,6 +11,7 @@ from session.service import SessionService
 from resources.registry import ResourcesRegistry
 from resources.service import ResourcesService
 from resources.repository.mongo_repository import MongoResourceRepository
+from graph.service import GraphService
 from graph.validation.service import GraphValidationService
 from config.app_config import AppConfig
 from global_utils.utils.singleton import SingletonMeta
@@ -36,7 +37,10 @@ class AppContainer(metaclass=SingletonMeta):
         # catalog service
         self.catalog_service = CatalogService(self.element_registry)
 
-        # Graph validation service
+        # Graph service (building only)
+        self.graph_service = GraphService(self.element_registry)
+        
+        # Graph validation service (validation only)
         self.graph_validation_service = GraphValidationService(self.element_registry)
 
         # blueprint catalog

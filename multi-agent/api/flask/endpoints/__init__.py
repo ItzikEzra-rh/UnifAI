@@ -2,6 +2,8 @@ from .blueprints import blueprints_bp
 from .sessions import sessions_bp
 from .catalog import catalog_bp
 from .resources import resources_bp
+from .graph import graph_bp
+from .graph_validation import graph_validation_bp
 
 
 def register_all_endpoints(app):
@@ -10,6 +12,8 @@ def register_all_endpoints(app):
         {"bp": sessions_bp, "parent": 'sessions', "route": ''},
         {"bp": catalog_bp, "parent": 'catalog', "route": ''},
         {"bp": resources_bp, "parent": 'resources', "route": ''},
+        {"bp": graph_bp, "parent": 'graph', "route": ''},
+        {"bp": graph_validation_bp, "parent": 'graph', "route": 'validation'},
     ]
 
     # register all other blueprints in the app

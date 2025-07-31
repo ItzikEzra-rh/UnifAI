@@ -1,10 +1,10 @@
 from graph.graph_plan import GraphPlan
-from ..validator import Validator
+from ..interfaces import ValidationProvider
 from ..models import ValidationReport
 from .detector import CycleDetector
 
 
-class CycleValidator(Validator):
+class CycleValidator(ValidationProvider):
     """Validates graph for execution cycles."""
 
     def __init__(self, *args, **kwargs):
