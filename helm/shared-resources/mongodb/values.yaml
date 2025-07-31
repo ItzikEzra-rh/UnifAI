@@ -79,11 +79,11 @@ service:
 ## Resource limits and requests
 resources:
   requests:
-    memory: "4Gi"     
-    cpu: "2"       
+    memory: "1Gi"     
+    cpu: "1"       
   limits:
-    memory: "4Gi"     
-    cpu: "2"  
+    memory: "1Gi"     
+    cpu: "1"  
 
 ## Custom startup probe (overwrites default startup probe)
 customStartupProbe: {}
@@ -294,7 +294,7 @@ storage:
   volumeName: "unifai-mongodb-volume"
 
   ## Alternative set requestedSize to define a size for a dynamically created PVC
-  requestedSize: 50G
+  requestedSize: 30G
 
   ## the storage class name
   className: aws-ebs

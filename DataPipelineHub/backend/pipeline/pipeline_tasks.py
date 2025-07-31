@@ -135,7 +135,7 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
         logger.error(f"Registration task failed for {source_type}: {str(e)}", exc_info=True)
         raise self.retry(exc=e)
 
-@CeleryApp().app.task(bind=True, max_retries=5, default_retry_delay=60)
+@CeleryApp().app.task(bind=True)
 def execute_pipeline_task(self, source_type: str, source_data: dict):
     """
     General pipeline execution task that works with any source type.
@@ -180,4 +180,3 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
         
     except Exception as e:
         logger.error(f"Pipeline execution failed for {source_type}: {str(e)}", exc_info=True)
-        raise self.retry(exc=e) 

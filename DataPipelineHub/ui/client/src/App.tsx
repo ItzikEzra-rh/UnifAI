@@ -11,8 +11,8 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import DocumentsPage from "./features/docs/DocumentsPage";
 import { AuthProvider } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
-import SlackAddSourcePage from "./features/slack/SlackAddSourcePage";
 import SlackIntegration from "./features/slack/SlackIntegration";
+import SlackAddSourcePage from "./features/slack/SlackAddSourcePage";
 
 function App() {
   // Set document title
@@ -32,8 +32,8 @@ function App() {
               <Route path="/documents" component={DocumentsPage} />
               <Route path="/repository" component={AgentRepository} />
               <Route path="/agentic-ai" component={AgenticAI} />
-              <Route path="/configuration" component={Configuration} />
               <Route path="/slack/add-source" component={SlackAddSourcePage} />
+              <Route path="/configuration" component={Configuration} />
               <Route component={NotFound} />
             </Switch>
           </ProtectedRoute>
@@ -44,3 +44,4 @@ function App() {
 }
 
 export default App;
+              

@@ -12,7 +12,16 @@ export interface ConfirmDialogProps {
   loading?: boolean;
 }
 
-export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({open, title, message, confirmLabel = "Confirm", cancelLabel = "Cancel", onConfirm, onCancel, loading = false}) => {
+export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
+  open,
+  title,
+  message,
+  confirmLabel = "Confirm",
+  cancelLabel = "Cancel",
+  onConfirm,
+  onCancel,
+  loading = false,
+}) => {
   return (
     <Dialog open={open}>
       <DialogContent>
