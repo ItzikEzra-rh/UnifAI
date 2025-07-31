@@ -43,7 +43,7 @@ export default function Documents() {
   }, [showUploadModal, activeDoc])
 
   const filteredDocuments = documents.filter((doc) => {
-    const matchesType = fileTypeFilter === "all" || doc.file_type === fileTypeFilter;
+    const matchesType = fileTypeFilter === "all" || doc.type_data.file_type === fileTypeFilter;
     const matchesSearch = doc.source_name?.toLowerCase().includes(searchQuery.toLowerCase());
     return matchesType && matchesSearch;
   });
@@ -118,9 +118,7 @@ export default function Documents() {
   const onDeleteConfirmed = async (id: string) => {
     try {
       setDeleteLoading(true);
-      await deleteDoc(id)
-      await axiosInstance.post("/api/docs/delete", { pipelineId: id });
-      await fetchDocuments(); 
+      await deleteDoc(id);
     } catch (error) {
       console.error("Error deleting document:", error);
     } finally {

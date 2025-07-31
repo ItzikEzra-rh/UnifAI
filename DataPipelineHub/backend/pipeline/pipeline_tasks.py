@@ -79,13 +79,14 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                 # Create metadata object
                 metadata = DocumentMetadata(
                     doc_id=source_id,
-                    doc_name=instance.get("source_name", ""),
-                    doc_path=os.path.join(upload_folder, source_name),
+                    doc_name=source_name,
+                    doc_path=doc_path,
                     upload_by=upload_by
                 )
                 
                 # Create type_data for Document (source-specific data + optional user metadata)
                 type_data = {
+                    "file_type": source_name.rsplit(".", 1)[-1].lower(),
                     "doc_path": doc_path,
                     "page_count": 0,
                     "full_text": "",
@@ -134,7 +135,7 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
         logger.error(f"Registration task failed for {source_type}: {str(e)}", exc_info=True)
         raise self.retry(exc=e)
 
-@CeleryApp().app.task(bind=True, max_retries=5, default_retry_delay=60)
+@CeleryApp().app.task(bind=True)
 def execute_pipeline_task(self, source_type: str, source_data: dict):
     """
     General pipeline execution task that works with any source type.
@@ -179,7 +180,6 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
         
     except Exception as e:
         logger.error(f"Pipeline execution failed for {source_type}: {str(e)}", exc_info=True)
-        raise self.retry(exc=e)
 
 
 @CeleryApp().app.task(bind=True, max_retries=3, default_retry_delay=30)

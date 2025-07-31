@@ -7,12 +7,12 @@ unifai_dataflow_server:
   replicaCount: 1
   image:
     repository: images.paas.redhat.com/genie/unifai/unifai-dataflow
-    tag: "latest"
+    tag: "poc"
     pullPolicy: Always
   service:
     type: ClusterIP
     port: 13456
-  env:
+    env:
       ROLE: "flask"
       SHARED_STORAGE: "/app/shared"
 
@@ -20,10 +20,22 @@ unifai_dataflow_celery:
   replicaCount: 1
   image:
     repository: images.paas.redhat.com/genie/unifai/unifai-dataflow
-    tag: "latest"
+    tag: poc
     pullPolicy: Always
-  env:
-    ROLE: "celery"
-    SHARED_STORAGE: "/app/shared"
-    CELERY_QUEUES: "slack_queue,document_queue,registration_queue"
-    CELERY_WORKER: 1
+    env:
+      ROLE: "celery"
+      SHARED_STORAGE: "/app/shared"
+      CELERY_QUEUES: "slack_queue,docs_queue"
+      CELERY_WORKER: 1
+
+unifai_dataflow_shared_storage:
+  storage:
+    volumeName: unifai-dataflow-shared-storage
+    requestedSize: 50Gi
+    className: aws-efs-tier-c1
+    accessModes:
+      - ReadWriteMany
+    annotations:
+      kubernetes.io/reclaimPolicy: Delete
+    labels:
+      paas.redhat.com/appcode: TAG-001

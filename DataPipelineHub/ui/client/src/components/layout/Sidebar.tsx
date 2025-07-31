@@ -115,14 +115,6 @@ export default function Sidebar() {
             isCollapsed={isCollapsed}
           />
           <NavItem 
-            icon={<FaJira className="sidebar-icon" />} 
-            label="Jira Integration" 
-            to="/jira"
-            isActive={location === '/jira'}
-            status="Connected"
-            isCollapsed={isCollapsed}
-          />
-          <NavItem 
             icon={<FaSlack className="sidebar-icon" />} 
             label="Slack Integration" 
             to="/slack"

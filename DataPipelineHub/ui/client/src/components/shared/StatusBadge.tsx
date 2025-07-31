@@ -4,17 +4,16 @@ import { useMemo } from "react";
 
 export function StatusBadge({ 
   status, 
-  isActivelyEmbedding = false 
 }: { 
-  status: EmbedChannel["status"] | Document["status"];
-  isActivelyEmbedding?: boolean;
+  status: EmbedChannel["status"] | Document["status"] | undefined;
 }) {
+  console.log(status)
   const { bgColor, textColor, label, isActive } = useMemo(() => {
     // Show "Pending" if there's no real pipeline status yet, even if actively embedding
-    if (isActivelyEmbedding && !status) {
+    if (!status) {
       return {
-        bgColor: "bg-blue-500/15",
-        textColor: "text-blue-400",
+        bgColor: "bg-grey-500/15",
+        textColor: "text-grey-400",
         label: "Pending",
         isActive: true,
       };
@@ -101,7 +100,7 @@ export function StatusBadge({
         };
       default:
         // If actively embedding but no status, show pending
-        if (isActivelyEmbedding && !status) {
+        if (!status) {
           return {
             bgColor: "bg-blue-500/15",
             textColor: "text-blue-400",
@@ -117,7 +116,7 @@ export function StatusBadge({
           isActive: true,
         };
     }
-  }, [status, isActivelyEmbedding]);
+  }, [status]);
 
   return (
     <span

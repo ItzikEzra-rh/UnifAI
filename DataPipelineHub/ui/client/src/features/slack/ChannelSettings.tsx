@@ -11,7 +11,6 @@ import {
 
 export interface ChannelSettingsData {
   dateRange: string;
-  communityPrivacy: 'public' | 'private';
   includeThreads: boolean;
   processFileContent: boolean;
 }
@@ -25,7 +24,6 @@ export interface ChannelSettingsProps {
 
 export const defaultChannelSettings: ChannelSettingsData = {
   dateRange: '30d',
-  communityPrivacy: 'public',
   includeThreads: true,
   processFileContent: false,
 };
@@ -78,31 +76,6 @@ export function ChannelSettings({
         </Select>
         <p className="text-xs text-gray-400 mt-1">
           How far back to fetch messages
-        </p>
-      </div>
-
-      {/* Community Privacy */}
-      <div>
-        <Label htmlFor={`community-privacy-${channelId}`} className="text-sm">
-          Community Privacy
-        </Label>
-        <Select 
-          value={settings.communityPrivacy} 
-          onValueChange={(value: 'public' | 'private') => updateSetting('communityPrivacy', value)}
-        >
-          <SelectTrigger
-            id={`community-privacy-${channelId}`}
-            className="mt-1 bg-background-dark"
-          >
-            <SelectValue placeholder="Select privacy level" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="public">Public</SelectItem>
-            <SelectItem value="private">Private</SelectItem>
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-gray-400 mt-1">
-          Community visibility setting
         </p>
       </div>
 

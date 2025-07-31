@@ -71,27 +71,27 @@ export interface EmbedChannel {
   communityPrivacy?: 'public' | 'private';
 }
 export interface Document {
-  last_pipeline_id: string;
-  source_name: string;
-  status: PipelineStatus;
+  _id: string;
+  pipeline_id: string;
   created_at: string;
-  file_type: string;
-  chunks_generated: number;
+  source_id: string;
+  source_name: string;
+  source_type: string;
   type_data: {
+    file_type: string;
     doc_path: string;
     page_count: number;
     full_text: string;
     file_size: string;
   };
   upload_by: string;
-  last_updated: string;
-  stats?: {
-    total_tokens?: number;
-    avg_chunk_size?: number;
-    images_extracted?: number;
-    tables_extracted?: number;
-    embeddings_created?: number;
-    api_calls?: number;
-    processing_time?: number;
+  pipeline_stats: {
+    status: PipelineStatus;
+    documents_retrieved: number;
+    chunks_generated: number;
+    embeddings_created: number;
+    api_calls: number;
+    processing_time: number;
   };
+  status: PipelineStatus;
 }

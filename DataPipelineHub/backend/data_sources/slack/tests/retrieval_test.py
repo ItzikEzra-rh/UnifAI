@@ -15,7 +15,7 @@ def rag_flow():
         "type": "qdrant",
         "collection_name": "slack_data",
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://localhost",
+        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
         "port": 6333
     }
     vector_storage = VectorStorageFactory.create(storage_config)

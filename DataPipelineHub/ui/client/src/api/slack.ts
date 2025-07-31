@@ -91,8 +91,18 @@ export async function submitSlackChannels(
 };
 
 export async function fetchEmbeddedSlackChannels(): Promise<EmbedChannel[]> {
-  const { data } = await api.get<any[]>("slack/embed.channels");
-  return data.map((item) => ({
+  // Call the new backend endpoint for available data sources with source_type='slack'
+  // Using GET request with query parameters as required by the backend @from_query decorator
+  const { data } = await api.get<{sources: any[]}>(
+    "data_sources/available.data.sources.get",
+    { 
+      params: {
+        source_type: "slack"
+      }
+    }
+  );
+  
+  return data.sources.map((item) => ({
     name: item.source_name || '', 
     messages: String(item.pipeline_stats?.documents_retrieved || 0),
     lastSync: timeAgo(item.last_sync_at),
@@ -106,7 +116,8 @@ export async function fetchEmbeddedSlackChannels(): Promise<EmbedChannel[]> {
 };
 
 export async function deleteSlackChannel(channelId: string): Promise<any> {
-  const { data } = await api.delete(`slack/embed.channels/${channelId}`);
+  // Call the new backend endpoint for deleting data sources
+  const { data } = await api.delete(`data_sources/delete/${channelId}`);
   return data;
 };
 

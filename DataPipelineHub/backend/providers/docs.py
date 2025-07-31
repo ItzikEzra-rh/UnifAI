@@ -1,6 +1,7 @@
 import base64
 import os
 import time
+from config.constants import DataSource
 from config.app_config import AppConfig
 from utils.storage.mongo.mongo_storage import MongoStorage
 from global_utils.utils.util import get_mongo_url
@@ -43,25 +44,10 @@ def get_available_doc_list(user):
     Fetches a list of available documents uploaded by a specific user.
     Enriches each document with additional metadata from the data source.
     """
-    docs = data_source_repo.get_source_by_query({"source_type": "DOCUMENT","upload_by": user})
-
-    if not docs:
-        return []
-
-    for doc in docs:
-        doc["file_type"] = doc.get("source_name", "").rsplit(".", 1)[-1].lower()
-
-        pipeline_id = doc.get("last_pipeline_id")
-        doc_data = pipeline_repo.get_pipeline_by_query({"pipeline_id": pipeline_id})
-        
-        if not doc_data:
-            continue
-
-        doc.update({
-            "status": doc_data[0].get("status", ""),
-            "stats": doc_data[0].get("stats", {})
-        })
-    return docs
+    source_type = DataSource.DOCUMENT.upper_name
+    svc = get_mongo_storage()
+    all_sources = svc.list_sources(source_type)
+    return all_sources
 
 # def embed_docs_flow(doc_list, upload_by):
 #     # Create data pipeline with existing logger

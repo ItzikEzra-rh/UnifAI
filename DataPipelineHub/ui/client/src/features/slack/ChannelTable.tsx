@@ -17,26 +17,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { isEmbeddingActivelyProcessing } from "../helpers";
 
 export function isChannelNew(createdAt: Date): boolean {
   const now = new Date()
   const dayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000)
   return createdAt > dayAgo
-}
-
-// Helper function to check if a channel is actively processing
-export function isChannelActivelyProcessing(channel: EmbedChannel): boolean {
-  const activeStatuses = [
-    PIPELINE_STATUS.PENDING,
-    PIPELINE_STATUS.ACTIVE,
-    PIPELINE_STATUS.COLLECTING,
-    PIPELINE_STATUS.PROCESSING,
-    PIPELINE_STATUS.CHUNKING_AND_EMBEDDING,
-    PIPELINE_STATUS.STORING,
-    PIPELINE_STATUS.ORCHESTRATING,
-  ];
-  
-  return activeStatuses.includes(channel.status as any);
 }
 
 export function getColumns(
@@ -79,11 +65,9 @@ export function getColumns(
       header: "Status",
       cell: (info) => {
         const channel = info.row.original;
-        const isActivelyEmbedding = activeEmbeddingIds.includes(channel.channel_id);
         return (
           <StatusBadge 
             status={channel.status} 
-            isActivelyEmbedding={isActivelyEmbedding}
           />
         );
       },
@@ -350,15 +334,15 @@ export function getColumns(
               <Button
                 variant="ghost"
                 size="sm"
-                disabled={isDeleting || isChannelActivelyProcessing(ch)}
+                disabled={isDeleting || isEmbeddingActivelyProcessing(ch)}
                 className={`p-2 text-muted-foreground rounded-lg transition-all duration-200 ${
-                  isDeleting || isChannelActivelyProcessing(ch) 
+                  isDeleting || isEmbeddingActivelyProcessing(ch) 
                     ? "opacity-50 cursor-not-allowed" 
                     : "hover:text-destructive hover:bg-destructive/10"
                 }`}
-                onClick={() => !isDeleting && !isChannelActivelyProcessing(ch) && onDeleteClick(ch)}
+                onClick={() => !isDeleting && !isEmbeddingActivelyProcessing(ch) && onDeleteClick(ch)}
                 title={
-                  isChannelActivelyProcessing(ch) 
+                  isEmbeddingActivelyProcessing(ch) 
                     ? "Cannot delete channel while processing" 
                     : isDeleting 
                       ? "Deleting..." 

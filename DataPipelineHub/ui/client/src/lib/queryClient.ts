@@ -2,7 +2,8 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import axios, { AxiosError } from 'axios';
 
 export const api = axios.create({
-  baseURL: 'http://127.0.0.1:13456/api',        
+  // baseURL: 'http://127.0.0.1:13456/api',   
+  baseURL: 'https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com/api',     
   withCredentials: false,   
   timeout: 10_000,        
 });

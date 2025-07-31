@@ -3,12 +3,15 @@ import sys
 
 # Add the parent directory of 'backend' (the root of the project) to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from utils.storage.mongo.mongo_storage import MongoStorage
 from endpoints import register_all_endpoints
 from flask import Flask
 from flask_cors import CORS
 from global_utils.flask.request_rules import RequestRules
 from utils.auth_manager import AuthManager
 from config.app_config import AppConfig
+from global_utils.utils.util import get_mongo_url
 
 # from be_utils.db.flaks_db import register_mongo
 # from be_utils.utils import init_flask_logger
@@ -20,7 +23,7 @@ config = AppConfig()
 app.secret_key = config.get('secret_key', os.urandom(24))
 
 # Configure CORS to allow credentials
-CORS(app, supports_credentials=True, origins=os.environ.get("FRONTEND_URL", "http://localhost:5000"))
+CORS(app, supports_credentials=True, origins="http://localhost:5000")
 
 # init_flask_logger('access.log')
 # app.config['result_backend'] = config_params.MONGODB_URL
@@ -36,11 +39,21 @@ app.extensions['auth_manager'] = auth_manager
 
 register_all_endpoints(app)
 
+
+# mongo_ip   = config.get_param_by_env("mongodb_ip")
+# mongo_port = config.get_param_by_env("mongodb_port")
+mongo_uri = get_mongo_url()
+
+# ─── 3) Init your storage and stash it on the app ─────────────────────────
+#    We only pass the URI; the DB name can be chosen per-call later.
+app.mongo_storage = MongoStorage(mongo_uri)
+# Init before_request/after_request rules
+
 # Init before_request/after_request rules
 RequestRules(app)
 
 if __name__ == '__main__':
-    app.run(host= config.hostname_local, port=config.port, debug=True)
+    app.run(host=config.hostname, port=config.port, debug=True)
 
     # cert_file = os.path.join(os.path.dirname(__file__), 'cert.pem')
     # key_file = os.path.join(os.path.dirname(__file__), 'key.pem')

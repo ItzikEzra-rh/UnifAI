@@ -2,8 +2,17 @@ import { api } from '@/lib/queryClient';
 import type { Document } from '@/types';
 
 export async function fetchDocuments(): Promise<Document[]> {
-  const response = await api.get<any>("docs/available.docs.get");
-  return response.data.docs;
+  // Call the new backend endpoint for available data sources with source_type='document'
+  // Using GET request with query parameters as required by the backend @from_query decorator
+  const response = await api.get<{sources: any}>(
+    "data_sources/available.data.sources.get",
+    {
+      params: {
+        source_type: "document"
+      }
+    }
+  );
+  return response.data.sources;
 };
 
 export async function uploadDocs(files: {name: string, content: string}[]): Promise<any> {
@@ -24,8 +33,7 @@ export async function embedDocs(docs: {source_name: string}[]): Promise<any> {
 }
 
 export async function deleteDoc(pipelineId: string): Promise<any> {
-    const deleted = await api.post<any>(
-        'docs/delete',
-        { pipelineId: pipelineId }
-      );
-}
+    // Call the new backend endpoint for deleting data sources
+    const deleted = await api.delete(`data_sources/delete/${pipelineId}`);
+    return deleted.data;
+};

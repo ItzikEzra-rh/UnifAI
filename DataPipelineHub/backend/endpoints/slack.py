@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, session
 from providers.slack.stats import SlackStatsProvider
-from providers.privacy_filter import get_filtered_sources_by_type
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from webargs import fields
 from shared.logger import logger
@@ -8,11 +7,14 @@ from global_utils.helpers.apiargs import from_query, from_body
 from global_utils.celery_app.helpers import send_task
 from config.constants import DataSource
 from providers.slack.slack import (
+     count_channel_chunks,
     get_available_slack_channels,
-    count_channel_chunks,
     get_best_match_results,
-    delete_slack_channel,
     fetch_available_slack_channels,
+)
+from providers.data_sources import (
+    get_available_data_sources,
+    delete_data_source,
 )
 
 slack_bp = Blueprint("slack", __name__)
@@ -87,17 +89,10 @@ def best_match_results(query, top_k_results, scope, logged_in_user):
 @slack_bp.route('/embed.channels', methods=['GET'])
 def get_embed_channels():
     """
-    Returns all stored channels, filtered by source_type and community privacy.
-    Private community channels are only visible to the user who uploaded them.
+    Returns all stored channels.
     """
-    source_type = DataSource.SLACK.upper_name
-    svc = get_mongo_storage()
-    current_user = session.get('user', {}).get('username', 'default')
-    
-    # Use the privacy filter provider to get filtered channels
-    filtered_channels = get_filtered_sources_by_type(svc, source_type, current_user)
-    
-    return jsonify(filtered_channels), 200
+    channels = get_available_data_sources(source_type=DataSource.SLACK.upper_name)
+    return jsonify(channels), 200
 
 @slack_bp.route("/stats", methods=["GET"])
 def system_stats():
@@ -111,7 +106,7 @@ def delete_embed_channel(channel_id):
     Delete a slack channel from both MongoDB and Qdrant storage.
     """
     try:
-        result = delete_slack_channel(channel_id)
+        result = delete_data_source(channel_id)
         return jsonify({"status": "success", "message": f"Channel {channel_id} deleted successfully", "result": result}), 200
     except Exception as e:
         logger.error(f"Failed to delete Slack channel {channel_id}: {str(e)}")
