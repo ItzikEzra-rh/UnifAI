@@ -1,5 +1,7 @@
 import os
 from urllib import request
+from config.constants import DataSource
+from providers.data_sources import get_available_data_sources
 from flask import Blueprint, jsonify, session
 from webargs import fields
 from shared.logger import logger
@@ -25,9 +27,9 @@ def upload_files(files):
 @docs_bp.route("/available.docs.get", methods=["GET"])
 def available_doc_list():
     try:
-        user = session.get('user', {}).get('name', 'default')
-        docs = get_available_doc_list(user)
+        docs = get_available_data_sources(source_type=DataSource.DOCUMENT.upper_name)
         return jsonify({"docs": docs}), 200
+
     except Exception as e:
         logger.error(f"Failed to get available docs list: {str(e)}")
         return jsonify({"error": str(e)}), 500

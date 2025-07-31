@@ -118,9 +118,7 @@ export default function Documents() {
   const onDeleteConfirmed = async (id: string) => {
     try {
       setDeleteLoading(true);
-      await deleteDoc(id)
-      await axiosInstance.post("/api/docs/delete", { pipelineId: id });
-      await fetchDocuments(); 
+      await deleteDoc(id);
     } catch (error) {
       console.error("Error deleting document:", error);
     } finally {
