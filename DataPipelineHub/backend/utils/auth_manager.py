@@ -77,10 +77,12 @@ class AuthManager:
             #    'redirect_url',
             #    'https://127.0.0.1:13456/api/auth/callback'
             #)
+            
             redirect_uri = config.get(
                 'redirect_url',
                 url_for('auth_callback', _external=True, _scheme='https')
             )
+            
             # redirect_uri = config.get(
             #     'redirect_url',
             #     url_for('auth_callback', _external=True, _scheme='https') 
@@ -90,14 +92,10 @@ class AuthManager:
 
             # redirect_uri = config.get(
             #     'redirect_url',
-            #     url_for('auth_callback', _external=True, _scheme='https')
+            #     url_for('auth_callback', _external=True, _scheme='https') 
+            #     if config.backend_env == "production" 
+            #     else f"http://{config.hostname_local}:{config.port}/api/auth/callback"
             # )
-            redirect_uri = config.get(
-                'redirect_url',
-                url_for('auth_callback', _external=True, _scheme='https') 
-                if config.backend_env == "production" 
-                else f"http://{config.hostname_local}:{config.port}/api/auth/callback"
-            )
 
             logger.info(f"[LOGIN] session before redirect: {session.items()}")
             return self.keycloak_client.authorize_redirect(redirect_uri)
