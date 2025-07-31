@@ -243,7 +243,7 @@ class SlackConnector(DataConnector):
         logger.info(f"Retrieved and cached {len(channels)} Slack channels from {api_call_count} API calls")
         return channels
     
-    def get_available_slack_channels(self, types: Optional[str] = None, cursor: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+    def get_available_slack_channels(self, types: Optional[str] = None, cursor: Optional[str] = None, limit: int = 50, search_regex: Optional[str] = None) -> Dict[str, Any]:
         """
         Get available Slack channels from cache (MongoDB) with pagination support.
         This function reads from the cached channels without making API calls.
@@ -252,6 +252,7 @@ class SlackConnector(DataConnector):
             types: Optional channel types to filter by ('private_channel', 'public_channel', or 'private_channel,public_channel')
             cursor: Optional cursor for pagination (skip count)
             limit: Number of channels to return (default: 50)
+            search_regex: Optional regex pattern to search channel names
             
         Returns:
             Dictionary containing paginated channels data with pagination metadata
@@ -278,11 +279,19 @@ class SlackConnector(DataConnector):
                         cache_types.append(channel_type)  # fallback
                 query_filter['type'] = {"$in": cache_types}
             
+            # Add regex search filter if provided
+            if search_regex:
+                try:
+                    # Use MongoDB regex with case-insensitive flag
+                    query_filter['channel_name'] = {"$regex": search_regex, "$options": "i"}
+                except Exception as regex_error:
+                    logger.warning(f"Invalid regex pattern '{search_regex}': {str(regex_error)}. Ignoring regex filter.")
+            
             # Get total count for pagination metadata
             total_count = collection.count_documents(query_filter)
             
             # Check if cache is empty - if so, fall back to API
-            if total_count == 0:
+            if total_count == 0 and not search_regex:
                 logger.warning(f"No cached channels found for project {self._project_id}. Falling back to API call.")
                 return self._fallback_with_pagination(types, cursor, limit)
             
@@ -308,7 +317,8 @@ class SlackConnector(DataConnector):
                 next_cursor = str(skip + limit)
                 has_more = True
             
-            logger.info(f"Retrieved {len(cached_channels)} Slack channels from cache (page {skip}-{skip+limit} of {total_count})")
+            search_info = f" with regex '{search_regex}'" if search_regex else ""
+            logger.info(f"Retrieved {len(cached_channels)} Slack channels from cache{search_info} (page {skip}-{skip+limit} of {total_count})")
             
             return {
                 'channels': cached_channels,
@@ -319,9 +329,18 @@ class SlackConnector(DataConnector):
             
         except Exception as e:
             logger.error(f"Error retrieving channels from cache: {str(e)}")
-            logger.warning("Falling back to API call with limited results")
-            
-            return self._fallback_with_pagination(types, cursor, limit)
+            if search_regex:
+                # For regex searches, return empty results instead of fallback
+                logger.warning("Returning empty results for regex search")
+                return {
+                    'channels': [],
+                    'nextCursor': None,
+                    'hasMore': False,
+                    'total': 0,
+                }
+            else:
+                logger.warning("Falling back to API call with limited results")
+                return self._fallback_with_pagination(types, cursor, limit)
     
     def _fallback_with_pagination(self, types: Optional[str] = None, cursor: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
         """

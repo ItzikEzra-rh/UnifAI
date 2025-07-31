@@ -59,10 +59,10 @@ def fetch_available_slack_channels():
     else:
         raise RuntimeError("Slack authentication failed")
 
-def get_available_slack_channels(channel_types: str, cursor: str = "", limit: int = 50):
+def get_available_slack_channels(channel_types: str, cursor: str = "", limit: int = 50, search_regex: str = None):
     connector = _get_configured_connector()
     if connector.authenticate():
-        return connector.get_available_slack_channels(types=channel_types, cursor=cursor, limit=limit)
+        return connector.get_available_slack_channels(types=channel_types, cursor=cursor, limit=limit, search_regex=search_regex)
     else:
         raise RuntimeError("Slack authentication failed")
 

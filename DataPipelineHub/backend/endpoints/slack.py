@@ -33,11 +33,12 @@ def fetch_slack_channels():
 @from_query({
     "types": fields.Str(required=True, data_key='types'),
     "cursor": fields.Str(required=False, data_key='cursor', load_default=""),
-    "limit": fields.Int(required=False, data_key='limit', load_default=50)
+    "limit": fields.Int(required=False, data_key='limit', load_default=50),
+    "search_regex": fields.Str(required=False, data_key='search_regex', load_default=None)
 })
-def available_slack_channels(types, cursor="", limit=50):
+def available_slack_channels(types, cursor="", limit=50, search_regex=None):
     try:
-        result = get_available_slack_channels(types, cursor=cursor, limit=limit)
+        result = get_available_slack_channels(types, cursor=cursor, limit=limit, search_regex=search_regex)
         return jsonify(result), 200
     except Exception as e:
         logger.error(f"Failed to get available Slack channels: {str(e)}")

@@ -16,6 +16,7 @@ export interface SystemStats {
 export interface PaginationParams {
   cursor?: string;
   limit?: number;
+  search_regex?: string;
 }
 
 export interface PaginatedChannelsResponse {
@@ -37,6 +38,10 @@ export async function fetchAvailableSlackChannels(
   
   if (pagination?.limit) {
     params.limit = pagination.limit;
+  }
+
+  if (pagination?.search_regex) {
+    params.search_regex = pagination.search_regex;
   }
 
   const { data } = await api.get<PaginatedChannelsResponse>(
