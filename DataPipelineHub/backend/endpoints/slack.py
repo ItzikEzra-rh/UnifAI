@@ -1,6 +1,5 @@
 from flask import Blueprint, jsonify, session
 from providers.slack.stats import SlackStatsProvider
-from providers.privacy_filter import get_filtered_sources_by_type
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from webargs import fields
 from shared.logger import logger
