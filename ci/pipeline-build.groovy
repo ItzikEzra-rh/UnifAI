@@ -38,6 +38,7 @@ def buildDockerImage(String component) {
     String logFile = "/tmp/${component.replace("/", "_")}_build.log"
 
     echo("---====  buildDockerImage ${component}  ====---")
+    component = component.replace("-", "")
     def componentLower = component.toLowerCase()
     def status = sh(script: "podman build -t ${componentLower}:${VERSION} -t ${componentLower}:latest -f ${component}/${dockerfile} . > ${logFile} 2>&1", returnStatus: true)
 
