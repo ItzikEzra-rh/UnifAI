@@ -34,6 +34,8 @@ interface GraphCanvasProps {
   onClearGraph: () => void;
   onSaveGraph: () => void;
   onBack?: () => void;
+  onAttachCondition?: (nodeId: string, condition: any) => void;
+  onRemoveCondition?: (nodeId: string, conditionRid: string) => void;
 }
 
 const GraphCanvas: React.FC<GraphCanvasProps> = ({
@@ -48,6 +50,8 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   onClearGraph,
   onSaveGraph,
   onBack,
+  onAttachCondition,
+  onRemoveCondition,
 }) => {
   const [showYamlDebug, setShowYamlDebug] = useState(false);
 
@@ -77,7 +81,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
               </pre>
             </div>
           )}
-          
+
           {/* YAML Debug Toggle Button */}
           <button
             onClick={() => setShowYamlDebug(!showYamlDebug)}

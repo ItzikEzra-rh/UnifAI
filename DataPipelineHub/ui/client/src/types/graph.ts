@@ -51,4 +51,7 @@ export interface CustomNodeData {
   };
   onDelete?: (id: string) => void;
   allBlocks?: BuildingBlock[];
+  referencedConditions?: BuildingBlock[];
+  onAttachCondition?: (nodeId: string, condition: BuildingBlock) => void;
+  onRemoveCondition?: (nodeId: string, conditionRid: string) => void;
 }
