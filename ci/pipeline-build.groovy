@@ -38,7 +38,7 @@ def buildDockerImage(String component) {
     String logFile = "/tmp/${component.replace("/", "_")}_build.log"
 
     echo("---====  buildDockerImage ${component}  ====---")
-    component = component.replace("-", "")
+    def component = component.replace("-", "")
     echo("component: ${component}")
     def componentLower = component.toLowerCase()
     echo("componentLower: ${componentLower}")
