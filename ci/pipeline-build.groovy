@@ -143,6 +143,7 @@ pipeline {
                             dir("${buildParams.DevRoot}/${params.BRANCH}/") {
                                 cleanWorkspace(component)
                                 if (buildDockerImage(component)) {
+                                    echo("inside stage")
                                     tagAndPushImageToRegistry(buildParams, component)
                                     cleanWorkspace(component)
                                 } else {
