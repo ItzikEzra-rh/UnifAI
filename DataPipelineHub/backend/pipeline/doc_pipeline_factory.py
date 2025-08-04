@@ -1,6 +1,6 @@
 from functools import cached_property
 from typing import Dict, List
-from pipeline.types import DocumentMetadata
+from shared.source_types import DocumentMetadata
 from pipeline.pipeline_factory import PipelineFactory
 from data_sources.docs.doc_config_manager import DocConfigManager
 from data_sources.docs.doc_connector import DocumentConnector

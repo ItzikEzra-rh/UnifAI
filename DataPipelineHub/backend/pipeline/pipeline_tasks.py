@@ -4,7 +4,10 @@ from config.app_config import AppConfig
 from global_utils.celery_app import CeleryApp
 from pipeline.pipeline_factory import PipelineFactory
 from pipeline.pipeline_executor import PipelineExecutor
-from pipeline.types import SlackMetadata, DocumentMetadata
+from shared.source_types import (
+    SlackMetadata, DocumentMetadata, SlackTypeData, DocumentTypeData,
+    RegisteredSource, RegistrationResponse, PipelineExecutionResult
+)
 from shared.logger import logger
 from config.constants import DataSource
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
@@ -60,15 +63,12 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                     upload_by=upload_by
                 )
                 
-                # Create type_data for Slack (source-specific data + optional user metadata)
-                type_data = {
-                    "is_private": instance.get("is_private", False),
-                }
-                
-                # Add user-defined metadata flattened into type_data if provided
-                # This will be stored in MongoDB as: type_data.{dateRange, communityPrivacy, includeThreads, etc.}
-                if user_metadata:
-                    type_data.update(user_metadata)
+                # Create type_data for Slack using Pydantic model
+                slack_type_data = SlackTypeData(
+                    is_private=instance.get("is_private", False),
+                    **user_metadata  # Unpack user metadata into the model
+                )
+                type_data = slack_type_data.model_dump()
                 
             elif source_type.upper() == DataSource.DOCUMENT.upper_name:
                 source_id = str(uuid.uuid4())
@@ -84,19 +84,16 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                     upload_by=upload_by
                 )
                 
-                # Create type_data for Document (source-specific data + optional user metadata)
-                type_data = {
-                    "file_type": source_name.rsplit(".", 1)[-1].lower(),
-                    "doc_path": doc_path,
-                    "page_count": 0,
-                    "full_text": "",
-                    "file_size": 0,
-                }
-                
-                # Add user-defined metadata flattened into type_data if provided
-                # This will be stored in MongoDB as: type_data.{dateRange, communityPrivacy, includeThreads, etc.}
-                if user_metadata:
-                    type_data.update(user_metadata)
+                # Create type_data for Document using Pydantic model
+                doc_type_data = DocumentTypeData(
+                    file_type=source_name.rsplit(".", 1)[-1].lower(),
+                    doc_path=doc_path,
+                    page_count=0,
+                    full_text="",
+                    file_size=0,
+                    **user_metadata  # Unpack user metadata into the model
+                )
+                type_data = doc_type_data.model_dump()
                 
             else:
                 logger.error(f"Unsupported source type: {source_type}")
@@ -113,12 +110,12 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
             )
             
             # Return only essential data needed for pipeline execution
-            registered_source = {
-                "pipeline_id": pipeline_id,
-                "metadata": metadata.__dict__, 
-                "source_type": source_type.upper(),
-                "upload_by": upload_by
-            }
+            registered_source = RegisteredSource(
+                pipeline_id=pipeline_id,
+                metadata=metadata.__dict__, 
+                source_type=source_type.upper(),
+                upload_by=upload_by
+            )
             
             registered_sources.append(registered_source)
             metadata_info = f" with user settings: {user_metadata}" if user_metadata else ""
@@ -126,10 +123,10 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
         
         logger.info(f"Successfully registered {len(registered_sources)} {source_type} sources with pipeline IDs")
         
-        return {
-            "status": "registration_complete",
-            "registered_sources": registered_sources
-        }
+        return RegistrationResponse(
+            status="registration_complete",
+            registered_sources=registered_sources
+        ).model_dump()
         
     except Exception as e:
         logger.error(f"Registration task failed for {source_type}: {str(e)}", exc_info=True)
@@ -142,7 +139,7 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
     
     Args:
         source_type: Type of source (SLACK, DOCUMENT, etc.)
-        source_data: Clean data with pipeline_id, metadata, source_type from registration
+        source_data: RegisteredSource data from registration task
     """
     try:
         logger.info(f"Starting pipeline execution for {source_type} source: {source_data}")
@@ -171,12 +168,12 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
         result = executor.run()
         
         logger.info(f"Pipeline execution completed successfully for {source_type}: {pipeline_id}")
-        return {
-            "pipeline_id": pipeline_id,
-            "source_type": source_type,
-            "status": "success",
-            "result": result
-        }
+        return PipelineExecutionResult(
+            pipeline_id=pipeline_id,
+            source_type=source_type,
+            status="success",
+            result=result
+        ).model_dump()
         
     except Exception as e:
         logger.error(f"Pipeline execution failed for {source_type}: {str(e)}", exc_info=True)

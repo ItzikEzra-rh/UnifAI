@@ -1,7 +1,7 @@
 from functools import cached_property
 from typing import Dict, List, Tuple
 from pipeline.pipeline_factory import PipelineFactory
-from pipeline.types import SlackMetadata
+from shared.source_types import SlackMetadata
 from data_sources.slack.slack_config_manager import SlackConfigManager
 from data_sources.slack.slack_connector import SlackConnector
 from data_sources.slack.slack_data_processor import SlackProcessor
@@ -23,7 +23,7 @@ class SlackPipelineFactory(PipelineFactory):
         config_manager.set_project_tokens(
             project_id="example-project",
             bot_token="xoxb-2253118358-8783454711008-dwnxf7cPBpeVLlLw8KMurohb",
-            user_token="xoxb-2253118358-8783454711008-dwnxf7cPBpeVLlLw8KMurohb"
+            user_token="xoxp-2253118358-5868044369985-8783454578416-0003b6aeff72208153bc56001e14a2dd"
         )
         config_manager.set_default_project("example-project")
         return SlackConnector(config_manager) 
