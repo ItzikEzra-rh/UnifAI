@@ -1,12 +1,8 @@
 properties([
     parameters([
-        // 🌐 Global Parameters
-        string(name: "PIPELINE_BRANCH", defaultValue: "main", description: "Git branch to take the pipeline from, for testing purpose"),
-        string(name: "BRANCH", defaultValue: "main", description: "Branch to deploy from."),
-        
-        // 🚀 Deployment Parameters
         choice(name: 'deploy_location', choices: ['STAGING', 'PRODUCTION'], description: 'Deployment environment'),
         choice(name: 'deploy_type', choices: ['FRESH_INSTALL', 'APPLICATION_UPGRADE'], description: 'Deployment type'),
+        string(name: "BRANCH", defaultValue: "main", description: "Branch to deploy from."),
         string(name: "VERSION", defaultValue: "", description: "DONT SET THIS VALUE!"),
         string(name: "DF_VERSION", defaultValue: "", description: "Image tag for dataflow"),
         string(name: "MA_VERSION", defaultValue: "", description: "Image tag for multi-agent"),
@@ -84,24 +80,6 @@ def updateValuesYaml(String filePath , String version) {
                 sectionData.resources.requests.cpu = 1
                 sectionData.resources.requests.memory = "2Gi"
             }
-            else if (params.deploy_location == 'PRODUCTION') {
-                if (sectionData.tolerations instanceof List) {
-                    echo "🎯 Setting tolerations for PRODUCTION in section: ${sectionName}"
-                    sectionData.tolerations = [
-                        [
-                            key: "nvidia.com/gpu",
-                            operator: "Exists",
-                            effect: "NoSchedule"
-                        ],
-                        [
-                            key: "tenant",
-                            operator: "Equal",
-                            value: "llmaas-a100",
-                            effect: "NoSchedule"
-                        ]
-                    ]
-                }
-            }
         }
     }
 
@@ -119,20 +97,11 @@ def deployModules(module){
 
 def deleteRunningApplication(){
     echo("Removing running UnifAI application")
-
-    def charts = ["dataflow", "multiagent", "shared-resources"]
-
-    charts.each { chart ->
-        sh("podman exec -t helmfile bash -c 'helmfile destroy -f ${chart}.yaml.gotmpl --deleteWait'")
-    }
-
+    sh("podman exec -t helmfile bash -c 'helmfile destroy -f dataflow.yaml.gotmpl --deleteWait'")
+    sh("podman exec -t helmfile bash -c 'helmfile destroy -f multiagent.yaml.gotmpl --deleteWait'")
+    sh("podman exec -t helmfile bash -c 'helmfile destroy -f shared-resources.yaml.gotmpl --deleteWait'")
     echo("Wait for resource deletion...")
-    sh("""
-        until ! kubectl get deployment,statefulset,svc | grep 'unifai\\|qdrant\\|mongo\\|rabbitmq'; do
-            echo 'Waiting for deployment deletion...'
-            sleep 5
-        done
-    """)
+    sh("until ! oc get deployment,statefulset,svc | grep 'unifai\\|qdrant\\|mongo\\|rabbitmq'; do echo 'Waiting for deployment deletion...'; sleep 5; done")
     echo("UnifAi application successfully deleted")
     sh("sleep 10")
 }
@@ -205,9 +174,9 @@ pipeline {
                                 ClusterAccessToken = 'tenantaccess-unifai-sa-pp'
                                 break
                             case 'PRODUCTION':
-                                ClusterAddress = 'https://api.stc-ai-e1-prod.rtc9.p1.openshiftapps.com:6443'
-                                NameSpace = "tag-ai--pipeline"
-                                ClusterAccessToken = 'tenantaccess-unifai-sa-prod'
+                                //ClusterAddress = 'https://api.stc-ai-e1-prod.rtc9.p1.openshiftapps.com:6443'
+                                //NameSpace = "tag-ai--pipeline"
+                                //ClusterAccessToken = 'tenantaccess-unifai-sa-prod'
                                 break
                             default:
                                 error("Invalid deployment location: ${params.deploy_location}")
@@ -245,7 +214,7 @@ pipeline {
                                         break
 
                                     case 'multiagent':
-                                        def version = params.MA_VERSION?.trim() ?: params.VERSION?.trim()
+                                        def version = params.DF_VERSION?.trim() ?: params.VERSION?.trim()
                                         updateChartVersions("${buildParams.DevRoot}/${params.BRANCH}/helm/multiagent/", version)
                                         updateValuesYaml("${buildParams.DevRoot}/${params.BRANCH}/helm/values/multiagent-resource-values.yaml", version)
                                         deployModules('multiagent')
