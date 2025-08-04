@@ -103,38 +103,3 @@ def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "pub
         filters={"upload_by": logged_in_user} if scope == "private" else {}
     )
     return search_results
-
-def _initialize_storage_manager():
-    """Initialize and return storage manager for operations."""
-    embedding_generator = _initialize_embedding_generator()
-    vector_storage = _initialize_vector_storage(embedding_generator.embedding_dim)
-    
-    mongo_storage = get_mongo_storage()
-    vector_store = vector_storage if isinstance(vector_storage, QdrantStorage) else None
-    if not vector_store:
-        raise RuntimeError("Expected QdrantStorage instance")
-    
-    return SourceDeletionManager(vector_store, mongo_storage)
-
-def delete_slack_channel(channel_id: str) -> dict:
-    """
-    Delete a slack channel from both MongoDB and Qdrant storage.
-    """
-    try:
-        storage_manager = _initialize_storage_manager()
-        result = storage_manager.delete_source(channel_id, DataSource.SLACK.upper_name)
-        
-        summary = result.get("summary", {})
-        return {
-            "success": result.get("success", False),
-            "result": {
-                "channel_id": result.get("source_id"),
-                "channel_name": result.get("source_name"),
-                "qdrant_embeddings_deleted": summary.get("embeddings_deleted", 0),
-                "mongo_source_deleted": summary.get("source_deleted", False),
-                "mongo_pipelines_deleted": summary.get("pipelines_deleted", 0)
-            }
-        }
-    except Exception as e:
-        logger.error(f"Failed to delete channel {channel_id}: {e}")
-        raise e
