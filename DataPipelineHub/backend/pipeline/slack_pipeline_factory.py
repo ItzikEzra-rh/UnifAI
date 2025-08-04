@@ -8,6 +8,7 @@ from data_sources.slack.slack_data_processor import SlackProcessor
 from data_sources.slack.slack_chunker_strategy import SlackChunkerStrategy
 from shared.config import ChunkerConfig
 from config.constants import DataSource
+from config.app_config import AppConfig
 
 class SlackPipelineFactory(PipelineFactory):
     SOURCE_TYPE = DataSource.SLACK.upper_name
@@ -17,13 +18,14 @@ class SlackPipelineFactory(PipelineFactory):
         metadata: SlackMetadata,
     ):
         super().__init__(metadata)
+        self.app_config = AppConfig()
 
     def _get_configured_connector(self) -> SlackConnector:
         config_manager = SlackConfigManager()
         config_manager.set_project_tokens(
             project_id="example-project",
-            bot_token="xoxb-2253118358-8783454711008-dwnxf7cPBpeVLlLw8KMurohb",
-            user_token="xoxp-2253118358-5868044369985-8783454578416-0003b6aeff72208153bc56001e14a2dd"
+            bot_token=self.app_config.default_slack_bot_token,
+            user_token=self.app_config.default_slack_user_token
         )
         config_manager.set_default_project("example-project")
         return SlackConnector(config_manager) 

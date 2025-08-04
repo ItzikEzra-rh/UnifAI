@@ -10,12 +10,15 @@ class AppConfig(SharedConfig):
     mongodb_port: str = "27017"
     mongodb_ip: str = "0.0.0.0"
 
-    hostname: str = "0.0.0.0"
-    hostname_local: str = "127.0.0.1"
+    hostname_local: str = "0.0.0.0"
     port: str = "13456"
     
     qdrant_ip: str = "0.0.0.0"
     qdrant_port: str = "6333"
+    
+    # Slack Configuration
+    default_slack_bot_token: str = "xoxb-2253118358-8783454711008-dwnxf7cPBpeVLlLw8KMurohb"
+    default_slack_user_token: str = "xoxp-2253118358-5868044369985-8783454578416-0003b6aeff72208153bc56001e14a2dd"
     
     # Keycloak Configuration
     keycloak_base_url: str = "https://auth.stage.redhat.com/auth"

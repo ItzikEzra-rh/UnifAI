@@ -2,13 +2,15 @@ from data_sources.slack.slack_config_manager import SlackConfigManager
 from data_sources.slack.slack_connector import SlackConnector
 from providers.data_sources import initialize_embedding_generator, initialize_vector_storage
 from config.constants import SourceType
+from config.app_config import AppConfig
 
 def _get_configured_connector() -> SlackConnector:
+    app_config = AppConfig()
     config_manager = SlackConfigManager()
     config_manager.set_project_tokens(
         project_id="example-project",
-        bot_token="xoxb-2253118358-8783454711008-dwnxf7cPBpeVLlLw8KMurohb",
-        user_token="xoxb-2253118358-8783454711008-dwnxf7cPBpeVLlLw8KMurohb"
+        bot_token=app_config.default_slack_bot_token,
+        user_token=app_config.default_slack_user_token
     )
     config_manager.set_default_project("example-project")
     return SlackConnector(config_manager)
