@@ -14,7 +14,7 @@ class ToolBuilder(CategoryBuilder):
     def _extra_kwargs(self, cfg, reg):
         if getattr(cfg, "provider", None):
             try:
-                provider = reg.get(category=ResourceCategory.PROVIDER, rid=cfg.provider.ref)
+                provider = reg.get_instance(category=ResourceCategory.PROVIDER, rid=cfg.provider.ref)
             except KeyError as e:
                 raise PluginConfigurationError(
                     f"Tool {cfg.name!r} references unknown provider {cfg.provider!r}",

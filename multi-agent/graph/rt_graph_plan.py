@@ -1,9 +1,11 @@
 from typing import List, Dict, Optional, Iterator, Any
 from session.session_registry import SessionRegistry
+from core.element_card_builder import ElementCardBuilder
+from core.models import ElementCard
 from core.enums import ResourceCategory
 from .graph_plan import GraphPlan
 from .models import Step, RTStep
-from .step_context import StepContext, BranchNodeInfo
+from .step_context import StepContext
 
 
 class RTGraphPlan:
@@ -17,6 +19,7 @@ class RTGraphPlan:
     def __init__(self, logical_plan: GraphPlan, session_registry: SessionRegistry):
         self._logical_plan = logical_plan
         self._session = session_registry
+        self._card_builder = ElementCardBuilder(session_registry)
         self._rt_steps: Dict[str, RTStep] = {}
         self._build_runtime_steps()
 
@@ -74,41 +77,53 @@ class RTGraphPlan:
     def _create_runtime_step(self, step: Step) -> RTStep:
         """Create a runtime step from a logical step."""
         # ------------------------------------------------------------------ #
-        # 1. Build rich StepContext (branches + target node info)
+        # 1. Build rich StepContext (adjacent nodes + branching logic)
         # ------------------------------------------------------------------ #
+        adjacent_nodes: Dict[str, ElementCard] = {}
+        
+        # Find direct connections: steps that have this step in their 'after' list
+        for other_step in self._logical_plan.steps:
+            if step.uid in other_step.after:
+                # This other_step executes directly after current step
+                card = self._card_builder.build_card(
+                    ResourceCategory.NODE, 
+                    other_step.rid,
+                    uid=other_step.uid, 
+                    metadata=other_step.meta
+                )
+                adjacent_nodes[other_step.uid] = card
+        
+        # Add conditional connections (branches from this step)
         branches: Dict[str, str] = step.branches or {}
-        branch_infos: Dict[str, BranchNodeInfo] = {}
-
         for outcome, next_uid in branches.items():
             tgt = self._logical_plan.get_step(next_uid)
-            if tgt is None:
-                continue
-            branch_infos[outcome] = BranchNodeInfo(
-                uid=tgt.uid,
-                type_key=tgt.type_key,
-                metadata=tgt.meta,
-                reads=tgt.total_reads(),
-                writes=tgt.writes,
-            )
+            if tgt is not None:
+                card = self._card_builder.build_card(
+                    ResourceCategory.NODE,
+                    tgt.rid,
+                    uid=tgt.uid,
+                    metadata=tgt.meta
+                )
+                adjacent_nodes[next_uid] = card
 
         step_context = StepContext(
             uid=step.uid,
             metadata=step.meta,
+            adjacent_nodes=adjacent_nodes,
             branches=branches,
-            branch_nodes=branch_infos,
         )
 
         # ------------------------------------------------------------------ #
         # 2. Bind node & condition callables + inject context
         # ------------------------------------------------------------------ #
 
-        node_func = self._session.get(ResourceCategory.NODE, step.rid)
+        node_func = self._session.get_instance(ResourceCategory.NODE, step.rid)
         if hasattr(node_func, "set_context"):
             node_func.set_context(step_context)
 
         condition_func = None
         if step.condition:
-            condition_func = self._session.get(ResourceCategory.CONDITION, step.condition.rid)
+            condition_func = self._session.get_instance(ResourceCategory.CONDITION, step.condition.rid)
             if hasattr(condition_func, "set_context"):
                 condition_func.set_context(step_context)
 

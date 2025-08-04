@@ -1,4 +1,4 @@
-from typing import ClassVar, Literal, Annotated
+from typing import ClassVar, Literal, Annotated, Optional
 from pydantic import RootModel, model_serializer, SerializerFunctionWrapHandler, SerializationInfo, Field
 from core.enums import ResourceCategory
 
@@ -14,8 +14,10 @@ class Ref(RootModel[str]):
       - .ref          the ID without prefix
       - .is_external_ref()
       - .is_inline()
+      - .get_category()  NEW: get resource category
     """
     REF_PREFIX: ClassVar[str] = "$ref:"
+    _category: ClassVar[Optional[ResourceCategory]] = None
 
     @property
     def ref(self) -> str:
@@ -29,6 +31,10 @@ class Ref(RootModel[str]):
 
     def is_inline(self) -> bool:
         return not self.is_external_ref()
+    
+    def get_category(self) -> Optional[ResourceCategory]:
+        """Get the resource category this ref points to."""
+        return getattr(self.__class__, '_category', None)
 
     @model_serializer(mode="wrap")
     def _serialize(self, handler: SerializerFunctionWrapHandler, info: SerializationInfo) -> str:
@@ -41,28 +47,80 @@ class Ref(RootModel[str]):
         return self.ref
 
 
-def _create_ref_type(category: ResourceCategory) -> type[Annotated[Ref, Field]]:
-    """
-    Factory function to create a typed reference for a specific resource category.
-
-    Args:
-        category: The resource category this reference points to
-
-    Returns:
-        An Annotated Ref type with category metadata
-    """
-    return Annotated[Ref, Field(
-        description=f"Reference to a {category.value} resource",
-        json_schema_extra={
-            "category": category.value,
-            "examples": [f"$ref:<rid> - resource reference from DB", f"<rid> - inline reference"]
+# Specific Ref classes with category information + JSON schema
+class LLMRef(Ref):
+    """Reference to an LLM resource."""
+    _category: ClassVar[ResourceCategory] = ResourceCategory.LLM
+    
+    model_config = {
+        "json_schema_extra": {
+            "category": ResourceCategory.LLM.value,
+            "description": "Reference to an LLM resource",
+            "examples": ["$ref:gpt-4-turbo", "openai-gpt4"]
         }
-    )]
+    }
 
 
-LLMRef = _create_ref_type(ResourceCategory.LLM)
-NodeRef = _create_ref_type(ResourceCategory.NODE)
-RetrieverRef = _create_ref_type(ResourceCategory.RETRIEVER)
-ToolRef = _create_ref_type(ResourceCategory.TOOL)
-ProviderRef = _create_ref_type(ResourceCategory.PROVIDER)
-ConditionRef = _create_ref_type(ResourceCategory.CONDITION)
+class NodeRef(Ref):
+    """Reference to a Node resource."""
+    _category: ClassVar[ResourceCategory] = ResourceCategory.NODE
+    
+    model_config = {
+        "json_schema_extra": {
+            "category": ResourceCategory.NODE.value,
+            "description": "Reference to a Node resource", 
+            "examples": ["$ref:custom-agent-1", "data-processor"]
+        }
+    }
+
+
+class RetrieverRef(Ref):
+    """Reference to a Retriever resource."""
+    _category: ClassVar[ResourceCategory] = ResourceCategory.RETRIEVER
+    
+    model_config = {
+        "json_schema_extra": {
+            "category": ResourceCategory.RETRIEVER.value,
+            "description": "Reference to a Retriever resource",
+            "examples": ["$ref:docs-retriever", "slack-search"]
+        }
+    }
+
+
+class ToolRef(Ref):
+    """Reference to a Tool resource."""
+    _category: ClassVar[ResourceCategory] = ResourceCategory.TOOL
+    
+    model_config = {
+        "json_schema_extra": {
+            "category": ResourceCategory.TOOL.value,
+            "description": "Reference to a Tool resource",
+            "examples": ["$ref:jira-tool", "slack-messenger"]
+        }
+    }
+
+
+class ProviderRef(Ref):
+    """Reference to a Provider resource."""
+    _category: ClassVar[ResourceCategory] = ResourceCategory.PROVIDER
+    
+    model_config = {
+        "json_schema_extra": {
+            "category": ResourceCategory.PROVIDER.value,
+            "description": "Reference to a Provider resource",
+            "examples": ["$ref:mcp-server", "api-provider"]
+        }
+    }
+
+
+class ConditionRef(Ref):
+    """Reference to a Condition resource."""
+    _category: ClassVar[ResourceCategory] = ResourceCategory.CONDITION
+    
+    model_config = {
+        "json_schema_extra": {
+            "category": ResourceCategory.CONDITION.value,
+            "description": "Reference to a Condition resource",
+            "examples": ["$ref:threshold-check", "route-condition"]
+        }
+    }

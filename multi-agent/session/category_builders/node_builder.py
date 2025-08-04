@@ -73,7 +73,7 @@ class NodeBuilder(CategoryBuilder):
             reg: SessionRegistry,
     ) -> Any:
         try:
-            return reg.get(category=category, rid=rid)
+            return reg.get_instance(category=category, rid=rid)
         except KeyError as exc:
             raise PluginConfigurationError(
                 f"Node config: {cfg!r}: unknown {attr_name!r} rid={rid!r} "

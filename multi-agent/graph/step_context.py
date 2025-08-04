@@ -1,23 +1,8 @@
 from dataclasses import dataclass, field
-from typing import Dict, Set
+from typing import Dict
 
 from blueprints.models.blueprint import StepMeta
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-#  Helper value object: information about a *target* node in a branch
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-@dataclass(frozen=True)
-class BranchNodeInfo:
-    """Read‐only snapshot describing a node pointed to by a branch."""
-
-    uid: str
-    type_key: str
-    metadata: StepMeta
-    reads: Set[str]
-    writes: Set[str]
+from core.models import ElementCard
 
 
 # @dataclass(frozen=True, slots=True) slots once we migrate to Python ≥3.10
@@ -29,8 +14,8 @@ class StepContext:
     uid: str
     metadata: StepMeta = field(default_factory=StepMeta)
 
-    # Branching structure (outcome → next uid)
+    # All adjacent nodes (both direct and conditional) - uid → ElementCard
+    adjacent_nodes: Dict[str, ElementCard] = field(default_factory=dict)
+    
+    # Branching logic (outcome → uid)
     branches: Dict[str, str] = field(default_factory=dict)
-
-    # Rich info about the *target* nodes (outcome → BranchNodeInfo)
-    branch_nodes: Dict[str, BranchNodeInfo] = field(default_factory=dict)
