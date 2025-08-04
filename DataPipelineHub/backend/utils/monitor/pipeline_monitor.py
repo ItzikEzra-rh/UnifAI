@@ -3,13 +3,13 @@ import re
 from typing import Dict, List, Optional, Any
 import logging
 from collections import deque
-from .pipeline_monitor_base import PipelineMonitorBase, SourceType, PipelineStatus
+from .pipeline_monitor_base import SourceType, PipelineStatus
 from .mongo_db_pipeline_repository import MongoDBPipelineRepository
 from .log_parser import LogParser
 from .slack.slack_log_parser import SlackLogParser
 from .docs.doc_log_parser import DocLogParser
 
-class PipelineMonitor(PipelineMonitorBase):
+class PipelineMonitor():
     """
     Concrete implementation of the pipeline monitoring system.
     
