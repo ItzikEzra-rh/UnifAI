@@ -1,3 +1,4 @@
+from pipeline.pipeline_tasks import daily_incremental_slack_task
 from flask import Blueprint, jsonify
 from webargs import fields
 from shared.logger import logger
@@ -31,4 +32,26 @@ def start_pipeline(data, type):
         
     except Exception as e:
         logger.error(f"Failed to start pipeline: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@pipelines_bp.route("/daily-slack", methods=["POST"])
+def trigger_daily_slack():
+    """
+    Manually trigger the daily incremental Slack processing task.
+    
+    This endpoint allows manual triggering of the daily webhook for testing purposes.
+    """
+    try:        
+        # Trigger the task asynchronously
+        task = daily_incremental_slack_task.delay()
+        
+        return jsonify({
+            "status": "success",
+            "message": "Daily Slack incremental processing started",
+            "task_id": task.id
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Failed to trigger daily Slack task: {str(e)}")
         return jsonify({"error": str(e)}), 500

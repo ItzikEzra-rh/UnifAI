@@ -241,8 +241,7 @@ def daily_incremental_slack_task(self) -> dict:
                     channel_id=channel_id,
                     channel_name=channel_name or channel_id,
                     is_private=channel.get("type_data", {}).get("is_private", False),
-                    upload_by=channel.get("upload_by", "system"),
-                    pipeline_id=channel.get("pipeline_id", f"slack_{channel_id}")
+                    upload_by=channel.get("upload_by", "system")
                 )
                 
                 # Create incremental pipeline factory
@@ -252,7 +251,7 @@ def daily_incremental_slack_task(self) -> dict:
                 last_timestamp = pipeline_factory.get_last_processed_timestamp()
                 
                 # Execute the pipeline
-                executor = PipelineExecutor(pipeline_factory)
+                executor = PipelineExecutor(pipeline_factory, channel.get("pipeline_id", f"slack_{channel_id}"))
                 result = executor.run()
                 
                 # Count results (this is approximate since we don't have exact counts from result)
