@@ -38,10 +38,8 @@ def buildDockerImage(String component) {
     String logFile = "/tmp/${component.replace("/", "_")}_build.log"
 
     echo("---====  buildDockerImage ${component}  ====---")
-    def component = component.replace("-", "")
-    echo("component: ${component}")
-    def componentLower = component.toLowerCase()
-    echo("componentLower: ${componentLower}")
+    
+    def componentLower = component.toLowerCase().replace("-", "")
     def status = sh(script: "podman build -t ${componentLower}:${VERSION} -t ${componentLower}:latest -f ${component}/${dockerfile} . > ${logFile} 2>&1", returnStatus: true)
 
     if (status != 0) {
@@ -143,7 +141,6 @@ pipeline {
                             dir("${buildParams.DevRoot}/${params.BRANCH}/") {
                                 cleanWorkspace(component)
                                 if (buildDockerImage(component)) {
-                                    echo("inside stage")
                                     tagAndPushImageToRegistry(buildParams, component)
                                     cleanWorkspace(component)
                                 } else {
