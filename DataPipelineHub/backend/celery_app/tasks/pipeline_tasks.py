@@ -14,6 +14,7 @@ from utils.storage.mongo.mongo_helpers import get_mongo_storage
 # Import the concrete factories to ensure they register themselves
 from pipeline.slack_pipeline_factory import SlackPipelineFactory
 from pipeline.doc_pipeline_factory import DocumentPipelineFactory
+
 app_config = AppConfig()
 upload_folder = app_config.get("upload_folder", "")
 
