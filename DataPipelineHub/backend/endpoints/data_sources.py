@@ -8,7 +8,7 @@ from providers.data_sources import (
 )
 data_sources_bp = Blueprint("data_sources", __name__)
 
-@data_sources_bp.route("/available.data.sources.get", methods=["GET"])
+@data_sources_bp.route("/data.sources.get", methods=["GET"])
 @from_query({"source_type": fields.Str(required=True)})
 def available_data_sources(source_type):
     try:
@@ -16,11 +16,12 @@ def available_data_sources(source_type):
         return jsonify({"sources": sources}), 200
 
     except Exception as e:
-        logger.error(f"Failed to get available docs list: {str(e)}")
+        logger.error(f"Failed to get available data sources list: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
 
-@data_sources_bp.route("/delete/<pipeline_id>", methods=["DELETE"])
+@data_sources_bp.route("/data.source.delete", methods=["DELETE"])
+@from_body({"pipeline_id": fields.Str(required=True)})
 def delete_source(pipeline_id):
     """
     Delete a data source by its pipeline ID.
