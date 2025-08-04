@@ -1,8 +1,29 @@
 from datetime import datetime
 from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
 
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
-from config.constants import DataSource
+from config.constants import DataSource, ActivePipelineStatus
+
+
+@dataclass
+class SlackAggregateStats:
+    totalChannels: int
+    activeChannels: int
+    totalMessages: int
+    apiCallsCount: int
+
+
+@dataclass
+class SlackStats:
+    id: int
+    totalChannels: int
+    activeChannels: int
+    totalMessages: int
+    apiCallsCount: int
+    lastSyncAt: Optional[str]
+    totalEmbeddings: int
+    updatedAt: str
 
 
 class SlackStatsProvider:
@@ -16,19 +37,11 @@ class SlackStatsProvider:
 
     def _aggregate_counts(
         self, sources: List[Dict[str, Any]]
-    ) -> Dict[str, int]:
+    ) -> SlackAggregateStats:
         """Compute channel counts, message totals, and api calls."""
         
         # Define active statuses that match the UI definition
-        active_statuses = [
-            "PENDING",
-            "ACTIVE",
-            "COLLECTING",
-            "PROCESSING",
-            "CHUNKING_AND_EMBEDDING",
-            "STORING",
-            "ORCHESTRATING"
-        ]
+        active_statuses = ActivePipelineStatus.values()
         
         total_channels  = len(sources)
         active_channels = sum(1 for s in sources if s.get("status") in active_statuses)
@@ -38,12 +51,12 @@ class SlackStatsProvider:
         api_calls_count = sum(
             s.get("pipeline_stats", {}).get("api_calls", 0) for s in sources if s.get("pipeline_stats")
         )
-        return {
-            "totalChannels":   total_channels,
-            "activeChannels":  active_channels,
-            "totalMessages":   total_messages,
-            "apiCallsCount":   api_calls_count,
-        }
+        return SlackAggregateStats(
+            totalChannels=total_channels,
+            activeChannels=active_channels,
+            totalMessages=total_messages,
+            apiCallsCount=api_calls_count,
+        )
 
     def _get_last_sync_at(self, sources: List[Dict[str, Any]]) -> Optional[str]:
         """Return the most recent last_sync_at timestamp (ISO string)."""
@@ -66,16 +79,19 @@ class SlackStatsProvider:
             # Return 0 if unable to connect to storage
             return 0
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> SlackStats:
         """Public method: gather everything into a single dict."""
         sources = self._fetch_slack_sources()
         counts = self._aggregate_counts(sources)
         last_sync = self._get_last_sync_at(sources)
         total_embeddings = self._get_total_embeddings()
-        return {
-            "id":               1,
-            **counts,
-            "lastSyncAt":       last_sync,
-            "totalEmbeddings":  total_embeddings,
-            "updatedAt":        datetime.utcnow().isoformat() + "Z",
-        }
+        return SlackStats(
+            id=1,
+            totalChannels=counts.totalChannels,
+            activeChannels=counts.activeChannels,
+            totalMessages=counts.totalMessages,
+            apiCallsCount=counts.apiCallsCount,
+            lastSyncAt=last_sync,
+            totalEmbeddings=total_embeddings,
+            updatedAt=datetime.utcnow().isoformat() + "Z",
+        )

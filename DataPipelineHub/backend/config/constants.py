@@ -36,6 +36,21 @@ class PipelineStatus(Enum):
     COLLECTING = "COLLECTING"
     PROCESSING = "PROCESSING"
     ORCHESTRATING = "ORCHESTRATING"
+
+class ActivePipelineStatus(Enum):
+    """Enum representing active pipeline statuses."""
+    PENDING = PipelineStatus.PENDING.value
+    ACTIVE = PipelineStatus.ACTIVE.value
+    COLLECTING = PipelineStatus.COLLECTING.value
+    PROCESSING = PipelineStatus.PROCESSING.value
+    CHUNKING_AND_EMBEDDING = PipelineStatus.CHUNKING_AND_EMBEDDING.value
+    STORING = PipelineStatus.STORING.value
+    ORCHESTRATING = PipelineStatus.ORCHESTRATING.value
+
+    @classmethod
+    def values(cls) -> list[str]:
+        """Get all active status values as a list."""
+        return [status.value for status in cls]
     
 class SourceType(Enum):
     """Enum representing different data source types."""
