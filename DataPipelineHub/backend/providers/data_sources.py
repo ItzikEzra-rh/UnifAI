@@ -1,49 +1,44 @@
-from config.constants import DataSource 
+from dataclasses import asdict
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from shared.logger import logger
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
 from utils.storage.vector_storage_factory import VectorStorageFactory
 from utils.storage.qdrant_storage import QdrantStorage
 from utils.storage.storage_deletion_manager import SourceDeletionManager
+from shared.config import EmbeddingConfig, StorageConfig
 
-def _initialize_embedding_generator():
+def initialize_embedding_generator():
     """
     Initialize and return the embedding generator.
     
     Returns:
         EmbeddingGenerator: Configured embedding generator instance
     """
-    embedding_config = {
-        "type": "sentence_transformer",
-        "model_name": "all-MiniLM-L6-v2",
-        "batch_size": 32
-    }
+    embedding_config = asdict(EmbeddingConfig())
     return EmbeddingGeneratorFactory.create(embedding_config)
 
-def _initialize_vector_storage(embedding_dim: int = 384):
+def initialize_vector_storage(embedding_dim: int = 384, source_type: str = "data_source"):
     """
     Initialize and return the vector storage.
     
     Args:
         embedding_dim: Dimension of the embeddings (default: 384)
+        source_type: Type of data source for collection naming (default: "data_source")
         
     Returns:
         VectorStorage: Configured and initialized vector storage instance
     """
-    storage_config = {
-        "type": "qdrant",
-        "collection_name": "slack_data",
-        "embedding_dim": embedding_dim
-    }
+    storage_config = asdict(StorageConfig(collection_name=f"{source_type.lower()}_data"))
+    storage_config["embedding_dim"] = embedding_dim
     vector_storage = VectorStorageFactory.create(storage_config)
     vector_storage.initialize()
     return vector_storage
 
 
-def _initialize_storage_manager():
+def initialize_storage_manager(source_type: str = "data_source"):
     """Initialize and return storage manager for operations."""
-    embedding_generator = _initialize_embedding_generator()
-    vector_storage = _initialize_vector_storage(embedding_generator.embedding_dim)
+    embedding_generator = initialize_embedding_generator()
+    vector_storage = initialize_vector_storage(embedding_generator.embedding_dim, source_type)
     
     mongo_storage = get_mongo_storage()
     vector_store = vector_storage if isinstance(vector_storage, QdrantStorage) else None
@@ -85,8 +80,20 @@ def delete_data_source(pipeline_id: str):
         dict: Result of deletion operation with success status and details
     """
     try:
-        storage_manager = _initialize_storage_manager()
-        result = storage_manager.delete_source(pipeline_id, DataSource.SLACK.upper_name)
+        # First get the source info to determine the actual source type and source_id
+        mongo_storage = get_mongo_storage()
+        source_info = mongo_storage.get_source_info_by_pipeline_id(pipeline_id)
+        actual_source_type = None
+        source_id = pipeline_id  # fallback to pipeline_id if source_id not found
+        
+        if source_info.get("success"):
+            actual_source_type = source_info.get("source_type")
+            source_id = source_info.get("source_id", pipeline_id)
+        
+        # Initialize storage manager with the correct source type
+        storage_manager = initialize_storage_manager(actual_source_type if actual_source_type else "data_source")
+        
+        result = storage_manager.delete_source(source_id, actual_source_type)
         
         summary = result.get("summary", {})
         return {

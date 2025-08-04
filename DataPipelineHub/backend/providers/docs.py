@@ -1,16 +1,14 @@
 import base64
 import os
+import tempfile
+from typing import List
 from config.app_config import AppConfig
 from utils.storage.mongo.mongo_storage import MongoStorage
-from global_utils.utils.util import get_mongo_url
-from utils.monitor.pipeline_monitor import MongoDBPipelineRepository
-import pymongo
-from flask import jsonify
-from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
-from utils.storage.vector_storage_factory import VectorStorageFactory
 from shared.logger import logger
 from global_utils.utils.util import get_mongo_url
 from werkzeug.utils import secure_filename
+from providers.data_sources import initialize_embedding_generator, initialize_vector_storage
+from config.constants import SourceType
 
 app_config = AppConfig()
 upload_folder = app_config.get("upload_folder", "")
@@ -32,21 +30,10 @@ def upload_docs(files):
 
 def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "public", logged_in_user: str = "default"):
     # Create embedding generator
-    embedding_config = {
-        "type": "sentence_transformer",
-        "model_name": "all-MiniLM-L6-v2",
-        "batch_size": 32
-    }
-    embedding_generator = EmbeddingGeneratorFactory.create(embedding_config)
+    embedding_generator = initialize_embedding_generator()
     
     # Create vector storage
-    storage_config = {
-        "type": "qdrant",
-        "collection_name": "pdf_doc_data",
-        "embedding_dim": embedding_generator.embedding_dim,
-    }
-    vector_storage = VectorStorageFactory.create(storage_config)
-    vector_storage.initialize()
+    vector_storage = initialize_vector_storage(embedding_generator.embedding_dim, SourceType.DOCUMENT)
     
     query_embedding = embedding_generator.generate_query_embedding(query)
     

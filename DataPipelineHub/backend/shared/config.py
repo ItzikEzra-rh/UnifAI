@@ -17,4 +17,4 @@ class EmbeddingConfig:
 @dataclass(frozen=True)
 class StorageConfig:
     type: str            = "qdrant"
-    collection_name: str = "data_source"
+    collection_name: str = "data_source" 

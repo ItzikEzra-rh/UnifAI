@@ -1,12 +1,7 @@
 from data_sources.slack.slack_config_manager import SlackConfigManager
 from data_sources.slack.slack_connector import SlackConnector
-from config.constants import DataSource
-from utils.storage.mongo.mongo_helpers import get_mongo_storage
-from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
-from utils.storage.vector_storage_factory import VectorStorageFactory
-from shared.logger import logger
-from utils.storage.qdrant_storage import QdrantStorage
-from utils.storage.storage_deletion_manager import SourceDeletionManager
+from providers.data_sources import initialize_embedding_generator, initialize_vector_storage
+from config.constants import SourceType
 
 def _get_configured_connector() -> SlackConnector:
     config_manager = SlackConfigManager()
@@ -17,40 +12,6 @@ def _get_configured_connector() -> SlackConnector:
     )
     config_manager.set_default_project("example-project")
     return SlackConnector(config_manager)
-
-def _initialize_embedding_generator():
-    """
-    Initialize and return the embedding generator.
-    
-    Returns:
-        EmbeddingGenerator: Configured embedding generator instance
-    """
-    embedding_config = {
-        "type": "sentence_transformer",
-        "model_name": "all-MiniLM-L6-v2",
-        "batch_size": 32
-    }
-    return EmbeddingGeneratorFactory.create(embedding_config)
-
-def _initialize_vector_storage(embedding_dim: int = 384):
-    """
-    Initialize and return the vector storage.
-    
-    Args:
-        embedding_dim: Dimension of the embeddings (default: 384)
-        
-    Returns:
-        VectorStorage: Configured and initialized vector storage instance
-    """
-    storage_config = {
-        "type": "qdrant",
-        "collection_name": "slack_data",
-        "embedding_dim": embedding_dim
-        # URL and port will come from app_config via VectorStorageFactory
-    }
-    vector_storage = VectorStorageFactory.create(storage_config)
-    vector_storage.initialize()
-    return vector_storage
 
 def fetch_available_slack_channels():
     connector = _get_configured_connector()
@@ -88,12 +49,12 @@ def get_slack_user_info(user_id: str = None, include_locale: bool = False):
         raise RuntimeError("Slack authentication failed")
 
 def count_channel_chunks(channel_name: str) -> int:
-    vector_storage = _initialize_vector_storage()
+    vector_storage = initialize_vector_storage(source_type=SourceType.SLACK)
     return vector_storage.count(filters={"metadata.channel_name": channel_name})
 
 def get_best_match_results(query: str, top_k_results: int = 5, scope: str = "public", logged_in_user: str = "default"):
-    embedding_generator = _initialize_embedding_generator()
-    vector_storage = _initialize_vector_storage(embedding_generator.embedding_dim)
+    embedding_generator = initialize_embedding_generator()
+    vector_storage = initialize_vector_storage(embedding_generator.embedding_dim, SourceType.SLACK)
     
     query_embedding = embedding_generator.generate_query_embedding(query)
     

@@ -6,7 +6,7 @@ from data_sources.slack.slack_config_manager import SlackConfigManager
 from data_sources.slack.slack_connector import SlackConnector
 from data_sources.slack.slack_data_processor import SlackProcessor
 from data_sources.slack.slack_chunker_strategy import SlackChunkerStrategy
-from pipeline.config import ChunkerConfig
+from shared.config import ChunkerConfig
 from config.constants import DataSource
 
 class SlackPipelineFactory(PipelineFactory):
