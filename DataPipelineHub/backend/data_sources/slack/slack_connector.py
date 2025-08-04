@@ -8,6 +8,7 @@ from utils.data_connector import DataConnector
 from .slack_thread_retriever import SlackThreadRetriever
 from .slack_thread_retriever_worker import ThreadRetrieverWorker
 from global_utils.utils.util import get_mongo_url
+from config.constants import Database, Collection
 
 class SlackConnector(DataConnector):
     """
@@ -195,8 +196,8 @@ class SlackConnector(DataConnector):
         
         # Get MongoDB connection
         mongo_client = pymongo.MongoClient(get_mongo_url())
-        db = mongo_client["data_sources"]
-        collection = db["slack_channels"]
+        db = mongo_client[Database.DATA_SOURCES.value]
+        collection = db[Collection.SLACK_CHANNELS.value]
         
         # Clear existing channels for this project to avoid duplicates
         collection.delete_many({"project_id": self._project_id})
@@ -244,7 +245,7 @@ class SlackConnector(DataConnector):
         logger.info(f"Retrieved and cached {len(channels)} Slack channels from {api_call_count} API calls")
         return channels
     
-    def get_available_slack_channels(self, types: Optional[str] = None, cursor: Optional[str] = None, limit: int = 50, search_regex: Optional[str] = None) -> Dict[str, Any]:
+    def get_available_slack_channels_from_cache(self, types: Optional[str] = None, cursor: Optional[str] = None, limit: int = 50, search_regex: Optional[str] = None) -> Dict[str, Any]:
         """
         Get available Slack channels from cache (MongoDB) with pagination support.
         This function reads from the cached channels without making API calls.
@@ -261,8 +262,8 @@ class SlackConnector(DataConnector):
         try:
             # Get MongoDB connection
             mongo_client = pymongo.MongoClient(get_mongo_url())
-            db = mongo_client["data_sources"]
-            collection = db["slack_channels"]
+            db = mongo_client[Database.DATA_SOURCES.value]
+            collection = db[Collection.SLACK_CHANNELS.value]
             
             # Build query filter
             query_filter: Dict[str, Any] = {"project_id": self._project_id}

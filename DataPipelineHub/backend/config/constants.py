@@ -2,13 +2,14 @@ from enum import Enum
 
 class Database(Enum):
     """Database names"""
-    DATA = "data_sources"
+    DATA_SOURCES = "data_sources"
     PIPELINE = "pipeline_monitoring"
 
 class Collection(Enum):
     """Collection names"""
     SOURCES = "sources"
     CHUNKS = "chunks"
+    SLACK_CHANNELS = "slack_channels"
     PIPELINES = "pipelines"
 
 class DataSource(Enum):

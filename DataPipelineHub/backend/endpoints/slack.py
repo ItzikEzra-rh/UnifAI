@@ -13,10 +13,6 @@ from providers.slack.slack import (
     fetch_available_slack_channels,
     get_slack_user_info,
 )
-from providers.data_sources import (
-    get_available_data_sources,
-    delete_data_source,
-)
 
 slack_bp = Blueprint("slack", __name__)
 
