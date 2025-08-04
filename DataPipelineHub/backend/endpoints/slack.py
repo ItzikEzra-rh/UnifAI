@@ -11,6 +11,7 @@ from providers.slack.slack import (
     get_available_slack_channels,
     get_best_match_results,
     fetch_available_slack_channels,
+    get_slack_user_info,
 )
 from providers.data_sources import (
     get_available_data_sources,
@@ -69,6 +70,30 @@ def slack_channel_chunks(channel_name):
     except Exception as e:
         logger.error(f"Counting chunks failed: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+
+@slack_bp.route("/user.info", methods=["GET"])
+@from_query({
+    "user_id": fields.Str(required=False, data_key='user_id', load_default=None),
+    "include_locale": fields.Bool(required=False, data_key='include_locale', load_default=False)
+})
+def slack_user_info(user_id, include_locale):
+    """
+    Get user information from Slack using the users.info API.
+    
+    Args:
+        user_id: Optional user ID to get info for. If not provided, gets info for current authenticated user.
+        include_locale: Whether to include locale information in the response.
+    
+    Returns:
+        JSON response containing user information from Slack
+    """
+    try:
+        user_info = get_slack_user_info(user_id=user_id, include_locale=include_locale)
+        return jsonify({"status": "success", "user_info": user_info}), 200
+    except Exception as e:
+        logger.error(f"Failed to get Slack user info: {str(e)}")
+        return jsonify({"error": str(e)}), 500
     
     
 @slack_bp.route("/query.match", methods=["GET"])
@@ -84,31 +109,4 @@ def best_match_results(query, top_k_results, scope, logged_in_user):
         return jsonify({"search_results": search_results}), 200
     except Exception as e:
         logger.error(f"Failed to find best match for user query: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-
-@slack_bp.route('/embed.channels', methods=['GET'])
-def get_embed_channels():
-    """
-    Returns all stored channels.
-    """
-    channels = get_available_data_sources(source_type=DataSource.SLACK.upper_name)
-    return jsonify(channels), 200
-
-@slack_bp.route("/stats", methods=["GET"])
-def system_stats():
-    provider = SlackStatsProvider()
-    stats    = provider.get_stats()
-    return jsonify(stats), 200
-
-@slack_bp.route("/embed.channels/<channel_id>", methods=["DELETE"])
-def delete_embed_channel(channel_id):
-    """
-    Delete a slack channel from both MongoDB and Qdrant storage.
-    """
-    try:
-        result = delete_data_source(channel_id)
-        return jsonify({"status": "success", "message": f"Channel {channel_id} deleted successfully", "result": result}), 200
-    except Exception as e:
-        logger.error(f"Failed to delete Slack channel {channel_id}: {str(e)}")
         return jsonify({"error": str(e)}), 500

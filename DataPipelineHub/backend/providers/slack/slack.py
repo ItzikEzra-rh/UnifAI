@@ -66,6 +66,27 @@ def get_available_slack_channels(channel_types: str, cursor: str = "", limit: in
     else:
         raise RuntimeError("Slack authentication failed")
 
+def get_slack_user_info(user_id: str = None, include_locale: bool = False):
+    """
+    Get user information from Slack using the users.info API.
+    
+    Args:
+        user_id: User ID to get info for. If None, gets info for the current authenticated user.
+        include_locale: Whether to include locale information in the response.
+        
+    Returns:
+        Dictionary containing user information from Slack API
+        
+    Raises:
+        RuntimeError: If Slack authentication fails
+        Exception: If the API request fails
+    """
+    connector = _get_configured_connector()
+    if connector.authenticate():
+        return connector.get_user_info(user_id=user_id, include_locale=include_locale)
+    else:
+        raise RuntimeError("Slack authentication failed")
+
 def count_channel_chunks(channel_name: str) -> int:
     vector_storage = _initialize_vector_storage()
     return vector_storage.count(filters={"metadata.channel_name": channel_name})
