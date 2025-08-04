@@ -28,6 +28,7 @@ class SlackConnector(DataConnector):
         self.base_url = "https://slack.com/api/"
         self._available_apis = [
             "users.profile.get",
+            "users.info",
             "conversations.history",
             "conversations.list",
             "conversations.replies",
@@ -489,3 +490,45 @@ class SlackConnector(DataConnector):
         logger.info(f"Retrieved a total of {len(thread_messages)} threads from channel {channel_id}")
 
         return all_messages, thread_messages
+    
+    def get_user_info(self, user_id: Optional[str] = None, include_locale: bool = False) -> Dict[str, Any]:
+        """
+        Get information about a user using Slack's users.info API.
+        
+        Args:
+            user_id: User ID to get info for. If None, gets info for the current authenticated user.
+            include_locale: Whether to include locale information in the response.
+            
+        Returns:
+            Dictionary containing user information
+            
+        Raises:
+            Exception: If the API request fails
+        """
+        params: Dict[str, Any] = {}
+        
+        # If no user_id provided, get the current user from auth.test
+        if not user_id:
+            auth_response = self._make_api_request("auth.test", use_user_token=True)
+            if auth_response.get('ok'):
+                user_id = auth_response.get('user_id')
+            else:
+                raise Exception("Failed to get current user ID from auth.test")
+        
+        params['user'] = user_id
+            
+        if include_locale:
+            params['include_locale'] = 'true'
+        
+        logger.info(f"Fetching user info for user_id: {user_id or 'current user'}")
+        response = self._make_api_request("users.info", params, use_user_token=True)
+        
+        if not response.get('ok'):
+            error_msg = f"Failed to get user info: {response.get('error')}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+        
+        user_info = response.get('user', {})
+        logger.info(f"Successfully retrieved user info for user: {user_info.get('name', 'Unknown')}")
+        
+        return response

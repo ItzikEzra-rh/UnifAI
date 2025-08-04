@@ -8,4 +8,4 @@ celery = CeleryApp(broker_user_name=config.broker_user_name, broker_password=con
 # TODO: In order to start celery worker, below line should be triggered from backend/
 # For separate workers by source type:
 # celery -A celery_app.init worker -c 1 --loglevel=info -Q slack_queue -n slack_worker  
-# celery -A celery_app.init worker -c 1 --loglevel=info -Q document_queue -n 
+# celery -A celery_app.init worker -c 1 --loglevel=info -Q document_queue -n document_worker

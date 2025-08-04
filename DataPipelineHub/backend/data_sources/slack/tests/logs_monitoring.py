@@ -13,7 +13,7 @@ def monitor_logs_demo():
     to automatically track pipeline progress from log files.
     """
     # Initialize MongoDB client
-    mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
+    mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
     
     # Create pipeline monitor
     monitor = PipelineMonitor(mongo_client)
