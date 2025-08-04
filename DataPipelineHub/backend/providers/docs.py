@@ -9,12 +9,12 @@ from global_utils.utils.util import get_mongo_url
 from werkzeug.utils import secure_filename
 from providers.data_sources import initialize_embedding_generator, initialize_vector_storage
 from config.constants import SourceType
+import pymongo
 
 app_config = AppConfig()
 upload_folder = app_config.get("upload_folder", "")
 
 mongo_client = pymongo.MongoClient(get_mongo_url())
-pipeline_repo = MongoDBPipelineRepository(mongo_client)
 data_source_repo = MongoStorage(get_mongo_url())
 
 def upload_docs(files):

@@ -2,6 +2,7 @@ from typing import Any, Dict, List, Optional
 from utils.storage.mongo.base import MongoConnection
 from utils.storage.mongo.pipelines_repository import PipelinesRepository
 from utils.storage.mongo.sources_repository import SourcesRepository
+from utils.storage.mongo.slack_channels_repository import SlackChannelsRepository
 from utils.storage.mongo.utils import make_json_safe
 from pymongo import UpdateOne
 from config.constants import Database, Collection as CollectionName
@@ -13,10 +14,13 @@ class MongoStorage:
         conn = MongoConnection(mongo_uri)
         
         self.sources = SourcesRepository(
-            conn.get_collection(Database.DATA.value, CollectionName.SOURCES.value, [("source_id", True)])
+            conn.get_collection(Database.DATA_SOURCES.value, CollectionName.SOURCES.value, [("source_id", True)])
         )
         self.pipelines = PipelinesRepository(
             conn.get_collection(Database.PIPELINE.value, CollectionName.PIPELINES.value, [("pipeline_id", True)])
+        )
+        self.slack_channels = SlackChannelsRepository(
+            conn.get_collection(Database.DATA_SOURCES.value, CollectionName.SLACK_CHANNELS.value, [("project_id", False), ("channel_id", False)])
         )
         
         self._conn = conn
@@ -32,6 +36,10 @@ class MongoStorage:
     def get_source_info(self, source_id: str) -> Dict[str, Any]:
         """Get source info (delegates to sources repository)."""
         return self.sources.get_info(source_id)
+
+    def get_source_info_by_pipeline_id(self, pipeline_id: str) -> Dict[str, Any]:
+        """Get source info by pipeline_id (delegates to sources repository)."""
+        return self.sources.get_info_by_pipeline_id(pipeline_id)
 
     def delete_source(self, source_id: str) -> Dict[str, Any]:
         """Delete source (delegates to sources repository)."""

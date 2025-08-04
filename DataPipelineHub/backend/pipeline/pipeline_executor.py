@@ -3,7 +3,6 @@ from pipeline.pipeline_repository import PipelineRepository
 from config.constants import PipelineStatus
 from pipeline.decorators import pipeline_step
 from pipeline.pipeline_factory import PipelineFactory
-from config.constants import PipelineStatus
 
 class PipelineExecutor:
     """

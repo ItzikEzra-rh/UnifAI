@@ -1,14 +1,12 @@
 import requests
 import time
-import pymongo
 from typing import Dict, List, Optional, Any, Tuple
 from shared.logger import logger
 from .slack_config_manager import SlackConfigManager
 from utils.data_connector import DataConnector
 from .slack_thread_retriever import SlackThreadRetriever
 from .slack_thread_retriever_worker import ThreadRetrieverWorker
-from global_utils.utils.util import get_mongo_url
-from config.constants import Database, Collection
+from utils.storage.mongo.mongo_helpers import get_mongo_storage
 
 class SlackConnector(DataConnector):
     """
@@ -40,6 +38,9 @@ class SlackConnector(DataConnector):
         self._project_id = project_id or config_manager.get_default_project()
         if not self._project_id:
             raise ValueError("No project ID provided and no default project set")
+        
+        # Initialize MongoDB storage
+        self._mongo_storage = get_mongo_storage()
         
         # Get tokens for the project
         try:
@@ -194,13 +195,8 @@ class SlackConnector(DataConnector):
         cursor = None
         api_call_count = 0
         
-        # Get MongoDB connection
-        mongo_client = pymongo.MongoClient(get_mongo_url())
-        db = mongo_client[Database.DATA_SOURCES.value]
-        collection = db[Collection.SLACK_CHANNELS.value]
-        
         # Clear existing channels for this project to avoid duplicates
-        collection.delete_many({"project_id": self._project_id})
+        self._mongo_storage.slack_channels.clear_project_channels(self._project_id)
         
         # Fetch all channels (both public and private) until there's no next_cursor
         while True:
@@ -218,21 +214,12 @@ class SlackConnector(DataConnector):
             # Process channels from current page
             batch_channels = []
             for channel in response.get('channels', []):
-                channel_data = {
-                    'channel_id': channel.get('id'),
-                    'channel_name': channel.get('name'),
-                    'type': 'Private' if channel.get('is_private', False) else 'Public',
-                    'is_private': channel.get('is_private', False),
-                    'project_id': self._project_id,
-                    'last_updated': time.time()
-                }
+                channel_data = self._mongo_storage.slack_channels.create_channel_document(channel, self._project_id)
                 channels.append(channel_data)
                 batch_channels.append(channel_data)
             
-            # Insert batch into MongoDB
-            if batch_channels:
-                collection.insert_many(batch_channels)
-                logger.info(f"Cached {len(batch_channels)} channels to MongoDB")
+            # Cache batch to MongoDB
+            self._mongo_storage.slack_channels.cache_channels(batch_channels)
             
             # Check if there are more pages
             response_metadata = response.get('response_metadata', {})
@@ -260,74 +247,19 @@ class SlackConnector(DataConnector):
             Dictionary containing paginated channels data with pagination metadata
         """
         try:
-            # Get MongoDB connection
-            mongo_client = pymongo.MongoClient(get_mongo_url())
-            db = mongo_client[Database.DATA_SOURCES.value]
-            collection = db[Collection.SLACK_CHANNELS.value]
-            
-            # Build query filter
-            query_filter: Dict[str, Any] = {"project_id": self._project_id}
-            
-            if types:
-                # Convert types to cache types for querying
-                channel_types = [t.strip() for t in types.split(',')]
-                cache_types = []
-                for channel_type in channel_types:
-                    if channel_type == "private_channel":
-                        cache_types.append("Private")
-                    elif channel_type == "public_channel":
-                        cache_types.append("Public")
-                    else:
-                        cache_types.append(channel_type)  # fallback
-                query_filter['type'] = {"$in": cache_types}
-            
-            # Add regex search filter if provided
-            if search_regex:
-                try:
-                    # Use MongoDB regex with case-insensitive flag
-                    query_filter['channel_name'] = {"$regex": search_regex, "$options": "i"}
-                except Exception as regex_error:
-                    logger.warning(f"Invalid regex pattern '{search_regex}': {str(regex_error)}. Ignoring regex filter.")
-            
-            # Get total count for pagination metadata
-            total_count = collection.count_documents(query_filter)
-            
             # Check if cache is empty - if so, fall back to API
-            if total_count == 0 and not search_regex:
+            if not self._mongo_storage.slack_channels.has_cached_channels(self._project_id) and not search_regex:
                 logger.warning(f"No cached channels found for project {self._project_id}. Falling back to API call.")
                 return self._fallback_with_pagination(types, cursor, limit)
             
-            # Calculate skip value from cursor
-            skip = 0
-            if cursor:
-                try:
-                    skip = int(cursor)
-                except ValueError:
-                    logger.warning(f"Invalid cursor value: {cursor}, using 0")
-                    skip = 0
-            
-            # Fetch channels from cache with pagination
-            cached_channels = list(collection.find(query_filter, {'_id': 0})
-                                 .skip(skip)
-                                 .limit(limit))
-            
-            # Calculate next cursor and hasMore
-            next_cursor = None
-            has_more = False
-            
-            if len(cached_channels) == limit and (skip + limit) < total_count:
-                next_cursor = str(skip + limit)
-                has_more = True
-            
-            search_info = f" with regex '{search_regex}'" if search_regex else ""
-            logger.info(f"Retrieved {len(cached_channels)} Slack channels from cache{search_info} (page {skip}-{skip+limit} of {total_count})")
-            
-            return {
-                'channels': cached_channels,
-                'nextCursor': next_cursor,
-                'hasMore': has_more,
-                'total': total_count,
-            }
+            # Get channels from repository with pagination
+            return self._mongo_storage.slack_channels.get_channels_with_pagination(
+                project_id=self._project_id,
+                types=types,
+                cursor=cursor,
+                limit=limit,
+                search_regex=search_regex
+            )
             
         except Exception as e:
             logger.error(f"Error retrieving channels from cache: {str(e)}")
@@ -411,14 +343,8 @@ class SlackConnector(DataConnector):
             
             # Process channels from current page
             for channel in response.get('channels', []):
-                channels.append({
-                    'channel_id': channel.get('id'),
-                    'channel_name': channel.get('name'),
-                    'type': 'Private' if channel.get('is_private', False) else 'Public',
-                    'is_private': channel.get('is_private', False),
-                    'project_id': self._project_id,
-                    'last_updated': time.time()
-                })
+                channel_data = self._mongo_storage.slack_channels.create_channel_document(channel, self._project_id)
+                channels.append(channel_data)
             
             # Check if there are more pages
             response_metadata = response.get('response_metadata', {})

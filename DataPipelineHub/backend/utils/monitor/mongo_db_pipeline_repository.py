@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Dict, List, Optional
-from .pipeline_monitor_base import PipelineStatus, SourceType
+from config.constants import PipelineStatus, SourceType
 
 
 class MongoDBPipelineRepository:
