@@ -89,3 +89,8 @@ class ResourcesService:
     def get_dict(self, rid: str) -> dict:
         """Raw JSON for UI."""
         return self._store.raw_config(rid)
+
+    @staticmethod
+    def get_resource_schema() -> dict:
+        """Get the JSON schema for ResourceDoc model."""
+        return ResourceDoc.model_json_schema()

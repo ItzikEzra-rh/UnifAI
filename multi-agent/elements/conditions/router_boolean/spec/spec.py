@@ -16,4 +16,5 @@ class RouterBooleanConditionElementSpec(BaseElementSpec):
     config_schema = RouterBooleanConditionConfig
     factory_cls = RouterBooleanConditionFactory
     tags = META.tags
+    reads = RouterBooleanCondition.READS
     output_schema = RouterBooleanCondition.get_output_schema()

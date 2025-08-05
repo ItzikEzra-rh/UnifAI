@@ -121,3 +121,14 @@ def delete_resource(resource_id):
         return jsonify({"error": f"Resource not found: {e}"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@resources_bp.route("/resource.schema", methods=["GET"])
+def get_resource_schema():
+    """Get the JSON schema for ResourceDoc model."""
+    svc = current_app.container.resources_service
+    try:
+        schema = svc.get_resource_schema()
+        return jsonify(schema), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

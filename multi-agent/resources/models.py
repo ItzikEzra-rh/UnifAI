@@ -11,7 +11,7 @@ class ResourceDoc(BaseModel):
     – cfg_dict is **plain json**; we do NOT store the Pydantic instance.
     """
     rid: str = Field(default_factory=lambda: uuid4().hex)  # public key
-    user_id: str  # tenant
+    user_id: str = Field(default="admin")  # tenant
     category: ResourceCategory
     type: str  # e.g. "openai"
     name: str  # user label (unique per user+cat+type)
