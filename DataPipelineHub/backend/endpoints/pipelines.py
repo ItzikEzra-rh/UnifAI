@@ -1,4 +1,4 @@
-from pipeline.pipeline_tasks import daily_incremental_slack_task
+from celery_app.tasks.pipeline_tasks import daily_incremental_slack_task
 from flask import Blueprint, jsonify
 from webargs import fields
 from shared.logger import logger

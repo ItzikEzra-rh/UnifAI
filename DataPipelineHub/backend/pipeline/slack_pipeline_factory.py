@@ -79,41 +79,55 @@ class SlackPipelineFactory(PipelineFactory):
     
     def _get_date_range_oldest_timestamp(self) -> Optional[str]:
         """
-        Get the oldest timestamp based on user's date range selection.
+        Get the oldest timestamp from pre-stored start_timestamp datetime in type_data.
         
         Returns:
-            Slack timestamp string or None if no date range specified
+            Slack timestamp string or None if no timestamp specified
         """
         try:
-            # Get source info from MongoDB to access user settings
+            # Get source info from MongoDB to access stored datetime objects
             mongo_storage = get_mongo_storage()
             source_response = mongo_storage.get_source_info(self.metadata.channel_id)
             
             if not source_response.get("success") or not source_response.get("source_info"):
+                logger.warning(f"Could not get source info for channel {self.metadata.channel_id}")
                 return None
             
             source_info = source_response["source_info"]
             type_data = source_info.get("type_data", {})
+            
+            # Use stored start_timestamp datetime object
+            start_timestamp_obj = type_data.get("start_timestamp")
+            
+            if start_timestamp_obj:
+                # Convert datetime object to Slack timestamp format
+                if isinstance(start_timestamp_obj, str):
+                    # If it's stored as ISO string, parse it first
+                    start_dt = datetime.fromisoformat(start_timestamp_obj.replace('Z', '+00:00'))
+                else:
+                    # If it's already a datetime object
+                    start_dt = start_timestamp_obj
+                
+                timestamp_str = str(start_dt.timestamp())
+                logger.info(f"Using stored start timestamp: {start_dt.strftime('%Y-%m-%d %H:%M:%S')} → {timestamp_str}")
+                return timestamp_str
+            
+            # Fallback: if no stored timestamp, try old date range logic
             date_range = type_data.get("dateRange")
+            if date_range:
+                logger.warning(f"No stored timestamp found, falling back to parsing dateRange: {date_range}")
+                days_back = self._parse_date_range(date_range)
+                if days_back is not None:
+                    oldest_date = datetime.now() - timedelta(days=days_back)
+                    oldest_timestamp = str(oldest_date.timestamp())
+                    logger.info(f"Fallback calculation - Date range '{date_range}' converted to timestamp: {oldest_timestamp}")
+                    return oldest_timestamp
             
-            if not date_range:
-                return None
-            
-            # Parse date range and convert to timestamp
-            days_back = self._parse_date_range(date_range)
-            if days_back is None:
-                return None
-            
-            # Calculate timestamp for X days ago
-            oldest_date = datetime.now() - timedelta(days=days_back)
-            # Convert to Slack timestamp format (seconds since epoch with microseconds)
-            oldest_timestamp = str(oldest_date.timestamp())
-            
-            logger.info(f"Date range '{date_range}' converted to timestamp: {oldest_timestamp} ({oldest_date})")
-            return oldest_timestamp
+            logger.info(f"No date range specified for channel {self.metadata.channel_id}, will fetch all messages")
+            return None
             
         except Exception as e:
-            logger.warning(f"Failed to get date range for channel {self.metadata.channel_id}: {str(e)}")
+            logger.warning(f"Failed to get timestamp for channel {self.metadata.channel_id}: {str(e)}")
             return None
     
     def _parse_date_range(self, date_range: str) -> Optional[int]:
