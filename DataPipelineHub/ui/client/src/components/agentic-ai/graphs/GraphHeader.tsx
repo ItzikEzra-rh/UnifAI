@@ -7,9 +7,15 @@ interface GraphHeaderProps {
   onClearGraph: () => void;
   onSaveGraph: () => void;
   onBack?: () => void;
+  isGraphValid?: boolean;
 }
 
-const GraphHeader: React.FC<GraphHeaderProps> = ({ onClearGraph, onSaveGraph, onBack }) => {
+const GraphHeader: React.FC<GraphHeaderProps> = ({
+  onClearGraph,
+  onSaveGraph,
+  onBack,
+  isGraphValid = false,
+}) => {
   return (
     <CardHeader className="py-3 px-6 border-b border-gray-800">
       <div className="flex justify-between items-center">
@@ -38,18 +44,17 @@ const GraphHeader: React.FC<GraphHeaderProps> = ({ onClearGraph, onSaveGraph, on
             Clear
           </Button>
           <Button
-            variant="outline"
-            size="sm"
-            onClick={onSaveGraph}
-            className="bg-primary hover:bg-opacity-80 flex items-center gap-2"
-          >
-            <Save className="w-4 h-4" />
-            Save
-          </Button>
+              onClick={onSaveGraph}
+              disabled={!isGraphValid}
+              className="bg-primary hover:bg-primary/80 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              Save Graph
+            </Button>
         </div>
       </div>
     </CardHeader>
   );
 };
 
-export default GraphHeader; 
+export default GraphHeader;

@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-import Sidebar from "@/components/layout/Sidebar";
-import Header from "@/components/layout/Header";
-import BuildingBlocksSidebar from "@/workspace/BuildingBlocksSidebar";
 import { useGraphLogic } from "@/hooks/use-graph-logic";
 import GraphCanvas from "@/components/agentic-ai/graphs/GraphCanvas";
+import BuildingBlocksSidebar from "./BuildingBlocksSidebar";
 import ConditionalEdgeModal from "@/components/agentic-ai/graphs/ConditionalEdgeModal";
-import { MarkerType } from "reactflow";
+import GraphValidationPanel from "@/components/agentic-ai/graphs/GraphValidationPanel";
+import SaveBlueprintModal from "@/components/agentic-ai/graphs/SaveBlueprintModal";
 
 interface NewGraphProps {
   onBack?: () => void;
@@ -35,11 +34,17 @@ export default function NewGraph({ onBack }: NewGraphProps) {
     conditionalEdgeModal,
     handleConditionalEdgeConfirm,
     handleConditionalEdgeCancel,
+    isGraphValid,
+    validationResult,
+    fixSuggestions,
+    isValidating,
+    isSaving,
   } = useGraphLogic();
 
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+
   const handleSaveGraph = async () => {
-    await saveGraph();
-    if (onBack) onBack();
+    setSaveModalOpen(true);
   };
 
   const handleClearGraph = () => {
@@ -47,8 +52,19 @@ export default function NewGraph({ onBack }: NewGraphProps) {
   };
 
   return (
-    <main className="flex-1 overflow-hidden p-4 bg-background-dark">
-      <div className="flex h-full gap-4">
+    <div className="h-full max-h-[calc(100vh-100px)] flex bg-background overflow-hidden">
+      {/* Sidebar */}
+      <div className="w-80 h-full">
+        <BuildingBlocksSidebar
+          buildingBlocks={buildingBlocksData}
+          conditions={conditionsData}
+          isLoading={isLoadingBlocks}
+          onDragStart={onDragStart}
+        />
+      </div>
+
+      {/* Main Canvas */}
+      <div className="flex-1 flex flex-col h-full overflow-hidden">
         <GraphCanvas
           nodes={nodes}
           edges={edges}
@@ -63,19 +79,20 @@ export default function NewGraph({ onBack }: NewGraphProps) {
           onBack={onBack}
           onAttachCondition={attachConditionToNode}
           onRemoveCondition={removeConditionFromNode}
-          conditionalEdgeModal={conditionalEdgeModal}
-          onConditionalEdgeConfirm={handleConditionalEdgeConfirm}
-          onConditionalEdgeCancel={handleConditionalEdgeCancel}
-        />
-
-        <BuildingBlocksSidebar
-          buildingBlocks={buildingBlocksData}
-          conditions={conditionsData}
-          isLoading={isLoadingBlocks}
-          onDragStart={onDragStart}
+          isGraphValid={isGraphValid}
         />
       </div>
 
+      {/* Validation Panel */}
+      <div className="w-80 h-full">
+        <GraphValidationPanel
+          validationResult={validationResult}
+          fixSuggestions={fixSuggestions}
+          isValidating={isValidating}
+        />
+      </div>
+
+      
       <ConditionalEdgeModal
         isOpen={conditionalEdgeModal.isOpen}
         onClose={handleConditionalEdgeCancel}
@@ -85,6 +102,14 @@ export default function NewGraph({ onBack }: NewGraphProps) {
         conditionType={conditionalEdgeModal.conditionType}
         existingBranches={conditionalEdgeModal.existingBranches}
       />
-    </main>
+
+      {/* Save Blueprint Modal */}
+      <SaveBlueprintModal
+        isOpen={saveModalOpen}
+        onClose={() => setSaveModalOpen(false)}
+        onSave={saveGraph}
+        isLoading={isSaving}
+      />
+    </div>
   );
 }

@@ -12,22 +12,24 @@ import { useToast } from "@/hooks/use-toast";
 import { CurrentGraph, BuildingBlock } from "@/types/graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import axios from "../http/axiosAgentConfig";
+import * as yaml from "js-yaml";
+import { useLocation } from "wouter";
 
 const defaulYmlState = {
   nodes: [
     {
       rid: "user_question",
-      name: "user_question",
+      name: "User Question Node",
+      type: "user_question_node",
       config: {
-        name: "User Input",
         type: "user_question_node",
       },
     },
     {
       rid: "final_answer",
-      name: "final_answer",
+      name: "Final Answer None",
+      type: "final_answer_node",
       config: {
-        name: "Final Answer",
         type: "final_answer_node",
       },
     },
@@ -46,6 +48,7 @@ const defaulYmlState = {
 
 export const useGraphLogic = () => {
   const { toast } = useToast();
+  const [location, setLocation] = useLocation();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [nodeId, setNodeId] = useState(1);
@@ -82,8 +85,75 @@ export const useGraphLogic = () => {
   // YAML flow state management
   const [yamlFlow, setYamlFlow] = useState(defaulYmlState);
 
+  // Graph validation state
+  const [isGraphValid, setIsGraphValid] = useState(false);
+  const [validationResult, setValidationResult] = useState<any>(null);
+  const [fixSuggestions, setFixSuggestions] = useState<any[]>([]);
+  const [isValidating, setIsValidating] = useState(false);
+
+  // Save modal state
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
   // Hard-coded user ID - will be made flexible later
   const USER_ID = "alice";
+
+  // Validate graph using the validation API
+  const validateGraph = useCallback(async () => {
+    if (nodes.length <= 2) {
+      // Don't validate empty or minimal graphs (just default nodes)
+      setIsGraphValid(false);
+      setValidationResult(null);
+      setFixSuggestions([]);
+      return;
+    }
+
+    try {
+      setIsValidating(true);
+
+      // Convert YAML flow to YAML string using js-yaml library
+      const yamlFlowForValidation = {
+        name: yamlFlow.name || "Untitled blueprint",
+        description: yamlFlow.description || "default",
+        conditions: yamlFlow.conditions || [],
+        nodes: yamlFlow.nodes || [],
+        plan: yamlFlow.plan || [],
+      };
+
+      const yamlString = yaml.dump(yamlFlowForValidation, {
+        indent: 2,
+        lineWidth: -1,
+        noRefs: true,
+        sortKeys: false,
+      });
+
+      const response = await axios.post(
+        "/api/graph/validation/all.validate",
+        yamlString,
+        {
+          headers: {
+            "Content-Type": "text/plain",
+          },
+        },
+      );
+
+      const { validation_result, fix_suggestions } = response.data;
+
+      setValidationResult(validation_result);
+      setFixSuggestions(fix_suggestions || []);
+      setIsGraphValid(validation_result?.is_valid || false);
+    } catch (error) {
+      console.error("Error validating graph:", error);
+      setIsGraphValid(false);
+      setValidationResult(null);
+      setFixSuggestions([]);
+
+      // Silent error - validation panel will show the status
+      console.error("Validation failed:", error);
+    } finally {
+      setIsValidating(false);
+    }
+  }, [yamlFlow, nodes.length]);
 
   const transformResourceToBlock = (resource: any): BuildingBlock => {
     const display = getCategoryDisplay(resource.category);
@@ -291,6 +361,14 @@ export const useGraphLogic = () => {
     initializeDefaultNodes();
   }, [loadBuildingBlocks]);
 
+  // Trigger validation whenever yamlFlow changes
+  useEffect(() => {
+    // Only validate if we have more than the default nodes and yamlFlow has meaningful content
+    if (nodes.length > 2 && yamlFlow.plan && yamlFlow.plan.length > 2) {
+      validateGraph();
+    }
+  }, [yamlFlow, validateGraph, nodes.length]);
+
   const isConnectionFeasible = useCallback(
     async (params: Connection): Promise<boolean> => {
       // Commenting out for now to allow all connections
@@ -315,90 +393,94 @@ export const useGraphLogic = () => {
       // Comment out connection feasibility check for now
       // if (isConnectionFeasible(params)) {
 
-        // Check if source node has a condition attached
-        const sourceNode = nodes.find(node => node.id === params.source);
-        const hasCondition = sourceNode?.data?.referencedConditions && 
-                           sourceNode.data.referencedConditions.length > 0;
+      // Check if source node has a condition attached
+      const sourceNode = nodes.find((node) => node.id === params.source);
+      const hasCondition =
+        sourceNode?.data?.referencedConditions &&
+        sourceNode.data.referencedConditions.length > 0;
 
-        if (hasCondition) {
-          // Get condition type and existing branches
-          const condition = sourceNode.data.referencedConditions[0];
-          const conditionType = condition.workspaceData?.type || condition.type;
+      if (hasCondition) {
+        // Get condition type and existing branches
+        const condition = sourceNode.data.referencedConditions[0];
+        const conditionType = condition.workspaceData?.type || condition.type;
 
-          // Get existing edges from this source to determine existing branches
-          const existingEdges = edges.filter(edge => edge.source === params.source);
-          const existingBranches = existingEdges
-            .map(edge => edge.data?.branch)
-            .filter(Boolean);
+        // Get existing edges from this source to determine existing branches
+        const existingEdges = edges.filter(
+          (edge) => edge.source === params.source,
+        );
+        const existingBranches = existingEdges
+          .map((edge) => edge.data?.branch)
+          .filter(Boolean);
 
-          // Open conditional edge modal
-          setConditionalEdgeModal({
-            isOpen: true,
-            sourceNodeId: params.source || "",
-            targetNodeId: params.target || "",
-            conditionType: conditionType,
-            existingBranches: existingBranches,
-          });
-
-          return; // Don't create edge immediately, wait for modal confirmation
-        }
-
-        // Regular edge creation for nodes without conditions
-        const newEdge = addEdge(params, edges);
-
-        setEdges(newEdge);
-
-        // Update YAML flow with the new connection
-        setYamlFlow((prevFlow) => {
-          const updatedPlan = prevFlow.plan.map((step) => {
-            if (step.uid === params.target) {
-              // Get existing after value
-              const existingAfter = step.after;
-              let newAfter;
-
-              if (!existingAfter) {
-                // No existing after, set as single value
-                newAfter = params.source;
-              } else if (Array.isArray(existingAfter)) {
-                // Already an array, add new source if not already present
-                if (!existingAfter.includes(params.source!)) {
-                  newAfter = [...existingAfter, params.source!];
-                } else {
-                  newAfter = existingAfter;
-                }
-              } else {
-                // Single value exists, convert to array
-                if (existingAfter !== params.source) {
-                  newAfter = [existingAfter, params.source!];
-                } else {
-                  newAfter = existingAfter;
-                }
-              }
-
-              return {
-                ...step,
-                after: newAfter,
-              };
-            }
-            return step;
-          });
-
-          return {
-            nodes: prevFlow.nodes,
-            conditions: prevFlow.conditions || [],
-            plan: updatedPlan,
-          };
+        // Open conditional edge modal
+        setConditionalEdgeModal({
+          isOpen: true,
+          sourceNodeId: params.source || "",
+          targetNodeId: params.target || "",
+          conditionType: conditionType,
+          existingBranches: existingBranches,
         });
 
-        setCurrentGraph((prev) => ({
-          ...prev,
-          edges: newEdge,
-          metadata: {
-            ...prev.metadata,
-            lastModified: new Date(),
-            edgeCount: newEdge.length,
-          },
-        }));
+        return; // Don't create edge immediately, wait for modal confirmation
+      }
+
+      // Regular edge creation for nodes without conditions
+      const newEdge = addEdge(params, edges);
+
+      setEdges(newEdge);
+
+      // Update YAML flow with the new connection
+      setYamlFlow((prevFlow) => {
+        const updatedPlan = prevFlow.plan.map((step) => {
+          if (step.uid === params.target) {
+            // Get existing after value
+            const existingAfter = step.after;
+            let newAfter;
+
+            if (!existingAfter) {
+              // No existing after, set as single value
+              newAfter = params.source;
+            } else if (Array.isArray(existingAfter)) {
+              // Already an array, add new source if not already present
+              if (!existingAfter.includes(params.source!)) {
+                newAfter = [...existingAfter, params.source!];
+              } else {
+                newAfter = existingAfter;
+              }
+            } else {
+              // Single value exists, convert to array
+              if (existingAfter !== params.source) {
+                newAfter = [existingAfter, params.source!];
+              } else {
+                newAfter = existingAfter;
+              }
+            }
+
+            return {
+              ...step,
+              after: newAfter,
+            };
+          }
+          return step;
+        });
+
+        return {
+          nodes: prevFlow.nodes,
+          conditions: prevFlow.conditions || [],
+          plan: updatedPlan,
+        };
+      });
+
+      setCurrentGraph((prev) => ({
+        ...prev,
+        edges: newEdge,
+        metadata: {
+          ...prev.metadata,
+          lastModified: new Date(),
+          edgeCount: newEdge.length,
+        },
+      }));
+
       // }
     },
     [setEdges, edges, nodes, setConditionalEdgeModal],
@@ -454,7 +536,9 @@ export const useGraphLogic = () => {
           const nodeRid = `$ref:${block.workspaceData?.rid || block.id}`;
 
           // Check if this node already exists in the nodes array
-          const nodeExists = prevFlow.nodes.some(node => node.rid === nodeRid);
+          const nodeExists = prevFlow.nodes.some(
+            (node) => node.rid === nodeRid,
+          );
 
           const newYamlNode = {
             rid: nodeRid,
@@ -468,7 +552,9 @@ export const useGraphLogic = () => {
           };
 
           // Add node to nodes section if it doesn't exist
-          const updatedNodes = nodeExists ? prevFlow.nodes : [...prevFlow.nodes, newYamlNode];
+          const updatedNodes = nodeExists
+            ? prevFlow.nodes
+            : [...prevFlow.nodes, newYamlNode];
 
           return {
             nodes: updatedNodes,
@@ -555,6 +641,11 @@ export const useGraphLogic = () => {
     // Reset YAML flow to default state
     setYamlFlow(defaulYmlState);
 
+    // Reset validation state
+    setIsGraphValid(false);
+    setValidationResult(null);
+    setFixSuggestions([]);
+
     setCurrentGraph((prev) => ({
       ...prev,
       nodes: [],
@@ -568,79 +659,77 @@ export const useGraphLogic = () => {
     }));
   };
 
-  const saveGraph = useCallback(async () => {
-    try {
-      const blueprint = {
-        display_name: currentGraph.name,
-        display_description: `Graph with ${nodes.length} nodes and ${edges.length} edges`,
-        plan: nodes.map((node) => {
-          const nodeBlockType = node.id.split("-")[0];
-          const blockData = buildingBlocksData.find(
-            (block) => block.id === nodeBlockType,
-          );
-          const workspaceData = node.data.workspaceData;
-
-          const incomingEdges = edges.filter((edge) => edge.target === node.id);
-          const after = incomingEdges.map((edge) => edge.source);
-
-          return {
-            uid: node.id,
-            node: {
-              type:
-                workspaceData?.type || blockData?.type || "custom_agent_node",
-              category: workspaceData?.category,
-              config: workspaceData?.config,
-              _meta: {
-                display_name: node.data.label,
-                description: node.data.description,
-                rid: workspaceData?.rid,
-                version: workspaceData?.version,
-              },
-            },
-            meta: {
-              display_name: node.data.label,
-              description: node.data.description,
-              position: node.position,
-            },
-            after: after.length > 0 ? after : undefined,
-          };
-        }),
-      };
-
-      const response = await axios.post("/api/blueprints/blueprint.save", {
-        blueprintRaw: JSON.stringify(blueprint),
-      });
-
-      if (response.data.status === "success") {
-        toast({
-          title: "✅ Graph Saved Successfully",
-          description: `Graph "${currentGraph.name}" saved with ${nodes.length} nodes and ${edges.length} edges`,
-          variant: "default",
-        });
-
-        // Update current graph with the saved blueprint ID
-        setCurrentGraph((prev) => ({
-          ...prev,
-          id: response.data.blueprint_id,
-          metadata: {
-            ...prev.metadata,
-            lastModified: new Date(),
-            nodeCount: nodes.length,
-            edgeCount: edges.length,
-          },
-        }));
-      } else {
-        throw new Error(response.data.error || "Unknown error occurred");
-      }
-    } catch (error) {
-      console.error("Error saving graph:", error);
+  const openSaveModal = () => {
+    if (!isGraphValid) {
       toast({
-        title: "❌ Error Saving Graph",
-        description: "Failed to save graph to server",
+        title: "❌ Cannot Save Invalid Graph",
+        description:
+          "Please fix all validation issues before saving the graph.",
         variant: "destructive",
       });
+      return;
     }
-  }, [currentGraph, nodes, edges, buildingBlocksData, toast]);
+    setSaveModalOpen(true);
+  };
+
+  const saveGraph = useCallback(
+    async (name: string, description: string) => {
+      try {
+        setIsSaving(true);
+
+        // Update yamlFlow with name and description
+        const updatedYamlFlow = {
+          ...yamlFlow,
+          name: name,
+          description: description,
+        };
+
+        setYamlFlow(updatedYamlFlow);
+
+        // Convert to YAML string using js-yaml library
+        const yamlString = yaml.dump(updatedYamlFlow, {
+          indent: 2,
+          lineWidth: -1,
+          noRefs: true,
+          sortKeys: false,
+        });
+
+        const response = await axios.post("/api/blueprints/blueprint.save", {
+          blueprintRaw: yamlString,
+        });
+
+        if (response.data.status === "success") {
+          // Show success toast
+          toast({
+            title: "✅ Blueprint Saved Successfully",
+            description: `Blueprint "${name}" saved successfully`,
+            variant: "default",
+          });
+
+          // Close the save modal immediately & Stop the saving state
+          setSaveModalOpen(false);
+          setIsSaving(false);
+
+          // Force navigation to reset component state
+          // Use window.location to ensure component remounts and resets to Agent Flow tab
+          setTimeout(() => {
+            window.location.href = "/agentic-ai";
+          }, 1500);
+        } else {
+          throw new Error(response.data.error || "Unknown error occurred");
+        }
+      } catch (error) {
+        console.error("Error saving graph:", error);
+        toast({
+          title: "❌ Error Saving Blueprint",
+          description: "Failed to save blueprint to server",
+          variant: "destructive",
+        });
+        setIsSaving(false);
+      }
+    },
+    [yamlFlow, toast, setLocation],
+  );
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -654,224 +743,233 @@ export const useGraphLogic = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedNodes, deleteNode]);
 
-    const attachConditionToNode = (nodeId: string, condition: any) => {
-        // Check if node already has a condition attached
-        const targetNode = nodes.find(node => node.id === nodeId);
-        if (targetNode?.data?.referencedConditions && targetNode.data.referencedConditions.length > 0) {
-            toast({
-                title: "❌ Condition Limit Reached",
-                description: "Each node can only have one condition attached. Remove the existing condition first.",
-                variant: "destructive",
-            });
-            return;
-        }
+  const attachConditionToNode = (nodeId: string, condition: any) => {
+    // Check if node already has a condition attached
+    const targetNode = nodes.find((node) => node.id === nodeId);
+    if (
+      targetNode?.data?.referencedConditions &&
+      targetNode.data.referencedConditions.length > 0
+    ) {
+      toast({
+        title: "❌ Condition Limit Reached",
+        description:
+          "Each node can only have one condition attached. Remove the existing condition first.",
+        variant: "destructive",
+      });
+      return;
+    }
 
-        setNodes((prevNodes) =>
-            prevNodes.map((node) =>
-                node.id === nodeId
-                    ? {
-                          ...node,
-                          data: {
-                              ...node.data,
-                              referencedConditions: [condition], // Only allow one condition
-                          },
-                      }
-                    : node,
-            ),
-        );
-
-        // Update YAML flow to immediately set exit_condition
-        setYamlFlow((prevFlow) => {
-            const updatedPlan = prevFlow.plan.map((step) => {
-                if (step.uid === nodeId) {
-                    return {
-                        ...step,
-                        exit_condition: condition.workspaceData?.rid || condition.id,
-                    };
-                }
-                return step;
-            });
-
-            return {
-                nodes: prevFlow.nodes,
-                conditions: prevFlow.conditions || [],
-                plan: updatedPlan,
-            };
-        });
-    };
-
-    const removeConditionFromNode = (nodeId: string, conditionRid: string) => {
-        setNodes((prevNodes) =>
-            prevNodes.map((node) =>
-                node.id === nodeId
-                    ? {
-                          ...node,
-                          data: {
-                              ...node.data,
-                              referencedConditions: (
-                                  node.data.referencedConditions || []
-                              ).filter((condition) => 
-                                  (condition.workspaceData?.rid || condition.id) !== conditionRid
-                              ),
-                          },
-                      }
-                    : node,
-            ),
-        );
-
-        // Remove related edges
-        setEdges((prevEdges) =>
-            prevEdges.filter((edge) => edge.source !== nodeId),
-        );
-
-        // Update YAML flow to remove the condition and related connections
-        setYamlFlow((prevFlow) => {
-            // Remove condition from plan
-            const updatedPlan = prevFlow.plan.map((step) => {
-                if (step.uid === nodeId && step.exit_condition === conditionRid) {
-                    const { exit_condition, branches, ...stepWithoutCondition } = step;
-                    return stepWithoutCondition;
-                }
-                return step;
-            });
-
-            // Remove condition definition from conditions section (if exists)
-            const updatedConditions = (prevFlow.conditions || []).filter(
-                (cond) => cond.rid !== conditionRid,
-            );
-
-            return {
-                nodes: prevFlow.nodes,
-                conditions: updatedConditions.length > 0 ? updatedConditions : [],
-                plan: updatedPlan,
-            };
-        });
-    };
-
-    const createConditionalEdge = (params: Connection, branchConfig: any) => {
-        const edgeStyle = {
-            strokeDasharray: "5,5",
-            stroke: "#10b981",
-        };
-
-        const edgeId = `${params.source}-${params.target}-${branchConfig.branch || Date.now()}`;
-        const newEdge = {
-            id: edgeId,
-            source: params.source!,
-            target: params.target!,
-            type: "default",
-            style: edgeStyle,
-            markerEnd: {
-                type: MarkerType.ArrowClosed,
-                color: "#10b981",
-            },
-            data: {
-                ...branchConfig,
-                isConditional: true,
-            },
-            label: branchConfig.branch || "",
-        };
-
-        setEdges((prevEdges) => [...prevEdges, newEdge]);
-
-        // Update YAML flow for conditional connections
-        setYamlFlow((prevFlow) => {
-            const sourceNode = nodes.find(node => node.id === params.source);
-            const condition = sourceNode?.data?.referencedConditions?.[0];
-
-            const updatedPlan = prevFlow.plan.map((step) => {
-                if (step.uid === params.source && condition) {
-                    // Get existing branches or initialize empty object
-                    const existingBranches = step.branches || {};
-
-                    // Add new branch mapping based on condition type
-                    let newBranches = { ...existingBranches };
-
-                    if (branchConfig.conditionType === "router_direct") {
-                        // For direct routing, map direct output to target step
-                        newBranches[params.target!] = params.target!;
-                    } else if (branchConfig.conditionType === "router_boolean") {
-                        // For symbolic routing, map symbolic output to target step
-                        // Convert boolean values to actual booleans for router_boolean
-                        let branchKey = branchConfig.branch === "true" ? true : branchConfig.branch === "false" ? false : branchConfig.branch;
-                        newBranches[branchKey] = params.target!;
-                    }
-
-                    return {
-                        ...step,
-                        exit_condition: condition.workspaceData?.rid || condition.id,
-                        branches: newBranches,
-                    };
-                }
-                return step;
-            });
-
-            // Add condition definition if not exists
-            const conditionRid = condition?.workspaceData?.rid || condition?.id;
-            const conditionExists = (prevFlow.conditions || []).some(
-                (cond) => cond.rid === conditionRid
-            );
-
-            let updatedConditions = prevFlow.conditions || [];
-            if (condition && !conditionExists) {
-                updatedConditions = [
-                    ...updatedConditions,
-                    {
-                        rid: conditionRid,
-                        name: condition.workspaceData?.name || condition.label,
-                        type: condition.workspaceData?.type,
-                        config: condition.workspaceData?.config,
-                    },
-                ];
+    setNodes((prevNodes) =>
+      prevNodes.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                referencedConditions: [condition], // Only allow one condition
+              },
             }
+          : node,
+      ),
+    );
 
-            return {
-                nodes: prevFlow.nodes,
-                conditions: updatedConditions.length > 0 ? updatedConditions : [],
-                plan: updatedPlan,
-            };
-        });
+    // Update YAML flow to immediately set exit_condition
+    setYamlFlow((prevFlow) => {
+      const updatedPlan = prevFlow.plan.map((step) => {
+        if (step.uid === nodeId) {
+          return {
+            ...step,
+            exit_condition: condition.workspaceData?.rid || condition.id,
+          };
+        }
+        return step;
+      });
 
-        setCurrentGraph((prev) => ({
-            ...prev,
-            edges: [...prev.edges, newEdge],
-            metadata: {
-                ...prev.metadata,
-                lastModified: new Date(),
-                edgeCount: prev.edges.length + 1,
-            },
-        }));
+      return {
+        nodes: prevFlow.nodes,
+        conditions: prevFlow.conditions || [],
+        plan: updatedPlan,
+      };
+    });
+  };
+
+  const removeConditionFromNode = (nodeId: string, conditionRid: string) => {
+    setNodes((prevNodes) =>
+      prevNodes.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                referencedConditions: (
+                  node.data.referencedConditions || []
+                ).filter(
+                  (condition) =>
+                    (condition.workspaceData?.rid || condition.id) !==
+                    conditionRid,
+                ),
+              },
+            }
+          : node,
+      ),
+    );
+
+    // Remove related edges
+    setEdges((prevEdges) => prevEdges.filter((edge) => edge.source !== nodeId));
+
+    // Update YAML flow to remove the condition and related connections
+    setYamlFlow((prevFlow) => {
+      // Remove condition from plan
+      const updatedPlan = prevFlow.plan.map((step) => {
+        if (step.uid === nodeId && step.exit_condition === conditionRid) {
+          const { exit_condition, branches, ...stepWithoutCondition } = step;
+          return stepWithoutCondition;
+        }
+        return step;
+      });
+
+      // Remove condition definition from conditions section (if exists)
+      const updatedConditions = (prevFlow.conditions || []).filter(
+        (cond) => cond.rid !== conditionRid,
+      );
+
+      return {
+        nodes: prevFlow.nodes,
+        conditions: updatedConditions.length > 0 ? updatedConditions : [],
+        plan: updatedPlan,
+      };
+    });
+  };
+
+  const createConditionalEdge = (params: Connection, branchConfig: any) => {
+    const edgeStyle = {
+      strokeDasharray: "5,5",
+      stroke: "#10b981",
     };
 
-    const handleConditionalEdgeConfirm = (branchConfig: any) => {
-        const params = {
-            source: conditionalEdgeModal.sourceNodeId,
-            target: conditionalEdgeModal.targetNodeId,
-        };
-
-        createConditionalEdge(params, {
-            ...branchConfig,
-            conditionType: conditionalEdgeModal.conditionType,
-        });
-
-        setConditionalEdgeModal({
-            isOpen: false,
-            sourceNodeId: "",
-            targetNodeId: "",
-            conditionType: "",
-            existingBranches: [],
-        });
+    const edgeId = `${params.source}-${params.target}-${branchConfig.branch || Date.now()}`;
+    const newEdge = {
+      id: edgeId,
+      source: params.source!,
+      target: params.target!,
+      type: "default",
+      style: edgeStyle,
+      markerEnd: {
+        type: MarkerType.ArrowClosed,
+        color: "#10b981",
+      },
+      data: {
+        ...branchConfig,
+        isConditional: true,
+      },
+      label: branchConfig.branch || "",
     };
 
-    const handleConditionalEdgeCancel = () => {
-        setConditionalEdgeModal({
-            isOpen: false,
-            sourceNodeId: "",
-            targetNodeId: "",
-            conditionType: "",
-            existingBranches: [],
-        });
+    setEdges((prevEdges) => [...prevEdges, newEdge]);
+
+    // Update YAML flow for conditional connections
+    setYamlFlow((prevFlow) => {
+      const sourceNode = nodes.find((node) => node.id === params.source);
+      const condition = sourceNode?.data?.referencedConditions?.[0];
+
+      const updatedPlan = prevFlow.plan.map((step) => {
+        if (step.uid === params.source && condition) {
+          // Get existing branches or initialize empty object
+          const existingBranches = step.branches || {};
+
+          // Add new branch mapping based on condition type
+          let newBranches = { ...existingBranches };
+
+          if (branchConfig.conditionType === "router_direct") {
+            // For direct routing, map direct output to target step
+            newBranches[params.target!] = params.target!;
+          } else if (branchConfig.conditionType === "router_boolean") {
+            // For symbolic routing, map symbolic output to target step
+            // Convert boolean values to actual booleans for router_boolean
+            let branchKey =
+              branchConfig.branch === "true"
+                ? true
+                : branchConfig.branch === "false"
+                  ? false
+                  : branchConfig.branch;
+            newBranches[branchKey] = params.target!;
+          }
+
+          return {
+            ...step,
+            exit_condition: condition.workspaceData?.rid || condition.id,
+            branches: newBranches,
+          };
+        }
+        return step;
+      });
+
+      // Add condition definition if not exists
+      const conditionRid = condition?.workspaceData?.rid || condition?.id;
+      const conditionExists = (prevFlow.conditions || []).some(
+        (cond) => cond.rid === conditionRid,
+      );
+
+      let updatedConditions = prevFlow.conditions || [];
+      if (condition && !conditionExists) {
+        updatedConditions = [
+          ...updatedConditions,
+          {
+            rid: conditionRid,
+            name: condition.workspaceData?.name || condition.label,
+            type: condition.workspaceData?.type,
+            config: condition.workspaceData?.config,
+          },
+        ];
+      }
+
+      return {
+        nodes: prevFlow.nodes,
+        conditions: updatedConditions.length > 0 ? updatedConditions : [],
+        plan: updatedPlan,
+      };
+    });
+
+    setCurrentGraph((prev) => ({
+      ...prev,
+      edges: [...prev.edges, newEdge],
+      metadata: {
+        ...prev.metadata,
+        lastModified: new Date(),
+        edgeCount: prev.edges.length + 1,
+      },
+    }));
+  };
+
+  const handleConditionalEdgeConfirm = (branchConfig: any) => {
+    const params = {
+      source: conditionalEdgeModal.sourceNodeId,
+      target: conditionalEdgeModal.targetNodeId,
     };
+
+    createConditionalEdge(params, {
+      ...branchConfig,
+      conditionType: conditionalEdgeModal.conditionType,
+    });
+
+    setConditionalEdgeModal({
+      isOpen: false,
+      sourceNodeId: "",
+      targetNodeId: "",
+      conditionType: "",
+      existingBranches: [],
+    });
+  };
+
+  const handleConditionalEdgeCancel = () => {
+    setConditionalEdgeModal({
+      isOpen: false,
+      sourceNodeId: "",
+      targetNodeId: "",
+      conditionType: "",
+      existingBranches: [],
+    });
+  };
 
   return {
     nodes,
@@ -889,11 +987,22 @@ export const useGraphLogic = () => {
     onDragOver,
     onDragStart,
     clearGraph,
+    openSaveModal,
     saveGraph,
     attachConditionToNode,
     removeConditionFromNode,
     conditionalEdgeModal,
     handleConditionalEdgeConfirm,
     handleConditionalEdgeCancel,
+    // Validation state
+    isGraphValid,
+    validationResult,
+    fixSuggestions,
+    isValidating,
+    validateGraph,
+    // Save modal state
+    saveModalOpen,
+    setSaveModalOpen,
+    isSaving,
   };
 };

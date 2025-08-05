@@ -36,6 +36,7 @@ interface GraphCanvasProps {
   onBack?: () => void;
   onAttachCondition?: (nodeId: string, condition: any) => void;
   onRemoveCondition?: (nodeId: string, conditionRid: string) => void;
+  isGraphValid?: boolean;
 }
 
 const GraphCanvas: React.FC<GraphCanvasProps> = ({
@@ -52,6 +53,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   onBack,
   onAttachCondition,
   onRemoveCondition,
+  isGraphValid = false,
 }) => {
   const [showYamlDebug, setShowYamlDebug] = useState(false);
 
@@ -62,6 +64,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
           onClearGraph={onClearGraph}
           onSaveGraph={onSaveGraph}
           onBack={onBack}
+          isGraphValid={isGraphValid}
         />
         <CardContent className="p-0 h-full relative">
           {/* YAML Debug Panel */}
