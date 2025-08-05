@@ -163,7 +163,8 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
         
         # Create factory and executor using the modular pipeline architecture
         factory = PipelineFactory.create(source_type, metadata)
-        executor = PipelineExecutor(factory, pipeline_id)
+        pipeline = factory.create_pipeline()
+        executor = PipelineExecutor(pipeline, pipeline_id)
         
         # Execute the pipeline
         result = executor.run()

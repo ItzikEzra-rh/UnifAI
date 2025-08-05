@@ -2,7 +2,7 @@ from typing import Any
 from pipeline.pipeline_repository import PipelineRepository
 from config.constants import PipelineStatus
 from pipeline.decorators import pipeline_step
-from pipeline.pipeline_factory import PipelineFactory
+from pipeline.pipeline_factory import Pipeline
 
 class PipelineExecutor:
     """
@@ -17,7 +17,7 @@ class PipelineExecutor:
     """
     def __init__(
         self,
-        pipeline: PipelineFactory,
+        pipeline: Pipeline,
         pipeline_id: str
     ):
         self.pipeline     = pipeline
@@ -28,7 +28,7 @@ class PipelineExecutor:
     def _initialize_repo(self) -> PipelineRepository:
         return PipelineRepository(
             pipeline_id=self.pipeline_id,
-            source_type=self.pipeline.SOURCE_TYPE,
+            source_type=self.pipeline.source_type,
             source_id=self.pipeline.get_source_id(),
             source_name=self.pipeline.get_source_name()
         )
@@ -77,6 +77,6 @@ class PipelineExecutor:
             new_status=PipelineStatus.DONE.value
         )
         self.repo.register_data_source(
-            summary=self.pipeline._create_summary()
+            summary=self.pipeline.summary()
         )
         return stored

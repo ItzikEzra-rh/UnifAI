@@ -41,7 +41,7 @@ class SlackTypeData(BaseModel):
     is_private: bool = Field(default=False, description="Whether the channel is private")
     
     # Optional user-defined metadata fields that can be added from frontend
-    dateRange: Optional[Dict[str, Any]] = Field(default=None, description="User-defined date range settings")
+    dateRange: Optional[str] = Field(default=None, description="User-defined date range settings")
     communityPrivacy: Optional[str] = Field(default=None, description="Community privacy settings")
     includeThreads: Optional[bool] = Field(default=None, description="Whether to include thread messages")
     
