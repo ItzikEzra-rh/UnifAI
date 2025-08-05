@@ -1,6 +1,7 @@
 import { FaFileAlt, FaFileWord, FaFilePdf, FaFileExcel, FaFilePowerpoint } from "react-icons/fa";
 import { PIPELINE_STATUS, PipelineStatus } from "@/constants/pipelineStatus";
 import { EmbedChannel, Document } from "@/types";
+import { InlineLoader } from "@/components/shared/InlineLoader";
 
 export const getFileIcon = (type: string) => {
     switch (type) {
@@ -52,3 +53,9 @@ export function isEmbeddingActivelyProcessing(source: EmbedChannel | Document): 
   
   return activeStatuses.includes(source.status as any);
 }
+
+export const getDataToDisplay = (doc: Document) => {
+  if (isEmbeddingActivelyProcessing(doc)) return <InlineLoader />;
+  if (!doc.status || doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
+  return null;
+};

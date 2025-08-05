@@ -1,6 +1,6 @@
 import { FaEye, FaSync, FaTrash } from "react-icons/fa";
 import { DataCard } from "@/components/shared/DataCard";
-import { fileByColors, getFileIcon, isEmbeddingActivelyProcessing } from "@/features/helpers";
+import { fileByColors, getDataToDisplay, getFileIcon, isEmbeddingActivelyProcessing } from "@/features/helpers";
 import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,12 +17,6 @@ interface DocumentGridProps {
   handleRetry: (id: string) => void;
   footer?: React.ReactNode;
 }
-
-const getSubtitle = (doc: Document) => {
-  if (isEmbeddingActivelyProcessing(doc)) return <InlineLoader />;
-  if (!doc.status || doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
-  return `${doc.type_data.page_count} pages | ${doc.type_data.file_type} | ${doc.type_data.file_size}`;
-};
 
 const getFooterText = (doc: Document) => {
   if (isEmbeddingActivelyProcessing(doc)) return <InlineLoader />;
@@ -88,9 +82,9 @@ export const DocumentGrid = ({paginatedDocuments, activeDoc, setActiveDoc, delet
                 iconBgClass={fileByColors[doc.type_data.file_type]}
                 title={doc.source_name}
                 status={doc.status}
-                subtitle={getSubtitle(doc)}
+                subtitle={getDataToDisplay(doc) || `${doc.type_data.page_count} pages | ${doc.type_data.file_type} | ${doc.type_data.file_size}`}
                 metadata={`Uploaded ${new Date(doc.created_at).toLocaleString("en-GB")} by ${doc.upload_by}`}
-                footer={getFooterText(doc)}
+                footer={getDataToDisplay(doc) || `${doc.pipeline_stats?.chunks_generated} chunks`}
                 selected={doc === activeDoc}
                 onClick={() => setActiveDoc(doc === activeDoc ? null : doc)}
                 // extraTopRight={getExtraTopRight(doc, handleRetry, retrying)}

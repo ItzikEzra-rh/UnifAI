@@ -3,7 +3,7 @@ import { FaEye, FaTrash, FaSync } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
 import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
-import { getFileIcon, fileByColors, isEmbeddingActivelyProcessing } from "../helpers";
+import { getFileIcon, fileByColors, isEmbeddingActivelyProcessing, getDataToDisplay } from "../helpers";
 import { DataTable, DataTableColumn } from "@/components/shared/DataTable";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DocumentData } from "./DocumentData";
@@ -59,13 +59,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       header: "Pages",
       cell: ({ row }) => {
         const doc = row.original;
-        return isEmbeddingActivelyProcessing(doc) ? (
-          <InlineLoader />
-        ) : doc.status === PIPELINE_STATUS.PENDING || !doc.status ? (
-          "-"
-        ) : (
-          doc.type_data.page_count
-        );
+        return getDataToDisplay(doc) || doc.type_data.page_count;
       },
       meta: { align: "center" },
     },
@@ -74,10 +68,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       header: "Size (MB)",
       cell: ({ row }) => {
         const doc = row.original;
-        if (doc.status === PIPELINE_STATUS.ACTIVE) return <InlineLoader />;
+        if (isEmbeddingActivelyProcessing(doc)) return <InlineLoader />;
         if (doc.status === PIPELINE_STATUS.PENDING) return "-";
-        const sizeMatch = doc.type_data.file_size?.match(/[\d.]+/);
-        return sizeMatch ? sizeMatch[0] : "-";
+        return doc.type_data.file_size
       },
       meta: { align: "center" },
     },
@@ -96,13 +89,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       header: "Chunks",
       cell: ({ row }) => {
         const doc = row.original;
-        return isEmbeddingActivelyProcessing(doc) ? (
-          <InlineLoader />
-        ) : doc.status === PIPELINE_STATUS.PENDING || !doc.status ? (
-          "-"
-        ) : (
-          `${doc.pipeline_stats.chunks_generated}`
-        );
+        return getDataToDisplay(doc) || `${doc.pipeline_stats.chunks_generated}`
       },
       meta: { align: "center" },
     },
