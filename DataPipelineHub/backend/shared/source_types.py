@@ -49,6 +49,11 @@ class SlackTypeData(BaseModel):
     includeThreads: Optional[bool] = Field(default=None, description="Whether to include thread messages")
     processFileContent: Optional[bool] = Field(default=None, description="Whether to process file content")
     
+    # Webhook-based incremental processing fields
+    new_messages_since_last_embedding: Optional[int] = Field(default=0, description="Counter for new messages received via webhook")
+    last_embedding_timestamp: Optional[str] = Field(default=None, description="Timestamp of the last successful embedding")
+    webhook_active: Optional[bool] = Field(default=False, description="Whether webhook monitoring is active for this channel")
+    
     class Config:
         extra = "allow"  # Allow additional fields for user-defined metadata
 

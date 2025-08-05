@@ -1,4 +1,5 @@
 from endpoints.slack import slack_bp
+from endpoints.slack_webhook import slack_webhook_bp
 from endpoints.pipelines import pipelines_bp
 from endpoints.docs import docs_bp
 from endpoints.health import health_bp
@@ -10,6 +11,7 @@ def register_all_endpoints(app):
         {"bp": health_bp, "parent": 'health', "route": ''},
         {"bp": pipelines_bp, "parent": 'pipelines', "route": ''},
         {"bp": slack_bp, "parent": 'slack', "route": ''},
+        {"bp": slack_webhook_bp, "parent": 'slack', "route": 'webhook'},
         {"bp": docs_bp, "parent": 'docs', "route": ''},
         {"bp": protected_bp, "parent": 'protected', "route": ''},
         {"bp": data_sources_bp, "parent": 'data_sources', "route": ''},
