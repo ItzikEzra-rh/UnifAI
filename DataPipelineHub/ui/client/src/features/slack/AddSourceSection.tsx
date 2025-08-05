@@ -203,9 +203,48 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
       ? (channelSettings[lastSelectedChannel] || defaultChannelSettings)
       : defaultChannelSettings;
       
-    return channels
-      .filter(c => selectedChannels.includes(getChannelUniqueId(c)))
-      .map(c => ({
+    // CRITICAL FIX: Get ALL channels from React Query cache for filtering
+    // regardless of current scope, so we don't lose selections from other scopes
+    let allChannelsForFiltering: Channel[] = [];
+    
+    try {
+      // Try to get cached data from all scopes
+      const publicCacheData = queryClient.getQueryData([CACHE_KEY, CHANNEL_TYPE.PUBLIC, '']) as any;
+      const privateCacheData = queryClient.getQueryData([CACHE_KEY, CHANNEL_TYPE.PRIVATE, '']) as any;
+      const allCacheData = queryClient.getQueryData([CACHE_KEY, ALL_CHANNEL_TYPES, '']) as any;
+      
+      // Use cached "all" data first, then fall back to merging public + private cache
+      if (allCacheData?.pages) {
+        allChannelsForFiltering = allCacheData.pages.flatMap((page: any) => page.channels);
+      } else if (publicCacheData?.pages || privateCacheData?.pages) {
+        const publicChannels = publicCacheData?.pages?.flatMap((page: any) => page.channels) || [];
+        const privateChannels = privateCacheData?.pages?.flatMap((page: any) => page.channels) || [];
+        const mergedChannels = [...publicChannels, ...privateChannels];
+        allChannelsForFiltering = Array.from(
+          new Map(mergedChannels.map(c => [c.channel_id, c])).values()
+        );
+      } else {
+        // If no cache available, make API calls as fallback
+        const [pubResponse, privResponse] = await Promise.all([
+          fetchAvailableSlackChannels(CHANNEL_TYPE.PUBLIC, { limit: 1000 }),
+          fetchAvailableSlackChannels(CHANNEL_TYPE.PRIVATE, { limit: 1000 }),
+        ]);
+
+        const mergedChannels = [...pubResponse.channels, ...privResponse.channels];
+        allChannelsForFiltering = Array.from(
+          new Map(mergedChannels.map(c => [c.channel_id, c])).values()
+        );
+      }
+    } catch (error) {
+      console.error('Failed to get all channels, falling back to current scope channels:', error);
+      // Fallback to current scope channels if everything fails
+      allChannelsForFiltering = channels;
+    }
+    
+    const filtered = allChannelsForFiltering
+      .filter(c => selectedChannels.includes(getChannelUniqueId(c)));
+      
+    const result = filtered.map(c => ({
         ...c,
         settings: {
           dateRange: settingsToUse.dateRange,
@@ -214,7 +253,9 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
           processFileContent: settingsToUse.processFileContent,
         }
       }));
-  }, [channels, selectedChannels, channelSettings, lastSelectedChannel]);
+    
+    return result;
+  }, [selectedChannels, channelSettings, lastSelectedChannel, scope, channels, queryClient]);
 
   useImperativeHandle(ref, () => ({
     getSelectedChannels,
