@@ -2,6 +2,7 @@ import base64
 import os
 import tempfile
 from typing import List
+from flask import jsonify
 from config.app_config import AppConfig
 from utils.storage.mongo.mongo_storage import MongoStorage
 from shared.logger import logger

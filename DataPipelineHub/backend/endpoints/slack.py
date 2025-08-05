@@ -106,3 +106,33 @@ def best_match_results(query, top_k_results, scope, logged_in_user):
     except Exception as e:
         logger.error(f"Failed to find best match for user query: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+
+@slack_bp.route("/stats", methods=["GET"])
+def slack_stats():
+    """
+    Get Slack statistics including channel counts, message totals, and sync information.
+    
+    Returns:
+        JSON response containing Slack statistics
+    """
+    try:
+        stats_provider = SlackStatsProvider()
+        stats = stats_provider.get_stats()
+        
+        # Convert dataclass to dict for JSON serialization
+        stats_dict = {
+            "id": stats.id,
+            "totalChannels": stats.totalChannels,
+            "activeChannels": stats.activeChannels,
+            "totalMessages": stats.totalMessages,
+            "apiCallsCount": stats.apiCallsCount,
+            "lastSyncAt": stats.lastSyncAt,
+            "totalEmbeddings": stats.totalEmbeddings,
+            "updatedAt": stats.updatedAt
+        }
+        
+        return jsonify(stats_dict), 200
+    except Exception as e:
+        logger.error(f"Failed to get Slack stats: {str(e)}")
+        return jsonify({"error": str(e)}), 500

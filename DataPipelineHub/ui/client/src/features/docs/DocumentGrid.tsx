@@ -68,7 +68,7 @@ const getActions = (
     confirm: {
       title: "Delete Document",
       message: `Are you sure you want to delete "${doc.source_name}"?`,
-      onConfirm: () => onDeleteConfirmed(doc.pipeline_id),
+      onConfirm: () => onDeleteConfirmed(doc.source_id),
       loading: deleteLoading,
       confirmLabel: "Yes, Delete",
     },

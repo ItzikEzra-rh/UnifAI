@@ -115,10 +115,10 @@ export default function Documents() {
     </div>
   );
 
-  const onDeleteConfirmed = async (id: string) => {
+  const onDeleteConfirmed = async (source_id: string) => {
     try {
       setDeleteLoading(true);
-      await deleteDoc(id);
+      await deleteDoc(source_id);
     } catch (error) {
       console.error("Error deleting document:", error);
     } finally {

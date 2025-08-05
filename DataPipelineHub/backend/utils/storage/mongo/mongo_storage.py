@@ -41,6 +41,10 @@ class MongoStorage:
         """Get source info by pipeline_id (delegates to sources repository)."""
         return self.sources.get_info_by_pipeline_id(pipeline_id)
 
+    def get_source_info_by_source_id(self, source_id: str) -> Dict[str, Any]:
+        """Get source info by source_id (delegates to sources repository)."""
+        return self.sources.get_info_by_source_id(source_id)
+
     def delete_source(self, source_id: str) -> Dict[str, Any]:
         """Delete source (delegates to sources repository)."""
         return self.sources.delete(source_id)

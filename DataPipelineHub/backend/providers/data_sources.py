@@ -68,12 +68,12 @@ def get_available_data_sources(source_type: str):
         logger.error(f"Failed to get available data sources for type {source_type}: {str(e)}")
         return []   
 
-def delete_data_source(pipeline_id: str):
+def delete_data_source(source_id: str):
     """
     Delete a data source by its pipeline ID.
     
     Args:
-        pipeline_id: The ID of the pipeline/source to delete
+        source_id: The ID of the pipeline/source to delete
         source_type: Optional source type for additional validation/logging
         
     Returns:
@@ -82,13 +82,10 @@ def delete_data_source(pipeline_id: str):
     try:
         # First get the source info to determine the actual source type and source_id
         mongo_storage = get_mongo_storage()
-        source_info = mongo_storage.get_source_info_by_pipeline_id(pipeline_id)
+        source_info = mongo_storage.get_source_info_by_source_id(source_id)
         actual_source_type = None
-        source_id = pipeline_id  # fallback to pipeline_id if source_id not found
-        
         if source_info.get("success"):
             actual_source_type = source_info.get("source_type")
-            source_id = source_info.get("source_id", pipeline_id)
         
         # Initialize storage manager with the correct source type
         storage_manager = initialize_storage_manager(actual_source_type if actual_source_type else "data_source")
@@ -99,7 +96,7 @@ def delete_data_source(pipeline_id: str):
         return {
             "success": result.get("success", False),
             "result": {
-                "pipeline_id": result.get("source_id"),
+                "source_id": result.get("source_id"),
                 "source_name": result.get("source_name"),
                 "qdrant_embeddings_deleted": summary.get("embeddings_deleted", 0),
                 "mongo_source_deleted": summary.get("source_deleted", False),
@@ -107,7 +104,7 @@ def delete_data_source(pipeline_id: str):
             }
         }
     except Exception as e:
-        logger.error(f"Failed to delete channel {pipeline_id}: {e}")
+        logger.error(f"Failed to delete channel {source_id}: {e}")
         raise e
 
 def get_data_source_by_id(pipeline_id: str, source_type: str = None):

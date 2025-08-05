@@ -204,7 +204,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
           onConfirm={async () => {
             try {
               setConfirmLoading(true);
-              await onDeleteConfirmed?.(confirmDoc.pipeline_id);
+              await onDeleteConfirmed?.(confirmDoc.source_id);
               setConfirmDoc(null);
             } catch (err) {
               console.error("Delete failed:", err);

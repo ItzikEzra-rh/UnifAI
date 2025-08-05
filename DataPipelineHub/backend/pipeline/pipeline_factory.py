@@ -23,7 +23,8 @@ class Pipeline:
         summary,
         source_type,
         get_source_id,
-        get_source_name
+        get_source_name,
+        monitor=None
     ):
         self.orchestrator = orchestrator
         self.collector = collector
@@ -35,6 +36,7 @@ class Pipeline:
         self.source_type = source_type
         self.get_source_id = get_source_id
         self.get_source_name = get_source_name
+        self.monitor = monitor
         
 class PipelineFactory(ABC):
     """
@@ -92,7 +94,8 @@ class PipelineFactory(ABC):
             summary=self._create_summary,
             source_type=self.SOURCE_TYPE,
             get_source_id=self.get_source_id,
-            get_source_name=self.get_source_name
+            get_source_name=self.get_source_name,
+            monitor=self.monitor
         )
     
     def _create_orchestrator(self):
