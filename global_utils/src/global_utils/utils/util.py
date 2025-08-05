@@ -22,7 +22,6 @@ config = SharedConfig()
 def get_mongo_url():
     ip = config.mongodb_ip
     port = config.mongodb_port
-    print(f"mongodb://{ip}:{port}/")
     return f"mongodb://{ip}:{port}/"
 
 

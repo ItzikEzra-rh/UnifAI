@@ -16,6 +16,7 @@ export interface SystemStats {
 export interface PaginationParams {
   cursor?: string;
   limit?: number;
+  search_regex?: string;
 }
 
 export interface PaginatedChannelsResponse {
@@ -37,6 +38,10 @@ export async function fetchAvailableSlackChannels(
   
   if (pagination?.limit) {
     params.limit = pagination.limit;
+  }
+
+  if (pagination?.search_regex) {
+    params.search_regex = pagination.search_regex;
   }
 
   const { data } = await api.get<PaginatedChannelsResponse>(
@@ -94,7 +99,7 @@ export async function fetchEmbeddedSlackChannels(): Promise<EmbedChannel[]> {
   // Call the new backend endpoint for available data sources with source_type='slack'
   // Using GET request with query parameters as required by the backend @from_query decorator
   const { data } = await api.get<{sources: any[]}>(
-    "data_sources/available.data.sources.get",
+    "data_sources/data.sources.get",
     { 
       params: {
         source_type: "slack"
@@ -117,7 +122,9 @@ export async function fetchEmbeddedSlackChannels(): Promise<EmbedChannel[]> {
 
 export async function deleteSlackChannel(channelId: string): Promise<any> {
   // Call the new backend endpoint for deleting data sources
-  const { data } = await api.delete(`data_sources/delete/${channelId}`);
+  const { data } = await api.delete(`data_sources/data.source.delete`, {
+    data: { pipeline_id: channelId }
+  });
   return data;
 };
 

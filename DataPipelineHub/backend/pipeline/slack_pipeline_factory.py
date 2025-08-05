@@ -2,16 +2,17 @@ from functools import cached_property
 from typing import Dict, List, Tuple, Optional
 from datetime import datetime, timedelta
 from pipeline.pipeline_factory import PipelineFactory
-from pipeline.types import SlackMetadata
+from shared.source_types import SlackMetadata
 from data_sources.slack.slack_config_manager import SlackConfigManager
 from data_sources.slack.slack_connector import SlackConnector
 from data_sources.slack.slack_data_processor import SlackProcessor
 from data_sources.slack.slack_chunker_strategy import SlackChunkerStrategy
-from pipeline.config import ChunkerConfig
+from shared.config import ChunkerConfig
 from config.constants import DataSource
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from shared.logger import logger
 import time
+from config.app_config import AppConfig
 
 class SlackPipelineFactory(PipelineFactory):
     SOURCE_TYPE = DataSource.SLACK.upper_name
@@ -21,13 +22,14 @@ class SlackPipelineFactory(PipelineFactory):
         metadata: SlackMetadata,
     ):
         super().__init__(metadata)
+        self.app_config = AppConfig()
 
     def _get_configured_connector(self) -> SlackConnector:
         config_manager = SlackConfigManager()
         config_manager.set_project_tokens(
             project_id="example-project",
-            bot_token="xoxb-2253118358-8783454711008-dwnxf7cPBpeVLlLw8KMurohb",
-            user_token="xoxb-2253118358-8783454711008-dwnxf7cPBpeVLlLw8KMurohb"
+            bot_token=self.app_config.default_slack_bot_token,
+            user_token=self.app_config.default_slack_user_token
         )
         config_manager.set_default_project("example-project")
         return SlackConnector(config_manager) 

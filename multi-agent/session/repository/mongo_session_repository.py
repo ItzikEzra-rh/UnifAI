@@ -23,7 +23,7 @@ class MongoSessionRepository(SessionRepository):
             self,
             session_factory: WorkflowSessionFactory,
             mongodb_port: str = "27017",
-            mongodb_ip: str = "ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com",
+            mongodb_ip: str = "localhost",
             db_name: str = "UnifAI",
             collection_name: str = "workflow_sessions",
     ):

@@ -231,66 +231,6 @@ export function getColumns(
       },
     },
     {
-      accessorKey: "communityPrivacy",
-      header: () => (
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="cursor-help">Community Privacy</span>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Community visibility setting chosen during setup.<br/>Controls how this channel's data is shared in the community.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      ),
-      cell: (info) => {
-        const communityPrivacy = info.getValue<'public' | 'private'>() || 'public';
-        const isPrivate = communityPrivacy === 'private';
-        return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium cursor-help ${
-                  isPrivate 
-                    ? "bg-purple-500/15 text-purple-400 border border-purple-400/20" 
-                    : "bg-green-500/15 text-green-400 border border-green-400/20"
-                }`}>
-                  {isPrivate ? (
-                    <>
-                      <FaUsers className="mr-1 h-3 w-3" />
-                      Private
-                    </>
-                  ) : (
-                    <>
-                      <FaGlobe className="mr-1 h-3 w-3" />
-                      Public
-                    </>
-                  )}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{isPrivate ? "Community Private - data not shared externally" : "Community Public - data may be shared with the community"}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      },
-      filterFn: (row, columnId, filterValue) => {
-        const communityPrivacy = row.getValue(columnId) as 'public' | 'private' || 'public';
-        const rowValue = communityPrivacy === 'private' ? "Private" : "Public";
-        return rowValue === filterValue;
-      },
-      meta: {
-        align: "center",
-        filterType: "select",
-        filterOptions: [
-          "Private",
-          "Public"
-        ],
-      },
-    },
-    {
       accessorKey: "frequency",
       header: "Frequency",
       cell: (info) => (

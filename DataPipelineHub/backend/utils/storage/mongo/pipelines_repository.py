@@ -13,17 +13,17 @@ class PipelinesRepository:
         if not pipeline_ids:
             return {}
 
-        docs = self.col.find(
+        elements = self.col.find(
             {"pipeline_id": {"$in": pipeline_ids}},
             {"pipeline_id": 1, "status": 1, "stats": 1}
         )
 
         result = {}
-        for doc in docs:
-            pid = doc["pipeline_id"]
-            stats = doc.get("stats", {}) or {}
+        for element in elements:
+            pid = element["pipeline_id"]
+            stats = element.get("stats", {}) or {}
             result[pid] = {
-                "status": doc.get("status"),
+                "status": element.get("status"),
                 "documents_retrieved": stats.get("documents_retrieved", 0),
                 "chunks_generated": stats.get("chunks_generated", 0),
                 "embeddings_created": stats.get("embeddings_created", 0),

@@ -1,13 +1,12 @@
 import requests
 import time
-import pymongo
 from typing import Dict, List, Optional, Any, Tuple
 from shared.logger import logger
 from .slack_config_manager import SlackConfigManager
 from utils.data_connector import DataConnector
 from .slack_thread_retriever import SlackThreadRetriever
 from .slack_thread_retriever_worker import ThreadRetrieverWorker
-from global_utils.utils.util import get_mongo_url
+from utils.storage.mongo.mongo_helpers import get_mongo_storage
 
 class SlackConnector(DataConnector):
     """
@@ -28,6 +27,7 @@ class SlackConnector(DataConnector):
         self.base_url = "https://slack.com/api/"
         self._available_apis = [
             "users.profile.get",
+            "users.info",
             "conversations.history",
             "conversations.list",
             "conversations.replies",
@@ -38,6 +38,9 @@ class SlackConnector(DataConnector):
         self._project_id = project_id or config_manager.get_default_project()
         if not self._project_id:
             raise ValueError("No project ID provided and no default project set")
+        
+        # Initialize MongoDB storage
+        self._mongo_storage = get_mongo_storage()
         
         # Get tokens for the project
         try:
@@ -192,13 +195,8 @@ class SlackConnector(DataConnector):
         cursor = None
         api_call_count = 0
         
-        # Get MongoDB connection
-        mongo_client = pymongo.MongoClient(get_mongo_url())
-        db = mongo_client["data_sources"]
-        collection = db["slack_channels"]
-        
         # Clear existing channels for this project to avoid duplicates
-        collection.delete_many({"project_id": self._project_id})
+        self._mongo_storage.slack_channels.clear_project_channels(self._project_id)
         
         # Fetch all channels (both public and private) until there's no next_cursor
         while True:
@@ -216,21 +214,12 @@ class SlackConnector(DataConnector):
             # Process channels from current page
             batch_channels = []
             for channel in response.get('channels', []):
-                channel_data = {
-                    'channel_id': channel.get('id'),
-                    'channel_name': channel.get('name'),
-                    'type': 'Private' if channel.get('is_private', False) else 'Public',
-                    'is_private': channel.get('is_private', False),
-                    'project_id': self._project_id,
-                    'last_updated': time.time()
-                }
+                channel_data = self._mongo_storage.slack_channels.create_channel_document(channel, self._project_id)
                 channels.append(channel_data)
                 batch_channels.append(channel_data)
             
-            # Insert batch into MongoDB
-            if batch_channels:
-                collection.insert_many(batch_channels)
-                logger.info(f"Cached {len(batch_channels)} channels to MongoDB")
+            # Cache batch to MongoDB
+            self._mongo_storage.slack_channels.cache_channels(batch_channels)
             
             # Check if there are more pages
             response_metadata = response.get('response_metadata', {})
@@ -243,7 +232,7 @@ class SlackConnector(DataConnector):
         logger.info(f"Retrieved and cached {len(channels)} Slack channels from {api_call_count} API calls")
         return channels
     
-    def get_available_slack_channels(self, types: Optional[str] = None, cursor: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
+    def get_available_slack_channels_from_cache(self, types: Optional[str] = None, cursor: Optional[str] = None, limit: int = 50, search_regex: Optional[str] = None) -> Dict[str, Any]:
         """
         Get available Slack channels from cache (MongoDB) with pagination support.
         This function reads from the cached channels without making API calls.
@@ -252,76 +241,40 @@ class SlackConnector(DataConnector):
             types: Optional channel types to filter by ('private_channel', 'public_channel', or 'private_channel,public_channel')
             cursor: Optional cursor for pagination (skip count)
             limit: Number of channels to return (default: 50)
+            search_regex: Optional regex pattern to search channel names
             
         Returns:
             Dictionary containing paginated channels data with pagination metadata
         """
         try:
-            # Get MongoDB connection
-            mongo_client = pymongo.MongoClient(get_mongo_url())
-            db = mongo_client["data_sources"]
-            collection = db["slack_channels"]
-            
-            # Build query filter
-            query_filter: Dict[str, Any] = {"project_id": self._project_id}
-            
-            if types:
-                # Convert types to cache types for querying
-                channel_types = [t.strip() for t in types.split(',')]
-                cache_types = []
-                for channel_type in channel_types:
-                    if channel_type == "private_channel":
-                        cache_types.append("Private")
-                    elif channel_type == "public_channel":
-                        cache_types.append("Public")
-                    else:
-                        cache_types.append(channel_type)  # fallback
-                query_filter['type'] = {"$in": cache_types}
-            
-            # Get total count for pagination metadata
-            total_count = collection.count_documents(query_filter)
-            
             # Check if cache is empty - if so, fall back to API
-            if total_count == 0:
+            if not self._mongo_storage.slack_channels.has_cached_channels(self._project_id) and not search_regex:
                 logger.warning(f"No cached channels found for project {self._project_id}. Falling back to API call.")
                 return self._fallback_with_pagination(types, cursor, limit)
             
-            # Calculate skip value from cursor
-            skip = 0
-            if cursor:
-                try:
-                    skip = int(cursor)
-                except ValueError:
-                    logger.warning(f"Invalid cursor value: {cursor}, using 0")
-                    skip = 0
-            
-            # Fetch channels from cache with pagination
-            cached_channels = list(collection.find(query_filter, {'_id': 0})
-                                 .skip(skip)
-                                 .limit(limit))
-            
-            # Calculate next cursor and hasMore
-            next_cursor = None
-            has_more = False
-            
-            if len(cached_channels) == limit and (skip + limit) < total_count:
-                next_cursor = str(skip + limit)
-                has_more = True
-            
-            logger.info(f"Retrieved {len(cached_channels)} Slack channels from cache (page {skip}-{skip+limit} of {total_count})")
-            
-            return {
-                'channels': cached_channels,
-                'nextCursor': next_cursor,
-                'hasMore': has_more,
-                'total': total_count,
-            }
+            # Get channels from repository with pagination
+            return self._mongo_storage.slack_channels.get_channels_with_pagination(
+                project_id=self._project_id,
+                types=types,
+                cursor=cursor,
+                limit=limit,
+                search_regex=search_regex
+            )
             
         except Exception as e:
             logger.error(f"Error retrieving channels from cache: {str(e)}")
-            logger.warning("Falling back to API call with limited results")
-            
-            return self._fallback_with_pagination(types, cursor, limit)
+            if search_regex:
+                # For regex searches, return empty results instead of fallback
+                logger.warning("Returning empty results for regex search")
+                return {
+                    'channels': [],
+                    'nextCursor': None,
+                    'hasMore': False,
+                    'total': 0,
+                }
+            else:
+                logger.warning("Falling back to API call with limited results")
+                return self._fallback_with_pagination(types, cursor, limit)
     
     def _fallback_with_pagination(self, types: Optional[str] = None, cursor: Optional[str] = None, limit: int = 50) -> Dict[str, Any]:
         """
@@ -390,14 +343,8 @@ class SlackConnector(DataConnector):
             
             # Process channels from current page
             for channel in response.get('channels', []):
-                channels.append({
-                    'channel_id': channel.get('id'),
-                    'channel_name': channel.get('name'),
-                    'type': 'Private' if channel.get('is_private', False) else 'Public',
-                    'is_private': channel.get('is_private', False),
-                    'project_id': self._project_id,
-                    'last_updated': time.time()
-                })
+                channel_data = self._mongo_storage.slack_channels.create_channel_document(channel, self._project_id)
+                channels.append(channel_data)
             
             # Check if there are more pages
             response_metadata = response.get('response_metadata', {})
@@ -521,3 +468,45 @@ class SlackConnector(DataConnector):
         logger.info(f"Retrieved {len(filtered_messages)} new messages and {len(filtered_thread_messages)} new threads")
         
         return filtered_messages, filtered_thread_messages
+    
+    def get_user_info(self, user_id: Optional[str] = None, include_locale: bool = False) -> Dict[str, Any]:
+        """
+        Get information about a user using Slack's users.info API.
+        
+        Args:
+            user_id: User ID to get info for. If None, gets info for the current authenticated user.
+            include_locale: Whether to include locale information in the response.
+            
+        Returns:
+            Dictionary containing user information
+            
+        Raises:
+            Exception: If the API request fails
+        """
+        params: Dict[str, Any] = {}
+        
+        # If no user_id provided, get the current user from auth.test
+        if not user_id:
+            auth_response = self._make_api_request("auth.test", use_user_token=True)
+            if auth_response.get('ok'):
+                user_id = auth_response.get('user_id')
+            else:
+                raise Exception("Failed to get current user ID from auth.test")
+        
+        params['user'] = user_id
+            
+        if include_locale:
+            params['include_locale'] = 'true'
+        
+        logger.info(f"Fetching user info for user_id: {user_id or 'current user'}")
+        response = self._make_api_request("users.info", params, use_user_token=True)
+        
+        if not response.get('ok'):
+            error_msg = f"Failed to get user info: {response.get('error')}"
+            logger.error(error_msg)
+            raise Exception(error_msg)
+        
+        user_info = response.get('user', {})
+        logger.info(f"Successfully retrieved user info for user: {user_info.get('name', 'Unknown')}")
+        
+        return response

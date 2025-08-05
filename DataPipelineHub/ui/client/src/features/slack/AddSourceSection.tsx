@@ -3,7 +3,7 @@ import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-quer
 import { FaSearch, FaSpinner } from 'react-icons/fa';
 import { HiOutlineLockClosed } from 'react-icons/hi';
 
-import { fetchAvailableSlackChannels, fetchEmbeddedSlackChannels } from '@/api/slack';
+import { fetchAvailableSlackChannels, fetchEmbeddedSlackChannels, PaginatedChannelsResponse } from '@/api/slack';
 import type { EmbedChannel, Channel } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { Switch } from '@/components/ui/switch';
 import { ChannelSettings, ChannelSettingsData, defaultChannelSettings } from './ChannelSettings';
 
 const CHANNELS_PER_PAGE = 50;
+const SEARCH_DEBOUNCE_DELAY = 2000; // 2 seconds
 
 export const SCOPE = {
   ALL: 'all' as const,
@@ -21,47 +22,48 @@ export const SCOPE = {
 };
 export type Scope = typeof SCOPE[keyof typeof SCOPE];
 
-export const CHANNEL_TYPE = {
-  PUBLIC: 'public_channel' as const,
-  PRIVATE: 'private_channel' as const,
-};
-export type ChannelType = typeof CHANNEL_TYPE[keyof typeof CHANNEL_TYPE];
-export const ALL_CHANNEL_TYPES = `${CHANNEL_TYPE.PUBLIC},${CHANNEL_TYPE.PRIVATE}` as const;
+const CHANNEL_TYPE = {
+  PUBLIC: 'public_channel',
+  PRIVATE: 'private_channel',
+} as const;
+type ChannelType = typeof CHANNEL_TYPE[keyof typeof CHANNEL_TYPE];
+const ALL_CHANNEL_TYPES = 'private_channel,public_channel';
 
-const CACHE_KEY = 'slackChannels';
+const CACHE_KEY = 'availableSlackChannels';
 
-const scopeOptions: { label: string; value: Scope }[] = [
+const scopeOptions = [
   { label: 'All', value: SCOPE.ALL },
   { label: 'Public', value: SCOPE.PUBLIC },
   { label: 'Private', value: SCOPE.PRIVATE },
 ];
 
-export interface PaginatedChannelsResponse {
-  channels: Channel[];
-  nextCursor?: string;
-  hasMore: boolean;
-  total?: number;
+interface ChannelWithSettings extends Channel {
+  settings: {
+    dateRange: string;
+    communityPrivacy: 'public' | 'private';
+    includeThreads: boolean;
+    processFileContent: boolean;
+  };
 }
 
-export interface ChannelWithSettings extends Channel {
-  settings: ChannelSettingsData;
-}
-
-export interface AddSourceSectionHandle {
-  getSelectedChannels: () => Promise<ChannelWithSettings[]>;
-}
-
-export interface AddSourceSectionProps {
-  onSave?: () => void;
-  onCancel?: () => void;
+interface AddSourceSectionProps {
+  onSave: () => Promise<void>;
+  onCancel: () => void;
   isSubmitting?: boolean;
 }
 
-const getChannelUniqueId = (channel: Channel) => `${channel.channel_id}_${channel.is_private ? 'private' : 'public'}`;
+interface AddSourceSectionHandle {
+  getSelectedChannels: () => Promise<ChannelWithSettings[]>;
+}
+
+const getChannelUniqueId = (channel: Channel): string => {
+  return `${channel.channel_id}_${channel.is_private ? 'private' : 'public'}`;
+};
+
 const parseChannelUniqueId = (uniqueId: string) => {
   const parts = uniqueId.split('_');
   return {
-    channel_id: parts.slice(0, -1).join('_'), // Handle channel_ids that might contain underscores
+    channel_id: parts.slice(0, -1).join('_'),
     is_private: parts[parts.length - 1] === 'private'
   };
 };
@@ -70,10 +72,43 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
   const queryClient = useQueryClient();
   const [scope, setScope] = useState<Scope>(SCOPE.ALL);
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
+  const [isSearching, setIsSearching] = useState<boolean>(false);
   const [selectedChannels, setSelectedChannels] = useState<string[]>([]);
   const [channelSettings, setChannelSettings] = useState<Record<string, ChannelSettingsData>>({});
   const [lastSelectedChannel, setLastSelectedChannel] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced search effect
+  useEffect(() => {
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    if (searchTerm.trim()) {
+      // Show loading immediately when user starts typing
+      setIsSearching(true);
+      
+      // Set timeout for API call
+      searchTimeoutRef.current = setTimeout(() => {
+        setDebouncedSearchTerm(searchTerm.trim());
+        setIsSearching(false);
+      }, SEARCH_DEBOUNCE_DELAY);
+    } else {
+      // Reset search immediately when search term is cleared
+      setDebouncedSearchTerm('');
+      setIsSearching(false);
+    }
+
+    // Cleanup timeout on unmount or search term change
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [searchTerm]);
 
   const typesParam = useMemo<ChannelType | typeof ALL_CHANNEL_TYPES>(() => {
     if (scope === SCOPE.PUBLIC) return CHANNEL_TYPE.PUBLIC;
@@ -90,16 +125,32 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery<PaginatedChannelsResponse, Error>({
-    queryKey: [CACHE_KEY, typesParam],
-    queryFn: async ({ pageParam = undefined }) => {
+    queryKey: [CACHE_KEY, typesParam, debouncedSearchTerm],
+    queryFn: async ({ pageParam }) => {
+      // Use ^ for prefix matching - escape special chars and add ^ at start
+      const searchRegex = debouncedSearchTerm ? `^${debouncedSearchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}` : undefined;
+      
+      // When searching, always use single query regardless of scope
+      if (debouncedSearchTerm) {
+        // For search, always search across all types when scope is ALL
+        const searchTypes = scope === SCOPE.ALL ? ALL_CHANNEL_TYPES : (typesParam as ChannelType);
+        
+        return fetchAvailableSlackChannels(searchTypes, {
+          cursor: pageParam as string | undefined,
+          limit: CHANNELS_PER_PAGE,
+          search_regex: searchRegex,
+        });
+      }
+      
+      // Normal mode without search - use existing logic
       if (scope === SCOPE.ALL) {
         const [pubResponse, privResponse] = await Promise.all([
           fetchAvailableSlackChannels(CHANNEL_TYPE.PUBLIC, {
-            cursor: pageParam as string,
+            cursor: pageParam as string | undefined,
             limit: Math.ceil(CHANNELS_PER_PAGE / 2),
           }),
           fetchAvailableSlackChannels(CHANNEL_TYPE.PRIVATE, {
-            cursor: pageParam as string,
+            cursor: pageParam as string | undefined,
             limit: Math.ceil(CHANNELS_PER_PAGE / 2),
           }),
         ]);
@@ -118,7 +169,7 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
       }
 
       return fetchAvailableSlackChannels(typesParam as ChannelType, {
-        cursor: pageParam as string,
+        cursor: pageParam as string | undefined,
         limit: CHANNELS_PER_PAGE,
       });
     },
@@ -131,7 +182,7 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
 
   const channels = useMemo(() => {
     if (!channelsData?.pages) return [];
-    return channelsData.pages.flatMap(page => page.channels);
+    return channelsData.pages.flatMap((page: PaginatedChannelsResponse) => page.channels);
   }, [channelsData]);
 
   const totalChannels = useMemo(() => {
@@ -156,7 +207,12 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
       .filter(c => selectedChannels.includes(getChannelUniqueId(c)))
       .map(c => ({
         ...c,
-        settings: settingsToUse
+        settings: {
+          dateRange: settingsToUse.dateRange,
+          communityPrivacy: 'public' as const,
+          includeThreads: settingsToUse.includeThreads,
+          processFileContent: settingsToUse.processFileContent,
+        }
       }));
   }, [channels, selectedChannels, channelSettings, lastSelectedChannel]);
 
@@ -168,10 +224,8 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
     return embedChannels.some(embedded => embedded.name === channel.channel_name);
   }, [embedChannels]);
 
-  const filteredChannels = useMemo(
-    () => channels.filter(c => c.channel_name.toLowerCase().includes(searchTerm.toLowerCase())),
-    [channels, searchTerm]
-  );
+  // No client-side filtering needed since we now have server-side search
+  const filteredChannels = channels;
 
   const handleToggleChannel = useCallback((channel: Channel) => {
     if (isChannelEmbedded(channel)) {
@@ -338,7 +392,13 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
                 placeholder="" 
                 className={`input-dark-theme pr-10 bg-input border-border ${searchTerm ? 'pl-3' : 'pl-28'}`}
               />
-              <FaSearch className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                {isSearching || isLoading ? (
+                  <FaSpinner className="animate-spin text-gray-400" />
+                ) : (
+                  <FaSearch className="text-gray-400" />
+                )}
+              </div>
             </div>
           </div>
           <div className="flex space-x-3">

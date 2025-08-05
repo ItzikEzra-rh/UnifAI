@@ -39,21 +39,11 @@ app.extensions['auth_manager'] = auth_manager
 
 register_all_endpoints(app)
 
-
-# mongo_ip   = config.get_param_by_env("mongodb_ip")
-# mongo_port = config.get_param_by_env("mongodb_port")
-mongo_uri = get_mongo_url()
-
-# ─── 3) Init your storage and stash it on the app ─────────────────────────
-#    We only pass the URI; the DB name can be chosen per-call later.
-app.mongo_storage = MongoStorage(mongo_uri)
-# Init before_request/after_request rules
-
 # Init before_request/after_request rules
 RequestRules(app)
 
 if __name__ == '__main__':
-    app.run(host=config.hostname, port=config.port, debug=True)
+    app.run(host=config.hostname_local, port=config.port, debug=True)
 
     # cert_file = os.path.join(os.path.dirname(__file__), 'cert.pem')
     # key_file = os.path.join(os.path.dirname(__file__), 'key.pem')

@@ -19,7 +19,7 @@ from .retrieval_test import rag_flow
 def slack_flow():
     """Example usage of the Slack pipeline components."""
     # Create MongoDB client
-    mongo_client = pymongo.MongoClient("mongodb://ae8f0dd8e6cd046539c3f0b7c6a75f13-508991814.us-east-1.elb.amazonaws.com:27017/")
+    mongo_client = pymongo.MongoClient("mongodb://localhost:27017/")
     
     # Create data pipeline with existing logger
     slack_pipeline = SlackDataPipeline(mongo_client, logger=logger)
@@ -43,7 +43,7 @@ def slack_flow():
         # Test authentication
         if connector.authenticate():
             # Get available channels
-            channels = connector.get_available_slack_channels(types="private_channel")
+            channels = connector.get_available_slack_channels_from_cache(types="private_channel")
             print(f"Found {len(channels)} channels")
             
             # Get history for the first channel if available
@@ -111,7 +111,7 @@ def slack_flow():
                     "type": "qdrant",
                     "collection_name": "slack_data",
                     "embedding_dim": embedding_generator.embedding_dim,
-                    "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
+                    "url": "http://localhost",
                     "port": 6333
                 }
                 

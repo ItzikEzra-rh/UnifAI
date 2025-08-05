@@ -65,7 +65,7 @@ class PipelineCeleryService:
         """
         print("1")
         celery_registration_result = self.celery_app.send_task(
-            "pipeline.pipeline_tasks.register_sources_task",
+            "celery_app.tasks.pipeline_tasks.register_sources_task",
             kwargs={
                 "data_list": data,
                 "source_type": source_type.upper(),
@@ -100,7 +100,7 @@ class PipelineCeleryService:
         
         for source_data in registered_sources:
             send_task(
-                task_name="pipeline.pipeline_tasks.execute_pipeline_task",
+                task_name="celery_app.tasks.pipeline_tasks.execute_pipeline_task",
                 celery_queue=f"{source_type.lower()}_queue",
                 source_type=source_type.upper(),
                 source_data=source_data

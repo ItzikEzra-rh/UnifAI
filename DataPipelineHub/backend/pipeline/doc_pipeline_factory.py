@@ -1,13 +1,12 @@
 from functools import cached_property
 from typing import Dict, List
-from pipeline.types import DocumentMetadata
+from shared.source_types import DocumentMetadata
 from pipeline.pipeline_factory import PipelineFactory
 from data_sources.docs.doc_config_manager import DocConfigManager
 from data_sources.docs.doc_connector import DocumentConnector
 from data_sources.docs.document_processor import DocumentProcessor
 from data_sources.docs.pdf_chunker_strategy import PDFChunkerStrategy
-from pipeline.config import ChunkerConfig
-from shared.logger import logger
+from shared.config import ChunkerConfig
 from config.constants import DataSource
 
 class DocumentPipelineFactory(PipelineFactory):

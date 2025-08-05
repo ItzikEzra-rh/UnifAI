@@ -42,7 +42,7 @@ def embedding_flow():
         "type": "qdrant",
         "collection_name": "slack_data",
         "embedding_dim": embedding_generator.embedding_dim,
-        "url": "http://a467739e076d04bf1b15aa68187cbc05-1112405490.us-east-1.elb.amazonaws.com",
+        "url": "http://localhost",
         "port": 6333
     }
     

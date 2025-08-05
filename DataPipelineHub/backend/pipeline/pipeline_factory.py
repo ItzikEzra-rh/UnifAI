@@ -3,9 +3,9 @@ from dataclasses import asdict
 from shared.logger import logger
 from utils.monitor.pipeline_monitor import PipelineMonitor
 from utils.embedding.embedding_generator_factory import EmbeddingGeneratorFactory
-from pipeline.config import EmbeddingConfig, StorageConfig
+from shared.config import EmbeddingConfig, StorageConfig
 from utils.storage.vector_storage_factory import VectorStorageFactory
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, Type
 from functools import cached_property
 from global_utils.utils.util import get_mongo_url
 import pymongo
