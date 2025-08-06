@@ -12,10 +12,13 @@ class McpProviderConfig(ProviderBaseConfig):
     """
     type: Literal[Identifier.TYPE] = Identifier.TYPE
     sse_endpoint: HttpUrl = Field(
-        ...,
         description="HTTP(S) endpoint that streams SSE events",
-        example="https://api.example.com:8000/"
-    )
+        json_schema_extra=ActionHint(
+            action_name="validate_connection",
+            hint_type=HintType.VALIDATE,
+            field_mapping="is_reachable"
+        ).to_hints()
+    ),
     tool_names: Optional[List[str]] = Field(
         default_factory=list,
         description="List of specific tool names to use from the MCP server",
