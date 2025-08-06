@@ -13,11 +13,10 @@ def parse_date_range_to_days(date_range: str) -> int:
         Number of days to go back
     """
     if not date_range:
-        return 30  # Default to 30 days
+        return 30 
         
     date_range = date_range.lower().strip()
     
-    # Handle compact formats like "7d", "30d", "1m", "1y"
     compact_match = re.search(r'(\d+)([dmyh])', date_range)
     if compact_match:
         number = int(compact_match.group(1))
@@ -30,9 +29,9 @@ def parse_date_range_to_days(date_range: str) -> int:
         elif unit == 'y':
             return number * 365
         elif unit == 'h':
-            return max(1, number // 24)  # Convert hours to days, minimum 1 day
+            return max(1, number // 24)
     
-    return 30  # Default fallback
+    return 30
 
 def calculate_date_range(date_range: str) -> tuple[datetime, datetime]:
     """
@@ -49,16 +48,13 @@ def calculate_date_range(date_range: str) -> tuple[datetime, datetime]:
         - start_datetime: 2024-12-29 00:00:00 (7 days ago at midnight)
         - end_datetime: 2025-01-05 14:30:15 (current datetime)
     """
-    # Current datetime (end of range)
     end_datetime = datetime.now()
     
-    # Calculate how many days back to go
     if not date_range:
         days_back = 30
     else:
         days_back = parse_date_range_to_days(date_range)
     
-    # Calculate start date (X days ago at midnight)
     start_date = (end_datetime - timedelta(days=days_back)).date()
     start_datetime = datetime.combine(start_date, datetime.min.time())
     

@@ -14,9 +14,6 @@ from shared.source_types import (
 from shared.logger import logger
 from config.constants import DataSource, PipelineStatus
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
-# Import the concrete factories to ensure they register themselves
-from pipeline.slack_pipeline_factory import SlackPipelineFactory
-from pipeline.doc_pipeline_factory import DocumentPipelineFactory
 
 app_config = AppConfig()
 upload_folder = app_config.get("upload_folder", "")
@@ -43,7 +40,6 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
         List of registered sources with their pipeline IDs added
     """
     try:
-        print("??????")
         logger.info(f"Starting registration for {len(data_list)} {source_type} sources by user {upload_by}")
         
         registered_sources = []
@@ -76,8 +72,8 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                     is_private=instance.get("is_private", False),
                     start_timestamp=start_datetime,
                     end_timestamp=end_datetime,
-                    new_messages_since_last_embedding=0,  # Initialize counter
-                    webhook_active=True,  # Enable webhook monitoring by default
+                    new_messages_since_last_embedding=0,
+                    webhook_active=True,  
                     **user_metadata  # Unpack user metadata into the model
                 )
                 type_data = slack_type_data.model_dump()
