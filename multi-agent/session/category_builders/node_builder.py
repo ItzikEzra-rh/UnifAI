@@ -17,6 +17,7 @@ class NodeBuilder(CategoryBuilder):
         ResourceCategory.TOOL,
         ResourceCategory.LLM,
         ResourceCategory.RETRIEVER,
+        ResourceCategory.PROVIDER
     }
 
     # attr name → category  (cardinality inferred at runtime)
@@ -24,6 +25,7 @@ class NodeBuilder(CategoryBuilder):
         "llm": ResourceCategory.LLM,
         "retriever": ResourceCategory.RETRIEVER,
         "tools": ResourceCategory.TOOL,
+        "provider": ResourceCategory.PROVIDER
     }
 
     def _iter_specs(self, bp: BlueprintSpec) -> Iterable[NodeSpec]:
@@ -35,6 +37,7 @@ class NodeBuilder(CategoryBuilder):
 
         for attr, category in self._inject_cat.items():
             value = getattr(cfg, attr, None)
+
             if value is None:
                 continue
 

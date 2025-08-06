@@ -6,6 +6,7 @@ from elements.nodes.common.base_node import BaseNode
 from elements.nodes.common.capabilities.llm_capable import LlmCapableMixin
 from elements.nodes.common.capabilities.retriever_capable import RetrieverCapableMixin
 from elements.nodes.common.capabilities.tool_capable import ToolCapableMixin
+from elements.providers.mcp_server_client.mcp_provider import McpProvider
 
 
 class CustomAgentNode(
@@ -31,6 +32,7 @@ class CustomAgentNode(
             retriever: Any = None,
             tools: List[Any] = (),
             system_message: str = "",
+            mcp_provider: McpProvider = None,
             retries: int = 1,
             max_rounds: Optional[int] = 5,
             **kwargs: Any
@@ -43,6 +45,7 @@ class CustomAgentNode(
             retries=retries,
             **kwargs
         )
+        self.mcp_provider = mcp_provider
         self.max_rounds = max_rounds
 
     def _prepare_messages(self, state: StateView) -> List[ChatMessage]:
@@ -66,6 +69,11 @@ class CustomAgentNode(
     def run(self, state: StateView) -> StateView:
         # Build the initial chat history
         history = self._prepare_messages(state)
+
+        if self.mcp_provider:
+            # Add MCP tools to the internal tools dictionary
+            for tool in self.mcp_provider.get_tools():
+                self._tools[tool.name] = tool
 
         # Pure LLM path if no tools
         if not self.tools:

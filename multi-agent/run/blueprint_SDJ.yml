@@ -14,6 +14,13 @@ providers:
     config:
       type: mcp_server
       sse_endpoint: http://10.46.254.131:8006/servers/mcp-atlassian/sse
+      tool_names:
+        - jira_get_issue
+        - jira_search
+        - jira_get_project_issues
+        - jira_create_issue
+        - jira_update_issue
+        - jira_link_to_epic
 
 # ----------------------------
 # LLM Definitions
@@ -52,55 +59,7 @@ retrievers:
 # ----------------------------
 # Tool Stubs
 # ----------------------------
-tools:
-  - rid: jira_get_issue_tool_rid
-    name: jira_get_issue
-    type: mcp_proxy
-    config:
-      type: mcp_proxy
-      tool_name: jira_get_issue
-      provider: mcp_server_rid
-
-  - rid: jira_search_tool_rid
-    name: jira_search
-    type: mcp_proxy
-    config:
-      type: mcp_proxy
-      tool_name: jira_search
-      provider: mcp_server_rid
-
-  - rid: jira_get_project_issues_tool_rid
-    name: jira_get_project_issues
-    type: mcp_proxy
-    config:
-      type: mcp_proxy
-      tool_name: jira_get_project_issues
-      provider: mcp_server_rid
-
-  - rid: jira_create_issue_tool_rid
-    name: jira_create_issue
-    type: mcp_proxy
-    config:
-      type: mcp_proxy
-      tool_name: jira_create_issue
-      provider: mcp_server_rid
-
-  - rid: jira_link_to_epic_tool_rid
-    name: jira_link_to_epic
-    type: mcp_proxy
-    config:
-      type: mcp_proxy
-      tool_name: jira_link_to_epic
-      provider: mcp_server_rid
-
-  - rid: jira_update_issue_tool_rid
-    name: jira_update_issue
-    type: mcp_proxy
-    config:
-      type: mcp_proxy
-      tool_name: jira_update_issue
-      provider: mcp_server_rid
-
+tools: []
 
 # ----------------------------
 # Conditions
@@ -155,13 +114,7 @@ nodes:
     config:
       type: custom_agent_node
       llm: openai_llm_rid
-      tools:
-        - jira_get_issue_tool_rid
-        - jira_search_tool_rid
-        - jira_get_project_issues_tool_rid
-        - jira_create_issue_tool_rid
-        - jira_link_to_epic_tool_rid
-        - jira_update_issue_tool_rid
+      provider: mcp_server_rid
       system_message: |
         You are a Jira Assistant.
         • Use the Jira tools to answer questions about issues, projects, and tasks.

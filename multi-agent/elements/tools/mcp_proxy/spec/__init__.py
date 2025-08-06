@@ -1,1 +1,1 @@
-from .spec import McpProxyToolElementSpec
+# from .spec import McpProxyToolElementSpec

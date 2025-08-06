@@ -16,7 +16,7 @@ class Meta:
 
 
 META = Meta(
-    name="MCP Server Provider",
+    name="MCP Provider",
     description="Remote MCP service via HTTPS/SSE",
     tags=["provider", "mcp", "server", "client", "websocket", "sse"],
 )

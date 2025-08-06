@@ -1,1 +1,1 @@
-from .spec import McpServerClientElementSpec
+from .spec import McpProviderElementSpec

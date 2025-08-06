@@ -30,8 +30,8 @@ class McpProxyTool(BaseTool):
         self._tool_info = None
         self._schema_initialized = False
 
-        # Fire off a one-time background task to fetch metadata
-        run_async(self._ensure_tool_info())
+        # Don't initialize in constructor to avoid nested run_async calls
+        # Initialization will happen lazily when needed
 
     async def _ensure_tool_info(self) -> None:
         """
