@@ -3,6 +3,7 @@ from typing import Dict, Any, List, Optional, Annotated
 from uuid import uuid4
 from pydantic import BaseModel, Field, field_validator
 from core.enums import ResourceCategory
+from core.field_hints import HiddenHint
 
 
 class ResourceDoc(BaseModel):
@@ -11,7 +12,7 @@ class ResourceDoc(BaseModel):
     – cfg_dict is **plain json**; we do NOT store the Pydantic instance.
     """
     rid: str = Field(default_factory=lambda: uuid4().hex)  # public key
-    user_id: str = Field(default="admin")  # tenant
+    user_id: str = Field(default="admin", json_schema_extra=HiddenHint(reason="UI hint to hide this value").to_hints())  # tenant
     category: ResourceCategory
     type: str  # e.g. "openai"
     name: str  # user label (unique per user+cat+type)

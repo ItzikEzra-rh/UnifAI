@@ -1,7 +1,8 @@
-from typing import Literal
+from typing import Literal, List, Optional
 from .identifiers import Identifier
 from pydantic import Field, HttpUrl
 from elements.providers.common.base_config import ProviderBaseConfig
+from core.field_hints import ActionHint, HintType
 
 
 class McpProviderConfig(ProviderBaseConfig):
@@ -14,4 +15,15 @@ class McpProviderConfig(ProviderBaseConfig):
         ...,
         description="HTTP(S) endpoint that streams SSE events",
         example="https://api.example.com:8000/"
+    )
+    tool_names: Optional[List[str]] = Field(
+        default_factory=list,
+        description="List of specific tool names to use from the MCP server",
+        json_schema_extra=ActionHint(
+            action_name="get_tools_names",
+            hint_type=HintType.POPULATE,
+            field_mapping="tool_names",
+            multi_select=True,
+            dependencies={"sse_endpoint": "sse_endpoint"}
+        ).to_hints()
     )
