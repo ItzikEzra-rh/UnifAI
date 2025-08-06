@@ -13,6 +13,7 @@ from resources.service import ResourcesService
 from resources.repository.mongo_repository import MongoResourceRepository
 from graph.service import GraphService
 from graph.validation.service import GraphValidationService
+from catalog.actions_service import ElementActionsService
 from config.app_config import AppConfig
 from global_utils.utils.singleton import SingletonMeta
 
@@ -33,6 +34,9 @@ class AppContainer(metaclass=SingletonMeta):
         # plugin discovery
         self.element_registry = ElementRegistry()
         self.element_registry.auto_discover()
+
+        # element actions service (depends on element registry)
+        self.element_actions_service = ElementActionsService(self.element_registry)
 
         # catalog service
         self.catalog_service = CatalogService(self.element_registry)

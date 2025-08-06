@@ -8,10 +8,13 @@ from typing import (
     get_args,
     Union,
     Set,
+    Dict,
+    Any,
 )
 from pydantic import BaseModel
 from core.enums import ResourceCategory
 from .base_factory import BaseFactory
+from .actions import BaseAction
 from graph.state.graph_state import Channel
 
 
@@ -35,6 +38,7 @@ class BaseElementSpec(ABC):
     # ── optional metadata ------------------------------------------------
     version: ClassVar[str] = "1.0.0"
     tags: ClassVar[List[str]] = []
+    actions: ClassVar[List[Type[BaseAction]]] = []
 
     # ─────────────────────────────────────────────────────────────────────
     # compile‑time validation
