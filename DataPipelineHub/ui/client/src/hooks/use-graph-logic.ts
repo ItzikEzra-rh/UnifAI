@@ -773,21 +773,42 @@ export const useGraphLogic = () => {
       ),
     );
 
-    // Update YAML flow to immediately set exit_condition
+    // Update YAML flow to immediately set exit_condition and add condition definition
     setYamlFlow((prevFlow) => {
+      const conditionRid = condition.workspaceData?.rid || condition.id;
+      
+      // Update plan with exit_condition
       const updatedPlan = prevFlow.plan.map((step) => {
         if (step.uid === nodeId) {
           return {
             ...step,
-            exit_condition: condition.workspaceData?.rid || condition.id,
+            exit_condition: conditionRid,
           };
         }
         return step;
       });
 
+      // Add condition definition to conditions section if not exists
+      const conditionExists = (prevFlow.conditions || []).some(
+        (cond) => cond.rid === conditionRid,
+      );
+
+      let updatedConditions = prevFlow.conditions || [];
+      if (!conditionExists) {
+        updatedConditions = [
+          ...updatedConditions,
+          {
+            rid: conditionRid,
+            name: condition.workspaceData?.name || condition.label,
+            type: condition.workspaceData?.type,
+            config: condition.workspaceData?.config,
+          },
+        ];
+      }
+
       return {
         nodes: prevFlow.nodes,
-        conditions: prevFlow.conditions || [],
+        conditions: updatedConditions,
         plan: updatedPlan,
       };
     });
