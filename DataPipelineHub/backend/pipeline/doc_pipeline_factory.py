@@ -84,5 +84,14 @@ class DocumentPipelineFactory(PipelineFactory):
         
         # Chunk the content
         chunks = self.doc_chunker.chunk_content([embedding_ready_docs])
+        
+        # Add source_id and source_type to each chunk's metadata (similar to Slack pipeline)
+        for idx, chunk in enumerate(chunks):
+            md = chunk.setdefault("metadata", {})
+            md.update({
+                "source_id": self.metadata.doc_id,
+                "source_type": DataSource.DOCUMENT.upper_name,
+            })
+        
         # Generate embeddings
         return self.embedder.generate_embeddings(chunks)

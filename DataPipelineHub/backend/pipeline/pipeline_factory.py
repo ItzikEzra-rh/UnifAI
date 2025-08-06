@@ -10,6 +10,34 @@ from functools import cached_property
 from global_utils.utils.util import get_mongo_url
 import pymongo
 
+
+class Pipeline:
+    def __init__(
+        self,
+        orchestrator,
+        collector,
+        processor,
+        chunker_and_embedder,
+        storage,
+        clean_orchestrator,
+        summary,
+        source_type,
+        get_source_id,
+        get_source_name,
+        monitor=None
+    ):
+        self.orchestrator = orchestrator
+        self.collector = collector
+        self.processor = processor
+        self.chunker_and_embedder = chunker_and_embedder
+        self.storage = storage
+        self.clean_orchestrator = clean_orchestrator
+        self.summary = summary
+        self.source_type = source_type
+        self.get_source_id = get_source_id
+        self.get_source_name = get_source_name
+        self.monitor = monitor
+        
 class PipelineFactory(ABC):
     """
     Base factory that instantiates the five pipeline layers:
@@ -41,12 +69,6 @@ class PipelineFactory(ABC):
     def __init__(self, metadata: Any):
         self.metadata = metadata
         self.monitor = PipelineMonitor(pymongo.MongoClient(get_mongo_url()))
-        self.orchestrator = self._create_orchestrator
-        self.collector = self._create_collector
-        self.processor = self._create_processor
-        self.chunker_and_embedder = self._create_chunker_and_embedder
-        self.storage   = self._create_storage
-        self.clean_orchestrator = self._clean_orchestrator
           
     @cached_property
     def embedder(self) -> Any:
@@ -61,8 +83,24 @@ class PipelineFactory(ABC):
         vector_storage.initialize()
         return vector_storage
     
+    def create_pipeline(self) -> Pipeline:
+        return Pipeline(
+            orchestrator=self._create_orchestrator,
+            collector=self._create_collector,
+            processor=self._create_processor,
+            chunker_and_embedder=self._create_chunker_and_embedder,
+            storage=self._create_storage,
+            clean_orchestrator=self._clean_orchestrator,
+            summary=self._create_summary,
+            source_type=self.SOURCE_TYPE,
+            get_source_id=self.get_source_id,
+            get_source_name=self.get_source_name,
+            monitor=self.monitor
+        )
+    
     def _create_orchestrator(self):
         self.monitor.start_log_monitoring(target_logger=logger, pipeline_id=f"{self.SOURCE_TYPE.lower()}_{self.get_source_id()}")
+        return self.monitor  # Return the monitor instance for the Pipeline object
     
     def _clean_orchestrator(self):
         """Clean up the orchestrator"""
@@ -99,7 +137,7 @@ class PipelineFactory(ABC):
         ...
 
     def _create_storage(self, embeddings: Any):
-        """store embeddings in vector storage"""
+        """Store embeddings in vector storage"""
         return self.vector_storage.store_embeddings(embeddings)
         
     

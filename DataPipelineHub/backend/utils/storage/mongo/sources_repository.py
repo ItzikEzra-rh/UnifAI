@@ -52,6 +52,24 @@ class SourcesRepository:
             logger.error(f"Error fetching source by pipeline_id {pipeline_id}: {e}")
             return {"success": False, "error": str(e)}
 
+    def get_info_by_source_id(self, source_id: str) -> Dict[str, Any]:
+        """Get detailed information for a specific source by source_id."""
+        try:
+            doc = self.col.find_one({"source_id": source_id})
+            if not doc:
+                return {"success": False, "message": f"Source with source_id {source_id} not found"}
+            return {
+                "success": True,
+                "source_name": doc.get("source_name", "Unknown"),
+                "source_type": doc.get("source_type", "Unknown"),
+                "source_id": doc.get("source_id"),
+                "source_info": make_json_safe(doc),
+                "pipeline_id": doc.get("pipeline_id")
+            }
+        except Exception as e:
+            logger.error(f"Error fetching source by source_id {source_id}: {e}")
+            return {"success": False, "error": str(e)}   
+
     def upsert_summary(self, source_id: str, source_name: str, source_type: str,
                        upload_by: str, pipeline_id: str, type_data: Optional[Dict[str, Any]] = None):
         """Create or update a source summary."""

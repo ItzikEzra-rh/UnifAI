@@ -41,6 +41,10 @@ class MongoStorage:
         """Get source info by pipeline_id (delegates to sources repository)."""
         return self.sources.get_info_by_pipeline_id(pipeline_id)
 
+    def get_source_info_by_source_id(self, source_id: str) -> Dict[str, Any]:
+        """Get source info by source_id (delegates to sources repository)."""
+        return self.sources.get_info_by_source_id(source_id)
+
     def delete_source(self, source_id: str) -> Dict[str, Any]:
         """Delete source (delegates to sources repository)."""
         return self.sources.delete(source_id)
@@ -80,7 +84,12 @@ class MongoStorage:
                 source['status'] = None
             enriched.append(make_json_safe(source))
         
-        return enriched
+        enriched_sorted = sorted(
+            enriched,
+            key=lambda s: s.get('created_at') or 0,  # default to 0 if created_at is missing
+            reverse=True
+        )
+        return enriched_sorted
 
     def upsert_documents(self, db: str, col: str, docs: List[Dict[str, Any]], key_field: str) -> None:
         """Generic document upsert operation."""
