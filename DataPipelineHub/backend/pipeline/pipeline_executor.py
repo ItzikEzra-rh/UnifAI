@@ -18,7 +18,8 @@ class PipelineExecutor:
     def __init__(
         self,
         pipeline: Pipeline,
-        pipeline_id: str
+        pipeline_id: str,
+        repo: PipelineRepository = None
     ):
         self.pipeline     = pipeline
         self.pipeline_id = pipeline_id
@@ -28,51 +29,51 @@ class PipelineExecutor:
     def _initialize_repo(self) -> PipelineRepository:
         return PipelineRepository(
             pipeline_id=self.pipeline_id,
-            source_type=self.pipeline.source_type,
+            source_type=self.pipeline.SOURCE_TYPE,
             source_id=self.pipeline.get_source_id(),
             source_name=self.pipeline.get_source_name()
         )
         
-    def _orchestrate(self):
-        return self.pipeline.orchestrator()
+    def _run_orchestration(self):
+        return self.pipeline.orchestration()
 
     @pipeline_step(PipelineStatus.COLLECTING.value)
-    def _collect(self):
-        return self.pipeline.collector()
+    def _run_collect(self):
+        return self.pipeline.collect_data()
 
     @pipeline_step(PipelineStatus.PROCESSING.value)
-    def _process(
+    def _run_process(
         self,
         collected: Any
     ) -> Any:
-        return self.pipeline.processor(collected)
+        return self.pipeline.process_data(collected)
 
     @pipeline_step(PipelineStatus.CHUNKING_AND_EMBEDDING.value)
-    def _chunk_and_embed(
+    def _run_chunk_and_embed(
         self,
         processed: Any
     ) -> Any:
-        return self.pipeline.chunker_and_embedder(processed)
+        return self.pipeline.chunk_and_embed(processed)
 
     @pipeline_step(PipelineStatus.STORING.value)
-    def _store(
+    def _run_store(
         self,
         embeddings: Any
     ) -> Any:
-        return self.pipeline.storage(embeddings)
+        return self.pipeline.store_embeddings(embeddings)
 
-    def _clean_orchestrator(self):
-        self.pipeline.clean_orchestrator()
+    def _run_clean_orchestration(self):
+        self.pipeline.clean_orchestration()
 
     def run(self) -> Any:
-        self._orchestrate()
+        self._run_orchestration()
         
-        collected   = self._collect()          
-        processed   = self._process(collected)   
-        embeddings  = self._chunk_and_embed(processed)
-        stored      = self._store(embeddings)
+        collected   = self._run_collect()          
+        processed   = self._run_process(collected)   
+        embeddings  = self._run_chunk_and_embed(processed)
+        stored      = self._run_store(embeddings)
         
-        self._clean_orchestrator()
+        self._run_clean_orchestration()
         self.repo.update_pipeline_status(
             new_status=PipelineStatus.DONE.value
         )

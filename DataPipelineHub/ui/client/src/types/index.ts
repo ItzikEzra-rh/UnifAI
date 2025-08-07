@@ -68,7 +68,6 @@ export interface EmbedChannel {
   channel_id: string;
   created: string;
   is_private: boolean;
-  communityPrivacy?: 'public' | 'private';
 }
 export interface Document {
   _id: string;

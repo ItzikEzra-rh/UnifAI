@@ -162,8 +162,8 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
             raise ValueError(f"Unsupported source type: {source_type}")
         
         # Create factory and executor using the modular pipeline architecture
-        factory = PipelineFactory.create(source_type, metadata)
-        pipeline = factory.create_pipeline()
+        factory = PipelineFactory.create(source_type)
+        pipeline = factory.create_pipeline(metadata)
         executor = PipelineExecutor(pipeline, pipeline_id)
         
         # Execute the pipeline
