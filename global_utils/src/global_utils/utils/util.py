@@ -7,6 +7,7 @@ from pathlib import Path
 import asyncio
 import threading
 from concurrent.futures import ThreadPoolExecutor
+import anyio
 from jsonschema import validate, ValidationError, Draft202012Validator
 from datamodel_code_generator import (
     generate,
@@ -72,53 +73,35 @@ def get_root_dir() -> Path:
     return root_dir
 
 
-# Global persistent event loop thread for consistent async execution
-_PERSISTENT_LOOP = None
-_PERSISTENT_THREAD = None
-_LOOP_LOCK = threading.Lock()
-
-
-def _get_persistent_loop():
-    """Get or create a persistent event loop running in a dedicated thread."""
-    global _PERSISTENT_LOOP, _PERSISTENT_THREAD
-
-    if _PERSISTENT_LOOP is None or _PERSISTENT_LOOP.is_closed():
-        with _LOOP_LOCK:
-            if _PERSISTENT_LOOP is None or _PERSISTENT_LOOP.is_closed():
-                # Create a new event loop in a dedicated thread
-                loop_ready = threading.Event()
-
-                def run_event_loop():
-                    global _PERSISTENT_LOOP
-                    _PERSISTENT_LOOP = asyncio.new_event_loop()
-                    asyncio.set_event_loop(_PERSISTENT_LOOP)
-                    loop_ready.set()
-                    _PERSISTENT_LOOP.run_forever()
-
-                _PERSISTENT_THREAD = threading.Thread(target=run_event_loop, daemon=True)
-                _PERSISTENT_THREAD.start()
-                loop_ready.wait()  # Wait for loop to be ready
-
-    return _PERSISTENT_LOOP
-
-
 def run_async(awaitable: Any) -> Any:
     """
-    Always run awaitable in the same persistent event loop for consistency.
+    Run awaitable using anyio for loop-agnostic execution.
     
-    This ensures all async operations (including McpServerClient locks) 
-    happen in the same event loop, preventing "bound to different event loop" errors.
-    
-    Handles both cases:
-    1. No event loop running (main thread) 
-    2. Event loop already running (nested call from async context)
-    
-    In both cases, we use the persistent loop for consistency.
+    This approach:
+    1. Uses current event loop if available (async context)
+    2. Creates new event loop if none exists (sync context)
+    3. Supports nested calls naturally
+    4. Works with anyio locks across different loops
+
+    Uses anyio which provides cross-loop synchronization primitives.
     """
-    # Always use persistent loop regardless of current context
-    persistent_loop = _get_persistent_loop()
-    future = asyncio.run_coroutine_threadsafe(awaitable, persistent_loop)
-    return future.result()
+    try:
+        # Check if we're already in an async context
+        asyncio.get_running_loop()
+
+        # We're in an async context - use anyio.from_thread to run in thread
+        # anyio.from_thread.run expects a coroutine function, so we wrap the awaitable
+        async def _run_awaitable():
+            return await awaitable
+
+        return anyio.from_thread.run(_run_awaitable)
+    except RuntimeError:
+        # No event loop running - create one with anyio
+        # anyio.run expects a coroutine function, so we wrap the awaitable
+        async def _run_awaitable():
+            return await awaitable
+
+        return anyio.run(_run_awaitable)
 
 
 def json_schema_model(
