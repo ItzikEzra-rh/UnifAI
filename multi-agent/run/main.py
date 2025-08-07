@@ -178,7 +178,7 @@ def run_test_new_version(app, blueprint_id):
     session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
     print(f"Created session with id: {session.run_context.run_id}")
     print(app.session_service.execute(session_id=session.run_context.run_id,
-                                      inputs={"user_prompt": "what is latest issues in GENIE project?"},
+                                      inputs={"user_prompt": "what is latest issues in GENIE project? search for GENIE project and GENIE-2"},
                                       stream=False,
                                       scope="public"))
 
