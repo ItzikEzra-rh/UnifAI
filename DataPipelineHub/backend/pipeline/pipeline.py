@@ -38,6 +38,9 @@ class Pipeline(ABC):
         self.monitor = monitor
         self.metadata = metadata
 
+    def get_pipeline_id(self) -> str:
+        return self.metadata.pipeline_id
+    
     @abstractmethod
     def get_source_id(self) -> str:
         ...

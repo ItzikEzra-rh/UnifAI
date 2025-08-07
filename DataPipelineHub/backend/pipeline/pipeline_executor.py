@@ -18,21 +18,11 @@ class PipelineExecutor:
     def __init__(
         self,
         pipeline: Pipeline,
-        pipeline_id: str,
-        repo: PipelineRepository = None
+        repo: PipelineRepository
     ):
         self.pipeline     = pipeline
-        self.pipeline_id = pipeline_id
-        self.repo = self._initialize_repo()
-        self.repo.register_pipeline()
-        
-    def _initialize_repo(self) -> PipelineRepository:
-        return PipelineRepository(
-            pipeline_id=self.pipeline_id,
-            source_type=self.pipeline.SOURCE_TYPE,
-            source_id=self.pipeline.get_source_id(),
-            source_name=self.pipeline.get_source_name()
-        )
+        self.repo         = repo
+        self.repo.register_pipeline(pipeline)
         
     def _run_orchestration(self):
         return self.pipeline.orchestration()
@@ -78,6 +68,7 @@ class PipelineExecutor:
             new_status=PipelineStatus.DONE.value
         )
         self.repo.register_data_source(
+            pipeline=self.pipeline,
             summary=self.pipeline.summary()
         )
         return stored

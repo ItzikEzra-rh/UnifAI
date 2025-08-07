@@ -4,36 +4,21 @@ from pymongo import MongoClient
 from pymongo.collection import Collection
 from config.constants import PipelineStatus
 from global_utils.utils.util import get_mongo_url
+from pipeline.pipeline import Pipeline
 
 class PipelineRepository:
     """
     Repository for pipeline documents in MongoDB.
     Documents have at least:
-      - pipeline_id: str
-      - source_type: str
-      - status: str
-      - metadata: dict (optional)
-      - created_at: datetime
-      - updated_at: datetime
+      - pipeline 
     """
 
     def __init__(
         self,
-        pipeline_id: str,
-        source_type: str,
-        source_id: str,
-        source_name: str,
     ):
-        self.pipeline_id = pipeline_id
-        self.source_type = source_type
-        self.source_id = source_id
-        self.source_name = source_name
         mongo_client = MongoClient(get_mongo_url())
-
         self.pipelines_collection: Collection = mongo_client["pipeline_monitoring"]["pipelines"]
         self.sources_collection: Collection = mongo_client["data_sources"]["sources"]
-
-        # ensure an index on pipeline_id for fast lookups & uniqueness
         self.pipelines_collection.create_index("pipeline_id", unique=True)
         self.sources_collection.create_index("source_id", unique=True)
 
@@ -49,7 +34,7 @@ class PipelineRepository:
 
     def register_pipeline(
         self,
-        metadata: Optional[Dict[str, Any]] = None
+        pipeline: Pipeline
     ) -> str:
         """
         Create a new pipeline doc if one doesn’t exist, or leave the existing one.
@@ -64,15 +49,15 @@ class PipelineRepository:
             "processing_time":     0,
         }
         result = self.pipelines_collection.update_one(
-            {"pipeline_id": self.pipeline_id},
+            {"pipeline_id": pipeline.get_pipeline_id()},
             {
                 "$setOnInsert": {
-                    "pipeline_id": self.pipeline_id,
-                    "source_type": self.source_type,
+                    "pipeline_id": pipeline.get_pipeline_id(),
+                    "source_type": pipeline.SOURCE_TYPE,
                     "status":      PipelineStatus.PENDING.value,
                     "created_at":  now,
                     "stats":       default_stats,
-                    "metadata":    metadata or {}
+                    "metadata":    {}
                 },
                 "$set": {
                     "last_updated": now
@@ -84,13 +69,14 @@ class PipelineRepository:
             return str(result.upserted_id)
 
         existing = self.pipelines_collection.find_one(
-            {"pipeline_id": self.pipeline_id},
+            {"pipeline_id": pipeline.get_pipeline_id()},
             {"_id": True}
         )
         return str(existing["_id"])
 
     def register_data_source(
         self,
+        pipeline: Pipeline,
         summary: Dict[str, Any] = {}
     ) -> None:
         """
@@ -107,15 +93,15 @@ class PipelineRepository:
         for key, value in summary.items():
             update_fields[f'type_data.{key}'] = value
         insert_fields = {
-            'source_id': self.source_id,
-            'source_name': self.source_name,
-            'source_type': self.source_type,
-            'pipeline_id': self.pipeline_id,
+            'source_id': pipeline.get_source_id(),
+            'source_name': pipeline.get_source_name(),
+            'source_type': pipeline.SOURCE_TYPE,
+            'pipeline_id': pipeline.get_pipeline_id(),
             'created_at': now,
         }
 
         self.sources_collection.update_one(
-            {'pipeline_id': self.pipeline_id},
+            {'pipeline_id': pipeline.get_pipeline_id()},
             {
                 '$set': update_fields,
                 '$setOnInsert': insert_fields
@@ -125,7 +111,7 @@ class PipelineRepository:
         
     def _calculate_processing_time(
         self,
-        pipeline: Dict[str, Any]
+        pipeline_doc: Dict[str, Any]
     ) -> float:
         """
         Calculate the total processing time for a pipeline.
@@ -137,7 +123,7 @@ class PipelineRepository:
             Processing time in seconds as a float
         """
         now = datetime.now()
-        created_at = pipeline.get("created_at", now)
+        created_at = pipeline_doc.get("created_at", now)
         
         # Handle both datetime objects and string representations
         if isinstance(created_at, str):
@@ -148,6 +134,7 @@ class PipelineRepository:
         
     def update_pipeline_status(
         self,
+        pipeline: Pipeline,
         new_status: str
     ) -> bool:
         """
@@ -163,13 +150,13 @@ class PipelineRepository:
         
         # If the pipeline is done, calculate the total processing time
         if new_status == PipelineStatus.DONE.value:
-            pipeline = self.get_pipeline(self.pipeline_id)
-            if pipeline:
-                processing_time = self._calculate_processing_time(pipeline)
+            pipeline_doc = self.get_pipeline(pipeline.get_pipeline_id())
+            if pipeline_doc:
+                processing_time = self._calculate_processing_time(pipeline_doc)
                 update_fields["stats.processing_time"] = processing_time
         
         result = self.pipelines_collection.update_one(
-            {"pipeline_id": self.pipeline_id},
+            {"pipeline_id": pipeline.get_pipeline_id()},
             {"$set": update_fields}
         )
         return result.modified_count > 0
