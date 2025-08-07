@@ -68,7 +68,7 @@ def slack_channel_chunks(channel_name):
         return jsonify({"error": str(e)}), 500
 
 
-@slack_bp.route("/user.info", methods=["GET"])
+@slack_bp.route("/user.info.get", methods=["GET"])
 @from_query({
     "user_id": fields.Str(required=False, data_key='user_id', load_default=None),
     "include_locale": fields.Bool(required=False, data_key='include_locale', load_default=False)
