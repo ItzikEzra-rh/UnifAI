@@ -14,7 +14,7 @@ class ActionHint(BaseModel):
     """
     Simple hint that references an action for field population or validation.
     """
-    action_name: str = Field(
+    action_uid: str = Field(
         ..., 
         description="Name of the action to invoke"
     )

@@ -1,8 +1,10 @@
-from typing import List
+from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, HttpUrl
-from elements.common.actions import BaseAction
-from elements.common.action_models import BaseActionInput, BaseActionOutput, ActionType
-from ..mcp_server_client import McpServerClient
+from actions.common.base_action import BaseAction
+from actions.common.action_models import BaseActionInput, BaseActionOutput, ActionType
+from elements.providers.mcp_server_client.mcp_server_client import McpServerClient
+from elements.providers.mcp_server_client.identifiers import Identifier
+from core.enums import ResourceCategory
 
 
 # Input/Output models for this action
@@ -21,21 +23,28 @@ class GetToolsNamesAction(BaseAction):
     """
     Discovers available tool names from MCP server.
     
+    This action can work with any MCP-compatible element or independently.
     Single Responsibility: Only discovers and returns tool names
     """
     
+    uid = "mcp.get_tools_names"
     name = "get_tools_names"
     description = "Retrieve the list of available tool names from the MCP server"
     action_type = ActionType.DISCOVERY
     input_schema = GetToolsNamesInput
     output_schema = GetToolsNamesOutput
+    version = "1.0.0"
+    tags = {"mcp", "discovery", "tools"}
+    elements = {(ResourceCategory.PROVIDER.value, Identifier.TYPE)}
     
-    async def execute(self, input_data: GetToolsNamesInput) -> GetToolsNamesOutput:
+    async def execute(self, input_data: GetToolsNamesInput, 
+                     context: Optional[Dict[str, Any]] = None) -> GetToolsNamesOutput:
         """
         Execute tools discovery asynchronously.
         
         Args:
             input_data: Validated discovery input
+            context: Optional execution context (element configs, etc.)
             
         Returns:
             Discovery result with tool names and count

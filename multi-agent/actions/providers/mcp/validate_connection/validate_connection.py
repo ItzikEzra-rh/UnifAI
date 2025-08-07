@@ -1,9 +1,12 @@
 import asyncio
 import time
+from typing import Optional, Dict, Any
 from pydantic import BaseModel, HttpUrl
-from elements.common.actions import BaseAction
-from elements.common.action_models import BaseActionInput, BaseActionOutput, ActionType
-from ..mcp_server_client import McpServerClient
+from actions.common.base_action import BaseAction
+from actions.common.action_models import BaseActionInput, BaseActionOutput, ActionType
+from elements.providers.mcp_server_client.mcp_server_client import McpServerClient
+from elements.providers.mcp_server_client.identifiers import Identifier
+from core.enums import ResourceCategory
 
 
 # Input/Output models for this action
@@ -22,21 +25,28 @@ class ValidateConnectionAction(BaseAction):
     """
     Validates MCP server connection.
     
+    This action can work with any MCP-compatible element or independently.
     Single Responsibility: Only validates connection reachability
     """
     
+    uid = "mcp.validate_connection"
     name = "validate_connection"
     description = "Validate that the MCP server endpoint is reachable and responding"
     action_type = ActionType.VALIDATION
     input_schema = ValidateConnectionInput
     output_schema = ValidateConnectionOutput
+    version = "1.0.0"
+    tags = {"mcp", "validation", "connectivity"}
+    elements = {(ResourceCategory.PROVIDER.value, Identifier.TYPE)}
     
-    async def execute(self, input_data: ValidateConnectionInput) -> ValidateConnectionOutput:
+    async def execute(self, input_data: ValidateConnectionInput, 
+                     context: Optional[Dict[str, Any]] = None) -> ValidateConnectionOutput:
         """
-        Execute connection validation asynchronously.
+        Execute connection validation with optional context.
         
         Args:
             input_data: Validated connection input
+            context: Optional execution context (element configs, etc.)
             
         Returns:
             Validation result with connection status and timing

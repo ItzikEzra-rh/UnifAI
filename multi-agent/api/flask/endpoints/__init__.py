@@ -4,7 +4,7 @@ from .catalog import catalog_bp
 from .resources import resources_bp
 from .graph import graph_bp
 from .graph_validation import graph_validation_bp
-from .element_actions import catalog_actions_bp
+from .actions import actions_bp
 
 
 def register_all_endpoints(app):
@@ -15,7 +15,7 @@ def register_all_endpoints(app):
         {"bp": resources_bp, "parent": 'resources', "route": ''},
         {"bp": graph_bp, "parent": 'graph', "route": ''},
         {"bp": graph_validation_bp, "parent": 'graph', "route": 'validation'},
-        {"bp": catalog_actions_bp, "parent": 'elements', "route": 'actions'},
+        {"bp": actions_bp, "parent": 'actions', "route": ''},
     ]
 
     # register all other blueprints in the app

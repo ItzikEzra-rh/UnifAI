@@ -14,7 +14,7 @@ class McpProviderConfig(ProviderBaseConfig):
     sse_endpoint: HttpUrl = Field(
         description="HTTP(S) endpoint that streams SSE events",
         json_schema_extra=ActionHint(
-            action_name="validate_connection",
+            action_uid="mcp.validate_connection",
             hint_type=HintType.VALIDATE,
             field_mapping="is_reachable"
         ).to_hints()
@@ -23,7 +23,7 @@ class McpProviderConfig(ProviderBaseConfig):
         default_factory=list,
         description="List of specific tool names to use from the MCP server",
         json_schema_extra=ActionHint(
-            action_name="get_tools_names",
+            action_uid="mcp.get_tools_names",
             hint_type=HintType.POPULATE,
             field_mapping="tool_names",
             multi_select=True,
