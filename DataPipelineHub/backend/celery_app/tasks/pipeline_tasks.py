@@ -1,5 +1,6 @@
 import os
 import uuid
+from pipeline.pipeline_repository import PipelineRepository
 from config.app_config import AppConfig
 from global_utils.celery_app import CeleryApp
 from pipeline.pipeline_factory import PipelineFactory
@@ -161,10 +162,11 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
         else:
             raise ValueError(f"Unsupported source type: {source_type}")
         
+        metadata["pipeline_id"] = pipeline_id
         # Create factory and executor using the modular pipeline architecture
         factory = PipelineFactory.create(source_type)
         pipeline = factory.create_pipeline(metadata)
-        executor = PipelineExecutor(pipeline, pipeline_id)
+        executor = PipelineExecutor(pipeline, PipelineRepository())
         
         # Execute the pipeline
         result = executor.run()
