@@ -49,62 +49,17 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   const [refOptions, setRefOptions] = useState<{ [category: string]: any[] }>(
     {},
   );
-  const [resourceSchema, setResourceSchema] = useState<any>(null);
-  const [firstLevelRequired, setFirstLevelRequired] = useState<string[]>([]);
 
-  const { fetchResourcesForCategory, fetchResourceSchema } = useWorkspaceData();
+  const { fetchResourcesForCategory } = useWorkspaceData();
 
-  // Fetch resource schema and determine first-level required fields
-  useEffect(() => {
-    const loadResourceSchema = async () => {
-      const schema = await fetchResourceSchema();
-      if (schema) {
-        setResourceSchema(schema);
-        
-        // Extract required fields, excluding 'category', 'type', and 'cfg_dict'
-        const required = schema.required || [];
-        const filteredRequired = required.filter((field: string) => 
-          field !== 'category' && field !== 'type' && field !== 'cfg_dict'
-        );
-        setFirstLevelRequired(filteredRequired);
-      } else {
-        // Fallback to current behavior if schema fetch fails
-        setFirstLevelRequired(['name']);
-      }
-    };
 
-    if (isOpen) {
-      loadResourceSchema();
-    }
-  }, [isOpen, fetchResourceSchema]);
 
   // Initialize form data
   useEffect(() => {
-    if (elementSchema && isOpen && resourceSchema) {
+    if (elementSchema && isOpen) {
       const initialData: any = {};
 
-      // Initialize first-level required fields
-      firstLevelRequired.forEach((field) => {
-        const fieldSchema = resourceSchema.properties?.[field];
-        if (fieldSchema) {
-          if (fieldSchema.default !== undefined) {
-            initialData[field] = fieldSchema.default;
-          } else if (fieldSchema.type === "array") {
-            initialData[field] = [];
-          } else if (fieldSchema.type === "boolean") {
-            initialData[field] = false;
-          } else if (fieldSchema.type === "object") {
-            initialData[field] = {};
-          } else {
-            initialData[field] = "";
-          }
-        } else {
-          // Fallback for fields without schema
-          initialData[field] = "";
-        }
-      });
-
-      // Set default values from element config schema
+      // Set default values from combined schema
       Object.entries(elementSchema.config_schema.properties).forEach(
         ([key, property]: [string, any]) => {
           if (property.default !== undefined) {
@@ -121,11 +76,11 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         },
       );
 
-      // If editing, populate with existing data
+      // If editing, populate with existing data (override defaults)
       if (editingElement) {
-        // Handle first-level required fields
-        firstLevelRequired.forEach((field) => {
-          if (editingElement[field] !== undefined) {
+        // Handle first-level fields directly from editingElement
+        Object.keys(editingElement).forEach((field) => {
+          if (field !== 'config' && editingElement[field] !== undefined) {
             initialData[field] = editingElement[field];
           }
         });
@@ -152,7 +107,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
 
       setFormData(initialData);
     }
-  }, [elementSchema, editingElement, isOpen, resourceSchema, firstLevelRequired]);
+  }, [elementSchema, editingElement, isOpen]);
 
   // Re-apply form data when ref options are loaded (for proper pre-selection)
   useEffect(() => {
@@ -213,6 +168,119 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     return null;
   };
 
+  // Helper function to parse JSON path from reference string
+  const parseJsonPath = (ref: string): string[] | null => {
+    if (!ref || typeof ref !== 'string' || !ref.startsWith('#/')) {
+      return null;
+    }
+
+    // Remove the '#/' prefix and split by '/'
+    const pathString = ref.substring(2);
+    if (!pathString) {
+      return null;
+    }
+
+    return pathString.split('/').filter(segment => segment.length > 0);
+  };
+
+  // Generic helper function to resolve JSON path in an object
+  const resolveJsonPath = (obj: any, pathSegments: string[]): any | null => {
+    if (!obj || !pathSegments || pathSegments.length === 0) {
+      return null;
+    }
+
+    let current = obj;
+    for (const segment of pathSegments) {
+      if (!current || typeof current !== 'object' || !(segment in current)) {
+        return null;
+      }
+      current = current[segment];
+    }
+
+    return current;
+  };
+
+  // Helper function to find definition in schema by reference path
+  const findDefinitionByRef = (ref: string): any | null => {
+    const pathSegments = parseJsonPath(ref);
+    if (!pathSegments || !elementSchema?.config_schema) {
+      return null;
+    }
+
+    return resolveJsonPath(elementSchema.config_schema, pathSegments);
+  };
+
+  // Helper function to resolve $ref to actual definition with full details
+  const resolveRef = (ref: string): any | null => {
+    const definition = findDefinitionByRef(ref);
+    if (definition) {
+      console.log(`Resolved $ref ${ref} to:`, definition);
+      return definition;
+    }
+
+    console.warn(`Could not resolve $ref: ${ref}`);
+    return null;
+  };
+
+  // Helper function to extract category from resolved definition
+  const extractCategoryFromDefinition = (definition: any): string | null => {
+    if (!definition || typeof definition !== 'object') {
+      return null;
+    }
+
+    // Direct category property
+    if (definition.category && typeof definition.category === 'string') {
+      return definition.category;
+    }
+
+    return null;
+  };
+
+  // Helper function to extract category from $ref field or anyOf structure
+  const extractCategoryFromField = (fieldSchema: any): string | null => {
+    // Handle direct $ref by resolving it
+    if (fieldSchema.$ref) {
+      const resolved = resolveRef(fieldSchema.$ref);
+      const category = extractCategoryFromDefinition(resolved);
+      if (category) {
+        return category;
+      }
+    }
+
+    // Handle items with $ref (for arrays)
+    if (fieldSchema.items && fieldSchema.items.$ref) {
+      const resolved = resolveRef(fieldSchema.items.$ref);
+      const category = extractCategoryFromDefinition(resolved);
+      if (category) {
+        return category;
+      }
+    }
+
+    // Category from anyOf structure
+    if (fieldSchema.anyOf && Array.isArray(fieldSchema.anyOf)) {
+      // Check for direct $ref in anyOf
+      for (const option of fieldSchema.anyOf) {
+        if (option.$ref) {
+          const resolved = resolveRef(option.$ref);
+          const category = extractCategoryFromDefinition(resolved);
+          if (category) {
+            return category;
+          }
+        }
+
+        // Check for array with $ref items in anyOf
+        if (option.type === "array" && option.items && option.items.$ref) {
+          const resolved = resolveRef(option.items.$ref);
+          const category = extractCategoryFromDefinition(resolved);
+          if (category) {
+            return category;
+          }
+        }
+      }
+    }
+    return null; // Return null if no category is found
+  };
+
   // Load reference options for $ref fields
   useEffect(() => {
     if (elementSchema && isOpen) {
@@ -231,24 +299,9 @@ export const ElementForm: React.FC<ElementFormProps> = ({
 
       const refCategories = new Set<string>();
       refFields.forEach(([, property]: [string, any]) => {
-        if (property.category) {
-          refCategories.add(property.category);
-        }
-        if (property.items && property.items.category) {
-          refCategories.add(property.items.category);
-        }
-        // Handle anyOf structure
-        const itemsSchema = getArrayItemsSchema(property);
-        if (itemsSchema && itemsSchema.category) {
-          refCategories.add(itemsSchema.category);
-        }
-        // Handle anyOf with $ref
-        if (property.anyOf) {
-          property.anyOf.forEach((option: any) => {
-            if (option.$ref && option.category) {
-              refCategories.add(option.category);
-            }
-          });
+        const category = extractCategoryFromField(property);
+        if (category) {
+          refCategories.add(category);
         }
       });
 
@@ -310,10 +363,11 @@ export const ElementForm: React.FC<ElementFormProps> = ({
 
   // Check if all required fields are filled
   const isFormValid = () => {
-    if (!elementSchema || !resourceSchema) return false;
+    if (!elementSchema) return false;
 
-    // Check first-level required fields
-    const firstLevelValid = firstLevelRequired.every((field) => {
+    // Check all required fields from combined schema
+    const required = elementSchema.config_schema.required || [];
+    return required.every((field) => {
       const value = formData[field];
       if (Array.isArray(value)) {
         return value.length > 0;
@@ -321,26 +375,15 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       return value !== undefined && value !== null && value !== "" && 
              (typeof value !== "string" || value.trim() !== "");
     });
-
-    if (!firstLevelValid) return false;
-
-    // Check config schema required fields
-    const required = elementSchema.config_schema.required || [];
-    return required.every((field) => {
-      const value = formData[field];
-      if (Array.isArray(value)) {
-        return value.length > 0;
-      }
-      return value !== undefined && value !== null && value !== "";
-    });
   };
 
   const handleSave = async () => {
     try {
       setIsSaving(true);
 
-      // Validate first-level required fields (dynamic from resource schema)
-      const missingFirstLevel = firstLevelRequired.filter((field) => {
+      // Validate all required fields from combined schema
+      const required = elementSchema.config_schema.required || [];
+      const missing = required.filter((field) => {
         const value = formData[field];
         if (Array.isArray(value)) {
           return value.length === 0;
@@ -348,75 +391,106 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         return !value || (typeof value === "string" && value.trim() === "");
       });
 
-      if (missingFirstLevel.length > 0) {
-        alert(`Please fill in required fields: ${missingFirstLevel.join(", ")}`);
-        return;
-      }
-
-      // Validate config schema required fields
-      const required = elementSchema.config_schema.required || [];
-      const missing = required.filter((field) => {
-        const value = formData[field];
-        if (Array.isArray(value)) {
-          return value.length === 0;
-        }
-        return !value || value === "";
-      });
-
       if (missing.length > 0) {
-        alert(`Please fill in required config fields: ${missing.join(", ")}`);
+        alert(`Please fill in required fields: ${missing.join(", ")}`);
         return;
       }
 
       // Prepare data for saving
       const saveData: any = {};
-      
-      // Add first-level required fields
-      firstLevelRequired.forEach((field) => {
-        if (formData[field] !== undefined) {
-          saveData[field] = typeof formData[field] === "string" ? 
-            formData[field].trim() : formData[field];
+      const configForSave: any = {};
+
+      // Separate first-level fields and config fields
+      Object.entries(formData).forEach(([fieldName, value]) => {
+        const fieldSchema = elementSchema.config_schema.properties[fieldName];
+
+        // Define which fields are first-level fields from resource schema
+        const firstLevelResourceFields = ['name', 'category', 'type', 'cfg_dict', 'version', 'created', 'updated', 'nested_refs', 'rid', 'user_id'];
+
+        // Only include 'name' as a first-level field for saving (exclude version and system fields)
+        const isFirstLevelField = fieldName === 'name';
+
+        // System fields that should never be included in save payload
+        const systemFields = ['version', 'created', 'updated', 'nested_refs', 'rid', 'user_id', 'category', 'type', 'cfg_dict'];
+
+        if (isFirstLevelField) {
+          saveData[fieldName] = typeof value === "string" ? value.trim() : value;
+        } else if (!systemFields.includes(fieldName)) {
+          // This is a config field
+          let processedValue = value;
+
+          // Convert reference fields back to $ref:rid format and handle empty values
+          if (fieldSchema) {
+            if (
+              fieldSchema.$ref &&
+              value &&
+              value !== ""
+            ) {
+              processedValue = `$ref:${value}`;
+            }
+            // Handle anyOf with $ref
+            else if (
+              fieldSchema.anyOf &&
+              fieldSchema.anyOf.some((option: any) => option.$ref) &&
+              value &&
+              value !== ""
+            ) {
+              processedValue = `$ref:${value}`;
+            }
+            // Handle array fields with $ref items
+            else if (
+              isArrayWithRefItems(fieldSchema) &&
+              Array.isArray(value)
+            ) {
+              processedValue = value.map((rid: string) => `$ref:${rid}`);
+            }
+            // Handle empty values based on field type
+            else {
+              // For array fields, ensure empty arrays instead of empty strings or null
+              if (fieldSchema.type === "array" || 
+                  (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.type === "array"))) {
+                if (!value || value === "" || (Array.isArray(value) && value.length === 0)) {
+                  processedValue = [];
+                } else if (Array.isArray(value)) {
+                  processedValue = value;
+                } else {
+                  processedValue = [];
+                }
+              }
+              // For string fields, ensure empty strings instead of null
+              else if (fieldSchema.type === "string" || 
+                       (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.type === "string"))) {
+                if (value === null || value === undefined) {
+                  processedValue = "";
+                } else {
+                  processedValue = value;
+                }
+              }
+              // For other types, keep the original value but handle null/undefined
+              else {
+                if (value === null || value === undefined) {
+                  // Skip this field entirely for null/undefined values in non-string, non-array fields
+                  return;
+                }
+                processedValue = value;
+              }
+            }
+          }
+
+          // Only include the field if it has a meaningful value or is required
+          const isRequired = elementSchema.config_schema.required?.includes(fieldName);
+
+          // Always include required fields, even if empty
+          if (isRequired) {
+            configForSave[fieldName] = processedValue;
+          }
+          // For non-required fields, only include if they have meaningful values
+          else if (processedValue !== "" && processedValue !== null && processedValue !== undefined && 
+                   !(Array.isArray(processedValue) && processedValue.length === 0)) {
+            configForSave[fieldName] = processedValue;
+          }
         }
       });
-
-      // Prepare config data - convert $ref fields back to proper format
-      const configForSave = { ...formData };
-      
-      // Remove first-level fields from config
-      firstLevelRequired.forEach((field) => {
-        delete configForSave[field];
-      });
-
-      // Convert reference fields back to $ref:rid format
-      Object.entries(elementSchema.config_schema.properties).forEach(
-        ([fieldName, fieldSchema]: [string, any]) => {
-          if (
-            fieldSchema.$ref &&
-            configForSave[fieldName] &&
-            configForSave[fieldName] !== ""
-          ) {
-            configForSave[fieldName] = `$ref:${configForSave[fieldName]}`;
-          }
-          // Handle anyOf with $ref
-          if (
-            fieldSchema.anyOf &&
-            fieldSchema.anyOf.some((option: any) => option.$ref) &&
-            configForSave[fieldName] &&
-            configForSave[fieldName] !== ""
-          ) {
-            configForSave[fieldName] = `$ref:${configForSave[fieldName]}`;
-          }
-          // Handle array fields with $ref items (including anyOf structure)
-          if (
-            isArrayWithRefItems(fieldSchema) &&
-            Array.isArray(configForSave[fieldName])
-          ) {
-            configForSave[fieldName] = configForSave[fieldName].map(
-              (rid: string) => `$ref:${rid}`,
-            );
-          }
-        },
-      );
 
       // Add cfg_dict to save data
       saveData.cfg_dict = configForSave;
@@ -434,16 +508,14 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     }
   };
 
-  const renderFormField = (fieldName: string, fieldSchema: any, isFirstLevel: boolean = false) => {
-    const isRequired = isFirstLevel 
-      ? firstLevelRequired.includes(fieldName)
-      : elementSchema.config_schema.required?.includes(fieldName);
+  const renderFormField = (fieldName: string, fieldSchema: any) => {
+    const isRequired = elementSchema.config_schema.required?.includes(fieldName);
     const value = formData[fieldName] || "";
 
     // Handle array fields with $ref items (multi-select dropdown)
     if (isArrayWithRefItems(fieldSchema)) {
       const itemsSchema = getArrayItemsSchema(fieldSchema);
-      const category = itemsSchema?.category;
+      const category = extractCategoryFromField(fieldSchema);
 
       if (!category) {
         console.warn(`No category found for array field ${fieldName}`);
@@ -537,14 +609,10 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     // Handle $ref fields (dropdown selection) - including anyOf with $ref
     const hasRefField = fieldSchema.$ref || 
       (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.$ref));
-    
+
     if (hasRefField) {
-      // Extract category from direct $ref or from anyOf structure
-      let category = fieldSchema.category;
-      if (!category && fieldSchema.anyOf) {
-        const refOption = fieldSchema.anyOf.find((option: any) => option.$ref && option.category);
-        category = refOption?.category;
-      }
+      const category = extractCategoryFromField(fieldSchema);
+
 
       if (category) {
         const validOptions = (refOptions[category] || []).filter(
@@ -763,13 +831,13 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           placeholder={fieldSchema.description}
         />
         {fieldSchema.description && (
-          <p className="text-xs text-gray-400">{fieldSchema.description}</p>
-        )}
+            <p className="text-xs text-gray-400">{fieldSchema.description}</p>
+          )}
       </div>
     );
   };
 
-  if (!elementSchema || !resourceSchema) return null;
+  if (!elementSchema) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -788,16 +856,33 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           }}
           className="space-y-4"
         >
-          {/* Render first-level required fields dynamically */}
-          {firstLevelRequired.map((fieldName) => {
-            const fieldSchema = resourceSchema?.properties?.[fieldName];
-            return renderFormField(fieldName, fieldSchema, true);
-          })}
-
-          {/* Render config schema fields dynamically */}
+          {/* Render fields from combined schema */}
           {Object.entries(elementSchema.config_schema.properties)
-            .filter(([fieldName]) => !firstLevelRequired.includes(fieldName)) // Exclude first-level fields
-            .map(([fieldName, fieldSchema]) => renderFormField(fieldName, fieldSchema, false))}
+            .filter(([fieldName]) => {
+              // Always exclude category and type (handled by GUI)
+              if (['category', 'type'].includes(fieldName)) {
+                return false;
+              }
+
+              // For Create New mode: show only first-level required fields (name) + all cfg_dict fields
+              if (!editingElement) {
+                // Show first-level required fields (name is required from resource.schema)
+                const firstLevelRequiredFields = ['name'];
+                if (firstLevelRequiredFields.includes(fieldName)) {
+                  return true;
+                }
+
+                // Show all cfg_dict fields (element-specific config fields)
+                // These are fields that are NOT first-level fields from resource.schema
+                const firstLevelFields = ['name', 'category', 'type', 'cfg_dict', 'version', 'created', 'updated', 'nested_refs', 'rid', 'user_id'];
+                const isCfgDictField = !firstLevelFields.includes(fieldName);
+                return isCfgDictField;
+              }
+
+              // For Edit mode: show all fields (except category/type)
+              return true;
+            })
+            .map(([fieldName, fieldSchema]) => renderFormField(fieldName, fieldSchema))}
 
           <DialogFooter className="mt-6">
             <Button type="button" variant="outline" onClick={onClose}>

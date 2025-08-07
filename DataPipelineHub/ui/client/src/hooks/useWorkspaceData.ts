@@ -189,18 +189,51 @@ export const useWorkspaceData = () => {
     [toast],
   );
 
-  // Fetch element schema for form generation
+  // Fetch element schema for form generation (combines resource schema + element-specific schema)
   const fetchElementSchema = useCallback(
     async (category: string, type: string) => {
       try {
         setIsLoading(true);
         setError(null);
 
-        const response = await axios.get<ElementSchema>(
+        // First fetch the resource schema (first-level schema)
+        const resourceSchemaResponse = await axios.get('/api/resources/resource.schema');
+        const resourceSchema = resourceSchemaResponse.data;
+
+        // Then fetch the element-specific schema (cfg_dict schema)
+        const elementSchemaResponse = await axios.get<ElementSchema>(
           `/api/catalog/element.spec.get?category=${category}&type=${type}`,
         );
-        setElementSchema(response.data);
-        return response.data;
+        const elementSchema = elementSchemaResponse.data;
+
+        // Combine both schemas into a unified schema
+        const combinedSchema: ElementSchema = {
+          ...elementSchema,
+          config_schema: {
+            ...elementSchema.config_schema,
+            properties: {
+              // Add resource schema properties (excluding category, type, cfg_dict)
+              ...Object.fromEntries(
+                Object.entries(resourceSchema.properties || {}).filter(
+                  ([key]) => !['category', 'type', 'cfg_dict'].includes(key)
+                )
+              ),
+              // Add element-specific config properties
+              ...elementSchema.config_schema.properties
+            },
+            required: [
+              // Add resource schema required fields (excluding category, type, cfg_dict)
+              ...(resourceSchema.required || []).filter(
+                (field: string) => !['category', 'type', 'cfg_dict'].includes(field)
+              ),
+              // Add element-specific required fields
+              ...(elementSchema.config_schema.required || [])
+            ]
+          }
+        };
+
+        setElementSchema(combinedSchema);
+        return combinedSchema;
       } catch (err: any) {
         const errorMessage =
           err.response?.data?.error || "Failed to fetch element schema";
@@ -305,23 +338,6 @@ export const useWorkspaceData = () => {
     [toast],
   );
 
-  // Fetch resource schema for form generation
-  const fetchResourceSchema = useCallback(async () => {
-    try {
-      const response = await axios.get('/api/resources/resource.schema');
-      return response.data;
-    } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.error || "Failed to fetch resource schema";
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      console.error("Error fetching resource schema:", err);
-      return null;
-    }
-  }, [toast]);
 
   // Initialize categories on mount
   useEffect(() => {
@@ -338,7 +354,6 @@ export const useWorkspaceData = () => {
     fetchElementSchema,
     fetchResourceById,
     fetchResourcesForCategory,
-    fetchResourceSchema,
     saveElement,
     deleteElement,
     refetchCategories: fetchCategories,
