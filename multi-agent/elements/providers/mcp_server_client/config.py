@@ -18,7 +18,7 @@ class McpProviderConfig(ProviderBaseConfig):
             hint_type=HintType.VALIDATE,
             field_mapping="is_reachable"
         ).to_hints()
-    ),
+    )
     tool_names: Optional[List[str]] = Field(
         default_factory=list,
         description="List of specific tool names to use from the MCP server",
