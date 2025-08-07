@@ -7,9 +7,6 @@ from .common import (
 )
 from .registry import ActionRegistry
 
-# Create singleton instances
-action_registry = ActionRegistry()
-actions_service = ActionsService(action_registry)
 
 __all__ = [
     "ActionsService",
@@ -18,6 +15,4 @@ __all__ = [
     "BaseActionInput",
     "BaseActionOutput",
     "ActionRegistry",
-    "action_registry",
-    "actions_service"
 ]
