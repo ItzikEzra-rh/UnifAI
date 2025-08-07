@@ -23,14 +23,32 @@ class McpProviderFactory(BaseFactory[McpProviderConfig, McpProvider]):
         :raises PluginConfigurationError: if instantiation fails
         """
         try:
-            provider = McpProvider(
+            # Use the clean sync factory method which handles async internally
+            return McpProvider.create_sync(
                 sse_endpoint=cfg.sse_endpoint,
                 tool_names=cfg.tool_names
             )
-            run_async(provider._initialize_tools())
-            return provider
         except Exception as e:
             raise PluginConfigurationError(
                 f"McpProvider.create() failed: {e}",
+                cfg.dict()
+            ) from e
+
+    async def create_async(self, cfg: McpProviderConfig, **kwargs: Any) -> McpProvider:
+        """
+        Async version of create() for better performance when called from async context.
+
+        :param cfg: Fully‐validated McpProviderConfig
+        :raises PluginConfigurationError: if instantiation fails
+        """
+        try:
+            # Use the async factory method directly for better performance
+            return await McpProvider.create_async(
+                sse_endpoint=cfg.sse_endpoint,
+                tool_names=cfg.tool_names
+            )
+        except Exception as e:
+            raise PluginConfigurationError(
+                f"McpProvider.create_async() failed: {e}",
                 cfg.dict()
             ) from e

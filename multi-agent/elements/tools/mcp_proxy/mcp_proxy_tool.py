@@ -30,8 +30,7 @@ class McpProxyTool(BaseTool):
         self._tool_info = None
         self._schema_initialized = False
 
-        # Don't initialize in constructor to avoid nested run_async calls
-        # Initialization will happen lazily when needed
+        # Note: Use create_async() or create_sync() factory methods for full initialization
 
     async def _ensure_tool_info(self) -> None:
         """
@@ -167,6 +166,37 @@ class McpProxyTool(BaseTool):
 
     def __str__(self) -> str:
         return f"McpProxyTool(name='{self.name}', mcp_tool='{self.mcp_tool_name}')"
+
+    @classmethod
+    async def create_async(cls, mcp_tool_name: str, mcp_client: McpServerClient) -> "McpProxyTool":
+        """
+        Async factory method for creating a fully initialized McpProxyTool.
+        
+        Args:
+            mcp_tool_name: Name of the MCP tool to proxy
+            mcp_client: Shared MCP client instance
+            
+        Returns:
+            Fully initialized McpProxyTool instance
+        """
+        tool = cls(mcp_tool_name, mcp_client)
+        await tool._ensure_tool_info()
+        return tool
+
+    @classmethod
+    def create_sync(cls, mcp_tool_name: str, mcp_client: McpServerClient) -> "McpProxyTool":
+        """
+        Sync factory method for creating a fully initialized McpProxyTool.
+        Uses run_async internally to handle the async initialization.
+        
+        Args:
+            mcp_tool_name: Name of the MCP tool to proxy
+            mcp_client: Shared MCP client instance
+            
+        Returns:
+            Fully initialized McpProxyTool instance
+        """
+        return run_async(cls.create_async(mcp_tool_name, mcp_client))
 
     def __repr__(self) -> str:
         desc = (self.description[:50] + "...") if self.description else "No description"

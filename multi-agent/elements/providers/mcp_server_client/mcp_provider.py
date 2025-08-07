@@ -1,4 +1,5 @@
 import logging
+import asyncio
 from typing import List, Optional
 from pydantic import HttpUrl
 from global_utils.utils.util import run_async
@@ -15,6 +16,7 @@ class McpProvider:
     def __init__(self, sse_endpoint: HttpUrl, tool_names: Optional[List[str]] = None):
         """
         Initialize the MCP Provider with SSE endpoint and tool names.
+        Note: Use create_async() or create_sync() factory methods for full initialization.
         
         Args:
             sse_endpoint: HTTP(S) endpoint that streams SSE events
@@ -25,9 +27,6 @@ class McpProvider:
         self._mcp_client = McpServerClient(sse_endpoint=sse_endpoint)
         self._tools: List[McpProxyTool] = []
         self._initialized = False
-
-        # Don't initialize immediately to avoid nested run_async calls
-        # Initialization will happen lazily when get_tools() is called
 
     async def _initialize_tools(self) -> None:
         """
@@ -43,13 +42,18 @@ class McpProvider:
                 available_tools = await self._mcp_client.get_tools()
                 self.tool_names = [tool.name for tool in available_tools]
 
-        # Create MCP proxy tools for each tool name
+        # Create MCP proxy tools for each tool name concurrently
+        tasks = []
         for tool_name in self.tool_names:
-            proxy_tool = McpProxyTool(mcp_tool_name=tool_name, mcp_client=self._mcp_client)
-            # Initialize the tool info asynchronously since we're already in an async context
-            await proxy_tool._ensure_tool_info()
-            self._tools.append(proxy_tool)
+            tasks.append(self._create_and_init_tool(tool_name))
+        
+        # Initialize all tools concurrently for better performance
+        self._tools = await asyncio.gather(*tasks)
         self._initialized = True
+
+    async def _create_and_init_tool(self, tool_name: str) -> McpProxyTool:
+        """Create and initialize a single tool using the factory method."""
+        return await McpProxyTool.create_async(tool_name, self._mcp_client)
 
     def get_tools(self) -> List[McpProxyTool]:
         """
@@ -110,6 +114,37 @@ class McpProvider:
 
     def __str__(self) -> str:
         return f"McpProvider(endpoint='{self.sse_endpoint}', tools={len(self._tools)})"
+
+    @classmethod
+    async def create_async(cls, sse_endpoint: HttpUrl, tool_names: Optional[List[str]] = None) -> "McpProvider":
+        """
+        Async factory method for creating a fully initialized McpProvider.
+        
+        Args:
+            sse_endpoint: HTTP(S) endpoint that streams SSE events
+            tool_names: List of specific tool names to use from the MCP server
+            
+        Returns:
+            Fully initialized McpProvider instance
+        """
+        provider = cls(sse_endpoint, tool_names)
+        await provider._initialize_tools()
+        return provider
+
+    @classmethod
+    def create_sync(cls, sse_endpoint: HttpUrl, tool_names: Optional[List[str]] = None) -> "McpProvider":
+        """
+        Sync factory method for creating a fully initialized McpProvider.
+        Uses run_async internally to handle the async initialization.
+        
+        Args:
+            sse_endpoint: HTTP(S) endpoint that streams SSE events
+            tool_names: List of specific tool names to use from the MCP server
+            
+        Returns:
+            Fully initialized McpProvider instance
+        """
+        return run_async(cls.create_async(sse_endpoint, tool_names))
 
     def __repr__(self) -> str:
         tool_names_str = ", ".join(self.tool_names) if self.tool_names else "all"

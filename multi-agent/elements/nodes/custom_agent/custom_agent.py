@@ -34,7 +34,7 @@ class CustomAgentNode(
             system_message: str = "",
             mcp_provider: McpProvider = None,
             retries: int = 1,
-            max_rounds: Optional[int] = 5,
+            max_rounds: Optional[int] = 15,
             **kwargs: Any
     ):
         super().__init__(
