@@ -5,7 +5,8 @@ interface APIErrorResponse {
 }
 
 const axiosInstance = axios.create({
-  baseURL: 'http://127.0.0.1:13456',
+  // baseURL: 'http://127.0.0.1:13456',
+  baseURL: 'https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com',
   // baseURL: '/',
   timeout: 20000, // 20 seconds
   withCredentials: true, // Important: This ensures cookies are sent with requests

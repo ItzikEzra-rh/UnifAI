@@ -71,15 +71,15 @@ ingress:
 
 resources:
   requests:
-    memory: "16Gi"
-    cpu: "8"
+    memory: "1Gi"
+    cpu: "1"
   limits:
-    memory: "16Gi"
-    cpu: "8"
+    memory: "1Gi"
+    cpu: "1"
 
 storage:
   volumeName: "unifai-qdrant-volume"
-  requestedSize: 100Gi
+  requestedSize: 30Gi
   className: aws-ebs
   accessModes:
     - ReadWriteOnce

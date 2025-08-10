@@ -4,12 +4,14 @@ import sys
 # Add the parent directory of 'backend' (the root of the project) to the Python path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
+from utils.storage.mongo.mongo_storage import MongoStorage
 from endpoints import register_all_endpoints
 from flask import Flask
 from flask_cors import CORS
 from global_utils.flask.request_rules import RequestRules
 from utils.auth_manager import AuthManager
 from config.app_config import AppConfig
+from global_utils.utils.util import get_mongo_url
 
 # from be_utils.db.flaks_db import register_mongo
 # from be_utils.utils import init_flask_logger
@@ -41,7 +43,7 @@ register_all_endpoints(app)
 RequestRules(app)
 
 if __name__ == '__main__':
-    app.run(host=config.hostname, port=config.port, debug=True)
+    app.run(host=config.hostname_local, port=config.port, debug=True)
 
     # cert_file = os.path.join(os.path.dirname(__file__), 'cert.pem')
     # key_file = os.path.join(os.path.dirname(__file__), 'key.pem')
