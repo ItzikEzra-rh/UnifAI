@@ -14,7 +14,7 @@ blueprints_bp = Blueprint("blueprints", __name__)
 def available_doc_list(user_id):
     try:
         svc = current_app.container.blueprint_service
-        return jsonify(svc.list_draft_dicts(user_id=user_id)), 200
+        return jsonify(svc.list_draft_docs(user_id=user_id)), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

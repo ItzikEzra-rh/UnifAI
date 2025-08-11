@@ -6,15 +6,16 @@ from pydantic import ValidationError
 from blueprints.models.blueprint import BlueprintSpec, BlueprintDraft
 from .repository import BlueprintRepository
 from core.enums import ResourceCategory
+from bson import json_util
+from global_utils.utils.util import get_mongo_url
+import json
 
 
 class MongoBlueprintRepository(BlueprintRepository):
     def __init__(self,
-                 mongodb_port: str = "27017",
-                 mongodb_ip: str = "localhost",
                  db_name="UnifAI",
                  coll_name="blueprints"):
-        mongo_uri = f"mongodb://{mongodb_ip}:{mongodb_port}/"
+        mongo_uri = get_mongo_url()
         client = pymongo.MongoClient(mongo_uri)
         self._col = client[db_name][coll_name]
         self._col.create_index([("blueprint_id", pymongo.ASCENDING)], unique=True)
@@ -73,9 +74,9 @@ class MongoBlueprintRepository(BlueprintRepository):
     ) -> List[str]:
         cur = (
             self._col.find(self._user_q(user_id), {"blueprint_id": 1})
-                .sort("updated_at", pymongo.DESCENDING if sort_desc else pymongo.ASCENDING)
-                .skip(skip)
-                .limit(limit)
+            .sort("updated_at", pymongo.DESCENDING if sort_desc else pymongo.ASCENDING)
+            .skip(skip)
+            .limit(limit)
         )
         return [d["blueprint_id"] for d in cur]
 
@@ -90,11 +91,12 @@ class MongoBlueprintRepository(BlueprintRepository):
         """Return raw Mongo documents (not validated) for bulk operations."""
         cursor = (
             self._col.find(self._user_q(user_id))
-                .sort("updated_at", pymongo.DESCENDING if sort_desc else pymongo.ASCENDING)
-                .skip(skip)
-                .limit(limit)
+            .sort("updated_at", pymongo.DESCENDING if sort_desc else pymongo.ASCENDING)
+            .skip(skip)
+            .limit(limit)
         )
-        return list(cursor)
+        res = json.loads(json_util.dumps(list(cursor)))
+        return res
 
     def list_direct_usage(self, rid: str) -> List[str]:
         cur = self._col.find({"rid_refs": rid}, {"blueprint_id": 1})
