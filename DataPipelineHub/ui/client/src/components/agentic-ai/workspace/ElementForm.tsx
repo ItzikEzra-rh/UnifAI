@@ -26,12 +26,15 @@ import {
   ElementInstance,
 } from "../../../types/workspace";
 import { useWorkspaceData } from "../../../hooks/useWorkspaceData";
+import { FieldValidation } from "./FieldValidation";
+import { FieldPopulation } from "./FieldPopulation";
 
 interface ElementFormProps {
   isOpen: boolean;
   onClose: () => void;
   elementType: ElementType;
   elementSchema: ElementSchema;
+  elementActions?: any[];
   editingElement: ElementInstance | null;
   onSave: (data: any) => Promise<void>;
 }
@@ -41,6 +44,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   onClose,
   elementType,
   elementSchema,
+  elementActions = [],
   editingElement,
   onSave,
 }) => {
@@ -49,8 +53,33 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   const [refOptions, setRefOptions] = useState<{ [category: string]: any[] }>(
     {},
   );
+  const [fieldValidationStates, setFieldValidationStates] = useState<{ [fieldName: string]: boolean }>({});
+  const [populateResults, setPopulateResults] = useState<{ [fieldName: string]: string[] }>({});
 
   const { fetchResourcesForCategory } = useWorkspaceData();
+
+  const handleValidationChange = (fieldName: string, isValid: boolean) => {
+    setFieldValidationStates(prev => ({
+      ...prev,
+      [fieldName]: isValid
+    }));
+  };
+
+  const handlePopulateResult = (fieldName: string, results: string[], multiSelect: boolean) => {
+    setPopulateResults(prev => ({
+      ...prev,
+      [fieldName]: results
+    }));
+    
+    // Update form data with populated results
+    if (multiSelect) {
+      // For multi-select, set the array of selected values
+      handleInputChange(fieldName, results);
+    } else {
+      // For single select, set the first (and only) selected value
+      handleInputChange(fieldName, results.length > 0 ? results[0] : "");
+    }
+  };
 
 
 
@@ -361,7 +390,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     }));
   };
 
-  // Check if all required fields are filled
+  // Check if all required fields are filled and validated
   const isFormValid = () => {
     if (!elementSchema) return false;
 
@@ -369,11 +398,27 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     const required = elementSchema.config_schema.required || [];
     return required.every((field) => {
       const value = formData[field];
+      const fieldSchema = elementSchema.config_schema.properties[field];
+      
+      // Check if field has validation hint
+      const hasValidationHint = fieldSchema?.hints?.action?.hint_type === 'validate';
+      
+      // Basic value validation
+      let hasValue = false;
       if (Array.isArray(value)) {
-        return value.length > 0;
+        hasValue = value.length > 0;
+      } else {
+        hasValue = value !== undefined && value !== null && value !== "" && 
+                  (typeof value !== "string" || value.trim() !== "");
       }
-      return value !== undefined && value !== null && value !== "" && 
-             (typeof value !== "string" || value.trim() !== "");
+      
+      // If field has validation hint and a value, check validation state
+      if (hasValidationHint && hasValue) {
+        return fieldValidationStates[field] === true;
+      }
+      
+      // Otherwise, just check if value exists
+      return hasValue;
     });
   };
 
@@ -511,6 +556,8 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   const renderFormField = (fieldName: string, fieldSchema: any) => {
     const isRequired = elementSchema.config_schema.required?.includes(fieldName);
     const value = formData[fieldName] || "";
+    const validationHint = fieldSchema.hints?.action?.hint_type === 'validate' ? fieldSchema.hints.action : null;
+    const populateHint = fieldSchema.hints?.action?.hint_type === 'populate' ? fieldSchema.hints.action : null;
 
     // Handle array fields with $ref items (multi-select dropdown)
     if (isArrayWithRefItems(fieldSchema)) {
@@ -801,6 +848,16 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         <div key={fieldName} className="space-y-2">
           <Label htmlFor={fieldName}>
             {fieldName} {isRequired && <span className="text-red-400">*</span>}
+            {validationHint && (
+              <Badge variant="outline" className="ml-2 text-xs">
+                validation
+              </Badge>
+            )}
+            {populateHint && (
+              <Badge variant="outline" className="ml-2 text-xs">
+                populate
+              </Badge>
+            )}
           </Label>
           <Textarea
             id={fieldName}
@@ -809,7 +866,29 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             rows={4}
             className="bg-background-dark resize-none"
             placeholder={fieldSchema.description}
+            readOnly={!!populateHint}
+            disabled={!!populateHint}
           />
+          {validationHint && (
+            <FieldValidation
+              fieldName={fieldName}
+              fieldValue={value}
+              validationHint={validationHint}
+              elementActions={elementActions}
+              selectedElementType={elementType}
+              onValidationChange={handleValidationChange}
+            />
+          )}
+          {populateHint && (
+            <FieldPopulation
+              fieldName={fieldName}
+              populateHint={populateHint}
+              elementActions={elementActions}
+              selectedElementType={elementType}
+              formData={formData}
+              onPopulateResult={handlePopulateResult}
+            />
+          )}
           {fieldSchema.description && (
             <p className="text-xs text-gray-400">{fieldSchema.description}</p>
           )}
@@ -822,6 +901,16 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       <div key={fieldName} className="space-y-2">
         <Label htmlFor={fieldName}>
           {fieldName} {isRequired && <span className="text-red-400">*</span>}
+          {validationHint && (
+            <Badge variant="outline" className="ml-2 text-xs">
+              validation
+            </Badge>
+          )}
+          {populateHint && (
+            <Badge variant="outline" className="ml-2 text-xs">
+              populate
+            </Badge>
+          )}
         </Label>
         <Input
           id={fieldName}
@@ -829,7 +918,29 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           onChange={(e) => handleInputChange(fieldName, e.target.value)}
           className="bg-background-dark"
           placeholder={fieldSchema.description}
+          readOnly={!!populateHint}
+          disabled={!!populateHint}
         />
+        {validationHint && (
+          <FieldValidation
+            fieldName={fieldName}
+            fieldValue={value}
+            validationHint={validationHint}
+            elementActions={elementActions}
+            selectedElementType={elementType}
+            onValidationChange={handleValidationChange}
+          />
+        )}
+        {populateHint && (
+          <FieldPopulation
+            fieldName={fieldName}
+            populateHint={populateHint}
+            elementActions={elementActions}
+            selectedElementType={elementType}
+            formData={formData}
+            onPopulateResult={handlePopulateResult}
+          />
+        )}
         {fieldSchema.description && (
             <p className="text-xs text-gray-400">{fieldSchema.description}</p>
           )}

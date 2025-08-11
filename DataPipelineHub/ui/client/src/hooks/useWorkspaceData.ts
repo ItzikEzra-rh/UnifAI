@@ -41,6 +41,7 @@ export const useWorkspaceData = () => {
   const [elementSchema, setElementSchema] = useState<ElementSchema | null>(
     null,
   );
+  const [elementActions, setElementActions] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
@@ -197,7 +198,9 @@ export const useWorkspaceData = () => {
         setError(null);
 
         // First fetch the resource schema (first-level schema)
-        const resourceSchemaResponse = await axios.get('/api/resources/resource.schema');
+        const resourceSchemaResponse = await axios.get(
+          "/api/resources/resource.schema",
+        );
         const resourceSchema = resourceSchemaResponse.data;
 
         // Then fetch the element-specific schema (cfg_dict schema)
@@ -215,21 +218,22 @@ export const useWorkspaceData = () => {
               // Add resource schema properties (excluding category, type, cfg_dict)
               ...Object.fromEntries(
                 Object.entries(resourceSchema.properties || {}).filter(
-                  ([key]) => !['category', 'type', 'cfg_dict'].includes(key)
-                )
+                  ([key]) => !["category", "type", "cfg_dict"].includes(key),
+                ),
               ),
               // Add element-specific config properties
-              ...elementSchema.config_schema.properties
+              ...elementSchema.config_schema.properties,
             },
             required: [
               // Add resource schema required fields (excluding category, type, cfg_dict)
               ...(resourceSchema.required || []).filter(
-                (field: string) => !['category', 'type', 'cfg_dict'].includes(field)
+                (field: string) =>
+                  !["category", "type", "cfg_dict"].includes(field),
               ),
               // Add element-specific required fields
-              ...(elementSchema.config_schema.required || [])
-            ]
-          }
+              ...(elementSchema.config_schema.required || []),
+            ],
+          },
         };
 
         setElementSchema(combinedSchema);
@@ -246,6 +250,38 @@ export const useWorkspaceData = () => {
         console.error("Error fetching element schema:", err);
         setElementSchema(null);
         return null;
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [toast],
+  );
+
+  // Fetch available actions for a given element category and type
+  const fetchElementActions = useCallback(
+    async (category: string, type: string) => {
+      try {
+        setIsLoading(true);
+        setError(null);
+
+        const response = await axios.get<any>(
+          `/api/actions/actions.list?category=${category}&type=${type}`,
+        );
+
+        setElementActions(response.data.actions || []);
+        return response.data.actions || [];
+      } catch (err: any) {
+        const errorMessage =
+          err.response?.data?.error || "Failed to fetch element actions";
+        setError(errorMessage);
+        toast({
+          title: "Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
+        console.error("Error fetching element actions:", err);
+        setElementActions([]);
+        return [];
       } finally {
         setIsLoading(false);
       }
@@ -281,8 +317,11 @@ export const useWorkspaceData = () => {
             config: cfg_dict,
             ...firstLevelFields,
           };
-          
-          const response = await axios.post("/api/resources/resource.save", savePayload);
+
+          const response = await axios.post(
+            "/api/resources/resource.save",
+            savePayload,
+          );
           toast({
             title: "Success",
             description: "Element created successfully",
@@ -338,7 +377,6 @@ export const useWorkspaceData = () => {
     [toast],
   );
 
-
   // Initialize categories on mount
   useEffect(() => {
     fetchCategories();
@@ -348,11 +386,13 @@ export const useWorkspaceData = () => {
     categories,
     elementInstances,
     elementSchema,
+    elementActions,
     isLoading,
     error,
+    fetchCategories,
     fetchElementInstances,
     fetchElementSchema,
-    fetchResourceById,
+    fetchElementActions,
     fetchResourcesForCategory,
     saveElement,
     deleteElement,

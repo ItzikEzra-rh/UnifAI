@@ -21,9 +21,11 @@ export default function UserWorkspace() {
     categories,
     elementInstances,
     elementSchema,
+    elementActions,
     isLoading,
     fetchElementInstances,
     fetchElementSchema,
+    fetchElementActions,
     saveElement,
     deleteElement
   } = useWorkspaceData();
@@ -38,7 +40,10 @@ export default function UserWorkspace() {
   const handleElementTypeSelect = async (category: string, elementType: ElementType) => {
     setSelectedCategory(category);
     setSelectedElementType(elementType);
-    await fetchElementSchema(category, elementType.type);
+    await Promise.all([
+      fetchElementSchema(category, elementType.type),
+      fetchElementActions(category, elementType.type)
+    ]);
   };
 
   const handleCreateNew = () => {
@@ -143,6 +148,7 @@ export default function UserWorkspace() {
               onClose={() => setIsFormOpen(false)}
               elementType={selectedElementType}
               elementSchema={elementSchema}
+              elementActions={elementActions}
               editingElement={editingElement}
               onSave={handleSaveElement}
             />
