@@ -48,11 +48,11 @@ http {
         }
 
         location /api1 {
-            rewrite ^/api1/(.*)$ ${SCHEME}://${DATAPIPELINEHUB_HOST}:${DATAPIPELINEHUB_PORT}/api/$1 redirect;
+            rewrite ^/api1/(.*)$ ${DATAPIPELINEHUB_HOST}:${DATAPIPELINEHUB_PORT}/api/$1 redirect;
         }
 
         location /api2 {
-            rewrite ^/api2/(.*)$ ${SCHEME}://${MULTIAGENT_HOST}:${MULTIAGENT_PORT}/api/$1 redirect;
+            rewrite ^/api2/(.*)$ ${MULTIAGENT_HOST}:${MULTIAGENT_PORT}/api/$1 redirect;
         }
 
         location = /404.html {
