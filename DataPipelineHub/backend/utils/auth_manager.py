@@ -73,30 +73,19 @@ class AuthManager:
         def login():
             """Initiate OAuth login flow"""
             # Hardcode or use an env variable to set the externally reachable redirect URI
-            #redirect_uri = config.get(
-            #    'redirect_url',
-            #    'https://127.0.0.1:13456/api/auth/callback'
-            #)
-            
-            redirect_uri = config.get(
-                'redirect_url',
-                url_for('auth_callback', _external=True, _scheme='https')
-            )
+
             
             # redirect_uri = config.get(
             #     'redirect_url',
             #     url_for('auth_callback', _external=True, _scheme='https')
-            #     if config.get("BACKEND_ENV", "development") == "production"
-            #     else config.get("frontend_url", "http://127.0.0.1:13456") + "/api/auth/callback"
             # )
 
-
-            # redirect_uri = config.get(
-            #     'redirect_url',
-            #     url_for('auth_callback', _external=True, _scheme='https') 
-            #     if config.backend_env == "production" 
-            #     else f"http://{config.hostname_local}:{config.port}/api/auth/callback"
-            # )
+            redirect_uri = config.get(
+                'redirect_url',
+                url_for('auth_callback', _external=True, _scheme='https') 
+                if config.backend_env == "production" 
+                else f"http://{config.hostname_local}:{config.port}/api/auth/callback"
+            )
 
             logger.info(f"[LOGIN] session before redirect: {session.items()}")
             return self.keycloak_client.authorize_redirect(redirect_uri)
@@ -132,13 +121,13 @@ class AuthManager:
                 logger.info(f"Session will expire at: {session_expires_at.strftime('%Y-%m-%d %H:%M:%S')}")
                 
                 # Redirect to frontend
-                frontend_url = config.get('frontend_url', 'http://10.46.253.0:5000')
-                return redirect(f"http://10.46.253.0:5000?auth=success")
+                frontend_url = config.get('frontend_url', 'http://127.0.0.1:5000')
+                return redirect(f"http://127.0.0.1:5000?auth=success")
                 
             except AuthlibBaseError as e:
                 logger.error(f"Authentication error: {str(e)}")
-                frontend_url = config.get('frontend_url', 'http://10.46.253.0:5000')
-                return redirect(f"http://10.46.253.0:5000?auth=error")
+                frontend_url = config.get('frontend_url', 'http://127.0.0.1:5000')
+                return redirect(f"http://127.0.0.1:5000?auth=error")
         
         @self.app.route('/api/auth/logout', methods=['POST'])
         def logout():

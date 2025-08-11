@@ -1,5 +1,5 @@
 import { formatDate } from '@/features/helpers';
-import { api } from '@/lib/queryClient';
+import { api } from '@/http/queryClient';
 import type { Channel, EmbedChannel } from '@/types';
 import { timeAgo } from '@/utils';
 export interface SystemStats {
