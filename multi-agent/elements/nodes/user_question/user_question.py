@@ -54,8 +54,8 @@ class UserQuestionNode(IEMCapableMixin, BaseNode):
             result=user_query
         ).model_dump()
         
-        # Broadcast to all adjacent nodes using built-in broadcaster
-        self.messenger.broadcast_event(
+        # Broadcast to all adjacent nodes using mixin method
+        self.broadcast_event(
             event_type=StandardEvents.PROCESSING_STARTED,
             data=payload_data,
             thread_id=thread_id
