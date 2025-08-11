@@ -18,8 +18,8 @@ env:
   DATAPIPELINEHUB_PORT: "13456"
   DATAPIPELINEHUB_HOST: "unifai-dataflow-server"
   MULTIAGENT_PORT: "8080"
-  MULTIAGENT_HOST: "multiagent"
-  SCHEME: "https"
+  MULTIAGENT_HOST: "unifai-multiagent-be"
+  SCHEME: "http"
 
 #command: ["/bin/sh", "-c", "sleep infinity"]
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
