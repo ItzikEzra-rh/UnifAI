@@ -1,72 +1,79 @@
-from typing import Sequence, Mapping
+from typing import List
 from elements.nodes.common.base_node import BaseNode
+from elements.nodes.common.capabilities.iem_capable import IEMCapableMixin
 from graph.state.graph_state import Channel
 from graph.state.state_view import StateView
 from elements.llms.common.chat.message import ChatMessage, Role
+from core.iem.packets import EventPacket, RequestPacket, ResponsePacket
 
 
-class _DefaultFormatter:
-    """Internal helper—formats nodes_output into a final reply."""
-
-    @staticmethod
-    def format(outputs: Mapping[str, str]) -> str:
-        if not outputs:
-            return "I apologize, but I don't have any specific information to provide."
-        if len(outputs) == 1:
-            return next(iter(outputs.values())).strip()
-
-        parts = []
-        for name, text in outputs.items():
-            text = text.strip()
-            if not text:
-                continue
-            display = name.replace("_", " ").title()
-            parts.append(f"**{display}:**\n{text}")
-        return "\n\n".join(parts) if parts else (
-            "I apologize, but I don't have any specific information to provide."
-        )
-
-
-class FinalAnswerNode(BaseNode):
+class FinalAnswerNode(IEMCapableMixin, BaseNode):
     """
-    Ensures the conversation ends with an assistant response if the user spoke last.
-    Uses an internal formatter class—no external injection required, but you
-    can still override `_formatter` in a subclass if you want a different style.
+    Simple final node that collects all incoming events and merges them into a final message.
+    
+    Behavior:
+    - Receives any events from agents
+    - Collects all results
+    - Merges them into one final message
+    - Promotes to public conversation
     """
-    READS = {Channel.MESSAGES, Channel.NODES_OUTPUT}
+    
+    READS = {Channel.MESSAGES}
     WRITES = {Channel.MESSAGES, Channel.OUTPUT}
 
-    # default formatter instance; you can override in a subclass if needed
-    _formatter = _DefaultFormatter()
-
-    def __init__(
-            self,
-            *,
-            name: str = "final_answer",
-            **kwargs
-    ):
+    def __init__(self, *, name: str = "final_answer", **kwargs):
         super().__init__(**kwargs)
         self.name = name
+        self._collected_results: List[str] = []
 
     def run(self, state: StateView) -> StateView:
-        messages = state.get(Channel.MESSAGES, [])
-
-        if not self._last_is_assistant(messages):
-            raw = state.get(Channel.NODES_OUTPUT, {})
-            reply = self._formatter.format(raw)
-            self._append_message(state, reply)
-
-        messages = state.get(Channel.MESSAGES, [])
-        if messages:
-            state[Channel.OUTPUT] = messages[-1].content
-
+        """Process all incoming events and create final answer."""
+        # Process all incoming messages
+        self.process_messages(state)
+        
+        # Create final answer if we have collected results
+        if self._collected_results:
+            final_answer = self._merge_results()
+            self.promote_to_messages(final_answer)
+            state[Channel.OUTPUT] = final_answer
+            
+            # Clear collected results
+            self._collected_results.clear()
+        
         return state
 
-    @staticmethod
-    def _last_is_assistant(messages: Sequence[ChatMessage]) -> bool:
-        return bool(messages) and messages[-1].role == Role.ASSISTANT
+    def handle_event(self, event: EventPacket) -> None:
+        """Collect any event result."""
+        result = event.data.get("result")
+        if result and result.strip():
+            self._collected_results.append(result.strip())
 
-    def _append_message(self, state: StateView, content: str) -> None:
-        new_msg = ChatMessage(role=Role.ASSISTANT, content=content)
-        updated = list(state.get(Channel.MESSAGES, [])) + [new_msg]
-        state[Channel.MESSAGES] = updated
+    def handle_request(self, request: RequestPacket) -> None:
+        """Ignore requests - final node doesn't handle requests."""
+        pass
+
+    def handle_response(self, response: ResponsePacket) -> None:
+        """Ignore responses."""
+        pass
+
+    def _merge_results(self) -> str:
+        """Merge all collected results into one final message."""
+        if not self._collected_results:
+            return "I apologize, but I don't have any information to provide."
+        
+        if len(self._collected_results) == 1:
+            return self._collected_results[0]
+        
+        # Remove duplicates while preserving order
+        unique_results = []
+        seen = set()
+        for result in self._collected_results:
+            if result not in seen:
+                unique_results.append(result)
+                seen.add(result)
+        
+        if len(unique_results) == 1:
+            return unique_results[0]
+        
+        # Join multiple results
+        return "\n\n".join(unique_results)

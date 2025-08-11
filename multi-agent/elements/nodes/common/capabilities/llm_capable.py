@@ -1,8 +1,9 @@
 from elements.llms.common.chat.message import ChatMessage, Role
-from typing import Any, TypeVar, Generic, List
+from typing import Any, TypeVar, Generic, List, ClassVar
 from core.contracts import SupportsStreaming
 from elements.llms.common.base_llm import BaseLLM
 from elements.tools.common.base_tool import BaseTool
+from graph.state.graph_state import Channel
 
 # -----------------------------------------------------------------------------
 # Type variable bound to the minimal "SupportsStreaming" Protocol.
@@ -15,6 +16,9 @@ TSupportStream = TypeVar("TSupportStream", bound=SupportsStreaming)
 
 
 class LlmCapableMixin(Generic[TSupportStream]):
+    """LLM mixin channels - automatically included in any LLM node"""
+    MIXIN_READS: ClassVar[set[str]] = {Channel.CHAT_CONTEXTS}
+    MIXIN_WRITES: ClassVar[set[str]] = {Channel.CHAT_CONTEXTS}
     """
     Mixin: Adds LLM-chat capability that leverages existing streaming support.
 
@@ -37,13 +41,15 @@ class LlmCapableMixin(Generic[TSupportStream]):
     def __init_subclass__(cls) -> None:
         """
         At subclass definition time, ensure the concrete class implements
-        the streaming protocol so that `_chat()` can safely call
-        `self._stream()` and `self.is_streaming()`.
+        the streaming protocol and declares required channels.
         """
         if not issubclass(cls, SupportsStreaming):
             raise TypeError(
                 f"{cls.__name__} requires streaming support (_stream + is_streaming)."
             )
+        
+        # Chat context channels are now automatically included via MIXIN_READS/MIXIN_WRITES
+            
         super().__init_subclass__()
 
     def __init__(
@@ -132,4 +138,93 @@ class LlmCapableMixin(Generic[TSupportStream]):
         return self._llm_sync_chat(messages)
 
     def _bind_tools(self, tools: List[BaseTool]) -> None:
-        self.llm.bind_tools(tools)
+        """
+        Bind tools to this node's LLM instance, creating an isolated copy to avoid cross-contamination.
+        
+        This creates a new LLM instance with tools bound, ensuring each node has its own
+        tool-bound LLM without affecting other nodes that share the same base LLM.
+        """
+        self.llm = self.llm.bind_tools(tools)
+    
+    # ===== LLM Chat Context Management =====
+    
+    def get_chat_context(self: TSupportStream, thread_id: str = None) -> List[ChatMessage]:
+        """
+        Get this node's LLM conversation context, optionally scoped to a thread.
+        
+        Args:
+            thread_id: Optional thread ID for scoped context. If None, uses "default".
+        
+        Clean separation: Only for LLM conversation management.
+        """
+        if not hasattr(self, '_state'):
+            raise RuntimeError("get_chat_context called outside of run()")
+        
+        # Use "default" if no thread_id provided
+        effective_thread_id = thread_id or "default"
+        
+        # Structure: {node_uid: {thread_id: [ChatMessage, ...]}}
+        contexts = self._state.get(Channel.CHAT_CONTEXTS, {})
+        node_contexts = contexts.get(self.uid, {})
+        
+        return list(node_contexts.get(effective_thread_id, []))
+    
+    def add_to_chat_context(self: TSupportStream, message: ChatMessage, thread_id: str = None) -> None:
+        """
+        Add a ChatMessage to this node's conversation context, optionally scoped to a thread.
+        
+        Args:
+            message: ChatMessage to add
+            thread_id: Optional thread ID for scoped context. If None, uses "default".
+        
+        Clean separation: Only accepts ChatMessage objects.
+        """
+        if not hasattr(self, '_state'):
+            raise RuntimeError("add_to_chat_context called outside of run()")
+        
+        if not isinstance(message, ChatMessage):
+            raise TypeError("add_to_chat_context only accepts ChatMessage objects")
+        
+        # Use "default" if no thread_id provided
+        effective_thread_id = thread_id or "default"
+        
+        # Get current contexts
+        contexts = dict(self._state.get(Channel.CHAT_CONTEXTS, {}))
+
+        # Get or create node contexts
+        if self.uid not in contexts:
+            contexts[self.uid] = {}
+        
+        node_contexts = dict(contexts[self.uid])
+        
+        # Get or create thread messages
+        if effective_thread_id not in node_contexts:
+            node_contexts[effective_thread_id] = []
+        
+        thread_messages = list(node_contexts[effective_thread_id])
+        thread_messages.append(message)
+        
+        # Update state
+        node_contexts[effective_thread_id] = thread_messages
+        contexts[self.uid] = node_contexts
+        self._state[Channel.CHAT_CONTEXTS] = contexts
+    
+    def clear_chat_context(self: TSupportStream, thread_id: str = None) -> None:
+        """Clear this node's conversation context for a specific thread or all threads."""
+        if not hasattr(self, '_state'):
+            raise RuntimeError("clear_chat_context called outside of run()")
+        
+        contexts = dict(self._state.get(Channel.CHAT_CONTEXTS, {}))
+        
+        if thread_id is None:
+            # Clear all contexts for this node
+            contexts[self.uid] = {}
+        else:
+            # Clear specific thread
+            effective_thread_id = thread_id or "default"
+            if self.uid in contexts:
+                node_contexts = dict(contexts[self.uid])
+                node_contexts.pop(effective_thread_id, None)
+                contexts[self.uid] = node_contexts
+        
+        self._state[Channel.CHAT_CONTEXTS] = contexts

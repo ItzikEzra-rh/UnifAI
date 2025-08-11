@@ -2,7 +2,7 @@ from typing import Any, Dict, Iterator, List, Tuple, Set
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field, ConfigDict
 from elements.llms.common.chat.message import ChatMessage
-from .merge_strategies import merge_string_dicts, append_chat_messages, merge_dynamic_fields
+from .merge_strategies import merge_string_dicts, append_chat_messages, merge_dynamic_fields, append_iem_packets, merge_chat_contexts
 from enum import Enum
 
 
@@ -37,6 +37,15 @@ class GraphState(BaseModel):
 
     # Dynamic storage for extra fields (will be included in serialization)
     dynamic_fields: Annotated[Dict[str, Any], merge_dynamic_fields] = Field(default_factory=dict)
+
+    # —————– STRUCTURED COMMUNICATION (Inter-Node Coordination) —————–
+    # IEM protocol packets for structured node-to-node communication
+    inter_packets: Annotated[List[Any], append_iem_packets] = Field(default_factory=list)
+    
+    # —————– PRIVATE WORKSPACE (Node Internal State) —————–
+    # LLM conversation contexts per node (domain-specific)
+    # Structure: {node_uid: {thread_id: [ChatMessage, ...]}}
+    chat_contexts: Annotated[Dict[str, Dict[str, List[ChatMessage]]], merge_chat_contexts] = Field(default_factory=dict)
 
     # —————– Dict-like API —————–
     def __getitem__(self, key: str) -> Any:
