@@ -9,11 +9,7 @@ metadata:
 spec:
   host: {{ .Values.route.host }}
   port:
-    targetPort: 443
-  tls:
-    termination: edge
-    insecureEdgeTerminationPolicy: None
-
+    targetPort: 8080
   to:
     kind: Service
     name: {{ include "ui.fullname" . }}
