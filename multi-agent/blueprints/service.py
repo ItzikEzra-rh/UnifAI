@@ -1,4 +1,4 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Mapping
 from .models.blueprint import BlueprintSpec, BlueprintDraft
 from .repository.repository import BlueprintRepository
 from .resolver import BlueprintResolver
@@ -62,6 +62,15 @@ class BlueprintService:
         """
         docs = self._repo.list_docs(user_id=user_id, **pg)
         return [doc["spec_dict"] for doc in docs]
+
+    def list_draft_docs(
+            self, *, user_id: str | None = None, **pg
+    ) -> List[Mapping[str, Any]]:
+        """
+        Return pure-dict drafts (as saved) in one DB round-trip.
+        """
+        docs = self._repo.list_docs(user_id=user_id, **pg)
+        return [doc for doc in docs]
 
     def count(self, *, user_id: str | None = None) -> int:
         return self._repo.count(user_id=user_id)
