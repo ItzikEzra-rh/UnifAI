@@ -13,10 +13,17 @@ qdrant:
     registry: "images.paas.redhat.com/genie"
     repository: "qdrant"
     pullPolicy: IfNotPresent
-    tag: "latest"
+    tag: "stable"
   service:
     type: LoadBalancer
     port: 6333
+  resources:
+    limits:
+      cpu: 8
+      memory: 16Gi
+    requests:
+      cpu: 4
+      memory: 12Gi
 
 rabbitmq:
   image:
@@ -26,15 +33,3 @@ rabbitmq:
     tag: 4.0.5-debian-12-r0
   service:
     type: LoadBalancer
-
-unifai_dataflow_shared_storage:
-  storage:
-    volumeName: unifai-dataflow-shared-storage
-    requestedSize: 50Gi
-    className: aws-efs-tier-c1
-    accessModes:
-      - ReadWriteMany
-    annotations:
-      kubernetes.io/reclaimPolicy: Delete
-    labels:
-      paas.redhat.com/appcode: TAG-001

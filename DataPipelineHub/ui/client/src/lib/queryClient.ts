@@ -1,4 +1,24 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import axios, { AxiosError } from 'axios';
+
+export const api = axios.create({
+  // baseURL: 'http://127.0.0.1:13456/api',   
+  baseURL: 'https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com/api',     
+  withCredentials: false,   
+  timeout: 10_000,        
+});
+
+// global response interceptor for error handling (e.g. 401)
+api.interceptors.response.use(
+  (response) => response,
+  (error: AxiosError) => {
+    if (error.response?.status === 401) {
+      // Handle unauthorized access
+      console.error('Unauthorized access');
+    }
+    return Promise.reject(error);
+  }
+);
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -41,14 +61,22 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+  
+//Generic QueryFunction for React Query using Axios
+export const axiosQueryFn: QueryFunction<any> = async ({ queryKey }) => {
+  const [url, params] = queryKey as [string, Record<string, any>?];
+  const response = await api.get(url, params ? { params } : undefined);
+  return response.data;
+};
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
+      queryFn: axiosQueryFn,
+      staleTime: 5 * 60_000,          // cache data for 5 minutes
+      retry: 1,                       // retry once on failure
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
     },
     mutations: {
       retry: false,

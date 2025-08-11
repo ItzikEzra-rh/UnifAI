@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export const AXIOS_AGENTS_IP= 'http://bastion.9jk6c.sandbox1471.opentlc.com:8003'
+export const AXIOS_AGENTS_IP= 'https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com'
 
 const axiosInstance = axios.create({
   baseURL: '/api2',
