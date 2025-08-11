@@ -29,8 +29,6 @@ class AppContainer(metaclass=SingletonMeta):
 
         # blueprint catalog
         self.blueprint_repo = MongoBlueprintRepository(
-            mongodb_port=cfg.mongodb_port,
-            mongodb_ip=cfg.mongodb_ip,
             db_name=cfg.mongo_db,
             coll_name=cfg.blueprint_coll
         )
