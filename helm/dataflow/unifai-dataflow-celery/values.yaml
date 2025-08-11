@@ -4,7 +4,6 @@
 env:
   qdrant_ip: "http://qdrant"
   qdrant_port: "6333"
-  BACKEND_ENV: "production"
   ROLE: "celery"
   SHARED_STORAGE: "/app/shared"
   CELERY_QUEUES: "slack_queue,docs_queue"
@@ -83,8 +82,8 @@ ingress:
 
 resources:
   limits:
-    cpu: 4
-    memory: 8Gi
+    cpu: 2
+    memory: 4Gi
     nvidia.com/gpu: 1
   requests:
     cpu: 2

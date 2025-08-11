@@ -55,6 +55,11 @@ class DocumentProcessor(DataProcessor):
         Returns:
             Processed document data dictionary
         """
+        # Handle case where doc is None (e.g., from failed document collection)
+        if doc is None:
+            logger.error("Cannot process document: doc is None (likely from failed document collection)")
+            raise ValueError("Document data is None - collection phase may have failed")
+        
         # Get processing options
         clean_markdown = kwargs.get("clean_markdown", True)
         clean_text = kwargs.get("clean_text", False)
