@@ -15,7 +15,6 @@ env:
   DATAPIPELINEHUB_HOST: "https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
   MULTIAGENT_PORT: ""
   MULTIAGENT_HOST: "http://unifai-multiagent-be-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
-  SCHEME: "https"
 
 # This is for setting up a service more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/
 service:
