@@ -1,9 +1,6 @@
-<<<<<<< HEAD
-=======
 from functools import cached_property
 from typing import Dict, List, Tuple, Optional
 from datetime import datetime, timedelta
->>>>>>> 9807968ae7596179d9abc18eefa59023c9a08fab
 from pipeline.pipeline_factory import PipelineFactory
 from data_sources.slack.slack_config_manager import SlackConfigManager
 from data_sources.slack.slack_connector import SlackConnector
@@ -221,4 +218,3 @@ class SlackPipelineFactory(PipelineFactory):
             })
 
         return self.embedder.generate_embeddings(chunks)
->>>>>>> 9807968ae7596179d9abc18eefa59023c9a08fab
