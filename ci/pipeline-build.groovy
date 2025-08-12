@@ -40,8 +40,14 @@ def buildDockerImage(String component) {
     echo("---====  buildDockerImage ${component}  ====---")
     
     def componentLower = component.toLowerCase().replace("-", "")
-    def status = sh(script: "podman build -t ${componentLower}:${VERSION} -t ${componentLower}:latest -f ${component}/${dockerfile} . > ${logFile} 2>&1", returnStatus: true)
 
+    if (component == "DataPipelineHub/ui") {
+        def status = sh(script: "podman build -t ${componentLower}:${VERSION} -t ${componentLower}:latest -f ${component}/deployment/${dockerfile} . > ${logFile} 2>&1", returnStatus: true)
+    }
+    else{
+        def status = sh(script: "podman build -t ${componentLower}:${VERSION} -t ${componentLower}:latest -f ${component}/${dockerfile} . > ${logFile} 2>&1", returnStatus: true)
+    }
+    
     if (status != 0) {
         echo("Build failed for module: ${componentLower}. Check ${logFile} for details.")
         sh "cat ${logFile}"
