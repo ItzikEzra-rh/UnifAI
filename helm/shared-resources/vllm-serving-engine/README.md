@@ -1,11 +1,14 @@
-# vLLM Qwen3-32B-FP8 Helm Chart
+# vLLM Multi-Model Helm Chart
 
 ![vLLM](https://img.shields.io/badge/vLLM-v0.9.2-blue)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-1.24+-green)
 ![OpenShift](https://img.shields.io/badge/OpenShift-4.10+-red)
 ![License](https://img.shields.io/badge/License-Apache%202.0-yellow)
 
-A production-ready Helm chart for deploying [vLLM](https://github.com/vllm-project/vllm) with the Qwen3-32B-FP8 large language model on Kubernetes/OpenShift with GPU support.
+A production-ready Helm chart for deploying [vLLM](https://github.com/vllm-project/vllm) with multiple large language models on Kubernetes/OpenShift with GPU support. Currently supports:
+
+- **Qwen3-32B-FP8**: High-performance FP8 quantized model with tensor parallelism
+- **GPT-OSS-20B**: OpenAI's GPT-OSS-20B model with TRITON attention backend
 
 ## 🎯 Overview
 
@@ -18,15 +21,172 @@ This Helm chart provides a complete deployment solution for running Qwen3-32B-FP
 - **Automated Testing**: Built-in API validation tests
 - **Optimized Model Loading**: **Production-validated** git LFS approach with 99.9% faster subsequent downloads
 
+## 🎛️ Model Configuration
+
+The chart supports multiple models with flexible configuration using a modular values file structure. You can enable one model at a time by using the appropriate values file.
+
+### Values File Structure
+
+The chart provides three values files for different deployment scenarios:
+
+1. **`values.yaml`** - General base configuration with small test model (DialoGPT-small)
+2. **`../values-qwen3-32b.yaml`** - Qwen3-32B-FP8 specific configuration (real model)
+3. **`../values-gpt-oss-20b.yaml`** - GPT-OSS-20B specific configuration (real model)
+
+> **Note**: The `vllm` section in `values.yaml` contains general vLLM configuration that applies to all models. Health probes, environment variables, and other infrastructure settings are also general configuration. Only model-specific settings are handled through the `models` section.
+
+### Available Models
+
+#### DialoGPT-small (Default - Test Model)
+```yaml
+models:
+  test-model:
+    enabled: true
+    model: "Qwen/Qwen3-0.6B"
+    localModelPath: "/models/Qwen3-0.6B"
+    maxModelLen: "1024"
+    quantization: "fp16"
+```
+
+#### Qwen3-32B-FP8 (Production Model)
+```yaml
+models:
+  qwen3-32b:
+    enabled: true
+    model: "Qwen/Qwen3-32B-FP8"
+    localModelPath: "/models/Qwen3-32B-FP8"
+    maxModelLen: "80000"
+    quantization: "fp8"
+    toolCallParser: "hermes"
+    ropeScaling:
+      rope_type: "yarn"
+      factor: 4.0
+      original_max_position_embeddings: 32768
+```
+
+#### GPT-OSS-20B (Production Model)
+```yaml
+models:
+  gpt-oss-20b:
+    enabled: true
+    model: "openai/gpt-oss-20b"
+    localModelPath: "/models/gpt-oss-20b"
+    maxModelLen: "32768"
+    quantization: "fp16"
+    enableAutoToolChoice: false
+    # Custom arguments for vllm serve command
+    customArgs:
+      - "--async-scheduling"
+    env:
+      VLLM_ATTENTION_BACKEND: "TRITON_ATTN_VLLM_V1"
+```
+
+### Usage Examples
+
+**Deploy with DialoGPT-small (default - test model):**
+```bash
+# Using default values.yaml (DialoGPT-small is enabled by default)
+helm install vllm-test ./helm/shared-resources/vllm-serving-engine
+```
+
+**Deploy with Qwen3-32B-FP8 (production model):**
+```bash
+# Using Qwen3-32B specific values file
+helm install vllm-serving-engine ./helm/shared-resources/vllm-serving-engine -f ../values-qwen3-32b.yaml
+
+# Or using command line flags
+helm install vllm-serving-engine ./helm/shared-resources/vllm-serving-engine \
+  --set models.test-model.enabled=false \
+  --set models.qwen3-32b.enabled=true
+```
+
+**Deploy with GPT-OSS-20B (production model):**
+```bash
+# Using GPT-OSS-20B specific values file
+helm install vllm-gpt-oss ./helm/shared-resources/vllm-serving-engine -f ../values-gpt-oss-20b.yaml
+
+# Or using command line flags
+helm install vllm-gpt-oss ./helm/shared-resources/vllm-serving-engine \
+  --set models.test-model.enabled=false \
+  --set models.gpt-oss-20b.enabled=true
+```
+
+**Custom model configuration:**
+```bash
+helm install vllm-custom ./helm/shared-resources/vllm-serving-engine \
+  --set models.test-model.enabled=false \
+  --set models.gpt-oss-20b.enabled=true \
+  --set models.gpt-oss-20b.maxModelLen=16384 \
+  --set models.gpt-oss-20b.gpuMemoryUtilization=0.85
+```
+
+**Debug mode deployment:**
+```bash
+# Deploy in debug mode for troubleshooting
+helm install vllm-debug ./helm/shared-resources/vllm-serving-engine \
+  --set vllm.debug=true
+```
+
+**Using multiple values files:**
+```bash
+# Combine base values with model-specific overrides
+helm install vllm-custom ./helm/shared-resources/vllm-serving-engine \
+  -f values.yaml \
+  -f ../values-gpt-oss-20b.yaml \
+  --set resources.limits.memory=64Gi
+```
+
+## 🐛 Troubleshooting
+
+### Debug Mode
+
+When troubleshooting deployment issues, you can enable debug mode to prevent the container from starting vLLM and instead keep it running for inspection. **Note**: Health probes are automatically disabled in debug mode.
+
+```bash
+# Deploy in debug mode
+helm install vllm-debug ./helm/shared-resources/vllm-serving-engine --set vllm.debug=true
+
+# Access the debug container
+kubectl exec -it deployment/vllm-debug -- /bin/bash
+
+# Check environment variables, files, GPU access, etc.
+kubectl exec -it deployment/vllm-debug -- nvidia-smi
+kubectl exec -it deployment/vllm-debug -- ls -la /models/
+kubectl exec -it deployment/vllm-debug -- env | grep VLLM
+```
+
+**Debug Mode Features:**
+- Container sleeps instead of starting vLLM
+- Health probes (readiness/liveness) are automatically disabled
+- Full access to container environment for troubleshooting
+- Model files and GPU resources available for inspection
+
+### Common Issues
+
+1. **Model Download Issues**: Check init container logs
+   ```bash
+   kubectl logs deployment/vllm-debug -c model-man
+   ```
+
+2. **GPU Issues**: Verify GPU access in debug mode
+   ```bash
+   kubectl exec -it deployment/vllm-debug -- nvidia-smi
+   ```
+
+3. **Environment Issues**: Check environment variables
+   ```bash
+   kubectl exec -it deployment/vllm-debug -- env | grep -E "(VLLM|CUDA|NCCL)"
+   ```
+
 ## 📋 Prerequisites
 
 ### Hardware Requirements
-- **GPUs**: 2x NVIDIA A100 GPUs (or equivalent) with at least 16GB VRAM each
-- **Memory**: 32GB+ RAM recommended
-- **CPU**: 8+ cores recommended
-- **Storage**: 50GB+ for model caching
+- **GPUs**: 1x NVIDIA A100 GPU (for GPT-OSS-20B) or 2x for Qwen3-32B-FP8
+- **Memory**: 16GB+ RAM (32GB for GPT-OSS-20B, 48GB+ for Qwen3-32B)
+- **CPU**: 4+ cores (6+ for GPT-OSS-20B, 8+ for Qwen3-32B)
+- **Storage**: 50GB+ for model caching (200GB+ for production models)
 
-> **⚠️ Important**: This deployment requires **2+ available A100 GPUs** in your cluster. The Qwen3-32B-FP8 model with tensor parallelism is specifically optimized for A100 hardware and requires the compute capability and memory bandwidth these GPUs provide.
+> **⚠️ Important**: GPU requirements vary by model: **GPT-OSS-20B requires 1 GPU**, **Qwen3-32B-FP8 requires 2 GPUs** with tensor parallelism. Both are optimized for A100 hardware.
 
 ### Software Requirements
 - Kubernetes 1.24+ or OpenShift 4.10+
@@ -114,12 +274,12 @@ helm repo add your-repo https://your-helm-repo.com
 helm repo update
 
 # Install with default configuration
-helm install vllm-qwen3 ./helm/shared-resources/vllm-qwen3/ \
+helm install vllm-serving-engine ./helm/shared-resources/vllm-serving-engine/ \
   --namespace your-namespace \
   --create-namespace
 
 # Or install with custom values
-helm install vllm-qwen3 ./helm/shared-resources/vllm-qwen3/ \
+helm install vllm-serving-engine ./helm/shared-resources/vllm-serving-engine/ \
   --namespace your-namespace \
   --values custom-values.yaml
 ```
@@ -129,16 +289,16 @@ helm install vllm-qwen3 ./helm/shared-resources/vllm-qwen3/ \
 # Check pod status 
 # Note: Model loading takes 15-30 minutes for first-time deployment
 #       or 1-3 minutes with integrated model caching
-kubectl get pods -n your-namespace -l app.kubernetes.io/name=vllm-qwen3
+kubectl get pods -n your-namespace -l app.kubernetes.io/name=vllm-serving-engine
 
 # Monitor model loading progress
-kubectl logs -f -n your-namespace -l app.kubernetes.io/name=vllm-qwen3
+kubectl logs -f -n your-namespace -l app.kubernetes.io/name=vllm-serving-engine
 ```
 
 ### 3. Verify Installation
 ```bash
 # Run comprehensive API tests with adequate timeout
-helm test vllm-qwen3 -n your-namespace --logs --timeout 600s
+helm test vllm-serving-engine -n your-namespace --logs --timeout 600s
 
 # Check external route (OpenShift)
 oc get routes -n your-namespace
@@ -240,7 +400,7 @@ When deployed on OpenShift, the chart automatically creates a Route for external
 
 ```bash
 # Get the auto-generated route URL
-export ROUTE_URL=http://$(oc get route vllm-qwen3 -n your-namespace -o jsonpath='{.spec.host}')
+export ROUTE_URL=http://$(oc get route vllm-serving-engine -n your-namespace -o jsonpath='{.spec.host}')
 
 # Test the API
 curl $ROUTE_URL/health
@@ -251,7 +411,7 @@ For local development or testing:
 
 ```bash
 # Forward port to local machine
-kubectl port-forward svc/vllm-qwen3 8080:80 -n your-namespace
+kubectl port-forward svc/vllm-serving-engine 8080:80 -n your-namespace
 
 # Access via localhost
 curl http://localhost:8080/health
@@ -337,13 +497,13 @@ The chart includes comprehensive API tests that validate:
 
 ```bash
 # Run all tests with adequate timeout (recommended: 10 minutes)
-helm test vllm-qwen3 -n your-namespace --timeout 600s
+helm test vllm-serving-engine -n your-namespace --timeout 600s
 
 # Run tests with live logs and extended timeout
-helm test vllm-qwen3 -n your-namespace --logs --timeout 600s
+helm test vllm-serving-engine -n your-namespace --logs --timeout 600s
 
 # For slower clusters or during high load, use longer timeout
-helm test vllm-qwen3 -n your-namespace --timeout 900s
+helm test vllm-serving-engine -n your-namespace --timeout 900s
 
 # Clean up test pods
 kubectl delete pods -l "helm.sh/hook=test" -n your-namespace
@@ -378,28 +538,28 @@ curl -s -X POST http://your-vllm-url/v1/completions \
 ### Pod Status
 ```bash
 # Check pod status
-kubectl get pods -n your-namespace -l app.kubernetes.io/name=vllm-qwen3
+kubectl get pods -n your-namespace -l app.kubernetes.io/name=vllm-serving-engine
 
 # View detailed pod information
-kubectl describe pod -n your-namespace -l app.kubernetes.io/name=vllm-qwen3
+kubectl describe pod -n your-namespace -l app.kubernetes.io/name=vllm-serving-engine
 ```
 
 ### Logs
 ```bash
 # View recent logs
-kubectl logs -n your-namespace -l app.kubernetes.io/name=vllm-qwen3 --tail=100
+kubectl logs -n your-namespace -l app.kubernetes.io/name=vllm-serving-engine --tail=100
 
 # Follow logs in real-time
-kubectl logs -f -n your-namespace -l app.kubernetes.io/name=vllm-qwen3
+kubectl logs -f -n your-namespace -l app.kubernetes.io/name=vllm-serving-engine
 ```
 
 ### Resource Usage
 ```bash
 # Check resource usage
-kubectl top pods -n your-namespace -l app.kubernetes.io/name=vllm-qwen3
+kubectl top pods -n your-namespace -l app.kubernetes.io/name=vllm-serving-engine
 
 # Check GPU usage (if nvidia-smi available)
-kubectl exec -it -n your-namespace deployment/vllm-qwen3 -- nvidia-smi
+kubectl exec -it -n your-namespace deployment/vllm-serving-engine -- nvidia-smi
 ```
 
 ## 🧪 Testing & Validation
@@ -458,7 +618,7 @@ Ensure complete model download before testing:
 
 ```bash
 # Check all model shard files are present (should show 7 files)
-kubectl exec deployment/vllm-qwen3 -- ls -la /models/.cache/models--Qwen-Qwen3-32B-FP8/model-*.safetensors
+kubectl exec deployment/vllm-serving-engine -- ls -la /models/.cache/models--Qwen-Qwen3-32B-FP8/model-*.safetensors
 
 # Expected output: All 7 model shards (model-00001 through model-00007)
 # Each file should be ~4.6-4.7GB in size
@@ -478,7 +638,7 @@ vllm:
 #### Pod Stuck in Pending
 ```bash
 # Check pod events
-kubectl describe pod -n your-namespace -l app.kubernetes.io/name=vllm-qwen3
+kubectl describe pod -n your-namespace -l app.kubernetes.io/name=vllm-serving-engine
 
 # Common causes:
 # - Insufficient GPU resources
@@ -500,7 +660,7 @@ healthProbes:
     initialDelaySeconds: 1500  # 25 minutes
 
 # Monitor model caching (initContainer "model-man"):
-kubectl logs -f deployment/vllm-qwen3 -c model-man -n your-namespace
+kubectl logs -f deployment/vllm-serving-engine -c model-man -n your-namespace
 ```
 
 > **💡 Best Solution**: The chart includes [Integrated Model Caching](#-integrated-model-caching) to reduce startup time from 15 minutes to 1 second for subsequent deployments, eliminating timeout issues entirely. Our production testing shows 99.9% improvement in deployment speed.
@@ -508,7 +668,7 @@ kubectl logs -f deployment/vllm-qwen3 -c model-man -n your-namespace
 #### Out of Memory Errors
 ```bash
 # Check memory usage
-kubectl describe pod -n your-namespace -l app.kubernetes.io/name=vllm-qwen3
+kubectl describe pod -n your-namespace -l app.kubernetes.io/name=vllm-serving-engine
 
 # Solutions:
 # 1. Increase memory limits
@@ -523,16 +683,16 @@ kubectl describe pod -n your-namespace -l app.kubernetes.io/name=vllm-qwen3
 oc get routes -n your-namespace
 
 # Check service endpoints
-kubectl get endpoints -n your-namespace vllm-qwen3
+kubectl get endpoints -n your-namespace vllm-serving-engine
 
 # Verify pod is ready
-kubectl get pods -n your-namespace -l app.kubernetes.io/name=vllm-qwen3
+kubectl get pods -n your-namespace -l app.kubernetes.io/name=vllm-serving-engine
 ```
 
 #### Helm Test Timeouts
 ```bash
 # If tests timeout, increase the timeout value
-helm test vllm-qwen3 -n your-namespace --timeout 900s
+helm test vllm-serving-engine -n your-namespace --timeout 900s
 
 # Check test pod logs for details
 kubectl logs -n your-namespace -l "helm.sh/hook=test"
@@ -550,19 +710,19 @@ kubectl logs -n your-namespace -l "helm.sh/hook=test"
 
 ```bash
 # Get all resources
-kubectl get all -n your-namespace -l app.kubernetes.io/instance=vllm-qwen3
+kubectl get all -n your-namespace -l app.kubernetes.io/instance=vllm-serving-engine
 
 # Check events
 kubectl get events -n your-namespace --sort-by='.lastTimestamp' | tail -20
 
 # Port forward for direct access
-kubectl port-forward -n your-namespace svc/vllm-qwen3 8080:80
+kubectl port-forward -n your-namespace svc/vllm-serving-engine 8080:80
 
 # Check Helm release status
-helm status vllm-qwen3 -n your-namespace
+helm status vllm-serving-engine -n your-namespace
 
 # View Helm release history
-helm history vllm-qwen3 -n your-namespace
+helm history vllm-serving-engine -n your-namespace
 ```
 
 ## 🔄 Upgrading
@@ -570,12 +730,12 @@ helm history vllm-qwen3 -n your-namespace
 ### Upgrade Chart
 ```bash
 # Upgrade with new values
-helm upgrade vllm-qwen3 ./helm/shared-resources/vllm-qwen3/ \
+helm upgrade vllm-serving-engine ./helm/shared-resources/vllm-serving-engine/ \
   --namespace your-namespace \
   --values new-values.yaml
 
 # Upgrade with specific parameters
-helm upgrade vllm-qwen3 ./helm/shared-resources/vllm-qwen3/ \
+helm upgrade vllm-serving-engine ./helm/shared-resources/vllm-serving-engine/ \
   --namespace your-namespace \
   --set vllm.model="new-model-name"
 ```
@@ -583,13 +743,13 @@ helm upgrade vllm-qwen3 ./helm/shared-resources/vllm-qwen3/ \
 ### Rollback
 ```bash
 # View release history
-helm history vllm-qwen3 -n your-namespace
+helm history vllm-serving-engine -n your-namespace
 
 # Rollback to previous version
-helm rollback vllm-qwen3 -n your-namespace
+helm rollback vllm-serving-engine -n your-namespace
 
 # Rollback to specific revision
-helm rollback vllm-qwen3 2 -n your-namespace
+helm rollback vllm-serving-engine 2 -n your-namespace
 ```
 
 ## 📈 Scaling
@@ -597,7 +757,7 @@ helm rollback vllm-qwen3 2 -n your-namespace
 ### Horizontal Scaling
 ```bash
 # Scale replicas (if sufficient GPU resources)
-kubectl scale deployment vllm-qwen3 --replicas=2 -n your-namespace
+kubectl scale deployment vllm-serving-engine --replicas=2 -n your-namespace
 
 # Or use values.yaml:
 replicaCount: 2
@@ -652,7 +812,7 @@ The chart includes security best practices:
 This Helm chart is organized for maintainability and clear separation of concerns:
 
 ```
-vllm-qwen3/
+vllm-serving-engine/
 ├── Chart.yaml                          # Chart metadata
 ├── values.yaml                         # Default configuration
 ├── values-optimized-loading.yaml       # Performance optimized configuration

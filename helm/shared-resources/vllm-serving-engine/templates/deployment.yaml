@@ -1,9 +1,9 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "vllm-qwen3.fullname" . }}
+  name: {{ include "vllm-serving-engine.fullname" . }}
   labels:
-    {{- include "vllm-qwen3.labels" . | nindent 4 }}
+    {{- include "vllm-serving-engine.labels" . | nindent 4 }}
   namespace: {{ .Values.namespace | default .Release.Namespace }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
@@ -11,7 +11,7 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "vllm-qwen3.selectorLabels" . | nindent 6 }}
+      {{- include "vllm-serving-engine.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -19,7 +19,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "vllm-qwen3.selectorLabels" . | nindent 8 }}
+        {{- include "vllm-serving-engine.selectorLabels" . | nindent 8 }}
     spec:
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
@@ -30,6 +30,21 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      
+      {{- /* Determine which model to use */ -}}
+      {{- $activeModel := dict -}}
+      {{- range $modelKey, $modelConfig := .Values.models -}}
+        {{- if $modelConfig.enabled -}}
+          {{- $_ := set $activeModel "key" $modelKey -}}
+          {{- $_ := set $activeModel "config" $modelConfig -}}
+        {{- end }}
+      {{- end -}}
+      
+      {{- /* Ensure at least one model is enabled */ -}}
+      {{- if not $activeModel -}}
+        {{- fail "No model is enabled. Please enable at least one model in the 'models' section or use a model-specific values file." -}}
+      {{- end -}}
+      
       {{- if .Values.volumes.modelCache.enabled }}
       initContainers:
       - name: model-man
@@ -38,7 +53,7 @@ spec:
         args:
         - |
           echo "=== Basic Model Download ==="
-          echo "Model: {{ .Values.vllm.model }}"
+          echo "Model: {{ $activeModel.config.model }}"
           
           # Create cache directory if it doesn't exist
           mkdir -p /models/.cache
@@ -52,13 +67,13 @@ spec:
           # Initialize git-lfs if available
           git lfs install --skip-repo 2>/dev/null || echo "Using basic git without LFS"
           
-          MODEL_DIR="models--$(echo '{{ .Values.vllm.model }}' | tr '/' '-')"
+          MODEL_DIR="models--$(echo '{{ $activeModel.config.model }}' | tr '/' '-')"
           
-          {{- if .Values.vllm.forceDownload }}
+          {{- if $activeModel.config.forceDownload }}
           # Force redownload - remove existing model
           echo "🗑️ Forcing model redownload (forceDownload=true) - removing existing cache..."
           rm -rf "/models/.cache/$MODEL_DIR"
-          rm -f "/models/Qwen3-32B-FP8"
+          rm -f "{{ $activeModel.config.localModelPath }}"
           {{- end }}
           
           # Check if model already exists
@@ -69,8 +84,8 @@ spec:
             cd /models/.cache || exit 1
             
             # Use git clone with recovery for checkout failures
-            echo "Cloning https://huggingface.co/{{ .Values.vllm.model }}"
-            if ! git clone "https://huggingface.co/{{ .Values.vllm.model }}" "$MODEL_DIR"; then
+            echo "Cloning https://huggingface.co/{{ $activeModel.config.model }}"
+            if ! git clone "https://huggingface.co/{{ $activeModel.config.model }}" "$MODEL_DIR"; then
               echo "⚠️ Git clone failed, attempting recovery..."
               if [ -d "$MODEL_DIR" ]; then
                 echo "🔧 Attempting git restore to recover working tree..."
@@ -82,7 +97,7 @@ spec:
                   echo "❌ Git restore failed, cleaning up and retrying..."
                   cd .. && rm -rf "$MODEL_DIR"
                   echo "🔄 Retrying with git clone --depth 1..."
-                  git clone --depth 1 "https://huggingface.co/{{ .Values.vllm.model }}" "$MODEL_DIR" || {
+                  git clone --depth 1 "https://huggingface.co/{{ $activeModel.config.model }}" "$MODEL_DIR" || {
                     echo "❌ All git clone attempts failed"
                     exit 1
                   }
@@ -97,9 +112,9 @@ spec:
           # Create symlink for vLLM to find the model at expected path
           echo "🔗 Creating symlink for vLLM..."
           mkdir -p /models/
-          if [ ! -L "/models/Qwen3-32B-FP8" ] && [ -d "/models/.cache/$MODEL_DIR" ]; then
-            ln -sf "/models/.cache/$MODEL_DIR" "/models/Qwen3-32B-FP8"
-            echo "✅ Symlink created: /models/Qwen3-32B-FP8 -> /models/.cache/$MODEL_DIR"
+          if [ ! -L "{{ $activeModel.config.localModelPath }}" ] && [ -d "/models/.cache/$MODEL_DIR" ]; then
+            ln -sf "/models/.cache/$MODEL_DIR" "{{ $activeModel.config.localModelPath }}"
+            echo "✅ Symlink created: {{ $activeModel.config.localModelPath }} -> /models/.cache/$MODEL_DIR"
           fi
           
           echo "🎉 Model setup completed!"
@@ -129,38 +144,55 @@ spec:
           {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          
+          {{- if .Values.vllm.debug }}
+          command: ["/bin/sh"]
+          args: ["-c", "echo 'Debug mode enabled - sleeping infinity for debugging' && sleep infinity"]
+          {{- else }}
           args:
             - "--model"
-            - "{{ .Values.vllm.localModelPath }}"
+            - "{{ $activeModel.config.localModelPath }}"
             - "--max-model-len"
-            - "{{ .Values.vllm.maxModelLen }}"
+            - "{{ $activeModel.config.maxModelLen }}"
             - "--gpu-memory-utilization"
             - "{{ .Values.vllm.gpuMemoryUtilization }}"
+            {{- if $activeModel.config.quantization }}
             - "--quantization"
-            - "{{ .Values.vllm.quantization }}"
+            - "{{ $activeModel.config.quantization }}"
+            {{- end }}
+            {{- if $activeModel.config.ropeScaling }}
             - "--rope-scaling"
-            - "{\"rope_type\":\"yarn\",\"factor\":4.0,\"original_max_position_embeddings\":32768}"
+            - "{{ $activeModel.config.ropeScaling | toJson }}"
+            {{- end }}
             - "--tensor-parallel-size"
-            - "{{ .Values.gpu.count }}"
+            - "{{ .Values.vllm.tensorParallelSize }}"
             - "--port"
             - "{{ .Values.service.targetPort }}"
             - "--host"
             - "0.0.0.0"
             - "--trust-remote-code"
             - "--disable-log-stats"
+            {{- if .Values.vllm.disableLogRequests }}
             - "--disable-log-requests"
+            {{- end }}
             {{- if .Values.vllm.enableAutoToolChoice }}
             - "--enable-auto-tool-choice"
             {{- end }}
-            {{- if .Values.vllm.toolCallParser }}
+            {{- if $activeModel.config.toolCallParser }}
             - "--tool-call-parser"
-            - "{{ .Values.vllm.toolCallParser }}"
+            - "{{ $activeModel.config.toolCallParser }}"
             {{- end }}
+            {{- /* Add custom arguments specific to the model */ -}}
+            {{- range $activeModel.config.customArgs }}
+            - "{{ . }}"
+            {{- end }}
+          {{- end }}
+          
           ports:
             - name: http
               containerPort: {{ .Values.service.targetPort }}
               protocol: TCP
-          {{- if .Values.healthProbes.readinessProbe.enabled }}
+          {{- if and .Values.healthProbes.readinessProbe.enabled (not .Values.vllm.debug) }}
           readinessProbe:
             httpGet:
               path: {{ .Values.healthProbes.readinessProbe.httpGet.path }}
@@ -171,7 +203,7 @@ spec:
             successThreshold: {{ .Values.healthProbes.readinessProbe.successThreshold }}
             failureThreshold: {{ .Values.healthProbes.readinessProbe.failureThreshold }}
           {{- end }}
-          {{- if .Values.healthProbes.livenessProbe.enabled }}
+          {{- if and .Values.healthProbes.livenessProbe.enabled (not .Values.vllm.debug) }}
           livenessProbe:
             httpGet:
               path: {{ .Values.healthProbes.livenessProbe.httpGet.path }}
@@ -183,7 +215,14 @@ spec:
             failureThreshold: {{ .Values.healthProbes.livenessProbe.failureThreshold }}
           {{- end }}
           env:
+            {{- /* Base environment variables */ -}}
             {{- range $name, $value := .Values.env }}
+            - name: {{ $name }}
+              value: "{{ $value }}"
+            {{- end }}
+            
+            {{- /* Model-specific environment variables */ -}}
+            {{- range $name, $value := $activeModel.config.env }}
             - name: {{ $name }}
               value: "{{ $value }}"
             {{- end }}
@@ -192,11 +231,11 @@ spec:
             limits:
               cpu: {{ .Values.resources.limits.cpu }}
               memory: {{ .Values.resources.limits.memory }}
-              nvidia.com/gpu: {{ .Values.gpu.count }}
+              nvidia.com/gpu: {{ index .Values.resources.limits "nvidia.com/gpu" }}
             requests:
               cpu: {{ .Values.resources.requests.cpu }}
               memory: {{ .Values.resources.requests.memory }}
-              nvidia.com/gpu: {{ .Values.gpu.count }}
+              nvidia.com/gpu: {{ index .Values.resources.requests "nvidia.com/gpu" }}
           volumeMounts:
             {{- if .Values.volumes.dshm.enabled }}
             - name: dshm
@@ -217,7 +256,7 @@ spec:
         {{- if .Values.volumes.modelCache.enabled }}
         - name: model-cache
           persistentVolumeClaim:
-            claimName: {{ include "vllm-qwen3.fullname" . }}-model-cache
+            claimName: {{ include "vllm-serving-engine.fullname" . }}-model-cache
         {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
