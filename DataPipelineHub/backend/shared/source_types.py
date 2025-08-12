@@ -11,6 +11,7 @@ These models ensure type safety and data validation across the application.
 
 from dataclasses import dataclass
 from typing import Optional, Dict, Any, Union, List
+from datetime import datetime
 from pydantic import BaseModel, Field
 
 @dataclass(frozen=True)
@@ -41,7 +42,9 @@ class SlackTypeData(BaseModel):
     is_private: bool = Field(default=False, description="Whether the channel is private")
     
     # Optional user-defined metadata fields that can be added from frontend
-    dateRange: Optional[str] = Field(default=None, description="User-defined date range settings")
+    dateRange: Optional[str] = Field(default=None, description="User-defined date range settings (e.g., '7d', '30d')")
+    start_timestamp: Optional[datetime] = Field(default=None, description="Start date for the range (datetime object)")
+    end_timestamp: Optional[datetime] = Field(default=None, description="End date for the range (datetime object)")
     communityPrivacy: Optional[str] = Field(default=None, description="Community privacy settings")
     includeThreads: Optional[bool] = Field(default=None, description="Whether to include thread messages")
     

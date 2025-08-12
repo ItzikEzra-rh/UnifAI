@@ -1,6 +1,9 @@
 import os
 import uuid
 from pipeline.pipeline_repository import PipelineRepository
+from global_utils.helpers.helpers import calculate_date_range
+from pipeline.webhook_slack_pipeline_factory import WebhookSlackPipelineFactory
+from pipeline.webhook_incremental_slack_pipeline_factory import WebhookIncrementalSlackPipelineFactory
 from config.app_config import AppConfig
 from global_utils.celery_app import CeleryApp
 from pipeline.pipeline_factory import PipelineFactory
@@ -10,11 +13,8 @@ from shared.source_types import (
     RegisteredSource, RegistrationResponse, PipelineExecutionResult
 )
 from shared.logger import logger
-from config.constants import DataSource
+from config.constants import DataSource, PipelineStatus
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
-# Import the concrete factories to ensure they register themselves
-from pipeline.slack_pipeline_factory import SlackPipelineFactory
-from pipeline.doc_pipeline_factory import DocumentPipelineFactory
 
 app_config = AppConfig()
 upload_folder = app_config.get("upload_folder", "")
@@ -65,9 +65,14 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                     upload_by=upload_by
                 )
                 
+                date_range = user_metadata.get("dateRange")
+                start_datetime, end_datetime = calculate_date_range(date_range)
+                
                 # Create type_data for Slack using Pydantic model
                 slack_type_data = SlackTypeData(
                     is_private=instance.get("is_private", False),
+                    start_timestamp=start_datetime,
+                    end_timestamp=end_datetime,
                     **user_metadata  # Unpack user metadata into the model
                 )
                 type_data = slack_type_data.model_dump()
@@ -119,7 +124,7 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                 upload_by=upload_by
             )
             
-            registered_sources.append(registered_source)
+            registered_sources.append(registered_source.model_dump())
             metadata_info = f" with user settings: {user_metadata}" if user_metadata else ""
             logger.info(f"Registered {source_type} source: {source_name} with pipeline_id: {pipeline_id}{metadata_info}")
         
