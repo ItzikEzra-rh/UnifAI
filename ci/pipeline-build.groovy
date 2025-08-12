@@ -127,7 +127,7 @@ pipeline {
                                     tagAndPushImageToRegistry(buildParams,component)
                                     cleanWorkspace(component)
                                 } else {
-                                    error("Terminating process for ${module}: Build failed")
+                                    error("Terminating process for ${component}: Build failed")
                                 }
                             }
                         }
@@ -144,31 +144,31 @@ pipeline {
                                     tagAndPushImageToRegistry(buildParams, component)
                                     cleanWorkspace(component)
                                 } else {
-                                    error("Terminating process for ${module}: Build failed")
+                                    error("Terminating process for ${component}: Build failed")
                                 }
                             }
                         }
                     }
                 }
-                // stage('build_gui_image') {
-                //     when { expression { params.build_gui } }
-                //     steps {
-                //         script {
-                //             def component = "DataPipelineHub"
-                //             def module = "ui"
-                //             def componentLower = component.toLowerCase()
-                //             dir("${buildParams.DevRoot}/${params.BRANCH}/${component}/${module}/") {
-                //                 cleanWorkspace(module, componentLower)
-                //                 if (buildDockerImage(module, componentLower)) {
-                //                     tagAndPushImageToRegistry(module, buildParams, componentLower)
-                //                     cleanWorkspace(module, componentLower)
-                //                 } else {
-                //                     error("Terminating process for ${module}: Build failed")
-                //                 }
-                //             }
-                //         }
-                //     }
-                // }
+                stage('build_gui_image') {
+                    when { expression { params.build_gui } }
+                    steps {
+                        script {
+                            def component = "DataPipelineHub/ui"
+                            def module = ""
+                            def componentLower = component.toLowerCase()
+                            dir("${buildParams.DevRoot}/${params.BRANCH}/${component}/${module}/") {
+                                cleanWorkspace(module, componentLower)
+                                if (buildDockerImage(module, componentLower)) {
+                                    tagAndPushImageToRegistry(module, buildParams, componentLower)
+                                    cleanWorkspace(module, componentLower)
+                                } else {
+                                    error("Terminating process for ${component}: Build failed")
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 
