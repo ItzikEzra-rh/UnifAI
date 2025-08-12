@@ -156,12 +156,11 @@ pipeline {
                         script {
                             def component = "DataPipelineHub/ui"
                             def module = ""
-                            def componentLower = component.toLowerCase()
-                            dir("${buildParams.DevRoot}/${params.BRANCH}/${component}/${module}/") {
-                                cleanWorkspace(module, componentLower)
-                                if (buildDockerImage(module, componentLower)) {
-                                    tagAndPushImageToRegistry(module, buildParams, componentLower)
-                                    cleanWorkspace(module, componentLower)
+                            dir("${buildParams.DevRoot}/${params.BRANCH}/") {
+                                cleanWorkspace(componentLower)
+                                if (buildDockerImage(componentLower)) {
+                                    tagAndPushImageToRegistry(buildParams, componentLower)
+                                    cleanWorkspace(componentLower)
                                 } else {
                                     error("Terminating process for ${component}: Build failed")
                                 }
