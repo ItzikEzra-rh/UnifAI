@@ -30,7 +30,7 @@ export default defineConfig({
     proxy: {
       // Proxy for api1
       '/api1': {
-        target: 'https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com',
+        target: process.env.DATAPIPELINEHUB_HOST,
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api1/, '/api'), // This rewrites /api1 to /api
         secure: false, // Set to true for production if target is HTTPS and has valid cert.
@@ -38,7 +38,7 @@ export default defineConfig({
       },
       // Proxy for api2 (assuming this is still local or another service)
       '/api2': {
-        target: 'http://127.0.0.1:13457', // Your second backend
+        target: process.env.MULTIAGENT_HOST,//'http://127.0.0.1:13457', // Your second backend
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api2/, '/api'), // This rewrites /api2 to nothing
         // secure: false, // Only needed if this target is HTTPS and you have SSL issues

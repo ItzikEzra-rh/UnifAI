@@ -21,7 +21,7 @@ env:
   MULTIAGENT_HOST: "unifai-multiagent-be"
 
 
-command: ["/bin/sh", "-c", "sleep infinity"]
+# command: ["/bin/sh", "-c", "sleep infinity"]
 # This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
   repository: images.paas.redhat.com/unifai/ui
