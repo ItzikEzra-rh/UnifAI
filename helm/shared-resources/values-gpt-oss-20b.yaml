@@ -25,8 +25,7 @@ models:
     localModelPath: "/models/gpt-oss-20b"
     maxModelLen: "32768"
       #quantization: "fp16"
-    enableAutoToolChoice: false
-    toolCallParser: ""
+    toolCallParser: "hermes"
     ropeScaling: {}
     # Custom arguments for vllm serve command
     customArgs:
@@ -57,4 +56,5 @@ volumes:
 
 # GPT-OSS-20B specific vLLM configuration (single GPU)
 vllm:
+  enableAutoToolChoice: true
   tensorParallelSize: "1"

@@ -5,6 +5,9 @@
 # Model configuration - Enable Qwen3-32B, disable others
 models:
   # Enable Qwen3-32B model (default)
+  test-model:
+    enabled: false
+
   qwen3-32b:
     enabled: true
     model: "Qwen/Qwen3-32B-FP8"
@@ -40,6 +43,11 @@ resources:
 gpu:
   count: 2
   deviceIds: []
+
+vllm:
+  # General vLLM settings (no model-specific hardcoding)
+  tensorParallelSize: "2"
+
 
 # Qwen3-32B specific health probe timing (longer for large model)
 healthProbes:
@@ -96,3 +104,14 @@ volumes:
     retainOnDelete: true
   flashinferCache:
     enabled: true
+
+# Node affinity to ensure Qwen3-32B runs on A100 GPUs
+affinity:
+  nodeAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+      nodeSelectorTerms:
+      - matchExpressions:
+        - key: nvidia.com/gpu.product
+          operator: In
+          values:
+          - NVIDIA-A100-SXM4-40GB
