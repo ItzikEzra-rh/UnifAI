@@ -30,7 +30,7 @@ export default defineConfig({
     proxy: {
       // Proxy for api1
       '/api1': {
-        target: 'https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com',
+        target: 'https://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api1/, '/api'), // This rewrites /api1 to /api
         secure: false, // Set to true for production if target is HTTPS and has valid cert.
