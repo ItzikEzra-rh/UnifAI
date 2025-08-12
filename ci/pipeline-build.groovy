@@ -34,20 +34,25 @@ def buildParams = [
 
 
 def buildDockerImage(String component) {
+    // Default assumptions: Dockerfile at component root, repo-root as build context
     String dockerfile = "Dockerfile"
+    String context = "."
+
+    // Special-case UI: Dockerfile lives under deployment/, and context must be the UI folder
+    // will be fix in followup ticket to fix all non-importnet issues.
+    if (component == "DataPipelineHub/ui") {
+        dockerfile = "deployment/Dockerfile"
+        context = "${component}"
+    }
+
     String logFile = "/tmp/${component.replace("/", "_")}_build.log"
 
     echo("---====  buildDockerImage ${component}  ====---")
-    
+
     def componentLower = component.toLowerCase().replace("-", "")
 
-    if (component == "DataPipelineHub/ui") {
-        def status = sh(script: "podman build -t ${componentLower}:${VERSION} -t ${componentLower}:latest -f ${component}/deployment/${dockerfile} . > ${logFile} 2>&1", returnStatus: true)
-    }
-    else{
-        def status = sh(script: "podman build -t ${componentLower}:${VERSION} -t ${componentLower}:latest -f ${component}/${dockerfile} . > ${logFile} 2>&1", returnStatus: true)
-    }
-    
+    def status = sh(script: "podman build -t ${componentLower}:${VERSION} -t ${componentLower}:latest -f ${component}/${dockerfile} ${context} > ${logFile} 2>&1", returnStatus: true)
+
     if (status != 0) {
         echo("Build failed for module: ${componentLower}. Check ${logFile} for details.")
         sh "cat ${logFile}"
@@ -163,10 +168,10 @@ pipeline {
                             def component = "DataPipelineHub/ui"
                             def module = ""
                             dir("${buildParams.DevRoot}/${params.BRANCH}/") {
-                                cleanWorkspace(componentLower)
-                                if (buildDockerImage(componentLower)) {
-                                    tagAndPushImageToRegistry(buildParams, componentLower)
-                                    cleanWorkspace(componentLower)
+                                cleanWorkspace(component)
+                                if (buildDockerImage(component)) {
+                                    tagAndPushImageToRegistry(buildParams, component)
+                                    cleanWorkspace(component)
                                 } else {
                                     error("Terminating process for ${component}: Build failed")
                                 }
