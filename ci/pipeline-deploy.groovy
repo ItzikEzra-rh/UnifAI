@@ -11,7 +11,7 @@ properties([
         string(name: "DF_VERSION", defaultValue: "", description: "Image tag for dataflow"),
         string(name: "MA_VERSION", defaultValue: "", description: "Image tag for multi-agent"),
         string(name: "GUI_VERSION", defaultValue: "", description: "Image tag for UI"),
-        string(name: "MODULES_TO_DEPLOY", defaultValue: "", description: "Comma-separated list of modules to update (e.g. dataflow,multiagent,gui)"),
+        string(name: "MODULES_TO_DEPLOY", defaultValue: "", description: "Comma-separated list of modules to update (e.g. dataflow,multiagent,ui)"),
         booleanParam(name: 'debug_mode', defaultValue: false, description: 'debug the pods'),
     ])
 ])
@@ -70,9 +70,6 @@ def updateValuesYaml(String filePath , String version) {
                 sectionData.image.tag = version
             }
             if (params.deploy_location == 'STAGING') {
-                echo "🌐 Setting FRONTEND_URL for STAGING"
-                values.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
-        
                 echo "🛠 reduce resources in section: ${sectionName}"
                 if (sectionName == "env") {
                     echo "⚠️ Skipping top-level 'env' section (no resources)"
@@ -87,8 +84,15 @@ def updateValuesYaml(String filePath , String version) {
                 sectionData.resources.requests.memory = "2Gi"
             }
             else if (params.deploy_location == 'PRODUCTION') {
-                echo "🌐 Setting FRONTEND_URL for PRODUCTION"
-                values.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.imap.p1.openshiftapps.com"
+
+                echo "🌐 Setting FRONTEND_URL & UI routes for PRODUCTION"for PRODUCTION"
+                sectionData.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.imap.p1.openshiftapps.com"
+                
+                echo "🌐 
+                if (sectionData.route?.host) {
+                    echo "🚦 Updating route.host for STAGING"
+                    sectionData.route.host = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.imap.p1.openshiftapps.com"
+                }
 
                 if (sectionData.tolerations instanceof List) {
                     echo "🎯 Setting tolerations for PRODUCTION in section: ${sectionName}"
@@ -254,6 +258,13 @@ pipeline {
                                         updateChartVersions("${buildParams.DevRoot}/${params.BRANCH}/helm/multiagent/", version)
                                         updateValuesYaml("${buildParams.DevRoot}/${params.BRANCH}/helm/values/multiagent-resource-values.yaml", version)
                                         deployModules('multiagent')
+                                        break
+
+                                    case 'ui':
+                                        def version = params.GUI_VERSION?.trim() ?: params.VERSION?.trim()
+                                        updateChartVersions("${buildParams.DevRoot}/${params.BRANCH}/helm/ui/", version)
+                                        updateValuesYaml("${buildParams.DevRoot}/${params.BRANCH}/helm/values/ui-values.yaml", version)
+                                        deployModules('ui')
                                         break
                                 }
                             }

@@ -191,7 +191,7 @@ pipeline {
                     def modules = []
                     if (params.build_dataflow_backend) modules << 'dataflow'
                     if (params.build_multiagent_backend) modules << 'multiagent'
-                    if (params.build_gui) modules << 'gui'
+                    if (params.build_gui) modules << 'ui'
                     def modulesToDeploy = modules.join(',')
 
                     echo "Triggering deployment pipeline with MODULES_TO_DEPLOY = ${modulesToDeploy}"
