@@ -10,27 +10,28 @@
 # "unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
 # https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com
 
-env:
-  NGINX_PORT: "8080"
-  DATAPIPELINEHUB_PORT: ""
-  DATAPIPELINEHUB_HOST: "http://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
-  MULTIAGENT_PORT: ""
-  MULTIAGENT_HOST: "http://unifai-multiagent-be-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
+ui:
+  env:
+    NGINX_PORT: "8080"
+    DATAPIPELINEHUB_PORT: ""
+    DATAPIPELINEHUB_HOST: "http://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
+    MULTIAGENT_PORT: ""
+    MULTIAGENT_HOST: "http://unifai-multiagent-be-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
 
-image:
-  repository: images.paas.redhat.com/unifai/datapipelinehub/ui
-  tag: "latest"
-  pullPolicy: Always
+  image:
+    repository: images.paas.redhat.com/unifai/datapipelinehub/ui
+    tag: "latest"
+    pullPolicy: Always
 
-service:
-  portList:
-  - name: ui
-    port: 8080
-  - name: df-backend
-    port: 13456
-  - name: ma-backend
-    port: 8003
-  type: LoadBalancer
+  service:
+    portList:
+    - name: ui
+      port: 8080
+    - name: df-backend
+      port: 13456
+    - name: ma-backend
+      port: 8003
+    type: LoadBalancer
 
-route:
-  host: unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com
+  route:
+    host: unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com
