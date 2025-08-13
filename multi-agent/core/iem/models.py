@@ -1,5 +1,7 @@
 """
 Core IEM Protocol Models
+
+Clean, minimal models for packet types and addressing.
 """
 
 from pydantic import BaseModel, Field
@@ -8,11 +10,11 @@ from datetime import datetime
 from enum import Enum
 
 
-class PacketKind(str, Enum):
-    """IEM packet types."""
-    REQUEST = "request"
-    RESPONSE = "response" 
-    EVENT = "event"
+class PacketType(str, Enum):
+    """Packet types - each type knows its own structure."""
+    TASK = "task"
+    SYSTEM = "system" 
+    DEBUG = "debug"
 
 
 
@@ -29,120 +31,46 @@ class ErrorCode(str, Enum):
     PROTOCOL_ERROR = "PROTOCOL_ERROR"
 
 
-class StandardActions(str, Enum):
-    """Common action names for consistency."""
-    # Processing actions
-    PROCESS_USER_INPUT = "process_user_input"
-    ANALYZE_TEXT = "analyze_text"
-    SUMMARIZE = "summarize"
-    TRANSLATE = "translate"
-    EXTRACT_ENTITIES = "extract_entities"
-    
-    # Data actions
-    SEARCH = "search"
-    RETRIEVE = "retrieve"
-    EMBED = "embed"
-    STORE = "store"
-    
-    # Workflow actions
-    VALIDATE = "validate"
-    TRANSFORM = "transform"
-    MERGE = "merge"
-    ROUTE = "route"
-    
-    # System actions
-    HEALTH_CHECK = "health_check"
-    GET_STATUS = "get_status"
-    GET_CAPABILITIES = "get_capabilities"
-
-
-class StandardEvents(str, Enum):
-    """Common event types for consistency."""
-    # Processing events
-    PROCESSING_STARTED = "processing_started"
-    PROCESSING_COMPLETE = "processing_complete"
-    PROCESSING_FAILED = "processing_failed"
-    
-    # Task events
-    TASK_COMPLETE = "task_complete"
-    
-    # Task events
-    TASK_ASSIGNED = "task_assigned"
-    TASK_COMPLETED = "task_completed"
-    TASK_FAILED = "task_failed"
-    TASK_CANCELLED = "task_cancelled"
-    
-    # Workflow events
-    WORKFLOW_STARTED = "workflow_started"
-    WORKFLOW_COMPLETE = "workflow_complete"
-    WORKFLOW_FAILED = "workflow_failed"
-    
-    # Consolidation events
-    CONSOLIDATION_COMPLETE = "consolidation_complete"
-    CONSOLIDATION_FAILED = "consolidation_failed"
-    
-    # System events
-    NODE_READY = "node_ready"
-    NODE_SHUTDOWN = "node_shutdown"
-    HEALTH_STATUS = "health_status"
+# Remove StandardActions and StandardEvents as they're not needed in the clean design
+# Nodes use natural language and LLM intelligence instead
 
 
 class ElementAddress(BaseModel):
     """Address for an element in the graph."""
     uid: str
-    type_key: Optional[str] = None
-    name: Optional[str] = None
     
     def __str__(self) -> str:
-        return f"{self.name or self.type_key or 'unknown'}({self.uid})"
-    
-    def __hash__(self) -> int:
-        return hash(self.uid)
+        return self.uid
     
     def __eq__(self, other) -> bool:
         if isinstance(other, ElementAddress):
             return self.uid == other.uid
+        elif isinstance(other, str):
+            return self.uid == other
         return False
 
 
 class IEMError(BaseModel):
-    """Structured error information for IEM responses."""
-    code: str
+    """Structured error for IEM communications."""
+    code: ErrorCode
     message: str
-    details: dict[str, Any] = Field(default_factory=dict)
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    details: Optional[dict[str, Any]] = None
     
     @classmethod
-    def validation_error(cls, message: str, **details) -> 'IEMError':
-        """Create a validation error."""
+    def from_exception(cls, exc: Exception, code: ErrorCode = ErrorCode.INTERNAL_ERROR) -> 'IEMError':
+        """Create IEMError from Python exception."""
+        return cls(
+            code=code,
+            message=str(exc),
+            details={"exception_type": type(exc).__name__}
+        )
+    
+    @classmethod
+    def validation_error(cls, message: str, details: dict = None) -> 'IEMError':
+        """Create validation error."""
         return cls(code=ErrorCode.VALIDATION_ERROR, message=message, details=details)
     
     @classmethod
-    def permission_denied(cls, message: str, **details) -> 'IEMError':
-        """Create a permission denied error."""
-        return cls(code=ErrorCode.PERMISSION_DENIED, message=message, details=details)
-    
-    @classmethod
-    def timeout_error(cls, message: str, **details) -> 'IEMError':
-        """Create a timeout error."""
-        return cls(code=ErrorCode.TIMEOUT_ERROR, message=message, details=details)
-    
-    @classmethod
-    def not_found_error(cls, message: str, **details) -> 'IEMError':
-        """Create a not found error."""
-        return cls(code=ErrorCode.NOT_FOUND, message=message, details=details)
-    
-    @classmethod
-    def internal_error(cls, message: str, **details) -> 'IEMError':
-        """Create an internal error."""
-        return cls(code=ErrorCode.INTERNAL_ERROR, message=message, details=details)
-    
-    @classmethod
-    def adjacency_error(cls, message: str, **details) -> 'IEMError':
-        """Create an adjacency error."""
-        return cls(code=ErrorCode.ADJACENCY_ERROR, message=message, details=details)
-    
-    @classmethod
-    def protocol_error(cls, message: str, **details) -> 'IEMError':
-        """Create a protocol error."""
+    def protocol_error(cls, message: str, details: dict = None) -> 'IEMError':
+        """Create protocol error."""
         return cls(code=ErrorCode.PROTOCOL_ERROR, message=message, details=details)

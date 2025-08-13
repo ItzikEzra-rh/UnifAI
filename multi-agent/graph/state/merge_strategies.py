@@ -26,7 +26,7 @@ def merge_dynamic_fields(
         existing: Dict[str, Any], new_values: Any
 ) -> Dict[str, Any]:
     """
-    Simply updates `existing` with `new_values` if it’s a dict.
+    Simply updates `existing` with `new_values` if it's a dict.
     """
     if not isinstance(existing, dict):
         existing = {}
@@ -90,8 +90,8 @@ def append_chat_messages(
 
 
 def append_iem_packets(
-    existing: Optional[List], 
-    new_item: Union[List, Any]
+        existing: Optional[List],
+        new_item: Union[List, Any]
 ) -> List:
     """
     Merge strategy for IEM packets channel.
@@ -100,93 +100,69 @@ def append_iem_packets(
     • Maintains insertion order
     • Handles both single packets and lists of packets
     """
-    # Import here to avoid circular dependencies
-    from core.iem.packets import IEMPacket
-    
     existing = existing or []
-    
+
     # Normalize new_item to list
     if isinstance(new_item, list):
         incoming = new_item
     else:
         incoming = [new_item] if new_item is not None else []
-    
+
     # Filter out None values and non-IEMPacket types
     valid_incoming = [p for p in incoming if p is not None and hasattr(p, 'id')]
-    
+
     if not valid_incoming:
         return existing
-    
+
     # Track existing packet IDs to avoid duplicates
     existing_ids = {getattr(p, 'id', None) for p in existing if hasattr(p, 'id')}
-    
+
     # Append only new packets
     result = list(existing)
     for packet in valid_incoming:
         if packet.id not in existing_ids:
             result.append(packet)
             existing_ids.add(packet.id)
-    
+
     return result
 
 
-
-def merge_chat_contexts(
-    existing: Optional[Dict[str, Dict[str, List[ChatMessage]]]], 
-    new_item: Union[Dict[str, Dict[str, List[ChatMessage]]], Any]
-) -> Dict[str, Dict[str, List[ChatMessage]]]:
+def merge_task_threads(
+        existing: Optional[Dict[str, List[ChatMessage]]],
+        new_item: Union[Dict[str, List[ChatMessage]], Any]
+) -> Dict[str, List[ChatMessage]]:
     """
-    Merge strategy for chat_contexts channel.
+    Merge strategy for task_threads channel.
     
-    Structure: {node_uid: {thread_id: [ChatMessage, ...]}}
+    Structure: {thread_id: [ChatMessage, ...]}
     
-    • Domain-specific LLM conversation management
-    • Merges conversation dictionaries by node UID and thread ID
-    • Only for nodes that need LLM conversation context
-    • Clean separation from general logging
+    • Task-focused conversation management
+    • Merges conversation lists by thread ID
+    • Reuses append_chat_messages logic for smart duplicate detection per thread
+    • Clean separation by task execution context
     """
     existing = existing or {}
-    
+
     if not isinstance(new_item, dict):
         return existing
-    
+
     # Deep copy existing to avoid mutation
     result = {}
-    for uid, thread_contexts in existing.items():
-        if isinstance(thread_contexts, dict):
-            result[uid] = {}
-            for thread_id, messages in thread_contexts.items():
-                result[uid][thread_id] = list(messages) if messages else []
-        else:
-            # Handle legacy format: {uid: [messages]} -> {uid: {"default": [messages]}}
-            result[uid] = {"default": list(thread_contexts) if thread_contexts else []}
-    
-    # Merge new conversation contexts - ONLY update the specific node's context
-    for uid, new_thread_contexts in new_item.items():
-        if not isinstance(new_thread_contexts, dict):
+    for thread_id, messages in existing.items():
+        result[thread_id] = list(messages) if messages else []
+
+    # Merge new task thread conversations using append_chat_messages logic
+    for thread_id, new_messages in new_item.items():
+        if not isinstance(new_messages, list):
             continue
-            
-        # Only accept ChatMessage objects (strict domain separation)
-        node_valid_contexts = {}
-        for thread_id, new_messages in new_thread_contexts.items():
-            if not isinstance(new_messages, list):
-                continue
-                
-            valid_messages = []
-            for msg in new_messages:
-                if isinstance(msg, ChatMessage):
-                    valid_messages.append(msg)
-                elif isinstance(msg, dict) and "role" in msg and "content" in msg:
-                    # Allow dict conversion for convenience
-                    valid_messages.append(ChatMessage(**msg))
-                # NO string conversion - use node_logs for strings
-            
-            if valid_messages:  # Only store if we have valid messages
-                node_valid_contexts[thread_id] = valid_messages
-        
-        # Replace ONLY this node's contexts (complete replacement per node)
-        # This ensures each node's context is isolated and never mixed
-        if node_valid_contexts:
-            result[uid] = node_valid_contexts
-    
+
+        # Get existing messages for this thread (or empty list)
+        existing_thread_messages = result.get(thread_id, [])
+
+        # Use append_chat_messages to handle smart merging for this thread
+        merged_messages = append_chat_messages(existing_thread_messages, new_messages)
+
+        # Update result with merged messages
+        result[thread_id] = merged_messages
+
     return result

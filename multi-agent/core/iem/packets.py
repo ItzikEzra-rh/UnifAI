@@ -1,22 +1,27 @@
 """
 IEM Packet Models
 
-Defines the packet hierarchy for Inter-Element Messaging protocol.
+Base packet for transport layer and specific packet implementations.
+Clean separation between transport concerns and payload.
 """
 
-from pydantic import BaseModel, Field, field_validator
-from typing import Any, Optional, Union
+from pydantic import BaseModel, Field
+from typing import Any, Optional, Dict
 from datetime import datetime, timedelta
 import uuid
-from .models import ElementAddress, IEMError, PacketKind
+from .models import ElementAddress, PacketType
 
 
 class BaseIEMPacket(BaseModel):
-    """Base packet for all IEM communications."""
+    """
+    Base packet for all IEM communications.
+    
+    Handles transport layer concerns: routing, acknowledgment, lifecycle.
+    Domain-agnostic - doesn't know about specific payload content.
+    """
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    protocol: str = "iem/1.0"
-    kind: str  # Defined by subclasses
-    thread_id: Optional[str] = None
+    protocol: str = "iem/2.0"
+    type: str  # Defined by subclasses (task, system, debug)
     ts: datetime = Field(default_factory=datetime.utcnow)
     ttl: Optional[timedelta] = None
     src: ElementAddress
@@ -38,60 +43,61 @@ class BaseIEMPacket(BaseModel):
         return uid in self.ack_by
 
 
-class RequestPacket(BaseIEMPacket):
-    """Request packet for action invocation."""
-    kind: PacketKind = PacketKind.REQUEST
-    action: str
-    args: dict[str, Any] = Field(default_factory=dict)
-    timeout: Optional[timedelta] = None
+class TaskPacket(BaseIEMPacket):
+    """
+    Task packet that carries task payload.
     
-    @field_validator('action')
-    @classmethod
-    def action_not_empty(cls, v):
-        if not v or not v.strip():
-            raise ValueError("Action cannot be empty")
-        return v.strip()
-
-
-class ResponsePacket(BaseIEMPacket):
-    """Response packet for request completion."""
-    kind: PacketKind = PacketKind.RESPONSE
-    correlation_id: str
-    result: Optional[dict[str, Any]] = None
-    error: Optional[IEMError] = None
+    Transport layer handles routing, acknowledgment, lifecycle.
+    Task payload handles agentic business logic and coordination.
+    """
+    type: PacketType = PacketType.TASK
+    payload: Dict[str, Any]  # Task as dictionary
     
-    @field_validator('correlation_id')
     @classmethod
-    def correlation_id_not_empty(cls, v):
-        if not v or not v.strip():
-            raise ValueError("Correlation ID cannot be empty")
-        return v.strip()
+    def create(cls, src: ElementAddress, dst: ElementAddress, 
+               task: 'Task', **kwargs) -> 'TaskPacket':
+        """
+        Create task packet with task payload.
+        
+        Args:
+            src: Source element address
+            dst: Destination element address  
+            task: Task to carry as payload
+            **kwargs: Additional packet parameters
+            
+        Returns:
+            TaskPacket instance
+        """
+        return cls(
+            src=src,
+            dst=dst,
+            payload=task.model_dump(),
+            **kwargs
+        )
     
-    @field_validator('error')
-    @classmethod
-    def result_xor_error(cls, v, info):
-        """Ensure exactly one of result or error is provided."""
-        values = info.data
-        result = values.get('result')
-        error = v
-        if (result is None) == (error is None):
-            raise ValueError("Exactly one of result or error must be provided")
-        return v
+    def extract_task(self) -> 'Task':
+        """
+        Extract task from payload.
+        
+        Returns:
+            Task instance from payload
+            
+        Raises:
+            ValueError: If payload is not a valid task
+        """
+        from elements.nodes.common.task import Task
+        return Task.model_validate(self.payload)
 
 
-class EventPacket(BaseIEMPacket):
-    """Event packet for notifications."""
-    kind: PacketKind = PacketKind.EVENT
-    event_type: str
-    data: dict[str, Any] = Field(default_factory=dict)
-    
-    @field_validator('event_type')
-    @classmethod
-    def event_type_not_empty(cls, v):
-        if not v or not v.strip():
-            raise ValueError("Event type cannot be empty")
-        return v.strip()
+# Additional packet types for future use
+class SystemPacket(BaseIEMPacket):
+    """System packet for system-level communication."""
+    type: PacketType = PacketType.SYSTEM
+    system_event: str
+    data: Dict[str, Any] = Field(default_factory=dict)
 
 
-# Union type for all packet types
-IEMPacket = Union[RequestPacket, ResponsePacket, EventPacket]
+class DebugPacket(BaseIEMPacket):
+    """Debug packet for development and debugging."""
+    type: PacketType = PacketType.DEBUG
+    debug_info: Dict[str, Any] = Field(default_factory=dict)

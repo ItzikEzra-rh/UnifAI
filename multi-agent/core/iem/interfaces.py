@@ -2,91 +2,49 @@
 IEM Protocol Interfaces
 
 Defines the core interfaces for Inter-Element Messaging.
+Clean generic packet handling with extensible packet types.
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Any, Union
+from typing import Optional, Any, List
 from datetime import timedelta
-from .packets import IEMPacket, RequestPacket, ResponsePacket, EventPacket
-from .models import IEMError, PacketKind
+from .packets import BaseIEMPacket
+from .models import PacketType
 
 
 class InterMessenger(ABC):
     """
     Core interface for inter-element messaging.
     
-    Provides structured communication between graph elements via
-    request/response and event patterns with correlation tracking.
+    Clean generic packet handling with support for any packet type.
+    Provides transport layer services: sending, receiving, acknowledgment.
     """
     
+    # === CORE PACKET OPERATIONS ===
     @abstractmethod
-    def send_request(self, to_uid: str, action: str, args: dict[str, Any] = None, 
-                    *, timeout: timedelta = None, thread_id: str = None) -> str:
+    def send_packet(self, packet: BaseIEMPacket) -> str:
         """
-        Send a request packet to another element.
+        Send any packet via IEM.
         
         Args:
-            to_uid: Target element UID
-            action: Action to invoke
-            args: Action arguments
-            timeout: Request timeout
-            thread_id: Optional thread grouping
+            packet: Packet to send
             
         Returns:
-            Packet ID for correlation
+            Packet ID for tracking
             
         Raises:
-            IEMAdjacencyException: If to_uid is not adjacent (when enforced)
+            IEMAdjacencyException: If destination is not adjacent (when enforced)
             IEMValidationException: If packet validation fails
         """
         pass
     
     @abstractmethod
-    def send_response(self, request: RequestPacket, result: dict = None, 
-                     error: IEMError = None) -> str:
-        """
-        Send a response to a request packet.
-        
-        Args:
-            request: Original request packet
-            result: Success result (mutually exclusive with error)
-            error: Error result (mutually exclusive with result)
-            
-        Returns:
-            Response packet ID
-            
-        Raises:
-            IEMValidationException: If both or neither result/error provided
-        """
-        pass
-    
-    @abstractmethod
-    def send_event(self, to_uid: str, event_type: str, data: dict[str, Any] = None,
-                  *, thread_id: str = None) -> str:
-        """
-        Send an event packet to another element.
-        
-        Args:
-            to_uid: Target element UID
-            event_type: Type of event
-            data: Event data
-            thread_id: Optional thread grouping
-            
-        Returns:
-            Event packet ID
-            
-        Raises:
-            IEMAdjacencyException: If to_uid is not adjacent (when enforced)
-        """
-        pass
-    
-    @abstractmethod
-    def inbox(self, kinds: set[PacketKind] = None) -> list[IEMPacket]:
+    def inbox_packets(self, packet_type: PacketType = None) -> List[BaseIEMPacket]:
         """
         Get unacknowledged packets addressed to this element.
         
         Args:
-            kinds: Packet kinds to filter (default: {PacketKind.REQUEST, PacketKind.EVENT})
+            packet_type: Filter by packet type, or None for all types
             
         Returns:
             List of unacknowledged packets
@@ -106,85 +64,13 @@ class InterMessenger(ABC):
         """
         pass
     
-    # ===== Enhanced API Methods =====
-    
     @abstractmethod
-    def inbox_requests(self, *, thread_id: str = None, from_uid: str = None, 
-                      action: str = None) -> list[RequestPacket]:
+    def broadcast_packet(self, packet: BaseIEMPacket) -> List[str]:
         """
-        Get incoming request packets with optional filtering.
+        Broadcast packet to all adjacent nodes.
         
         Args:
-            thread_id: Filter by thread ID
-            from_uid: Filter by sender UID
-            action: Filter by action name
-            
-        Returns:
-            List of matching unacknowledged request packets
-        """
-        pass
-    
-    @abstractmethod
-    def inbox_events(self, *, thread_id: str = None, from_uid: str = None,
-                    event_type: str = None) -> list[EventPacket]:
-        """
-        Get incoming event packets with optional filtering.
-        
-        Args:
-            thread_id: Filter by thread ID
-            from_uid: Filter by sender UID
-            event_type: Filter by event type
-            
-        Returns:
-            List of matching unacknowledged event packets
-        """
-        pass
-    
-    @abstractmethod
-    def inbox_responses(self, *, thread_id: str = None, correlation_id: str = None,
-                       from_uid: str = None) -> list[ResponsePacket]:
-        """
-        Get incoming response packets with optional filtering.
-        
-        Args:
-            thread_id: Filter by thread ID
-            correlation_id: Filter by correlation ID (original request ID)
-            from_uid: Filter by sender UID
-            
-        Returns:
-            List of matching unacknowledged response packets
-        """
-        pass
-    
-    @abstractmethod
-    def reply(self, request: RequestPacket, *, result: dict = None, 
-             error: IEMError = None) -> str:
-        """
-        Convenience method to reply to a request.
-        
-        Args:
-            request: Original request packet to reply to
-            result: Success result (mutually exclusive with error)
-            error: Error result (mutually exclusive with result)
-            
-        Returns:
-            Response packet ID
-            
-        Raises:
-            IEMValidationException: If both or neither result/error provided
-        """
-        pass
-    
-    @abstractmethod
-    def broadcast_event(self, event_type: str, data: dict[str, Any] = None,
-                       *, thread_id: str = None) -> list[str]:
-        """
-        Send an event to all adjacent nodes.
-        
-        Args:
-            event_type: Type of event
-            data: Event data
-            thread_id: Optional thread grouping
+            packet: Packet to broadcast (dst will be overridden)
             
         Returns:
             List of packet IDs sent
@@ -192,21 +78,20 @@ class InterMessenger(ABC):
         pass
     
     @abstractmethod
-    def for_thread(self, thread_id: str) -> 'InterMessenger':
+    def multicast_packet(self, packet: BaseIEMPacket, target_uids: List[str]) -> List[str]:
         """
-        Get a thread-scoped view of this messenger.
-        
-        All send methods will automatically include the thread_id,
-        and inbox methods will automatically filter by thread_id.
+        Send packet to multiple specific nodes.
         
         Args:
-            thread_id: Thread to scope to
+            packet: Packet to send (dst will be overridden for each target)
+            target_uids: List of target node UIDs
             
         Returns:
-            Thread-scoped messenger view
+            List of packet IDs sent
         """
         pass
     
+    # === UTILITY OPERATIONS ===
     @abstractmethod
     def purge(self, *, max_age: timedelta = None, acked_only: bool = True) -> int:
         """
@@ -231,7 +116,7 @@ class MessengerMiddleware(ABC):
     """
     
     @abstractmethod
-    def before_send(self, packet: IEMPacket) -> IEMPacket:
+    def before_send(self, packet: BaseIEMPacket) -> BaseIEMPacket:
         """
         Called before sending a packet.
         
@@ -247,7 +132,7 @@ class MessengerMiddleware(ABC):
         pass
     
     @abstractmethod
-    def after_receive(self, packet: IEMPacket) -> IEMPacket:
+    def after_receive(self, packet: BaseIEMPacket) -> BaseIEMPacket:
         """
         Called after receiving a packet.
         

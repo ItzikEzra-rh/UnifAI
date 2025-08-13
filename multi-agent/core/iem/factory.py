@@ -2,9 +2,10 @@
 IEM Messenger Factory
 
 Factory functions for creating InterMessenger instances with dependency injection.
+Clean, minimal configuration for generic packet handling.
 """
 
-from typing import Optional, Callable
+from typing import Optional, Callable, List
 from graph.step_context import StepContext
 from graph.state.state_view import StateView
 from .models import ElementAddress
@@ -18,7 +19,7 @@ def create_messenger(
         *,
         enforce_adjacency: bool = True,
         adjacent_check: Optional[Callable[[str], bool]] = None,
-        middleware: list[MessengerMiddleware] = None
+        middleware: List[MessengerMiddleware] = None
 ) -> DefaultInterMessenger:
     """
     Create a messenger with explicit configuration.
@@ -45,7 +46,7 @@ def messenger_from_ctx(
         state: StateView,
         ctx: StepContext,
         *,
-        middleware: list[MessengerMiddleware] = None,
+        middleware: List[MessengerMiddleware] = None,
         enforce_adjacency: bool = True
 ) -> DefaultInterMessenger:
     """
@@ -60,11 +61,7 @@ def messenger_from_ctx(
     Returns:
         Configured DefaultInterMessenger with adjacency checks based on ctx
     """
-    identity = ElementAddress(
-        uid=ctx.uid,
-        name=getattr(ctx.metadata, 'display_name', None),
-        type_key=getattr(ctx.metadata, 'type_key', None)
-    )
+    identity = ElementAddress(uid=ctx.uid)
 
     # Create adjacency check function from context
     adjacent_check = None
@@ -85,7 +82,7 @@ def messenger_for_testing(
         uid: str,
         *,
         name: str = None,
-        middleware: list[MessengerMiddleware] = None
+        middleware: List[MessengerMiddleware] = None
 ) -> DefaultInterMessenger:
     """
     Create a messenger for testing (no adjacency enforcement).
@@ -99,7 +96,7 @@ def messenger_for_testing(
     Returns:
         Configured DefaultInterMessenger with no adjacency checks
     """
-    identity = ElementAddress(uid=uid, name=name)
+    identity = ElementAddress(uid=uid)
 
     return create_messenger(
         state=state,

@@ -1,17 +1,18 @@
 """
 IEM Capable Mixin for Message-Driven Nodes
 
-Provides opt-in IEM protocol support with channel permissions,
-message processing loop, and handler hooks.
+Clean, generic packet handling with minimal interface.
+Handles transport layer generically, delegates business logic to packet handlers.
 """
 
-from typing import Optional, Any, TypeVar, Generic
+from typing import Optional, Any, TypeVar, Generic, List
 from graph.state.state_view import StateView
 from graph.state.graph_state import Channel
-from core.iem.packets import RequestPacket, ResponsePacket, EventPacket
-from core.iem.models import IEMError
+from core.iem.packets import BaseIEMPacket, TaskPacket
+from core.iem.models import PacketType, ElementAddress
 from core.iem.interfaces import InterMessenger
 from core.iem.factory import messenger_from_ctx
+from elements.nodes.common.agent_thread import AgentThread
 from core.contracts import SupportsStateContext
 
 # -----------------------------------------------------------------------------
@@ -28,43 +29,32 @@ class IEMCapableMixin(Generic[TSupportsState]):
     """
     Mixin for nodes that use the IEM protocol.
     
-    Generic[TSupportsState]:
-        - Declares that `self` must implement the SupportsStateContext protocol.
-        - Enables static analyzers to recognize ._state and ._ctx.
+    Clean, generic packet handling:
+    - Transport layer: routing, acknowledgment, lifecycle
+    - Business layer: delegates to packet type handlers
     
-    Responsibilities:
-      1. Enforce at subclass-definition that the host class provides state/context.
-      2. Initialize IEM-related attributes and lazy messenger.
-      3. Provide message processing loop and handler hooks.
-      4. Provide convenience methods delegating to messenger.
-
-    Requirements on `self` (from SupportsStateContext Protocol):
-      - `get_state() -> StateView`
-      - `get_context() -> StepContext`
+    SOLID principles:
+    - Single Responsibility: Only handles packet transport
+    - Open/Closed: Extensible via packet type handlers
+    - Dependency Inversion: Depends on InterMessenger abstraction
     """
-    
+
     # Channel permissions (inherited by MRO)
     MIXIN_READS = {Channel.INTER_PACKETS}
     MIXIN_WRITES = {Channel.INTER_PACKETS}
-    
-    # No class-level filtering - let nodes handle their own filtering in handle_* methods
 
     def __init_subclass__(cls) -> None:
-        """
-        At subclass definition time, ensure the concrete class implements
-        the state/context protocol and declares required channels.
-        """
+        """Ensure the concrete class implements required protocols."""
         if not issubclass(cls, SupportsStateContext):
             raise TypeError(
                 f"{cls.__name__} requires state/context support (get_state() + get_context())."
             )
-        
         super().__init_subclass__()
-    
+
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self._iem_ms: Optional[InterMessenger] = None
-    
+
     @property
     def ms(self: TSupportsState) -> InterMessenger:
         """Access to IEM messenger - lazily initialized."""
@@ -77,131 +67,213 @@ class IEMCapableMixin(Generic[TSupportsState]):
             self._iem_ms = messenger_from_ctx(state, context)
         return self._iem_ms
 
-    @property  
+    @property
     def messenger(self: TSupportsState) -> InterMessenger:
-        """Access to IEM messenger - lazily initialized."""
+        """Access to IEM messenger - alias for ms."""
         return self.ms
+
+    # === GENERIC PACKET OPERATIONS ===
+    def send_packet(self, packet: BaseIEMPacket) -> str:
+        """
+        Send any packet via IEM.
+        
+        Args:
+            packet: Packet to send
+            
+        Returns:
+            Packet ID for tracking
+        """
+        return self.ms.send_packet(packet)
+
+    def broadcast_packet(self, packet: BaseIEMPacket) -> List[str]:
+        """
+        Broadcast packet to all adjacent nodes.
+        
+        Args:
+            packet: Packet to broadcast
+            
+        Returns:
+            List of packet IDs sent
+        """
+        return self.ms.broadcast_packet(packet)
     
-    def process_messages(self, state: StateView) -> None:
+    def multicast_packet(self, packet: BaseIEMPacket, target_uids: List[str]) -> List[str]:
         """
-        Process incoming IEM messages from inbox.
+        Send packet to multiple specific nodes (multicast).
         
-        Processes all requests, responses, and events, calling appropriate 
-        handlers and acknowledging each message. Individual nodes should 
-        implement filtering logic in their handle_* methods as needed.
+        Args:
+            packet: Packet to send
+            target_uids: Specific target node UIDs
+            
+        Returns:
+            List of packet IDs sent
         """
-        # Process requests
-        for req in self.inbox_requests():
-            try:
-                self.handle_request(req)
-            finally:
-                self.acknowledge(req.id)
-        
-        # Process responses
-        for resp in self.inbox_responses():
-            try:
-                self.handle_response(resp)
-            finally:
-                self.acknowledge(resp.id)
-        
-        # Process events  
-        for evt in self.inbox_events():
-            try:
-                self.handle_event(evt)
-            finally:
-                self.acknowledge(evt.id)
-    
-    def process_messages_for_thread(self, state: StateView, thread_id: str) -> None:
+        return self.ms.multicast_packet(packet, target_uids)
+
+    def reply_packet(self, original_packet: BaseIEMPacket, reply_packet: BaseIEMPacket) -> str:
         """
-        Process IEM messages for a specific thread only.
+        Reply to packet with another packet.
         
-        Convenience method for nodes that want to process only messages
-        from a specific workflow thread.
+        Args:
+            original_packet: Original packet to reply to
+            reply_packet: Reply packet to send
+            
+        Returns:
+            Reply packet ID
         """
-        # Process requests for this thread
-        for req in self.inbox_requests(thread_id=thread_id):
-            try:
-                self.handle_request(req)
-            finally:
-                self.acknowledge(req.id)
-        
-        # Process responses for this thread
-        for resp in self.inbox_responses(thread_id=thread_id):
-            try:
-                self.handle_response(resp)
-            finally:
-                self.acknowledge(resp.id)
-        
-        # Process events for this thread
-        for evt in self.inbox_events(thread_id=thread_id):
-            try:
-                self.handle_event(evt)
-            finally:
-                self.acknowledge(evt.id)
-    
-    def handle_request(self, request: RequestPacket) -> None:
+        reply_packet.dst = original_packet.src
+        return self.send_packet(reply_packet)
+
+    def inbox_packets(self, packet_type: PacketType = None) -> List[BaseIEMPacket]:
         """
-        Override to handle incoming request packets.
+        Get incoming packets, optionally filtered by type.
         
-        Default implementation does nothing.
+        Args:
+            packet_type: Filter by packet type, or None for all
+            
+        Returns:
+            List of matching packets
+        """
+        return self.ms.inbox_packets(packet_type)
+
+    def process_packets(self, state: StateView) -> None:
+        """
+        Process all incoming packets.
+        
+        Handles acknowledgment and delegates to packet type handlers.
+        """
+        for packet in self.inbox_packets():
+            try:
+                self.handle_packet(packet)
+            finally:
+                self.acknowledge(packet.id)
+
+    def handle_packet(self, packet: BaseIEMPacket) -> None:
+        """
+        Handle incoming packet based on type.
+        
+        Delegates to specific packet type handlers.
+        Override packet type handlers in subclasses.
+        
+        Args:
+            packet: Packet to handle
+        """
+        if packet.type == PacketType.TASK:
+            self.handle_task_packet(packet)
+        elif packet.type == PacketType.SYSTEM:
+            self.handle_system_packet(packet)
+        elif packet.type == PacketType.DEBUG:
+            self.handle_debug_packet(packet)
+        else:
+            print(f"Unknown packet type: {packet.type}")
+
+    # === PACKET TYPE HANDLERS (Override in subclasses) ===
+    def handle_task_packet(self, packet: BaseIEMPacket) -> None:
+        """
+        Override to handle task packets.
+        
+        Args:
+            packet: Task packet to handle
         """
         pass
-    
-    def handle_response(self, response: ResponsePacket) -> None:
+
+    def handle_system_packet(self, packet: BaseIEMPacket) -> None:
         """
-        Override to handle incoming response packets.
+        Override to handle system packets.
         
-        Default implementation does nothing.
+        Args:
+            packet: System packet to handle
         """
         pass
-    
-    def handle_event(self, event: EventPacket) -> None:
+
+    def handle_debug_packet(self, packet: BaseIEMPacket) -> None:
         """
-        Override to handle incoming event packets.
+        Override to handle debug packets.
         
-        Default implementation does nothing.  
+        Args:
+            packet: Debug packet to handle
         """
         pass
+
+    # === TASK OPERATIONS ===
+    def send_task(self: TSupportsState, dst: str, task: 'Task') -> str:
+        """
+        Send task to specific node.
+        
+        Args:
+            dst: Destination node UID
+            task: Task to send
+            
+        Returns:
+            Packet ID for tracking
+        """
+        packet = TaskPacket.create(
+            src=ElementAddress(uid=self.get_context().uid),
+            dst=ElementAddress(uid=dst),
+            task=task
+        )
+        return self.send_packet(packet)
+
+    def broadcast_task(self: TSupportsState, task: 'Task') -> List[str]:
+        """
+        Broadcast task to all adjacent nodes.
+        
+        Args:
+            task: Task to broadcast
+            
+        Returns:
+            List of packet IDs sent
+        """
+        packet = TaskPacket.create(
+            src=ElementAddress(uid=self.get_context().uid),
+            dst=ElementAddress(uid=""),  # Will be overridden in broadcast
+            task=task
+        )
+        return self.broadcast_packet(packet)
     
-    # ===== Convenience delegates to messenger =====
-    
-    def inbox_requests(self, **kwargs) -> list[RequestPacket]:
-        """Get incoming request packets. Delegates to messenger."""
-        return self.ms.inbox_requests(**kwargs)
-    
-    def inbox_events(self, **kwargs) -> list[EventPacket]:
-        """Get incoming event packets. Delegates to messenger."""
-        return self.ms.inbox_events(**kwargs)
-    
-    def inbox_responses(self, **kwargs):
-        """Get incoming response packets. Delegates to messenger."""
-        return self.ms.inbox_responses(**kwargs)
-    
-    def send_request(self, *args, **kwargs) -> str:
-        """Send request packet. Delegates to messenger."""
-        return self.ms.send_request(*args, **kwargs)
-    
-    def send_event(self, *args, **kwargs) -> str:
-        """Send event packet. Delegates to messenger."""
-        return self.ms.send_event(*args, **kwargs)
-    
-    def reply(self, request: RequestPacket, *, result: dict = None, 
-             error: IEMError = None) -> str:
-        """Reply to request packet. Delegates to messenger."""
-        return self.ms.reply(request, result=result, error=error)
-    
-    def for_thread(self, thread_id: str):
-        """Get thread-scoped messenger view. Delegates to messenger."""
-        return self.ms.for_thread(thread_id)
-    
-    def broadcast_event(self, event_type: str, data: dict = None, **kwargs) -> list[str]:
-        """Broadcast event to all adjacent nodes. Delegates to messenger."""
-        return self.ms.broadcast_event(event_type, data or {}, **kwargs)
-    
+    def multicast_task(self: TSupportsState, task: 'Task', target_uids: List[str]) -> List[str]:
+        """
+        Send task to multiple specific nodes (multicast).
+        
+        Args:
+            task: Task to send
+            target_uids: Specific target node UIDs
+            
+        Returns:
+            List of packet IDs sent
+        """
+        packet = TaskPacket.create(
+            src=ElementAddress(uid=self.get_context().uid),
+            dst=ElementAddress(uid=""),  # Will be overridden in multicast
+            task=task
+        )
+        return self.multicast_packet(packet, target_uids)
+
+    def reply_task(self: TSupportsState, original_packet: BaseIEMPacket, response_task: 'Task') -> str:
+        """
+        Reply to packet with task.
+        
+        Args:
+            original_packet: Original packet to reply to
+            response_task: Task to send as response
+            
+        Returns:
+            Reply packet ID
+        """
+        reply_packet = TaskPacket.create(
+            src=ElementAddress(uid=self.get_context().uid),
+            dst=original_packet.src,
+            task=response_task
+        )
+        return self.send_packet(reply_packet)
+
+    # === UTILITIES ===
     def acknowledge(self, packet_id: str) -> bool:
         """Acknowledge packet. Delegates to messenger."""
         return self.ms.acknowledge(packet_id)
-    
+
     def purge(self, **kwargs) -> int:
         """Purge old packets from state. Delegates to messenger."""
         return self.ms.purge(**kwargs)
+
+
