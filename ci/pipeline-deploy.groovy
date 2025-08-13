@@ -87,7 +87,7 @@ def updateValuesYaml(String filePath , String version) {
 
                 // Ensure env map exists before accessing nested properties
                 sectionData.env = sectionData.env ?: [:]
-                if (sectionData.env.FRONTEND_URL) {
+                if (sectionData.env?.FRONTEND_URL) {
                     echo "🌐 Setting FRONTEND_URL & UI routes for PRODUCTION"
                     sectionData.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
                     echo "Updated FRONTEND_URL: ${sectionData.env.FRONTEND_URL}"
