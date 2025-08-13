@@ -11,13 +11,6 @@ helmDefaults:
 
 releases:
 
-#  - name: unifai-dataflow-shared-storage
-#    chart: ./shared-resources/unifai-dataflow-shared-storage
-#    version: "0.9.0"
-#    wait: true
-#    values:
-#      - {{- toYaml .Values.unifai_dataflow_shared_storage | nindent 8 }}
-#      - ./values/global-config.yaml
 
   - name: unifai-mongodb
     chart: ./shared-resources/mongodb
