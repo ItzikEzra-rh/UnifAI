@@ -92,6 +92,7 @@ def updateValuesYaml(String filePath , String version) {
                 sectionData.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
                 
 
+
                 if (sectionData.env?.DATAPIPELINEHUB_HOST && sectionData.env?.MULTIAGENT_HOST) {
                     echo "🚦 Updating DATAPIPELINEHUB_HOST & MULTIAGENT_HOST for PRODUCTION"
                     sectionData.env.DATAPIPELINEHUB_HOST = "https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
