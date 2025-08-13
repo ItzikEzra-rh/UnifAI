@@ -70,8 +70,10 @@ def updateValuesYaml(String filePath , String version) {
                 sectionData.image.tag = version
             }
             if (params.deploy_location == 'STAGING') {
+                echo "🌐 Setting FRONTEND_URL for STAGING"
+                values.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
+        
                 echo "🛠 reduce resources in section: ${sectionName}"
-                
                 if (sectionName == "env") {
                     echo "⚠️ Skipping top-level 'env' section (no resources)"
                     return
@@ -85,6 +87,9 @@ def updateValuesYaml(String filePath , String version) {
                 sectionData.resources.requests.memory = "2Gi"
             }
             else if (params.deploy_location == 'PRODUCTION') {
+                echo "🌐 Setting FRONTEND_URL for PRODUCTION"
+                values.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.imap.p1.openshiftapps.com"
+
                 if (sectionData.tolerations instanceof List) {
                     echo "🎯 Setting tolerations for PRODUCTION in section: ${sectionName}"
                     sectionData.tolerations = [
