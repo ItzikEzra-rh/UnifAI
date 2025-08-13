@@ -39,11 +39,11 @@ resources:
   limits:
     cpu: '4'
     memory: 32Gi
-    nvidia.com/gpu: 1
+    nvidia.com/gpu: 2
   requests:
     cpu: '3'
     memory: 16Gi
-    nvidia.com/gpu: 1
+    nvidia.com/gpu: 2
 volumes:
   modelCache:
     size: 150G
@@ -57,4 +57,4 @@ volumes:
 # GPT-OSS-20B specific vLLM configuration (single GPU)
 vllm:
   enableAutoToolChoice: true
-  tensorParallelSize: "1"
+  tensorParallelSize: "2"
