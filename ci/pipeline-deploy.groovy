@@ -88,7 +88,6 @@ def updateValuesYaml(String filePath , String version) {
                 echo "🌐 Setting FRONTEND_URL & UI routes for PRODUCTION"
                 sectionData.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.imap.p1.openshiftapps.com"
                 
-                echo "🌐 
                 if (sectionData.route?.host) {
                     echo "🚦 Updating route.host for STAGING"
                     sectionData.route.host = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.imap.p1.openshiftapps.com"
