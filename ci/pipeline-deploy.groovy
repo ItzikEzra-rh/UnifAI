@@ -89,8 +89,14 @@ def updateValuesYaml(String filePath , String version) {
                 sectionData.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.imap.p1.openshiftapps.com"
                 
                 if (sectionData.route?.host) {
-                    echo "🚦 Updating route.host for STAGING"
+                    echo "🚦 Updating route.host for PRODUCTION"
                     sectionData.route.host = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.imap.p1.openshiftapps.com"
+                }
+
+                if (sectionData.env.DATAPIPELINEHUB_HOST && sectionData.env.MULTIAGENT_HOST) {
+                    echo "🚦 Updating DATAPIPELINEHUB_HOST & MULTIAGENT_HOST for PRODUCTION"
+                    sectionData.env.DATAPIPELINEHUB_HOST = "https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
+                    sectionData.env.MULTIAGENT_HOST = "http://unifai-multiagent-be-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
                 }
 
                 if (sectionData.tolerations instanceof List) {
