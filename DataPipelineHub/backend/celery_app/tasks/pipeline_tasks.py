@@ -119,7 +119,8 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                 pipeline_id=pipeline_id,
                 metadata=metadata.__dict__, 
                 source_type=source_type.upper(),
-                upload_by=upload_by
+                upload_by=upload_by,
+                type_data=type_data
             )
             
             registered_sources.append(registered_source.model_dump())
@@ -156,10 +157,17 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
             raise ValueError("Pipeline ID or metadata not found in source_data")
 
         metadata_dict_copy = metadata_dict.copy()
-        metadata_dict_copy.pop('pipeline_id', None) 
+        metadata_dict_copy.pop('pipeline_id', None)
+        # Remove any existing type_data to avoid passing duplicate keyword arguments
+        metadata_dict_copy.pop('type_data', None)
+        payload_type_data = source_data.get("type_data")
         
         if source_type.upper() == DataSource.SLACK.upper_name:
-            metadata = SlackMetadata(**metadata_dict_copy, pipeline_id=pipeline_id)
+            metadata = SlackMetadata(
+                **metadata_dict_copy,
+                pipeline_id=pipeline_id,
+                type_data=payload_type_data
+            )
             
         elif source_type.upper() == DataSource.DOCUMENT.upper_name:
             metadata = DocumentMetadata(**metadata_dict_copy, pipeline_id=pipeline_id)

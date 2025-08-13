@@ -22,6 +22,7 @@ class SlackMetadata:
     is_private: Optional[bool] = None
     upload_by: Optional[str] = None
     pipeline_id: Optional[str] = None
+    type_data: Optional[Dict[str, Any]] = None
 
 
 @dataclass(frozen=True)
@@ -86,6 +87,7 @@ class RegisteredSource(BaseModel):
     metadata: Dict[str, Any] = Field(..., description="Serialized metadata object")
     source_type: str = Field(..., description="Type of data source (SLACK, DOCUMENT, etc.)")
     upload_by: str = Field(..., description="User who initiated the registration")
+    type_data: Optional[Dict[str, Any]] = Field(default=None, description="Stored type_data for the source")
 
 
 class RegistrationResponse(BaseModel):

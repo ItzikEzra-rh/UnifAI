@@ -1,3 +1,4 @@
+from __future__ import annotations
 import re
 from datetime import datetime, timedelta
 
@@ -59,3 +60,60 @@ def calculate_date_range(date_range: str) -> tuple[datetime, datetime]:
     start_datetime = datetime.combine(start_date, datetime.min.time())
     
     return start_datetime, end_datetime
+
+
+def get_time_range_bounds_from_type_data(
+    type_data: dict | None,
+    *,
+    start_key: str = "start_timestamp",
+    end_key: str = "end_timestamp",
+    output: str = "iso",
+) -> tuple[object | None, object | None]:
+    """
+    Generic converter to extract start/end from a mapping and format them.
+
+    - Accepts ISO strings (with optional trailing 'Z') or datetime objects
+    - Returns (start, end) formatted per `output`:
+        - "datetime": datetime objects
+        - "iso": ISO 8601 strings
+        - "unix_seconds": float seconds since epoch
+        - "unix_millis": int milliseconds since epoch
+        - "slack_ts": string representation of unix seconds (for Slack APIs)
+    - Missing or invalid values return None
+    - Keys are configurable via start_key/end_key
+    """
+    if not type_data:
+        return None, None
+
+    def _to_datetime(value: object) -> datetime | None:
+        if value is None:
+            return None
+        try:
+            if isinstance(value, str):
+                return datetime.fromisoformat(value.replace('Z', '+00:00'))
+            if isinstance(value, datetime):
+                return value
+        except Exception:
+            return None
+        return None
+
+    start_dt = _to_datetime(type_data.get(start_key))
+    end_dt = _to_datetime(type_data.get(end_key))
+
+    def _format(dt: datetime | None) -> object | None:
+        if dt is None:
+            return None
+        if output == "datetime":
+            return dt
+        if output == "iso":
+            return dt.isoformat()
+        if output == "unix_seconds":
+            return dt.timestamp()
+        if output == "unix_millis":
+            return int(dt.timestamp() * 1000)
+        if output == "slack_ts":
+            return str(dt.timestamp())
+        # Fallback to iso if unknown format
+        return dt.isoformat()
+
+    return _format(start_dt), _format(end_dt)
