@@ -44,14 +44,3 @@ class SlackPipelineFactory(PipelineFactory):
             overlap_tokens=cfg.overlap_tokens,
             time_window_seconds=300
         )
-
-    @cached_property
-    def slack_chunker(self) -> SlackChunkerStrategy:
-        cfg = ChunkerConfig()
-        return SlackChunkerStrategy(
-            max_tokens_per_chunk=cfg.max_tokens_per_chunk,
-            overlap_tokens=cfg.overlap_tokens,
-            time_window_seconds=300
-        )
-
-    # Note: All metadata-dependent logic (e.g., date range handling) should live in the Pipeline class.
