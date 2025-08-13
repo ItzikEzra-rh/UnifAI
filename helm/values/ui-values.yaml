@@ -32,6 +32,3 @@ ui:
     - name: ma-backend
       port: 8003
     type: LoadBalancer
-
-  route:
-    host: unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com

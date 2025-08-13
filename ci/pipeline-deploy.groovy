@@ -85,18 +85,18 @@ def updateValuesYaml(String filePath , String version) {
             }
             else if (params.deploy_location == 'PRODUCTION') {
 
-                echo "🌐 Setting FRONTEND_URL & UI routes for PRODUCTION"
-                sectionData.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.imap.p1.openshiftapps.com"
-                
-                if (sectionData.route?.host) {
-                    echo "🚦 Updating route.host for PRODUCTION"
-                    sectionData.route.host = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.imap.p1.openshiftapps.com"
-                }
+                // Ensure env map exists before accessing nested properties
+                sectionData.env = sectionData.env ?: [:]
 
-                if (sectionData.env.DATAPIPELINEHUB_HOST && sectionData.env.MULTIAGENT_HOST) {
+                echo "🌐 Setting FRONTEND_URL & UI routes for PRODUCTION"
+                sectionData.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
+                
+
+                if (sectionData.env?.DATAPIPELINEHUB_HOST && sectionData.env?.MULTIAGENT_HOST) {
                     echo "🚦 Updating DATAPIPELINEHUB_HOST & MULTIAGENT_HOST for PRODUCTION"
-                    sectionData.env.DATAPIPELINEHUB_HOST = "https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
-                    sectionData.env.MULTIAGENT_HOST = "http://unifai-multiagent-be-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
+                    sectionData.env.DATAPIPELINEHUB_HOST = "https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
+                    sectionData.env.MULTIAGENT_HOST = "http://unifai-multiagent-be-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
+                    
                 }
 
                 if (sectionData.tolerations instanceof List) {
