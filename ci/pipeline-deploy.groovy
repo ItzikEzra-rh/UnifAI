@@ -85,7 +85,7 @@ def updateValuesYaml(String filePath , String version) {
             }
             else if (params.deploy_location == 'PRODUCTION') {
 
-                echo "🌐 Setting FRONTEND_URL & UI routes for PRODUCTION"for PRODUCTION"
+                echo "🌐 Setting FRONTEND_URL & UI routes for PRODUCTION"
                 sectionData.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.imap.p1.openshiftapps.com"
                 
                 echo "🌐 
