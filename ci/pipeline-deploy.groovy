@@ -90,14 +90,15 @@ def updateValuesYaml(String filePath , String version) {
 
                 echo "🌐 Setting FRONTEND_URL & UI routes for PRODUCTION"
                 sectionData.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
-                
+                echo "Updated FRONTEND_URL: ${sectionData.env.FRONTEND_URL}"
 
 
                 if (sectionData.env?.DATAPIPELINEHUB_HOST && sectionData.env?.MULTIAGENT_HOST) {
                     echo "🚦 Updating DATAPIPELINEHUB_HOST & MULTIAGENT_HOST for PRODUCTION"
                     sectionData.env.DATAPIPELINEHUB_HOST = "https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
                     sectionData.env.MULTIAGENT_HOST = "http://unifai-multiagent-be-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
-                    
+                    echo "Updated DATAPIPELINEHUB_HOST: ${sectionData.env.DATAPIPELINEHUB_HOST}"
+                    echo "Updated MULTIAGENT_HOST: ${sectionData.env.MULTIAGENT_HOST}"
                 }
 
                 if (sectionData.tolerations instanceof List) {
@@ -115,6 +116,7 @@ def updateValuesYaml(String filePath , String version) {
                             effect: "NoSchedule"
                         ]
                     ]
+                    echo "Updated tolerations: ${sectionData.tolerations}"
                 }
             }
         }
