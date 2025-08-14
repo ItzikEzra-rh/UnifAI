@@ -21,9 +21,10 @@ def available_doc_list(user_id):
 
 @blueprints_bp.route("/blueprint.save", methods=["POST"])
 @from_body({
-    "blueprint_raw": fields.Str(data_key="blueprintRaw", required=False)  # optional for non-JSON/YAML raw
+    "blueprint_raw": fields.Str(data_key="blueprintRaw", required=False),  # optional for non-JSON/YAML raw
+    "user_id": fields.Str(data_key="userId", required=False, load_default="alice")
 })
-def save_blueprint(blueprint_raw=None):
+def save_blueprint(blueprint_raw=None, user_id="alice"):
     try:
         # Case 1: JSON body with field 'blueprintRaw'
         if blueprint_raw:
@@ -57,7 +58,7 @@ def save_blueprint(blueprint_raw=None):
 
         # Save using service
         svc = current_app.container.blueprint_service
-        blueprint_id = svc.save_draft(user_id="alice", draft_dict=parsed)
+        blueprint_id = svc.save_draft(user_id=user_id, draft_dict=parsed)
 
         return jsonify({
             "status": "success",
