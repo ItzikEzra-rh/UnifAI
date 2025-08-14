@@ -154,7 +154,7 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
 
         metadata_dict_copy = metadata_dict.copy()
         metadata_dict_copy.pop('pipeline_id', None) 
-        # Deserialize metadata based on source type
+        
         if source_type.upper() == DataSource.SLACK.upper_name:
             metadata = SlackMetadata(**metadata_dict_copy, pipeline_id=pipeline_id)
             
