@@ -157,17 +157,10 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
             raise ValueError("Pipeline ID or metadata not found in source_data")
 
         metadata_dict_copy = metadata_dict.copy()
-        metadata_dict_copy.pop('pipeline_id', None)
-        # Remove any existing type_data to avoid passing duplicate keyword arguments
-        metadata_dict_copy.pop('type_data', None)
-        payload_type_data = source_data.get("type_data")
+        metadata_dict_copy.pop('pipeline_id', None) 
         
         if source_type.upper() == DataSource.SLACK.upper_name:
-            metadata = SlackMetadata(
-                **metadata_dict_copy,
-                pipeline_id=pipeline_id,
-                type_data=payload_type_data
-            )
+            metadata = SlackMetadata(**metadata_dict_copy, pipeline_id=pipeline_id)
             
         elif source_type.upper() == DataSource.DOCUMENT.upper_name:
             metadata = DocumentMetadata(**metadata_dict_copy, pipeline_id=pipeline_id)
