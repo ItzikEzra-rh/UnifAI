@@ -14,7 +14,11 @@ display_description: |
 # Providers
 # ----------------------------
 providers:
-  - name: mcp
+  - name: jira_mcp
+    type: mcp_server
+    sse_endpoint: http://10.46.254.131:8007/servers/mcp-atlassian/sse
+
+  - name: confluence_mcp
     type: mcp_server
     sse_endpoint: http://10.46.254.131:8007/servers/mcp-atlassian/sse
 
@@ -35,62 +39,62 @@ tools:
   - name: jira_get_issue_tool
     type: mcp_proxy
     tool_name: jira_get_issue
-    provider: mcp
+    provider: jira_mcp
 
   - name: jira_search_tool
     type: mcp_proxy
     tool_name: jira_search
-    provider: mcp
+    provider: jira_mcp
 
   - name: jira_get_project_issues_tool
     type: mcp_proxy
     tool_name: jira_get_project_issues
-    provider: mcp
+    provider: jira_mcp
 
   - name: jira_search_fields_tool
     type: mcp_proxy
     tool_name: jira_search_fields
-    provider: mcp
+    provider: jira_mcp
 
   - name: jira_get_worklog_tool
     type: mcp_proxy
     tool_name: jira_get_worklog
-    provider: mcp
+    provider: jira_mcp
 
   - name: jira_get_all_projects_tool
     type: mcp_proxy
     tool_name: jira_get_all_projects
-    provider: mcp
+    provider: jira_mcp
 
   - name: confluence_search_tool
     type: mcp_proxy
     tool_name: confluence_search
-    provider: mcp
+    provider: confluence_mcp
 
   - name: confluence_get_page_tool
     type: mcp_proxy
     tool_name: confluence_get_page
-    provider: mcp
+    provider: confluence_mcp
 
   - name: confluence_get_page_children_tool
     type: mcp_proxy
     tool_name: confluence_get_page_children
-    provider: mcp
+    provider: confluence_mcp
 
   - name: confluence_get_comments_tool
     type: mcp_proxy
     tool_name: confluence_get_comments
-    provider: mcp
+    provider: confluence_mcp
 
   - name: confluence_get_labels_tool
     type: mcp_proxy
     tool_name: confluence_get_labels
-    provider: mcp
+    provider: confluence_mcp
 
   - name: confluence_search_user_tool
     type: mcp_proxy
     tool_name: confluence_search_user
-    provider: mcp
+    provider: confluence_mcp
 
 # ----------------------------
 # Conditions

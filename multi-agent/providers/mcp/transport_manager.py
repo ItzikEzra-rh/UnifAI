@@ -3,8 +3,6 @@ from mcp import ClientSession
 from mcp.client.sse import sse_client
 
 
-
-
 class McpConnectionError(Exception):
     """Raised when the SSE connection cannot be established or fails."""
 
