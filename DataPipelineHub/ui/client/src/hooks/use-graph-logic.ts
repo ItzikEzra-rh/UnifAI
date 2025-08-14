@@ -795,6 +795,7 @@ export const useGraphLogic = () => {
 
         const response = await axios.post("/blueprints/blueprint.save", {
           blueprintRaw: yamlString,
+          userId: USER_ID,
         });
 
         if (response.data.status === "success") {

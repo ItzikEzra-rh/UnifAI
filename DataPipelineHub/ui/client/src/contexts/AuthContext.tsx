@@ -116,8 +116,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       }
     };
 
-    // Check token expiration every minute
-    const interval = setInterval(checkTokenExpiration, 60000);
+    // Check token expiration every 10 minute
+    const interval = setInterval(checkTokenExpiration, 600000);
 
     // Initial check
     checkTokenExpiration();
