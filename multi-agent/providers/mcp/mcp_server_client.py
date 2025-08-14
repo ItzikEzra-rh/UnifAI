@@ -4,6 +4,7 @@ from typing import Dict, Any, Optional, List
 from pydantic import HttpUrl
 from yarl import URL
 from mcp.types import Tool, CallToolResult, CreateMessageRequestParams, CreateMessageResult, TextContent
+import anyio
 
 from .transport_manager import TransportManager, McpConnectionError
 from .tool_registry import ToolRegistry, McpToolError
@@ -48,7 +49,8 @@ class McpServerClient:
         # How many active “users” currently inside an async‐with block
         self._refcount = 0
         # Ensure that connect/disconnect and refcount adjustments are atomic
-        self._lock = asyncio.Lock()
+        # Using anyio.Lock for cross-loop compatibility
+        self._lock = anyio.Lock()
 
     async def _default_sampling_callback(
             self, message: CreateMessageRequestParams
