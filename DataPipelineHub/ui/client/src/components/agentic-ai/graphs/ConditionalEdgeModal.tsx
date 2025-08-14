@@ -63,7 +63,7 @@ const ConditionalEdgeModal: React.FC<ConditionalEdgeModalProps> = ({
     try {
       setLoading(true);
       const response = await axios.get(
-        `/api/catalog/element.spec.get?category=conditions&type=${conditionType}`,
+        `/catalog/element.spec.get?category=conditions&type=${conditionType}`,
       );
       setConditionSpec(response.data);
     } catch (error) {

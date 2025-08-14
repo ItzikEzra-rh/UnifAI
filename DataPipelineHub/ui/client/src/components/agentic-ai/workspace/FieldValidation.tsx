@@ -90,7 +90,7 @@ export const FieldValidation: React.FC<FieldValidationProps> = ({
         }
       }
 
-      const response = await axios.post('/api/actions/action.execute', {
+      const response = await axios.post('/actions/action.execute', {
         uid: validationAction.uid,
         inputData
       });

@@ -66,7 +66,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         });
       }
 
-      const response = await axios.post('/api/actions/action.execute', {
+      const response = await axios.post('/actions/action.execute', {
         uid: populateAction.uid,
         inputData
       });

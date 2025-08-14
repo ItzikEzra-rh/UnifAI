@@ -130,7 +130,7 @@ export const useGraphLogic = () => {
       });
 
       const response = await axios.post(
-        "/api/graph/validation/all.validate",
+        "/graph/validation/all.validate",
         yamlString,
         {
           headers: {
@@ -407,7 +407,7 @@ export const useGraphLogic = () => {
     try {
       setIsLoadingBlocks(true);
       const response = await axios.get(
-        `/api/resources/resources.list?userId=${USER_ID}`,
+        `/resources/resources.list?userId=${USER_ID}`,
       );
       const allBlocks = response.data.resources.map(transformResourceToBlock);
 
@@ -460,7 +460,7 @@ export const useGraphLogic = () => {
     async (params: Connection): Promise<boolean> => {
       // Commenting out for now to allow all connections
       // try {
-      //   const response = await axios.post("/api/graph/connection.feasible", {
+      //   const response = await axios.post("/graph/connection.feasible", {
       //     source: params.source,
       //     target: params.target,
       //     yamlFlow,
@@ -793,7 +793,7 @@ export const useGraphLogic = () => {
           sortKeys: false,
         });
 
-        const response = await axios.post("/api/blueprints/blueprint.save", {
+        const response = await axios.post("/blueprints/blueprint.save", {
           blueprintRaw: yamlString,
         });
 

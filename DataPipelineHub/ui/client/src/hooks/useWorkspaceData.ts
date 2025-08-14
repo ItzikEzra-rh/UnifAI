@@ -56,7 +56,7 @@ export const useWorkspaceData = () => {
       setIsLoading(true);
       setError(null);
       const response = await axios.get<CatalogResponse>(
-        "/api/catalog/elements.list.get",
+        "/catalog/elements.list.get",
       );
 
       const categoryList: ElementCategory[] = Object.entries(
@@ -93,7 +93,7 @@ export const useWorkspaceData = () => {
         setElementInstances([]);
 
         const response = await axios.get<ResourcesListResponse>(
-          `/api/resources/resources.list?userId=${USER_ID}&category=${category}&type=${type}`,
+          `/resources/resources.list?userId=${USER_ID}&category=${category}&type=${type}`,
         );
 
         // Transform ResourceInstance to ElementInstance format
@@ -140,7 +140,7 @@ export const useWorkspaceData = () => {
         setError(null);
 
         const response = await axios.get<ResourceInstance>(
-          `/api/resources/resource.get?resourceId=${resourceId}`,
+          `/resources/resource.get?resourceId=${resourceId}`,
         );
 
         return response.data;
@@ -167,7 +167,7 @@ export const useWorkspaceData = () => {
     async (category: string) => {
       try {
         const response = await axios.get<ResourcesListResponse>(
-          `/api/resources/resources.list?userId=${USER_ID}&category=${category}`,
+          `/resources/resources.list?userId=${USER_ID}&category=${category}`,
         );
 
         return response.data.resources.map((resource: ResourceInstance) => ({
@@ -200,13 +200,13 @@ export const useWorkspaceData = () => {
 
         // First fetch the resource schema (first-level schema)
         const resourceSchemaResponse = await axios.get(
-          "/api/resources/resource.schema",
+          "/resources/resource.schema",
         );
         const resourceSchema = resourceSchemaResponse.data;
 
         // Then fetch the element-specific schema (cfg_dict schema)
         const elementSchemaResponse = await axios.get<ElementSchema>(
-          `/api/catalog/element.spec.get?category=${category}&type=${type}`,
+          `/catalog/element.spec.get?category=${category}&type=${type}`,
         );
         const elementSchema = elementSchemaResponse.data;
 
@@ -266,7 +266,7 @@ export const useWorkspaceData = () => {
         setError(null);
 
         const response = await axios.get<any>(
-          `/api/actions/actions.list?category=${category}&type=${type}`,
+          `/actions/actions.list?category=${category}&type=${type}`,
         );
 
         setElementActions(response.data.actions || []);
@@ -299,7 +299,7 @@ export const useWorkspaceData = () => {
 
         if (rid) {
           // Update existing resource
-          const response = await axios.put("/api/resources/resource.update", {
+          const response = await axios.put("/resources/resource.update", {
             resourceId: rid,
             config: elementData.cfg_dict,
           });
@@ -320,7 +320,7 @@ export const useWorkspaceData = () => {
           };
 
           const response = await axios.post(
-            "/api/resources/resource.save",
+            "/resources/resource.save",
             savePayload,
           );
           toast({
@@ -354,7 +354,7 @@ export const useWorkspaceData = () => {
         setIsLoading(true);
         setError(null);
 
-        await axios.delete(`/api/resources/resource.delete?resourceId=${rid}`);
+        await axios.delete(`/resources/resource.delete?resourceId=${rid}`);
         toast({
           title: "Success",
           description: "Element deleted successfully",
