@@ -47,6 +47,7 @@ gpu:
 vllm:
   # General vLLM settings (no model-specific hardcoding)
   tensorParallelSize: "2"
+  enableAutoToolChoice: true
 
 
 # Qwen3-32B specific health probe timing (longer for large model)
