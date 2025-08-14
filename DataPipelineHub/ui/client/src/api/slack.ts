@@ -117,6 +117,7 @@ export async function fetchEmbeddedSlackChannels(): Promise<EmbedChannel[]> {
     created: formatDate(item.created_at || ''),
     is_private: item.type_data?.is_private || false,
     communityPrivacy: item.type_data?.communityPrivacy || 'public',
+    initialTimestamp: item.type_data?.start_timestamp ? formatDate(item.type_data.start_timestamp) : undefined,
   }));
 };
 
