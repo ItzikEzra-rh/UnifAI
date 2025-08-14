@@ -29,7 +29,7 @@ The chart supports multiple models with flexible configuration using a modular v
 
 The chart provides three values files for different deployment scenarios:
 
-1. **`values.yaml`** - General base configuration with small test model (DialoGPT-small)
+1. **`values.yaml`** - General base configuration with small test model (Qwen2-0.5B-Instruct)
 2. **`../values-qwen3-32b.yaml`** - Qwen3-32B-FP8 specific configuration (real model)
 3. **`../values-gpt-oss-20b.yaml`** - GPT-OSS-20B specific configuration (real model)
 
@@ -37,14 +37,14 @@ The chart provides three values files for different deployment scenarios:
 
 ### Available Models
 
-#### DialoGPT-small (Default - Test Model)
+#### Qwen2-0.5B-Instruct (Default - Test Model)
 ```yaml
 models:
   test-model:
     enabled: true
-    model: "Qwen/Qwen3-0.6B"
-    localModelPath: "/models/Qwen3-0.6B"
-    maxModelLen: "1024"
+    model: "Qwen/Qwen2-0.5B-Instruct"
+    localModelPath: "/models/Qwen2-0.5B-Instruct"
+    maxModelLen: "2048"
     quantization: "fp16"
 ```
 
@@ -83,9 +83,9 @@ models:
 
 ### Usage Examples
 
-**Deploy with DialoGPT-small (default - test model):**
+**Deploy with Qwen2-0.5B-Instruct (default - test model):**
 ```bash
-# Using default values.yaml (DialoGPT-small is enabled by default)
+# Using default values.yaml (Qwen2-0.5B-Instruct is enabled by default)
 helm install vllm-test ./helm/shared-resources/vllm-serving-engine
 ```
 
