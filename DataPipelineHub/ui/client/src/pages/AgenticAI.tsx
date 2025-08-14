@@ -53,7 +53,7 @@ export default function AgenticAI() {
       };
 
       const response = await axios.post(
-        "/api/sessions/user.session.create",
+        "/sessions/user.session.create",
         selectedBlueprint,
       );
       setSelectedGraphId(response.data);

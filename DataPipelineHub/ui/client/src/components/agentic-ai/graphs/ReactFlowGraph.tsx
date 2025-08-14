@@ -576,7 +576,7 @@ export default function ReactFlowGraph({
     try {
       setIsLoading(true);
       const response = await axios.get(
-        `/api/blueprints/available.blueprints.get?userId=alice`,
+        `/blueprints/available.blueprints.get`,
       );
       const blueprintObjects = response.data;
 

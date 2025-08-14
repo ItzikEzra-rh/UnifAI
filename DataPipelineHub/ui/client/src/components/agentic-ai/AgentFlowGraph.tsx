@@ -79,7 +79,7 @@ export default function AgentFlowGraph({
     const fetchGraphFlows = async () => {
       try {
         const response = await axios.get(
-          "/api/blueprints/available.blueprints.get?userId=alice",
+          "/blueprints/available.blueprints.get?userId=alice",
         );
         const blueprints: Array<{ blueprint_id: string; spec_dict: GraphFlow }> = response.data;
 
@@ -102,9 +102,7 @@ export default function AgentFlowGraph({
 
     const fetchActiveFlows = async () => {
       try {
-        const response = await axios.get(
-          `/api/sessions/session.user.blueprints.get?userId=${user?.username || "default"}`,
-        );
+        const response = await axios.get(`/sessions/session.user.blueprints.get?userId=${user?.username || "default"}`);
         setActiveFlowIds(response.data || []);
       } catch (error) {
         console.error("Error fetching active flows:", error);
