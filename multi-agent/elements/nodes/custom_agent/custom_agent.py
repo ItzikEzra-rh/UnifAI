@@ -26,6 +26,7 @@ class CustomAgentNode(
     - Processes TaskPackets via handle_task_packet()
     - Uses task_threads for conversation context
     - Intelligent response handling based on task.should_respond
+    - Enhanced with task forking for processing chains
     """
 
     # Channel permissions - reads and writes to task_threads for conversation context
@@ -72,27 +73,32 @@ class CustomAgentNode(
         """
         Handle incoming task packets.
         
-        Core logic:
+        Enhanced flow:
         1. Extract task from packet
-        2. Get thread conversation from task_threads
-        3. Build conversation history with task
-        4. Process with LLM + tools
-        5. Create response task and send appropriately
+        2. Mark task as being processed by this agent
+        3. Get thread conversation from task_threads
+        4. Build conversation history with task
+        5. Process with LLM + tools
+        6. Update task content to the thread
+        7. Handle response/fork based on task requirements
         """
         try:
             # 1. Extract task from packet
             task = packet.extract_task()
 
-            # 2. Get current state to access task_threads
+            # 2. Mark task as being processed
+            task.mark_processed(self.get_context().uid)
+
+            # 3. Get current state to access task_threads
             state = self.get_state()
 
-            # 3. Process the task
+            # 4. Process the task
             assistant_response = self._process_task_with_thread_context(task, state)
 
-            # 4. Update task content to the thread
+            # 5. Update task content to the thread
             self._update_task_thread(task, state)
 
-            # 5. Handle response based on task requirements
+            # 6. Handle response/fork based on task requirements
             self._handle_task_response(task, assistant_response, packet)
 
         except Exception as e:
@@ -148,7 +154,7 @@ class CustomAgentNode(
             self,
             task: Task,
             state: StateView
-    ) -> None:
+    ) -> None:# TODO agent add its assistant to thread
         """
         Update task_threads with the task content
         """
@@ -157,7 +163,7 @@ class CustomAgentNode(
 
         # append task content to the thread
         if task.thread_id in task_threads:
-            role = task.data.get("role", Role.ASSISTANT)
+            role = task.data.get("role", Role.USER)  # Default to USER for task content
             task_threads[task.thread_id].append(ChatMessage(role=role, content=task.content))
 
     def _handle_task_response(
@@ -169,28 +175,36 @@ class CustomAgentNode(
         """
         Handle response based on task.should_respond.
         
-        Logic:
-        - Add user task and assistant response to task_threads
-        - If should_respond=True: Create response task with correlation_task_id
-        - If should_respond=False: Create new task and broadcast
+        Enhanced logic with task forking:
+        - If should_respond=True: Create response task with correlation_task_id and processing metadata
+        - If should_respond=False: Fork task with agent's output and broadcast
         """
         if original_task.should_respond:
-            # Create response task
+            # Request-Response pattern: Create response task with processing metadata
             response_task = Task.respond_success(
                 original_task=original_task,
-                result={"content": assistant_response.content}
+                result={"content": assistant_response.content},
+                processed_by=self.get_context().uid
             )
 
             # Reply to original sender
             self.reply_task(original_packet, response_task)
 
         else:
-            # Create new task with same thread context
-            new_task = Task.create(
+            # Chain pattern: Fork task with agent's output
+            forked_task = original_task.fork(
                 content=assistant_response.content,
-                should_respond=False,
-                thread_id=original_task.thread_id
+                processed_by=self.get_context().uid,
+                data={
+                    "role": Role.ASSISTANT,  # Mark as assistant output for conversation context
+                    "processing_agent": self.get_context().uid,
+                    "system_message": self.system_message  # Track which agent type processed this
+                }
             )
 
-            # Broadcast to adjacent nodes
-            self.broadcast_task(new_task)
+            # Broadcast forked task to adjacent nodes
+            self.broadcast_task(forked_task)
+
+            # Log fork information for debugging
+            print(f"Agent {self.get_context().uid}: Forked task {original_task.task_id} → {forked_task.task_id}")
+            print(f"Content: {assistant_response.content[:100]}...")
