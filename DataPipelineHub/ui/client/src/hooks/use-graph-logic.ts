@@ -53,6 +53,7 @@ export const useGraphLogic = () => {
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [nodeId, setNodeId] = useState(1);
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
+  const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
   const [buildingBlocksData, setBuildingBlocksData] = useState<BuildingBlock[]>(
     [],
   );
@@ -252,6 +253,85 @@ export const useGraphLogic = () => {
     [setNodes, setEdges, toast],
   );
 
+  const deleteEdge = useCallback(
+    (edgeId: string) => {
+      setEdges((currentEdges) => {
+        const edgeToDelete = currentEdges.find((edge) => edge.id === edgeId);
+        if (!edgeToDelete) return currentEdges;
+
+        const updatedEdges = currentEdges.filter((edge) => edge.id !== edgeId);
+
+        // Update YAML flow to remove the connection
+        setYamlFlow((prevFlow) => {
+          const updatedPlan = prevFlow.plan.map((step) => {
+            if (step.uid === edgeToDelete.target) {
+              if (step.after) {
+                if (Array.isArray(step.after)) {
+                  // Remove the source from the array
+                  const updatedAfter = step.after.filter(
+                    (afterId) => afterId !== edgeToDelete.source,
+                  );
+                  if (updatedAfter.length === 0) {
+                    // Remove the after property if array becomes empty
+                    const { after, ...stepWithoutAfter } = step;
+                    return stepWithoutAfter;
+                  } else if (updatedAfter.length === 1) {
+                    // Convert single-item array back to string
+                    return { ...step, after: updatedAfter[0] };
+                  } else {
+                    return { ...step, after: updatedAfter };
+                  }
+                } else if (step.after === edgeToDelete.source) {
+                  // Remove the after property if it matches the source
+                  const { after, ...stepWithoutAfter } = step;
+                  return stepWithoutAfter;
+                }
+              }
+
+              // Handle conditional branches if they exist
+              if (step.branches) {
+                const updatedBranches = { ...step.branches };
+                Object.keys(updatedBranches).forEach((branchKey) => {
+                  if (updatedBranches[branchKey] === edgeToDelete.target) {
+                    delete updatedBranches[branchKey];
+                  }
+                });
+                
+                // If no branches remain, remove the branches property
+                if (Object.keys(updatedBranches).length === 0) {
+                  const { branches, ...stepWithoutBranches } = step;
+                  return stepWithoutBranches;
+                } else {
+                  return { ...step, branches: updatedBranches };
+                }
+              }
+            }
+            return step;
+          });
+
+          return {
+            nodes: prevFlow.nodes,
+            conditions: prevFlow.conditions || [],
+            plan: updatedPlan,
+          };
+        });
+
+        setCurrentGraph((prev) => ({
+          ...prev,
+          edges: updatedEdges,
+          metadata: {
+            ...prev.metadata,
+            lastModified: new Date(),
+            edgeCount: updatedEdges.length,
+          },
+        }));
+
+        return updatedEdges;
+      });
+    },
+    [setEdges],
+  );
+
   // Initialize canvas with default required nodes
   const initializeDefaultNodes = useCallback(() => {
     const userInputNode: Node = {
@@ -363,11 +443,17 @@ export const useGraphLogic = () => {
 
   // Trigger validation whenever yamlFlow changes
   useEffect(() => {
-    // Only validate if we have more than the default nodes and yamlFlow has meaningful content
-    if (nodes.length > 2 && yamlFlow.plan && yamlFlow.plan.length > 2) {
-      validateGraph();
+    // Only validate if yamlFlow has meaningful content
+    if (yamlFlow.plan && yamlFlow.plan.length > 2) {
+      const validationTimeout = setTimeout(() => {
+        validateGraph();
+      }, 100);
+
+      return () => {
+        clearTimeout(validationTimeout);
+      };
     }
-  }, [yamlFlow, validateGraph, nodes.length]);
+  }, [yamlFlow, validateGraph]);
 
   const isConnectionFeasible = useCallback(
     async (params: Connection): Promise<boolean> => {
@@ -590,6 +676,18 @@ export const useGraphLogic = () => {
     [onNodesChange, nodes],
   );
 
+  const handleEdgesChange = useCallback(
+    (changes: any[]) => {
+      onEdgesChange(changes);
+
+      const selected = edges
+        .filter((edge) => edge.selected)
+        .map((edge) => edge.id);
+      setSelectedEdges(selected);
+    },
+    [onEdgesChange, edges],
+  );
+
   const onDragStart = (event: React.DragEvent, block: BuildingBlock) => {
     const blockData = {
       id: block.id,
@@ -733,15 +831,22 @@ export const useGraphLogic = () => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Delete" && selectedNodes.length > 0) {
+      if (event.key === "Delete") {
         event.preventDefault();
-        selectedNodes.forEach((nodeId) => deleteNode(nodeId));
+        // Delete selected nodes first
+        if (selectedNodes.length > 0) {
+          selectedNodes.forEach((nodeId) => deleteNode(nodeId));
+        }
+        // Then delete selected edges
+        if (selectedEdges.length > 0) {
+          selectedEdges.forEach((edgeId) => deleteEdge(edgeId));
+        }
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNodes, deleteNode]);
+  }, [selectedNodes, selectedEdges, deleteNode, deleteEdge]);
 
   const attachConditionToNode = (nodeId: string, condition: any) => {
     // Check if node already has a condition attached
@@ -1002,7 +1107,7 @@ export const useGraphLogic = () => {
     isLoadingBlocks,
     yamlFlow,
     handleNodesChange,
-    onEdgesChange,
+    handleEdgesChange,
     onConnect,
     onDrop,
     onDragOver,
@@ -1010,6 +1115,7 @@ export const useGraphLogic = () => {
     clearGraph,
     openSaveModal,
     saveGraph,
+    deleteEdge,
     attachConditionToNode,
     removeConditionFromNode,
     conditionalEdgeModal,

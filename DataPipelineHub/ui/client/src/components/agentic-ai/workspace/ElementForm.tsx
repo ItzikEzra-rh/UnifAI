@@ -975,23 +975,24 @@ export const ElementForm: React.FC<ElementFormProps> = ({
                 return false;
               }
 
-              // For Create New mode: show only first-level required fields (name) + all cfg_dict fields
-              if (!editingElement) {
-                // Show first-level required fields (name is required from resource.schema)
-                const firstLevelRequiredFields = ['name'];
-                if (firstLevelRequiredFields.includes(fieldName)) {
-                  return true;
-                }
-
-                // Show all cfg_dict fields (element-specific config fields)
-                // These are fields that are NOT first-level fields from resource.schema
-                const firstLevelFields = ['name', 'category', 'type', 'cfg_dict', 'version', 'created', 'updated', 'nested_refs', 'rid', 'user_id'];
-                const isCfgDictField = !firstLevelFields.includes(fieldName);
-                return isCfgDictField;
+              // For both Create New and Edit mode: show only first-level required fields (name) + all cfg_dict fields
+              // Show first-level required fields (name is required from resource.schema)
+              const firstLevelRequiredFields = ['name'];
+              if (firstLevelRequiredFields.includes(fieldName)) {
+                return true;
               }
 
-              // For Edit mode: show all fields (except category/type)
-              return true;
+              // Show all cfg_dict fields (element-specific config fields)
+              // These are fields that are NOT first-level fields from resource.schema
+              const firstLevelFields = ['name', 'category', 'type', 'cfg_dict', 'version', 'created', 'updated', 'nested_refs', 'rid', 'user_id'];
+              const isCfgDictField = !firstLevelFields.includes(fieldName);
+              return isCfgDictField;
+
+              // Comment out the old edit mode logic that showed extra fields
+              // // For Edit mode: show all fields (except category/type)
+              // if (editingElement) {
+              //   return true;
+              // }
             })
             .map(([fieldName, fieldSchema]) => renderFormField(fieldName, fieldSchema))}
 

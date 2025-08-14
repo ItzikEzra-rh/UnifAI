@@ -22,13 +22,14 @@ export default function NewGraph({ onBack }: NewGraphProps) {
     isLoadingBlocks,
     yamlFlow,
     handleNodesChange,
-    onEdgesChange,
+    handleEdgesChange,
     onConnect,
     onDrop,
     onDragOver,
     onDragStart,
     clearGraph,
     saveGraph,
+    deleteEdge,
     attachConditionToNode,
     removeConditionFromNode,
     conditionalEdgeModal,
@@ -70,12 +71,13 @@ export default function NewGraph({ onBack }: NewGraphProps) {
           edges={edges}
           yamlFlow={yamlFlow}
           onNodesChange={handleNodesChange}
-          onEdgesChange={onEdgesChange}
+          onEdgesChange={handleEdgesChange}
           onConnect={onConnect}
           onDrop={onDrop}
           onDragOver={onDragOver}
           onClearGraph={handleClearGraph}
           onSaveGraph={handleSaveGraph}
+          onDeleteEdge={deleteEdge}
           onBack={onBack}
           onAttachCondition={attachConditionToNode}
           onRemoveCondition={removeConditionFromNode}
@@ -92,7 +94,7 @@ export default function NewGraph({ onBack }: NewGraphProps) {
         />
       </div>
 
-      
+      {/* Conditional Edge Modal */}
       <ConditionalEdgeModal
         isOpen={conditionalEdgeModal.isOpen}
         onClose={handleConditionalEdgeCancel}

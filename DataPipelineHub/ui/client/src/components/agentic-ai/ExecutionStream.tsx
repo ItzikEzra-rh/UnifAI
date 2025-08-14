@@ -84,14 +84,14 @@ export default function ExecutionStream({
   useEffect(() => {
     const getGraphNodes = async () => {
       const response = await axios.get('/api/blueprints/available.blueprints.get?userId=alice');
-      const blueprints: GraphFlow[] = response.data;
+      const blueprintObjects = response.data;
       
-      // Find the specific graph flow by name or index
-      const targetGraphFlow = blueprints.find((blueprint, index) => 
-        blueprint.name === blueprintId || index.toString() === blueprintId
+      // Find the specific graph flow by blueprint_id
+      const targetBlueprintObj = blueprintObjects.find((blueprintObj: any, index: number) => 
+        blueprintObj.blueprint_id === blueprintId
       );
   
-      return targetGraphFlow ? extractNodeData(targetGraphFlow) : [];
+      return targetBlueprintObj ? extractNodeData(targetBlueprintObj.spec_dict) : [];
     }
   
     const fetchAndSetNodes = async () => {

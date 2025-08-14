@@ -8,6 +8,7 @@ import {
   Background,
   Controls,
   NodeTypes,
+  EdgeTypes,
   MarkerType,
   ConnectionLineType,
 } from "reactflow";
@@ -15,11 +16,16 @@ import "reactflow/dist/style.css";
 import { Card, CardContent } from "@/components/ui/card";
 import { Plus } from "lucide-react";
 import CustomNode from "./CustomNode";
+import CustomEdge from "./CustomEdge";
 import GraphHeader from "./GraphHeader";
 import * as yaml from 'js-yaml';
 
 const nodeTypes: NodeTypes = {
   custom: CustomNode,
+};
+
+const edgeTypes: EdgeTypes = {
+  custom: CustomEdge,
 };
 
 interface GraphCanvasProps {
@@ -33,6 +39,7 @@ interface GraphCanvasProps {
   onDragOver: (event: React.DragEvent) => void;
   onClearGraph: () => void;
   onSaveGraph: () => void;
+  onDeleteEdge?: (edgeId: string) => void;
   onBack?: () => void;
   onAttachCondition?: (nodeId: string, condition: any) => void;
   onRemoveCondition?: (nodeId: string, conditionRid: string) => void;
@@ -50,6 +57,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   onDragOver,
   onClearGraph,
   onSaveGraph,
+  onDeleteEdge,
   onBack,
   onAttachCondition,
   onRemoveCondition,
@@ -97,17 +105,25 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
             <ReactFlowProvider>
               <ReactFlow
                 nodes={nodes}
-                edges={edges}
+                edges={edges.map(edge => ({
+                  ...edge,
+                  type: 'custom',
+                  data: {
+                    ...edge.data,
+                    onDelete: onDeleteEdge,
+                  }
+                }))}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
                 onConnect={onConnect}
                 onDrop={onDrop}
                 onDragOver={onDragOver}
                 nodeTypes={nodeTypes}
+                edgeTypes={edgeTypes}
                 fitView
                 connectionLineType={ConnectionLineType.SmoothStep}
                 defaultEdgeOptions={{
-                  type: "smoothstep",
+                  type: "custom",
                   animated: true,
                   style: { stroke: "#8A2BE2", strokeWidth: 2 },
                   markerEnd: {
