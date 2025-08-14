@@ -24,7 +24,7 @@ class SessionExecutor:
         self._sessions = session_manager
         self._repo = repository
 
-    def _pre_run(self, session: WorkflowSession, inputs: Dict[str, Any], scope: str) -> None:
+    def _pre_run(self, session: WorkflowSession, inputs: Dict[str, Any], scope: str, logged_in_user: str) -> None:
         """
         1) add title to session metadata
         2) bind RunContext into ContextVar
@@ -37,6 +37,7 @@ class SessionExecutor:
             if title := derive_title(inputs):
                 session.metadata.title = title
         ctx = session.run_context.change_scope(scope)  # TODO remove scope parameter from context
+        ctx = ctx.set_logged_in_user(logged_in_user)  # TODO remove logged_in_user parameter from context
         set_current_context(ctx)
         session.graph_state.update(inputs)
         session.update_status(SessionStatus.RUNNING)
@@ -91,12 +92,13 @@ class SessionExecutor:
             session: WorkflowSession,
             inputs: Dict[str, Any],
             scope: str = "public",
+            logged_in_user: str = "",
             **stream_kwargs: Any
     ) -> Iterator[Any]:
         """
         Stream execution chunks, then persist at the end.
         """
-        self._pre_run(session, inputs, scope)
+        self._pre_run(session, inputs, scope, logged_in_user)
 
         try:
             for chunk in session.executable_graph.stream(
