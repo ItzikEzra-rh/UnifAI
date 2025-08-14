@@ -132,4 +132,10 @@ class LlmCapableMixin(Generic[TSupportStream]):
         return self._llm_sync_chat(messages)
 
     def _bind_tools(self, tools: List[BaseTool]) -> None:
-        self.llm.bind_tools(tools)
+        """
+        Bind tools to this node's LLM instance, creating an isolated copy to avoid cross-contamination.
+
+        This creates a new LLM instance with tools bound, ensuring each node has its own
+        tool-bound LLM without affecting other nodes that share the same base LLM.
+        """
+        self.llm = self.llm.bind_tools(tools)
