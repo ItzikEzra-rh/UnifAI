@@ -48,8 +48,7 @@ export default function AgenticAI() {
 
       const selectedBlueprint = {
         blueprintId: graphId,
-        // userId: user?.username || "default",
-        userId: "alice",
+        userId: user?.username || "default",
       };
 
       const response = await axios.post(

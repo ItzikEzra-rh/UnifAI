@@ -7,6 +7,7 @@ import {
   ElementSchema,
   CatalogResponse,
 } from "../types/workspace";
+import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "./use-toast";
 
 // Types for Resources API responses
@@ -46,8 +47,8 @@ export const useWorkspaceData = () => {
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Hard-coded user ID - will be made flexible later
-  const USER_ID = "alice";
+  const { user } = useAuth();
+  const USER_ID = user?.username || "default";
 
   // Fetch all available categories and element types
   const fetchCategories = useCallback(async () => {

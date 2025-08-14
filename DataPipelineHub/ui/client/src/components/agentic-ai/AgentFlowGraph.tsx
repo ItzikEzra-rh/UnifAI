@@ -79,7 +79,7 @@ export default function AgentFlowGraph({
     const fetchGraphFlows = async () => {
       try {
         const response = await axios.get(
-          "/blueprints/available.blueprints.get?userId=alice",
+          `/blueprints/available.blueprints.get?userId=${user?.username || "default"}`,
         );
         const blueprints: Array<{ blueprint_id: string; spec_dict: GraphFlow }> = response.data;
 

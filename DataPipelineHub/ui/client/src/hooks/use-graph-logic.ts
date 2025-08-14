@@ -11,6 +11,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { CurrentGraph, BuildingBlock } from "@/types/graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
+import { useAuth } from "@/contexts/AuthContext";
 import axios from "../http/axiosAgentConfig";
 import * as yaml from "js-yaml";
 import { useLocation } from "wouter";
@@ -96,8 +97,8 @@ export const useGraphLogic = () => {
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
-  // Hard-coded user ID - will be made flexible later
-  const USER_ID = "alice";
+  const { user } = useAuth();
+  const USER_ID = user?.username || "default";
 
   // Validate graph using the validation API
   const validateGraph = useCallback(async () => {

@@ -24,6 +24,7 @@ import {
   NodeDefinition,
   PlanItem,
 } from "./interfaces";
+import { useAuth } from "@/contexts/AuthContext";
 import { useStreamingData } from "../StreamingDataContext";
 import axios from "../../../http/axiosAgentConfig";
 
@@ -491,6 +492,7 @@ export default function ReactFlowGraph({
   const initializedRef = useRef(false);
   const streamingContext = isLiveRequest ? useStreamingData() : null;
   const prevNodeListRef = useRef<Map<string, any>>(new Map());
+  const { user } = useAuth();
 
   // Function to update node status based on streaming data
   const updateNodeStatuses = useCallback(() => {
@@ -576,7 +578,7 @@ export default function ReactFlowGraph({
     try {
       setIsLoading(true);
       const response = await axios.get(
-        `/blueprints/available.blueprints.get`,
+        `/blueprints/available.blueprints.get?userId=${user?.username || "default"}`,
       );
       const blueprintObjects = response.data;
 

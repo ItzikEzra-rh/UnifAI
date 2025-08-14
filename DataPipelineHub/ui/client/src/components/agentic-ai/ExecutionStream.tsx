@@ -10,6 +10,7 @@ import { GraphNode } from "../../pages/AgenticAI"
 import { useStreamingData, NodeEntry } from "./StreamingDataContext"
 import axios from '../../http/axiosAgentConfig'
 import { GraphFlow } from './graphs/interfaces'
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LogEntry {
   id: string;
@@ -67,6 +68,7 @@ export default function ExecutionStream({
   const [isPaused, setIsPaused] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const { nodeListRef } = useStreamingData();
+  const { user } = useAuth();
 
   const extractNodeData = (graphFlow: GraphFlow): { id: string; name: string; description: string | null }[] => {
     if (!graphFlow || !graphFlow.plan) {
@@ -83,7 +85,7 @@ export default function ExecutionStream({
   // Create agent nodes from selected graph nodes on component mount
   useEffect(() => {
     const getGraphNodes = async () => {
-      const response = await axios.get('/api/blueprints/available.blueprints.get');
+      const response = await axios.get(`/api/blueprints/available.blueprints.get?userId=${user?.username || "default"}`);
       const blueprintObjects = response.data;
       
       // Find the specific graph flow by blueprint_id
