@@ -282,7 +282,7 @@ export default function ExecutionTab({
         loggedInUser: user?.username || "default",
       };
       
-      const response = await fetch(`${AXIOS_AGENTS_IP}/api/sessions/user.session.execute`, {
+      const response = await fetch(`/api2/sessions/user.session.execute`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

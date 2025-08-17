@@ -2,7 +2,6 @@
 Authentication Manager for Keycloak SSO Integration
 Handles user authentication, session management, and token validation
 """
-
 import os
 import jwt
 import requests
@@ -21,7 +20,7 @@ class AuthManager:
         self.app = app
         self.oauth = None
         self.keycloak_client = None
-        
+        self.backend_env = config.get('backend_env', 'development')
         if app is not None:
             self.init_app(app)
     
@@ -32,7 +31,6 @@ class AuthManager:
         # Set up secret key for sessions
         if not app.secret_key:
             app.secret_key = config.get('secret_key', os.urandom(24))
-        
         # Configure OAuth
         self.oauth = OAuth(app)
         
@@ -73,18 +71,20 @@ class AuthManager:
         def login():
             """Initiate OAuth login flow"""
             # Hardcode or use an env variable to set the externally reachable redirect URI
-
-            
             # redirect_uri = config.get(
             #     'redirect_url',
             #     url_for('auth_callback', _external=True, _scheme='https')
             # )
+            # redirect_uri = config.get(
+            #     'redirect_url',
+            #     'http://127.0.0.1:13456/api/auth/callback'
+            # )
 
             redirect_uri = config.get(
                 'redirect_url',
-                url_for('auth_callback', _external=True, _scheme='https') 
-                if config.backend_env == "production" 
-                else f"http://{config.hostname_local}:{config.port}/api/auth/callback"
+                url_for('auth_callback', _external=True, _scheme='https')
+                if config.get("BACKEND_ENV","development") == "production"
+                else "http://127.0.0.1:13456/api/auth/callback"
             )
 
             logger.info(f"[LOGIN] session before redirect: {session.items()}")
@@ -184,7 +184,7 @@ class AuthManager:
         # Check if session has expired
         if self._is_session_expired():
             return False
-            
+
         return True
     
     def get_current_user(self):
@@ -212,7 +212,7 @@ class AuthManager:
             return True  # No token expiration means we should try to refresh
         
         current_time = datetime.now().timestamp()
-
+        
         # Refresh if token expires in the next minute
         should_refresh = current_time >= (token_expires_at - 60)  # 1 minute buffer
         return should_refresh
@@ -240,7 +240,7 @@ class AuthManager:
             session['user']['token_expires_at'] = token.get('expires_at', 0)
             logger.info("Access token refreshed successfully")
             return True
-            
+        
         except Exception as e:
             logger.error(f"Failed to refresh token: {str(e)}")
             return False
