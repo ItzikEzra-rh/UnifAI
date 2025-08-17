@@ -71,20 +71,16 @@ class AuthManager:
         def login():
             """Initiate OAuth login flow"""
             # Hardcode or use an env variable to set the externally reachable redirect URI
+
             # redirect_uri = config.get(
             #     'redirect_url',
             #     url_for('auth_callback', _external=True, _scheme='https')
             # )
-            # redirect_uri = config.get(
-            #     'redirect_url',
-            #     'http://127.0.0.1:13456/api/auth/callback'
-            # )
-
             redirect_uri = config.get(
                 'redirect_url',
-                url_for('auth_callback', _external=True, _scheme='https')
-                if config.get("BACKEND_ENV","development") == "production"
-                else "http://127.0.0.1:13456/api/auth/callback"
+                url_for('auth_callback', _external=True, _scheme='https') 
+                if config.backend_env == "production" 
+                else f"http://{config.hostname_local}:{config.port}/api/auth/callback"
             )
 
             logger.info(f"[LOGIN] session before redirect: {session.items()}")
