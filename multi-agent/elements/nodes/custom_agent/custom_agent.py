@@ -156,7 +156,7 @@ class CustomAgentNode(
         for i, result in enumerate(workspace_context.results, 1):
             results_text += f"{i}. {result.agent_name}: {result.content}\n"
         
-        return ChatMessage(role=Role.SYSTEM, content=results_text)
+        return ChatMessage(role=Role.USER, content=results_text)
 
     def _process_with_llm(self, conversation_context: List[ChatMessage]) -> ChatMessage:
         """Process conversation with LLM (with optional tools)."""

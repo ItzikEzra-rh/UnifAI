@@ -8,18 +8,8 @@ Enables agent collaboration through centralized context management.
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List
 from datetime import datetime
-from .models import AgentResult, WorkspaceContext
+from .models import AgentResult, WorkspaceContext, ArtifactRef
 from elements.llms.common.chat.message import ChatMessage
-
-
-class ArtifactRef(BaseModel):
-    """Reference to an artifact with metadata."""
-    name: str
-    type: str
-    location: str
-    created_by: str
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
 class Workspace(BaseModel):
@@ -321,3 +311,10 @@ class Workspace(BaseModel):
     def _update_timestamp(self) -> None:
         """Update the last updated timestamp."""
         self.last_updated = datetime.utcnow()
+
+
+# Rebuild models to resolve forward references
+try:
+    Workspace.model_rebuild()
+except Exception:
+    pass  # Ignore rebuild errors during import

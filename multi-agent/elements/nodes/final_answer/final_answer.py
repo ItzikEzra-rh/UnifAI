@@ -1,35 +1,34 @@
-from typing import List
+from typing import List, ClassVar, Dict, Any
 from elements.nodes.common.base_node import BaseNode
 from elements.nodes.common.capabilities.iem_capable import IEMCapableMixin
 from graph.state.graph_state import Channel
 from graph.state.state_view import StateView
-from elements.llms.common.chat.message import ChatMessage, Role
-from core.iem.packets import EventPacket, RequestPacket, ResponsePacket
+from elements.nodes.common.workload import AgentResult
 
 
 class FinalAnswerNode(IEMCapableMixin, BaseNode):
     """
-    Simple final node that collects all incoming events and merges them into a final message.
+    Enhanced final node that collects task results and creates final output.
     
     Behavior:
-    - Receives any events from agents
-    - Collects all results
+    - Processes TaskPackets and extracts task results
+    - Collects all AgentResults from tasks
     - Merges them into one final message
-    - Promotes to public conversation
+    - Promotes to messages and sets Channel.OUTPUT
     """
     
-    READS = {Channel.MESSAGES}
-    WRITES = {Channel.MESSAGES, Channel.OUTPUT}
+    READS: ClassVar[set[str]] = {Channel.MESSAGES}
+    WRITES: ClassVar[set[str]] = {Channel.MESSAGES, Channel.OUTPUT}
 
     def __init__(self, *, name: str = "final_answer", **kwargs):
         super().__init__(**kwargs)
         self.name = name
-        self._collected_results: List[str] = []
+        self._collected_results: List[AgentResult] = []
 
     def run(self, state: StateView) -> StateView:
-        """Process all incoming events and create final answer."""
-        # Process all incoming messages
-        self.process_messages(state)
+        """Process all incoming TaskPackets and create final answer."""
+        # Process all incoming task packets
+        self.process_packets(state)
         
         # Create final answer if we have collected results
         if self._collected_results:
@@ -42,38 +41,42 @@ class FinalAnswerNode(IEMCapableMixin, BaseNode):
         
         return state
 
-    def handle_event(self, event: EventPacket) -> None:
-        """Collect any event result."""
-        result = event.data.get("result")
-        if result and result.strip():
-            self._collected_results.append(result.strip())
+    def handle_task_packet(self, packet) -> None:
+        """
+        Collect task results from TaskPackets.
+        
+        Extracts task from packet and collects AgentResult if present.
+        """
+        try:
+            task = packet.extract_task()
 
-    def handle_request(self, request: RequestPacket) -> None:
-        """Ignore requests - final node doesn't handle requests."""
-        pass
-
-    def handle_response(self, response: ResponsePacket) -> None:
-        """Ignore responses."""
-        pass
+            # Extract AgentResult from task if present
+            if task.result and isinstance(task.result, AgentResult):
+                self._collected_results.append(task.result)
+                print(f"FinalAnswerNode {self.uid}: Collected result from {task.result.agent_name}")
+                
+        except Exception as e:
+            print(f"FinalAnswerNode {self.uid}: Error collecting task result: {e}")
 
     def _merge_results(self) -> str:
-        """Merge all collected results into one final message."""
+        """Merge all collected AgentResult objects into one final message."""
         if not self._collected_results:
             return "I apologize, but I don't have any information to provide."
         
         if len(self._collected_results) == 1:
-            return self._collected_results[0]
+            return self._collected_results[0].content
         
         # Remove duplicates while preserving order
-        unique_results = []
+        unique_contents = []
         seen = set()
         for result in self._collected_results:
-            if result not in seen:
-                unique_results.append(result)
-                seen.add(result)
+            content = result.content.strip()
+            if content and content not in seen:
+                unique_contents.append(content)
+                seen.add(content)
         
-        if len(unique_results) == 1:
-            return unique_results[0]
+        if len(unique_contents) == 1:
+            return unique_contents[0]
         
-        # Join multiple results
-        return "\n\n".join(unique_results)
+        # Join multiple unique results
+        return "\n\n".join(unique_contents)

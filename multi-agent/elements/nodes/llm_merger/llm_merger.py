@@ -29,7 +29,7 @@ class LLMMergerNode(WorkloadCapableMixin, IEMCapableMixin, LlmCapableMixin, Base
         self,
         *,
         llm: Any,
-        system_message: str = "You are a skilled editor. Merge the following agent responses into a single, coherent, and comprehensive answer. Remove redundancy while preserving all important information.",
+        system_message: str = "",
         **kwargs
     ):
         super().__init__(llm=llm, system_message=system_message, **kwargs)

@@ -12,7 +12,6 @@ from core.iem.packets import BaseIEMPacket, TaskPacket
 from core.iem.models import PacketType, ElementAddress
 from core.iem.interfaces import InterMessenger
 from core.iem.factory import messenger_from_ctx
-from elements.nodes.common.agent_thread import AgentThread
 from core.contracts import SupportsStateContext
 
 # -----------------------------------------------------------------------------

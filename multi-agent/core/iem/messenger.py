@@ -6,6 +6,7 @@ Clean, generic packet handling with middleware support.
 
 from typing import Callable, Optional, Any, List
 from datetime import timedelta, datetime
+import uuid
 from graph.state.state_view import StateView
 from graph.state.graph_state import Channel
 from graph.step_context import StepContext
@@ -191,11 +192,12 @@ class DefaultInterMessenger(InterMessenger):
             List of packet IDs sent
         """
         packet_ids = []
-        
+
         for node_uid in target_uids:
             try:
-                # Create copy and set destination
+                # Create copy with unique ID and set destination
                 multicast_packet = packet.model_copy()
+                multicast_packet.id = str(uuid.uuid4())  # Generate new unique ID
                 multicast_packet.dst = ElementAddress(uid=node_uid)
                 packet_id = self.send_packet(multicast_packet)
                 packet_ids.append(packet_id)

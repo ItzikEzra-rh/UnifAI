@@ -9,10 +9,8 @@ Enhanced with fork functionality for task chaining and processing lineage.
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List, Union, TYPE_CHECKING
 from datetime import datetime
+from .models import AgentResult
 import uuid
-
-if TYPE_CHECKING:
-    from .models import AgentResult
 
 
 class Task(BaseModel):
@@ -23,38 +21,38 @@ class Task(BaseModel):
     Clean ID management for task relationships and coordination.
     Enhanced with fork functionality for processing chains.
     """
-    
+
     # Task Identity
     task_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    
+
     # Core Task Content
     content: str  # Natural language description of what to do
     data: Dict[str, Any] = Field(default_factory=dict)  # Supporting data
-    
+
     # Coordination
     should_respond: bool = False  # Does this task need a response?
     response_to: Optional[str] = None  # Original requester UID
-    
+
     # Task Relationships
     correlation_task_id: Optional[str] = None  # Links response to original request
-    parent_task_id: Optional[str] = None       # Task that spawned this subtask
-    thread_id: Optional[str] = None            # Execution context grouping
-    
+    parent_task_id: Optional[str] = None  # Task that spawned this subtask
+    thread_id: Optional[str] = None  # Execution context grouping
+
     # Processing Metadata
-    created_by: Optional[str] = None           # Agent that created this task
-    processed_by: Optional[str] = None         # Agent that processed this task
+    created_by: Optional[str] = None  # Agent that created this task
+    processed_by: Optional[str] = None  # Agent that processed this task
     created_at: datetime = Field(default_factory=datetime.utcnow)
     processed_at: Optional[datetime] = None
-    
+
     # Results (only when responding)
-    result: Optional[Union[Dict[str, Any], 'AgentResult']] = None
+    result: Optional[Union[AgentResult, Dict[str, Any]]] = None
     error: Optional[Dict[str, Any]] = None
-    
+
     # ========== CLASS METHODS (Existing) ==========
-    
+
     @classmethod
     def create(cls, content: str, data: dict = None, should_respond: bool = False,
-               parent_task_id: str = None, thread_id: str = None, 
+               parent_task_id: str = None, thread_id: str = None,
                created_by: str = None) -> 'Task':
         """Create a new task."""
         return cls(
@@ -65,24 +63,24 @@ class Task(BaseModel):
             thread_id=thread_id,
             created_by=created_by
         )
-    
+
     @classmethod
-    def create_subtask(cls, parent_task: 'Task', content: str, 
-                      data: dict = None, should_respond: bool = False,
-                      created_by: str = None) -> 'Task':
+    def create_subtask(cls, parent_task: 'Task', content: str,
+                       data: dict = None, should_respond: bool = False,
+                       created_by: str = None) -> 'Task':
         """Create subtask of another task."""
         return cls(
             content=content,
             data=data or {},
             should_respond=should_respond,
             parent_task_id=parent_task.task_id,  # Link to parent
-            thread_id=parent_task.thread_id,     # Same execution context
+            thread_id=parent_task.thread_id,  # Same execution context
             created_by=created_by
         )
-    
+
     @classmethod
-    def respond_success(cls, original_task: 'Task', result: Union[Dict[str, Any], 'AgentResult'], 
-                       processed_by: str) -> 'Task':
+    def respond_success(cls, original_task: 'Task', result: Union[Dict[str, Any], 'AgentResult'],
+                        processed_by: str) -> 'Task':
         """
         Create successful response task with processing metadata.
         
@@ -100,10 +98,10 @@ class Task(BaseModel):
             processed_by=processed_by,
             processed_at=datetime.utcnow()
         )
-    
-    @classmethod  
-    def respond_error(cls, original_task: 'Task', error: dict, 
-                     processed_by: str) -> 'Task':
+
+    @classmethod
+    def respond_error(cls, original_task: 'Task', error: dict,
+                      processed_by: str) -> 'Task':
         """
         Create error response task with processing metadata.
         
@@ -121,10 +119,11 @@ class Task(BaseModel):
             processed_by=processed_by,
             processed_at=datetime.utcnow()
         )
-    
+
     # ========== INSTANCE METHODS (New Fork Functionality) ==========
-    
-    def fork(self, content: str, processed_by: str, data: dict = None, result: Union[Dict[str, Any], 'AgentResult'] = None) -> 'Task':
+
+    def fork(self, content: str, processed_by: str, data: dict = None,
+             result: Union[Dict[str, Any], 'AgentResult'] = None) -> 'Task':
         """
         Fork this task with new content after processing.
         
@@ -136,13 +135,13 @@ class Task(BaseModel):
             data=data or {},
             result=result,
             should_respond=False,
-            parent_task_id=self.task_id,        # This task becomes the parent
-            thread_id=self.thread_id,           # Same workflow thread
+            parent_task_id=self.task_id,  # This task becomes the parent
+            thread_id=self.thread_id,  # Same workflow thread
             created_by=processed_by,
             created_at=datetime.utcnow()
         )
-    
-    def fork_subtask(self, content: str, created_by: str, 
+
+    def fork_subtask(self, content: str, created_by: str,
                      should_respond: bool = False, data: dict = None) -> 'Task':
         """
         Fork a subtask for delegation/orchestration.
@@ -159,39 +158,39 @@ class Task(BaseModel):
             created_by=created_by,
             created_at=datetime.utcnow()
         )
-    
+
     def mark_processed(self, processed_by: str) -> 'Task':
         """Mark this task as processed by an agent."""
         self.processed_by = processed_by
         self.processed_at = datetime.utcnow()
         return self
-    
+
     # ========== HELPER METHODS ==========
-    
+
     def is_response(self) -> bool:
         """Check if this is a response task."""
         return self.correlation_task_id is not None
-    
+
     def is_subtask(self) -> bool:
         """Check if this is a subtask."""
         return self.parent_task_id is not None
-    
+
     def is_root_task(self) -> bool:
         """Check if this is a root task (no parent)."""
         return self.parent_task_id is None
-    
+
     def is_forked_task(self) -> bool:
         """Check if this task was forked from another (part of processing chain)."""
         return self.parent_task_id is not None and not self.is_response()
-    
+
     def is_successful_response(self) -> bool:
         """Check if this is a successful response."""
         return self.result is not None
-    
+
     def is_error_response(self) -> bool:
         """Check if this is an error response."""
         return self.error is not None
-    
+
     def get_fork_depth(self) -> int:
         """
         Get depth in fork chain (0 = original task).
@@ -200,7 +199,7 @@ class Task(BaseModel):
         For now, returns 1 if forked, 0 if root.
         """
         return 1 if self.is_forked_task() else 0
-    
+
     def get_lineage_info(self) -> Dict[str, Any]:
         """Get summary of task lineage information."""
         return {

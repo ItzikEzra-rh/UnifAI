@@ -59,9 +59,9 @@ plan:
     after: mcp_agent
     node: review_agent_rid
     meta:
-      display_name: MCP Agent
+      display_name: Review Agent
       description: |
-        MCP Agent
+        Review Agent
 
   - uid: finalize
     after: review_agent

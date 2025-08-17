@@ -302,6 +302,27 @@ class StateBoundWorkloadService(IWorkloadService):
             return True
         return False
     
+    def get_threads_by_parent(self, parent_thread_id: Optional[str] = None) -> List[Thread]:
+        """
+        Get threads by parent ID.
+        
+        Args:
+            parent_thread_id: Parent thread ID, or None for root threads
+            
+        Returns:
+            List of Thread instances with the specified parent
+        """
+        threads = self._state.get(Channel.THREADS, {})
+        
+        if parent_thread_id is None:
+            # Return root threads (no parent)
+            return [Thread(**thread_data) for thread_data in threads.values() 
+                    if thread_data.get('parent_thread_id') is None]
+        else:
+            # Return threads with specified parent
+            return [Thread(**thread_data) for thread_data in threads.values() 
+                    if thread_data.get('parent_thread_id') == parent_thread_id]
+    
     # ========== UTILITY METHODS ==========
     
     def get_statistics(self) -> Dict[str, Any]:
@@ -330,3 +351,15 @@ class StateBoundWorkloadService(IWorkloadService):
                 "total": len(workspaces)
             }
         }
+    
+    def clear_all(self) -> None:
+        """
+        Clear all threads and workspaces from state.
+        
+        Warning: This will delete all workload data.
+        """
+        # Clear all threads
+        self._state[Channel.THREADS] = {}
+        
+        # Clear all workspaces
+        self._state[Channel.WORKSPACES] = {}
