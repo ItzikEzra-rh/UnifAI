@@ -60,7 +60,7 @@ http {
         #}
 
         location ^/api2/(.*)$ {
-            redirect 307 ${DOLLAR}scheme://${MULTIAGENT_HOST}:${MULTIAGENT_PORT}/api/$1;
+            return 307 ${DOLLAR}scheme://${MULTIAGENT_HOST}:${MULTIAGENT_PORT}/api/$1;
         }
 
         location = /404.html {
