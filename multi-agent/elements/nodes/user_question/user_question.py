@@ -7,32 +7,33 @@ Uses clean task-based architecture with agentic threading.
 
 from elements.nodes.common.base_node import BaseNode
 from elements.nodes.common.capabilities.iem_capable import IEMCapableMixin
-from elements.nodes.common.task import Task
-from elements.nodes.common.agent_thread import AgentThread
+from elements.nodes.common.capabilities.workload_capable import WorkloadCapableMixin
+from elements.nodes.common.workload import Task
 from graph.state.graph_state import Channel
 from graph.state.state_view import StateView
 from elements.llms.common.chat.message import ChatMessage, Role
 from typing import ClassVar
 
 
-class UserQuestionNode(IEMCapableMixin, BaseNode):
+class UserQuestionNode(WorkloadCapableMixin, IEMCapableMixin, BaseNode):
     """
     Workflow initiator that processes user input.
     
-    Clean, task-focused design:
-    1. Convert user input to public conversation
-    2. Create agentic task with proper threading
-    3. Broadcast task to all adjacent nodes to start workflows
+    Enhanced workload management design:
+    1. Create thread and workspace for workflow
+    2. Copy conversation history to workspace
+    3. Convert user input to public conversation
+    4. Create agentic task with proper threading
+    5. Broadcast task to all adjacent nodes to start workflows
     """
 
-    # Channel permissions - now includes task_threads
+    # Channel permissions - includes workload channels
     READS: ClassVar[set[str]] = {Channel.USER_PROMPT, Channel.MESSAGES}
-    WRITES: ClassVar[set[str]] = {Channel.MESSAGES, Channel.TASK_THREADS}
+    WRITES: ClassVar[set[str]] = {Channel.MESSAGES}
 
     def __init__(self, *, name: str = "user_question", **kwargs):
         super().__init__(**kwargs)
         self.name = name
-
     def run(self, state: StateView) -> StateView:
         """Main execution - initiate workflow for user query."""
         prompt = state[Channel.USER_PROMPT]
@@ -42,10 +43,10 @@ class UserQuestionNode(IEMCapableMixin, BaseNode):
 
         user_query = prompt.strip()
 
-        # 1. Create and broadcast task to agent network with thread context
+        # Create thread, workspace, and initiate workflow
         self._initiate_workflow(user_query, state)
 
-        # 2. Promote to public conversation
+        # Promote to public conversation
         user_message = ChatMessage(role=Role.USER, content=user_query)
         self.promote_to_messages(user_message)
 
@@ -53,42 +54,47 @@ class UserQuestionNode(IEMCapableMixin, BaseNode):
 
     def _initiate_workflow(self, user_query: str, state: StateView) -> None:
         """
-        Create agentic task and broadcast to start workflow.
+        Create thread, workspace, and broadcast task to start workflow.
         
-        Creates proper thread ID, adds public messages to task_threads,
-        and broadcasts task with thread context.
+        Enhanced workload management:
+        1. Create thread for this workflow
+        2. Copy conversation history to workspace
+        3. Add workflow facts to workspace
+        4. Create and broadcast task with thread context
         """
-        # Create thread ID for this workflow
-        thread_id = AgentThread.create(
-            initiator=self.get_context().uid,
-            task_description="process_user_query"
+        # Create thread for this workflow
+        thread = self.create_thread(
+            title="User Query Processing",
+            objective=f"Process user query: {user_query[:50]}..."
         )
+        
+        print(f"UserQuestion: Created thread {thread.thread_id} for workflow")
+        
+        # Copy current conversation to workspace
+        self.copy_graphstate_messages_to_workspace(thread.thread_id)
+        
+        # Add workflow context to workspace
+        self.add_fact_to_workspace(thread.thread_id, f"User query: {user_query}")
+        self.add_fact_to_workspace(thread.thread_id, f"Initiated by: {self.uid}")
+        self.set_workspace_variable(thread.thread_id, "workflow_type", "user_query_processing")
+        self.set_workspace_variable(thread.thread_id, "initiator", self.uid)
 
-        # Get current public messages to establish thread context
-        current_messages = state.get(Channel.MESSAGES, [])
-
-        # Efficiently append public messages to task_threads for this thread
-        if current_messages:
-            # Get existing task_threads or create empty dict
-            task_threads = state.get(Channel.TASK_THREADS, {})
-
-            # Append to existing thread or create new one (pythonic way)
-            task_threads.setdefault(thread_id, []).extend(current_messages)
-
-            # Update state
-            state[Channel.TASK_THREADS] = task_threads
-
+        
         # Create clean, minimal task
         task = Task.create(
             content=user_query,
             should_respond=False,  # No direct response needed
-            thread_id=thread_id,
-            data={"role": Role.ASSISTANT}
+            thread_id=thread.thread_id,
+            created_by=self.uid
         )
-
+        
         # Broadcast to all adjacent nodes
         packet_ids = self.broadcast_task(task)
-
-        # Optional: Log workflow initiation (for debugging)
-        print(f"UserQuestion: Initiated workflow {thread_id} with {len(packet_ids)} agents")
-        print(f"Thread context: {len(current_messages)} messages")
+        
+        # Log workflow initiation with enhanced context
+        workspace_summary = self.get_workspace_summary(thread.thread_id)
+        print(f"UserQuestion: Initiated workflow {thread.thread_id}")
+        print(f"  Title: {thread.title}")
+        print(f"  Agents: {len(packet_ids)} adjacent nodes")
+        print(f"  Workspace: {workspace_summary['facts_count']} facts, {workspace_summary['conversation_history_count']} messages")
+        print(f"  Context: Conversation history copied to workspace")

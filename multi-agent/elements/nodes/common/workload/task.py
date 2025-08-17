@@ -7,9 +7,12 @@ Enhanced with fork functionality for task chaining and processing lineage.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any, List, Union, TYPE_CHECKING
 from datetime import datetime
 import uuid
+
+if TYPE_CHECKING:
+    from .models import AgentResult
 
 
 class Task(BaseModel):
@@ -30,6 +33,7 @@ class Task(BaseModel):
     
     # Coordination
     should_respond: bool = False  # Does this task need a response?
+    response_to: Optional[str] = None  # Original requester UID
     
     # Task Relationships
     correlation_task_id: Optional[str] = None  # Links response to original request
@@ -43,7 +47,7 @@ class Task(BaseModel):
     processed_at: Optional[datetime] = None
     
     # Results (only when responding)
-    result: Optional[Dict[str, Any]] = None
+    result: Optional[Union[Dict[str, Any], 'AgentResult']] = None
     error: Optional[Dict[str, Any]] = None
     
     # ========== CLASS METHODS (Existing) ==========
@@ -77,14 +81,14 @@ class Task(BaseModel):
         )
     
     @classmethod
-    def respond_success(cls, original_task: 'Task', result: dict, 
+    def respond_success(cls, original_task: 'Task', result: Union[Dict[str, Any], 'AgentResult'], 
                        processed_by: str) -> 'Task':
         """
         Create successful response task with processing metadata.
         
         Args:
             original_task: The task being responded to
-            result: The result data
+            result: The result data (dict or AgentResult)
             processed_by: Agent that processed the task and created the response
         """
         return cls(
@@ -120,7 +124,7 @@ class Task(BaseModel):
     
     # ========== INSTANCE METHODS (New Fork Functionality) ==========
     
-    def fork(self, content: str, processed_by: str, data: dict = None) -> 'Task':
+    def fork(self, content: str, processed_by: str, data: dict = None, result: Union[Dict[str, Any], 'AgentResult'] = None) -> 'Task':
         """
         Fork this task with new content after processing.
         
@@ -130,6 +134,7 @@ class Task(BaseModel):
         return Task(
             content=content,
             data=data or {},
+            result=result,
             should_respond=False,
             parent_task_id=self.task_id,        # This task becomes the parent
             thread_id=self.thread_id,           # Same workflow thread

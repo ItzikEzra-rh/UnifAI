@@ -166,3 +166,59 @@ def merge_task_threads(
         result[thread_id] = merged_messages
 
     return result
+
+
+def merge_threads(
+        existing: Optional[Dict[str, Any]],
+        new_item: Union[Dict[str, Any], Any]
+) -> Dict[str, Any]:
+    """
+    Merge strategy for threads channel.
+    
+    Structure: {thread_id: Thread}
+    
+    • Thread metadata management
+    • Overwrites existing threads with new data
+    • Preserves existing threads not in new_item
+    """
+    existing = existing or {}
+    
+    if not isinstance(new_item, dict):
+        return existing
+    
+    # Create result by copying existing
+    result = existing.copy()
+    
+    # Overwrite with new thread data
+    for thread_id, thread_data in new_item.items():
+        result[thread_id] = thread_data
+    
+    return result
+
+
+def merge_workspaces(
+        existing: Optional[Dict[str, Any]],
+        new_item: Union[Dict[str, Any], Any]
+) -> Dict[str, Any]:
+    """
+    Merge strategy for workspaces channel.
+    
+    Structure: {thread_id: Workspace}
+    
+    • Workspace data management
+    • Overwrites existing workspaces with new data
+    • Preserves existing workspaces not in new_item
+    """
+    existing = existing or {}
+    
+    if not isinstance(new_item, dict):
+        return existing
+    
+    # Create result by copying existing
+    result = existing.copy()
+    
+    # Overwrite with new workspace data
+    for thread_id, workspace_data in new_item.items():
+        result[thread_id] = workspace_data
+    
+    return result

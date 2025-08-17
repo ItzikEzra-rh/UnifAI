@@ -1,18 +1,19 @@
-from typing import Optional, Any, List, ClassVar
+from typing import Optional, Any, List, ClassVar, Set
 from copy import deepcopy
 from graph.state.state_view import StateView
-from graph.state.graph_state import Channel
 from elements.llms.common.chat.message import ChatMessage, Role
 from elements.nodes.common.base_node import BaseNode
 from elements.nodes.common.capabilities.iem_capable import IEMCapableMixin
 from elements.nodes.common.capabilities.llm_capable import LlmCapableMixin
 from elements.nodes.common.capabilities.retriever_capable import RetrieverCapableMixin
 from elements.nodes.common.capabilities.tool_capable import ToolCapableMixin
-from elements.nodes.common.task import Task
+from elements.nodes.common.capabilities.workload_capable import WorkloadCapableMixin
+from elements.nodes.common.workload import Task, AgentResult, WorkspaceContext
 from elements.providers.mcp_server_client.mcp_provider import McpProvider
 
 
 class CustomAgentNode(
+    WorkloadCapableMixin,
     IEMCapableMixin,
     LlmCapableMixin,
     RetrieverCapableMixin,
@@ -20,18 +21,17 @@ class CustomAgentNode(
     BaseNode
 ):
     """
-    Generic agent that processes tasks using LLM + tools.
+    Enhanced CustomAgentNode with workload integration.
     
-    Clean task-based behavior:
-    - Processes TaskPackets via handle_task_packet()
-    - Uses task_threads for conversation context
-    - Intelligent response handling based on task.should_respond
-    - Enhanced with task forking for processing chains
+    Features:
+    - Processes work using workspace conversation context
+    - Intelligent response routing based on task.should_respond
+    - Adds agent results to workspace
+    - Clean SOLID architecture with simple methods
     """
 
-    # Channel permissions - reads and writes to task_threads for conversation context
-    READS: ClassVar[set[str]] = {Channel.TASK_THREADS}
-    WRITES: ClassVar[set[str]] = {Channel.TASK_THREADS}
+    READS: ClassVar[set[str]] = set()
+    WRITES: ClassVar[set[str]] = set()
 
     def __init__(
             self,
@@ -71,140 +71,184 @@ class CustomAgentNode(
 
     def handle_task_packet(self, packet) -> None:
         """
-        Handle incoming task packets.
+        Process work using workspace conversation context.
         
-        Enhanced flow:
-        1. Extract task from packet
-        2. Mark task as being processed by this agent
-        3. Get thread conversation from task_threads
-        4. Build conversation history with task
-        5. Process with LLM + tools
-        6. Update task content to the thread
-        7. Handle response/fork based on task requirements
+        Flow:
+        1. Build conversation context (workspace + system + task)
+        2. Process with LLM
+        3. Add agent result to workspace
+        4. Route response based on task.should_respond
         """
         try:
-            # 1. Extract task from packet
+            # Extract and mark task as processed
             task = packet.extract_task()
+            task.mark_processed(self.uid)
 
-            # 2. Mark task as being processed
-            task.mark_processed(self.get_context().uid)
+            # 1. Build conversation context
+            conversation_context = self._build_conversation_context(task)
 
-            # 3. Get current state to access task_threads
-            state = self.get_state()
+            # 2. Process with LLM
+            assistant_response = self._process_with_llm(conversation_context)
 
-            # 4. Process the task
-            assistant_response = self._process_task_with_thread_context(task, state)
+            # 3. Create agent result
+            agent_result = self._create_agent_result(assistant_response)
 
-            # 5. Update task content to the thread
-            self._update_task_thread(task, state)
+            # 4. Add agent result to workspace
+            if task.thread_id:
+                self._add_agent_result_to_workspace(task.thread_id, agent_result)
 
-            # 6. Handle response/fork based on task requirements
-            self._handle_task_response(task, assistant_response, packet)
+            # 5. Route response using agent result
+            self._route_response(task, agent_result, packet)
+
+            print(f"CustomAgent {self.uid}: Processed task, added result to workspace")
 
         except Exception as e:
-            print(f"CustomAgent: Error processing task: {e}")
-            # Could send error response if needed
+            print(f"CustomAgent {self.uid}: Error processing task: {e}")
 
-    def _process_task_with_thread_context(
-            self,
-            task: Task,
-            state: StateView
-    ) -> ChatMessage:
+    def _build_conversation_context(self, task: Task) -> List[ChatMessage]:
         """
-        Process task using thread context from task_threads.
+        Build conversation context:
+        1. Get workspace conversation history
+        2. Add system message if configured
+        3. Add agent results context
+        4. Add current task with retriever context if available
+        """
+        context_messages = []
         
-        Builds conversation history from task_threads, adds system message,
-        appends current task, processes with LLM + tools.
-        """
-        # Get thread conversation from task_threads (deep copy to avoid mutation)
-        thread_conversations = state.get(Channel.TASK_THREADS, {})
-        thread_history = thread_conversations.get(task.thread_id, [])
-        conversation_history = deepcopy(thread_history)  # Don't modify original
-
-        # Add system message at the start if configured
+        # 1. Get workspace conversation history
+        if task.thread_id:
+            workspace_messages = self.get_recent_workspace_messages(task.thread_id, 20)
+            context_messages.extend(deepcopy(workspace_messages))
+        
+        # 2. Add system message at the start if configured
         if self.system_message:
             system_msg = ChatMessage(role=Role.SYSTEM, content=self.system_message)
-            if not conversation_history or conversation_history[0].role != Role.SYSTEM:
-                conversation_history.insert(0, system_msg)
+            if not context_messages or context_messages[0].role != Role.SYSTEM:
+                context_messages.insert(0, system_msg)
             else:
-                conversation_history[0] = system_msg
-
-        # Add current task as user message at the end
+                context_messages[0] = system_msg
+        
+        # 3. Add agent results context
+        agent_results_context = self._build_agent_results_context(task.thread_id)
+        if agent_results_context:
+            context_messages.append(agent_results_context)
+        
+        # 4. Add current task with retriever context if available
         user_msg = ChatMessage(role=Role.USER, content=task.content)
-
-        # Apply retrieval augmentation if available
         if self.retriever:
             user_msg = self.augment_with_context(user_msg)
+        context_messages.append(user_msg)
+        
+        return context_messages
 
-        conversation_history.append(user_msg)
+    def _build_agent_results_context(self, thread_id: str) -> Optional[ChatMessage]:
+        """Build agent results context from workspace."""
+        if not thread_id:
+            return None
+        
+        workspace_context = self.get_workspace_context(thread_id)
+        
+        if not workspace_context.results:
+            return None
+        
+        # Focus on agent results - organized by agent name in order
+        results_text = "PREVIOUS AGENT RESULTS:\n"
+        for i, result in enumerate(workspace_context.results, 1):
+            results_text += f"{i}. {result.agent_name}: {result.content}\n"
+        
+        return ChatMessage(role=Role.SYSTEM, content=results_text)
 
-        # Execute LLM processing with optional tools
+    def _process_with_llm(self, conversation_context: List[ChatMessage]) -> ChatMessage:
+        """Process conversation with LLM (with optional tools)."""
         if self.tools:
-            assistant = self._execute_tool_cycle(
-                initial_history=conversation_history,
+            return self._execute_tool_cycle(
+                initial_history=conversation_context,
                 chat_function=self._chat,
                 max_rounds=self.max_rounds
             )
         else:
-            assistant = self._chat(conversation_history)
+            return self._chat(conversation_context)
 
-        return assistant
-
-    def _update_task_thread(
-            self,
-            task: Task,
-            state: StateView
-    ) -> None:# TODO agent add its assistant to thread
+    def _route_response(self, task: Task, agent_result: AgentResult, original_packet) -> None:
         """
-        Update task_threads with the task content
+        Agent Decision Logic:
+        ┌─────────────────┐
+        │ Custom Agent    │  IF task.should_respond == True:
+        │                 │    
+        │ ┌─────────────┐ │    Check adjacent nodes:
+        │ │ Check       │ │    
+        │ │ adjacent    │ │    IF original_requester in my_adjacent_nodes:
+        │ │ nodes       │ │      → Respond directly
+        │ │             │ │    
+        │ │ IF requester│ │    ELSE:
+        │ │ adjacent:   │ │      → Broadcast with response request
+        │ │ → respond   │ │         (carry original requester info)
+        │ │             │ │  
+        │ │ ELSE:       │ │  ELSE (should_respond == False):
+        │ │ → broadcast │ │    → Normal broadcast
+        │ │ with        │ │
+        │ │ response    │ │
+        │ │ request     │ │
+        │ └─────────────┘ │
+        └─────────────────┘
         """
-        # Get current task_threads
-        task_threads = state.get(Channel.TASK_THREADS, {})
-
-        # append task content to the thread
-        if task.thread_id in task_threads:
-            role = task.data.get("role", Role.USER)  # Default to USER for task content
-            task_threads[task.thread_id].append(ChatMessage(role=role, content=task.content))
-
-    def _handle_task_response(
-            self,
-            original_task: Task,
-            assistant_response: ChatMessage,
-            original_packet
-    ) -> None:
-        """
-        Handle response based on task.should_respond.
-        
-        Enhanced logic with task forking:
-        - If should_respond=True: Create response task with correlation_task_id and processing metadata
-        - If should_respond=False: Fork task with agent's output and broadcast
-        """
-        if original_task.should_respond:
-            # Request-Response pattern: Create response task with processing metadata
-            response_task = Task.respond_success(
-                original_task=original_task,
-                result={"content": assistant_response.content},
-                processed_by=self.get_context().uid
-            )
-
-            # Reply to original sender
-            self.reply_task(original_packet, response_task)
-
+        if not task.should_respond:
+            # Normal broadcast
+            self._execute_normal_broadcast(task, agent_result)
         else:
-            # Chain pattern: Fork task with agent's output
-            forked_task = original_task.fork(
-                content=assistant_response.content,
-                processed_by=self.get_context().uid,
-                data={
-                    "role": Role.ASSISTANT,  # Mark as assistant output for conversation context
-                    "processing_agent": self.get_context().uid,
-                    "system_message": self.system_message  # Track which agent type processed this
-                }
-            )
+            # Check if original requester is adjacent
+            adjacent_nodes_uids = self._get_adjacent_nodes_uids()
+            if task.response_to and task.response_to in adjacent_nodes_uids:
+                # Direct response
+                self._execute_direct_response(task, agent_result, original_packet)
+            else:
+                # Broadcast with response request
+                self._execute_broadcast_with_response(task, agent_result)
 
-            # Broadcast forked task to adjacent nodes
-            self.broadcast_task(forked_task)
+    def _get_adjacent_nodes_uids(self) -> Set[str]:
+        """Get adjacent node UIDs from network topology."""
+        adjacent_nodes = self.get_adjacent_nodes()
+        return set(adjacent_nodes.keys())
 
-            # Log fork information for debugging
-            print(f"Agent {self.get_context().uid}: Forked task {original_task.task_id} → {forked_task.task_id}")
-            print(f"Content: {assistant_response.content[:100]}...")
+    def _execute_direct_response(self, task: Task, agent_result: AgentResult, original_packet) -> None:
+        """Send direct response to requester - finished work."""
+        response_task = Task.respond_success(
+            original_task=task,
+            result=agent_result,
+            processed_by=self.uid
+        )
+        self.reply_task(original_packet, response_task)
+
+    def _execute_broadcast_with_response(self, task: Task, agent_result: AgentResult) -> None:
+        """Broadcast with response request - finished work."""
+        response_task = task.fork(
+            content="finished work",
+            processed_by=self.uid,
+            result=agent_result
+        )
+        response_task.should_respond = True
+        response_task.response_to = task.response_to
+        
+        self.broadcast_task(response_task)
+
+    def _execute_normal_broadcast(self, task: Task, agent_result: AgentResult) -> None:
+        """Normal broadcast - continue work."""
+        forked_task = task.fork(
+            content="continue work",
+            processed_by=self.uid,
+            result=agent_result
+        )
+        self.broadcast_task(forked_task)
+
+    def _create_agent_result(self, assistant_response: ChatMessage) -> AgentResult:
+        """Create AgentResult from assistant response."""
+        return AgentResult(
+            content=assistant_response.content,
+            agent_id=self.uid,
+            agent_name=self.display_name
+        )
+    
+    def _add_agent_result_to_workspace(self, thread_id: str, agent_result: AgentResult) -> None:
+        """Add agent result to workspace."""
+        self.add_result_to_workspace(thread_id, agent_result)
+

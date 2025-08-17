@@ -85,7 +85,7 @@ class TaskPacket(BaseIEMPacket):
         Raises:
             ValueError: If payload is not a valid task
         """
-        from elements.nodes.common.task import Task
+        from elements.nodes.common.workload import Task
         return Task.model_validate(self.payload)
 
 

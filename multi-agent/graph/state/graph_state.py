@@ -2,7 +2,7 @@ from typing import Any, Dict, Iterator, List, Tuple, Set
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field, ConfigDict
 from elements.llms.common.chat.message import ChatMessage
-from .merge_strategies import merge_string_dicts, append_chat_messages, merge_dynamic_fields, append_iem_packets, merge_task_threads
+from .merge_strategies import merge_string_dicts, append_chat_messages, merge_dynamic_fields, append_iem_packets, merge_task_threads, merge_threads, merge_workspaces
 from enum import Enum
 
 
@@ -47,6 +47,15 @@ class GraphState(BaseModel):
     # Task-focused conversation threads (agentic context)
     # Structure: {thread_id: [ChatMessage, ...]}
     task_threads: Annotated[Dict[str, List[ChatMessage]], merge_task_threads] = Field(default_factory=dict)
+    
+    # —————– ENGENTIC WORKLOAD MANAGEMENT —————–
+    # Thread metadata management (Thread objects)
+    # Structure: {thread_id: Thread}
+    threads: Annotated[Dict[str, Any], merge_threads] = Field(default_factory=dict)
+    
+    # Workspace shared context management (Workspace objects)  
+    # Structure: {thread_id: Workspace}
+    workspaces: Annotated[Dict[str, Any], merge_workspaces] = Field(default_factory=dict)
 
     # —————– Dict-like API —————–
     def __getitem__(self, key: str) -> Any:

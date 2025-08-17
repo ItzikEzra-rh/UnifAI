@@ -1,163 +1,217 @@
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional, ClassVar
+from copy import deepcopy
 from elements.nodes.common.base_node import BaseNode
 from elements.nodes.common.capabilities.iem_capable import IEMCapableMixin
 from elements.nodes.common.capabilities.llm_capable import LlmCapableMixin
-from elements.nodes.common.models import AgentResult
+from elements.nodes.common.capabilities.workload_capable import WorkloadCapableMixin
+from elements.nodes.common.workload import Task, AgentResult
 from graph.state.graph_state import Channel
 from graph.state.state_view import StateView
 from elements.llms.common.chat.message import ChatMessage, Role
-from core.iem.packets import EventPacket, RequestPacket, ResponsePacket
-from core.iem.models import StandardEvents, IEMError
-from core.iem.payloads import TaskPayload
 
 
-class LLMMergerNode(IEMCapableMixin, LlmCapableMixin, BaseNode):
+class LLMMergerNode(WorkloadCapableMixin, IEMCapableMixin, LlmCapableMixin, BaseNode):
     """
-    Uses an LLM to intelligently merge outputs from multiple agents.
+    Enhanced LLM Merger with workspace integration.
     
-    Behavior:
-    - Events: Collects results and merges them, then broadcasts
-    - Requests: Merges provided inputs and replies with merged result
-    - Uses LLM to create coherent, unified responses from multiple inputs
+    Features:
+    - Merges latest task results from workspace
+    - Uses workspace conversation history for context
+    - Creates comprehensive merged responses
+    - Broadcasts task with merged result
     """
     
-    READS = set()
-    WRITES = set()
+    # Channel permissions
+    READS: ClassVar[set[str]] = set()
+    WRITES: ClassVar[set[str]] = set()
 
     def __init__(
         self,
         *,
         llm: Any,
-        system_message: str = "You are a skilled editor. Merge the following responses into a single, coherent, and comprehensive answer. Remove redundancy while preserving all important information.",
-        merge_prompt_template: str = "Please merge these responses into a single comprehensive answer:\n\n{inputs}\n\nProvide a unified, well-structured response:",
+        system_message: str = "You are a skilled editor. Merge the following agent responses into a single, coherent, and comprehensive answer. Remove redundancy while preserving all important information.",
         **kwargs
     ):
         super().__init__(llm=llm, system_message=system_message, **kwargs)
-        self.merge_prompt_template = merge_prompt_template
-        self._collected_results: Dict[str, List[str]] = {}  # thread_id -> results
+        self._collected_results: Dict[str, List[AgentResult]] = {}  # thread_id -> results
 
     def run(self, state: StateView) -> StateView:
-        """Process incoming IEM messages, then merge all collected events."""
-        # First, process all incoming messages (collect phase)
-        self.process_messages(state)
+        """Process incoming TaskPackets, collect results, then merge and broadcast."""
+        # First, collect all incoming task results
+        self.process_packets(state)
         
-        # Then, merge all collected events for each thread
-        self._merge_all_collected_events()
+        # Then, merge collected results for each thread
+        merged_results_by_thread = self._merge_all_collected_results()
+        
+        # Finally, broadcast all merged results
+        self._broadcast_all_merged_results(merged_results_by_thread)
         
         return state
 
-    def handle_event(self, event: EventPacket) -> None:
-        """Collect event results - merging happens after all events are processed."""
-        result = event.data.get("result")
-        if not result:
-            return
+    def handle_task_packet(self, packet) -> None:
+        """
+        Collect task results for later merging.
         
-        thread_id = event.thread_id or "default"
-        
-        # Just collect - no immediate merging
-        if thread_id not in self._collected_results:
-            self._collected_results[thread_id] = []
-        
-        self._collected_results[thread_id].append(result)
+        This phase just collects - merging happens in _merge_all_collected_results()
+        """
+        try:
+            # Extract task
+            task = packet.extract_task()
+            
+            if not task.thread_id:
+                print(f"MergerNode {self.uid}: No thread_id in task, skipping")
+                return
+            
+            # Extract result from task (if it has one)
+            if task.result:
+                agent_result = task.result
+                
+                # Collect the result
+                if task.thread_id not in self._collected_results:
+                    self._collected_results[task.thread_id] = []
+                
+                self._collected_results[task.thread_id].append(agent_result)
+                print(f"MergerNode {self.uid}: Collected result from {agent_result.agent_name} for thread {task.thread_id}")
+                
+        except Exception as e:
+            print(f"MergerNode {self.uid}: Error collecting task result: {e}")
 
-    def handle_request(self, request: RequestPacket) -> None:
-        """Merge provided inputs and reply (doesn't use collected events)."""
-        pass
-
-    def handle_response(self, response: ResponsePacket) -> None:
-        """Handle responses (not typically used by merger)."""
-        pass
-
-    def _merge_all_collected_events(self) -> None:
-        """Merge all collected events for each thread and broadcast results."""
+    def _merge_all_collected_results(self) -> Dict[str, AgentResult]:
+        """Merge all collected results for each thread. Returns merged results by thread_id."""
+        merged_results_by_thread = {}
         threads_to_merge = list(self._collected_results.keys())
         
         for thread_id in threads_to_merge:
             results = self._collected_results.get(thread_id, [])
-            if results:  # Only merge if there are results
-                self._merge_and_broadcast(thread_id)
+            if len(results) >= 2:  # Only merge if we have multiple results
+                merged_result = self._merge_results_for_thread(thread_id, results)
+                merged_results_by_thread[thread_id] = merged_result
+                # Clean up after merging
+                self._collected_results.pop(thread_id, None)
+        
+        return merged_results_by_thread
 
-    def _merge_and_broadcast(self, thread_id: str) -> None:
-        """Merge collected results and broadcast the unified result."""
-        results = self._collected_results.get(thread_id, [])
-        if not results:
-            return
-        
-        try:
-            # Merge using LLM
-            merged_result = self._merge_inputs(results, thread_id)
-            
-            # Broadcast merged result
-            self.broadcast_event(
-                StandardEvents.TASK_COMPLETE,
-                TaskPayload(
-                    result=merged_result.content,
-                    artifacts=merged_result.artifacts,
-                    metrics=merged_result.metrics
-                ).model_dump(),
-                thread_id=thread_id
-            )
-            
-            # Clean up
-            self._collected_results.pop(thread_id, None)
-            
-        except Exception as e:
-            # Log error but don't crash
-            print(f"Error merging results: {e}")
+    def _broadcast_all_merged_results(self, merged_results_by_thread: Dict[str, AgentResult]) -> None:
+        """Broadcast all merged results."""
+        for thread_id, merged_result in merged_results_by_thread.items():
+            try:
+                self._broadcast_merged_task_for_thread(thread_id, merged_result)
+                print(f"MergerNode {self.uid}: Broadcasted merged result for thread {thread_id}")
+            except Exception as e:
+                print(f"MergerNode {self.uid}: Error broadcasting merged result for thread {thread_id}: {e}")
 
-    def _merge_inputs(self, inputs: List[str], thread_id: str = None) -> AgentResult:
-        """Use LLM to merge multiple inputs into a coherent response."""
-        if not inputs:
-            raise ValueError("No inputs to merge")
+    def _merge_results_for_thread(self, thread_id: str, results: List[AgentResult]) -> AgentResult:
+        """Complete merge logic for results - returns merged AgentResult."""
+        # Get workspace context for conversation history
+        workspace_context = self.get_workspace_context(thread_id)
         
-        if len(inputs) == 1:
-            # Single input - no merging needed
-            return AgentResult(
-                content=inputs[0],
-                artifacts={"input_count": 1},
-                metrics={"merged": False}
-            )
+        # Build conversation context for merging
+        conversation_context = self._build_conversation_context_for_merge(workspace_context, results)
         
-        # Format inputs for merging
-        formatted_inputs = []
-        for i, inp in enumerate(inputs, 1):
-            formatted_inputs.append(f"**Response {i}:**\n{inp}")
+        # Process with LLM
+        assistant_response = self._process_with_llm(conversation_context)
         
-        inputs_text = "\n\n".join(formatted_inputs)
-        merge_prompt = self.merge_prompt_template.format(inputs=inputs_text)
+        # Create merged agent result
+        agent_result = self._create_agent_result(assistant_response, results)
         
-        # Build conversation for LLM
-        history = self.get_chat_context(thread_id=thread_id)
+        # Add to workspace
+        # self._add_agent_result_to_workspace(thread_id, agent_result)
         
-        # Add system message if not already present
+        print(f"MergerNode {self.uid}: Completed merge of {len(results)} results for thread {thread_id}")
+        
+        return agent_result
+
+    def _build_conversation_context_for_merge(self, workspace_context, results: List[AgentResult]) -> List[ChatMessage]:
+        """
+        Build conversation context for merging:
+        1. Get workspace conversation history
+        2. Add system message if configured
+        3. Add agent results context for merging
+        4. Add merge instruction
+        """
+        context_messages = []
+        
+        # 1. Get workspace conversation history
+        if workspace_context.conversation_history:
+            context_messages.extend(deepcopy(workspace_context.conversation_history[-10:]))  # Last 10 messages
+        
+        # 2. Add system message at the start if configured
         if self.system_message:
             system_msg = ChatMessage(role=Role.SYSTEM, content=self.system_message)
-            if not history or history[0].role != Role.SYSTEM:
-                history.insert(0, system_msg)
+            if not context_messages or context_messages[0].role != Role.SYSTEM:
+                context_messages.insert(0, system_msg)
             else:
-                history[0] = system_msg
+                context_messages[0] = system_msg
         
-        # Add merge request
-        user_msg = ChatMessage(role=Role.USER, content=merge_prompt)
-        history.append(user_msg)
+        # 3. Add agent results context for merging
+        results_context = self._build_results_merge_context(results)
         
-        # Get merged response from LLM
-        assistant = self._chat(history)
+        # 4. Add merge instruction
+        user_msg = ChatMessage(role=Role.USER, content=f"{results_context}\n\nPlease merge the agent responses above into a single, comprehensive answer according to the system message.")
+        context_messages.append(user_msg)
         
-        # Update thread context
-        self.add_to_chat_context(user_msg, thread_id=thread_id)
-        self.add_to_chat_context(assistant, thread_id=thread_id)
+        return context_messages
+
+    def _build_results_merge_context(self, results: List[AgentResult]) -> Optional[ChatMessage]:
+        """Build context message with agent results to merge."""
+        if not results:
+            return None
         
+        # Format results for merging
+        merge_text = "AGENT RESPONSES TO MERGE:\n\n"
+        for i, result in enumerate(results, 1):
+            merge_text += f"**{result.agent_name}:**\n{result.content}\n\n"
+
+        return merge_text
+
+    def _process_with_llm(self, conversation_context: List[ChatMessage]) -> ChatMessage:
+        """Process conversation with LLM."""
+        return self._chat(conversation_context)
+
+    def _create_agent_result(self, assistant_response: ChatMessage, original_results: List[AgentResult]) -> AgentResult:
+        """Create AgentResult from merged response."""
         return AgentResult(
-            content=assistant.content,
+            content=assistant_response.content,
+            agent_id=self.uid,
+            agent_name=getattr(self, 'name', self.uid),
             artifacts={
-                "input_count": len(inputs),
-                "original_inputs": inputs,
-                "thread_id": thread_id
+                "merged_count": len(original_results),
+                "source_agents": [result.agent_name for result in original_results],
+                "merge_type": "llm_merge"
             },
             metrics={
-                "merged": True,
-                "input_length": sum(len(inp) for inp in inputs),
-                "output_length": len(assistant.content)
+                "input_results": len(original_results),
+                "input_length": sum(len(result.content) for result in original_results),
+                "output_length": len(assistant_response.content)
             }
         )
+
+    def _add_agent_result_to_workspace(self, thread_id: str, agent_result: AgentResult) -> None:
+        """Add merged agent result to workspace."""
+        self.add_result_to_workspace(thread_id, agent_result)
+
+    def _broadcast_merged_task_for_thread(self, thread_id: str, agent_result: AgentResult) -> None:
+        """Broadcast merged task for a specific thread."""
+        # Create a new task for the merged result
+        merged_task = Task.create(
+            content="Merged agent responses - continue work",
+            thread_id=thread_id,
+            created_by=self.uid
+        )
+        # Add the merged result to the task
+        merged_task.result = agent_result
+        
+        self.broadcast_task(merged_task)
+        print(f"MergerNode {self.uid}: Broadcasted merged task for thread {thread_id}")
+
+    def _broadcast_merged_task(self, original_task: Task, agent_result: AgentResult) -> None:
+        """Broadcast task with merged result."""
+        merged_task = original_task.fork(
+            content="Merged agent responses - continue work",
+            processed_by=self.uid,
+            result=agent_result
+        )
+        
+        self.broadcast_task(merged_task)
+        
+        print(f"MergerNode {self.uid}: Broadcasted merged task {merged_task.task_id}")

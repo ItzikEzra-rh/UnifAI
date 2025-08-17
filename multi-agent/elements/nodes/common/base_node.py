@@ -115,6 +115,16 @@ class BaseNode(SupportsStreaming, SupportsStateContext, ABC):
         if self._ctx is None:
             raise RuntimeError("Context not available - called outside of execution")
         return self._ctx
+    
+    def get_adjacent_nodes(self) -> dict:
+        """
+        Get adjacent nodes from context.
+        
+        Returns:
+            Dict[str, ElementCard] mapping of adjacent node UIDs to their ElementCard info
+        """
+        context = self.get_context()
+        return getattr(context, 'adjacent_nodes', {})
 
 
 
