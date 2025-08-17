@@ -52,7 +52,7 @@ http {
         #}
 
         location ^/api1/(.*)$ {
-            return 307  ${DOLLAR}scheme://${DATAPIPELINEHUB_HOST}:${DATAPIPELINEHUB_PORT}/api/$1;
+            return 307  ${DATAPIPELINEHUB_HOST}:${DATAPIPELINEHUB_PORT}/api/$1;
         }
 
         #location /api2 {
@@ -60,7 +60,7 @@ http {
         #}
 
         location ^/api2/(.*)$ {
-            return 307 ${DOLLAR}scheme://${MULTIAGENT_HOST}:${MULTIAGENT_PORT}/api/$1;
+            return 307 ${MULTIAGENT_HOST}:${MULTIAGENT_PORT}/api/$1;
         }
 
         location = /404.html {
