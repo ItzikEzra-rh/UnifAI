@@ -12,6 +12,8 @@
 #   MULTIAGENT_PORT: "8003"
 #   MULTIAGENT_HOST: "10.46.254.131"
 #   SCHEME: "https"
+debug: false
+command: ["/bin/sh", "-c", "sleep infinity"]
 
 env:
   NGINX_PORT: "8080"

@@ -28,7 +28,7 @@ spec:
       {{- end }}
       image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
       imagePullPolicy: {{ .Values.image.pullPolicy }}
-      {{- if .Values.command }}
+      {{- if .Values.debug }}
       command: {{ .Values.command | toYaml | nindent 8 }}
       {{- end }}
       ports:
