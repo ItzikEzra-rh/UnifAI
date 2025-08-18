@@ -202,7 +202,6 @@ class LLMMergerNode(WorkloadCapableMixin, IEMCapableMixin, LlmCapableMixin, Base
         merged_task.result = agent_result
         
         self.broadcast_task(merged_task)
-        print(f"MergerNode {self.uid}: Broadcasted merged task for thread {thread_id}")
 
     def _broadcast_merged_task(self, original_task: Task, agent_result: AgentResult) -> None:
         """Broadcast task with merged result."""

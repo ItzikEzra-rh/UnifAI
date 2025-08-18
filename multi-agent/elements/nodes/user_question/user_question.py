@@ -94,7 +94,3 @@ class UserQuestionNode(WorkloadCapableMixin, IEMCapableMixin, BaseNode):
         # Log workflow initiation with enhanced context
         workspace_summary = self.get_workspace_summary(thread.thread_id)
         print(f"UserQuestion: Initiated workflow {thread.thread_id}")
-        print(f"  Title: {thread.title}")
-        print(f"  Agents: {len(packet_ids)} adjacent nodes")
-        print(f"  Workspace: {workspace_summary['facts_count']} facts, {workspace_summary['conversation_history_count']} messages")
-        print(f"  Context: Conversation history copied to workspace")
