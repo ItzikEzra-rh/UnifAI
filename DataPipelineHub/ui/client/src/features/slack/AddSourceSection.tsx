@@ -202,60 +202,49 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
     const settingsToUse = lastSelectedChannel 
       ? (channelSettings[lastSelectedChannel] || defaultChannelSettings)
       : defaultChannelSettings;
-      
-    // CRITICAL FIX: Get ALL channels from React Query cache for filtering
-    // regardless of current scope, so we don't lose selections from other scopes
-    let allChannelsForFiltering: Channel[] = [];
-    
+
+    // Always include currently loaded channels (including search results)
+    // and then enrich with any cached channels from other scopes.
+    let allChannelsForFiltering: Channel[] = [...channels];
+
     try {
-      // Try to get cached data from all scopes
+      // Try to get cached data from all scopes without search filters
       const publicCacheData = queryClient.getQueryData([CACHE_KEY, CHANNEL_TYPE.PUBLIC, '']) as any;
       const privateCacheData = queryClient.getQueryData([CACHE_KEY, CHANNEL_TYPE.PRIVATE, '']) as any;
       const allCacheData = queryClient.getQueryData([CACHE_KEY, ALL_CHANNEL_TYPES, '']) as any;
-      
-      // Use cached "all" data first, then fall back to merging public + private cache
+
+      let cached: Channel[] = [];
       if (allCacheData?.pages) {
-        allChannelsForFiltering = allCacheData.pages.flatMap((page: any) => page.channels);
-      } else if (publicCacheData?.pages || privateCacheData?.pages) {
+        cached = allCacheData.pages.flatMap((page: any) => page.channels);
+      } else {
         const publicChannels = publicCacheData?.pages?.flatMap((page: any) => page.channels) || [];
         const privateChannels = privateCacheData?.pages?.flatMap((page: any) => page.channels) || [];
-        const mergedChannels = [...publicChannels, ...privateChannels];
-        allChannelsForFiltering = Array.from(
-          new Map(mergedChannels.map(c => [c.channel_id, c])).values()
-        );
-      } else {
-        // If no cache available, make API calls as fallback
-        const [pubResponse, privResponse] = await Promise.all([
-          fetchAvailableSlackChannels(CHANNEL_TYPE.PUBLIC, { limit: 1000 }),
-          fetchAvailableSlackChannels(CHANNEL_TYPE.PRIVATE, { limit: 1000 }),
-        ]);
-
-        const mergedChannels = [...pubResponse.channels, ...privResponse.channels];
-        allChannelsForFiltering = Array.from(
-          new Map(mergedChannels.map(c => [c.channel_id, c])).values()
-        );
+        cached = [...publicChannels, ...privateChannels];
       }
+
+      // Merge unique by channel_id
+      const merged = [...allChannelsForFiltering, ...cached];
+      allChannelsForFiltering = Array.from(new Map(merged.map(c => [c.channel_id, c])).values());
     } catch (error) {
-      console.error('Failed to get all channels, falling back to current scope channels:', error);
-      // Fallback to current scope channels if everything fails
-      allChannelsForFiltering = channels;
+      // Keep using current channels if cache access fails
+      console.error('Failed to read channel caches; proceeding with current channels only:', error);
     }
-    
+
     const filtered = allChannelsForFiltering
       .filter(c => selectedChannels.includes(getChannelUniqueId(c)));
-      
+
     const result = filtered.map(c => ({
-        ...c,
-        settings: {
-          dateRange: settingsToUse.dateRange,
-          communityPrivacy: 'public' as const,
-          includeThreads: settingsToUse.includeThreads,
-          processFileContent: settingsToUse.processFileContent,
-        }
-      }));
-    
+      ...c,
+      settings: {
+        dateRange: settingsToUse.dateRange,
+        communityPrivacy: 'public' as const,
+        includeThreads: settingsToUse.includeThreads,
+        processFileContent: settingsToUse.processFileContent,
+      }
+    }));
+
     return result;
-  }, [selectedChannels, channelSettings, lastSelectedChannel, scope, channels, queryClient]);
+  }, [selectedChannels, channelSettings, lastSelectedChannel, channels, queryClient]);
 
   useImperativeHandle(ref, () => ({
     getSelectedChannels,
