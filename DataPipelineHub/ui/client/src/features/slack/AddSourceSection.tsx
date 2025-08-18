@@ -199,26 +199,24 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
   });
 
   const getSelectedChannels = useCallback(async (): Promise<ChannelWithSettings[]> => {
-    // Use settings from the last selected channel for all selected channels
-    const settingsToUse = lastSelectedChannel 
-      ? (channelSettings[lastSelectedChannel] || defaultChannelSettings)
-      : defaultChannelSettings;
-
-    // Build payload from persisted selected entities first, falling back to current list
-    const resolvedSelected: Channel[] = selectedChannels
-      .map(id => selectedChannelEntities[id] || channels.find(c => getChannelUniqueId(c) === id))
-      .filter((c): c is Channel => Boolean(c));
-
-    return resolvedSelected.map(c => ({
-      ...c,
-      settings: {
-        dateRange: settingsToUse.dateRange,
-        communityPrivacy: 'public' as const,
-        includeThreads: settingsToUse.includeThreads,
-        processFileContent: settingsToUse.processFileContent,
-      }
-    }));
-  }, [selectedChannels, selectedChannelEntities, channelSettings, lastSelectedChannel, channels]);
+    // Build payload per-channel using its own saved settings
+    const result: ChannelWithSettings[] = [];
+    for (const id of selectedChannels) {
+      const channel = selectedChannelEntities[id] || channels.find(c => getChannelUniqueId(c) === id);
+      if (!channel) continue;
+      const settingsForThisChannel = channelSettings[id] || defaultChannelSettings;
+      result.push({
+        ...channel,
+        settings: {
+          dateRange: settingsForThisChannel.dateRange,
+          communityPrivacy: 'public' as const,
+          includeThreads: settingsForThisChannel.includeThreads,
+          processFileContent: settingsForThisChannel.processFileContent,
+        }
+      });
+    }
+    return result;
+  }, [selectedChannels, selectedChannelEntities, channelSettings, channels]);
 
   useImperativeHandle(ref, () => ({
     getSelectedChannels,
