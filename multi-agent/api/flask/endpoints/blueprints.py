@@ -86,7 +86,7 @@ def blueprint_draft_schema_get():
 
 
 @blueprints_bp.route("/remove.blueprint", methods=["DELETE"])
-@from_body({
+@from_query({
     "blueprint_id": fields.Str(data_key="blueprintId", required=True)
 })
 def remove_blueprint(blueprint_id):
