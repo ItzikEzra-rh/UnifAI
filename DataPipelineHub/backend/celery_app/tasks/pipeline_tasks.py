@@ -14,8 +14,8 @@ from shared.logger import logger
 from config.constants import DataSource, PipelineStatus
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
 
-app_config = AppConfig()
-upload_folder = app_config.get("upload_folder", "")
+app_config = AppConfig.get_instance()
+upload_folder = app_config.upload_folder
 
 # Initialize mongo storage for registration
 mongo_storage = get_mongo_storage()
