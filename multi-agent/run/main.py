@@ -12,7 +12,7 @@ from resources.repository.mongo_repository import MongoResourceRepository
 from blueprints.resolver import BlueprintResolver
 from core.app_container import AppContainer
 from typing import Iterator, Any, Dict, List
-from config.app_config import get_app_config
+from config.app_config import AppConfig
 from rich.live import Live
 from rich.panel import Panel
 from rich.layout import Layout
@@ -188,7 +188,7 @@ from dataclasses import dataclass, asdict
 import json
 
 if __name__ == "__main__":
-    config = get_app_config()
+    config = AppConfig.get_instance()
     app = AppContainer(config)
 
     blueprint_loader = YAMLBlueprintLoader()
