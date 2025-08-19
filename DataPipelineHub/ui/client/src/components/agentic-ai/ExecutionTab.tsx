@@ -406,13 +406,13 @@ export default function ExecutionTab({
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="p-0 flex-grow overflow-y-auto">
+                <CardContent className="p-0 flex-grow">
                   {chatSessions.length === 0 ? (
                     <div className="p-4 text-center text-gray-400 text-sm">
                       No chat sessions available
                     </div>
                   ) : (
-                    <div className="py-2">
+                    <div className="h-full max-h-[72.5vh] overflow-y-auto py-2">
                       {chatSessions.map((session) => (
                         <motion.div
                           key={session.id}
