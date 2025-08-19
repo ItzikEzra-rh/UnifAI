@@ -8,6 +8,9 @@ import {
 } from "lucide-react";
 import { GraphNode } from "../../pages/AgenticAI"
 import { useStreamingData, NodeEntry } from "./StreamingDataContext"
+import axios from '../../http/axiosAgentConfig'
+import { GraphFlow } from './graphs/interfaces'
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LogEntry {
   id: string;
@@ -35,8 +38,7 @@ const getRandomAgentIcon = (): JSX.Element => {
 };
 
 type ExecutionStreamProps = {
-  runId?: string;
-  selectedGraphNodes: GraphNode[] | null;
+  blueprintId: string;
   isLiveRequest: boolean;
 };
 
@@ -48,7 +50,7 @@ type AgentNode = {
 }
 
 export default function ExecutionStream({
-  runId, selectedGraphNodes, isLiveRequest
+  blueprintId, isLiveRequest
 }: ExecutionStreamProps): React.ReactElement {
   const [logs, setLogs] = useState<LogEntry[]>([
     {
@@ -66,19 +68,50 @@ export default function ExecutionStream({
   const [isPaused, setIsPaused] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const { nodeListRef } = useStreamingData();
+  const { user } = useAuth();
+
+  const extractNodeData = (graphFlow: GraphFlow): { id: string; name: string; description: string | null }[] => {
+    if (!graphFlow || !graphFlow.plan) {
+      return [];
+    }
+  
+    return graphFlow.plan.map(item => ({
+      id: item.uid,
+      name: item.meta?.display_name || "General Node",
+      description: item.meta?.description || null
+    }));
+  };
   
   // Create agent nodes from selected graph nodes on component mount
   useEffect(() => {
-    const nodes = selectedGraphNodes?.map(node => ({
-      id: node.id,
-      name: node.name,
-      description: node.description,
-      icon: getRandomAgentIcon(),
-    })) || null;
+    const getGraphNodes = async () => {
+      const response = await axios.get(`/blueprints/available.blueprints.get?userId=${user?.username || "default"}`);
+      const blueprintObjects = response.data;
+      
+      // Find the specific graph flow by blueprint_id
+      const targetBlueprintObj = blueprintObjects.find((blueprintObj: any, index: number) => 
+        blueprintObj.blueprint_id === blueprintId
+      );
+  
+      return targetBlueprintObj ? extractNodeData(targetBlueprintObj.spec_dict) : [];
+    }
+  
+    const fetchAndSetNodes = async () => {
+      const nodeData = await getGraphNodes();
+      
+      const nodes = nodeData.map((node: { id: string; name: string; description: string | null }) => ({
+        id: node.id,
+        name: node.name,
+        description: node.description,
+        icon: getRandomAgentIcon(),
+      })) || null;
 
-    setAgentNodes(nodes);
-    setSelectedNode(nodes && nodes.length > 0 ? nodes[0] : null);
-  }, [selectedGraphNodes]);
+      setAgentNodes(nodes);
+      setSelectedNode(nodes && nodes.length > 0 ? nodes[0] : null);
+    };
+  
+    fetchAndSetNodes();
+  }, [blueprintId]);
 
   // Set up polling interval to get real-time node data
   useEffect(() => {

@@ -76,7 +76,7 @@ def get_root_dir() -> Path:
 def run_async(awaitable: Any) -> Any:
     """
     Run awaitable using anyio for loop-agnostic execution.
-    
+
     This approach:
     1. Uses current event loop if available (async context)
     2. Creates new event loop if none exists (sync context)
