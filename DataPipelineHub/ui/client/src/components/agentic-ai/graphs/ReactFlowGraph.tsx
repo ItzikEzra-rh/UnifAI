@@ -492,7 +492,7 @@ export default function ReactFlowGraph({
   const convertGraphFlowToReactFlow = async (graphId: string) => {
     try {
       setIsLoading(true);
-      const response = await axios.get('/api/blueprints/available.blueprints.get');
+      const response = await axios.get('/blueprints/available.blueprints.get');
       const plans = response.data.flatMap((plan) => plan);
       
       // Find the specific graph flow by ID
