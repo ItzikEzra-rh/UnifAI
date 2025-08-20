@@ -37,8 +37,8 @@ spec:
           exit 1
         fi
         
-        {{- /* Use the single model configuration */ -}}
-        {{- $model := .Values.model -}}
+        {{/* Use the single model configuration */}}
+        {{- $model := .Values.model }}
         
         # Test 2: Models Endpoint
         echo "🤖 Test 2: Models Endpoint"

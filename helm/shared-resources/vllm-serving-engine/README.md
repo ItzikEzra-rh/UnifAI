@@ -30,6 +30,7 @@ The chart provides model-specific values files that override the base configurat
 2. **`../values/vllm-qwen3-32b-values.yaml`** - Qwen3-32B-FP8 specific configuration
 3. **`../values/vllm-qwen3-8b-values.yaml`** - Qwen3-8B specific configuration
 4. **`../values/vllm-oss-20b-values.yaml`** - GPT-OSS-20B specific configuration
+5. **`../values/vllm-internlm2.5-7b-chat-1m-values.yaml`** - InternLM2.5-7B-Chat-1M specific configuration
 
 > **Note**: The `vllm` section in `values.yaml` contains general vLLM configuration that applies to the deployment. Health probes, environment variables, and other infrastructure settings are also general configuration. Model-specific settings are handled through the `model` section.
 
@@ -80,6 +81,49 @@ model:
     VLLM_ATTENTION_BACKEND: "TRITON_ATTN_VLLM_V1"
 ```
 
+#### InternLM2.5-7B-Chat-1M (Production Model - 4 GPU Setup)
+```yaml
+model:
+  name: "internlm/internlm2_5-7b-chat-1m"
+  localModelPath: "/models/internlm2_5-7b-chat-1m"
+  maxModelLen: "1025056"  # ~1M tokens (maximum feasible on 4x A100-40GB)
+  quantization: ""  # No quantization for optimal quality with 1M context
+  toolCallParser: ""
+  ropeScaling: {}  # Model natively supports 1M tokens without RoPE scaling
+  # Custom arguments optimized for 1M context processing with 4 GPUs
+  customArgs:
+    - "--trust-remote-code"  # Required for InternLM models
+    - "--max-num-batched-tokens=4096"  # Increased batching for multi-GPU setup
+    - "--max-num-seqs=4"  # Allow more sequences with 4 GPUs
+    - "--disable-log-stats"
+    - "--enforce-eager"  # Disable CUDA graphs for compatibility with long context
+  env:
+    VLLM_USE_MODELSCOPE: "False"
+    VLLM_TRUST_REMOTE_CODE: "True"
+
+# 4-GPU tensor parallel configuration
+vllm:
+  gpuMemoryUtilization: "0.95"  # Maximum utilization for 4-GPU setup
+  tensorParallelSize: "4"  # 4-way tensor parallelism for full 1M context
+
+# Resource requirements for 4-GPU setup
+resources:
+  limits:
+    cpu: '8'
+    memory: 48Gi
+    nvidia.com/gpu: 4  # 4 GPUs required for full 1M context
+  requests:
+    cpu: '4'
+    memory: 32Gi
+    nvidia.com/gpu: 4
+```
+
+> **Hardware Requirements for InternLM2.5-7B-Chat-1M:**
+> - **Minimum**: 4x A100-40GB GPUs for ~1M token context (1,025,056 tokens)
+> - **Recommended**: 4x A100-80GB GPUs for full 1M token context
+> - **Memory**: 48Gi system RAM, 32Gi shared memory
+> - **Performance**: ~3.76 GiB model per GPU, 33.25 GiB KV cache per GPU
+
 ### Usage Examples
 
 **Deploy with Qwen2-0.5B-Instruct (default - test model):**
@@ -107,6 +151,17 @@ helm install vllm-qwen3-8b ./helm/shared-resources/vllm-serving-engine \
 # Using GPT-OSS-20B specific values file
 helm install vllm-gpt-oss ./helm/shared-resources/vllm-serving-engine \
   -f ../values/vllm-oss-20b-values.yaml
+```
+
+**Deploy with InternLM2.5-7B-Chat-1M (production model - 4 GPU setup):**
+```bash
+# Using InternLM2.5-7B-Chat-1M specific values file (requires 4x A100 GPUs)
+helm install vllm-internlm2.5-7b ./helm/shared-resources/vllm-serving-engine \
+  -f ../values/vllm-internlm2.5-7b-chat-1m-values.yaml
+
+# Monitor deployment (takes 10-12 minutes to start with 4 GPUs)
+kubectl get pods -w
+kubectl logs -f deployment/vllm-internlm2.5-7b-vllm-serving-engine
 ```
 
 **Custom model configuration:**
@@ -596,6 +651,14 @@ export VLLM_HTTP="http://your-vllm-endpoint"
 ✅ Resource usage: ~3 CPU cores, 14GB memory during 80K processing
 ✅ Response quality: Coherent, contextually appropriate text generation
 ```
+
+#### InternLM2.5-7B-Chat-1M Performance (4-GPU Setup)
+- **Context Length**: 1,025,056 tokens (~1M tokens)
+- **GPU Configuration**: 4x A100-40GB with tensor parallelism
+- **Memory Usage**: 3.76 GiB model + 33.25 GiB KV cache per GPU
+- **Startup Time**: 10-12 minutes for multi-GPU initialization
+- **Throughput**: 4x concurrent sequences, 4096 token batches
+- **Communication**: NCCL-optimized GPU-to-GPU tensor parallel communication
 
 #### Performance Characteristics
 - **Processing Capability**: Successfully handles 80,000+ token contexts
