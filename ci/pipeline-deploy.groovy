@@ -121,7 +121,7 @@ def deployModules(module){
 def deleteRunningApplication(){
     echo("Removing running UnifAI application")
 
-    def charts = ["dataflow", "multiagent", "shared-resources"]
+    def charts = ["dataflow", "multiagent", "shared-resources","ui"]
 
     charts.each { chart ->
         sh("podman exec -t helmfile bash -c 'helmfile destroy -f ${chart}.yaml.gotmpl --deleteWait'")
