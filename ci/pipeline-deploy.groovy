@@ -129,7 +129,7 @@ def deleteRunningApplication(){
 
     echo("Wait for resource deletion...")
     sh("""
-        until ! kubectl get deployment,statefulset,svc | grep 'unifai\\|qdrant\\|mongo\\|rabbitmq'; do
+        until ! oc get deployment,statefulset,svc | grep 'unifai\\|qdrant\\|mongo\\|rabbitmq'; do
             echo 'Waiting for deployment deletion...'
             sleep 5
         done
