@@ -48,7 +48,7 @@ export default function AgenticAI() {
         'userId': user?.username || "default",
       }
 
-      const response = await axios.post('/api/sessions/user.session.create', selectedBlueprint);
+      const response = await axios.post('/sessions/user.session.create', selectedBlueprint);
       setSelectedGraphId(response.data)
 
       // Switch to the Execution tab

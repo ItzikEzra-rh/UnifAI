@@ -218,7 +218,7 @@ export default function ChatInterface({
   const getSessionState = async (sid: string) => {
     try {
       // Make API call to get the session state
-      const response = await axios.get(`/api/session.state.get?sessionId=${sid}`);
+      const response = await axios.get(`/session.state.get?sessionId=${sid}`);
       const data = response.data
       
       if (data && data.response) {
