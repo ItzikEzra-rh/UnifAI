@@ -31,19 +31,8 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       
-      {{- /* Determine which model to use */ -}}
-      {{- $activeModel := dict -}}
-      {{- range $modelKey, $modelConfig := .Values.models -}}
-        {{- if $modelConfig.enabled -}}
-          {{- $_ := set $activeModel "key" $modelKey -}}
-          {{- $_ := set $activeModel "config" $modelConfig -}}
-        {{- end }}
-      {{- end -}}
-      
-      {{- /* Ensure at least one model is enabled */ -}}
-      {{- if not $activeModel -}}
-        {{- fail "No model is enabled. Please enable at least one model in the 'models' section or use a model-specific values file." -}}
-      {{- end -}}
+      {{- /* Use the single model configuration */ -}}
+      {{- $model := .Values.model -}}
       
       {{- if .Values.volumes.modelCache.enabled }}
       initContainers:
@@ -53,7 +42,7 @@ spec:
         args:
         - |
           echo "=== Basic Model Download ==="
-          echo "Model: {{ $activeModel.config.model }}"
+          echo "Model: {{ $model.name }}"
           
           # Create cache directory if it doesn't exist
           mkdir -p /models/.cache
@@ -67,13 +56,13 @@ spec:
           # Initialize git-lfs if available
           git lfs install --skip-repo 2>/dev/null || echo "Using basic git without LFS"
           
-          MODEL_DIR="models--$(echo '{{ $activeModel.config.model }}' | tr '/' '-')"
+          MODEL_DIR="models--$(echo '{{ $model.name }}' | tr '/' '-')"
           
-          {{- if $activeModel.config.forceDownload }}
+          {{- if $model.forceDownload }}
           # Force redownload - remove existing model
           echo "🗑️ Forcing model redownload (forceDownload=true) - removing existing cache..."
           rm -rf "/models/.cache/$MODEL_DIR"
-          rm -f "{{ $activeModel.config.localModelPath }}"
+          rm -f "{{ $model.localModelPath }}"
           {{- end }}
           
           # Check if model already exists
@@ -84,8 +73,8 @@ spec:
             cd /models/.cache || exit 1
             
             # Use git clone with recovery for checkout failures
-            echo "Cloning https://huggingface.co/{{ $activeModel.config.model }}"
-            if ! git clone "https://huggingface.co/{{ $activeModel.config.model }}" "$MODEL_DIR"; then
+            echo "Cloning https://huggingface.co/{{ $model.name }}"
+            if ! git clone "https://huggingface.co/{{ $model.name }}" "$MODEL_DIR"; then
               echo "⚠️ Git clone failed, attempting recovery..."
               if [ -d "$MODEL_DIR" ]; then
                 echo "🔧 Attempting git restore to recover working tree..."
@@ -97,7 +86,7 @@ spec:
                   echo "❌ Git restore failed, cleaning up and retrying..."
                   cd .. && rm -rf "$MODEL_DIR"
                   echo "🔄 Retrying with git clone --depth 1..."
-                  git clone --depth 1 "https://huggingface.co/{{ $activeModel.config.model }}" "$MODEL_DIR" || {
+                  git clone --depth 1 "https://huggingface.co/{{ $model.name }}" "$MODEL_DIR" || {
                     echo "❌ All git clone attempts failed"
                     exit 1
                   }
@@ -112,9 +101,9 @@ spec:
           # Create symlink for vLLM to find the model at expected path
           echo "🔗 Creating symlink for vLLM..."
           mkdir -p /models/
-          if [ ! -L "{{ $activeModel.config.localModelPath }}" ] && [ -d "/models/.cache/$MODEL_DIR" ]; then
-            ln -sf "/models/.cache/$MODEL_DIR" "{{ $activeModel.config.localModelPath }}"
-            echo "✅ Symlink created: {{ $activeModel.config.localModelPath }} -> /models/.cache/$MODEL_DIR"
+          if [ ! -L "{{ $model.localModelPath }}" ] && [ -d "/models/.cache/$MODEL_DIR" ]; then
+            ln -sf "/models/.cache/$MODEL_DIR" "{{ $model.localModelPath }}"
+            echo "✅ Symlink created: {{ $model.localModelPath }} -> /models/.cache/$MODEL_DIR"
           fi
           
           echo "🎉 Model setup completed!"
@@ -151,16 +140,16 @@ spec:
           {{- else }}
           args:
             - "--model"
-            - "{{ $activeModel.config.localModelPath }}"
+            - "{{ $model.localModelPath }}"
             - "--max-model-len"
-            - "{{ $activeModel.config.maxModelLen }}"
+            - "{{ $model.maxModelLen }}"
             - "--gpu-memory-utilization"
             - "{{ .Values.vllm.gpuMemoryUtilization }}"
-            {{- if $activeModel.config.quantization }}
+            {{- if $model.quantization }}
             - "--quantization"
-            - "{{ $activeModel.config.quantization }}"
+            - "{{ $model.quantization }}"
             {{- end }}
-            {{- if $activeModel.config.ropeScaling }}
+            {{- if $model.ropeScaling }}
             - "--rope-scaling"
             - "{\"rope_type\":\"yarn\",\"factor\":4.0,\"original_max_position_embeddings\":32768}"  # hardcoded for qwen
             {{- end }}
@@ -178,12 +167,12 @@ spec:
             {{- if .Values.vllm.enableAutoToolChoice }}
             - "--enable-auto-tool-choice"
             {{- end }}
-            {{- if $activeModel.config.toolCallParser }}
+            {{- if $model.toolCallParser }}
             - "--tool-call-parser"
-            - "{{ $activeModel.config.toolCallParser }}"
+            - "{{ $model.toolCallParser }}"
             {{- end }}
             {{- /* Add custom arguments specific to the model */ -}}
-            {{- range $activeModel.config.customArgs }}
+            {{- range $model.customArgs }}
             - "{{ . }}"
             {{- end }}
           {{- end }}
@@ -222,7 +211,7 @@ spec:
             {{- end }}
             
             {{- /* Model-specific environment variables */ -}}
-            {{- range $name, $value := $activeModel.config.env }}
+            {{- range $name, $value := $model.env }}
             - name: {{ $name }}
               value: "{{ $value }}"
             {{- end }}

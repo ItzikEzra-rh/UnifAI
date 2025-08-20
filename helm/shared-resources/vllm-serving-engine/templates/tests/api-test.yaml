@@ -37,25 +37,14 @@ spec:
           exit 1
         fi
         
-        {{- /* Determine which model to use for testing */ -}}
-        {{- $activeModel := dict -}}
-        {{- range $modelKey, $modelConfig := .Values.models -}}
-          {{- if $modelConfig.enabled -}}
-            {{- $_ := set $activeModel "key" $modelKey -}}
-            {{- $_ := set $activeModel "config" $modelConfig -}}
-          {{- end }}
-        {{- end }}
-        
-        {{- /* Ensure at least one model is enabled */ -}}
-        {{- if not $activeModel -}}
-          {{- fail "No model is enabled. Please enable at least one model in the 'models' section or use a model-specific values file." -}}
-        {{- end }}
+        {{- /* Use the single model configuration */ -}}
+        {{- $model := .Values.model -}}
         
         # Test 2: Models Endpoint
         echo "🤖 Test 2: Models Endpoint"
         MODELS_RESPONSE=$(curl -s "$BASE_URL/v1/models")
-        if echo "$MODELS_RESPONSE" | grep -q "{{ $activeModel.config.localModelPath }}"; then
-          echo "✅ Models endpoint working - Found model: {{ $activeModel.config.localModelPath }}"
+        if echo "$MODELS_RESPONSE" | grep -q "{{ $model.localModelPath }}"; then
+          echo "✅ Models endpoint working - Found model: {{ $model.localModelPath }}"
         else
           echo "❌ Models endpoint failed - Model not found"
           echo "Response: $MODELS_RESPONSE"
@@ -67,7 +56,7 @@ spec:
         COMPLETION_RESPONSE=$(curl -s -X POST "$BASE_URL/v1/completions" \
           -H "Content-Type: application/json" \
           -d '{
-            "model": "{{ $activeModel.config.localModelPath }}",
+            "model": "{{ $model.localModelPath }}",
             "prompt": "The capital of France is",
             "max_tokens": 10,
             "temperature": 0.1
@@ -128,4 +117,4 @@ spec:
         echo "  - Token Usage: ✅ PASS"
         echo "  - Response Time: ✅ PASS"
         echo ""
-        echo "🚀 vLLM {{ .Values.vllm.model }} is ready for production use!" 
+        echo "🚀 vLLM {{ .Values.model.name }} is ready for production use!" 

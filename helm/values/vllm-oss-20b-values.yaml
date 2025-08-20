@@ -9,30 +9,20 @@ image:
   tag: "gptoss"
 
 
-models:
-  # Disable test model
-  test-model:
-    enabled: false
-  
-  # Disable Qwen3-32B model
-  qwen3-32b:
-    enabled: false
-  
-  # Enable GPT-OSS-20B model (real model)
-  gpt-oss-20b:
-    enabled: true
-    model: "openai/gpt-oss-20b"
-    localModelPath: "/models/gpt-oss-20b"
-    maxModelLen: "110000"
-      #quantization: "fp16"
-      #toolCallParser: "hermes"
-    ropeScaling: {}
-    # Custom arguments for vllm serve command
-    customArgs:
-      - "--async-scheduling"
-    # Custom environment variables for this model
-    env:
-      VLLM_ATTENTION_BACKEND: "TRITON_ATTN_VLLM_V1"
+# Model configuration - GPT-OSS-20B specific
+model:
+  name: "openai/gpt-oss-20b"
+  localModelPath: "/models/gpt-oss-20b"
+  maxModelLen: "110000"
+  # quantization: "fp16"  # commented out
+  # toolCallParser: "hermes"  # commented out
+  ropeScaling: {}
+  # Custom arguments for vllm serve command
+  customArgs:
+    - "--async-scheduling"
+  # Custom environment variables for this model
+  env:
+    VLLM_ATTENTION_BACKEND: "TRITON_ATTN_VLLM_V1"
 
 # GPT-OSS-20B specific resource requirements (optimized for FP16, single GPU)
 resources:

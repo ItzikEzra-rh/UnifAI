@@ -1,18 +1,15 @@
-# vLLM Multi-Model Helm Chart
+# vLLM Serving Engine Helm Chart
 
 ![vLLM](https://img.shields.io/badge/vLLM-v0.9.2-blue)
 ![Kubernetes](https://img.shields.io/badge/Kubernetes-1.24+-green)
 ![OpenShift](https://img.shields.io/badge/OpenShift-4.10+-red)
 ![License](https://img.shields.io/badge/License-Apache%202.0-yellow)
 
-A production-ready Helm chart for deploying [vLLM](https://github.com/vllm-project/vllm) with multiple large language models on Kubernetes/OpenShift with GPU support. Currently supports:
-
-- **Qwen3-32B-FP8**: High-performance FP8 quantized model with tensor parallelism
-- **GPT-OSS-20B**: OpenAI's GPT-OSS-20B model with TRITON attention backend
+A production-ready Helm chart for deploying [vLLM](https://github.com/vllm-project/vllm) with large language models on Kubernetes/OpenShift with GPU support. Supports any HuggingFace model with flexible configuration.
 
 ## 🎯 Overview
 
-This Helm chart provides a complete deployment solution for running Qwen3-32B-FP8 model using vLLM inference engine with:
+This Helm chart provides a complete deployment solution for running large language models using vLLM inference engine with:
 
 - **High Performance**: FP8 quantization and tensor parallelism across multiple GPUs
 - **Production Ready**: Comprehensive health checks, monitoring, and auto-scaling support
@@ -23,101 +20,102 @@ This Helm chart provides a complete deployment solution for running Qwen3-32B-FP
 
 ## 🎛️ Model Configuration
 
-The chart supports multiple models with flexible configuration using a modular values file structure. You can enable one model at a time by using the appropriate values file.
+The chart uses a simple single model configuration structure. You can deploy any HuggingFace model by specifying it in the `model` section of your values file.
 
 ### Values File Structure
 
-The chart provides three values files for different deployment scenarios:
+The chart provides model-specific values files that override the base configuration:
 
-1. **`values.yaml`** - General base configuration with small test model (Qwen2-0.5B-Instruct)
-2. **`../values-qwen3-32b.yaml`** - Qwen3-32B-FP8 specific configuration (real model)
-3. **`../values-gpt-oss-20b.yaml`** - GPT-OSS-20B specific configuration (real model)
+1. **`values.yaml`** - Base configuration with small test model (Qwen2-0.5B-Instruct)
+2. **`../values/vllm-qwen3-32b-values.yaml`** - Qwen3-32B-FP8 specific configuration
+3. **`../values/vllm-qwen3-8b-values.yaml`** - Qwen3-8B specific configuration
+4. **`../values/vllm-oss-20b-values.yaml`** - GPT-OSS-20B specific configuration
 
-> **Note**: The `vllm` section in `values.yaml` contains general vLLM configuration that applies to all models. Health probes, environment variables, and other infrastructure settings are also general configuration. Only model-specific settings are handled through the `models` section.
+> **Note**: The `vllm` section in `values.yaml` contains general vLLM configuration that applies to the deployment. Health probes, environment variables, and other infrastructure settings are also general configuration. Model-specific settings are handled through the `model` section.
 
 ### Available Models
 
 #### Qwen2-0.5B-Instruct (Default - Test Model)
 ```yaml
-models:
-  test-model:
-    enabled: true
-    model: "Qwen/Qwen2-0.5B-Instruct"
-    localModelPath: "/models/Qwen2-0.5B-Instruct"
-    maxModelLen: "2048"
-    quantization: "fp16"
+model:
+  name: "Qwen/Qwen2-0.5B-Instruct"
+  localModelPath: "/models/Qwen2-0.5B-Instruct"
+  maxModelLen: "2048"
+  quantization: "fp16"
+  toolCallParser: ""
+  ropeScaling: {}
+  customArgs: []
+  env: {}
 ```
 
 #### Qwen3-32B-FP8 (Production Model)
 ```yaml
-models:
-  qwen3-32b:
-    enabled: true
-    model: "Qwen/Qwen3-32B-FP8"
-    localModelPath: "/models/Qwen3-32B-FP8"
-    maxModelLen: "80000"
-    quantization: "fp8"
-    toolCallParser: "hermes"
-    ropeScaling:
-      rope_type: "yarn"
-      factor: 4.0
-      original_max_position_embeddings: 32768
+model:
+  name: "Qwen/Qwen3-32B-FP8"
+  localModelPath: "/models/Qwen3-32B-FP8"
+  maxModelLen: "80000"
+  quantization: "fp8"
+  toolCallParser: "hermes"
+  ropeScaling:
+    rope_type: "yarn"
+    factor: 4.0
+    original_max_position_embeddings: 32768
+  customArgs: []
+  env: {}
 ```
 
 #### GPT-OSS-20B (Production Model)
 ```yaml
-models:
-  gpt-oss-20b:
-    enabled: true
-    model: "openai/gpt-oss-20b"
-    localModelPath: "/models/gpt-oss-20b"
-    maxModelLen: "32768"
-    quantization: "fp16"
-    enableAutoToolChoice: false
-    # Custom arguments for vllm serve command
-    customArgs:
-      - "--async-scheduling"
-    env:
-      VLLM_ATTENTION_BACKEND: "TRITON_ATTN_VLLM_V1"
+model:
+  name: "openai/gpt-oss-20b"
+  localModelPath: "/models/gpt-oss-20b"
+  maxModelLen: "110000"
+  quantization: ""  # No quantization
+  toolCallParser: ""
+  ropeScaling: {}
+  # Custom arguments for vllm serve command
+  customArgs:
+    - "--async-scheduling"
+  env:
+    VLLM_ATTENTION_BACKEND: "TRITON_ATTN_VLLM_V1"
 ```
 
 ### Usage Examples
 
 **Deploy with Qwen2-0.5B-Instruct (default - test model):**
 ```bash
-# Using default values.yaml (Qwen2-0.5B-Instruct is enabled by default)
+# Using default values.yaml (Qwen2-0.5B-Instruct is configured by default)
 helm install vllm-test ./helm/shared-resources/vllm-serving-engine
 ```
 
 **Deploy with Qwen3-32B-FP8 (production model):**
 ```bash
 # Using Qwen3-32B specific values file
-helm install vllm-serving-engine ./helm/shared-resources/vllm-serving-engine -f ../values-qwen3-32b.yaml
+helm install vllm-qwen3-32b ./helm/shared-resources/vllm-serving-engine \
+  -f ../values/vllm-qwen3-32b-values.yaml
+```
 
-# Or using command line flags
-helm install vllm-serving-engine ./helm/shared-resources/vllm-serving-engine \
-  --set models.test-model.enabled=false \
-  --set models.qwen3-32b.enabled=true
+**Deploy with Qwen3-8B (production model):**
+```bash
+# Using Qwen3-8B specific values file
+helm install vllm-qwen3-8b ./helm/shared-resources/vllm-serving-engine \
+  -f ../values/vllm-qwen3-8b-values.yaml
 ```
 
 **Deploy with GPT-OSS-20B (production model):**
 ```bash
 # Using GPT-OSS-20B specific values file
-helm install vllm-gpt-oss ./helm/shared-resources/vllm-serving-engine -f ../values-gpt-oss-20b.yaml
-
-# Or using command line flags
 helm install vllm-gpt-oss ./helm/shared-resources/vllm-serving-engine \
-  --set models.test-model.enabled=false \
-  --set models.gpt-oss-20b.enabled=true
+  -f ../values/vllm-oss-20b-values.yaml
 ```
 
 **Custom model configuration:**
 ```bash
 helm install vllm-custom ./helm/shared-resources/vllm-serving-engine \
-  --set models.test-model.enabled=false \
-  --set models.gpt-oss-20b.enabled=true \
-  --set models.gpt-oss-20b.maxModelLen=16384 \
-  --set models.gpt-oss-20b.gpuMemoryUtilization=0.85
+  --set model.name="microsoft/Phi-3.5-mini-instruct" \
+  --set model.localModelPath="/models/Phi-3.5-mini-instruct" \
+  --set model.maxModelLen=32768 \
+  --set vllm.gpuMemoryUtilization=0.85
 ```
 
 **Debug mode deployment:**
@@ -132,7 +130,7 @@ helm install vllm-debug ./helm/shared-resources/vllm-serving-engine \
 # Combine base values with model-specific overrides
 helm install vllm-custom ./helm/shared-resources/vllm-serving-engine \
   -f values.yaml \
-  -f ../values-gpt-oss-20b.yaml \
+  -f ../values/vllm-oss-20b-values.yaml \
   --set resources.limits.memory=64Gi
 ```
 
@@ -344,26 +342,37 @@ vllm:
 
 | Parameter | Description | Default | Example |
 |-----------|-------------|---------|---------|
-| `vllm.model` | HuggingFace model ID | `"Qwen/Qwen3-32B-FP8"` | `"meta-llama/Llama-2-70b-hf"` |
-| `gpu.count` | Number of GPUs | `2` | `4` |
-| `vllm.maxModelLen` | Maximum sequence length | `"80000"` | `"65536"` |
-| `vllm.gpuMemoryUtilization` | GPU memory usage | `"0.85"` | `"0.9"` |
-| `vllm.quantization` | Quantization method | `"fp8"` | `"int8"` |
-| `vllm.ropeScaling` | RoPE scaling for context extension | YARN with 4x factor | `""` (disabled) |
+| `model.name` | HuggingFace model ID | `"Qwen/Qwen2-0.5B-Instruct"` | `"meta-llama/Llama-2-70b-hf"` |
+| `model.localModelPath` | Local path where model is stored | `"/models/Qwen2-0.5B-Instruct"` | `"/models/Llama-2-70b-hf"` |
+| `model.maxModelLen` | Maximum sequence length | `"2048"` | `"80000"` |
+| `model.quantization` | Quantization method | `"fp16"` | `"fp8"` |
+| `model.toolCallParser` | Tool call parser | `""` | `"hermes"` |
+| `vllm.gpuMemoryUtilization` | GPU memory usage | `"0.90"` | `"0.85"` |
+| `vllm.tensorParallelSize` | Tensor parallel size | `"1"` | `"2"` |
 | `route.enabled` | Enable OpenShift Route | `true` | `false` |
-| `resources.limits.memory` | Memory limit | `32Gi` | `64Gi` |
+| `resources.limits.memory` | Memory limit | `16Gi` | `64Gi` |
 
 ### Example Custom Values
 
 ```yaml
 # custom-values.yaml
-vllm:
-  model: "microsoft/Phi-3.5-mini-instruct"
+model:
+  name: "microsoft/Phi-3.5-mini-instruct"
+  localModelPath: "/models/Phi-3.5-mini-instruct"
   maxModelLen: "80000"  # Extended context with YARN 4x scaling
-  gpuMemoryUtilization: "0.9"
   quantization: "fp8"
+  toolCallParser: ""
   # YARN rope scaling extends context length beyond original training
-  ropeScaling: "{\"rope_type\":\"yarn\",\"factor\":4.0,\"original_max_position_embeddings\":32768}"
+  ropeScaling:
+    rope_type: "yarn"
+    factor: 4.0
+    original_max_position_embeddings: 32768
+  customArgs: []
+  env: {}
+
+vllm:
+  gpuMemoryUtilization: "0.9"
+  tensorParallelSize: "1"
 
 gpu:
   count: 1
@@ -452,7 +461,7 @@ curl http://your-vllm-url/v1/models
 curl -X POST http://your-vllm-url/v1/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "Qwen/Qwen3-32B-FP8",
+    "model": "/models/Qwen2-0.5B-Instruct",
     "prompt": "The capital of France is",
     "max_tokens": 50,
     "temperature": 0.7
@@ -465,7 +474,7 @@ curl -X POST http://your-vllm-url/v1/completions \
 curl -X POST http://your-vllm-url/v1/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "Qwen/Qwen3-32B-FP8",
+    "model": "/models/Qwen3-32B-FP8",
     "prompt": "Please analyze this long document: [your 100K+ token document here]...",
     "max_tokens": 1000,
     "temperature": 0.7
@@ -477,7 +486,7 @@ curl -X POST http://your-vllm-url/v1/completions \
 curl -X POST http://your-vllm-url/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "Qwen/Qwen3-32B-FP8",
+    "model": "/models/Qwen2-0.5B-Instruct",
     "messages": [
       {"role": "user", "content": "Hello, how are you?"}
     ],
@@ -530,7 +539,7 @@ curl -s http://your-vllm-url/health
 # Test text generation
 curl -s -X POST http://your-vllm-url/v1/completions \
   -H "Content-Type: application/json" \
-  -d '{"model": "Qwen/Qwen3-32B-FP8", "prompt": "Hello world", "max_tokens": 10}'
+  -d '{"model": "/models/Qwen2-0.5B-Instruct", "prompt": "Hello world", "max_tokens": 10}'
 ```
 
 ## 📊 Monitoring
@@ -627,7 +636,7 @@ kubectl exec deployment/vllm-serving-engine -- ls -la /models/.cache/models--Qwe
 If model files are incomplete, force redownload:
 ```yaml
 # In values.yaml
-vllm:
+model:
   forceDownload: true  # Forces complete model redownload
 ```
 

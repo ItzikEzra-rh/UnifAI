@@ -2,31 +2,21 @@
 # This file inherits from values.yaml and overrides only Qwen3-specific parameters
 # Usage: helm install vllm-qwen3 ./helm/shared-resources/vllm-serving-engine -f values-qwen3-32b.yaml
 
-# Model configuration - Enable Qwen3-32B, disable others
-models:
-  # Enable Qwen3-32B model (default)
-  test-model:
-    enabled: false
-
-  qwen3-32b:
-    enabled: true
-    model: "Qwen/Qwen3-8B"
-    localModelPath: "/models/Qwen3-8B"
-    maxModelLen: "80000"
-      #quantization: "fp8"
-    toolCallParser: "hermes"
-    ropeScaling:
-      rope_type: "yarn"
-      factor: 4.0
-      original_max_position_embeddings: 32768
-    # Custom command override (optional)
-    customCommand: ""
-    # Custom environment variables for this model
-    env: {}
-  
-  # Disable GPT-OSS-20B model
-  gpt-oss-20b:
-    enabled: false
+# Model configuration - Qwen3-8B specific
+model:
+  name: "Qwen/Qwen3-8B"
+  localModelPath: "/models/Qwen3-8B"
+  maxModelLen: "80000"
+  quantization: "fp8"  # commented out for 8B model
+  toolCallParser: "hermes"
+  ropeScaling:
+    rope_type: "yarn"
+    factor: 4.0
+    original_max_position_embeddings: 32768
+  # Custom arguments for vllm serve command
+  customArgs: []
+  # Custom environment variables for this model
+  env: {}
 
 # Qwen3-32B specific resource requirements (optimized for FP8)
 resources:
