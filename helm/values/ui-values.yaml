@@ -33,4 +33,4 @@ ui:
       port: 13456
     - name: ma-backend
       port: 8003
-    type: LoadBalancer
+    type: ClusterIP
