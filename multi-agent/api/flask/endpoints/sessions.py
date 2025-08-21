@@ -119,3 +119,20 @@ def get_user_blueprints(user_id):
         return jsonify(svc.get_user_blueprints(user_id)), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@sessions_bp.route("/session.delete", methods=["DELETE"])
+@from_query({
+    "session_id": fields.Str(data_key="sessionId", required=True),
+})
+def delete_session(session_id):
+    """
+    Delete a session by session_id.
+    Returns success: true if deleted, false if not found.
+    """
+    try:
+        svc = current_app.container.session_service
+        deleted = svc.delete(run_id=session_id)
+        return jsonify({"success": deleted}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
