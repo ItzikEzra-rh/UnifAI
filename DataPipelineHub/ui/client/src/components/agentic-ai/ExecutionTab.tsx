@@ -8,7 +8,7 @@ import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
 import { GraphNode } from "../../pages/AgenticAI"
-import axios, { AXIOS_AGENTS_IP } from '../../http/axiosAgentConfig'
+import axios from '../../http/axiosAgentConfig'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
