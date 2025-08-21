@@ -719,7 +719,7 @@ export default function ReactFlowGraph({
     try {
       setIsLoading(true);
       const response = await axios.get(
-        `/blueprints/available.blueprints.get?userId=${user?.username || "default"}`,
+        `/blueprints/available.blueprints.resolved.get?userId=${user?.username || "default"}`,
       );
       const blueprintObjects = response.data;
 
