@@ -7,6 +7,10 @@ export interface ElementType {
   category: string;
   name: string;
   type: string;
+  hints?: Array<{
+    hint_type: string;
+    reason?: string;
+  }>;
 }
 
 export interface ElementInstance {

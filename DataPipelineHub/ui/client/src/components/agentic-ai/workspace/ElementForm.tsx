@@ -88,9 +88,14 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     if (elementSchema && isOpen) {
       const initialData: any = {};
 
-      // Set default values from combined schema
+      // Set default values from combined schema, excluding hidden fields
       Object.entries(elementSchema.config_schema.properties).forEach(
         ([key, property]: [string, any]) => {
+          // Skip hidden fields - don't initialize them
+          if (property?.hints?.hidden?.hint_type === "hidden") {
+            return;
+          }
+          
           if (property.default !== undefined) {
             initialData[key] = property.default;
           } else if (property.type === "array") {
@@ -114,9 +119,16 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           }
         });
 
-        // Handle config data
+        // Handle config data, excluding hidden fields
         if (editingElement.config) {
           Object.entries(editingElement.config).forEach(([key, value]) => {
+            const fieldSchema = elementSchema.config_schema.properties[key];
+            
+            // Skip hidden fields - don't populate them in edit mode
+            if (fieldSchema?.hints?.hidden?.hint_type === "hidden") {
+              return;
+            }
+            
             // Handle $ref values - extract the rid from $ref:rid format
             if (typeof value === "string" && value.startsWith("$ref:")) {
               initialData[key] = value.substring(5); // Remove '$ref:' prefix
@@ -145,6 +157,13 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         const updatedData = { ...prevData };
 
         Object.entries(editingElement.config).forEach(([key, value]) => {
+          const fieldSchema = elementSchema?.config_schema.properties[key];
+          
+          // Skip hidden fields - don't re-apply them
+          if (fieldSchema?.hints?.hidden?.hint_type === "hidden") {
+            return;
+          }
+          
           if (typeof value === "string" && value.startsWith("$ref:")) {
             const rid = value.substring(5);
             updatedData[key] = rid;
@@ -394,11 +413,17 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   const isFormValid = () => {
     if (!elementSchema) return false;
 
-    // Check all required fields from combined schema
+    // Check all required fields from combined schema, excluding hidden fields
     const required = elementSchema.config_schema.required || [];
     return required.every((field) => {
-      const value = formData[field];
       const fieldSchema = elementSchema.config_schema.properties[field];
+      
+      // Skip validation for hidden fields
+      if (fieldSchema?.hints?.hidden?.hint_type === "hidden") {
+        return true;
+      }
+      
+      const value = formData[field];
       
       // Check if field has validation hint
       const hasValidationHint = fieldSchema?.hints?.action?.hint_type === 'validate';
@@ -426,9 +451,16 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     try {
       setIsSaving(true);
 
-      // Validate all required fields from combined schema
+      // Validate all required fields from combined schema, excluding hidden fields
       const required = elementSchema.config_schema.required || [];
       const missing = required.filter((field) => {
+        const fieldSchema = elementSchema.config_schema.properties[field];
+        
+        // Skip validation for hidden fields
+        if (fieldSchema?.hints?.hidden?.hint_type === "hidden") {
+          return false;
+        }
+        
         const value = formData[field];
         if (Array.isArray(value)) {
           return value.length === 0;
@@ -448,6 +480,11 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       // Separate first-level fields and config fields
       Object.entries(formData).forEach(([fieldName, value]) => {
         const fieldSchema = elementSchema.config_schema.properties[fieldName];
+
+        // Skip hidden fields - don't include them in save payload
+        if (fieldSchema?.hints?.hidden?.hint_type === "hidden") {
+          return;
+        }
 
         // Define which fields are first-level fields from resource schema
         const firstLevelResourceFields = ['name', 'category', 'type', 'cfg_dict', 'version', 'created', 'updated', 'nested_refs', 'rid', 'user_id'];
@@ -969,9 +1006,14 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         >
           {/* Render fields from combined schema */}
           {Object.entries(elementSchema.config_schema.properties)
-            .filter(([fieldName]) => {
+            .filter(([fieldName, fieldSchema]) => {
               // Always exclude category and type (handled by GUI)
               if (['category', 'type'].includes(fieldName)) {
+                return false;
+              }
+
+              // Filter out hidden fields - check if field has hints.hidden.hint_type === "hidden"
+              if (fieldSchema?.hints?.hidden?.hint_type === "hidden") {
                 return false;
               }
 

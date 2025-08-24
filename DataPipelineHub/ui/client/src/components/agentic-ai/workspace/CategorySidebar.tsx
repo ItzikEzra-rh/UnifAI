@@ -40,7 +40,7 @@ const getCategoryIcon = (category: string) => {
 
 const getCategoryDisplayName = (category: string) => {
   const nameMap: { [key: string]: string } = {
-    nodes: 'Nodes',
+    nodes: 'Agents',
     llms: 'LLMs',
     tools: 'Tools',
     retrievers: 'Retrievers',
