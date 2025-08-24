@@ -5,10 +5,12 @@ from .resources import resources_bp
 from .graph import graph_bp
 from .graph_validation import graph_validation_bp
 from .actions import actions_bp
+from .health import health_bp
 
 
 def register_all_endpoints(app):
     backend_blueprints = [
+        {"bp": health_bp, "parent": 'health', "route": ''},
         {"bp": blueprints_bp, "parent": 'blueprints', "route": ''},
         {"bp": sessions_bp, "parent": 'sessions', "route": ''},
         {"bp": catalog_bp, "parent": 'catalog', "route": ''},
