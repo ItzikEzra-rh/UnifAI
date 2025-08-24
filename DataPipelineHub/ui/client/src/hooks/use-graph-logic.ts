@@ -814,7 +814,7 @@ export const useGraphLogic = () => {
           // Use window.location to ensure component remounts and resets to Agent Flow tab
           setTimeout(() => {
             window.location.href = "/agentic-ai";
-          }, 1500);
+          }, 100);
         } else {
           throw new Error(response.data.error || "Unknown error occurred");
         }

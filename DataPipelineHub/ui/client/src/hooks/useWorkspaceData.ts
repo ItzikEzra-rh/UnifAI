@@ -63,8 +63,13 @@ export const useWorkspaceData = () => {
         response.data.elements,
       ).map(([category, elements]) => ({
         category,
-        elements: elements || [],
-      }));
+        // Filter out elements with hints array containing hint_type === "hidden"
+        elements: (elements || []).filter((element: ElementType) => 
+          !element.hints?.some(hint => hint.hint_type === "hidden")
+        ),
+      }))
+      // Filter out categories that have no visible elements after filtering
+      .filter(category => category.elements.length > 0);
 
       setCategories(categoryList);
       return categoryList;
@@ -302,6 +307,7 @@ export const useWorkspaceData = () => {
           const response = await axios.put("/resources/resource.update", {
             resourceId: rid,
             config: elementData.cfg_dict,
+            name: elementData.name,
           });
           toast({
             title: "Success",

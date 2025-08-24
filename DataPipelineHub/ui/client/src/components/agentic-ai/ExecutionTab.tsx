@@ -2,8 +2,18 @@ import React, { useState, useEffect } from "react";
 import * as Switch from '@radix-ui/react-switch';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Users, Clock, ArrowUpRight, SplitSquareVertical } from "lucide-react";
+import { MessageSquare, Users, Clock, ArrowUpRight, SplitSquareVertical, Trash2, Plus, X } from "lucide-react";
 import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
@@ -12,6 +22,18 @@ import axios from '../../http/axiosAgentConfig'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
+import AvailableFlows from "./AvailableFlows";
+import { ReactFlowProvider } from "reactflow";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { cn } from "@/lib/utils";
+import { GraphFlow, FlowObject } from "./graphs/interfaces";
 
 // Types for the API response
 interface ChatMessage {
@@ -52,6 +74,46 @@ type ExecutionTabProps = {
   runId: string | null;
 };
 
+// Custom Dialog components for full opacity overlay (only for Add Flow Modal)
+const CustomDialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      "fixed inset-0 z-50 bg-black data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+      className
+    )}
+    {...props}
+  />
+));
+CustomDialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+
+const CustomDialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
+>(({ className, children, ...props }, ref) => (
+  <DialogPrimitive.Portal>
+    <CustomDialogOverlay />
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%] sm:rounded-lg",
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <DialogPrimitive.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
+        <X className="h-4 w-4" />
+        <span className="sr-only">Close</span>
+      </DialogPrimitive.Close>
+    </DialogPrimitive.Content>
+  </DialogPrimitive.Portal>
+));
+CustomDialogContent.displayName = DialogPrimitive.Content.displayName;
+
 type ChunkData = {
   node: string;
   type: 'llm_token' | 'complete' | 'tool_calling' | 'tool_result';
@@ -76,7 +138,14 @@ export default function ExecutionTab({
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [globalScope, setGlobalScope] = useState<'public' | 'private'>('public');
-  
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<ChatSession | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showAddFlowModal, setShowAddFlowModal] = useState(false);
+  const [selectedFlowForModal, setSelectedFlowForModal] = useState<FlowObject | null>(null);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const [isLoadingFlowsForModal, setIsLoadingFlowsForModal] = useState(false);
+
   const { nodeListRef, forceUpdate } = useStreamingData();
   const { user } = useAuth();
 
@@ -115,7 +184,7 @@ export default function ExecutionTab({
   const getPreviewText = (messages: ChatMessage[]): string => {
     const userMessage = messages.find(msg => msg.role === 'user');
     if (userMessage && userMessage.content) {
-      return userMessage.content.length > 50 
+      return userMessage.content.length > 50
         ? `${userMessage.content.substring(0, 50)}...`
         : userMessage.content;
     }
@@ -148,14 +217,14 @@ export default function ExecutionTab({
     try {
       setIsLoading(true);
       setError(null);
-      
+
       const userId = user?.username || "default";
       const response = await axios.get(`/sessions/session.user.chat.get?userId=${userId}`);
       const transformedSessions = transformApiDataToSessions(response.data);
-      
+
       // sort chat sessions based on the latest date
       setChatSessions(transformedSessions.sort((firstSession, secondSession) => secondSession.timestamp.getTime() - firstSession.timestamp.getTime()));
-      
+
       // Auto-select the first session if available
       if (transformedSessions.length > 0 && !selectedSession) {
         const firstSession = transformedSessions[0];
@@ -174,18 +243,122 @@ export default function ExecutionTab({
   const handleSessionSelect = (session: ChatSession) => {
     setSelectedSession(session);
     setCurrentSessionMessages(session.messages);
-    
-    // TODO: For now, using a placeholder - replace with your actual user ID logic
-    const userId = user; // Replace with actual userId
-    fetchChatSessions(userId);
+
+    // Refresh chat sessions when a session is selected
+    fetchChatSessions();
+  };
+
+  // Handle delete chat
+  const handleDeleteChat = (session: ChatSession, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent session selection when clicking delete
+    setChatToDelete(session);
+    setShowDeleteModal(true);
+  };
+
+  const confirmDeleteChat = async () => {
+    if (!chatToDelete) return;
+
+    setIsDeleting(true);
+    try {
+      const userId = user?.username || "default";
+      await axios.delete(`/sessions/session.delete?sessionId=${chatToDelete.id}`);
+
+      // Remove the deleted session from the list
+      setChatSessions(prevSessions => prevSessions.filter(session => session.id !== chatToDelete.id));
+
+      // If the deleted session was selected, clear the selection
+      if (selectedSession?.id === chatToDelete.id) {
+        setSelectedSession(null);
+        setCurrentSessionMessages([]);
+      }
+
+      setShowDeleteModal(false);
+      setChatToDelete(null);
+    } catch (error) {
+      console.error('Error deleting chat session:', error);
+      // Handle error (you might want to show a toast notification here)
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const cancelDeleteChat = () => {
+    setShowDeleteModal(false);
+    setChatToDelete(null);
+  };
+
+  // Handle add flow modal
+  const handleAddFlowClick = () => {
+    setShowAddFlowModal(true);
+  };
+
+  const handleFlowSelect = (flow: FlowObject | null): void => {
+    setSelectedFlowForModal(flow);
+  };
+
+  const handleAddFlow = async () => {
+    if (!selectedFlowForModal) return;
+
+    setIsCreatingSession(true);
+    try {
+      const graphId = selectedFlowForModal.id || `graph-${Date.now()}`;
+
+      const selectedBlueprint = {
+        blueprintId: graphId,
+        userId: user?.username || "default",
+      };
+
+      const response = await axios.post(
+        "/sessions/user.session.create",
+        selectedBlueprint,
+      );
+
+      await fetchChatSessions();
+
+      // Auto-select the newly created session
+      // Wait a bit for state to update, then find the newest session with matching blueprintId
+      setTimeout(() => {
+        setChatSessions(prevSessions => {
+          const newestSession = prevSessions.find(session => session.blueprintId === graphId);
+          if (newestSession) {
+            setSelectedSession(newestSession);
+            setCurrentSessionMessages(newestSession.messages);
+          }
+          return prevSessions; // Return unchanged sessions
+        });
+      }, 100);
+
+      setShowAddFlowModal(false);
+      setSelectedFlowForModal(null);
+    } catch (error) {
+      console.error("Error creating new graph session:", error);
+    } finally {
+      setIsCreatingSession(false);
+    }
+  };
+
+  const handleCancelAddFlow = () => {
+    setShowAddFlowModal(false);
+    setSelectedFlowForModal(null);
+    // Force a small delay to ensure proper cleanup of ReactFlow state
+    setTimeout(() => {
+      // This timeout helps ensure the modal ReactFlow instance is properly unmounted
+      // before potentially affecting other ReactFlow instances
+    }, 100);
   };
 
   // Initialize component with API call
   useEffect(() => {
-    // TODO: For now, using a placeholder - replace with your actual user ID logic
-    const userId = user?.username || "default"; // Replace with actual userId
-    fetchChatSessions(userId);
+    fetchChatSessions();
   }, []);
+
+  // Cleanup effect when modal closes to prevent ReactFlow state interference
+  useEffect(() => {
+    if (!showAddFlowModal && selectedFlowForModal) {
+      // Reset selected flow when modal closes to ensure clean state
+      setSelectedFlowForModal(null);
+    }
+  }, [showAddFlowModal]);
 
   // Tracks each node's streaming state.
   // Aggregates chunks per node.
@@ -215,9 +388,9 @@ export default function ExecutionTab({
     const { node, type, chunk, state, tool, output, call_id } = chunkData;
     const currentText = chunk ?? state?.user_prompt ?? '';
     const map = nodeListRef.current;
-  
+
     let existing = map.get(node);
-  
+
     // Initialize the node entry if it doesn't exist
     if (!existing) {
       existing = {
@@ -228,21 +401,21 @@ export default function ExecutionTab({
       };
       map.set(node, existing);
     }
-  
+
     switch (type) {
       case 'llm_token':
         if (chunk) {
           existing.text += chunk;
         }
         break;
-  
+
       // case 'complete':
       //   existing.stream = 'DONE';
       //   if (state?.user_prompt && existing.text.trim() === '') {
       //     existing.text = state.user_prompt;
       //   }
       //   break;
-  
+
       case 'tool_calling':
         if (call_id && tool) {
           const existingTool = existing.tools?.find(t => t.id === call_id);
@@ -251,7 +424,7 @@ export default function ExecutionTab({
           }
         }
         break;
-  
+
       case 'tool_result':
         if (call_id && tool && output) {
           const toolEntry = existing.tools?.find(t => t.id === call_id);
@@ -262,18 +435,18 @@ export default function ExecutionTab({
           }
         }
         break;
-  
+
       default:
         break;
     }
-  
+
     // forceUpdate(); // Uncomment if needed to trigger a re-render
   };
 
   // Reads the stream, decodes it, parses chunks, and updates state cleanly.
   const triggerExecution = async (sessionPayload: SessionPayload) => {
     let streamReader: EnhancedStreamReader | null = null;
-    
+
     try {
       setIsLiveRequest(true);
       const payloadWithScope = {
@@ -281,7 +454,7 @@ export default function ExecutionTab({
         scope: globalScope,
         loggedInUser: user?.username || "default",
       };
-      
+
       const response = await fetch(`/api2/sessions/user.session.execute`, {
         method: 'POST',
         headers: {
@@ -290,32 +463,30 @@ export default function ExecutionTab({
         body: JSON.stringify(payloadWithScope),
       });
 
-
-
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       if (!response.body) throw new Error('ReadableStream not supported!');
-  
+
       // Create stream reader with chunk processing callback
       streamReader = new EnhancedStreamReader((chunkData: any) => {
         updateNodeList(chunkData);
         // console.log(JSON.stringify(Array.from(nodeListRef.current.entries()), null, 2));
       });
-  
+
       // Read the entire stream
       await streamReader.readStream(response);
-  
+
       console.log('Streaming completed.');
       console.log('Final Node List:', nodeListRef.current);
     } catch (error) {
       console.error('Error communicating with chat API', error);
-      
+
       // Cancel stream reading if there was an error
       if (streamReader) {
         await streamReader.cancel();
       }
     } finally {
       setIsLiveRequest(false);
-      
+
       try {
         const session_response = await axios.get(
           `/sessions/session.state.get?sessionId=${sessionPayload.sessionId}`
@@ -403,6 +574,15 @@ export default function ExecutionTab({
                       <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
                         <Users className="h-4 w-4" />
                       </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-7 w-7 p-0 text-[#03DAC6] hover:bg-[#03DAC6] hover:bg-opacity-20" 
+                        onClick={handleAddFlowClick}
+                        title="Add new chat from flow"
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
                 </CardHeader>
@@ -412,11 +592,11 @@ export default function ExecutionTab({
                       No chat sessions available
                     </div>
                   ) : (
-                    <div className="h-full max-h-[72.5vh] overflow-y-auto py-2">
+                    <div className="h-full max-h-[75vh] overflow-y-auto py-2">
                       {chatSessions.map((session) => (
                         <motion.div
                           key={session.id}
-                          className={`px-4 py-3 border-l-2 cursor-pointer ${
+                          className={`group px-4 py-3 border-l-2 cursor-pointer ${
                             selectedSession?.id === session.id
                               ? "border-[#8A2BE2] bg-[#8A2BE2] bg-opacity-10"
                               : "border-transparent hover:bg-background-surface"
@@ -432,6 +612,14 @@ export default function ExecutionTab({
                                 {session.title}
                               </span>
                             </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => handleDeleteChat(session, e)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
                           <div className="mt-1 flex items-center text-xs text-gray-400">
                             <Clock className="h-3 w-3 mr-1" />
@@ -447,11 +635,11 @@ export default function ExecutionTab({
                 </CardContent>
               </Card>
             </div>
-            
+
             {/* ChatInterface with conditional className */}
             <div className={`col-span-12 ${showExecutionStream ? 'md:col-span-4 lg:col-span-4' : 'md:col-span-8 lg:col-span-9'} h-full`}>
-              <ChatInterface 
-                runId={selectedSession?.id || ''} 
+              <ChatInterface
+                runId={selectedSession?.id || ''}
                 triggerExecution={triggerExecution}
                 initialMessages={currentSessionMessages}
               />
@@ -460,9 +648,9 @@ export default function ExecutionTab({
             {/* ExecutionStream only renders when showExecutionStream is true */}
             {selectedSession && showExecutionStream && (
               <div className="col-span-12 md:col-span-4 lg:col-span-5 h-full">
-                <ExecutionStream 
-                  blueprintId={selectedSession.blueprintId} 
-                  isLiveRequest={isLiveRequest} 
+                <ExecutionStream
+                  blueprintId={selectedSession.blueprintId}
+                  isLiveRequest={isLiveRequest}
                 />
               </div>
             )}
@@ -489,15 +677,17 @@ export default function ExecutionTab({
             </CardHeader>
             <CardContent className="p-0 flex-grow">
               {selectedSession?.blueprintId ? (
-                <ReactFlowGraph 
-                  blueprintId={selectedSession.blueprintId}
-                  height="100%"
-                  showControls={true}
-                  showMiniMap={false}
-                  showBackground={true}
-                  interactive={true}
-                  isLiveRequest={isLiveRequest}
-                />
+                <ReactFlowProvider key={`main-graph-${selectedSession.blueprintId}`}>
+                  <ReactFlowGraph
+                    blueprintId={selectedSession.blueprintId}
+                    height="100%"
+                    showControls={true}
+                    showMiniMap={false}
+                    showBackground={true}
+                    interactive={true}
+                    isLiveRequest={isLiveRequest}
+                  />
+                </ReactFlowProvider>
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm">
                   {selectedSession ? 'No blueprint available for this session' : 'Select a chat session to view blueprint'}
@@ -507,6 +697,79 @@ export default function ExecutionTab({
           </Card>
         </div>
       </div>
+
+      {/* Add Flow Modal */}
+      <Dialog open={showAddFlowModal} onOpenChange={setShowAddFlowModal}>
+        <CustomDialogContent 
+          className="bg-background-card border-gray-800 max-w-[95vw] w-[95vw] h-[85vh] max-h-[85vh] flex flex-col overflow-hidden"
+        >
+          <DialogHeader className="flex-shrink-0 pb-4">
+            <DialogTitle className="text-lg">Add New Chat from Flow</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <ReactFlowProvider key={`new-chat-graph-${showAddFlowModal}`}>
+              <AvailableFlows
+                selectedFlow={selectedFlowForModal}
+                onFlowSelect={handleFlowSelect}
+                showActiveStatus={false}
+                showDeleteButton={false}
+                height="100%"
+                graphProps={{
+                  showControls: true,
+                  showMiniMap: true,
+                  showBackground: true,
+                  interactive: true,
+                  isLiveRequest: false,
+                }}
+              />
+            </ReactFlowProvider>
+          </div>
+          <DialogFooter className="flex-shrink-0 pt-4 border-t border-gray-800">
+            <Button
+              variant="outline"
+              onClick={handleCancelAddFlow}
+              disabled={isCreatingSession}
+              className="bg-background-dark border-gray-700 hover:bg-background-surface"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddFlow}
+              disabled={!selectedFlowForModal || isCreatingSession}
+              className="bg-[#03DAC6] hover:bg-opacity-80 text-black"
+            >
+              {isCreatingSession ? "Creating..." : "Add"}
+            </Button>
+          </DialogFooter>
+        </CustomDialogContent>
+      </Dialog>
+
+      {/* Delete Chat Confirmation Modal */}
+      <AlertDialog open={showDeleteModal} onOpenChange={setShowDeleteModal}>
+        <AlertDialogContent className="bg-background-card border-gray-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Chat</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{chatToDelete?.title}"?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              onClick={cancelDeleteChat}
+              className="bg-background-dark border-gray-700 hover:bg-background-surface"
+            >
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteChat}
+              disabled={isDeleting}
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

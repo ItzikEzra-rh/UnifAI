@@ -4,6 +4,7 @@ import Configuration from "@/pages/Configuration";
 import JiraIntegration from "@/pages/JiraIntegration";
 import AgenticAI from "@/pages/AgenticAI";
 import AgentRepository from "@/pages/AgentRepository";
+import AgenticChats from "@/pages/AgenticChats";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
 import { ProjectProvider } from '@/contexts/ProjectContext';
@@ -30,8 +31,9 @@ function App() {
               <Route path="/jira" component={JiraIntegration} />
               <Route path="/slack" component={SlackIntegration} />
               <Route path="/documents" component={DocumentsPage} />
-              <Route path="/repository" component={AgentRepository} />
+              <Route path="/inventory" component={AgentRepository} />
               <Route path="/agentic-ai" component={AgenticAI} />
+              <Route path="/agentic-chats" component={AgenticChats} />
               <Route path="/slack/add-source" component={SlackAddSourcePage} />
               <Route path="/configuration" component={Configuration} />
               <Route component={NotFound} />

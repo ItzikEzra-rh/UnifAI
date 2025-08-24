@@ -33,7 +33,7 @@ export const getCategoryDisplay = (category: string): CategoryDisplay => {
 
 export const getCategoryDisplayName = (category: string) => {
   const nameMap: { [key: string]: string } = {
-    nodes: "Nodes",
+    nodes: "Agents",
     llms: "LLMs",
     tools: "Tools",
     retrievers: "Retrievers",

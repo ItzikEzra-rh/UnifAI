@@ -26,9 +26,11 @@ class ResourcesRegistry:
         return doc
 
     def update(self, doc: ResourceDoc) -> ResourceDoc:
-        if self._repo.find_by_name(doc.user_id, doc.category, doc.type, doc.name):
-            if self._repo.get(doc.rid).name != doc.name:
-                raise ValueError(f"{doc.category}:{doc.type}:{doc.name} exists for user")
+        # Guard against name conflicts with other resources
+        existing_with_name = self._repo.find_by_name(doc.user_id, doc.category, doc.type, doc.name)
+        if existing_with_name and existing_with_name.rid != doc.rid:
+            raise ValueError(f"{doc.category}:{doc.type}:{doc.name} exists for user")
+        
         doc.version += 1
         doc.updated = datetime.utcnow()
         self._repo.update(doc)

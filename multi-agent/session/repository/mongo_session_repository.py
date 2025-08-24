@@ -63,3 +63,8 @@ class MongoSessionRepository(SessionRepository):
     def list_runs(self, user_id: str) -> List[str]:
         cursor = self._col.find({"user_id": user_id}, {"run_id": 1})
         return [d["run_id"] for d in cursor]
+
+    def delete(self, run_id: str) -> bool:
+        """Delete a session by run_id. Returns True if deleted, False if not found."""
+        result = self._col.delete_one({"run_id": run_id})
+        return result.deleted_count > 0
