@@ -37,6 +37,7 @@ class BaseElementSpec(ABC):
     # ── optional metadata ------------------------------------------------
     version: ClassVar[str] = "1.0.0"
     tags: ClassVar[List[str]] = []
+    hints: ClassVar[List[Any]] = []
 
     # ─────────────────────────────────────────────────────────────────────
     # compile‑time validation

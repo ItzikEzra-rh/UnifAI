@@ -79,3 +79,7 @@ class UserSessionManager:
     def list_docs(self, user_id: str) -> List[Mapping[str, Any]]:
         session_ids = self.list_sessions_ids(user_id)
         return [self.get_doc(session_id) for session_id in session_ids]
+
+    def delete_session(self, run_id: str) -> bool:
+        """Delete a session by run_id. Returns True if deleted, False if not found."""
+        return self._repo.delete(run_id)
