@@ -11,6 +11,7 @@ class ElementSummaryDTO:
     category: str
     type: str  # Using 'type' instead of 'type_key' for better UI compatibility
     name: str
+    hints: list
 
 
 @dataclass(frozen=True)
@@ -25,7 +26,8 @@ class ElementDetailDTO:
     type: str  # Using 'type' instead of 'type_key' for better UI compatibility
     config_schema: Dict[str, Any]  # JSON schema for dynamic form generation
     tags: List[str]
-    output_schema: Optional[Dict[str, Any]] = None  # Output schema for conditions and other elements that define outputs
+    output_schema: Optional[
+        Dict[str, Any]] = None  # Output schema for conditions and other elements that define outputs
 
 
 @dataclass(frozen=True)
@@ -34,4 +36,4 @@ class CatalogListDTO:
     DTO for catalog list response.
     Groups elements by category for UI organization.
     """
-    elements: Dict[str, List[ElementSummaryDTO]]  # category -> list of elements 
+    elements: Dict[str, List[ElementSummaryDTO]]  # category -> list of elements
