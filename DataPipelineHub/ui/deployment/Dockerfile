@@ -29,8 +29,8 @@ RUN pnpm build
 FROM registry.access.redhat.com/ubi9/nginx-120 as serve
 
 USER root
-#Install debugging tools
-RUN dnf update -y && dnf install -y vim less iputils telnet && dnf clean all
+#Install debugging tools ( telnet is out-of-ubi9 for nginx ncat instead)
+RUN dnf update -y && dnf install -y vim less iputils nmap-ncat && dnf clean all
 
 # Copy and set permissions for entrypoint.sh while still root
 COPY /deployment/entrypoint.sh /opt/app-root/src/entrypoint.sh

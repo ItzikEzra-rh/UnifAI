@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "dataflow.fullname" . }}
+  name: {{ include "ui.fullname" . }}
   labels:
-    {{- include "dataflow.labels" . | nindent 4 }}
+    {{- include "ui.labels" . | nindent 4 }}
 spec:
   {{- if not .Values.autoscaling.enabled }}
   replicas: {{ .Values.replicaCount }}
   {{- end }}
   selector:
     matchLabels:
-      {{- include "dataflow.selectorLabels" . | nindent 6 }}
+      {{- include "ui.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -18,7 +18,7 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "dataflow.labels" . | nindent 8 }}
+        {{- include "ui.labels" . | nindent 8 }}
         {{- with .Values.podLabels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
@@ -27,7 +27,6 @@ spec:
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "dataflow.serviceAccountName" . }}
       {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -40,42 +39,32 @@ spec:
           {{- end }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          
           {{- if .Values.debug }}
-          command: {{ .Values.command }}
+          command: {{ .Values.command | toYaml | nindent 8 }}
           {{- end }}
-          
+          ports:
+          {{- range .Values.service.portList }}
+            - name: http-{{ .name }}
+              containerPort: {{ .port }}
+              protocol: TCP
+          {{- end }}
           env:
           {{- range $key, $value := .Values.env }}
-          - name: "{{ $key }}"
-            value: "{{ $value }}"
+              - name: "{{ $key }}"
+                value: "{{ $value }}"
           {{- end }}
-
-          envFrom:
-          - configMapRef:
-              name: {{ .Values.globalConfigMapName }}
-
-          ports:
-            - name: http
-              containerPort: {{ .Values.service.port }}
-              protocol: TCP
-
-          {{- if ne .Values.env.ROLE "debug"}}
-            {{- with .Values.livenessProbe }}
+          {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
-            {{- end }}
-            {{- with .Values.readinessProbe }}
+          {{- end }}
+          {{- with .Values.readinessProbe }}
           readinessProbe:
             {{- toYaml . | nindent 12 }}
-            {{- end }}
           {{- end }}
-
           {{- with .Values.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-
           {{- with .Values.volumeMounts }}
           volumeMounts:
             {{- toYaml . | nindent 12 }}

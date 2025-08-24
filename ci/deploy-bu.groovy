@@ -1,17 +1,13 @@
 properties([
     parameters([
-        // 🌐 Global Parameters
-        string(name: "PIPELINE_BRANCH", defaultValue: "main", description: "Git branch to take the pipeline from, for testing purpose"),
-        string(name: "BRANCH", defaultValue: "main", description: "Branch to deploy from."),
-        
-        // 🚀 Deployment Parameters
         choice(name: 'deploy_location', choices: ['STAGING', 'PRODUCTION'], description: 'Deployment environment'),
         choice(name: 'deploy_type', choices: ['FRESH_INSTALL', 'APPLICATION_UPGRADE'], description: 'Deployment type'),
+        string(name: "BRANCH", defaultValue: "main", description: "Branch to deploy from."),
         string(name: "VERSION", defaultValue: "", description: "DONT SET THIS VALUE!"),
         string(name: "DF_VERSION", defaultValue: "", description: "Image tag for dataflow"),
         string(name: "MA_VERSION", defaultValue: "", description: "Image tag for multi-agent"),
         string(name: "GUI_VERSION", defaultValue: "", description: "Image tag for UI"),
-        string(name: "MODULES_TO_DEPLOY", defaultValue: "", description: "Comma-separated list of modules to update (e.g. dataflow,multiagent,ui)"),
+        string(name: "MODULES_TO_DEPLOY", defaultValue: "", description: "Comma-separated list of modules to update (e.g. dataflow,multiagent,gui)"),
         booleanParam(name: 'debug_mode', defaultValue: false, description: 'debug the pods'),
     ])
 ])
@@ -34,6 +30,7 @@ def buildParams = [
 ]
 
 def updateChartVersions(rootPath, version) {
+    echo "Looking for Chart.yaml files under: ${rootPath}"
 
     def chartFiles = sh(
         script: "find ${rootPath} -name 'Chart.yaml'",
@@ -41,33 +38,18 @@ def updateChartVersions(rootPath, version) {
     ).trim().split('\n')
 
     chartFiles.each { file ->
+        echo "Updating: ${file}"
         def chart = readYaml file: file
         //chart.version = params.VERSION
         chart.appVersion = version
-        echo "📝 Overwriting YAML file with version: ${version} in: ${file}"
+        echo "📝 Overwriting YAML file: ${file}"
         writeYaml file: file, data: chart, overwrite: true
-    }
-}
-
-def updateGlobalConfigYaml(String filePath) {
-    echo "🔄 Loading values from: ${filePath}"
-
-    def values = readYaml file: filePath
-    values.each { sectionName, sectionData ->
-
-    if (values?.env) {
-        values.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
-        values.env.DATAPIPELINEHUB_HOST = "https://unifai-dataflow-server-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
-        values.env.MULTIAGENT_HOST = "http://unifai-multiagent-be-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
-    }
-    writeYaml file: filePath, data: values, overwrite: true
-    echo "📄 successfully Updated values in ${filePath}:\n" + writeYaml(returnText: true, data: values)
     }
 }
 
 def updateValuesYaml(String filePath , String version) {
     echo "🔄 Loading values from: ${filePath}"
-    echo "📝 Overwriting YAML file: ${filePath}"
+
     def values = readYaml file: filePath
 
     values.each { sectionName, sectionData ->
@@ -77,36 +59,31 @@ def updateValuesYaml(String filePath , String version) {
                 sectionData.debug = true
                 sectionData.env = sectionData.env ?: [:]
                 sectionData.env.ROLE = "debug"
-                echo "🏷 Updated debug: ${sectionData}"
             }
 
             if (sectionData.image?.tag == 'latest') {
+                echo "🏷 Updating image tag in section: ${sectionName} to VERSION: ${version}"
                 sectionData.image.tag = version
-                echo "🏷 Updated image tag : ${sectionData.image.tag}"
             }
-
-            if (params.deploy_location == 'PRODUCTION') {
-
-                if (sectionData.tolerations instanceof List) {
-                    sectionData.tolerations = [
-                        [
-                            key: "nvidia.com/gpu",
-                            operator: "Exists",
-                            effect: "NoSchedule"
-                        ],
-                        [
-                            key: "tenant",
-                            operator: "Equal",
-                            value: "llmaas-a100",
-                            effect: "NoSchedule"
-                        ]
-                    ]
-                    echo "🏷 Updated tolerations: ${sectionData.tolerations}"
+            if (params.deploy_location == 'STAGING') {
+                echo "🛠 reduce resources in section: ${sectionName}"
+                
+                if (sectionName == "env") {
+                    echo "⚠️ Skipping top-level 'env' section (no resources)"
+                    return
                 }
+                sectionData.resources = sectionData.resources ?: [:]
+                sectionData.resources.limits = sectionData.resources.limits ?: [:]
+                sectionData.resources.requests = sectionData.resources.requests ?: [:]
+                sectionData.resources.limits.cpu = 1
+                sectionData.resources.limits.memory = "2Gi"
+                sectionData.resources.requests.cpu = 1
+                sectionData.resources.requests.memory = "2Gi"
             }
         }
     }
 
+    echo "📝 Overwriting YAML file: ${filePath}"
     writeYaml file: filePath, data: values, overwrite: true
     echo "✅ Updated ${filePath} successfully"
 }
@@ -120,20 +97,11 @@ def deployModules(module){
 
 def deleteRunningApplication(){
     echo("Removing running UnifAI application")
-
-    def charts = ["dataflow", "multiagent", "shared-resources","ui"]
-
-    charts.each { chart ->
-        sh("podman exec -t helmfile bash -c 'helmfile destroy -f ${chart}.yaml.gotmpl --deleteWait'")
-    }
-
+    sh("podman exec -t helmfile bash -c 'helmfile destroy -f dataflow.yaml.gotmpl --deleteWait'")
+    sh("podman exec -t helmfile bash -c 'helmfile destroy -f multiagent.yaml.gotmpl --deleteWait'")
+    sh("podman exec -t helmfile bash -c 'helmfile destroy -f shared-resources.yaml.gotmpl --deleteWait'")
     echo("Wait for resource deletion...")
-    sh("""
-        until ! oc get deployment,statefulset,svc | grep 'unifai\\|qdrant\\|mongo\\|rabbitmq'; do
-            echo 'Waiting for deployment deletion...'
-            sleep 5
-        done
-    """)
+    sh("until ! oc get deployment,statefulset,svc | grep 'unifai\\|qdrant\\|mongo\\|rabbitmq'; do echo 'Waiting for deployment deletion...'; sleep 5; done")
     echo("UnifAi application successfully deleted")
     sh("sleep 10")
 }
@@ -206,10 +174,9 @@ pipeline {
                                 ClusterAccessToken = 'tenantaccess-unifai-sa-pp'
                                 break
                             case 'PRODUCTION':
-                                ClusterAddress = 'https://api.stc-ai-e1-prod.rtc9.p1.openshiftapps.com:6443'
-                                NameSpace = "tag-ai--pipeline"
-                                ClusterAccessToken = 'tenantaccess-unifai-sa-prod'
-                                updateGlobalConfigYaml("${buildParams.DevRoot}/${params.BRANCH}/helm/values/global-config.yaml")
+                                //ClusterAddress = 'https://api.stc-ai-e1-prod.rtc9.p1.openshiftapps.com:6443'
+                                //NameSpace = "tag-ai--pipeline"
+                                //ClusterAccessToken = 'tenantaccess-unifai-sa-prod'
                                 break
                             default:
                                 error("Invalid deployment location: ${params.deploy_location}")
@@ -247,17 +214,10 @@ pipeline {
                                         break
 
                                     case 'multiagent':
-                                        def version = params.MA_VERSION?.trim() ?: params.VERSION?.trim()
+                                        def version = params.DF_VERSION?.trim() ?: params.VERSION?.trim()
                                         updateChartVersions("${buildParams.DevRoot}/${params.BRANCH}/helm/multiagent/", version)
                                         updateValuesYaml("${buildParams.DevRoot}/${params.BRANCH}/helm/values/multiagent-resource-values.yaml", version)
                                         deployModules('multiagent')
-                                        break
-
-                                    case 'ui':
-                                        def version = params.GUI_VERSION?.trim() ?: params.VERSION?.trim()
-                                        updateChartVersions("${buildParams.DevRoot}/${params.BRANCH}/helm/ui/", version)
-                                        updateValuesYaml("${buildParams.DevRoot}/${params.BRANCH}/helm/values/ui-values.yaml", version)
-                                        deployModules('ui')
                                         break
                                 }
                             }

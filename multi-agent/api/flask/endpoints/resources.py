@@ -89,11 +89,12 @@ def list_resources(user_id, category=None, type=None, limit=50, offset=0):
 @from_body({
     "resource_id": fields.Str(data_key="resourceId", required=True),
     "config": fields.Dict(required=True),
+    "name": fields.Str(required=False),
 })
-def update_resource(resource_id, config):
+def update_resource(resource_id, config, name=None):
     svc = current_app.container.resources_service
     try:
-        doc = svc.update(resource_id, config=config)
+        doc = svc.update(resource_id, config=config, name=name)
         return jsonify(doc.model_dump(mode="json")), 200
     except KeyError as e:  # unknown id
         return jsonify({"error": f"Resource not found: {e}"}), 404
