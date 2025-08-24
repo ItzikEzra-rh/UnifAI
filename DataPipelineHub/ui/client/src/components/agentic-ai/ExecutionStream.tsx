@@ -75,11 +75,15 @@ export default function ExecutionStream({
       return [];
     }
   
-    return graphFlow.plan.map(item => ({
-      id: item.uid,
-      name: item.meta?.display_name || "General Node",
-      description: item.meta?.description || null
-    }));
+    return graphFlow.plan.map(item => {
+      const node = graphFlow.nodes.find(node => node.rid === item.node);
+
+      return {
+        id: item.uid,
+        name: node?.name || item.meta?.display_name || "General Node",
+        description: node?.config?.description || item.meta?.description || null
+      }
+    });
   };
   
   // Create agent nodes from selected graph nodes on component mount
