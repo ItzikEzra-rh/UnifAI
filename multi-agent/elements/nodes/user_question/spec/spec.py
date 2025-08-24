@@ -1,5 +1,6 @@
 from elements.common.base_element_spec import BaseElementSpec
 from core.enums import ResourceCategory
+from core.field_hints import HiddenHint
 from ..config import UserQuestionNodeConfig
 from ..user_question_node_factory import UserQuestionNodeFactory
 from ..user_question import UserQuestionNode
@@ -18,3 +19,4 @@ class UserQuestionNodeElementSpec(BaseElementSpec):
     reads = UserQuestionNode.total_reads()
     writes = UserQuestionNode.total_writes()
     tags = META.tags
+    hints = [HiddenHint(reason="UI hidden element").model_dump(mode="json")]
