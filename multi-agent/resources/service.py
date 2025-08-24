@@ -41,7 +41,7 @@ class ResourcesService:
         )
         return self._store.create(doc)
 
-    def update(self, rid: str, *, config: dict) -> ResourceDoc:
+    def update(self, rid: str, *, config: dict, name: str = None) -> ResourceDoc:
         # 1. fetch immutable meta
         doc = self._store.get(rid)  # existing ResourceDoc
         model_cls = self.element_registry.get_schema(
@@ -54,6 +54,11 @@ class ResourcesService:
         # 3. build a *new* ResourceDoc (immutability) or mutate doc
         doc.cfg_dict = cfg_model.model_dump(mode="json")
         doc.nested_refs = nested_refs
+        
+        # 4. update name if provided
+        if name is not None:
+            doc.name = name
+            
         return self._store.update(doc)
 
     def delete(self, rid: str) -> None:

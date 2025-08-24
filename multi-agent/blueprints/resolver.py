@@ -74,10 +74,7 @@ class BlueprintResolver:
         raw = self.resource_registry.raw_config(rid)
         model_cls = self.element_registry.get_schema(ResourceCategory(cat), tp)
         obj = model_cls(**raw)
-
-        if name is None:
-            # fallback to registry name, or obj.name if available
-            name = self.resource_registry.get(rid).name
+        name = self.resource_registry.get(rid).name
 
         self._bucket.setdefault(cat, []).append(
             ResourceSpec[type(obj)](rid=rid, name=name, type=tp, config=obj)
