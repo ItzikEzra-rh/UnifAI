@@ -6,6 +6,7 @@ import {
   FaChartLine, FaUserShield, FaCog, FaSignOutAlt,
   FaRobot, FaFile, FaChevronLeft, FaChevronRight 
 } from "react-icons/fa";
+import { MessageSquare } from "lucide-react";
 import { FaJira, FaSlack, FaBars } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -22,7 +23,7 @@ export default function Sidebar() {
   const toggleCollapse = () => {
     setIsCollapsed(!isCollapsed);
   };
-  
+
   const { user, logout } = useAuth();
 
   const getInitials = (name: string): string => {
@@ -32,7 +33,7 @@ export default function Sidebar() {
       .map(part => part[0].toUpperCase()) // Take first letter of each part and capitalize
       .join('');                          // Join into a string
   }
-  
+
   return (
     <div 
       className={`${
@@ -68,7 +69,7 @@ export default function Sidebar() {
           >
             {isCollapsed ? <FaChevronRight size={14} /> : <FaChevronLeft size={14} />}
           </button>
-          
+
           <button 
             className="md:hidden text-gray-400 hover:text-gray-800 dark:hover:text-white"
             onClick={() => setMobileOpen(false)}
@@ -145,18 +146,26 @@ export default function Sidebar() {
         <ul>
           <NavItem 
               icon={<FaFile className="sidebar-icon" />} 
-              label="Repository" 
-              to="/repository"
-              isActive={location === '/repository'}
+              label="Agentic Inventory" 
+              to="/inventory"
+              isActive={location === '/inventory'}
               status={null}
               isCollapsed={isCollapsed}
           />
           <NavItem 
             icon={<FaRobot className="sidebar-icon" />} 
-            label="Agentic AI" 
+            label="Agentic AI Workflows" 
             to="/agentic-ai"
             isActive={location === '/agentic-ai'}
             status="New"
+            isCollapsed={isCollapsed}
+          />
+          <NavItem 
+            icon={<MessageSquare className="sidebar-icon" />} 
+            label="Agentic Chats" 
+            to="/agentic-chats"
+            isActive={location === '/agentic-chats'}
+            status={null}
             isCollapsed={isCollapsed}
           />
         </ul>

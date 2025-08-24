@@ -1,8 +1,6 @@
 from typing import List, Dict, Any
-from pydantic import BaseModel
 from core.enums import ResourceCategory
 from catalog.element_registry import ElementRegistry
-from catalog.element_definition import ElementDefinition
 from catalog.dto import ElementSummaryDTO, ElementDetailDTO, CatalogListDTO
 
 
@@ -30,7 +28,8 @@ class CatalogService:
                 elements.append(ElementSummaryDTO(
                     category=category_name,
                     type=type_key,
-                    name=spec_cls.name
+                    name=spec_cls.name,
+                    hints=spec_cls.hints if hasattr(spec_cls, 'hints') else []
                 ))
 
             if elements:  # Only include categories that have elements
@@ -47,7 +46,8 @@ class CatalogService:
         output_schema = None
         if hasattr(spec_cls, 'output_schema'):
             # Convert the output schema to JSON schema format
-            output_schema = spec_cls.output_schema.model_dump() if hasattr(spec_cls.output_schema, 'model_dump') else spec_cls.output_schema
+            output_schema = spec_cls.output_schema.model_dump() if hasattr(spec_cls.output_schema,
+                                                                           'model_dump') else spec_cls.output_schema
 
         return ElementDetailDTO(
             name=spec_cls.name,

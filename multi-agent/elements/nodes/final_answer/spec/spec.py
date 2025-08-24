@@ -1,6 +1,7 @@
 from typing import ClassVar
 from elements.common.base_element_spec import BaseElementSpec
 from core.enums import ResourceCategory
+from core.field_hints import HiddenHint
 from ..config import FinalAnswerNodeConfig
 from ..final_answer_node_factory import FinalAnswerNodeFactory
 from ..final_answer import FinalAnswerNode
@@ -19,3 +20,4 @@ class FinalAnswerNodeElementSpec(BaseElementSpec):
     reads = FinalAnswerNode.total_reads()
     writes = FinalAnswerNode.total_writes()
     tags = META.tags
+    hints = [HiddenHint(reason="UI hidden element").model_dump(mode="json")]

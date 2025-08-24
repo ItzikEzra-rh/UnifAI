@@ -107,3 +107,9 @@ class SessionService:
         """
         docs = self._manager.list_docs(user_id)
         return list({d.get("blueprint_id") for d in docs})
+
+    def delete(self, run_id: str) -> bool:
+        """
+        Delete a session by run_id. Returns True if deleted, False if not found.
+        """
+        return self._manager.delete_session(run_id)

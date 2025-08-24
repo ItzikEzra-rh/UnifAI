@@ -3,7 +3,6 @@ import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import StatusBar from "@/components/layout/StatusBar";
 import { useAuth } from "@/contexts/AuthContext";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -11,8 +10,6 @@ import { Users, Network, Play, Plus, LoaderCircle } from "lucide-react";
 
 // Agentic AI components
 import AgentFlowGraph from "@/components/agentic-ai/AgentFlowGraph";
-import ExecutionTab from "@/components/agentic-ai/ExecutionTab";
-import { StreamingDataProvider } from "@/components/agentic-ai/StreamingDataContext";
 import NewGraph from "../workspace/NewGraph";
 import axios from "../http/axiosAgentConfig";
 
@@ -28,7 +25,6 @@ export interface GraphNode {
 
 export default function AgenticAI() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState("agent-flow");
   const [selectedFlow, setSelectedFlow] = useState<FlowObject | null>(null);
   const [builtGraphId, setBuiltGraphId] = useState<string | null>(null);
   const [builtGraphName, setBuiltGraphName] = useState<string | null>(null);
@@ -57,8 +53,8 @@ export default function AgenticAI() {
       );
       setSelectedGraphId(response.data);
 
-      // Switch to the Execution tab
-      setActiveTab("execution");
+      // Navigate to Agentic Chats page
+      window.location.href = "/agentic-chats";
     } catch (error) {
       console.error("Error create new graph session:", error);
     }
@@ -92,84 +88,45 @@ export default function AgenticAI() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <Tabs
-                  defaultValue="agent-flow"
-                  value={activeTab}
-                  onValueChange={setActiveTab}
-                  className="w-full"
-                >
-                  <TabsList className="mb-6">
-                    <TabsTrigger
-                      value="agent-flow"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-white"
-                      onClick={() => setActiveTab("agent-flow")}
-                    >
-                      <Network className="mr-2 h-4 w-4" />
-                      Agent Flow
-                    </TabsTrigger>
-                    <TabsTrigger
-                      value="execution"
-                      className="data-[state=active]:bg-primary data-[state=active]:text-white"
-                      onClick={() => setActiveTab("execution")}
-                    >
-                      <Play className="mr-2 h-4 w-4" />
-                      Execution
-                    </TabsTrigger>
-                  </TabsList>
+                <Card className="bg-background-card shadow-card border-gray-800 mb-6">
+                  <CardHeader className="py-2 px-6 flex flex-row justify-between items-center">
+                    <CardTitle className="text-lg font-heading">
+                      Agent Flow Configuration
+                    </CardTitle>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleLoadFlow}
+                        className="bg-primary hover:bg-[#7525c9] text-white flex items-center gap-2"
+                      >
+                        <LoaderCircle className="h-4 w-4" />
+                        Load Flow
+                      </Button>
+                      <Button
+                        className="bg-primary hover:bg-opacity-80 flex items-center gap-2"
+                        size="sm"
+                        onClick={handleBuildGraph}
+                      >
+                        <Plus className="h-4 w-4" />
+                        Build Graph
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="pt-2 px-4 pb-4">
+                    <p className="text-sm text-gray-400">
+                      Configure your agent workflow. Select a pre-existing
+                      flow and click "Load Flow" to execute it, or click
+                      "Build Graph" to create a custom graph with
+                      drag-and-drop components.
+                    </p>
+                  </CardContent>
+                </Card>
 
-                  {/* Agent Flow Tab */}
-                  <TabsContent value="agent-flow" className="mt-0">
-                    <Card className="bg-background-card shadow-card border-gray-800 mb-6">
-                      <CardHeader className="py-2 px-6 flex flex-row justify-between items-center">
-                        <CardTitle className="text-lg font-heading">
-                          Agent Flow Configuration
-                        </CardTitle>
-                        <div className="flex gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleLoadFlow}
-                            className="bg-primary hover:bg-[#7525c9] text-white flex items-center gap-2"
-                          >
-                            <LoaderCircle className="h-4 w-4" />
-                            Load Flow
-                          </Button>
-                          <Button
-                            className="bg-primary hover:bg-opacity-80 flex items-center gap-2"
-                            size="sm"
-                            onClick={handleBuildGraph}
-                          >
-                            <Plus className="h-4 w-4" />
-                            Build Graph
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-2 px-4 pb-4">
-                        <p className="text-sm text-gray-400">
-                          Configure your agent workflow. Select a pre-existing
-                          flow and click "Load Flow" to execute it, or click
-                          "Build Graph" to create a custom graph with
-                          drag-and-drop components.
-                        </p>
-                      </CardContent>
-                    </Card>
-
-                    <AgentFlowGraph
-                      selectedFlow={selectedFlow}
-                      setSelectedFlow={setSelectedFlow}
-                    />
-                  </TabsContent>
-
-                  {/* Execution Tab */}
-                  <TabsContent value="execution" className="mt-0">
-                    {/* TODO: Don't allow the user to chat with the model if there isn't any active 'builtGraphId' */}
-                    <StreamingDataProvider>
-                      <ReactFlowProvider>
-                        <ExecutionTab runId={selectedGraphId} />
-                      </ReactFlowProvider>
-                    </StreamingDataProvider>
-                  </TabsContent>
-                </Tabs>
+                <AgentFlowGraph
+                  selectedFlow={selectedFlow}
+                  setSelectedFlow={setSelectedFlow}
+                />
               </motion.div>
             </div>
           )}
