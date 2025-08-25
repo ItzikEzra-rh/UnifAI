@@ -10,7 +10,7 @@ env:
   SHARED_STORAGE: "/app/shared"
 
 debug: false
-command: "sleep infinity"
+command: ["/bin/sh", "-c", "sleep infinity"]
 
 globalConfigMapName: shared-config
 # This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
