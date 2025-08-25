@@ -1,6 +1,7 @@
 from mcp.server.fastmcp import FastMCP
+import subprocess
 
-# Initialize the MCP server with a name and configuration
+# Initialize the MCP server
 mcp = FastMCP(
     name="Greeting Server",
     host="0.0.0.0",
@@ -8,31 +9,32 @@ mcp = FastMCP(
 )
 
 
-# Define a tool using the @mcp.tool() decorator
+# --------------------------
+# Generic curl tool with cookie
+# --------------------------
 @mcp.tool()
-def addition(x: int, y: int):
+def curl_request(url: str):
     """
-    Returns a the addition of two numbers
+    Executes a curl request to the given URL and returns the response body as a string.
     """
-    return x + y
+
+    cookie = "iglooauth=6666ad25-7f75-4194-931b-494ec69864b7"
+    try:
+        result = subprocess.run(
+            ["curl", "-L", "-b", cookie, url],
+            capture_output=True,
+            text=True,
+            timeout=20
+        )
+        if result.returncode != 0:
+            return f"Error: {result.stderr.strip()}"
+        return result.stdout
+    except Exception as e:
+        return f"Exception: {str(e)}"
 
 
-@mcp.tool()
-def division(x: int, y: int):
-    """
-    Returns a the division of two numbers
-    """
-    return x / y
-
-
-@mcp.tool()
-def substitute(x: int, y: int):
-    """
-    Returns a the substitution of two numbers
-    """
-    return x - y
-
-
-# Run the server using SSE transport
+# --------------------------
+# Run the server
+# --------------------------
 if __name__ == "__main__":
     mcp.run(transport="sse")

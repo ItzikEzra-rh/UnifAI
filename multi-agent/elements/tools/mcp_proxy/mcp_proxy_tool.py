@@ -1,6 +1,7 @@
 from typing import Optional, Type, Any, Dict
 from pydantic import BaseModel
-from global_utils.utils.util import run_async, validate_arguments
+from global_utils.utils.util import validate_arguments
+from global_utils.utils.async_bridge import get_async_bridge
 from elements.providers.mcp_server_client.mcp_server_client import McpServerClient
 from elements.tools.common.base_tool import BaseTool
 
@@ -65,7 +66,8 @@ class McpProxyTool(BaseTool):
         Otherwise, call `await arun(...)` directly.
         """
         try:
-            return run_async(self.arun(*args, **kwargs))
+            bridge = get_async_bridge()
+            return bridge.run(self.arun(*args, **kwargs))
         except Exception as e:
             raise McpProxyToolError(
                 f"Synchronous execution failed for '{self.mcp_tool_name}': {e}"
@@ -187,7 +189,7 @@ class McpProxyTool(BaseTool):
     def create_sync(cls, mcp_tool_name: str, mcp_client: McpServerClient) -> "McpProxyTool":
         """
         Sync factory method for creating a fully initialized McpProxyTool.
-        Uses run_async internally to handle the async initialization.
+        Uses AsyncBridge internally to handle the async initialization.
         
         Args:
             mcp_tool_name: Name of the MCP tool to proxy
@@ -196,7 +198,8 @@ class McpProxyTool(BaseTool):
         Returns:
             Fully initialized McpProxyTool instance
         """
-        return run_async(cls.create_async(mcp_tool_name, mcp_client))
+        bridge = get_async_bridge()
+        return bridge.run(cls.create_async(mcp_tool_name, mcp_client))
 
     def __repr__(self) -> str:
         desc = (self.description[:50] + "...") if self.description else "No description"

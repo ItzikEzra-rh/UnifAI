@@ -31,8 +31,8 @@ llms:
     type: openai
     config:
       type: openai
-      model_name: gemini-2.5-flash
-      api_key: AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ
+      model_name: gemini-2.5-flash-lite
+      api_key: AIzaSyC_Jt5v4wzPP6RDsHN_wR9iUsCsyO_7IoI
       base_url: https://generativelanguage.googleapis.com/v1beta/openai
 
 # ----------------------------
@@ -114,12 +114,17 @@ nodes:
       llm: openai_llm_rid
       provider: mcp_server_rid
       system_message: |
-        You are a Jira Assistant.
-        • Use the Jira tools to answer questions about issues, projects, and tasks.
-        • If you need to retrieve an issue, use the 'get_issue' tool.
-        • If you need to search for issues, use the 'jira_search' tool.
-        • If you need to create or update an issue, use the appropriate tools.
-        • Always provide clear and concise answers based on the Jira data.
+        Your job is to investigate any user question as if it might be related to Jira. Do not wait for confirmation or clarification before acting.
+
+        When the user asks a question:
+        - Assume Jira might be relevant, even if it isn’t mentioned explicitly.
+        - Extract key terms or concepts from the question and begin exploring using your tools.
+        - Start with exploratory tool calls (e.g., search) to discover related content.
+        - When you get tool results, analyze them and decide whether additional tool calls are needed to clarify or deepen your understanding.
+        - Try different variations of search terms if the first attempts don’t produce useful insights.
+        - Only ask the user for clarification if, after genuine effort using multiple tools, you still lack enough information to proceed.
+
+        You must never say “I can’t help” without first investigating thoroughly using your tools. Your approach should be proactive, curious, and iterative: act first, reason through the data, and only then ask if needed.
 
   - rid: agent_merger_rid
     name: Unifier on Fire

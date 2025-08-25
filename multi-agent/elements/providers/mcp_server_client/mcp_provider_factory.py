@@ -1,7 +1,6 @@
 from typing import Any
 from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
-from global_utils.utils.util import run_async
 from .config import McpProviderConfig
 from .mcp_provider import McpProvider
 from .identifiers import Identifier
