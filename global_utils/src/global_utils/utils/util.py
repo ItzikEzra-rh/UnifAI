@@ -75,33 +75,14 @@ def get_root_dir() -> Path:
 
 def run_async(awaitable: Any) -> Any:
     """
-    Run awaitable using anyio for loop-agnostic execution.
-
-    This approach:
-    1. Uses current event loop if available (async context)
-    2. Creates new event loop if none exists (sync context)
-    3. Supports nested calls naturally
-    4. Works with anyio locks across different loops
-
-    Uses anyio which provides cross-loop synchronization primitives.
+    Backward compatibility wrapper for the old run_async function.
+    Now uses AsyncBridge for consistent, safe async execution.
+    
+    DEPRECATED: Use AsyncBridge directly for new code.
     """
-    try:
-        # Check if we're already in an async context
-        asyncio.get_running_loop()
-
-        # We're in an async context - use anyio.from_thread to run in thread
-        # anyio.from_thread.run expects a coroutine function, so we wrap the awaitable
-        async def _run_awaitable():
-            return await awaitable
-
-        return anyio.from_thread.run(_run_awaitable)
-    except RuntimeError:
-        # No event loop running - create one with anyio
-        # anyio.run expects a coroutine function, so we wrap the awaitable
-        async def _run_awaitable():
-            return await awaitable
-
-        return anyio.run(_run_awaitable)
+    from .async_bridge import get_async_bridge
+    bridge = get_async_bridge()
+    return bridge.run(awaitable)
 
 
 def json_schema_model(
