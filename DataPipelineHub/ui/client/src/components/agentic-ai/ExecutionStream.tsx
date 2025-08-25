@@ -75,11 +75,15 @@ export default function ExecutionStream({
       return [];
     }
   
-    return graphFlow.plan.map(item => ({
-      id: item.uid,
-      name: item.meta?.display_name || "General Node",
-      description: item.meta?.description || null
-    }));
+    return graphFlow.plan.map(item => {
+      const node = graphFlow.nodes.find(node => node.rid === item.node);
+
+      return {
+        id: item.uid,
+        name: node?.name || item.meta?.display_name || "General Node",
+        description: node?.config?.description || item.meta?.description || null
+      }
+    });
   };
   
   // Create agent nodes from selected graph nodes on component mount
@@ -129,12 +133,12 @@ export default function ExecutionStream({
           
           // Process each entry from nodeListRef
           list.forEach(entry => {
-            const matchingNode = agentNodes?.find(node => node.id === entry.node_name);
+            const matchingNode = agentNodes?.find(node => node.id === entry.node_uid);
             
             if (matchingNode) {
               // Create a new log entry
               const newLog: LogEntry = {
-                id: `${entry.node_name}`, // Use node_name as id to ensure only one log per node
+                id: `${entry.node_uid}`, // Use node_uid as id to ensure only one log per node
                 timestamp: new Date(),
                 agent: matchingNode.name,
                 message: entry.text,
@@ -174,7 +178,7 @@ export default function ExecutionStream({
   
   // Filter logs based on selected node
   const filteredLogs = selectedNode 
-    ? logs.filter(log => log.agent === selectedNode.name || log.agent === 'System')
+    ? logs.filter(log => log.id === selectedNode.id || log.agent === 'System')
     : logs;
   
   // Scroll to bottom when new logs are added

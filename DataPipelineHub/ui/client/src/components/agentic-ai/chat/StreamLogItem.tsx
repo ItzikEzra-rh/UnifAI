@@ -21,12 +21,38 @@ const ToolCallItem = ({ tool }: { tool: ToolEntry }) => (
           Tool Calling ({tool.name})
         </span>
       </div>
-      <div className="text-sm text-gray-300">
-        <span className="text-gray-400">result:</span>{' '}
-        <span className="font-mono bg-gray-800/50 px-1.5 py-0.5 rounded text-xs">
-          {tool.output}
-        </span>
-      </div>
+      
+      {/* Args section */}
+      {tool.args && Object.keys(tool.args).length > 0 && (
+        <div className="mb-2">
+          <span className="text-xs font-medium text-blue-400 uppercase tracking-wide block mb-1">
+            args:
+          </span>
+          <div className="bg-gray-800/50 rounded p-2">
+            <table className="w-full text-xs">
+              <tbody>
+                {Object.entries(tool.args).map(([key, value]) => (
+                  <tr key={key} className="border-b border-gray-700 last:border-b-0">
+                    <td className="text-gray-400 pr-3 py-1 font-mono">{key}</td>
+                    <td className="text-gray-300 py-1 font-mono">
+                      {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      
+      {/* {tool.output && (
+        <div className="text-sm text-gray-300">
+          <span className="text-gray-400">result:</span>{' '}
+          <span className="font-mono bg-gray-800/50 px-1.5 py-0.5 rounded text-xs">
+            {tool.output}
+          </span>
+        </div>
+      )} */}
     </div>
   </div>
 );
