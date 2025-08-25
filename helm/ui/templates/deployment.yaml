@@ -40,7 +40,7 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           {{- if .Values.debug }}
-          command: {{ .Values.command | toYaml | nindent 8 }}
+          command: {{ .Values.command | toYaml | nindent 12 }}
           {{- end }}
           ports:
           {{- range .Values.service.portList }}
@@ -53,6 +53,7 @@ spec:
               - name: "{{ $key }}"
                 value: "{{ $value }}"
           {{- end }}
+          {{- if ne .Values.debug "true" }}
           {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
@@ -60,6 +61,7 @@ spec:
           {{- with .Values.readinessProbe }}
           readinessProbe:
             {{- toYaml . | nindent 12 }}
+          {{- end }}
           {{- end }}
           {{- with .Values.resources }}
           resources:
