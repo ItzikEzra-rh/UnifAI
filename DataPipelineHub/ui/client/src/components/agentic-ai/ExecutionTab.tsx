@@ -116,11 +116,13 @@ CustomDialogContent.displayName = DialogPrimitive.Content.displayName;
 
 type ChunkData = {
   node: string;
+  display_name: string;
   type: 'llm_token' | 'complete' | 'tool_calling' | 'tool_result';
   chunk?: string;
   tool?: string;
   output?: string;
   call_id?: string;
+  args?: Record<string, any>;
   state?: {
     user_prompt?: string;
   };
@@ -385,7 +387,7 @@ export default function ExecutionTab({
 
   // Maintains and updates a list of nodes and their stream state (PROGRESS or DONE) while aggregating text.
   const updateNodeList = (chunkData: ChunkData) => {
-    const { node, type, chunk, state, tool, output, call_id } = chunkData;
+    const { node, display_name, type, chunk, state, tool, output, call_id, args } = chunkData;
     const currentText = chunk ?? state?.user_prompt ?? '';
     const map = nodeListRef.current;
 
@@ -394,7 +396,8 @@ export default function ExecutionTab({
     // Initialize the node entry if it doesn't exist
     if (!existing) {
       existing = {
-        node_name: node,
+        node_name: display_name,
+        node_uid: node,
         stream: type === 'complete' ? 'DONE' : 'PROGRESS',
         text: '',
         tools: [],
@@ -420,7 +423,7 @@ export default function ExecutionTab({
         if (call_id && tool) {
           const existingTool = existing.tools?.find(t => t.id === call_id);
           if (!existingTool) {
-            existing.tools?.push({ id: call_id, name: tool });
+            existing.tools?.push({ id: call_id, name: tool, args });
           }
         }
         break;
