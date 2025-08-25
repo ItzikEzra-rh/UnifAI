@@ -2,7 +2,7 @@ import logging
 import asyncio
 from typing import List, Optional
 from pydantic import HttpUrl
-from global_utils.utils.util import run_async
+from global_utils.utils.async_bridge import get_async_bridge
 from elements.tools.mcp_proxy.mcp_proxy_tool import McpProxyTool
 from elements.providers.mcp_server_client.mcp_server_client import McpServerClient
 
@@ -64,7 +64,8 @@ class McpProvider:
         """
         # Ensure tools are initialized before returning
         if not self._initialized:
-            run_async(self._initialize_tools())
+            bridge = get_async_bridge()
+            bridge.run(self._initialize_tools())
         return self._tools
 
     def get_tool_by_name(self, name: str) -> Optional[McpProxyTool]:
@@ -79,7 +80,8 @@ class McpProvider:
         """
         # Ensure tools are initialized before searching
         if not self._initialized:
-            run_async(self._initialize_tools())
+            bridge = get_async_bridge()
+            bridge.run(self._initialize_tools())
         for tool in self._tools:
             if tool.name == name:
                 return tool
@@ -91,7 +93,8 @@ class McpProvider:
         """
         self._initialized = False
         self._tools.clear()
-        run_async(self._initialize_tools())
+        bridge = get_async_bridge()
+        bridge.run(self._initialize_tools())
 
     def clone(self) -> "McpProvider":
         """
@@ -135,16 +138,17 @@ class McpProvider:
     def create_sync(cls, sse_endpoint: HttpUrl, tool_names: Optional[List[str]] = None) -> "McpProvider":
         """
         Sync factory method for creating a fully initialized McpProvider.
-        Uses run_async internally to handle the async initialization.
+        Uses AsyncBridge internally to handle the async initialization.
         
         Args:
             sse_endpoint: HTTP(S) endpoint that streams SSE events
             tool_names: List of specific tool names to use from the MCP server
-            
+        
         Returns:
             Fully initialized McpProvider instance
         """
-        return run_async(cls.create_async(sse_endpoint, tool_names))
+        bridge = get_async_bridge()
+        return bridge.run(cls.create_async(sse_endpoint, tool_names))
 
     def __repr__(self) -> str:
         tool_names_str = ", ".join(self.tool_names) if self.tool_names else "all"

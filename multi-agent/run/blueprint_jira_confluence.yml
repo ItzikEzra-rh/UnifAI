@@ -48,9 +48,9 @@ llms:
     type: openai
     config:
       type: openai
-      model_name: /models/gpt-oss-20b
-      api_key: AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ
-      base_url: http://oss-vllm-serving-engine-tag-ai--runtime-int.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com/v1
+      model_name: gemini-2.5-flash-lite
+      api_key: AIzaSyC_Jt5v4wzPP6RDsHN_wR9iUsCsyO_7IoI
+      base_url: https://generativelanguage.googleapis.com/v1beta/openai
 
 
 

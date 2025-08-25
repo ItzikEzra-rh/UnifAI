@@ -6,7 +6,8 @@ from typing import (
 from core.contracts import SupportsStreaming
 from elements.llms.common.chat.message import ChatMessage, ToolCall, Role
 from elements.tools.common.base_tool import BaseTool
-from global_utils.utils.util import run_async, validate_arguments
+from global_utils.utils.util import validate_arguments
+from global_utils.utils.async_bridge import get_async_bridge
 
 T = TypeVar("T", bound=SupportsStreaming)
 
@@ -105,7 +106,8 @@ class ToolCapableMixin(Generic[T]):
         """
         if msg.role != Role.ASSISTANT or not msg.tool_calls:
             return []
-        return run_async(self._ainvoke_all(msg))
+        bridge = get_async_bridge()
+        return bridge.run(self._ainvoke_all(msg))
 
     def _execute_tool_cycle(
             self: T,

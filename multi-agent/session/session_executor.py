@@ -72,12 +72,13 @@ class SessionExecutor:
             self,
             session: WorkflowSession,
             inputs: Dict[str, Any],
-            scope: str = "public"
+            scope: str = "public",
+            logged_in_user=""
     ) -> GraphState:
         """
         Run the graph to completion and return the final GraphState.
         """
-        self._pre_run(session, inputs, scope)
+        self._pre_run(session, inputs, scope, logged_in_user)
         try:
             final_state = session.executable_graph.run(session.graph_state)
         except Exception as e:
