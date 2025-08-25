@@ -53,7 +53,7 @@ spec:
               - name: "{{ $key }}"
                 value: "{{ $value }}"
           {{- end }}
-          {{- if ne .Values.debug "true" }}
+          {{- if not .Values.debug  }}
           {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}
