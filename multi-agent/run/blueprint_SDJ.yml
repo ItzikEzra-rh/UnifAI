@@ -78,7 +78,7 @@ nodes:
       type: final_answer_node
 
   - rid: docs_agent_rid
-    name: docs_agent
+    name: Docs Agent
     type: custom_agent_node
     config:
       type: custom_agent_node
@@ -93,7 +93,7 @@ nodes:
         • If no document passage is relevant, respond: “I’m sorry, I don’t know.”
 
   - rid: slack_agent_rid
-    name: slack_agent
+    name: Slack Agent
     type: custom_agent_node
     config:
       type: custom_agent_node
@@ -107,7 +107,7 @@ nodes:
         • If no Slack message is relevant, respond: “I’m sorry, I don’t know.”
 
   - rid: agent_with_jira_rid
-    name: agent_with_jira
+    name: Agent With Jira
     type: custom_agent_node
     config:
       type: custom_agent_node
@@ -122,7 +122,7 @@ nodes:
         • Always provide clear and concise answers based on the Jira data.
 
   - rid: agent_merger_rid
-    name: agent_merger
+    name: Unifier on Fire
     type: merger_node
     config:
       type: merger_node
