@@ -31,6 +31,8 @@ class PlanBuilder:
         # Resolve node reference
         node_spec = self._find_node_by_ref(step_def.node.ref, blueprint)
         elem_spec = self._registry.get_spec(ResourceCategory.NODE, node_spec.type)
+        step_meta = step_def.meta or StepMeta()
+        step_meta.display_name = node_spec.name
 
         # Base step data
         step = Step(
@@ -41,7 +43,7 @@ class PlanBuilder:
             reads=set(elem_spec.reads),
             writes=set(elem_spec.writes),
             after=self._normalize_after(step_def.after),
-            meta=step_def.meta or StepMeta()
+            meta=step_meta
         )
 
         # Handle condition if present
