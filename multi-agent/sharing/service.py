@@ -140,7 +140,7 @@ class ShareService:
             return resource.name
             
         elif item_kind == ShareItemKind.BLUEPRINT:
-            bp_doc = self._cloner.blueprints.load(item_id)
+            bp_doc = self._cloner.blueprints.get_blueprint_draft_doc(item_id)
             if bp_doc["user_id"] != sender_user_id:
                 raise ValueError(f"Blueprint {item_id} not owned by sender")
             return bp_doc["spec_dict"]["name"]

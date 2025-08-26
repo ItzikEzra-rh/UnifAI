@@ -17,7 +17,7 @@ nodes:
     config:
       type: final_answer_node
 
-  - rid: $ref:68adbe71a44341aafd530739
+  - rid: $ref:9ffc6c27fed449c588f5dbfb5e39506a
 
 
 # ----------------------------
@@ -33,7 +33,7 @@ plan:
 
   - uid: mcp_agent
     after: user_input
-    node: f421220c01cc4fa1870bb09ce1b3b397
+    node: 9ffc6c27fed449c588f5dbfb5e39506a
     meta:
       display_name: MCP Agent
       description: |
