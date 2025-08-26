@@ -1,7 +1,4 @@
-from pydantic._internal._model_construction import ModelMetaclass
-
-
-class SingletonMeta(ModelMetaclass):
+class SingletonMeta(type):
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
