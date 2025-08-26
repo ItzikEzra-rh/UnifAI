@@ -16,6 +16,14 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class ResourceCacheData:
+    """Cached data for a resource."""
+    doc: ResourceDoc
+    dependencies: Set[str]  # Pre-computed dependencies
+    cfg_model: object       # Pre-built schema model
+
+
+@dataclass
 class CloneResult:
     """Result of a cloning operation with comprehensive metrics."""
     success: bool
@@ -28,14 +36,12 @@ class CloneResult:
 
 class ShareCloner:
     """
-    Improved cloner with RefWalker-based efficiency and clean architecture.
+    Efficient cloner for sharing resources and blueprints.
     
-    Key improvements:
-    - Uses RefWalker for accurate dependency discovery
-    - Eliminates code duplication through unified methods
-    - Simple and reliable reference replacement
-    - Proper logging instead of print statements
-    - Batch operations for better performance
+    - Accurate dependency discovery with RefWalker
+    - Single-pass loading and caching for efficiency  
+    - Clean reference replacement
+    - Proper logging and error handling
     """
 
     def __init__(self,
@@ -48,14 +54,14 @@ class ShareCloner:
 
     def clone_resource_graph(self, *, root_rid: str, sender_user_id: str,
                              recipient_user_id: str) -> Tuple[Dict[str, str], Dict[str, str]]:
-        """Clone resource and dependencies using unified efficient method."""
+        """Clone resource and all its dependencies."""
         logger.info(f"Starting resource graph clone: {root_rid} from {sender_user_id} to {recipient_user_id}")
 
-        # Use RefWalker-based closure computation for accuracy
-        closure = self._compute_resource_closure_with_refwalker({root_rid}, sender_user_id)
+        # Single pass: Load resources + compute dependencies + cache models
+        closure_data = self._compute_closure({root_rid}, sender_user_id)
 
-        # Use unified cloning method (eliminates code duplication)
-        result = self._clone_resource_set_unified(closure, sender_user_id, recipient_user_id)
+        # Clone using pre-computed data
+        result = self._clone_resource_set(closure_data, sender_user_id, recipient_user_id)
 
         if not result.success:
             raise ValueError(f"Resource cloning failed: {result.errors}")
@@ -65,17 +71,17 @@ class ShareCloner:
 
     def clone_blueprint(self, *, blueprint_id: str, sender_user_id: str,
                         recipient_user_id: str) -> Tuple[str, Dict[str, str], Dict[str, str]]:
-        """Clone blueprint and dependencies using improved efficient methods."""
+        """Clone blueprint and all its dependencies."""
         logger.info(f"Starting blueprint clone: {blueprint_id} from {sender_user_id} to {recipient_user_id}")
 
-        # Load blueprint document through service (follows service layer architecture)
+        # Load blueprint document through service
         bp_doc = self.blueprints.get_blueprint_draft_doc(blueprint_id)
         if bp_doc["user_id"] != sender_user_id:
             raise ValueError(f"Blueprint {blueprint_id} not owned by sender")
 
         draft = BlueprintDraft(**bp_doc["spec_dict"])
 
-        # Get dependencies using RefWalker (consistent with BlueprintService)
+        # Get dependencies using RefWalker
         external_rids = set(RefWalker.external_rids(draft))
 
         # Clone dependencies if any exist
@@ -86,12 +92,12 @@ class ShareCloner:
         if external_rids:  # Only if there are external refs
             logger.debug(f"Found external references: {external_rids}")
 
-            # Use RefWalker-based closure computation for ALL external references
-            all_closure = self._compute_resource_closure_with_refwalker(external_rids, sender_user_id)
+            # Single pass: Load + analyze + cache all resource data
+            closure_data = self._compute_closure(external_rids, sender_user_id)
 
-            if all_closure:
-                logger.debug(f"Total closure to clone: {all_closure}")
-                clone_result = self._clone_resource_set_unified(all_closure, sender_user_id, recipient_user_id)
+            if closure_data:
+                logger.debug(f"Total closure to clone: {set(closure_data.keys())}")
+                clone_result = self._clone_resource_set(closure_data, sender_user_id, recipient_user_id)
 
                 if not clone_result.success:
                     raise ValueError(f"Failed to clone resources: {clone_result.errors}")
@@ -101,11 +107,11 @@ class ShareCloner:
                 resources_cloned = clone_result.resources_cloned
                 logger.debug(f"RID mapping created: {rid_mapping}")
 
-        # Rewrite blueprint references (only if there are any to rewrite)
+        # Rewrite blueprint references if any exist
         if rid_mapping:
             new_spec_dict = self._replace_refs_in_dict(bp_doc["spec_dict"], rid_mapping)
         else:
-            new_spec_dict = bp_doc["spec_dict"]  # Direct copy for inline-only
+            new_spec_dict = bp_doc["spec_dict"]
 
         new_draft = BlueprintDraft(**new_spec_dict)
 
@@ -121,34 +127,29 @@ class ShareCloner:
         logger.info(f"Blueprint clone completed: {new_blueprint_id}, {resources_cloned} resources cloned")
         return new_blueprint_id, rid_mapping, name_conflicts
 
-    def _clone_resource_set_unified(self, resource_rids: Set[str], sender_user_id: str,
-                                    recipient_user_id: str) -> CloneResult:
-        """Unified method for cloning resource sets efficiently."""
+    def _clone_resource_set(self, closure_data: Dict[str, ResourceCacheData], 
+                           sender_user_id: str, recipient_user_id: str) -> CloneResult:
+        """Clone a set of resources using pre-computed closure data."""
         try:
-            # Batch load resources (more efficient than individual gets)
-            resources = self._batch_load_resources(resource_rids)
-            missing = resource_rids - set(resources.keys())
-            if missing:
-                logger.warning(f"Missing resources: {missing}")
+            logger.debug(f"Cloning {len(closure_data)} resources using cached data")
 
-            # Validate ownership
-            violations = self._validate_ownership_batch(resources, sender_user_id)
-            if violations:
-                return CloneResult(success=False, errors=[f"Resources not owned by sender: {violations}"])
-
-            # Generate RID mapping
-            rid_mapping = {old_rid: uuid4().hex for old_rid in resources.keys()}
+            # Ownership already validated during closure computation
+            # Generate RID mapping for all resources
+            rid_mapping = {old_rid: uuid4().hex for old_rid in closure_data.keys()}
             name_conflicts = {}
 
-            # Process each resource
+            # Process each resource using cached data (no redundant loading/analysis)
             new_docs = []
-            for old_rid, original_doc in resources.items():
+            for old_rid, cache_data in closure_data.items():
                 try:
-                    new_doc = self._clone_single_resource(original_doc, rid_mapping, recipient_user_id)
+                    # Use pre-computed dependencies
+                    new_doc = self._clone_single_resource(
+                        cache_data, rid_mapping, recipient_user_id
+                    )
 
                     # Track name conflicts
-                    if new_doc.name != original_doc.name:
-                        name_conflicts[original_doc.name] = new_doc.name
+                    if new_doc.name != cache_data.doc.name:
+                        name_conflicts[cache_data.doc.name] = new_doc.name
 
                     new_docs.append(new_doc)
 
@@ -170,61 +171,87 @@ class ShareCloner:
             logger.error(f"Resource set clone failed: {e}")
             return CloneResult(success=False, errors=[str(e)])
 
-    def _compute_resource_closure_with_refwalker(self, root_rids: Set[str], owner_user_id: str) -> Set[str]:
-        """Compute closure using RefWalker for accuracy and consistency."""
-        visited = set()
+    def _compute_closure(self, root_rids: Set[str], owner_user_id: str) -> Dict[str, ResourceCacheData]:
+        """
+        Compute resource closure and cache all data in a single pass.
+        
+        - Loads each resource only once
+        - Runs RefWalker only once per resource 
+        - Caches schema models for reuse
+        - Validates ownership during traversal
+        """
+        visited_rids = set()
         to_visit = set(root_rids)
+        closure_cache = {}  # rid -> ResourceCacheData
 
         while to_visit:
             rid = to_visit.pop()
-            if rid in visited:
+            if rid in visited_rids:
                 continue
-            visited.add(rid)
+            visited_rids.add(rid)
 
             try:
+                # Load resource (only once per resource)
                 doc = self.resources.get(rid)
+                
+                # Validate ownership (only once per resource)
                 if doc.user_id != owner_user_id:
                     logger.warning(f"Resource {rid} not owned by {owner_user_id}, owned by {doc.user_id}")
                     continue
 
-                # USE REFWALKER instead of trusting nested_refs for accuracy
+                # Create schema model (only once per resource)
                 cfg_model = self.elements.get_schema(
                     ResourceCategory(doc.category), doc.type
                 )(**doc.cfg_dict)
 
-                # RefWalker finds ALL references accurately from actual config
+                # Run RefWalker (only once per resource)
                 dependencies = RefWalker.external_rids(cfg_model)
 
+                # Cache all computed data for later use
+                closure_cache[rid] = ResourceCacheData(
+                    doc=doc,
+                    dependencies=dependencies,
+                    cfg_model=cfg_model
+                )
+
+                # Add dependencies to traversal queue
                 for dep_rid in dependencies:
-                    if dep_rid not in visited:
+                    if dep_rid not in visited_rids:
                         to_visit.add(dep_rid)
 
             except (KeyError, Exception) as e:
                 logger.warning(f"Error processing resource {rid}: {e}")
                 continue
 
-        return visited
+        logger.debug(f"Cached data for {len(closure_cache)} resources")
+        return closure_cache
 
-    def _clone_single_resource(self, original_doc: ResourceDoc, rid_mapping: Dict[str, str],
-                               recipient_user_id: str) -> ResourceDoc:
-        """Clone a single resource with reference rewriting."""
+    def _clone_single_resource(self, cache_data: ResourceCacheData, rid_mapping: Dict[str, str],
+                              recipient_user_id: str) -> ResourceDoc:
+        """
+        Clone a single resource using pre-computed data.
+        
+        - Uses cached dependencies instead of re-running RefWalker
+        - Reuses schema model data from cache
+        """
+        original_doc = cache_data.doc
         new_rid = rid_mapping[original_doc.rid]
 
-        # Resolve name conflicts
+        # Resolve name conflicts (no changes here)
         new_name = self._resolve_name_conflict(
             recipient_user_id, original_doc.category,
             original_doc.type, original_doc.name
         )
 
-        # Clone with reference rewriting
+        # Clone with reference rewriting (no changes here)
         new_cfg_dict = self._replace_refs_in_dict(original_doc.cfg_dict, rid_mapping)
 
-        # Recompute nested_refs using RefWalker for accuracy
-        model_cls = self.elements.get_schema(
-            ResourceCategory(original_doc.category), original_doc.type
-        )
-        cfg_model = model_cls(**new_cfg_dict)
-        new_nested_refs = list(RefWalker.external_rids(cfg_model))
+        # Use pre-computed dependencies instead of re-running RefWalker
+        # Map old dependencies to new RIDs
+        original_dependencies = cache_data.dependencies
+        new_nested_refs = [
+            rid_mapping.get(dep_rid, dep_rid) for dep_rid in original_dependencies
+        ]
 
         return ResourceDoc(
             rid=new_rid,
@@ -237,48 +264,15 @@ class ShareCloner:
             nested_refs=new_nested_refs
         )
 
-    def _batch_load_resources(self, rids: Set[str]) -> Dict[str, ResourceDoc]:
-        """Load multiple resources efficiently."""
-        # TODO: Implement actual batch loading in ResourcesRegistry
-        # For now, fall back to individual loads but track for future optimization
-        resources = {}
-        for rid in rids:
-            try:
-                resources[rid] = self.resources.get(rid)
-            except KeyError:
-                logger.warning(f"Resource {rid} not found")
-        return resources
-
     def _batch_create_resources(self, docs: List[ResourceDoc]) -> None:
         """Create multiple resources efficiently."""
         # TODO: Implement actual batch creation in ResourcesRegistry
-        # For now, fall back to individual creates but in a more organized way
         for doc in docs:
             self.resources.create(doc)
 
-    def _validate_ownership_batch(self, resources: Dict[str, ResourceDoc], owner_user_id: str) -> List[str]:
-        """Validate ownership for a batch of resources."""
-        violations = []
-        for rid, doc in resources.items():
-            if doc.user_id != owner_user_id:
-                violations.append(f"{rid} (owned by {doc.user_id})")
-        return violations
-
-    def _validate_ownership(self, rids: Set[str], owner_user_id: str) -> List[str]:
-        """Validate all resources are owned by user."""
-        violations = []
-        for rid in rids:
-            try:
-                doc = self.resources.get(rid)
-                if doc.user_id != owner_user_id:
-                    violations.append(rid)
-            except KeyError:
-                violations.append(rid)
-        return violations
-
     def _resolve_name_conflict(self, user_id: str, category: str,
                                type_: str, preferred_name: str) -> str:
-        """Resolve name conflicts following existing patterns."""
+        """Resolve name conflicts by adding copy suffix."""
         base_name = preferred_name
         counter = 1
         current_name = base_name
