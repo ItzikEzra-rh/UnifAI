@@ -3,35 +3,42 @@
 # Usage: helm install vllm-qwen2.5-7b ./helm/shared-resources/vllm-serving-engine -f helm/values/vllm-qwen2.5-7b-instruct-1m-values.yaml
 
 # Model configuration - Qwen2.5-7B-Instruct-1M specific (1M token context)
+image:
+  repository: images.paas.redhat.com/unifai/vllm
+  pullPolicy: IfNotPresent
+  tag: "qwen1m"
+
 model:
   name: "Qwen/Qwen2.5-7B-Instruct-1M"
   localModelPath: "/models/Qwen2.5-7B-Instruct-1M"
-  maxModelLen: "131072"  # Start with 128K tokens, can be increased later
+  maxModelLen: "1000000"  # Start with 128K tokens, can be increased later
   quantization: ""  # No quantization for optimal quality with 1M context
-  toolCallParser: ""
+  toolCallParser: "hermes"
   ropeScaling: {}  # Model natively supports 1M tokens without RoPE scaling
   # Custom arguments optimized for long context processing
   customArgs:
-    - "--max-num-batched-tokens=2048"  # Very conservative batching
     - "--max-num-seqs=1"  # Process one sequence at a time
     - "--disable-log-stats"  # Reduce logging overhead
     - "--enforce-eager"  # Disable CUDA graphs for compatibility
+      #- "--chat-template-content-format string"
+
   # Environment variables optimized for long context
   env:
     VLLM_USE_MODELSCOPE: "False"
     PYTORCH_CUDA_ALLOC_CONF: "max_split_size_mb:512"
     VLLM_WORKER_MULTIPROC_METHOD: "spawn"
+    CUDA_VISIBLE_DEVICES: "0,1,2,3"
 
 # Qwen2.5-7B-Instruct-1M specific resource requirements (optimized for 1M context)
 resources:
   limits:
     cpu: '8'
     memory: 48Gi  # Maximum allowed by cluster resource limits
-    nvidia.com/gpu: 1  # Single GPU to avoid tensor parallel issues
+    nvidia.com/gpu: 4  
   requests:
     cpu: '4'
     memory: 24Gi
-    nvidia.com/gpu: 1
+    nvidia.com/gpu: 4
 
 # GPU configuration for single GPU setup
 gpu:
@@ -41,8 +48,8 @@ gpu:
 vllm:
   # vLLM settings optimized for long context
   gpuMemoryUtilization: "0.85"  # Can use more memory with single GPU
-  tensorParallelSize: "1"  # Single GPU
-  enableAutoToolChoice: false
+  tensorParallelSize: "4"  # Single GPU
+  enableAutoToolChoice: true
   disableLogRequests: true  # Reduce logging overhead for long sequences
 
 # Extended health probe timing for 1M context model (longer startup)
