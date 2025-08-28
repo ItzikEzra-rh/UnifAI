@@ -8,15 +8,16 @@ model:
   localModelPath: "/models/internlm2_5-7b-chat-1m"
   maxModelLen: "1025056"  # Maximum feasible on A100-40GB (as suggested by error)
   quantization: ""  # No quantization for optimal quality with 1M context
-  toolCallParser: ""
+  toolCallParser: "internlm"
   ropeScaling: {}  # Model natively supports 1M tokens without RoPE scaling
   # Custom arguments optimized for 1M context processing with 4 GPUs
   customArgs:
     - "--trust-remote-code"  # Required for InternLM models
-    - "--max-num-batched-tokens=4096"  # Increased batching for multi-GPU setup
-    - "--max-num-seqs=4"  # Allow more sequences with 4 GPUs
     - "--disable-log-stats"  # Reduce logging overhead
     - "--enforce-eager"  # Disable CUDA graphs for compatibility with long context
+    - "--chat-template-content-format json"
+      #- "--max-num-batched-tokens=4096"  # Increased batching for multi-GPU setup
+      #- "--max-num-seqs=4"  # Allow more sequences with 4 GPUs
   # Environment variables optimized for InternLM and long context
   env:
     VLLM_USE_MODELSCOPE: "False"
@@ -45,7 +46,7 @@ vllm:
   # vLLM settings optimized for 1M context with 4-GPU tensor parallelism
   gpuMemoryUtilization: "0.95"  # Maximum utilization to get more KV cache memory
   tensorParallelSize: "4"  # 4-way tensor parallelism for full 1M context
-  enableAutoToolChoice: false
+  enableAutoToolChoice: true
   disableLogRequests: true  # Reduce logging overhead for long sequences
 
 # Extended health probe timing for full 1M context model with 4 GPUs (longer startup)
