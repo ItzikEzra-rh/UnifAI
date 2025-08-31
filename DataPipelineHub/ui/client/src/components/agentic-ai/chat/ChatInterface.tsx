@@ -20,6 +20,7 @@ import { SessionPayload } from "../ExecutionTab";
 import { useStreamingData } from "../StreamingDataContext";
 import { Message, StreamLogEntry } from "./types";
 import { StreamLogDisplay } from "./StreamLogDisplay";
+import { useToast } from "@/hooks/use-toast";
 
 // Backend message format
 interface BackendMessage {
@@ -45,8 +46,10 @@ export default function ChatInterface({
     string | null
   >(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const streamingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const { nodeListRef, clearStream } = useStreamingData();
+  const { toast } = useToast();
 
   // Transform backend messages to frontend format
   const transformBackendMessagesToFrontend = useCallback(
@@ -267,6 +270,16 @@ export default function ChatInterface({
   const handleSendMessage = async () => {
     if (inputMessage.trim() === "") return;
 
+    // Check if flow is loaded (runId should not be empty or null)
+    if (!runId || runId.trim() === "") {
+      toast({
+        title: "No Flow Loaded",
+        description: "You must load an existing flow before you can start chatting with the AI assistant.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -277,6 +290,14 @@ export default function ChatInterface({
     setMessages((prev) => [...prev, userMessage]);
     setInputMessage("");
     setIsTyping(true);
+
+    // Reset textarea cursor to start position after clearing
+    setTimeout(() => {
+      if (textareaRef.current) {
+        textareaRef.current.focus();
+        textareaRef.current.setSelectionRange(0, 0);
+      }
+    }, 0);
 
     // Create initial AI message for streaming
     const streamingMessageId = (Date.now() + 1).toString();
@@ -341,7 +362,8 @@ export default function ChatInterface({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") {
+    if (e.key === "Enter" && !e.shiftKey) { // Allow Shift+Enter for new lines
+      e.preventDefault(); // Prevent default Enter behavior (new line)
       handleSendMessage();
     }
   };
@@ -522,6 +544,7 @@ export default function ChatInterface({
         <div className="p-4 border-t border-gray-800 flex-shrink-0">
           <div className="flex space-x-2 items-end">
             <Textarea
+              ref={textareaRef}
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               onKeyDown={handleKeyDown}

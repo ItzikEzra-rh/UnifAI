@@ -2,9 +2,8 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Type, Union, Set, Optional, Tuple
 from pydantic import BaseModel
 from .action_models import ActionType
-from core.enums import ResourceCategory
-import asyncio
 import inspect
+from global_utils.utils.async_bridge import get_async_bridge
 
 
 class BaseAction(ABC):
@@ -53,7 +52,7 @@ class BaseAction(ABC):
     def execute_sync(self, input_data: BaseModel, context: Optional[Dict[str, Any]] = None) -> BaseModel:
         """
         Execute the action synchronously.
-        If the action is async, this will run it in an event loop.
+        If the action is async, this will run it using AsyncBridge for safe execution.
         
         Args:
             input_data: Validated input according to input_schema
@@ -64,23 +63,10 @@ class BaseAction(ABC):
         """
         result = self.execute(input_data, context)
 
-        # If the result is a coroutine, run it in event loop
+        # If the result is a coroutine, run it using AsyncBridge
         if inspect.iscoroutine(result):
-            try:
-                # Try to get existing event loop
-                loop = asyncio.get_event_loop()
-                if loop.is_running():
-                    # If loop is running, we need to run in thread
-                    import concurrent.futures
-                    with concurrent.futures.ThreadPoolExecutor() as executor:
-                        future = executor.submit(asyncio.run, result)
-                        return future.result()
-                else:
-                    # Loop exists but not running
-                    return loop.run_until_complete(result)
-            except RuntimeError:
-                # No event loop, create new one
-                return asyncio.run(result)
+            bridge = get_async_bridge()
+            return bridge.run(result)
 
         # Otherwise, return the sync result
         return result

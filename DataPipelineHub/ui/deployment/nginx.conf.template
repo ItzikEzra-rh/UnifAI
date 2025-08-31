@@ -39,20 +39,21 @@ http {
         listen       [::]:${NGINX_PORT} default_server;
         server_name  _;
         root         /usr/share/nginx/html  ;
+        client_max_body_size 50M;
 
         # Load configuration files for the default server block.
         include /opt/app-root/etc/nginx.default.d/*.conf;
 
+        location ~ /api1/(.*)$ {
+            return 307 ${DATAPIPELINEHUB_HOST}/api/${DOLLAR}1${DOLLAR}is_args${DOLLAR}args;
+        }
+
+        location ~ /api2/(.*)$ {
+            return 307 ${MULTIAGENT_HOST}/api/${DOLLAR}1${DOLLAR}is_args${DOLLAR}args;
+        }
+
         location / {
             try_files ${DOLLAR}uri /index.html;
-        }
-
-        location /api1 {
-            rewrite ^/api1/(.*)$ ${DATAPIPELINEHUB_HOST}:${DATAPIPELINEHUB_PORT}/api/$1 redirect;
-        }
-
-        location /api2 {
-            rewrite ^/api2/(.*)$ ${MULTIAGENT_HOST}:${MULTIAGENT_PORT}/api/$1 redirect;
         }
 
         location = /404.html {
