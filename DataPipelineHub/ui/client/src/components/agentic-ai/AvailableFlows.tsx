@@ -10,8 +10,10 @@ import {
   MessageSquare,
   BookOpen,
   Trash2,
+  Users,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useShared } from "@/contexts/SharedContext";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
 import axios from "../../http/axiosAgentConfig";
@@ -106,6 +109,7 @@ export default function AvailableFlows({
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
 
   const { user } = useAuth();
+  const { openShareForItem } = useShared();
 
   // Fetch available flows from API
   const fetchAvailableFlows = async (): Promise<void> => {
@@ -178,6 +182,15 @@ export default function AvailableFlows({
     event.stopPropagation(); // Prevent flow selection when clicking delete
     setFlowToDelete(flow);
     setShowDeleteModal(true);
+  };
+
+  const handleShareClick = (flow: FlowObject, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent flow selection when clicking share
+    openShareForItem({
+      itemKind: 'blueprint',
+      itemId: flow.id,
+      itemName: flow.name,
+    });
   };
 
   const handleDeleteConfirm = async () => {
@@ -280,15 +293,27 @@ export default function AvailableFlows({
                           Active
                         </span>
                       )}
-                      {showDeleteButton && (
+                      <SimpleTooltip content={<p>Share this blueprint</p>}>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-400"
-                          onClick={(e) => handleDeleteClick(flow, e)}
+                          className="h-6 w-6 p-0 hover:bg-blue-500/20 hover:text-blue-400"
+                          onClick={(e) => handleShareClick(flow, e)}
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Users className="h-3 w-3" />
                         </Button>
+                      </SimpleTooltip>
+                      {showDeleteButton && (
+                        <SimpleTooltip content={<p>Delete this blueprint</p>}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 hover:bg-red-500/20 hover:text-red-400"
+                            onClick={(e) => handleDeleteClick(flow, e)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </SimpleTooltip>
                       )}
                     </div>
                   </div>
