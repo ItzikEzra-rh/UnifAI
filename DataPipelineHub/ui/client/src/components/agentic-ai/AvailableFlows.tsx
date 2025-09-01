@@ -94,7 +94,7 @@ export default function AvailableFlows({
   useResolvedEndpoint = false,
   graphProps = {
     showControls: true,
-    showMiniMap: true,
+    showMiniMap: false,
     showBackground: true,
     interactive: true,
     isLiveRequest: false,
