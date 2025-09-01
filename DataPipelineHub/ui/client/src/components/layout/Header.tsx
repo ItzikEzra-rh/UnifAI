@@ -16,7 +16,7 @@ interface HeaderProps {
 
 export default function Header({ title, onToggleSidebar }: HeaderProps) {
   const [hasNotifications] = useState(true);
-  const { theme, toggleTheme } = useTheme();
+  const { theme, toggleTheme, primaryHex, setPrimaryHex } = useTheme();
 
   const { user, logout } = useAuth();
 
@@ -53,6 +53,20 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
           </button>
         </SimpleTooltip>
         
+        {/* Color palette picker */}
+        <div className="flex items-center gap-2 mr-2">
+          {["#BB86FC", "#03DAC5", "#4CC9F0"].map((hex) => (
+            <button
+              key={hex}
+              onClick={() => setPrimaryHex(hex)}
+              className={`w-4 h-4 rounded-full border border-border transition-transform ${primaryHex === hex ? 'ring-2 ring-primary' : ''}`}
+              style={{ backgroundColor: hex }}
+              aria-label={`Set primary color ${hex}`}
+              title={`Set primary color ${hex}`}
+            />
+          ))}
+        </div>
+
         <SimpleTooltip content={<p>Notifications</p>}>
           <button className="p-2 rounded-full hover:bg-background-card text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors relative">
             <FaBell />

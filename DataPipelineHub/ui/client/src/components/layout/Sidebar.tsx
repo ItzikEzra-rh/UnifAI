@@ -36,8 +36,8 @@ export default function Sidebar() {
   return (
     <div 
       className={`${
-        isCollapsed ? 'w-16' : 'w-1/5 min-w-[250px]'
-      } bg-background-surface flex flex-col border-r border-gray-800 relative transition-all duration-300 ${
+        isCollapsed ? 'w-16' : 'w-56 min-w-[220px]'
+      }  flex flex-col relative transition-all duration-300 bg-background-card overlay-elevation overlay-04 ${
         mobileOpen ? "absolute inset-y-0 left-0 z-50" : "hidden md:flex"
       }`}
     >

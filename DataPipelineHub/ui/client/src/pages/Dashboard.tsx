@@ -10,45 +10,65 @@ import StatusBar from "@/components/layout/StatusBar";
 
 // Dashboard components
 import StatusCard from "@/components/dashboard/StatusCard";
-import PipelineVisualizer from "@/components/dashboard/PipelineVisualizer";
+import { PipelineVisualizerWrapper } from "@/components/dashboard/PipelineVisualizerWrapper";
 import ProjectCard from "@/components/dashboard/ProjectCard";
-import ActivityFeed from "@/components/dashboard/ActivityFeed";
+import { LiveActivityFeed } from "@/components/dashboard/LiveActivityFeed";
 import DataSourceStats from "@/components/dashboard/DataSourceStats";
+import { PipelineInfoCards } from "@/components/dashboard/PipelineInfoCards";
+import GlassPanel from "@/components/ui/GlassPanel";
+import { useQuery } from "@tanstack/react-query";
+import { fetchActivePipelines, fetchPipelineMetrics, fetchConnectedSources } from "@/api/pipelines";
+import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
+import { PieChart, Pie, Cell } from "recharts";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
+import { Separator } from "@/components/ui/separator";
 
 export default function Dashboard() {
   const { projects } = useProject();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Activity feed data
-  const activities = [
-    {
-      id: '1',
-      type: 'success' as const,
-      title: 'Jira pipeline processing completed',
-      time: '10 min ago',
-      description: 'Successfully processed 230 Jira tickets from the Engineering board.',
-      project: { name: 'Test Autmation Generator', color: 'primary' },
-      source: 'Jira'
-    },
-    {
-      id: '2',
-      type: 'error' as const,
-      title: 'Slack connection error',
-      time: '1 hour ago',
-      description: 'API rate limit exceeded when processing #general channel. Retrying in 15 minutes.',
-      project: { name: 'AI Assistant', color: 'secondary' },
-      source: 'Slack'
-    },
-    {
-      id: '3',
-      type: 'info' as const,
-      title: 'Document processing started',
-      time: '3 hours ago',
-      description: 'Started processing 28 new PDF documents from shared drive.',
-      project: { name: 'Data Warehouse', color: 'accent' },
-      source: 'Documents'
-    }
-  ];
+  // Live metrics for summary cards
+  const { data: metrics } = useQuery({
+    queryKey: ['pipelineMetricsSummary'],
+    queryFn: fetchPipelineMetrics,
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
+  });
+
+  const { data: connectedSources } = useQuery({
+    queryKey: ['connectedSourcesSummary'],
+    queryFn: fetchConnectedSources,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+  });
+
+  const slackCount = connectedSources?.byType?.slack ?? 0;
+  const documentCount = connectedSources?.byType?.document ?? 0;
+  const totalSources = slackCount + documentCount;
+
+  const { data: activePipelines = [] } = useQuery({
+    queryKey: ['activePipelinesListSummary'],
+    queryFn: fetchActivePipelines,
+    refetchInterval: 10000,
+    refetchOnWindowFocus: true,
+  });
+
+  const processingCount = activePipelines.filter(p => [
+    PIPELINE_STATUS.COLLECTING,
+    PIPELINE_STATUS.PROCESSING,
+    PIPELINE_STATUS.CHUNKING_AND_EMBEDDING,
+    PIPELINE_STATUS.STORING,
+    PIPELINE_STATUS.ORCHESTRATING,
+  ].includes(p.status as any)).length;
+
+  const waitingCount = activePipelines.filter(p => p.status === PIPELINE_STATUS.PENDING || p.status === PIPELINE_STATUS.ACTIVE).length;
+  const pausedCount = activePipelines.filter(p => p.status === PIPELINE_STATUS.PAUSED).length;
+
+  const totalDocs = activePipelines.reduce((sum, p) => sum + (p.pipeline_stats?.documents_retrieved || 0), 0);
+  const totalEmbeddings = activePipelines.reduce((sum, p) => sum + (p.pipeline_stats?.embeddings_created || 0), 0);
+  const totalProcessingTime = activePipelines.reduce((sum, p) => sum + (p.pipeline_stats?.processing_time || 0), 0);
+  const docsPerMin = totalProcessingTime > 0 ? Math.round((totalDocs / totalProcessingTime) * 60) : 0;
   
   // Data source stats
   const dataSourceStats = {
@@ -71,133 +91,112 @@ export default function Dashboard() {
         <Header title="Overview Dashboard" onToggleSidebar={() => setSidebarOpen(!sidebarOpen)} />
         
         {/* Main Content */}
-        <main className="flex-1 overflow-y-auto p-6 bg-background-dark">
-          {/* Dashboard Summary Cards */}
+        <main className="flex-1 overflow-y-auto p-6 bg-transparent">
+          {/* Top row: Processing Stats and Connected Sources side-by-side */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5 }}
-            className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+            transition={{ duration: 0.5, delay: 0.1 }}
+            className="mb-6 grid grid-cols-1 xl:grid-cols-3 gap-6"
           >
-            <StatusCard 
-              title="Active Pipelines" 
-              value="12" 
-              icon={<FaStream />} 
-              iconBgColor="bg-primary"
-              statusItems={[
-                { label: "Processing", value: "4 pipelines", color: "success" },
-                { label: "Waiting", value: "7 pipelines", color: "secondary" },
-                { label: "Paused", value: "1 pipeline", color: "accent" }
-              ]}
-            />
-            
-            <StatusCard 
-              title="Connected Sources" 
-              value="5 / 8" 
-              icon={<FaPlug />} 
-              iconBgColor="bg-secondary"
-              statusItems={[
-                { label: "Jira", value: "Connected", color: "success" },
-                { label: "Slack", value: "Connected", color: "success" },
-                { label: "GitHub", value: "Disconnected", color: "gray-600" }
-              ]}
-            />
-            
-            <StatusCard 
-              title="Processing Stats" 
-              value="98.2%" 
-              icon={<FaChartPie />} 
-              iconBgColor="bg-accent"
-              progressItems={[
-                { label: "Successful embeddings", value: "15.2K", percentage: 95, color: "bg-gradient-to-r from-primary to-secondary" },
-                { label: "Processing speed", value: "132/min", percentage: 78, color: "bg-secondary" }
-              ]}
-            />
+            <GlassPanel className="h-full">
+              <PipelineInfoCards metrics={metrics} activePipelines={activePipelines} showProcessing showConnected={false} showActive={false} />
+            </GlassPanel>
+            <GlassPanel className="h-full">
+              <PipelineInfoCards metrics={metrics} activePipelines={activePipelines} showProcessing={false} showConnected showActive={false} />
+            </GlassPanel>
+            <GlassPanel className="h-full">
+              <PipelineInfoCards metrics={metrics} activePipelines={activePipelines} showProcessing={false} showConnected={false} showActive={false} showLastSync />
+            </GlassPanel>
           </motion.div>
 
-          {/* Pipeline Activity Visualization */}
+          {/* Middle row: Pipeline tracker left, Connected Sources right (same line) */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="mb-8"
+            className="mb-8 grid grid-cols-1 xl:grid-cols-3 gap-6"
           >
-            <PipelineVisualizer title="Pipeline Activity" />
+            <GlassPanel strong className="xl:col-span-2">
+              <PipelineVisualizerWrapper />
+            </GlassPanel>
+            <GlassPanel className="xl:col-span-1" style={{ height: 500 }}>
+              <Card className=" shadow-card border-gray-800 h-full flex flex-col">
+                <CardHeader className="py-4 px-6">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">Connected Sources</CardTitle>
+                    <span className="text-sm text-gray-400">Slack vs Documents</span>
+                  </div>
+                </CardHeader>
+                <CardContent className="px-6 pb-6 flex-1 flex flex-col justify-between min-h-0">
+                  <div className="w-full h-[320px]">
+                    <ChartContainer config={{}} className="w-full h-full aspect-auto">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Slack', value: connectedSources?.byType?.slack ?? 0 },
+                            { name: 'Documents', value: connectedSources?.byType?.document ?? 0 },
+                          ]}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={90}
+                          stroke="transparent"
+                          label
+                        >
+                          <Cell fill="#a78bfa" />
+                          <Cell fill="#22d3ee" />
+                        </Pie>
+                        <ChartTooltip formatter={(value: any) => String(value)} />
+                      </PieChart>
+                    </ChartContainer>
+                  </div>
+                  <Separator className="my-1 bg-gray-800" />
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#a78bfa' }}></span>
+                        <span className="text-sm">Slack</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-medium">{slackCount}</span>
+                        <span className="text-xs text-gray-400 ml-2">{totalSources ? Math.round((slackCount / totalSources) * 100) : 0}%</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#22d3ee' }}></span>
+                        <span className="text-sm">Documents</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-sm font-medium">{documentCount}</span>
+                        <span className="text-xs text-gray-400 ml-2">{totalSources ? Math.round((documentCount / totalSources) * 100) : 0}%</span>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </GlassPanel>
           </motion.div>
 
-          {/* Projects Row */}
+          {/* Bottom row: Recent Activity (3/4) and Active Pipelines (1/4) */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
-            className="mb-8"
+            className="mb-8 grid grid-cols-1 xl:grid-cols-12 gap-6"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-heading font-semibold text-lg">Your Projects</h2>
-              <button className="px-3 py-1 bg-background-card hover:bg-opacity-80 rounded text-sm font-medium text-gray-400 hover:text-white transition-colors flex items-center">
-                <span>View All</span>
-                <FaChevronRight className="ml-2 text-xs" />
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {projects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  name={project.name}
-                  shortName={project.shortName}
-                  icon={project.icon}
-                  updatedTime={project.updatedTime}
-                  processingPercentage={project.processingPercentage}
-                  color={project.color}
-                  isActive={project.isActive}
-                  sources={project.sources}
-                  documents={project.documents}
-                />
-              ))}
-            </div>
-          </motion.div>
-
-          {/* Recent Activity & Data Source Stats */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.4 }}
-            className="grid grid-cols-1 lg:grid-cols-3 gap-6"
-          >
-            {/* Recent Activity */}
-            <div className="lg:col-span-2">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-heading font-semibold text-lg">Recent Activity</h2>
-                <button className="px-3 py-1 bg-background-card hover:bg-opacity-80 rounded text-sm font-medium text-gray-400 hover:text-white transition-colors">
-                  View All
-                </button>
-              </div>
-              
-              <ActivityFeed activities={activities} />
-            </div>
-            
-            {/* Data Source Stats */}
-            <div className="lg:col-span-1">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-heading font-semibold text-lg">Data Source Analytics</h2>
-                <button className="text-gray-400 hover:text-white">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-                  </svg>
-                </button>
-              </div>
-              
-              <DataSourceStats 
-                totalVectors={dataSourceStats.totalVectors}
-                stats={dataSourceStats.stats}
-              />
-            </div>
+            <GlassPanel className="xl:col-span-5" style={{ height: 340 }}>
+              <PipelineInfoCards metrics={metrics} activePipelines={activePipelines} showProcessing={false} showConnected={false} showActive />
+            </GlassPanel>
+            <GlassPanel className="xl:col-span-7" style={{ height: 340 }}>
+              <LiveActivityFeed compact />
+            </GlassPanel>
           </motion.div>
         </main>
-        
-        {/* Status Bar */}
-        <StatusBar />
+            <StatusBar />
       </div>
     </div>
   );
