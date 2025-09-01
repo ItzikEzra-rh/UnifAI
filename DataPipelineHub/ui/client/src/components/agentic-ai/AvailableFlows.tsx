@@ -260,11 +260,11 @@ export default function AvailableFlows({
     <>
       <div className={`flex h-full overflow-hidden ${className}`} style={{ height }}>
         {/* Available Flows Sidebar */}
-        <div className="w-1/3 border-r border-gray-800 bg-background-dark flex flex-col min-h-0">
+        <div className="w-1/3 border-r border-gray-800 bg-background-dark flex flex-col min-h-0 relative">
           <div className="py-3 px-4 border-b border-gray-800 bg-background-surface flex-shrink-0">
             <h3 className="text-sm font-medium">Available Flows ({graphFlows.length})</h3>
           </div>
-          <div className="flex-1 overflow-y-auto py-2 max-h-full">
+          <div className="flex-1 overflow-y-auto py-2 max-h-full relative">
             {graphFlows.length === 0 ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-gray-400">No flows available</div>
