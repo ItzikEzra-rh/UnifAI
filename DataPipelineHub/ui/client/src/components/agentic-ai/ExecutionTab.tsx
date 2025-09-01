@@ -550,15 +550,15 @@ export default function ExecutionTab({
             {/* Chat sessions sidebar */}
             <div className="col-span-12 md:col-span-4 lg:col-span-3">
               <Card className="bg-background-card shadow-card border-gray-800 h-full flex flex-col">
-                <CardHeader className="py-3 px-4 border-b border-gray-800">
-                  <div className="flex justify-between items-center">
-                    <CardTitle className="text-sm font-medium">
+                <CardHeader className="py-3 px-4 border-b border-gray-800 overflow-hidden">
+                  <div className="flex justify-between items-center min-w-0 w-full max-w-full">
+                    <CardTitle className="text-sm font-medium truncate flex-1 min-w-0 mr-2">
                       Available Chats ({chatSessions.length})
                     </CardTitle>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1 flex-shrink-0 max-w-fit">
                       {/* Global Scope Toggle */}
                       <Switch.Root
-                        className="relative w-24 h-6 rounded-full bg-gray-600 data-[state=checked]:bg-[#03DAC6] transition-colors cursor-pointer"
+                        className="relative w-20 h-5 rounded-full bg-gray-600 data-[state=checked]:bg-[#03DAC6] transition-colors cursor-pointer flex-shrink-0"
                         checked={globalScope === 'public'}
                         onCheckedChange={handleGlobalScopeToggle}
                         id="scope-switch"
@@ -571,20 +571,20 @@ export default function ExecutionTab({
 
                         {/* Switch thumb */}
                         <Switch.Thumb
-                          className="absolute top-[2px] left-[2px] h-5 w-5 rounded-full bg-white transition-transform duration-300 z-10 transform data-[state=checked]:translate-x-[72px]"
+                          className="absolute top-[1px] left-[1px] h-4 w-4 rounded-full bg-white transition-transform duration-300 z-10 transform data-[state=checked]:translate-x-[60px]"
                         />
                       </Switch.Root>
-                      <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                        <Users className="h-4 w-4" />
+                      <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0">
+                        <Users className="h-3 w-3" />
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="sm" 
-                        className="h-7 w-7 p-0 text-[#03DAC6] hover:bg-[#03DAC6] hover:bg-opacity-20" 
+                        className="h-6 w-6 p-0 text-[#03DAC6] hover:bg-[#03DAC6] hover:bg-opacity-20 flex-shrink-0" 
                         onClick={handleAddFlowClick}
                         title="Add new chat from flow"
                       >
-                        <Plus className="h-4 w-4" />
+                        <Plus className="h-3 w-3" />
                       </Button>
                     </div>
                   </div>
