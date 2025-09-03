@@ -41,10 +41,6 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           
-          {{- if .Values.debug }}
-          command: {{ .Values.command }}
-          {{- end }}
-
           env:
           {{- range $key, $value := .Values.env }}
           - name: "{{ $key }}"
@@ -60,7 +56,7 @@ spec:
               containerPort: {{ .Values.service.port }}
               protocol: TCP
 
-          {{- if not .Values.debug }}
+          {{- if ne .Values.env.ROLE "debug"}}
             {{- with .Values.livenessProbe }}
           livenessProbe:
             {{- toYaml . | nindent 12 }}

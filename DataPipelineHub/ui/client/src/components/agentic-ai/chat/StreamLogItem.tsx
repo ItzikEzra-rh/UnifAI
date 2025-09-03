@@ -1,8 +1,10 @@
-import React, { memo, useCallback, useMemo } from 'react';
-import { motion, AnimatePresence } from "framer-motion";
+import React, { memo, useCallback, useMemo, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronRight, Wrench } from "lucide-react";
 import { StreamLogEntry, ToolEntry } from './types';
 import { StatusIndicator } from './StatusIndicator';
+import { preprocessText, MarkdownComponents } from "./helpers/TextComponents";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface StreamLogItemProps {
   log: StreamLogEntry;
@@ -22,12 +24,38 @@ const ToolCallItem = ({ tool }: { tool: ToolEntry }) => (
           Tool Calling ({tool.name})
         </span>
       </div>
-      <div className="text-sm text-gray-300">
-        <span className="text-gray-400">result:</span>{' '}
-        <span className="font-mono bg-gray-800/50 px-1.5 py-0.5 rounded text-xs">
-          {tool.output}
-        </span>
-      </div>
+      
+      {/* Args section */}
+      {tool.args && Object.keys(tool.args).length > 0 && (
+        <div className="mb-2">
+          <span className="text-xs font-medium text-blue-400 uppercase tracking-wide block mb-1">
+            args:
+          </span>
+          <div className="bg-gray-800/50 rounded p-2">
+            <table className="w-full text-xs">
+              <tbody>
+                {Object.entries(tool.args).map(([key, value]) => (
+                  <tr key={key} className="border-b border-gray-700 last:border-b-0">
+                    <td className="text-gray-400 pr-3 py-1 font-mono">{key}</td>
+                    <td className="text-gray-300 py-1 font-mono">
+                      {typeof value === 'object' ? JSON.stringify(value) : String(value)}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+      
+      {/* {tool.output && (
+        <div className="text-sm text-gray-300">
+          <span className="text-gray-400">result:</span>{' '}
+          <span className="font-mono bg-gray-800/50 px-1.5 py-0.5 rounded text-xs">
+            {tool.output}
+          </span>
+        </div>
+      )} */}
     </div>
   </div>
 );
@@ -56,52 +84,89 @@ const ToolsSection = ({ tools }: { tools: ToolEntry[] }) => {
 
 ToolsSection.displayName = 'ToolsSection';
 
-// Separate component for message content with preview/expansion logic
-const MessageContent = ({ 
+// Separate component for message content with performance optimization
+const MessageContent = memo(({ 
   message, 
   status, 
-  isExpanded, 
   hasMoreThanTwoLines, 
   previewText,
-  onToggle 
+  isExpanded,
+  onToggleExpansion
 }: {
   message: string;
   status: string;
-  isExpanded: boolean;
   hasMoreThanTwoLines: boolean;
   previewText: string;
-  onToggle: () => void;
+  isExpanded: boolean;
+  onToggleExpansion?: () => void;
 }) => {
+  const textRef = useRef<HTMLDivElement>(null);
   const textColorClass = status === 'error' ? 'text-[#FF1744]' : 'text-gray-300';
+  
+  // Update text content directly in DOM for collapsed view only to avoid re-renders
+  useEffect(() => {
+    if (textRef.current && !isExpanded) {
+      if (textRef.current.textContent !== previewText) {
+        textRef.current.textContent = previewText;
+      }
+    }
+  }, [previewText, isExpanded]);
+  
+  const handleToggleMessage = useCallback(() => {
+    if (onToggleExpansion) {
+      onToggleExpansion();
+    }
+  }, [onToggleExpansion]);
   
   return (
     <div className="w-full">
-      <div className={`text-sm font-mono whitespace-pre-wrap break-words w-full ${textColorClass}`}>
-        {isExpanded || !hasMoreThanTwoLines ? message : previewText}
+      <div className={`text-sm whitespace-pre-wrap break-words w-full ${textColorClass}`}>
+        {isExpanded ? (
+          <ReactMarkdown
+            components={MarkdownComponents}
+            remarkPlugins={[remarkGfm]}
+          >
+            {preprocessText(message)}
+          </ReactMarkdown>
+        ) : (
+          <div 
+            ref={textRef}
+            className="font-mono"
+          >
+            {previewText}
+          </div>
+        )}
       </div>
       
-      {hasMoreThanTwoLines && (
+      {hasMoreThanTwoLines && !isExpanded && onToggleExpansion && (
         <button
-          onClick={onToggle}
+          onClick={handleToggleMessage}
           className="mt-2 text-xs text-blue-400 hover:text-blue-300 transition-colors flex items-center space-x-1 group"
         >
-          <span>
-            {isExpanded ? 'Show less' : 'Show full log'}
-          </span>
-          {isExpanded ? (
-            <ChevronDown className="h-3 w-3 group-hover:scale-110 transition-transform" />
-          ) : (
-            <ChevronRight className="h-3 w-3 group-hover:scale-110 transition-transform" />
-          )}
+          <span>Show full log</span>
+          <ChevronRight className="h-3 w-3 group-hover:scale-110 transition-transform" />
         </button>
       )}
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  // Only re-render on structural changes, not content changes
+  return (
+    prevProps.status === nextProps.status &&
+    prevProps.hasMoreThanTwoLines === nextProps.hasMoreThanTwoLines &&
+    prevProps.isExpanded === nextProps.isExpanded &&
+    prevProps.onToggleExpansion === nextProps.onToggleExpansion
+    // Deliberately excluding message and previewText to avoid re-renders
+  );
+});
 
 MessageContent.displayName = 'MessageContent';
 
 export const StreamLogItem = memo(({ log, messageId, onToggleExpansion }: StreamLogItemProps) => {
+  const expandedContentRef = useRef<HTMLDivElement>(null);
+  const collapsedContentRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
   const handleToggle = useCallback(() => {
     onToggleExpansion(messageId, log.nodeId);
   }, [messageId, log.nodeId, onToggleExpansion]);
@@ -130,9 +195,14 @@ export const StreamLogItem = memo(({ log, messageId, onToggleExpansion }: Stream
   }, [log.message]);
 
   const hasTools = log.tools && log.tools.length > 0;
+  // The expansion is now handled purely by the style attributes in JSX
 
   return (
-    <div className="border border-gray-700 rounded-lg overflow-hidden w-full">
+    <div 
+      ref={containerRef}
+      className="border border-gray-700 rounded-lg overflow-hidden w-full"
+      data-node-id={log.nodeId}
+    >
       <div
         className="flex items-center justify-between p-3 bg-gray-800 cursor-pointer hover:bg-gray-750 transition-colors w-full"
         onClick={handleToggle}
@@ -161,73 +231,91 @@ export const StreamLogItem = memo(({ log, messageId, onToggleExpansion }: Stream
         )}
       </div>
       
-      <AnimatePresence>
-        {log.isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden w-full"
-          >
-            {/* Tools Section */}
-            {hasTools && (
-              <div className="bg-gray-900 border-t border-gray-700 w-full">
-                <ToolsSection tools={log.tools} />
-              </div>
-            )}
-            
-            {/* Message Section */}
-            <div className={`p-3 bg-gray-900 w-full ${hasTools ? '' : 'border-t border-gray-700'}`}>
-              <MessageContent
-                message={messageAnalysis.message}
-                status={log.status}
-                isExpanded={log.isExpanded}
-                hasMoreThanTwoLines={messageAnalysis.hasMoreThanTwoLines}
-                previewText={messageAnalysis.previewText}
-                onToggle={handleToggle}
-              />
-            </div>
-          </motion.div>
+      {/* Expanded content - always rendered but controlled via CSS */}
+      <div 
+        ref={expandedContentRef}
+        className="w-full transition-all duration-200 ease-in-out"
+        style={{ 
+          display: log.isExpanded ? 'block' : 'none',
+          opacity: log.isExpanded ? 1 : 0,
+          maxHeight: log.isExpanded ? 'none' : '0px',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Tools Section */}
+        {hasTools && (
+          <div className="bg-gray-900 border-t border-gray-700 w-full">
+            <ToolsSection tools={log.tools} />
+          </div>
         )}
-      </AnimatePresence>
-      
-      {/* Always visible preview when collapsed */}
-      {!log.isExpanded && (
-        <div className="p-3 bg-gray-900 border-t border-gray-700 w-full">
+        
+        {/* Message Section */}
+        <div className={`p-3 bg-gray-900 w-full ${hasTools ? '' : 'border-t border-gray-700'}`}>
           <MessageContent
             message={messageAnalysis.message}
             status={log.status}
-            isExpanded={false}
             hasMoreThanTwoLines={messageAnalysis.hasMoreThanTwoLines}
             previewText={messageAnalysis.previewText}
-            onToggle={handleToggle}
+            isExpanded={true}
           />
         </div>
-      )}
+      </div>
+      
+      {/* Collapsed content - always rendered but controlled via CSS */}
+      <div 
+        ref={collapsedContentRef}
+        className="p-3 bg-gray-900 border-t border-gray-700 w-full"
+        style={{ display: log.isExpanded ? 'none' : 'block' }}
+      >
+        <MessageContent
+          message={messageAnalysis.message}
+          status={log.status}
+          hasMoreThanTwoLines={messageAnalysis.hasMoreThanTwoLines}
+          previewText={messageAnalysis.previewText}
+          isExpanded={false}
+          onToggleExpansion={handleToggle}
+        />
+      </div>
     </div>
   );
 }, (prevProps, nextProps) => {
-  // Custom comparison function for memo
+  // Custom comparison function for memo - prevent re-renders on expansion changes
   const prevLog = prevProps.log;
   const nextLog = nextProps.log;
   
-  // Deep comparison for tools array
-  const toolsEqual = (prev: ToolEntry[] = [], next: ToolEntry[] = []) => {
-    if (prev.length !== next.length) return false;
-    return prev.every((tool, index) => 
-      tool.id === next[index]?.id
-    );
-  };
+  // Quick checks for structural changes
+  if (
+    prevLog.nodeId !== nextLog.nodeId ||
+    prevProps.messageId !== nextProps.messageId ||
+    prevLog.status !== nextLog.status ||
+    prevLog.nodeName !== nextLog.nodeName ||
+    prevLog.isExpanded !== nextLog.isExpanded
+  ) {
+    return false;
+  }
+
+  // Check message changes
+  if (prevLog.message !== nextLog.message) {
+    return false;
+  }
   
-  return (
-    prevLog.nodeId === nextLog.nodeId &&
-    prevLog.status === nextLog.status &&
-    prevLog.message === nextLog.message &&
-    prevLog.isExpanded === nextLog.isExpanded &&
-    prevProps.messageId === nextProps.messageId &&
-    toolsEqual(prevLog.tools, nextLog.tools)
-  );
+  // Efficient tools comparison
+  const prevTools = prevLog.tools || [];
+  const nextTools = nextLog.tools || [];
+  
+  if (prevTools.length !== nextTools.length) {
+    return false;
+  }
+  
+  // Quick comparison using tool IDs and outputs
+  for (let i = 0; i < prevTools.length; i++) {
+    if (prevTools[i]?.id !== nextTools[i]?.id || 
+        prevTools[i]?.output !== nextTools[i]?.output) {
+      return false;
+    }
+  }
+  
+  return true;
 });
 
 StreamLogItem.displayName = 'StreamLogItem';

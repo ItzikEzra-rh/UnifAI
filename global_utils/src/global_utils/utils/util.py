@@ -1,10 +1,13 @@
-from global_utils.config.config import SharedConfig
+from global_utils.config import SharedConfig
 from typing import Any, Type
 from pydantic import BaseModel
 import json
 import os
 from pathlib import Path
 import asyncio
+import threading
+from concurrent.futures import ThreadPoolExecutor
+import anyio
 from jsonschema import validate, ValidationError, Draft202012Validator
 from datamodel_code_generator import (
     generate,
@@ -17,7 +20,8 @@ import importlib.util
 import sys
 import re
 
-config = SharedConfig()
+config = SharedConfig.get_instance()
+
 
 def get_mongo_url():
     ip = config.mongodb_ip
@@ -69,31 +73,16 @@ def get_root_dir() -> Path:
     return root_dir
 
 
-def singleton(cls):
-    instances = {}
-
-    def get_instance(*args, **kwargs):
-        if cls not in instances:
-            instances[cls] = cls(*args, **kwargs)
-        return instances[cls]
-
-    return get_instance
-
-
 def run_async(awaitable: Any) -> Any:
     """
-    Run an awaitable from sync code.
-    - If no loop is running, uses asyncio.run().
-    - If already inside a loop, uses run_until_complete().
+    Backward compatibility wrapper for the old run_async function.
+    Now uses AsyncBridge for consistent, safe async execution.
+    
+    DEPRECATED: Use AsyncBridge directly for new code.
     """
-    try:
-        loop = asyncio.get_running_loop()
-    except RuntimeError:
-        # no loop: safe to start a new one
-        return asyncio.run(awaitable)
-    else:
-        # loop already running (e.g. in a web framework), so block on it
-        return loop.run_until_complete(awaitable)
+    from .async_bridge import get_async_bridge
+    bridge = get_async_bridge()
+    return bridge.run(awaitable)
 
 
 def json_schema_model(

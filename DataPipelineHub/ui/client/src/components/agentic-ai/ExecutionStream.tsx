@@ -10,6 +10,7 @@ import { GraphNode } from "../../pages/AgenticAI"
 import { useStreamingData, NodeEntry } from "./StreamingDataContext"
 import axios from '../../http/axiosAgentConfig'
 import { GraphFlow } from './graphs/interfaces'
+import { useAuth } from "@/contexts/AuthContext";
 
 interface LogEntry {
   id: string;
@@ -67,31 +68,36 @@ export default function ExecutionStream({
   const [isPaused, setIsPaused] = useState(false);
   const logsEndRef = useRef<HTMLDivElement>(null);
   const { nodeListRef } = useStreamingData();
+  const { user } = useAuth();
 
   const extractNodeData = (graphFlow: GraphFlow): { id: string; name: string; description: string | null }[] => {
     if (!graphFlow || !graphFlow.plan) {
       return [];
     }
   
-    return graphFlow.plan.map(item => ({
-      id: item.uid,
-      name: item.meta?.display_name || item.node?._meta.display_name || "General Node",
-      description: item.meta?.description || item.node?._meta.description || null
-    }));
+    return graphFlow.plan.map(item => {
+      const node = graphFlow.nodes.find(node => node.rid === item.node);
+
+      return {
+        id: item.uid,
+        name: node?.name || item.meta?.display_name || "General Node",
+        description: node?.config?.description || item.meta?.description || null
+      }
+    });
   };
   
   // Create agent nodes from selected graph nodes on component mount
   useEffect(() => {
     const getGraphNodes = async () => {
-      const response = await axios.get('/blueprints/available.blueprints.get');
-      const plans = response.data.flatMap((plan) => plan);
+      const response = await axios.get(`/blueprints/available.blueprints.resolved.get?userId=${user?.username || "default"}`);
+      const blueprintObjects = response.data;
       
-      // Find the specific graph flow by ID
-      const targetGraphFlow = plans.find(plan => 
-        Object.keys(plan).includes(blueprintId)
+      // Find the specific graph flow by blueprint_id
+      const targetBlueprintObj = blueprintObjects.find((blueprintObj: any, index: number) => 
+        blueprintObj.blueprint_id === blueprintId
       );
   
-      return extractNodeData(targetGraphFlow[blueprintId]);
+      return targetBlueprintObj ? extractNodeData(targetBlueprintObj.spec_dict) : [];
     }
   
     const fetchAndSetNodes = async () => {
@@ -127,12 +133,12 @@ export default function ExecutionStream({
           
           // Process each entry from nodeListRef
           list.forEach(entry => {
-            const matchingNode = agentNodes?.find(node => node.id === entry.node_name);
+            const matchingNode = agentNodes?.find(node => node.id === entry.node_uid);
             
             if (matchingNode) {
               // Create a new log entry
               const newLog: LogEntry = {
-                id: `${entry.node_name}`, // Use node_name as id to ensure only one log per node
+                id: `${entry.node_uid}`, // Use node_uid as id to ensure only one log per node
                 timestamp: new Date(),
                 agent: matchingNode.name,
                 message: entry.text,
@@ -172,7 +178,7 @@ export default function ExecutionStream({
   
   // Filter logs based on selected node
   const filteredLogs = selectedNode 
-    ? logs.filter(log => log.agent === selectedNode.name || log.agent === 'System')
+    ? logs.filter(log => log.id === selectedNode.id || log.agent === 'System')
     : logs;
   
   // Scroll to bottom when new logs are added

@@ -4,10 +4,12 @@ export type ToolEntry = {
   id: string;
   name: string;
   output?: string;
+  args?: Record<string, any>;
 };
 
 export type NodeEntry = {
   node_name: string;
+  node_uid: string;
   stream: NodeStreamState;
   text: string;
   tools?: ToolEntry[];

@@ -1,0 +1,49 @@
+description: |
+  mcp agent
+name: |
+  one mcp agent
+
+
+nodes:
+  - rid: user_question_node_rid
+    name: User Question Node
+    type: user_question_node
+    config:
+      type: user_question_node
+
+  - rid: final_answer_node_rid
+    name: Final Answer None
+    type: final_answer_node
+    config:
+      type: final_answer_node
+
+  - rid: $ref:9ffc6c27fed449c588f5dbfb5e39506a
+
+
+# ----------------------------
+# Plan Steps
+# ----------------------------
+plan:
+  - uid: user_input
+    node: user_question_node_rid
+    meta:
+      display_name: User Question
+      description: |
+        The user inputs a question or request.
+
+  - uid: mcp_agent
+    after: user_input
+    node: 9ffc6c27fed449c588f5dbfb5e39506a
+    meta:
+      display_name: MCP Agent
+      description: |
+        MCP Agent
+
+  - uid: finalize
+    after: mcp_agent
+    node: final_answer_node_rid
+    meta:
+      display_name: Final Answer
+      description: |
+        Provide the final answer to the user based on all gathered information.
+
