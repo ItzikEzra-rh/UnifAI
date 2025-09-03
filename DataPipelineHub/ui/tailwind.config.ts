@@ -96,13 +96,39 @@ export default {
       const newUtilities = {
         '.input-dark-theme': {
           'color': '#f9fafb !important',
+          '-webkit-text-fill-color': '#f9fafb !important',
           'background-color': 'hsl(var(--input)) !important',
           'border-color': 'hsl(var(--border)) !important',
           '&::placeholder': {
             'color': 'rgba(255, 255, 255, 0.5) !important',
+            '-webkit-text-fill-color': 'rgba(255, 255, 255, 0.5) !important',
+          },
+          '&::-webkit-input-placeholder': {
+            'color': 'rgba(255, 255, 255, 0.5) !important',
+            '-webkit-text-fill-color': 'rgba(255, 255, 255, 0.5) !important',
+          },
+          '&::-moz-placeholder': {
+            'color': 'rgba(255, 255, 255, 0.5) !important',
+            'opacity': '1 !important',
+          },
+          '&:-ms-input-placeholder': {
+            'color': 'rgba(255, 255, 255, 0.5) !important',
+          },
+          '&::-ms-input-placeholder': {
+            'color': 'rgba(255, 255, 255, 0.5) !important',
           },
           '&:focus': {
             'color': '#f9fafb !important',
+          }
+        },
+        '.input-dark-theme-text-white': {
+          '&:focus': {
+            'color': '#f9fafb !important',
+            '-webkit-text-fill-color': '#f9fafb !important',
+          },
+          '&:not(:placeholder-shown)': {
+            'color': '#f9fafb !important',
+            '-webkit-text-fill-color': '#f9fafb !important',
           }
         },
         '.select-dark-theme': {

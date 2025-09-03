@@ -1,20 +1,21 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import Any, Dict, Callable
 from .sources import DotEnvSource, YamlSource, JsonSource
-from ..utils.singleton import SingletonMeta
+from functools import lru_cache
 
 SettingsSource = Callable[[], Dict[str, Any]]
-    
-class SharedConfig(BaseSettings, metaclass=SingletonMeta):
+
+
+class SharedConfig(BaseSettings):
     """
     Anything every app needs.
     """
     mongodb_port: str = "27017"
     mongodb_ip: str = "0.0.0.0"
-    
+
     rabbitmq_port: str = "5672"
     rabbitmq_ip: str = "0.0.0.0"
-    
+
     # shared loading order
     model_config = SettingsConfigDict(
         env_prefix="",
@@ -27,3 +28,15 @@ class SharedConfig(BaseSettings, metaclass=SingletonMeta):
             fs,
         ),
     )
+
+    @classmethod
+    @lru_cache()
+    def get_instance(cls):
+        """Get singleton instance of this config class."""
+        return cls()
+
+    @classmethod
+    def get(cls, key: str, default=None):
+        """Get a config value by key."""
+        instance = cls.get_instance()
+        return getattr(instance, key, default)

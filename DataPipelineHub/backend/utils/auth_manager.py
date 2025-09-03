@@ -2,7 +2,6 @@
 Authentication Manager for Keycloak SSO Integration
 Handles user authentication, session management, and token validation
 """
-
 import os
 import jwt
 import requests
@@ -14,14 +13,14 @@ from authlib.common.errors import AuthlibBaseError
 from shared.logger import logger
 from config.app_config import AppConfig
 
-config = AppConfig()
+config = AppConfig.get_instance()
 
 class AuthManager:
     def __init__(self, app=None):
         self.app = app
         self.oauth = None
         self.keycloak_client = None
-        
+        self.backend_env = config.get('backend_env', 'development')
         if app is not None:
             self.init_app(app)
     
@@ -32,7 +31,6 @@ class AuthManager:
         # Set up secret key for sessions
         if not app.secret_key:
             app.secret_key = config.get('secret_key', os.urandom(24))
-        
         # Configure OAuth
         self.oauth = OAuth(app)
         
@@ -74,12 +72,10 @@ class AuthManager:
             """Initiate OAuth login flow"""
             # Hardcode or use an env variable to set the externally reachable redirect URI
 
-            
             # redirect_uri = config.get(
             #     'redirect_url',
             #     url_for('auth_callback', _external=True, _scheme='https')
             # )
-
             redirect_uri = config.get(
                 'redirect_url',
                 url_for('auth_callback', _external=True, _scheme='https') 
@@ -89,7 +85,9 @@ class AuthManager:
 
             logger.info(f"[LOGIN] session before redirect: {session.items()}")
             return self.keycloak_client.authorize_redirect(redirect_uri)
-        
+
+
+
         @self.app.route('/api/auth/callback')
         def auth_callback():
             """Handle OAuth callback"""
@@ -121,13 +119,14 @@ class AuthManager:
                 logger.info(f"Session will expire at: {session_expires_at.strftime('%Y-%m-%d %H:%M:%S')}")
                 
                 # Redirect to frontend
-                frontend_url = config.get('frontend_url', 'http://127.0.0.1:5000')
-                return redirect(f"{frontend_url}?auth=success")
+                frontend_url = config.get('frontend_url', 'http://localhost:5000')
+                return redirect(f"{config.frontend_url}?auth=success")
                 
             except AuthlibBaseError as e:
                 logger.error(f"Authentication error: {str(e)}")
-                frontend_url = config.get('frontend_url', 'http://127.0.0.1:5000')
-                return redirect(f"{frontend_url}?auth=error")
+                frontend_url = config.get('frontend_url', 'http://localhost:5000')
+                return redirect(f"{config.frontend_url}?auth=error")
+
         
         @self.app.route('/api/auth/logout', methods=['POST'])
         def logout():
@@ -184,7 +183,7 @@ class AuthManager:
         # Check if session has expired
         if self._is_session_expired():
             return False
-            
+
         return True
     
     def get_current_user(self):
@@ -212,7 +211,7 @@ class AuthManager:
             return True  # No token expiration means we should try to refresh
         
         current_time = datetime.now().timestamp()
-
+        
         # Refresh if token expires in the next minute
         should_refresh = current_time >= (token_expires_at - 60)  # 1 minute buffer
         return should_refresh
@@ -240,7 +239,7 @@ class AuthManager:
             session['user']['token_expires_at'] = token.get('expires_at', 0)
             logger.info("Access token refreshed successfully")
             return True
-            
+        
         except Exception as e:
             logger.error(f"Failed to refresh token: {str(e)}")
             return False
