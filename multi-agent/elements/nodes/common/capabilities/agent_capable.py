@@ -18,14 +18,14 @@ from typing import Optional, List, Dict, Any, TypeVar, Generic, Iterator, Callab
 from enum import Enum
 
 from elements.llms.common.chat.message import ChatMessage, Role
-from agent import (
+from elements.nodes.common.agent import (
     AgentAction, AgentObservation, AgentFinish, AgentStep, StepType,
     AgentConfig
 )
-from agent.parsers import OutputParser, ToolCallParser, ParseError
-from agent.strategies import AgentStrategy, ReActStrategy
-from agent.execution import AgentIterator, ExecutionMode, ToolExecutor, ToolValidator
-from agent.constants import (
+from elements.nodes.common.agent.parsers import OutputParser, ToolCallParser, ParseError
+from elements.nodes.common.agent.strategies import AgentStrategy, ReActStrategy
+from elements.nodes.common.agent.execution import AgentIterator, ExecutionMode, ToolExecutor, ToolValidator
+from elements.nodes.common.agent.constants import (
     StrategyType, EarlyStoppingPolicy, ExecutionDefaults,
     ToolHandlingPolicy, ToolExecutionDefaults, StrategyDefaults
 )

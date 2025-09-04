@@ -21,15 +21,15 @@ from elements.nodes.common.capabilities.llm_capable import LlmCapableMixin
 from elements.nodes.common.capabilities.tool_capable import ToolCapableMixin
 from elements.nodes.common.capabilities.workload_capable import WorkloadCapableMixin
 from elements.nodes.common.capabilities.agent_capable import AgentCapableMixin
-from agent import AgentConfig
+from elements.nodes.common.agent import AgentConfig
 
 from elements.nodes.common.workload import Task, AgentResult
 from elements.llms.common.chat.message import ChatMessage, Role
 from graph.state.state_view import StateView
 
-from agent import ExecutionMode, StepType
-from agent.strategies import ReActStrategy
-from agent.execution import ToolValidator
+from elements.nodes.common.agent import ExecutionMode, StepType
+from elements.nodes.common.agent.strategies import ReActStrategy
+from elements.nodes.common.agent.execution import ToolValidator
 
 
 class EnhancedCustomAgentNode(
