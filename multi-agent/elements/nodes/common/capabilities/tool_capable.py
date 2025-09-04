@@ -74,9 +74,6 @@ class ToolCapableMixin(Generic[T]):
 
         self._executor = ToolExecutorManager(**config.to_dict())
 
-        # Add tools to executor using proper API
-        self._executor.set_tools(self._tools)
-
         # Add streaming hooks if this object supports streaming
         bridge = get_async_bridge()
         bridge.run(self._setup_streaming_hooks())
@@ -252,13 +249,12 @@ class ToolCapableMixin(Generic[T]):
     async def _setup_streaming_hooks(self):
         """Setup streaming hooks for the executor if streaming is available."""
         if hasattr(self, 'is_streaming') and hasattr(self, '_stream'):
-            # Only add hooks if streaming is enabled
-            if self.is_streaming():
-                # Create pre-execution hook for tool calling
-                async def pre_execution_hook(tool, args, context):
-                    tool_call_id = context.get('tool_call_id',
-                                               f"call_{tool.name}_{id(args)}") if context else f"call_{tool.name}_{id(args)}"
+            # Create pre-execution hook for tool calling
 
+            async def pre_execution_hook(tool, args, context):
+                tool_call_id = context.get('tool_call_id',
+                                           f"call_{tool.name}_{id(args)}") if context else f"call_{tool.name}_{id(args)}"
+                if self.is_streaming():
                     self._stream({
                         "type": "tool_calling",
                         "tool": tool.name,
@@ -267,7 +263,9 @@ class ToolCapableMixin(Generic[T]):
                     })
 
                 # Create post-execution hook for tool result  
-                async def post_execution_hook(response, context):
+
+            async def post_execution_hook(response, context):
+                if self.is_streaming():
                     self._stream({
                         "type": "tool_result",
                         "tool": response.tool_name,
@@ -275,6 +273,6 @@ class ToolCapableMixin(Generic[T]):
                         "output": response.result if response.success else f"Error: {response.error}"
                     })
 
-                # Add hooks to the executor
-                self._executor.add_pre_execution_hook(pre_execution_hook)
-                self._executor.add_post_execution_hook(post_execution_hook)
+            # Add hooks to the executor
+            self._executor.add_pre_execution_hook(pre_execution_hook)
+            self._executor.add_post_execution_hook(post_execution_hook)
