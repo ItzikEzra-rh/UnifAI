@@ -22,3 +22,8 @@ class SessionRepository(ABC):
     def list_runs(self, user_id: str) -> List[str]:
         """Return all run_ids for the given user."""
         ...
+
+    @abstractmethod
+    def delete(self, run_id: str) -> bool:
+        """Delete a session by run_id. Returns True if deleted, False if not found."""
+        ...

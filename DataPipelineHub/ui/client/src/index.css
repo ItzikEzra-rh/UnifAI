@@ -10,7 +10,7 @@
   body {
     @apply font-sans antialiased bg-background text-foreground;
   }
-  
+
   body.dark-mode {
     /* Dark palette based on provided Pinterest-like theme */
     /* Page backgrounds */
@@ -54,7 +54,7 @@
     background-attachment: fixed;
     background-repeat: no-repeat;
   }
-  
+
   body.light-mode {
     --background: 0 0% 95%;
     --background-card: 0 0% 100%;
@@ -72,7 +72,7 @@
     --success: 142 72% 35%;
     --info: 199 89% 45%;
   }
-  
+
   /* Style for inputs, textareas, and selects across all components for better visibility */
   .light-mode input, 
   .light-mode textarea,
@@ -81,7 +81,7 @@
     color: var(--text-primary) !important;
     border-color: var(--border) !important;
   }
-  
+
   /* Form control components need stronger text contrast */
   .light-mode .bg-background-dark {
     color: var(--text-primary) !important;
@@ -92,18 +92,23 @@
     color: #111827 !important;
     border-color: var(--border) !important;
   }
-  
+
+  .dark-mode input:disabled,
+  .dark-mode textarea:disabled {
+    color: #ffffff !important;
+  }
+
   /* Ensure placeholder text has proper contrast */
   .light-mode input::placeholder, 
   .light-mode textarea::placeholder {
     color: rgba(0, 0, 0, 0.5) !important;
   }
-  
+
   .dark-mode input::placeholder, 
   .dark-mode textarea::placeholder {
     color: rgba(255, 255, 255, 0.5) !important;
   }
-  
+
   /* Ensure text is visible in all form components */
   .light-mode .form-input,
   .light-mode .form-textarea,
@@ -113,21 +118,47 @@
   .dark-mode .form-select {
     color: var(--text-primary) !important;
   }
-  
+
   /* Fix text/titles color for better visibility in light mode */
   .light-mode .text-white {
     color: #111827 !important; /* Dark color for white text in light mode */
   }
-  
+
   /* Fix icon colors in light mode for better contrast */
   .light-mode .text-gray-400 {
     color: #4B5563 !important; /* Darker gray for better visibility in light mode */
   }
-  
+
   /* Keep sidebar active item text white in both modes */
   .sidebar-item .bg-primary.bg-opacity-20 .text-white {
     color: white !important;
   }
+
+  /* React Flow styles */
+.react-flow__handle {
+  width: 8px !important;
+  height: 8px !important;
+  background: #8A2BE2 !important;
+  border: 2px solid #ffffff !important;
+}
+
+.react-flow__handle-connecting {
+  background: #ff6b6b !important;
+}
+
+/* Custom edge delete button visibility */
+.react-flow__edge:hover .edgebutton-foreignobject button {
+  opacity: 1 !important;
+}
+
+.edgebutton-foreignobject button {
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.edgebutton-foreignobject button:hover {
+  opacity: 1 !important;
+}
 
   /* Utility: hide scrollbars but keep scroll functionality */
   .no-scrollbar {

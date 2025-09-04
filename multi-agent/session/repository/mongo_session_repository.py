@@ -3,7 +3,6 @@ from pymongo.collection import Collection
 from typing import List, Mapping, Any
 from session.repository.repository import SessionRepository
 from session.workflow_session import WorkflowSession
-from session.workflow_session_factory import WorkflowSessionFactory
 
 
 class MongoSessionRepository(SessionRepository):
@@ -21,7 +20,6 @@ class MongoSessionRepository(SessionRepository):
 
     def __init__(
             self,
-            session_factory: WorkflowSessionFactory,
             mongodb_port: str = "27017",
             mongodb_ip: str = "localhost",
             db_name: str = "UnifAI",
@@ -37,9 +35,6 @@ class MongoSessionRepository(SessionRepository):
             unique=True
         )
 
-        # DI: factory that knows how to build a fresh session from blueprint
-        self._factory = session_factory
-
     def save(self, session: WorkflowSession) -> None:
         ctx = session.run_context
 
@@ -48,7 +43,6 @@ class MongoSessionRepository(SessionRepository):
             "run_id": ctx.run_id,
             "run_context": ctx.to_dict(),
             "metadata": session.metadata.to_dict(),
-            "blueprint_spec": session.blueprint.model_dump(mode="json"),
             "blueprint_id": session.blueprint_id,
             "graph_state": session.graph_state.model_dump(mode="json"),
             "status": session.get_status(),
@@ -69,3 +63,8 @@ class MongoSessionRepository(SessionRepository):
     def list_runs(self, user_id: str) -> List[str]:
         cursor = self._col.find({"user_id": user_id}, {"run_id": 1})
         return [d["run_id"] for d in cursor]
+
+    def delete(self, run_id: str) -> bool:
+        """Delete a session by run_id. Returns True if deleted, False if not found."""
+        result = self._col.delete_one({"run_id": run_id})
+        return result.deleted_count > 0
