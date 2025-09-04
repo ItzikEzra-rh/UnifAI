@@ -20,7 +20,8 @@ from elements.nodes.common.capabilities.iem_capable import IEMCapableMixin
 from elements.nodes.common.capabilities.llm_capable import LlmCapableMixin
 from elements.nodes.common.capabilities.tool_capable import ToolCapableMixin
 from elements.nodes.common.capabilities.workload_capable import WorkloadCapableMixin
-from elements.nodes.common.capabilities.agent_capable import AgentCapableMixin, AgentConfig
+from elements.nodes.common.capabilities.agent_capable import AgentCapableMixin
+from agent import AgentConfig
 
 from elements.nodes.common.workload import Task, AgentResult
 from elements.llms.common.chat.message import ChatMessage, Role

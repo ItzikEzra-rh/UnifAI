@@ -19,7 +19,8 @@ from enum import Enum
 
 from elements.llms.common.chat.message import ChatMessage, Role
 from agent import (
-    AgentAction, AgentObservation, AgentFinish, AgentStep, StepType
+    AgentAction, AgentObservation, AgentFinish, AgentStep, StepType,
+    AgentConfig
 )
 from agent.parsers import OutputParser, ToolCallParser, ParseError
 from agent.strategies import AgentStrategy, ReActStrategy
@@ -31,39 +32,6 @@ from agent.constants import (
 from core.contracts import SupportsStreaming
 
 T = TypeVar("T", bound=SupportsStreaming)
-
-
-@dataclass
-class AgentConfig:
-    """
-    Configuration for agent execution.
-    
-    Controls all aspects of agent behavior including strategy selection,
-    execution mode, error handling, and performance limits.
-    """
-    # Strategy configuration
-    strategy: str = StrategyType.REACT.value
-    max_steps: int = StrategyDefaults.MAX_STEPS
-    reflect_on_errors: bool = StrategyDefaults.REFLECT_ON_ERRORS
-    
-    # Execution configuration  
-    execution_mode: ExecutionMode = ExecutionMode.AUTO
-    validate_tools: bool = ToolExecutionDefaults.VALIDATE_ARGS
-    allowed_tools: Optional[List[str]] = None
-    forbidden_tools: Optional[List[str]] = None
-    
-    # Error handling
-    on_missing_tool: str = ToolHandlingPolicy.REFLECT.value
-    early_stopping: str = EarlyStoppingPolicy.FIRST_FINISH.value
-    return_intermediate: bool = ExecutionDefaults.RETURN_INTERMEDIATE
-    
-    # Performance limits
-    max_execution_time: Optional[float] = ExecutionDefaults.MAX_EXECUTION_TIME
-    max_actions_per_minute: Optional[int] = ExecutionDefaults.MAX_ACTIONS_PER_MINUTE
-    
-    # Custom components
-    custom_parser: Optional[OutputParser] = None
-    custom_strategy: Optional[AgentStrategy] = None
 
 
 class AgentCapableMixin(Generic[T]):

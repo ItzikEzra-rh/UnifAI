@@ -66,6 +66,10 @@ from .runner import (
     StreamingRunner
 )
 
+from .config import (
+    AgentConfig
+)
+
 from .constants import (
     StrategyType,
     SpecialToolNames,
@@ -109,6 +113,9 @@ __all__ = [
     "AgentRunner",
     "RunnerConfig",
     "StreamingRunner",
+    
+    # Configuration
+    "AgentConfig",
     
     # Constants and enums
     "StrategyType",
