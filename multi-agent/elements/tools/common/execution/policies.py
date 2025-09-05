@@ -74,10 +74,7 @@ class RetryPolicy(BaseErrorHandler):
             
             try:
                 # Try to execute the tool again
-                if asyncio.iscoroutinefunction(tool.arun):
-                    result = await tool.arun(**args)
-                else:
-                    result = await asyncio.to_thread(tool.run, **args)
+                result = await tool.arun(**args)
                 
                 print(f"Retry successful for {tool.name} on attempt {attempt + 1}")
                 return result
@@ -121,10 +118,7 @@ class FallbackPolicy(BaseErrorHandler):
             try:
                 print(f"Trying fallback tool {i+1}/{len(self.fallback_tools)}: {fallback.name}")
                 
-                if asyncio.iscoroutinefunction(fallback.arun):
-                    result = await fallback.arun(**args)
-                else:
-                    result = await asyncio.to_thread(fallback.run, **args)
+                result = await fallback.arun(**args)
                 
                 print(f"Fallback tool {fallback.name} succeeded")
                 return result
@@ -417,10 +411,7 @@ class RateLimitPolicy(BaseErrorHandler):
             
             # Retry the operation
             try:
-                if asyncio.iscoroutinefunction(tool.arun):
-                    return await tool.arun(**args)
-                else:
-                    return await asyncio.to_thread(tool.run, **args)
+                return await tool.arun(**args)
             except Exception as retry_error:
                 print(f"Error: Retry after rate limit still failed: {retry_error}")
                 raise retry_error

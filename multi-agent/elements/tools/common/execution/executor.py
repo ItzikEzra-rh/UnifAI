@@ -377,10 +377,7 @@ class ToolExecutorManager:
 
     async def _execute_tool_direct(self, tool: BaseTool, args: Dict[str, Any]):
         """Direct tool execution without additional handling."""
-        if asyncio.iscoroutinefunction(tool.arun):
-            return await tool.arun(**args)
-        else:
-            return await asyncio.to_thread(tool.run, **args)
+        return await tool.arun(**args)
 
     # Circuit breaker monitoring
     def get_circuit_breaker_status(self, tool_name: str = None) -> CircuitBreakerReport:
