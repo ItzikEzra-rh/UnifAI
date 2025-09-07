@@ -79,10 +79,11 @@ resources:
 
 storage:
   volumeName: "unifai-qdrant-volume"
-  requestedSize: 30Gi
+  requestedSize: 100Gi
   className: aws-ebs
   accessModes:
     - ReadWriteOnce
+  keepPvc: true
   annotations:
     kubernetes.io/reclaimPolicy: Delete
   labels:
