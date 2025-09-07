@@ -56,7 +56,7 @@ export function LiveActivityFeed({ defaultRange = 'month', fullHeight = false, c
       return primaryHex || '#A60000';
     }
     if (type === 'document') {
-      return '#F59E0B';
+      return '#6B7280';
     }
     return '#4B5563';
   };

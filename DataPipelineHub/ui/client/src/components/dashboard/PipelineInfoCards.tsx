@@ -80,7 +80,7 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
               {sourceTypes.map((type) => {
                 const count = activePipelines.filter((p) => p.source_type === (type as any) || (p as any).type === type).length;
                 const isActive = count > 0;
-                const leftColor = type === 'slack' ? slackColor : '#F59E0B';
+                const leftColor = type === 'slack' ? slackColor : '#6B7280';
                 return (
                   <div
                     key={type}
@@ -152,7 +152,7 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
                 <span className="text-white font-medium">{docs} ({docsPct}%)</span>
               </div>
               <div className="w-full h-2 bg-gray-800 rounded">
-                <div className="h-2 rounded" style={{ width: `${docsPct}%`, backgroundColor: '#F59E0B' }}></div>
+                <div className="h-2 rounded" style={{ width: `${docsPct}%`, backgroundColor: '#6B7280' }}></div>
               </div>
               <div className="mt-1 text-xs text-gray-500">Total: {total} • Auto-updates every 30s</div>
             </div>
@@ -201,7 +201,7 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
         return primaryHex || '#A60000';
       }
       if (type === 'document') {
-        return '#F59E0B';
+        return '#6B7280';
       }
       return '#4B5563';
     };
