@@ -32,6 +32,12 @@ export interface ConnectedSourcesSummary {
   byType: Record<string, number>;
 }
 
+export interface QdrantChunksCounts {
+  total: number;
+  slack: number;
+  document: number;
+}
+
 // Get active pipelines from all sources
 export async function fetchActivePipelines(): Promise<ActivePipeline[]> {
   try {
@@ -132,5 +138,15 @@ export async function fetchPipelineMetrics(): Promise<PipelineMetrics> {
       activePipelines: 0,
       totalPipelines: 0,
     };
+  }
+}
+
+export async function fetchQdrantChunksCounts(): Promise<QdrantChunksCounts> {
+  try {
+    const res = await api.get<QdrantChunksCounts>("vector/chunks.counts");
+    return res.data;
+  } catch (error) {
+    console.error('Failed to fetch Qdrant chunks counts:', error);
+    return { total: 0, slack: 0, document: 0 };
   }
 }

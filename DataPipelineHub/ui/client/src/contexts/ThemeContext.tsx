@@ -23,7 +23,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Primary color stored as hex for persistence
   const [primaryHex, setPrimaryHexState] = useState<string>(() => {
-    return localStorage.getItem("primary") || "#BB86FC";
+    return localStorage.getItem("primary") || "#A60000";
   });
 
   // Convert hex to HSL string of the format expected by Tailwind CSS variables: "H S% L%"

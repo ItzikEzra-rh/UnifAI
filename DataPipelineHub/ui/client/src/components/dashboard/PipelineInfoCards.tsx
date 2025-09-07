@@ -2,6 +2,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Activity, Database, TrendingUp, FileText, MessageSquare, Bug, Slack as SlackIcon, Clock, Menu, PieChart, Plug } from "lucide-react";
 import type { PipelineMetrics, ActivePipeline } from "@/api/pipelines";
+import { useQuery } from "@tanstack/react-query";
+import { fetchQdrantChunksCounts, fetchConnectedSources } from "@/api/pipelines";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface PipelineInfoCardsProps {
   metrics?: PipelineMetrics;
@@ -57,40 +60,49 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
           return <Database className="h-4 w-4" />;
       }
     };
+    const { primaryHex } = useTheme();
+    const slackColor = primaryHex || "#A60000";
 
     return (
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
         <Card className="rounded-xl border-0">
-          <div className="relative p-4 border-b border-border">
-            <div className="absolute top-2 right-4 w-8 h-8 rounded-lg bg-gray-800 text-white flex items-center justify-center shadow-lg/20">
-              <PieChart className="w-4 h-4" />
+          <div className="relative px-4 pt-3 pb-2 border-b border-border">
+            <div className="absolute top-2 right-4 w-8 h-8 rounded-lg bg-gray-800/70 text-white flex items-center justify-center">
+              <Clock className="w-4 h-4" />
             </div>
             <h3 className="text-lg font-semibold text-white flex items-center">
               <Database className="text-primary mr-3 h-5 w-5" />
               Connected Sources
             </h3>
           </div>
-          <CardContent className="p-4 space-y-3">
-            {sourceTypes.map((type) => {
-              const count = activePipelines.filter((p) => p.source_type === (type as any) || (p as any).type === type).length;
-              const isActive = count > 0;
-              return (
-                <div key={type} className="flex items-center justify-between p-2 rounded-lg bg-gray-900 bg-opacity-30">
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                      isActive ? "bg-primary bg-opacity-20 text-primary" : "bg-gray-700 text-gray-400"
-                    }`}>
-                      {getSourceIcon(type)}
+          <CardContent className="p-0">
+            <div className="divide-y divide-gray-800/80">
+              {sourceTypes.map((type) => {
+                const count = activePipelines.filter((p) => p.source_type === (type as any) || (p as any).type === type).length;
+                const isActive = count > 0;
+                const leftColor = type === 'slack' ? slackColor : '#F59E0B';
+                return (
+                  <div
+                    key={type}
+                    className="flex items-center justify-between px-4 py-4 hover:bg-gray-900/40 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="relative inline-flex items-center justify-center">
+                        <span className="absolute inline-flex h-5 w-5 rounded-full opacity-30" style={{ backgroundColor: leftColor }}></span>
+                        <span className="relative inline-flex h-3.5 w-3.5 rounded-full" style={{ backgroundColor: leftColor }}></span>
+                      </span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-white font-medium text-sm sm:text-base capitalize truncate">{type}</span>
+                      </div>
                     </div>
-                    <span className="text-white font-medium capitalize">{type}</span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="text-xs sm:text-sm text-gray-400">{count} active</span>
+                      <span className={`h-2 w-2 rounded-full ${isActive ? 'bg-green-500' : 'bg-gray-600'}`}></span>
+                    </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-400">{count} active</span>
-                    <div className={`w-2 h-2 rounded-full ${isActive ? "animate-pulse" : "bg-gray-600"}`} style={{ backgroundColor: 'hsl(var(--success))' }}></div>
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </CardContent>
         </Card>
       </motion.div>
@@ -98,11 +110,20 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
   };
 
   const LastSyncCard = () => {
-    // Placeholder stats until backend provides real values
-    const avgMinutes = 18; // average minutes since last sync
-    const mostStale = "1h 42m";
-    const updatedAgo = "2m ago";
-    const staleChannels = 3;
+    // Repurposed as Embedded Sources compact chart
+    const { data: sources } = useQuery({
+      queryKey: ["embeddedSourcesCounts"],
+      queryFn: fetchConnectedSources,
+      refetchInterval: 30000,
+      refetchOnWindowFocus: true,
+    });
+    const { primaryHex } = useTheme();
+    const slackColor = primaryHex || "#A60000";
+    const slack = sources?.byType?.slack ?? 0;
+    const docs = sources?.byType?.document ?? 0;
+    const total = Math.max(slack + docs, 1);
+    const slackPct = Math.round((slack / total) * 100);
+    const docsPct = Math.round((docs / total) * 100);
 
 
     return (
@@ -114,25 +135,27 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
             </div>
             <h3 className="text-lg font-semibold text-white flex items-center">
               <Clock className="text-primary mr-3 h-5 w-5" />
-              Data Freshness
+              Embedded Sources
             </h3>
           </div>
           <CardContent className="p-4">
-            <div className="grid grid-cols-3 gap-4 items-end">
-              <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Avg Last Sync</p>
-                <p className={`text-2xl font-bold `}>{avgMinutes}m</p>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span>Slack</span>
+                <span className="text-white font-medium">{slack} ({slackPct}%)</span>
               </div>
-              <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Most Stale</p>
-                <p className="text-xl font-bold text-white">{mostStale}</p>
+              <div className="w-full h-2 bg-gray-800 rounded">
+                <div className="h-2 rounded" style={{ width: `${slackPct}%`, backgroundColor: slackColor }}></div>
               </div>
-              <div className="text-right">
-                <p className="text-xs text-gray-400 uppercase tracking-wide">Stale Channels</p>
-                <p className="text-xl font-bold text-white">{staleChannels}</p>
+              <div className="flex items-center justify-between text-xs text-gray-400">
+                <span>Documents</span>
+                <span className="text-white font-medium">{docs} ({docsPct}%)</span>
               </div>
+              <div className="w-full h-2 bg-gray-800 rounded">
+                <div className="h-2 rounded" style={{ width: `${docsPct}%`, backgroundColor: '#F59E0B' }}></div>
+              </div>
+              <div className="mt-1 text-xs text-gray-500">Total: {total} • Auto-updates every 30s</div>
             </div>
-            <div className="mt-3 text-xs text-gray-400">Updated {updatedAgo}</div>
           </CardContent>
         </Card>
       </motion.div>
@@ -172,7 +195,16 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
       }
     };
 
-    const getActivityColor = (_type: string) => 'bg-primary';
+    const { primaryHex } = useTheme();
+    const getActivityColor = (type: string) => {
+      if (type === 'slack') {
+        return primaryHex || '#A60000';
+      }
+      if (type === 'document') {
+        return '#F59E0B';
+      }
+      return '#4B5563';
+    };
 
     return (
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.3 }}>
@@ -191,7 +223,7 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
             {activePipelines.length === 0 ? (
               <div className="text-center text-gray-400 py-4">No active pipelines</div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-80 overflow-y-auto overflow-x-hidden">
+              <div className="divide-y divide-gray-800/80 max-h-80 overflow-y-auto overflow-x-hidden">
                 {activePipelines.map((pipeline) => {
                   const statusBadge = getStatusBadge(pipeline.status);
                   const borderColor = pipeline.status === 'FAILED' ? 'border-red-900' : 'border-gray-700';
@@ -202,26 +234,26 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: -12, scale: 0.98 }}
                       transition={{ type: "spring", stiffness: 380, damping: 26, mass: 0.8 }}
-                      className={`w-full min-w-0 h-full p-4 bg-gray-900 bg-opacity-30 rounded-lg flex flex-col justify-between`}
+                      className={`w-full min-w-0 h-full p-4 flex flex-col justify-between`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
-                          <div className={`w-8 h-8 ${getActivityColor(pipeline.source_type)} rounded-full flex items-center justify-center`}>
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center`} style={{ backgroundColor: getActivityColor(pipeline.source_type) }}>
                             {getActivityIcon(pipeline.source_type)}
                           </div>
-                          <span className="text-white font-medium text-sm break-words" title={pipeline.source_name}>
+                          <span className="text-white font-semibold text-base break-words" title={pipeline.source_name}>
                             {pipeline.source_name}
                           </span>
                         </div>
-                        <span className="text-gray-400 text-xs ml-3 whitespace-nowrap">
+                        <span className="text-gray-400 text-sm ml-3 whitespace-nowrap">
                           {(pipeline.pipeline_stats?.documents_retrieved || 0)} docs
                         </span>
                       </div>
                       <div className="flex items-center mt-3 gap-2">
-                        <span className={`px-2 py-1 ${statusBadge.color} text-xs rounded`}>
+                        <span className={`px-2.5 py-1 ${statusBadge.color} text-sm rounded`}>
                           {statusBadge.label}
                         </span>
-                        <span className="px-2 py-1 bg-gray-800 text-gray-300 text-xs rounded capitalize">
+                        <span className="px-2.5 py-1 bg-gray-800 text-gray-300 text-sm rounded capitalize">
                           {pipeline.source_type}
                         </span>
                       </div>

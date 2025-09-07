@@ -68,14 +68,14 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
         </SimpleTooltip>
         
         {/* Color picker (dropdown) */}
-        <div className="mr-2 w-20">
+        <div className="mr-2 w-19">
           <Select value={primaryHex} onValueChange={(value) => setPrimaryHex(value)}>
             <SelectTrigger>
               <div className="flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full" style={{ backgroundColor: primaryHex }} />
               </div>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="min-w-[var(--radix-select-trigger-width)] w-[var(--radix-select-trigger-width)]">
               {colorOptions.map(({ hex }) => (
                 <SelectItem key={hex} value={hex}>
                   <div className="flex items-center gap-2">
@@ -146,7 +146,10 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
         {/* User Profile */}
         <div className="px-4 py-3 border-l border-gray-800">
           <div className={`flex items-center space-x-3`}>
-            <div className="w-8 h-8 rounded-full bg-gradient-to-r from-accent to-primary flex items-center justify-center flex-shrink-0">
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: `linear-gradient(90deg, #6B7280, ${primaryHex})` }}
+            >
               <span className="text-sm font-medium text-white">{getInitials(user?.name || '')}</span>
             </div>
             

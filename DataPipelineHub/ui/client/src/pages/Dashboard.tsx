@@ -17,7 +17,7 @@ import DataSourceStats from "@/components/dashboard/DataSourceStats";
 import { PipelineInfoCards } from "@/components/dashboard/PipelineInfoCards";
 import GlassPanel from "@/components/ui/GlassPanel";
 import { useQuery } from "@tanstack/react-query";
-import { fetchActivePipelines, fetchPipelineMetrics, fetchConnectedSources } from "@/api/pipelines";
+import { fetchActivePipelines, fetchPipelineMetrics, fetchConnectedSources, fetchQdrantChunksCounts } from "@/api/pipelines";
 import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
 import { PieChart, Pie, Cell } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,7 +29,7 @@ export default function Dashboard() {
   const { projects } = useProject();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { primaryHex } = useTheme();
-  const slackFill = (primaryHex || "").toLowerCase() === "#707070" ? "#A60000" : primaryHex;
+  const slackFill = primaryHex || "#A60000";
 
   // Live metrics for summary cards
   const { data: metrics } = useQuery({
@@ -73,6 +73,22 @@ export default function Dashboard() {
   const totalProcessingTime = activePipelines.reduce((sum, p) => sum + (p.pipeline_stats?.processing_time || 0), 0);
   const docsPerMin = totalProcessingTime > 0 ? Math.round((totalDocs / totalProcessingTime) * 60) : 0;
   
+  // Qdrant chunks counts for the middle-right card
+  const { data: chunkCounts } = useQuery({
+    queryKey: ['qdrantChunksCountsDashboard'],
+    queryFn: fetchQdrantChunksCounts,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
+  });
+  const qSlack = chunkCounts?.slack ?? 0;
+  const qDocs = chunkCounts?.document ?? 0;
+  const qTotal = Math.max(qSlack + qDocs, 1);
+  const qSlackPct = Math.round((qSlack / qTotal) * 100);
+  const qDocsPct = Math.round((qDocs / qTotal) * 100);
+  const size = 280; const center = size / 2; const outerRadius = 98; const innerRadius = 76; const stroke = 16;
+  const outerCirc = 2 * Math.PI * outerRadius; const innerCirc = 2 * Math.PI * innerRadius;
+  const outerDash = `${(qDocsPct / 100) * outerCirc} ${outerCirc}`; const innerDash = `${(qSlackPct / 100) * innerCirc} ${innerCirc}`;
+
   // Data source stats
   const dataSourceStats = {
     totalVectors: '26.7K',
@@ -95,7 +111,7 @@ export default function Dashboard() {
         
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-6 bg-transparent">
-          {/* Top row: Processing Stats and Connected Sources side-by-side */}
+          {/* Top row: Processing Stats and Embedded Sources side-by-side */}
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -127,56 +143,38 @@ export default function Dashboard() {
               <Card className=" shadow-card border-gray-800 h-full flex flex-col">
                 <CardHeader className="py-4 px-6">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Connected Sources</CardTitle>
+                    <CardTitle className="text-xl flex items-center gap-2">
+                      <FaChartPie className="text-primary" />
+                      Total Chunks (Approx)
+                    </CardTitle>
                     <span className="text-sm text-gray-400">Slack vs Documents</span>
                   </div>
                 </CardHeader>
                 <CardContent className="px-6 pb-6 flex-1 flex flex-col justify-between min-h-0">
-                  <div className="w-full h-[320px]">
-                    <ChartContainer config={{}} className="w-full h-full aspect-auto">
-                      <PieChart>
-                        <Pie
-                          data={[
-                            { name: 'Slack', value: connectedSources?.byType?.slack ?? 0 },
-                            { name: 'Documents', value: connectedSources?.byType?.document ?? 0 },
-                          ]}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={55}
-                          outerRadius={90}
-                          stroke="transparent"
-                          label
-                        >
-                          <Cell fill={slackFill} />
-                          <Cell fill="#707070" />
-                        </Pie>
-                        <ChartTooltip formatter={(value: any) => String(value)} />
-                      </PieChart>
-                    </ChartContainer>
-                  </div>
-                  <Separator className="my-1 bg-gray-800" />
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: slackFill }}></span>
-                        <span className="text-sm">Slack</span>
+                  <div className="flex items-center gap-10 justify-center h-[400px]">
+                    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
+                      <g transform={`rotate(-90 ${center} ${center})`}>
+                        <circle cx={center} cy={center} r={outerRadius} fill="none" stroke="#2F2F2F" strokeWidth={stroke} />
+                        <circle cx={center} cy={center} r={outerRadius} fill="none" stroke="#F59E0B" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={outerDash} />
+                        <circle cx={center} cy={center} r={innerRadius} fill="none" stroke="#2F2F2F" strokeWidth={stroke} />
+                        <circle cx={center} cy={center} r={innerRadius} fill="none" stroke={slackFill} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={innerDash} />
+                      </g>
+                      <g>
+                        <text x={center} y={center - 6} textAnchor="middle" className="fill-gray-300" style={{ fontSize: 26, fontWeight: 800 }}>{qDocs}</text>
+                        <text x={center} y={center + 24} textAnchor="middle" className="fill-gray-300" style={{ fontSize: 22, fontWeight: 800 }}>{qSlack}</text>
+                      </g>
+                    </svg>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="text-3xl font-bold" style={{ color: '#F59E0B' }}>{qDocsPct}%</div>
+                        <div className="text-sm text-gray-400">Documents</div>
                       </div>
-                      <div className="text-right">
-                        <span className="text-sm font-medium">{slackCount}</span>
-                        <span className="text-xs text-gray-400 ml-2">{totalSources ? Math.round((slackCount / totalSources) * 100) : 0}%</span>
+                      <div>
+                        <div className="text-3xl font-bold" style={{ color: slackFill }}>{qSlackPct}%</div>
+                        <div className="text-sm text-gray-400">Slack</div>
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#707070' }}></span>
-                        <span className="text-sm">Documents</span>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-sm font-medium">{documentCount}</span>
-                        <span className="text-xs text-gray-400 ml-2">{totalSources ? Math.round((documentCount / totalSources) * 100) : 0}%</span>
-                      </div>
+                      <div className="pt-1 text-sm text-gray-400">Total: {qSlack + qDocs}</div>
+                      <div className="text-sm text-gray-500">Auto-updates every 30s</div>
                     </div>
                   </div>
                 </CardContent>

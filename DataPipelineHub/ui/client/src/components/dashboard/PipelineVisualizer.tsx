@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { FaSlack, FaFileAlt } from "react-icons/fa";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface StageMetrics {
   stageName: string;
@@ -34,11 +35,14 @@ interface EnhancedPipelineVisualizerProps {
 }
 
 export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, activePipelines = [] }: EnhancedPipelineVisualizerProps) {
+  const { primaryHex } = useTheme();
   const isLight = typeof window !== 'undefined' && document.body.classList.contains('light-mode');
   const textColor = isLight ? '#111827' : '#FFFFFF';
   const mutedText = isLight ? '#4B5563' : '#CBD5E1';
   const gridStroke = isLight ? '#0F172A' : '#FFFFFF';
   const gridOpacity = isLight ? 0.06 : 0.08;
+  const slackColor = primaryHex || '#A60000';
+  const docsColor = '#F59E0B';
   const getStageMetric = (stageName: string) => {
     return stageMetrics?.find(stage => stage.stageName === stageName);
   };
@@ -395,9 +399,13 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
     node: Node,
   ): node is typeof nodes['vecTop'] | typeof nodes['vecBottom'] => node.stage === 'Vector DB';
 
+  const hasActivePipelines = (activePipelines || []).some(p =>
+    p.status === 'COLLECTING' || p.status === 'CHUNKING_AND_EMBEDDING' || p.status === 'PROCESSING'
+  );
+
   const flows: { id: string; color: string; dash: string; nodes: NodeKey[]; duration: number; delay: number; dotColor: string }[] = [
-    { id: 'slack', color: 'url(#flowGradient2)', dash: '6,3', nodes: ['slack', 'collecting', 'procTop', 'embedBottom', 'vecTop'], duration: 11, delay: 3, dotColor: 'hsl(var(--primary))' },
-    { id: 'docs', color: 'url(#flowGradient3)', dash: '6,3', nodes: ['docs', 'docling', 'procBottom', 'embedTop', 'vecBottom'], duration: 10, delay: 6, dotColor: 'hsl(var(--primary))' },
+    { id: 'slack', color: 'url(#flowGradient2)', dash: '6,3', nodes: ['slack', 'collecting', 'procTop', 'embedBottom', 'vecTop'], duration: 11, delay: 3, dotColor: hasActivePipelines ? slackColor : '#FFFFFF' },
+    { id: 'docs', color: 'url(#flowGradient3)', dash: '6,3', nodes: ['docs', 'docling', 'procBottom', 'embedTop', 'vecBottom'], duration: 10, delay: 6, dotColor: hasActivePipelines ? docsColor : '#FFFFFF' },
   ];
 
   const buildPath = (flowNodes: NodeKey[]) => {
@@ -458,7 +466,7 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
             <animate attributeName="r" values="10;14;10" dur={isTop ? "2.8s" : "3.5s"} repeatCount="indefinite" />
             <animate attributeName="opacity" values="0.2;0.8;0.2" dur={isTop ? "2.8s" : "3.5s"} repeatCount="indefinite" />
           </circle>
-          <text x={node.x} y={node.y - 20} textAnchor="middle" fill={textColor} fontSize="11" fontWeight="500">{node.label}</text>
+          <text x={node.x} y={node.y - 20} textAnchor="middle" fill={textColor} fontSize="13" fontWeight="1000">{node.label}</text>
         </motion.g>
       );
     }
@@ -499,7 +507,7 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
             <animate attributeName="opacity" values="0.3;0.7;0.3" dur={isTop ? "3.2s" : "2.8s"} repeatCount="indefinite" />
           </circle>
         )}
-        <text x={node.x} y={labelY} textAnchor="middle" fill={textColor} fontSize="10" fontWeight="500">{node.label}</text>
+        <text x={node.x} y={labelY} textAnchor="middle" fill={textColor} fontSize="14" fontWeight="1000">{node.label}</text>
         {/* {!isProcessing && (
           <text x={node.x} y={metricY} textAnchor="middle" fill={metricColor} fontSize="9">{stageMetric?.throughput || 0}/min</text>
         )} */}
@@ -523,14 +531,12 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
     <Card className="rounded-xl border-0 ">
       <div className="p-6 border-b border-border-gray">
         <div className="flex items-center justify-between">
-          <h2 className="text-xl font-semibold" style={{ color: textColor }}>Data Pipeline Flow</h2>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 text-sm">
-              <span className="text-gray-400">Success Rate:</span>
-              <span className="text-secondary font-semibold" style={{ color: 'hsl(var(--success))' }}>
-                {metrics?.successRate?.toFixed(1) || 0}%
-              </span>
-            </div>
+          <h2 className="text-2xl font-semibold" style={{ color: textColor }}>Data Pipeline Flow</h2>
+          <div className="flex items-center space-x-2 text-sm">
+            <span className="text-gray-300 text-base">Success Rate:</span>
+            <span className="text-secondary font-semibold text-lg" style={{ color: 'hsl(var(--success))' }}>
+              {metrics?.successRate?.toFixed(1) || 0}%
+            </span>
           </div>
         </div>
       </div>
@@ -633,6 +639,18 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
 
             {/* Active pipelines animations */}
             {renderActiveFlows()}
+
+            {/* Bottom-left legend with dots */}
+            <g transform="translate(40, 360)">
+              <g>
+                <circle cx="0" cy="0" r="4" fill={slackColor} />
+                <text x="10" y="4" fill={textColor} fontSize="12" fontWeight="600">Slack</text>
+              </g>
+              <g transform="translate(0, 18)">
+                <circle cx="0" cy="0" r="4" fill={docsColor} />
+                <text x="10" y="4" fill={textColor} fontSize="12" fontWeight="600">Docs</text>
+              </g>
+            </g>
           </svg>
         </div>
       </CardContent>

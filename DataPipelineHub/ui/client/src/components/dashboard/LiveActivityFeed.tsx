@@ -1,9 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { type ActivityItem } from "@shared/schema";
 import { Activity, FileText, MessageSquare, Bug, AlertTriangle, Loader2, Slack as SlackIcon } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTheme } from "@/contexts/ThemeContext";
 import { fetchRecentActivities } from "@/api/activity";
 
 type RangeKey = 'today' | 'week' | 'month';
@@ -16,6 +16,7 @@ interface LiveActivityFeedProps {
 }
 
 export function LiveActivityFeed({ defaultRange = 'month', fullHeight = false, contentHeight, compact = false }: LiveActivityFeedProps) {
+  const { primaryHex } = useTheme();
   const [range, setRange] = useState<RangeKey>(defaultRange);
   const sinceHours = useMemo(() => {
     switch (range) {
@@ -49,13 +50,22 @@ export function LiveActivityFeed({ defaultRange = 'month', fullHeight = false, c
     }
   };
 
-  const getActivityColor = (_type: string) => 'bg-primary';
+  // Minimal colors: just color the icon background
+  const getActivityColor = (type: string) => {
+    if (type === 'slack') {
+      return primaryHex || '#A60000';
+    }
+    if (type === 'document') {
+      return '#F59E0B';
+    }
+    return '#4B5563';
+  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'Done':
       case 'complete':
-        return { color: 'badge-slack-green', label: status === 'Done' ? 'Success' : 'Complete' };
+        return { color: 'badge-slack-green', label: 'Completed' };
       case 'processing':
         return { color: 'badge-slack-blue', label: 'Processing' };
       case 'error':
@@ -63,6 +73,12 @@ export function LiveActivityFeed({ defaultRange = 'month', fullHeight = false, c
       default:
         return { color: 'badge-slack-purple', label: status };
     }
+  };
+
+  const cleanTitle = (raw: string) => {
+    if (!raw) return raw;
+    // Remove the trailing or standalone word 'completed'
+    return raw.replace(/\bcompleted\b/gi, '').replace(/\s+/g, ' ').trim();
   };
 
   const getTimeAgo = (timestamp: string | Date) => {
@@ -148,7 +164,7 @@ export function LiveActivityFeed({ defaultRange = 'month', fullHeight = false, c
             No recent activity to display
           </div>
         ) : (
-          <motion.div layout className={`grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 ${compact ? 'gap-2' : 'gap-4'} ${fullHeight || contentHeight ? 'h-full' : (compact ? 'max-h-64' : 'max-h-80')} overflow-y-auto overflow-x-hidden no-scrollbar`}>
+          <motion.div layout className={`grid grid-cols-1 md:grid-cols-2 ${fullHeight || contentHeight ? 'h-full' : (compact ? 'max-h-64' : 'max-h-80')} overflow-y-auto overflow-x-hidden no-scrollbar [&>div]:border-b [&>div]:border-gray-800/80 md:[&>div:nth-child(odd)]:border-r md:[&>div:nth-child(odd)]:border-gray-800/80`}>
             <AnimatePresence mode="popLayout">
             {activities.map((item) => {
               const statusBadge = getStatusBadge((item as any).status);
@@ -162,34 +178,28 @@ export function LiveActivityFeed({ defaultRange = 'month', fullHeight = false, c
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -12, scale: 0.98 }}
                   transition={{ type: "spring", stiffness: 380, damping: 26, mass: 0.8 }}
-                  className={`w-full min-w-0 h-full ${compact ? 'p-3' : 'p-4'} bg-gray-900 bg-opacity-30 rounded-lg flex flex-col justify-between`}
+                  className={`w-full min-w-0 h-full ${compact ? 'p-3' : 'p-4'} flex flex-col justify-center`}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 ${getActivityColor((item as any).type)} rounded-full flex items-center justify-center`}>
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0`} style={{ backgroundColor: getActivityColor((item as any).type) }}>
                         {getActivityIcon((item as any).type)}
                       </div>
-                      <span className="text-white font-medium text-sm break-words">
-                        {(item as any).title}
-                      </span>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-white font-semibold text-base truncate">
+                          {cleanTitle((item as any).title)}
+                        </span>
+                        <span className={`px-2 py-0.5 ${statusBadge.color} text-sm rounded whitespace-nowrap`}>
+                          {statusBadge.label}
+                        </span>
+                        <span className="px-2 py-0.5 bg-gray-800 text-gray-300 text-xs rounded capitalize whitespace-nowrap">
+                          {(item as any).type}
+                        </span>
+                      </div>
                     </div>
-                    <span className="text-gray-400 text-xs ml-3 whitespace-nowrap">
+                    <span className="text-gray-400 text-sm ml-3 whitespace-nowrap shrink-0">
                       {getTimeAgo((item as any).timestamp)}
                     </span>
-                  </div>
-                  <p className={`text-gray-400 text-xs ${compact ? 'mt-1' : 'mt-2'} break-words`}>
-                    {(item as any).description}
-                  </p>
-                  <div className={`flex items-center ${compact ? 'mt-2' : 'mt-3'} gap-2`}>
-                    <span className={`px-2 py-1 ${statusBadge.color} text-xs rounded`}>
-                      {statusBadge.label}
-                    </span>
-                    <span className="px-2 py-1 bg-gray-800 text-gray-300 text-xs rounded capitalize">
-                      {(item as any).type}
-                    </span>
-                    {(item as any).destination && (
-                      <span className="text-gray-500 text-xs">→ {(item as any).destination}</span>
-                    )}
                   </div>
                 </motion.div>
               );
