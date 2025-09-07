@@ -2,6 +2,7 @@ import React from "react";
 import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger } from "@/components/ui/select";
 import { FaSearch, FaBell, FaQuestionCircle, FaPlus, FaBars, FaMoon, FaSun, FaSignOutAlt, FaShare } from "react-icons/fa";
 import { FaShareNodes } from "react-icons/fa6";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,13 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
   const { user, logout } = useAuth();
   const { hasUnreadNotifications, pendingNotificationsCount } = useNotifications();
   const { isSharedPanelOpen, openSharedPanel, closeSharedPanel } = useShared();
+
+  const colorOptions = [
+    { hex: "#A60000", name: "Red" },
+    { hex: "#147878", name: "Teal" },
+    { hex: "#707070", name: "Gray" },
+    { hex: "#8A2BE2", name: "Purple" },
+  ];
 
   const getInitials = (name: string): string => {
     return name
@@ -59,18 +67,24 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
           </button>
         </SimpleTooltip>
         
-        {/* Color palette picker */}
-        <div className="flex items-center gap-2 mr-2">
-          {["#A60000", "#147878", "#707070"].map((hex) => (
-            <button
-              key={hex}
-              onClick={() => setPrimaryHex(hex)}
-              className={`w-4 h-4 rounded-full border border-border transition-transform ${primaryHex === hex ? 'ring-2 ring-primary' : ''}`}
-              style={{ backgroundColor: hex }}
-              aria-label={`Set primary color ${hex}`}
-              title={`Set primary color ${hex}`}
-            />
-          ))}
+        {/* Color picker (dropdown) */}
+        <div className="mr-2 w-20">
+          <Select value={primaryHex} onValueChange={(value) => setPrimaryHex(value)}>
+            <SelectTrigger>
+              <div className="flex items-center gap-2">
+                <span className="w-3 h-3 rounded-full" style={{ backgroundColor: primaryHex }} />
+              </div>
+            </SelectTrigger>
+            <SelectContent>
+              {colorOptions.map(({ hex }) => (
+                <SelectItem key={hex} value={hex}>
+                  <div className="flex items-center gap-2">
+                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: hex }} />
+                  </div>
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="relative">
