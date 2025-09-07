@@ -80,7 +80,7 @@ export async function fetchActivePipelines(): Promise<ActivePipeline[]> {
 
 // Get counts of connected sources by type (slack, document, jira, github)
 export async function fetchConnectedSources(): Promise<ConnectedSourcesSummary> {
-  const types = ['slack', 'document', 'jira', 'github'] as const;
+  const types = ['slack', 'document'] as const;
 
   const results = await Promise.all(types.map(async (t) => {
     try {
