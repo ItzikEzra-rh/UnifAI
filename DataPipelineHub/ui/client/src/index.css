@@ -24,14 +24,14 @@
     /* Typography */
     --foreground: 0 0% 100%;            /* primary white */
     --text-primary: 0 0% 100%;
-    --text-secondary: 180, 41%, 56%;      /* ~#9CA3AF */
+    --text-secondary: 216, 13%, 65%;      /* gray (approx Tailwind gray-400 #9CA3AF) */
     /* Lines / inputs */
     --border: 220 12% 21%;              /* ~#2A2F36 */
     --input: 220 12% 21%;
     /* Accents */
     --primary: 267 95% 76%;             /* keep existing bright primary */
     --primary-foreground: 0 0% 98%;
-    --secondary: 180, 41%, 56%;           /* teal/cyan ~#2DD4BF */
+    --secondary: 216, 13%, 65%;           /* gray (approx Tailwind gray-400 #9CA3AF) */
     --accent: 333 85% 58%;              /* pink */
     --success: 95, 40%, 56%;              /* #63993d */
     --info: 199 89% 55%;                /* blue */
@@ -62,12 +62,12 @@
     --background-surface: 0 0% 98%;
     --foreground: 240 10% 3.9%;
     --text-primary: 240 10% 3.9%;
-    --text-secondary: 180, 41%, 56%;
+    --text-secondary: 216, 13%, 65%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --primary: 267 95% 76%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 180, 41%, 56%; /* darker teal for light mode */
+    --secondary: 216, 13%, 65%;
     --accent: 333 85% 45%;
     --success: 92 44% 41%;
     --info: 199 89% 45%;

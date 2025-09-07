@@ -78,7 +78,7 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
     docs: { x: 80, y: yTop, label: 'Docs', stage: 'Docs' },
     slack: { x: 80, y: yBottom, label: 'Slack', stage: 'Slack' },
     collecting: { x: 420, y: yTop, label: 'Collecting', stage: 'Collecting' },
-    dockling: { x: 420, y: yBottom, label: 'Dockling', stage: 'Dockling' },
+    docling: { x: 420, y: yBottom, label: 'Docling', stage: 'Docling' },
     procTop: { x: 720, y: yTop, label: 'Processing', stage: 'Processing' },
     procBottom: { x: 720, y: yBottom, label: 'Processing', stage: 'Processing' },
     embedTop: { x: 1020, y: yTop, label: 'Embedding', stage: 'Embedding' },
@@ -91,7 +91,7 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
 
   // Active pipeline flow types
   type SourceType = 'slack' | 'document';
-  type FlowStage = 'Slack' | 'Docs' | 'Collecting' | 'Dockling' | 'Processing' | 'Embedding' | 'Vector DB';
+  type FlowStage = 'Slack' | 'Docs' | 'Collecting' | 'Docling' | 'Processing' | 'Embedding' | 'Vector DB';
 
   const resolveNodeKeyFor = (sourceType: SourceType, status: string): NodeKey => {
     switch (status) {
@@ -101,9 +101,9 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
         return 'docs';
       case 'COLLECTING':
         // For document sources, the equivalent initial stage is Dockling
-        return sourceType === 'slack' ? 'collecting' : 'dockling';
-      case 'Dockling':
-        return 'dockling';
+        return sourceType === 'slack' ? 'collecting' : 'docling';
+      case 'Docling':
+        return 'docling';
       case 'PROCESSING':
         return sourceType === 'slack' ? 'procTop' : 'procBottom';
       case 'CHUNKING_AND_EMBEDDING':
@@ -397,7 +397,7 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
 
   const flows: { id: string; color: string; dash: string; nodes: NodeKey[]; duration: number; delay: number; dotColor: string }[] = [
     { id: 'slack', color: 'url(#flowGradient2)', dash: '6,3', nodes: ['slack', 'collecting', 'procTop', 'embedBottom', 'vecTop'], duration: 11, delay: 3, dotColor: 'hsl(var(--primary))' },
-    { id: 'docs', color: 'url(#flowGradient3)', dash: '6,3', nodes: ['docs', 'dockling', 'procBottom', 'embedTop', 'vecBottom'], duration: 10, delay: 6, dotColor: 'hsl(var(--primary))' },
+    { id: 'docs', color: 'url(#flowGradient3)', dash: '6,3', nodes: ['docs', 'docling', 'procBottom', 'embedTop', 'vecBottom'], duration: 10, delay: 6, dotColor: 'hsl(var(--primary))' },
   ];
 
   const buildPath = (flowNodes: NodeKey[]) => {
@@ -464,7 +464,7 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
     }
 
     // Sources and processing nodes
-    const isProcessing = node.label === 'Collecting' || node.label === 'Dockling' || node.label === 'Processing';
+    const isProcessing = node.label === 'Collecting' || node.label === 'Docling' || node.label === 'Processing';
     const isSlack = node.label === 'Slack';
     const isDocs = node.label === 'Docs';
     const radius = isSlack ? 16 : (isProcessing ? 14 : 12);
