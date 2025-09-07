@@ -18,14 +18,10 @@ function withinLastHours(dateStr: string | undefined, hours: number): boolean {
 export async function fetchRecentActivities(params: FetchActivitiesParams = {}): Promise<ActivityItem[]> {
   const { sources = ['slack', 'document'], sinceHours = 24, limit } = params;
 
-  // Use existing data sources endpoint for both slack and document
-  const requests: Promise<{ data: { sources: any[] } }>[] = [];
-  if (sources.includes('slack')) {
-    requests.push(api.get<{ sources: any[] }>('data_sources/data.sources.get', { params: { source_type: 'slack' } }));
-  }
-  if (sources.includes('document')) {
-    requests.push(api.get<{ sources: any[] }>('data_sources/data.sources.get', { params: { source_type: 'document' } }));
-  }
+  // Use existing data sources endpoint for all requested source types
+  const requests: Promise<{ data: { sources: any[] } }>[] = sources.map((sourceType) =>
+    api.get<{ sources: any[] }>('data_sources/data.sources.get', { params: { source_type: sourceType } })
+  );
 
   const responses = await Promise.all(requests);
   const all = responses.flatMap(r => r.data.sources || []);
