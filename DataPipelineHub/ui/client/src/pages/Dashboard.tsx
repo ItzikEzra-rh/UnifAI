@@ -155,7 +155,7 @@ export default function Dashboard() {
                     <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
                       <g transform={`rotate(-90 ${center} ${center})`}>
                         <circle cx={center} cy={center} r={outerRadius} fill="none" stroke="#2F2F2F" strokeWidth={stroke} />
-                        <circle cx={center} cy={center} r={outerRadius} fill="none" stroke="#6B7280" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={outerDash} />
+                        <circle cx={center} cy={center} r={outerRadius} fill="none" stroke="hsl(var(--secondary))" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={outerDash} />
                         <circle cx={center} cy={center} r={innerRadius} fill="none" stroke="#2F2F2F" strokeWidth={stroke} />
                         <circle cx={center} cy={center} r={innerRadius} fill="none" stroke={slackFill} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={innerDash} />
                       </g>
@@ -166,7 +166,7 @@ export default function Dashboard() {
                     </svg>
                     <div className="space-y-4">
                       <div>
-                        <div className="text-3xl font-bold" style={{ color: '#6B7280' }}>{qDocsPct}%</div>
+                        <div className="text-3xl font-bold" style={{ color: 'hsl(var(--secondary))' }}>{qDocsPct}%</div>
                         <div className="text-sm text-gray-400">Documents</div>
                       </div>
                       <div>

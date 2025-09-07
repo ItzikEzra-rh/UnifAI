@@ -42,7 +42,7 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
   const gridStroke = isLight ? '#0F172A' : '#FFFFFF';
   const gridOpacity = isLight ? 0.06 : 0.08;
   const slackColor = primaryHex || '#A60000';
-  const docsColor = '#6B7280';
+  const docsColor = 'hsl(var(--secondary))';
   const getStageMetric = (stageName: string) => {
     return stageMetrics?.find(stage => stage.stageName === stageName);
   };
