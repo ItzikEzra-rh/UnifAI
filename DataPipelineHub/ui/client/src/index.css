@@ -24,16 +24,16 @@
     /* Typography */
     --foreground: 0 0% 100%;            /* primary white */
     --text-primary: 0 0% 100%;
-    --text-secondary: 220 13% 70%;      /* ~#9CA3AF */
+    --text-secondary: 180, 41%, 56%;      /* ~#9CA3AF */
     /* Lines / inputs */
     --border: 220 12% 21%;              /* ~#2A2F36 */
     --input: 220 12% 21%;
     /* Accents */
     --primary: 267 95% 76%;             /* keep existing bright primary */
     --primary-foreground: 0 0% 98%;
-    --secondary: 171 72% 50%;           /* teal/cyan ~#2DD4BF */
+    --secondary: 180, 41%, 56%;           /* teal/cyan ~#2DD4BF */
     --accent: 333 85% 58%;              /* pink */
-    --success: 142 72% 45%;             /* green */
+    --success: 95, 40%, 56%;              /* #63993d */
     --info: 199 89% 55%;                /* blue */
 
     /* Sidebar color tokens used by UI sidebar primitives */
@@ -62,14 +62,14 @@
     --background-surface: 0 0% 98%;
     --foreground: 240 10% 3.9%;
     --text-primary: 240 10% 3.9%;
-    --text-secondary: 240 3.7% 30%;
+    --text-secondary: 180, 41%, 56%;
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --primary: 267 95% 76%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 174 93% 38%; /* darker teal for light mode */
+    --secondary: 180, 41%, 56%; /* darker teal for light mode */
     --accent: 333 85% 45%;
-    --success: 142 72% 35%;
+    --success: 92 44% 41%;
     --info: 199 89% 45%;
   }
 

@@ -23,10 +23,13 @@ import { PieChart, Pie, Cell } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChartContainer, ChartTooltip } from "@/components/ui/chart";
 import { Separator } from "@/components/ui/separator";
+import { useTheme } from "@/contexts/ThemeContext";
 
 export default function Dashboard() {
   const { projects } = useProject();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { primaryHex } = useTheme();
+  const slackFill = (primaryHex || "").toLowerCase() === "#707070" ? "#A60000" : primaryHex;
 
   // Live metrics for summary cards
   const { data: metrics } = useQuery({
@@ -146,8 +149,8 @@ export default function Dashboard() {
                           stroke="transparent"
                           label
                         >
-                          <Cell fill="#a78bfa" />
-                          <Cell fill="#22d3ee" />
+                          <Cell fill={slackFill} />
+                          <Cell fill="#707070" />
                         </Pie>
                         <ChartTooltip formatter={(value: any) => String(value)} />
                       </PieChart>
@@ -157,7 +160,7 @@ export default function Dashboard() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#a78bfa' }}></span>
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: slackFill }}></span>
                         <span className="text-sm">Slack</span>
                       </div>
                       <div className="text-right">
@@ -167,7 +170,7 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#22d3ee' }}></span>
+                        <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: '#707070' }}></span>
                         <span className="text-sm">Documents</span>
                       </div>
                       <div className="text-right">

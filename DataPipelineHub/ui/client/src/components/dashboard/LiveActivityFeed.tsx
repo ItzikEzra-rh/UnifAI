@@ -89,18 +89,18 @@ export function LiveActivityFeed({ defaultRange = 'month', fullHeight = false, c
             </div>
           </h3>
           {/* Segmented toggle */}
-          <div className="hidden sm:flex items-center bg-background-card border border-border rounded-md overflow-hidden text-xs">
+          <div className="hidden sm:flex items-center bg-background-card border border-border rounded-lg overflow-hidden text-sm">
             <button
               onClick={() => setRange('today')}
-              className={`px-3 py-1 transition-colors ${range === 'today' ? 'bg-secondary/20 text-secondary' : 'text-gray-400 hover:text-white'}`}
+              className={`px-3 py-1 transition-colors ${range === 'today' ? 'bg-primary/40' : 'text-gray-400 hover:text-white'}`}
               aria-pressed={range === 'today'}
             >
               Today
             </button>
             <div className="w-px h-4 bg-border" />
             <button
-              onClick={() => setRange('week')}
-              className={`px-3 py-1 transition-colors ${range === 'week' ? 'bg-secondary/20 text-secondary' : 'text-gray-400 hover:text-white'}`}
+              onClick={() => setRange('week')}  
+              className={`px-3 py-1 transition-colors ${range === 'week' ? 'bg-primary/40' : 'text-gray-400 hover:text-white'}`}
               aria-pressed={range === 'week'}
             >
               Last week
@@ -108,7 +108,7 @@ export function LiveActivityFeed({ defaultRange = 'month', fullHeight = false, c
             <div className="w-px h-4 bg-border" />
             <button
               onClick={() => setRange('month')}
-              className={`px-3 py-1 transition-colors ${range === 'month' ? 'bg-secondary/20 text-secondary' : 'text-gray-400 hover:text-white'}`}
+              className={`px-3 py-1 transition-colors ${range === 'month' ? 'bg-primary/40' : 'text-gray-400 hover:text-white'}`}
               aria-pressed={range === 'month'}
             >
               Last month

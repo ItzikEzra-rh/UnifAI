@@ -29,7 +29,7 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
           <div className="grid grid-cols-2 gap-4">
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wide">Success Rate</p>
-              <p className="text-xl font-bold text-green-400">{(metrics?.successRate ?? 0).toFixed(1)}%</p>
+              <p className="text-xl font-bold" style={{ color: 'hsl(var(--success))' }}>{(metrics?.successRate ?? 0).toFixed(1)}%</p>
             </div>
             <div>
               <p className="text-xs text-gray-400 uppercase tracking-wide">Active Pipelines</p>
@@ -86,7 +86,7 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
                   </div>
                   <div className="flex items-center space-x-2">
                     <span className="text-sm text-gray-400">{count} active</span>
-                    <div className={`w-2 h-2 rounded-full ${isActive ? "bg-green-500 animate-pulse" : "bg-gray-600"}`}></div>
+                    <div className={`w-2 h-2 rounded-full ${isActive ? "animate-pulse" : "bg-gray-600"}`} style={{ backgroundColor: 'hsl(var(--success))' }}></div>
                   </div>
                 </div>
               );
@@ -104,7 +104,6 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
     const updatedAgo = "2m ago";
     const staleChannels = 3;
 
-    const freshnessColor = avgMinutes <= 15 ? "text-green-400" : avgMinutes <= 60 ? "text-amber-400" : "text-red-400";
 
     return (
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.25 }} className="h-full">
@@ -122,7 +121,7 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
             <div className="grid grid-cols-3 gap-4 items-end">
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-wide">Avg Last Sync</p>
-                <p className={`text-2xl font-bold ${freshnessColor}`}>{avgMinutes}m</p>
+                <p className={`text-2xl font-bold `}>{avgMinutes}m</p>
               </div>
               <div>
                 <p className="text-xs text-gray-400 uppercase tracking-wide">Most Stale</p>
@@ -183,8 +182,8 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
               <Activity className="text-primary mr-3 h-5 w-5" />
               Active Pipelines
               <div className="ml-2 flex items-center">
-                <div className="w-2 h-2 bg-primary rounded-full animate-pulse mr-1"></div>
-                <span className="text-primary text-xs font-medium">{activeCount}</span>
+                <div className="w-2 h-2 bg-secondary rounded-full animate-pulse mr-1"></div>
+                <span className="text-secondary text-xs font-medium">{activeCount}</span>
               </div>
             </h3>
           </div>

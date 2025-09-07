@@ -61,7 +61,7 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
         
         {/* Color palette picker */}
         <div className="flex items-center gap-2 mr-2">
-          {["#BB86FC", "#03DAC5", "#4CC9F0"].map((hex) => (
+          {["#A60000", "#147878", "#707070"].map((hex) => (
             <button
               key={hex}
               onClick={() => setPrimaryHex(hex)}

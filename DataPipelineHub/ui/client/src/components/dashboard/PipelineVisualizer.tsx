@@ -527,7 +527,7 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-2 text-sm">
               <span className="text-gray-400">Success Rate:</span>
-              <span className="text-secondary font-semibold">
+              <span className="text-secondary font-semibold" style={{ color: 'hsl(var(--success))' }}>
                 {metrics?.successRate?.toFixed(1) || 0}%
               </span>
             </div>
