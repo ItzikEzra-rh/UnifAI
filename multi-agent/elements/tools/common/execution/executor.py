@@ -62,7 +62,6 @@ class ToolExecutorManager:
         self._max_concurrent = max_concurrent
         self._default_timeout = default_timeout
         self._enable_metrics = enable_metrics
-        self._async_bridge = AsyncBridge()
 
         # Error handling
         self._error_handler = error_handler
