@@ -46,8 +46,7 @@ class McpServerClient:
         Args:
             sse_endpoint: HTTP(S) URL of the MCP server SSE endpoint
         """
-        base = URL(str(sse_endpoint))
-        self.sse_endpoint = str(base if base.path.endswith("/sse") else base / "sse")
+        self.sse_endpoint = str(sse_endpoint)
 
         # Initialize transport layer for server communication
         self.transport = TransportManager(

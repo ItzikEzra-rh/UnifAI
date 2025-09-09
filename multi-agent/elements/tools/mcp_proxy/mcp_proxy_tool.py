@@ -98,7 +98,7 @@ class McpProxyTool(BaseTool):
                 result = await client.call_tool(self.mcp_tool_name, mcp_args)
                 print(f"Tool '{self.mcp_tool_name}' completed successfully")
             except Exception as e:
-                print(f"Tool '{self.mcp_tool_name}' failed: {e}")
+                # print(f"Tool '{self.mcp_tool_name}' failed: {e}")
                 raise McpProxyToolError(f"Failed to call '{self.mcp_tool_name}': {e}")
 
         # 6) Return the most relevant piece of the result
