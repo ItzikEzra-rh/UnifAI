@@ -106,8 +106,8 @@ class ToolCapableMixin(Generic[T]):
         """
         if msg.role != Role.ASSISTANT or not msg.tool_calls:
             return []
-        bridge = get_async_bridge()
-        return bridge.run(self._ainvoke_all(msg))
+        with get_async_bridge() as bridge:
+            return bridge.run(self._ainvoke_all(msg))
 
     def _execute_tool_cycle(
             self: T,
