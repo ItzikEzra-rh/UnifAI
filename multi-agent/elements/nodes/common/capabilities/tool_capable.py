@@ -75,8 +75,8 @@ class ToolCapableMixin(Generic[T]):
         self._executor = ToolExecutorManager(**config.to_dict())
 
         # Add streaming hooks if this object supports streaming
-        bridge = get_async_bridge()
-        bridge.run(self._setup_streaming_hooks())
+        with get_async_bridge() as bridge:
+            bridge.run(self._setup_streaming_hooks())
 
     @property
     def tools(self) -> List[BaseTool]:
@@ -197,8 +197,8 @@ class ToolCapableMixin(Generic[T]):
         """
         if msg.role != Role.ASSISTANT or not msg.tool_calls:
             return []
-        bridge = get_async_bridge()
-        return bridge.run(self._ainvoke_all(msg))
+        with get_async_bridge() as bridge:
+            return bridge.run(self._ainvoke_all(msg))
 
     def _execute_tool_cycle(
             self: T,
