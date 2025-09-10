@@ -1,8 +1,8 @@
 """
-Tool execution bridge for agent actions.
+Agent action execution bridge for agent actions.
 
 This module provides the bridge between agent actions and the existing
-tool system. The ToolExecutor converts AgentActions into tool calls and
+tool system. The AgentActionExecutor converts AgentActions into tool calls and
 handles execution using the established ToolCapableMixin infrastructure.
 
 Design Principles:
@@ -24,7 +24,7 @@ from ..constants import (
 )
 
 
-class ToolExecutor:
+class AgentActionExecutor:
     """
     Executes agent actions using existing tool infrastructure.
     
@@ -40,7 +40,7 @@ class ToolExecutor:
     
     Example:
         # In AgentCapableMixin
-        executor = ToolExecutor(
+        executor = AgentActionExecutor(
             tools=self.tools,  # From ToolCapableMixin
             tool_invoke_fn=self.invoke_tools,  # From ToolCapableMixin
             validate_args=True
@@ -59,7 +59,7 @@ class ToolExecutor:
         special_tools: Optional[Dict[str, BaseTool]] = None
     ):
         """
-        Initialize tool executor.
+        Initialize agent action executor.
         
         Args:
             tools: List of available tools

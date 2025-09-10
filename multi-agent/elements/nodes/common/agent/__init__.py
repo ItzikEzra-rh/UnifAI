@@ -13,15 +13,15 @@ Key Components:
 - AgentFinish: Final agent output
 - AgentStrategy: Planning and decision-making logic
 - AgentIterator: Step-by-step execution control
-- ToolExecutor: Bridge to existing tool system
+- AgentActionExecutor: Bridge to existing tool system
 
 Example:
     ```python
-    from agent import ReActStrategy, AgentIterator, ToolExecutor
+    from agent import ReActStrategy, AgentIterator, AgentActionExecutor
     
     # In your AgentCapableMixin
     strategy = ReActStrategy(llm_chat=self._chat)
-    executor = ToolExecutor(self.tools)
+    executor = AgentActionExecutor(self.tools)
     iterator = AgentIterator(strategy=strategy, tool_executor=executor.execute)
     
     for step in iterator:
@@ -56,7 +56,7 @@ from .strategies import (
 from .execution import (
     AgentIterator,
     ExecutionMode,
-    ToolExecutor,
+    AgentActionExecutor,
     ToolValidator
 )
 
@@ -106,7 +106,7 @@ __all__ = [
     # Execution
     "AgentIterator",
     "ExecutionMode",
-    "ToolExecutor", 
+    "AgentActionExecutor", 
     "ToolValidator",
     
     # Runners

@@ -24,7 +24,7 @@ from elements.nodes.common.agent import (
 )
 from elements.nodes.common.agent.parsers import OutputParser, ToolCallParser, ParseError
 from elements.nodes.common.agent.strategies import AgentStrategy, ReActStrategy
-from elements.nodes.common.agent.execution import AgentIterator, ExecutionMode, ToolExecutor, ToolValidator
+from elements.nodes.common.agent.execution import AgentIterator, ExecutionMode, AgentActionExecutor, ToolValidator
 from elements.nodes.common.agent.constants import (
     StrategyType, EarlyStoppingPolicy, ExecutionDefaults,
     ToolHandlingPolicy, ToolExecutionDefaults, StrategyDefaults
@@ -140,7 +140,7 @@ class AgentCapableMixin(Generic[T]):
         
         raise ValueError(f"Unknown strategy type: {strategy_type}")
     
-    def create_tool_executor(self, config: AgentConfig) -> ToolExecutor:
+    def create_tool_executor(self, config: AgentConfig) -> AgentActionExecutor:
         """
         Create tool executor using existing tool capabilities.
         
@@ -150,9 +150,9 @@ class AgentCapableMixin(Generic[T]):
             config: Agent configuration
             
         Returns:
-            Configured ToolExecutor
+            Configured AgentActionExecutor
         """
-        return ToolExecutor(
+        return AgentActionExecutor(
             tools=self.tools,  # From ToolCapableMixin
             tool_invoke_fn=self.invoke_tools,  # From ToolCapableMixin
             validate_args=config.validate_tools,

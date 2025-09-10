@@ -5,19 +5,19 @@ This module provides fine-grained control over agent execution with different
 modes and validation capabilities. Includes:
 
 - AgentIterator: Step-by-step execution control with multiple modes
-- ToolExecutor: Bridge between agent actions and tool system
+- AgentActionExecutor: Bridge between agent actions and tool system
 - ToolValidator: Policy enforcement and permission checking
 - ExecutionMode: Different execution patterns (auto, manual, guided)
 
 Key Components:
 - ExecutionMode: AUTO (automatic), MANUAL (user control), GUIDED (confirmation)
 - AgentIterator: Main execution controller with streaming support
-- ToolExecutor: Executes actions using existing ToolCapableMixin
+- AgentActionExecutor: Executes actions using existing ToolCapableMixin
 - ToolValidator: Validates actions before execution
 
 Example:
     ```python
-    from agent.execution import AgentIterator, ToolExecutor, ExecutionMode
+    from agent.execution import AgentIterator, AgentActionExecutor, ExecutionMode
     
     iterator = AgentIterator(
         strategy=strategy,
@@ -32,11 +32,11 @@ Example:
 """
 
 from .iterator import AgentIterator, ExecutionMode
-from .executor import ToolExecutor, ToolValidator
+from .executor import AgentActionExecutor, ToolValidator
 
 __all__ = [
     "AgentIterator",
     "ExecutionMode", 
-    "ToolExecutor",
+    "AgentActionExecutor",
     "ToolValidator"
 ]
