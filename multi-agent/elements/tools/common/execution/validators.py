@@ -9,22 +9,20 @@ from typing import Dict, Optional, Any, Tuple, List
 from elements.tools.common.base_tool import BaseTool
 from global_utils.utils.util import validate_arguments
 from .interfaces import ExecutionValidator
-from .exceptions import ValidationError
-
 
 
 class ArgumentValidator(ExecutionValidator):
     """Validates tool arguments against schema using global_utils validation."""
-    
+
     def __init__(self, strict: bool = True):
         self.strict = strict
         self.name = "ArgumentValidator"
-    
+
     async def validate(
-        self,
-        tool: BaseTool,
-        args: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None
+            self,
+            tool: BaseTool,
+            args: Dict[str, Any],
+            context: Optional[Dict[str, Any]] = None
     ) -> Tuple[bool, Optional[str]]:
         """Validate arguments against tool schema."""
         try:
@@ -32,9 +30,9 @@ class ArgumentValidator(ExecutionValidator):
                 validate_arguments(schema=tool.get_args_schema_json(), args=args)
             elif self.strict:
                 return False, f"Tool {tool.name} has no argument schema"
-            
+
             return True, None
-            
+
         except ValueError as e:
             return False, str(e)
         except Exception as e:
@@ -44,21 +42,21 @@ class ArgumentValidator(ExecutionValidator):
 
 class CompositeValidator(ExecutionValidator):
     """Combines multiple validators."""
-    
+
     def __init__(self, validators: List[ExecutionValidator], fail_fast: bool = True):
         self.validators = validators
         self.fail_fast = fail_fast
         self.name = "CompositeValidator"
-    
+
     async def validate(
-        self,
-        tool: BaseTool,
-        args: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None
+            self,
+            tool: BaseTool,
+            args: Dict[str, Any],
+            context: Optional[Dict[str, Any]] = None
     ) -> Tuple[bool, Optional[str]]:
         """Run all validators."""
         errors = []
-        
+
         for validator in self.validators:
             try:
                 is_valid, error_msg = await validator.validate(tool, args, context)
@@ -73,8 +71,8 @@ class CompositeValidator(ExecutionValidator):
                     return False, error_msg
                 else:
                     errors.append(error_msg)
-        
+
         if errors:
             return False, "; ".join(errors)
-        
+
         return True, None
