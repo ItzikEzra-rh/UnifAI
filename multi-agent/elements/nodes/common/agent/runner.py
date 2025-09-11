@@ -42,7 +42,7 @@ class AgentRunner:
     Example:
         runner = AgentRunner(RunnerConfig(
             max_time=30.0,
-            early_stopping="first_finish"
+            early_stopping=EarlyStoppingPolicy.FIRST_FINISH.value
         ))
         
         result = runner.run(iterator)

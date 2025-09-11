@@ -2,66 +2,79 @@
 Agent capability mixin for nodes.
 
 This module provides the AgentCapableMixin that orchestrates the agent system
-components into a cohesive capability that can be added to nodes. It integrates
-with existing mixins (LLM, Tool, BaseNode) to provide agent behavior.
+components into a cohesive capability that can be added to nodes. It provides
+complete agent behavior with direct tool management and streaming support.
 
 Design Principles:
-- Composition over Inheritance: Uses existing capabilities
+- Self-contained: Manages tools directly without ToolCapableMixin
 - Configuration-driven: Behavior controlled via config objects  
 - Multiple APIs: Simple (run_agent) and advanced (create_iterator)
-- SOLID compliance: Depends on interfaces, not implementations
+- SOLID compliance: Clean dependencies and interfaces
 """
 
 import time
+import asyncio
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any, TypeVar, Generic, Iterator, Callable
 from enum import Enum
 
 from elements.llms.common.chat.message import ChatMessage, Role
+from elements.tools.common.base_tool import BaseTool
+from elements.tools.common.execution import ToolExecutorManager, ExecutorConfig
+from elements.tools.common.execution.models import (
+    ToolExecutionRequest, ToolExecutionResponse, BatchToolExecutionResponse
+)
 from elements.nodes.common.agent import (
     AgentAction, AgentObservation, AgentFinish, AgentStep, StepType,
     AgentConfig
 )
 from elements.nodes.common.agent.parsers import OutputParser, ToolCallParser, ParseError
 from elements.nodes.common.agent.strategies import AgentStrategy, ReActStrategy
-from elements.nodes.common.agent.execution import AgentIterator, ExecutionMode, AgentActionExecutor, ToolValidator
+from elements.nodes.common.agent.execution import AgentIterator, ExecutionMode, AgentActionExecutor
 from elements.nodes.common.agent.constants import (
-    StrategyType, EarlyStoppingPolicy, ExecutionDefaults,
-    ToolHandlingPolicy, ToolExecutionDefaults, StrategyDefaults
+    EarlyStoppingPolicy, ExecutionDefaults, StrategyType, ErrorMessages
 )
 from core.contracts import SupportsStreaming
+from global_utils.utils.async_bridge import get_async_bridge
 
 T = TypeVar("T", bound=SupportsStreaming)
 
 
 class AgentCapableMixin(Generic[T]):
     """
-    Mixin that adds agent capabilities to nodes.
+    Self-contained agent capability mixin with direct tool management.
     
-    Orchestrates the agent system components to provide high-level agent
-    behavior. Integrates with existing node capabilities (LLM, tools, streaming)
-    to create a complete agent execution system.
+    Provides complete agent behavior including tool management, execution,
+    and streaming support. No longer depends on ToolCapableMixin.
     
     Required Mixins (checked via __init_subclass__):
-    - LlmCapableMixin: Provides _chat() method
-    - ToolCapableMixin: Provides tools and invoke_tools()  
+    - LlmCapableMixin: Provides chat() method
     - BaseNode: Provides _stream() and is_streaming()
     
     Public APIs:
     - run_agent(): Simple automatic execution
     - stream_agent(): Real-time streaming execution
     - create_iterator(): Advanced step-by-step control
+    - create_strategy(): Factory for creating strategies
+    - add_pre_execution_hook(): Add custom pre-execution hooks
+    - add_post_execution_hook(): Add custom post-execution hooks
     
     Example:
         class MyAgentNode(
             AgentCapableMixin,
-            ToolCapableMixin, 
             LlmCapableMixin,
             BaseNode
         ):
             def run(self, state):
+                # Create strategy with tools
+                strategy = self.create_strategy(
+                    tools=my_tools,
+                    strategy_type=StrategyType.REACT.value
+                )
+                
+                # Run agent
                 messages = self._build_messages(state)
-                result = self.run_agent(messages)
+                result = self.run_agent(messages, strategy)
                 return result
     """
     
@@ -72,7 +85,7 @@ class AgentCapableMixin(Generic[T]):
         Checks that the class has the required methods from other mixins
         to ensure proper composition.
         """
-        required_attrs = ["_chat", "tools", "invoke_tools", "_stream", "is_streaming"]
+        required_attrs = ["chat", "_stream", "is_streaming"]
         missing = []
         
         for attr in required_attrs:
@@ -81,9 +94,7 @@ class AgentCapableMixin(Generic[T]):
         
         if missing:
             capabilities_map = {
-                "_chat": "LlmCapableMixin",
-                "tools": "ToolCapableMixin", 
-                "invoke_tools": "ToolCapableMixin",
+                "chat": "LlmCapableMixin",
                 "_stream": "BaseNode",
                 "is_streaming": "BaseNode"
             }
@@ -95,8 +106,107 @@ class AgentCapableMixin(Generic[T]):
         
         super().__init_subclass__()
     
-    def create_agent_strategy(
+    def __init__(self, **kwargs):
+        """Initialize agent capability."""
+        super().__init__(**kwargs)
+        self._tool_executor_manager: Optional[ToolExecutorManager] = None
+        self._default_executor_config: Optional[ExecutorConfig] = None
+        self._custom_pre_hooks: List[Callable] = []
+        self._custom_post_hooks: List[Callable] = []
+    
+    # -------------------------------------------------------------------------
+    # Hook Management API
+    # -------------------------------------------------------------------------
+    
+    def add_pre_execution_hook(self, hook: Callable) -> None:
+        """Add a custom pre-execution hook."""
+        self._custom_pre_hooks.append(hook)
+        # If executor already exists, add to it immediately
+        if self._tool_executor_manager:
+            self._tool_executor_manager.add_pre_execution_hook(hook)
+    
+    def add_post_execution_hook(self, hook: Callable) -> None:
+        """Add a custom post-execution hook."""
+        self._custom_post_hooks.append(hook)
+        # If executor already exists, add to it immediately
+        if self._tool_executor_manager:
+            self._tool_executor_manager.add_post_execution_hook(hook)
+    
+    def set_default_executor_config(self, config: ExecutorConfig) -> None:
+        """Set default configuration for ToolExecutorManager."""
+        self._default_executor_config = config
+    
+    # -------------------------------------------------------------------------
+    # Streaming Hooks (moved from ToolCapableMixin)
+    # -------------------------------------------------------------------------
+    
+    def _ensure_executor(self, tools: List[BaseTool], config: Optional[ExecutorConfig] = None) -> ToolExecutorManager:
+        """
+        Ensure ToolExecutorManager exists with current tools and config.
+        
+        Creates or updates the executor manager as needed. Registers all hooks.
+        
+        Args:
+            tools: Tools to register
+            config: Optional executor config (uses default if None)
+            
+        Returns:
+            Configured ToolExecutorManager
+        """
+        # Use provided config or default
+        executor_config = config or self._default_executor_config or ExecutorConfig.create_default()
+        
+        # Create new executor (could optimize to reuse if config unchanged)
+        self._tool_executor_manager = ToolExecutorManager(**executor_config.to_dict())
+        self._tool_executor_manager.set_tools({tool.name: tool for tool in tools})
+        
+        # Setup standard hooks if streaming
+        if hasattr(self, 'is_streaming') and hasattr(self, '_stream'):
+            with get_async_bridge() as bridge:
+                bridge.run(self._setup_standard_hooks())
+        
+        # Add custom hooks
+        for hook in self._custom_pre_hooks:
+            self._tool_executor_manager.add_pre_execution_hook(hook)
+        for hook in self._custom_post_hooks:
+            self._tool_executor_manager.add_post_execution_hook(hook)
+        
+        return self._tool_executor_manager
+    
+    async def _setup_standard_hooks(self: T) -> None:
+        """Setup standard pre/post execution hooks for streaming."""
+        if not self._tool_executor_manager:
+            return
+        
+        # Standard pre-execution hook
+        async def standard_pre_hook(tool, args, context):
+            tool_call_id = context.get('tool_call_id', 
+                                      f"call_{tool.name}_{id(args)}") if context else f"call_{tool.name}_{id(args)}"
+            if self.is_streaming():
+                self._stream({
+                    "type": "tool_calling",
+                    "tool": tool.name,
+                    "call_id": tool_call_id,
+                    "args": args
+                })
+
+        # Standard post-execution hook  
+        async def standard_post_hook(response, context):
+            if self.is_streaming():
+                self._stream({
+                    "type": "tool_result",
+                    "tool": response.tool_name,
+                    "call_id": response.tool_call_id,
+                    "output": response.result if response.success else f"Error: {response.error}"
+                })
+
+        # Add standard hooks
+        self._tool_executor_manager.add_pre_execution_hook(standard_pre_hook)
+        self._tool_executor_manager.add_post_execution_hook(standard_post_hook)
+    
+    def create_strategy(
         self,
+        tools: List[BaseTool],
         strategy_type: str = StrategyType.REACT.value,
         *,
         parser: Optional[OutputParser] = None,
@@ -109,7 +219,8 @@ class AgentCapableMixin(Generic[T]):
         New strategies can be added by extending this method.
         
         Args:
-            strategy_type: Type of strategy ("react", "plan_execute", etc.)
+            tools: Tools available to the strategy
+            strategy_type: Type of strategy (StrategyType.REACT.value, etc.)
             parser: Custom output parser (default: ToolCallParser)
             **kwargs: Strategy-specific configuration
             
@@ -122,69 +233,31 @@ class AgentCapableMixin(Generic[T]):
         if parser is None:
             parser = ToolCallParser()
         
+        # Create llm_chat callable that binds self.chat
+        llm_chat = lambda msgs, tools_subset: self.chat(msgs, tools_subset)
+        
         if strategy_type == StrategyType.REACT.value:
             return ReActStrategy(
-                llm_chat=self._chat,  # From LlmCapableMixin
+                llm_chat=llm_chat,
+                tools=tools,
                 parser=parser,
                 **kwargs
             )
-        elif strategy_type == StrategyType.PLAN_AND_EXECUTE.value:
-            # Future implementation
-            from agent.strategies.plan_execute import PlanExecuteStrategy
-            return PlanExecuteStrategy(
-                llm_chat=self._chat,
-                parser=parser,
-                **kwargs
-            )
-        # Add more strategies here
+        # Add more strategies here as needed
         
-        raise ValueError(f"Unknown strategy type: {strategy_type}")
+        available_types = [e.value for e in StrategyType]
+        raise ValueError(ErrorMessages.UNKNOWN_STRATEGY_TYPE.format(
+            available_types=", ".join(available_types)
+        ))
     
-    def create_tool_executor(self, config: AgentConfig) -> AgentActionExecutor:
-        """
-        Create tool executor using existing tool capabilities.
-        
-        Bridges agent actions to the existing ToolCapableMixin system.
-        
-        Args:
-            config: Agent configuration
-            
-        Returns:
-            Configured AgentActionExecutor
-        """
-        return AgentActionExecutor(
-            tools=self.tools,  # From ToolCapableMixin
-            tool_invoke_fn=self.invoke_tools,  # From ToolCapableMixin
-            validate_args=config.validate_tools,
-            on_missing_tool=config.on_missing_tool
-        )
     
-    def create_tool_validator(self, config: AgentConfig) -> Optional[ToolValidator]:
-        """
-        Create tool validator based on configuration.
-        
-        Args:
-            config: Agent configuration
-            
-        Returns:
-            ToolValidator if validation is enabled, None otherwise
-        """
-        if not config.validate_tools and not config.allowed_tools and not config.forbidden_tools:
-            return None
-        
-        return ToolValidator(
-            tools={tool.name: tool for tool in self.tools},
-            allowed_tools=config.allowed_tools,
-            forbidden_tools=config.forbidden_tools,
-            max_actions_per_minute=config.max_actions_per_minute
-        )
     
-    def create_agent_iterator(
+    def create_iterator(
         self,
         messages: List[ChatMessage],
+        strategy: AgentStrategy,
         *,
         config: Optional[AgentConfig] = None,
-        strategy: Optional[AgentStrategy] = None,
         on_action: Optional[Callable[[AgentAction], bool]] = None
     ) -> AgentIterator:
         """
@@ -195,8 +268,8 @@ class AgentCapableMixin(Generic[T]):
         
         Args:
             messages: Initial conversation messages
+            strategy: Agent strategy to use
             config: Agent configuration (uses defaults if None)
-            strategy: Custom strategy (creates from config if None)
             on_action: Callback to approve/reject actions
             
         Returns:
@@ -205,27 +278,22 @@ class AgentCapableMixin(Generic[T]):
         if config is None:
             config = AgentConfig()
         
-        # Create or use provided strategy
-        if strategy is None:
-            if config.custom_strategy:
-                strategy = config.custom_strategy
-            else:
-                strategy = self.create_agent_strategy(
-                    strategy_type=config.strategy,
-                    parser=config.custom_parser,
-                    max_steps=config.max_steps,
-                    reflect_on_errors=config.reflect_on_errors
-                )
+        # Get tools from strategy
+        tools = list(strategy.all_tools.values())
         
-        # Create tool executor and validator
-        tool_executor = self.create_tool_executor(config)
-        tool_validator = self.create_tool_validator(config)
+        # Ensure executor exists with strategy's tools and config
+        executor_manager = self._ensure_executor(tools, config.executor_config)
+        
+        # Create action executor
+        action_executor = AgentActionExecutor(
+            tool_executor_manager=executor_manager,
+            validate_args=True
+        )
         
         # Create iterator
         iterator = AgentIterator(
             strategy=strategy,
-            tool_executor=tool_executor.execute,
-            tool_validator=tool_validator,
+            action_executor=action_executor,
             stream=self._stream if self.is_streaming() else None,
             mode=config.execution_mode,
             on_action=on_action
@@ -239,6 +307,7 @@ class AgentCapableMixin(Generic[T]):
     def run_agent(
         self,
         messages: List[ChatMessage],
+        strategy: AgentStrategy,
         *,
         config: Optional[AgentConfig] = None
     ) -> Dict[str, Any]:
@@ -250,6 +319,7 @@ class AgentCapableMixin(Generic[T]):
         
         Args:
             messages: Initial conversation messages
+            strategy: Agent strategy to use
             config: Agent configuration
             
         Returns:
@@ -258,7 +328,7 @@ class AgentCapableMixin(Generic[T]):
         if config is None:
             config = AgentConfig()
         
-        iterator = self.create_agent_iterator(messages, config=config)
+        iterator = self.create_iterator(messages, strategy, config=config)
         
         result = {
             "output": None,
@@ -327,6 +397,7 @@ class AgentCapableMixin(Generic[T]):
     def stream_agent(
         self,
         messages: List[ChatMessage],
+        strategy: AgentStrategy,
         *,
         config: Optional[AgentConfig] = None,
         on_action: Optional[Callable[[AgentAction], bool]] = None
@@ -339,6 +410,7 @@ class AgentCapableMixin(Generic[T]):
         
         Args:
             messages: Initial conversation messages
+            strategy: Agent strategy to use
             config: Agent configuration
             on_action: Callback to approve/reject actions
             
@@ -350,12 +422,17 @@ class AgentCapableMixin(Generic[T]):
         
         # For streaming, we want manual control over execution
         stream_config = AgentConfig(
-            **config.__dict__,
-            execution_mode=ExecutionMode.MANUAL
+            execution_mode=ExecutionMode.MANUAL,
+            executor_config=config.executor_config,
+            max_execution_time=config.max_execution_time,
+            max_actions_per_minute=config.max_actions_per_minute,
+            early_stopping=config.early_stopping,
+            return_intermediate=config.return_intermediate
         )
         
-        iterator = self.create_agent_iterator(
+        iterator = self.create_iterator(
             messages, 
+            strategy,
             config=stream_config,
             on_action=on_action
         )
@@ -379,8 +456,7 @@ class AgentCapableMixin(Generic[T]):
                     pending_actions.append(action)
                     
                     # Auto-execute (since we're streaming)
-                    tool_executor = self.create_tool_executor(config)
-                    obs = tool_executor.execute(action)
+                    obs = iterator.action_executor.execute(action)
                     iterator.feed_observation(action, obs)
                     
                     # Yield observation event

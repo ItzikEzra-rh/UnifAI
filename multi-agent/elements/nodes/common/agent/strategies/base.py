@@ -2,57 +2,36 @@
 Base agent strategy interface and utilities.
 
 This module defines the core AgentStrategy protocol that all strategy
-implementations must follow. Provides common utilities for context building,
-observation formatting, and step management.
+implementations must follow. Strategies are pure decision logic - they decide
+what to do next but don't execute anything.
 
 Design Principles:
 - Single Responsibility: Strategy only decides what to do next
-- Open/Closed: Easy to add new strategies without modifying existing code
-- Protocol-based: Clear interface with type checking support
+- No Execution: Strategies don't own or manage tool execution
+- Pure Logic: Given messages and observations, return next steps
 - Stateful: Strategies can maintain internal state between calls
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Protocol, runtime_checkable, Callable
+from typing import List, Tuple, Dict, Any, Callable
 from elements.llms.common.chat.message import ChatMessage, Role
-from ..primitives import AgentAction, AgentObservation, AgentStep, StepType, ExecutionHistory
-from ..parsing import OutputParser, ParseError
+from elements.tools.common.base_tool import BaseTool
+from ..primitives import AgentAction, AgentObservation, AgentStep, StepType
+from ..parsers import OutputParser, ParseError
 from ..constants import StrategyDefaults
-
-
-@runtime_checkable
-class SupportsToolValidation(Protocol):
-    """
-    Protocol for components that can validate agent actions.
-    
-    Used by strategies to check if actions are valid before
-    yielding them for execution.
-    """
-    
-    def validate_action(self, action: AgentAction) -> Tuple[bool, str]:
-        """
-        Validate if an action can be executed.
-        
-        Args:
-            action: Action to validate
-            
-        Returns:
-            (is_valid, error_message) tuple
-        """
-        ...
 
 
 class AgentStrategy(ABC):
     """
     Abstract base class for agent planning strategies.
     
-    Strategies implement the "thinking" part of the agent - deciding what
-    actions to take based on the current conversation state and observation
-    history. Each strategy can implement different approaches:
+    Strategies are pure decision logic - they decide what to do next based on
+    the current conversation state and observations. They don't execute actions
+    or manage tools, just make decisions.
     
+    Each strategy can implement different approaches:
     - ReAct: Interleaved reasoning and acting
     - PlanAndExecute: Plan multiple steps, then execute
-    - TreeOfThoughts: Explore multiple reasoning paths
     - Custom: Domain-specific approaches
     
     Strategies are stateful and can maintain internal counters, memory, etc.
@@ -60,30 +39,51 @@ class AgentStrategy(ABC):
     
     def __init__(
         self, 
-        *, 
+        *,
+        llm_chat: Callable[[List[ChatMessage], List[BaseTool]], ChatMessage],
+        tools: List[BaseTool],
         parser: OutputParser,
-        max_steps: int = StrategyDefaults.MAX_STEPS,
-        reflect_on_errors: bool = StrategyDefaults.REFLECT_ON_ERRORS
+        max_steps: int = StrategyDefaults.MAX_STEPS
     ):
         """
         Initialize base strategy.
         
         Args:
+            llm_chat: Function to call LLM with messages and tools
+            tools: All available tools for this strategy
             parser: Output parser for converting LLM responses
             max_steps: Maximum planning steps before stopping
-            reflect_on_errors: Whether to create reflection actions for errors
         """
+        self.llm_chat = llm_chat
+        self.all_tools = {tool.name: tool for tool in tools}
         self.parser = parser
         self.max_steps = max_steps
-        self.reflect_on_errors = reflect_on_errors
         self._step_count = 0
         self._error_count = 0
+    
+    @abstractmethod
+    def get_tools_for_phase(self, phase: str, context: Dict[str, Any] = None) -> List[BaseTool]:
+        """
+        Get tools to expose to LLM for current phase.
+        
+        This allows strategies to control which tools are available at different
+        stages of execution. For example, PlanAndExecute might only expose 
+        planning tools during planning phase.
+        
+        Args:
+            phase: Current execution phase (strategy-specific)
+            context: Optional context for phase-specific decisions
+            
+        Returns:
+            List of tools to expose to LLM for this phase
+        """
+        ...
     
     @abstractmethod
     def think(
         self, 
         messages: List[ChatMessage],
-        observations: List[Tuple[AgentAction, AgentObservation]]
+        observations: List[AgentObservation]
     ) -> List[AgentStep]:
         """
         Generate next steps based on current state.
@@ -126,17 +126,16 @@ class AgentStrategy(ABC):
     
     def format_observations(
         self, 
-        observations: List[Tuple[AgentAction, AgentObservation]]
+        observations: List[AgentObservation]
     ) -> str:
         """
         Format observation history for LLM context.
         
-        Converts the action-observation pairs into a text format that
-        can be included in the LLM prompt. Can be overridden by strategies
-        that need custom formatting.
+        Converts observations into a text format that can be included in the
+        LLM prompt. Can be overridden by strategies that need custom formatting.
         
         Args:
-            observations: Action-observation pairs to format
+            observations: Observations to format
             
         Returns:
             Formatted text representation of observations
@@ -145,17 +144,16 @@ class AgentStrategy(ABC):
             return ""
         
         formatted = []
-        for i, (action, obs) in enumerate(observations, 1):
+        for i, obs in enumerate(observations, 1):
             entry = [f"Step {i}:"]
-            entry.append(f"Action: {action.tool}")
-            entry.append(f"Input: {action.tool_input}")
+            entry.append(f"Tool: {obs.tool}")
             
             if obs.success:
                 entry.append(f"Result: {obs.output}")
             else:
                 entry.append(f"Error: {obs.error}")
-                entry.append(f"Execution time: {obs.execution_time:.3f}s")
             
+            entry.append(f"Execution time: {obs.execution_time:.3f}s")
             formatted.append("\n".join(entry))
         
         return "\n\n".join(formatted)
@@ -163,7 +161,7 @@ class AgentStrategy(ABC):
     def build_context(
         self,
         messages: List[ChatMessage],
-        observations: List[Tuple[AgentAction, AgentObservation]],
+        observations: List[AgentObservation],
         additional_context: str = ""
     ) -> List[ChatMessage]:
         """
@@ -174,7 +172,7 @@ class AgentStrategy(ABC):
         
         Args:
             messages: Original conversation messages
-            observations: Action-observation history
+            observations: Observation history
             additional_context: Extra context to include
             
         Returns:
@@ -204,31 +202,22 @@ class AgentStrategy(ABC):
         Handle LLM output parsing errors.
         
         When the LLM output cannot be parsed into valid actions, this method
-        determines how to respond. Can create reflection actions or stop execution.
+        determines how to respond. Default implementation creates an error step.
         
         Args:
             error: The parsing error that occurred
             
         Returns:
-            List of steps to handle the error (usually reflection actions)
+            List of steps to handle the error
         """
         self._error_count += 1
         
-        if self.reflect_on_errors and error.recoverable:
-            # Create reflection action
-            reflection_action = self.parser.parse_error_recovery(error)
-            return [AgentStep(StepType.ACTION, reflection_action, metadata={
-                "error_type": "parse_error",
-                "error_count": self._error_count,
-                "recoverable": error.recoverable
-            })]
-        else:
-            # Create terminal error step
-            return [AgentStep(StepType.ERROR, error, metadata={
-                "error_type": "parse_error", 
-                "error_count": self._error_count,
-                "recoverable": error.recoverable
-            })]
+        # Create terminal error step
+        return [AgentStep(StepType.ERROR, error, metadata={
+            "error_type": "parse_error", 
+            "error_count": self._error_count,
+            "recoverable": getattr(error, 'recoverable', False)
+        })]
     
     def increment_step_count(self) -> None:
         """Increment internal step counter."""

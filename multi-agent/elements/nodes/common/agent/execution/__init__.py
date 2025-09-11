@@ -12,7 +12,7 @@ modes and validation capabilities. Includes:
 Key Components:
 - ExecutionMode: AUTO (automatic), MANUAL (user control), GUIDED (confirmation)
 - AgentIterator: Main execution controller with streaming support
-- AgentActionExecutor: Executes actions using existing ToolCapableMixin
+- AgentActionExecutor: Executes actions using ToolExecutorManager directly
 - ToolValidator: Validates actions before execution
 
 Example:
@@ -32,11 +32,10 @@ Example:
 """
 
 from .iterator import AgentIterator, ExecutionMode
-from .executor import AgentActionExecutor, ToolValidator
+from .executor import AgentActionExecutor
 
 __all__ = [
     "AgentIterator",
     "ExecutionMode", 
-    "AgentActionExecutor",
-    "ToolValidator"
+    "AgentActionExecutor"
 ]

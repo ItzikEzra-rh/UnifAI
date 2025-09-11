@@ -21,10 +21,9 @@ from ..primitives import (
     AgentObservation, 
     AgentStep, 
     StepType, 
-    ActionStatus,
-    ActionObservationPair
+    ActionStatus
 )
-from ..strategies.base import AgentStrategy, SupportsToolValidation
+from ..strategies.base import AgentStrategy
 from elements.llms.common.chat.message import ChatMessage
 
 
@@ -53,7 +52,7 @@ class AgentIterator:
         # Automatic execution
         iterator = AgentIterator(
             strategy=react_strategy,
-            tool_executor=executor.execute,
+            action_executor=action_executor,
             mode=ExecutionMode.AUTO
         )
         
@@ -67,8 +66,7 @@ class AgentIterator:
         self,
         *,
         strategy: AgentStrategy,
-        tool_executor: Callable[[AgentAction], AgentObservation],
-        tool_validator: Optional[SupportsToolValidation] = None,
+        action_executor: 'AgentActionExecutor',
         stream: Optional[Callable[[Dict[str, Any]], None]] = None,
         mode: ExecutionMode = ExecutionMode.AUTO,
         on_action: Optional[Callable[[AgentAction], bool]] = None  # Return False to skip
@@ -78,22 +76,20 @@ class AgentIterator:
         
         Args:
             strategy: Agent strategy for decision-making
-            tool_executor: Function to execute actions
-            tool_validator: Optional action validator
+            action_executor: AgentActionExecutor instance for tool execution
             stream: Optional streaming callback for events
             mode: Execution mode (auto/manual/guided)
             on_action: Optional callback to approve/reject actions
         """
         self.strategy = strategy
-        self.tool_executor = tool_executor
-        self.tool_validator = tool_validator
+        self.action_executor = action_executor
         self.stream = stream or (lambda x: None)
         self.mode = mode
         self.on_action = on_action
         
         # Execution state
         self.messages: List[ChatMessage] = []
-        self.observations: List[ActionObservationPair] = []
+        self.observations: List[AgentObservation] = []
         self.history: List[AgentStep] = []
         self.pending_actions: List[AgentAction] = []
         self._finished = False
@@ -187,7 +183,7 @@ class AgentIterator:
             action: The action that was executed
             observation: The result of executing the action
         """
-        self.observations.append((action, observation))
+        self.observations.append(observation)
         obs_step = AgentStep(StepType.OBSERVATION, observation, metadata={
             "action_id": action.id,
             "mode": "manual"
@@ -316,7 +312,7 @@ class AgentIterator:
             action = action.with_status(ActionStatus.EXECUTING)
             
             # Execute the action
-            observation = self.tool_executor(action)
+            observation = self.action_executor.execute(action)
             
             # Update action status based on result
             if observation.success:
@@ -345,7 +341,7 @@ class AgentIterator:
             action = action.with_status(ActionStatus.FAILED, str(e))
         
         # Add to observations history
-        self.observations.append((action, observation))
+        self.observations.append(observation)
         
         # Create observation step
         obs_step = AgentStep(
@@ -370,7 +366,7 @@ class AgentIterator:
             error=Exception(f"Validation failed: {error_msg}")
         )
         
-        self.observations.append((action, obs))
+        self.observations.append(obs)
         return AgentStep(StepType.OBSERVATION, obs, metadata={
             "action_id": action.id,
             "validation_error": True,
@@ -387,7 +383,7 @@ class AgentIterator:
             error=Exception(reason)
         )
         
-        self.observations.append((action, obs))
+        self.observations.append(obs)
         return AgentStep(StepType.OBSERVATION, obs, metadata={
             "action_id": action.id,
             "skipped": True,

@@ -17,12 +17,13 @@ Reference:
 """
 
 import time
-from typing import List, Tuple, Callable, Optional
+from typing import List, Tuple, Callable, Optional, Dict, Any
 from elements.llms.common.chat.message import ChatMessage, Role
+from elements.tools.common.base_tool import BaseTool
 from ..primitives import AgentAction, AgentObservation, AgentStep, StepType
-from ..parsing import OutputParser, ParseError
+from ..parsers import OutputParser, ParseError
 from .base import AgentStrategy
-from ..constants import StrategyDefaults, SystemPrompts
+from ..constants import StrategyDefaults, SystemPrompts, StrategyType
 
 
 class ReActStrategy(AgentStrategy):
@@ -54,10 +55,10 @@ class ReActStrategy(AgentStrategy):
     def __init__(
         self,
         *,
-        llm_chat: Callable[[List[ChatMessage]], ChatMessage],
+        llm_chat: Callable[[List[ChatMessage], List[BaseTool]], ChatMessage],
+        tools: List[BaseTool],
         parser: OutputParser,
         max_steps: int = StrategyDefaults.MAX_STEPS,
-        reflect_on_errors: bool = StrategyDefaults.REFLECT_ON_ERRORS,
         system_prompt_template: Optional[str] = None,
         min_reasoning_length: int = StrategyDefaults.MIN_REASONING_LENGTH
     ):
@@ -65,26 +66,39 @@ class ReActStrategy(AgentStrategy):
         Initialize ReAct strategy.
         
         Args:
-            llm_chat: Function to call LLM (from LlmCapableMixin._chat)
+            llm_chat: Function to call LLM with messages and tools
+            tools: All available tools for this strategy
             parser: Output parser for LLM responses
             max_steps: Maximum reasoning steps before stopping
-            reflect_on_errors: Whether to reflect on errors
             system_prompt_template: Custom system prompt (optional)
             min_reasoning_length: Minimum characters expected in reasoning
         """
         super().__init__(
+            llm_chat=llm_chat,
+            tools=tools,
             parser=parser, 
-            max_steps=max_steps,
-            reflect_on_errors=reflect_on_errors
+            max_steps=max_steps
         )
-        self.llm_chat = llm_chat
         self.min_reasoning_length = min_reasoning_length
-        self.system_prompt_template = system_prompt_template or self._default_system_prompt()
+        self.system_prompt_template = system_prompt_template or SystemPrompts.REACT_DEFAULT
+    
+    def get_tools_for_phase(self, phase: str, context: Dict[str, Any] = None) -> List[BaseTool]:
+        """
+        ReAct uses all tools in all phases.
+        
+        Args:
+            phase: Current phase (always StrategyType.REACT.value for this strategy)
+            context: Optional context (unused)
+            
+        Returns:
+            All available tools
+        """
+        return list(self.all_tools.values())
     
     def think(
         self,
         messages: List[ChatMessage],
-        observations: List[Tuple[AgentAction, AgentObservation]]
+        observations: List[AgentObservation]
     ) -> List[AgentStep]:
         """
         Perform one cycle of ReAct reasoning.
@@ -109,9 +123,12 @@ class ReActStrategy(AgentStrategy):
             # Build context for LLM
             context = self._build_react_context(messages, observations)
             
-            # Get LLM response
+            # Get tools for ReAct (all tools)
+            tools = self.get_tools_for_phase(StrategyType.REACT.value)
+            
+            # Get LLM response with tools
             start_time = time.time()
-            response = self.llm_chat(context)
+            response = self.llm_chat(context, tools)
             reasoning_time = time.time() - start_time
             
             # Create planning step
@@ -119,7 +136,7 @@ class ReActStrategy(AgentStrategy):
                 type=StepType.PLANNING,
                 data=response,
                 metadata={
-                    "strategy": "react",
+                    "strategy": StrategyType.REACT.value,
                     "step_count": self._step_count,
                     "reasoning_time": reasoning_time,
                     "reasoning_content": response.content
@@ -139,7 +156,7 @@ class ReActStrategy(AgentStrategy):
                         type=StepType.ACTION,
                         data=action,
                         metadata={
-                            "strategy": "react",
+                            "strategy": StrategyType.REACT.value,
                             "reasoning": response.content or "",
                             "step_count": self._step_count
                         }
@@ -150,7 +167,7 @@ class ReActStrategy(AgentStrategy):
                     type=StepType.FINISH,
                     data=result,
                     metadata={
-                        "strategy": "react",
+                        "strategy": StrategyType.REACT.value,
                         "reasoning": response.content or "",
                         "step_count": self._step_count
                     }
@@ -167,7 +184,7 @@ class ReActStrategy(AgentStrategy):
                 type=StepType.ERROR,
                 data=e,
                 metadata={
-                    "strategy": "react",
+                    "strategy": StrategyType.REACT.value,
                     "error_type": "execution_error",
                     "step_count": self._step_count
                 }
@@ -215,7 +232,7 @@ class ReActStrategy(AgentStrategy):
     def _build_react_context(
         self,
         messages: List[ChatMessage],
-        observations: List[Tuple[AgentAction, AgentObservation]]
+        observations: List[AgentObservation]
     ) -> List[ChatMessage]:
         """
         Build ReAct-specific context for LLM.
@@ -251,7 +268,7 @@ class ReActStrategy(AgentStrategy):
     
     def _format_react_observations(
         self,
-        observations: List[Tuple[AgentAction, AgentObservation]]
+        observations: List[AgentObservation]
     ) -> str:
         """
         Format observations in ReAct style.
@@ -269,18 +286,17 @@ class ReActStrategy(AgentStrategy):
         """
         formatted = []
         
-        for action, obs in observations:
-            # Format action
-            formatted.append(f"Action: {action.tool}")
-            formatted.append(f"Action Input: {action.tool_input}")
+        for i, obs in enumerate(observations, 1):
+            # Format action info from observation
+            formatted.append(f"Action: {obs.tool}")
             
-            # Format observation
+            # Format observation result
             if obs.success:
                 formatted.append(f"Observation: {obs.output}")
             else:
                 formatted.append(f"Observation: Error - {obs.error}")
             
-            formatted.append("")  # Empty line between pairs
+            formatted.append("")  # Empty line between observations
         
         return "\n".join(formatted)
     
@@ -312,14 +328,3 @@ class ReActStrategy(AgentStrategy):
         # - Analysis of current situation
         # - Clear action justification
     
-    def _default_system_prompt(self) -> str:
-        """
-        Default ReAct system prompt.
-        
-        Provides the standard ReAct instructions for the agent.
-        Can be overridden with custom prompts.
-        
-        Returns:
-            ReAct system prompt template
-        """
-        return SystemPrompts.REACT_DEFAULT

@@ -2,11 +2,12 @@ from typing import Optional, Any, List, ClassVar, Set
 from copy import deepcopy
 from graph.state.state_view import StateView
 from elements.llms.common.chat.message import ChatMessage, Role
+from elements.tools.common.base_tool import BaseTool
 from elements.nodes.common.base_node import BaseNode
 from elements.nodes.common.capabilities.iem_capable import IEMCapableMixin
 from elements.nodes.common.capabilities.llm_capable import LlmCapableMixin
 from elements.nodes.common.capabilities.retriever_capable import RetrieverCapableMixin
-from elements.nodes.common.capabilities.tool_capable import ToolCapableMixin
+from elements.nodes.common.capabilities.agent_capable import AgentCapableMixin
 from elements.nodes.common.capabilities.workload_capable import WorkloadCapableMixin
 from elements.nodes.common.workload import Task, AgentResult, WorkspaceContext
 from elements.providers.mcp_server_client.mcp_provider import McpProvider
@@ -15,9 +16,9 @@ from elements.providers.mcp_server_client.mcp_provider import McpProvider
 class CustomAgentNode(
     WorkloadCapableMixin,
     IEMCapableMixin,
+    AgentCapableMixin,
     LlmCapableMixin,
     RetrieverCapableMixin,
-    ToolCapableMixin,
     BaseNode
 ):
     """
@@ -38,7 +39,7 @@ class CustomAgentNode(
             *,
             llm: Any,
             retriever: Any = None,
-            tools: List[Any] = None,
+            tools: List[BaseTool] = None,
             system_message: str = "",
             mcp_provider: McpProvider = None,
             max_rounds: Optional[int] = 15,
@@ -47,23 +48,24 @@ class CustomAgentNode(
         super().__init__(
             llm=llm,
             retriever=retriever,
-            tools=tools or [],
             system_message=system_message,
             **kwargs
         )
         self.mcp_provider = mcp_provider
         self.max_rounds = max_rounds
+        self._domain_tools = tools or []
 
     def run(self, state: StateView) -> StateView:
         """Main entry point - process all incoming TaskPackets."""
-        # Initialize MCP tools if available
+        # Gather all tools
+        all_tools = list(self._domain_tools)
+        
+        # Add MCP tools if available
         if self.mcp_provider:
-            # Add MCP tools using the proper tool management API
-            for tool in self.mcp_provider.get_tools():
-                self.add_tool(tool)
-
-        if self.tools:
-            self._bind_tools(self.tools)
+            all_tools.extend(self.mcp_provider.get_tools())
+        
+        # Store tools for use in processing
+        self._current_tools = all_tools
 
         # Process all incoming packets
         self.process_packets(state)
@@ -160,14 +162,38 @@ class CustomAgentNode(
 
     def _process_with_llm(self, conversation_context: List[ChatMessage]) -> ChatMessage:
         """Process conversation with LLM (with optional tools)."""
-        if self.tools:
-            return self._execute_tool_cycle(
-                initial_history=conversation_context,
-                chat_function=self._chat,
-                max_rounds=self.max_rounds
+        if hasattr(self, '_current_tools') and self._current_tools:
+            # Use new agent execution system
+            from elements.nodes.common.agent import AgentConfig
+            from elements.nodes.common.agent.execution import ExecutionMode
+            
+            # Create strategy with current tools
+            from elements.nodes.common.agent.constants import StrategyType
+            
+            strategy = self.create_strategy(
+                tools=self._current_tools,
+                strategy_type=StrategyType.REACT.value,
+                max_steps=self.max_rounds
             )
+            
+            config = AgentConfig(
+                execution_mode=ExecutionMode.AUTO
+            )
+            
+            result = self.run_agent(
+                messages=conversation_context,
+                strategy=strategy,
+                config=config
+            )
+            
+            # Extract the final assistant message from the result
+            if result.get("success") and result.get("output"):
+                return ChatMessage(role=Role.ASSISTANT, content=str(result["output"]))
+            else:
+                # Fallback to basic chat if agent execution failed
+                return self.chat(conversation_context)
         else:
-            return self._chat(conversation_context)
+            return self.chat(conversation_context)
 
     def _route_response(self, task: Task, agent_result: AgentResult, original_packet) -> None:
         """

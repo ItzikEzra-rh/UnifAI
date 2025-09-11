@@ -16,12 +16,9 @@ from dataclasses import dataclass
 from typing import Optional, List
 
 from .constants import (
-    StrategyType, StrategyDefaults, ExecutionDefaults,
-    ToolExecutionDefaults, ToolHandlingPolicy, EarlyStoppingPolicy
+    ExecutionDefaults, EarlyStoppingPolicy
 )
 from .execution import ExecutionMode
-from .parsers import OutputParser
-from .strategies import AgentStrategy
 
 
 @dataclass
@@ -29,42 +26,32 @@ class AgentConfig:
     """
     Configuration for agent execution.
     
-    Controls all aspects of agent behavior including strategy selection,
-    execution mode, error handling, and performance limits.
+    Controls execution behavior, error handling, and performance limits.
+    Strategy is passed as an object directly, not configured here.
     
     Example:
         config = AgentConfig(
-            strategy=StrategyType.REACT.value,
             execution_mode=ExecutionMode.GUIDED,
-            max_steps=15,
-            max_execution_time=300.0
+            max_execution_time=300.0,
+            return_intermediate=True
         )
         
-        result = agent.run_agent(messages, config=config)
+        strategy = ReActStrategy(llm_chat=node.chat, tools=tools)
+        result = agent.run_agent(messages, strategy, config=config)
     """
-    # Strategy configuration
-    strategy: str = StrategyType.REACT.value
-    max_steps: int = StrategyDefaults.MAX_STEPS
-    reflect_on_errors: bool = StrategyDefaults.REFLECT_ON_ERRORS
-    
     # Execution configuration  
     execution_mode: ExecutionMode = ExecutionMode.AUTO
-    validate_tools: bool = ToolExecutionDefaults.VALIDATE_ARGS
-    allowed_tools: Optional[List[str]] = None
-    forbidden_tools: Optional[List[str]] = None
-    
-    # Error handling
-    on_missing_tool: str = ToolHandlingPolicy.REFLECT.value
-    early_stopping: str = EarlyStoppingPolicy.FIRST_FINISH.value
-    return_intermediate: bool = ExecutionDefaults.RETURN_INTERMEDIATE
     
     # Performance limits
     max_execution_time: Optional[float] = ExecutionDefaults.MAX_EXECUTION_TIME
     max_actions_per_minute: Optional[int] = ExecutionDefaults.MAX_ACTIONS_PER_MINUTE
     
-    # Custom components
-    custom_parser: Optional[OutputParser] = None
-    custom_strategy: Optional[AgentStrategy] = None
+    # Error handling
+    early_stopping: str = EarlyStoppingPolicy.FIRST_FINISH.value
+    return_intermediate: bool = ExecutionDefaults.RETURN_INTERMEDIATE
+    
+    # Tool executor configuration (passed to ToolExecutorManager)
+    executor_config: Optional['ExecutorConfig'] = None
 
 
 # Future extension examples for when we add more config classes:

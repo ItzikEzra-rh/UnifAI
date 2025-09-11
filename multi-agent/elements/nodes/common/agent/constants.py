@@ -190,6 +190,10 @@ class ErrorMessages:
         "Input validation failed. Check that all required parameters "
         "are provided and have the correct types and values."
     )
+    
+    UNKNOWN_STRATEGY_TYPE = (
+        "Unknown strategy type. Available types: {available_types}"
+    )
 
 
 # =============================================================================

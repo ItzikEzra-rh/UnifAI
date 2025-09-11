@@ -37,7 +37,7 @@ Example:
     ```
 """
 
-from .base import BaseOutputParser, ParseError, ParserConfig
+from .base import BaseOutputParser, OutputParser, ParseError, ParserConfig
 from .tool_call_parser import ToolCallParser
 from .text_parser import TextParser, TextParserConfig
 from .json_parser import JsonParser, JsonParserConfig
@@ -73,6 +73,7 @@ ParserRegistry.register(
 __all__ = [
     # Base classes
     "BaseOutputParser",
+    "OutputParser",
     "ParseError", 
     "ParserConfig",
     
