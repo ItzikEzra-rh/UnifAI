@@ -30,7 +30,9 @@ from elements.nodes.common.agent import (
 )
 from elements.nodes.common.agent.parsers import OutputParser, ToolCallParser, ParseError
 from elements.nodes.common.agent.strategies import AgentStrategy, ReActStrategy
-from elements.nodes.common.agent.execution import AgentIterator, ExecutionMode, AgentActionExecutor
+from elements.nodes.common.agent.execution import (
+    AgentIterator, AgentActionExecutor, ExecutionMode, ExecutionHandlerFactory
+)
 from elements.nodes.common.agent.constants import (
     EarlyStoppingPolicy, ExecutionDefaults, StrategyType, ErrorMessages
 )
@@ -293,12 +295,17 @@ class AgentCapableMixin(Generic[T]):
             validate_args=True
         )
         
-        # Create iterator
+        # Create execution handler based on mode (Strategy pattern)
+        execution_handler = ExecutionHandlerFactory.create(
+            mode=config.execution_mode,
+            action_executor=action_executor
+        )
+        
+        # Create clean iterator with dependency injection
         iterator = AgentIterator(
             strategy=strategy,
-            action_executor=action_executor,
+            execution_handler=execution_handler,
             stream=self._stream if self.is_streaming() else None,
-            mode=config.execution_mode,
             on_action=on_action
         )
         
@@ -423,9 +430,10 @@ class AgentCapableMixin(Generic[T]):
         if config is None:
             config = AgentConfig()
         
-        # For streaming, we want guided control over execution
+        # For streaming, we want automatic execution with real-time events
+        # Use the requested execution mode (don't force GUIDED)
         stream_config = AgentConfig(
-            execution_mode=ExecutionMode.GUIDED,
+            execution_mode=config.execution_mode,  # Respect user's choice
             executor_config=config.executor_config,
             max_execution_time=config.max_execution_time,
             max_actions_per_minute=config.max_actions_per_minute,
@@ -453,30 +461,13 @@ class AgentCapableMixin(Generic[T]):
                     "metadata": step.metadata
                 }
                 
-                # Handle actions in guided mode
+                # Track actions for summary
                 if step.type == StepType.ACTION:
                     action = step.data
                     pending_actions.append(action)
                     
-                    # Auto-confirm and execute (since we're streaming)
-                    obs_step = iterator.confirm_action(action.id, execute=True)
-                    
-                    # Yield observation event if we got one
-                    if obs_step and obs_step.type == StepType.OBSERVATION:
-                        obs = obs_step.data
-                        yield {
-                            "type": "agent_observation",
-                            "data": {
-                                "action_id": action.id,
-                                "tool": action.tool,
-                                "output": obs.output,
-                                "success": obs.success,
-                                "execution_time": obs.execution_time,
-                                "error": str(obs.error) if obs.error else None
-                            },
-                            "timestamp": time.time(),
-                            "metadata": {"action_id": action.id}
-                        }
+                # Observations will be yielded automatically by the iterator
+                # in AUTO mode, or can be handled via guided confirmation in GUIDED mode
                 
                 elif step.type == StepType.FINISH:
                     # Yield final summary

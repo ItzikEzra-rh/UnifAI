@@ -95,7 +95,7 @@ class ParallelStrategy(ExecutionStrategy):
 class ConcurrentLimitedStrategy(ExecutionStrategy):
     """Execute tools with limited concurrency using a semaphore."""
     
-    def __init__(self, max_concurrent: int = 5):
+    def __init__(self, max_concurrent: int = 10):
         self.max_concurrent = max_concurrent
     
     @property

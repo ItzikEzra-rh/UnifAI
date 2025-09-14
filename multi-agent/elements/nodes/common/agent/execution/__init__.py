@@ -29,11 +29,22 @@ Example:
     ```
 """
 
-from .iterator import AgentIterator, ExecutionMode
+from .iterator import AgentIterator
 from .executor import AgentActionExecutor
+from .handlers import (
+    ExecutionHandler, 
+    AutoExecutionHandler, 
+    GuidedExecutionHandler,
+    ExecutionHandlerFactory,
+    ExecutionMode
+)
 
 __all__ = [
     "AgentIterator",
-    "ExecutionMode", 
-    "AgentActionExecutor"
+    "AgentActionExecutor",
+    "ExecutionHandler",
+    "AutoExecutionHandler", 
+    "GuidedExecutionHandler",
+    "ExecutionHandlerFactory",
+    "ExecutionMode"
 ]

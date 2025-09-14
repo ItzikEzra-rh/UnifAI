@@ -41,7 +41,7 @@ class ToolExecutorManager:
 
     def __init__(
             self,
-            max_concurrent: int = 5,
+            max_concurrent: int = 10,
             default_timeout: Optional[float] = None,
             enable_metrics: bool = True,
             error_handler: Optional[ErrorHandler] = None,
@@ -417,7 +417,7 @@ class ToolExecutorManager:
 
 
 # Factory functions
-def create_executor(max_concurrent: int = 5, **kwargs) -> ToolExecutorManager:
+def create_executor(max_concurrent: int = 10, **kwargs) -> ToolExecutorManager:
     """Create a basic tool executor."""
     return ToolExecutorManager(max_concurrent=max_concurrent, **kwargs)
 

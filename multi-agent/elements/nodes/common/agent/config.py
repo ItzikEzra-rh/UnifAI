@@ -18,7 +18,7 @@ from typing import Optional, List
 from .constants import (
     ExecutionDefaults, EarlyStoppingPolicy
 )
-from .execution import ExecutionMode
+from .execution.handlers import ExecutionMode
 
 
 @dataclass
