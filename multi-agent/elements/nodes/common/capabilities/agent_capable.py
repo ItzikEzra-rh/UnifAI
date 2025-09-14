@@ -210,6 +210,7 @@ class AgentCapableMixin(Generic[T]):
         strategy_type: str = StrategyType.REACT.value,
         *,
         parser: Optional[OutputParser] = None,
+        system_message: Optional[str] = None,
         **kwargs
     ) -> AgentStrategy:
         """
@@ -222,6 +223,7 @@ class AgentCapableMixin(Generic[T]):
             tools: Tools available to the strategy
             strategy_type: Type of strategy (StrategyType.REACT.value, etc.)
             parser: Custom output parser (default: ToolCallParser)
+            system_message: System message from node (takes priority)
             **kwargs: Strategy-specific configuration
             
         Returns:
@@ -241,6 +243,7 @@ class AgentCapableMixin(Generic[T]):
                 llm_chat=llm_chat,
                 tools=tools,
                 parser=parser,
+                system_message=system_message,
                 **kwargs
             )
         # Add more strategies here as needed
@@ -383,7 +386,7 @@ class AgentCapableMixin(Generic[T]):
             "execution_time": time.time() - start_time,
             "total_steps": len(iterator.history),
             "observations": len(iterator.observations),
-            "strategy": config.strategy,
+            "strategy": strategy.strategy_name,
             "execution_mode": config.execution_mode.value
         }
         
@@ -420,9 +423,9 @@ class AgentCapableMixin(Generic[T]):
         if config is None:
             config = AgentConfig()
         
-        # For streaming, we want manual control over execution
+        # For streaming, we want guided control over execution
         stream_config = AgentConfig(
-            execution_mode=ExecutionMode.MANUAL,
+            execution_mode=ExecutionMode.GUIDED,
             executor_config=config.executor_config,
             max_execution_time=config.max_execution_time,
             max_actions_per_minute=config.max_actions_per_minute,
@@ -450,29 +453,30 @@ class AgentCapableMixin(Generic[T]):
                     "metadata": step.metadata
                 }
                 
-                # Handle actions in manual mode
+                # Handle actions in guided mode
                 if step.type == StepType.ACTION:
                     action = step.data
                     pending_actions.append(action)
                     
-                    # Auto-execute (since we're streaming)
-                    obs = iterator.action_executor.execute(action)
-                    iterator.feed_observation(action, obs)
+                    # Auto-confirm and execute (since we're streaming)
+                    obs_step = iterator.confirm_action(action.id, execute=True)
                     
-                    # Yield observation event
-                    yield {
-                        "type": "agent_observation",
-                        "data": {
-                            "action_id": action.id,
-                            "tool": action.tool,
-                            "output": obs.content,
-                            "success": obs.success,
-                            "execution_time": obs.execution_time,
-                            "error": str(obs.error) if obs.error else None
-                        },
-                        "timestamp": time.time(),
-                        "metadata": {"action_id": action.id}
-                    }
+                    # Yield observation event if we got one
+                    if obs_step and obs_step.type == StepType.OBSERVATION:
+                        obs = obs_step.data
+                        yield {
+                            "type": "agent_observation",
+                            "data": {
+                                "action_id": action.id,
+                                "tool": action.tool,
+                                "output": obs.output,
+                                "success": obs.success,
+                                "execution_time": obs.execution_time,
+                                "error": str(obs.error) if obs.error else None
+                            },
+                            "timestamp": time.time(),
+                            "metadata": {"action_id": action.id}
+                        }
                 
                 elif step.type == StepType.FINISH:
                     # Yield final summary

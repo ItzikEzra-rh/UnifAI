@@ -305,7 +305,8 @@ class BaseOutputParser(ABC):
         tool: str, 
         tool_input: Dict[str, Any], 
         reasoning: str = "",
-        error: Optional[str] = None
+        error: Optional[str] = None,
+        id: Optional[str] = None
     ) -> AgentAction:
         """
         Helper to create AgentAction with safe defaults.
@@ -315,16 +316,22 @@ class BaseOutputParser(ABC):
             tool_input: Tool input dictionary
             reasoning: Optional reasoning text
             error: Optional error message
+            id: Optional action ID (uses UUID if None)
             
         Returns:
             AgentAction with safe defaults
         """
-        return AgentAction(
-            tool=tool,
-            tool_input=tool_input,
-            reasoning=reasoning or f"Using {tool}",
-            error=error
-        )
+        action_kwargs = {
+            "tool": tool,
+            "tool_input": tool_input,
+            "reasoning": reasoning or f"Using {tool}",
+            "error": error
+        }
+        
+        if id is not None:
+            action_kwargs["id"] = id
+            
+        return AgentAction(**action_kwargs)
     
     def _create_safe_finish(
         self,

@@ -207,6 +207,48 @@ class AgentStep:
         return self.type == StepType.ERROR
 
 
+@dataclass(frozen=True)
+class SystemError:
+    """
+    Immutable system-level error for LLM feedback.
+    
+    Represents errors that need to be communicated back to the LLM
+    for learning and recovery, distinct from tool execution errors.
+    
+    Example:
+        error = SystemError.from_parse_error(parse_error)
+        guidance = error.guidance  # Ready-to-use LLM feedback
+    """
+    message: str
+    error_type: str
+    raw_output: Optional[str] = None
+    guidance: Optional[str] = None
+    recoverable: bool = True
+    
+    @classmethod
+    def from_parse_error(cls, parse_error) -> 'SystemError':
+        """Factory method for parse errors."""
+        from ..constants import ErrorMessages
+        
+        return cls(
+            message=str(parse_error),
+            error_type="parse_error",
+            raw_output=getattr(parse_error, 'raw_output', None),
+            guidance=ErrorMessages.get_parse_error_guidance(parse_error),
+            recoverable=getattr(parse_error, 'recoverable', True)
+        )
+    
+    @classmethod
+    def from_exception(cls, exception: Exception, error_type: str = "system_error") -> 'SystemError':
+        """Factory method for general exceptions."""
+        return cls(
+            message=str(exception),
+            error_type=error_type,
+            guidance=f"System error occurred: {exception}. Please try a different approach.",
+            recoverable=False
+        )
+
+
 # Type aliases for cleaner signatures
 ActionObservationPair = tuple[AgentAction, AgentObservation]
 ExecutionHistory = List[AgentStep]

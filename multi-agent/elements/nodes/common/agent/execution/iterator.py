@@ -7,7 +7,7 @@ use cases and provides streaming events for real-time monitoring.
 
 Design Principles:
 - Iterator Pattern: Step-by-step control over execution
-- Mode-based: Different execution patterns (auto, manual, guided)
+- Mode-based: Different execution patterns (auto, guided)
 - Event Streaming: Real-time execution monitoring
 - Error Resilient: Graceful handling of failures
 """
@@ -21,16 +21,16 @@ from ..primitives import (
     AgentObservation, 
     AgentStep, 
     StepType, 
-    ActionStatus
+    ActionStatus,
+    AgentFinish
 )
 from ..strategies.base import AgentStrategy
-from elements.llms.common.chat.message import ChatMessage
+from elements.llms.common.chat.message import ChatMessage, Role
 
 
 class ExecutionMode(Enum):
     """Different modes of agent execution."""
     AUTO = "auto"          # Automatically execute all actions
-    MANUAL = "manual"      # Yield actions, wait for observations  
     GUIDED = "guided"      # Ask for confirmation before execution
 
 
@@ -39,10 +39,10 @@ class AgentIterator:
     Iterator for step-by-step agent execution.
     
     Provides fine-grained control over agent execution with support for:
-    - Multiple execution modes (auto/manual/guided)
+    - Multiple execution modes (auto/guided)
     - Real-time streaming of execution events
     - Tool validation and policy enforcement
-    - Manual intervention and control
+    - User confirmation and control
     - Error handling and recovery
     
     The iterator maintains execution state and coordinates between the
@@ -78,7 +78,7 @@ class AgentIterator:
             strategy: Agent strategy for decision-making
             action_executor: AgentActionExecutor instance for tool execution
             stream: Optional streaming callback for events
-            mode: Execution mode (auto/manual/guided)
+            mode: Execution mode (auto/guided)
             on_action: Optional callback to approve/reject actions
         """
         self.strategy = strategy
@@ -133,25 +133,50 @@ class AgentIterator:
         try:
             # Get next steps from strategy
             steps = self.strategy.think(self.messages, self.observations)
+            print(f"🔍 DEBUG: Iterator got {len(steps)} steps from strategy: {[step.type for step in steps]}")
+
+            # Update conversation messages with assistant responses
+            self._update_conversation_messages(steps)
+
+            # Collect all actions to execute them together
+            actions_to_execute = []
+            terminal_step = None
             
             for step in steps:
+                print(f"🔍 DEBUG: Processing step type: {step.type}")
                 self.history.append(step)
                 self._emit_step_event(step)
                 
-                # Handle different step types
+                # Collect actions for batch execution
                 if step.type == StepType.ACTION:
-                    return self._handle_action_step(step)
+                    print(f"🔍 DEBUG: Collecting ACTION step for tool: {step.data.tool}")
+                    actions_to_execute.append(step)
                     
                 elif step.type == StepType.FINISH:
+                    print(f"🔍 DEBUG: Found FINISH step")
                     self._finished = True
-                    return step
+                    terminal_step = step
                     
                 elif step.type == StepType.ERROR:
-                    return self._handle_error_step(step)
+                    print(f"🔍 DEBUG: Found ERROR step")
+                    terminal_step = step
                     
-                else:
-                    # PLANNING or other non-terminal steps
-                    return step
+                # PLANNING steps are processed but don't cause return
+            
+            # Execute all collected actions
+            if actions_to_execute:
+                print(f"🔍 DEBUG: Executing {len(actions_to_execute)} actions together")
+                return self._handle_batch_actions(actions_to_execute)
+            
+            # Return terminal step if found
+            if terminal_step:
+                return terminal_step
+            
+            # If we processed all steps without finding actions or terminal steps,
+            # return the last step (should be PLANNING)
+            if steps:
+                print(f"🔍 DEBUG: No actions or terminal steps, returning last step: {steps[-1].type}")
+                return steps[-1]
             
         except Exception as e:
             # Handle unexpected strategy errors
@@ -190,7 +215,7 @@ class AgentIterator:
         })
         self.history.append(obs_step)
         self._emit_step_event(obs_step)
-    
+
     def confirm_action(self, action_id: str, execute: bool = True) -> Optional[AgentStep]:
         """
         Confirm or reject pending action (GUIDED mode).
@@ -248,52 +273,119 @@ class AgentIterator:
             The step to yield to caller
         """
         action = step.data
+        print(f"🔍 DEBUG: _handle_action_step called with action: {action.tool}, mode: {self.mode}")
         
-        # Validate action if validator provided
-        if self.tool_validator:
-            is_valid, error_msg = self.tool_validator.validate_action(action)
-            if not is_valid:
-                return self._create_validation_error_step(action, error_msg)
+        # Validation is handled by ToolExecutorManager during execution
         
         # Check action approval callback
         if self.on_action and not self.on_action(action):
+            print(f"🔍 DEBUG: Action rejected by policy")
             return self._create_skipped_action_step(action, "Rejected by policy")
         
         # Handle based on execution mode
         if self.mode == ExecutionMode.AUTO:
+            print(f"🔍 DEBUG: AUTO mode - executing action immediately")
             # Execute immediately and create observation step
             obs_step = self._execute_action_step(action)
             self.history.append(obs_step)
             self._emit_step_event(obs_step)
+            print(f"🔍 DEBUG: Action executed, observation created: {obs_step.data.success}")
             return step  # Return the action step, observation is in history
             
-        elif self.mode == ExecutionMode.MANUAL:
-            # Just return the action step, caller must provide observation
-            return step
-            
         elif self.mode == ExecutionMode.GUIDED:
+            print(f"🔍 DEBUG: GUIDED mode - adding to pending actions")
             # Add to pending for confirmation
             self.pending_actions.append(action)
             return step
         
         return step
     
+    def _handle_batch_actions(self, action_steps: List[AgentStep]) -> AgentStep:
+        """
+        Handle multiple action steps by executing them together.
+        
+        Executes all actions in parallel and creates observations for each.
+        Returns the first action step while adding all observations to history.
+        
+        Args:
+            action_steps: List of ACTION steps to execute
+            
+        Returns:
+            The first action step (for iterator protocol)
+        """
+        print(f"🔍 DEBUG: _handle_batch_actions called with {len(action_steps)} actions")
+        
+        # Extract actions from steps
+        actions = [step.data for step in action_steps]
+        
+        # Validate actions using callback if provided
+        if self.on_action:
+            approved_actions = []
+            for action in actions:
+                if self.on_action(action):
+                    approved_actions.append(action)
+                else:
+                    print(f"🔍 DEBUG: Action {action.tool} rejected by policy")
+                    # Create skipped observation
+                    obs = AgentObservation(
+                        action_id=action.id,
+                        tool=action.tool,
+                        output="Action rejected by policy",
+                        success=False,
+                        error=Exception("Rejected by policy")
+                    )
+                    self.observations.append(obs)
+            actions = approved_actions
+        
+        if not actions:
+            print(f"🔍 DEBUG: No actions to execute after validation")
+            return action_steps[0]  # Return first step even if no actions executed
+        
+        # Execute based on mode
+        if self.mode == ExecutionMode.AUTO:
+            print(f"🔍 DEBUG: AUTO mode - executing {len(actions)} actions in batch")
+            # Execute all actions together
+            batch_observations = self.action_executor.execute_batch(actions)
+            
+            # Add all observations to history
+            for obs in batch_observations:
+                self.observations.append(obs)
+                obs_step = AgentStep(
+                    StepType.OBSERVATION,
+                    obs,
+                    metadata={
+                        "action_id": obs.action_id,
+                        "execution_time": obs.execution_time,
+                        "success": obs.success
+                    }
+                )
+                self.history.append(obs_step)
+                self._emit_step_event(obs_step)
+                print(f"🔍 DEBUG: Added observation for {obs.tool}: success={obs.success}")
+            
+            print(f"🔍 DEBUG: Batch execution completed: {len(batch_observations)} observations created")
+            
+        elif self.mode == ExecutionMode.GUIDED:
+            print(f"🔍 DEBUG: GUIDED mode - adding {len(actions)} actions to pending")
+            # Add all actions to pending for confirmation
+            self.pending_actions.extend(actions)
+        
+        # Return the first action step (iterator protocol requirement)
+        return action_steps[0]
+    
     def _handle_error_step(self, step: AgentStep) -> AgentStep:
         """
-        Handle an error step.
+        Simple error handling - strategy manages error feedback internally.
         
-        Determines whether execution should continue after the error
-        based on error type and strategy configuration.
+        Just determines if execution should continue based on recoverability.
+        No complex error management needed - strategy handles its own error state.
         """
-        error = step.data
-        
-        # Check if this is a recoverable error
-        recoverable = getattr(error, 'recoverable', False)
+        recoverable = step.metadata.get("recoverable", False)
         
         if not recoverable:
             self._finished = True
             
-        return step
+        return step  # Strategy handles error feedback internally
     
     def _execute_action_step(self, action: AgentAction) -> AgentStep:
         """
@@ -305,19 +397,25 @@ class AgentIterator:
         Returns:
             AgentStep containing the observation
         """
+        print(f"🔍 DEBUG: _execute_action_step starting for tool: {action.tool}")
         start_time = time.time()
         
         try:
             # Update action status
             action = action.with_status(ActionStatus.EXECUTING)
+            print(f"🔍 DEBUG: Action status updated to EXECUTING")
             
             # Execute the action
+            print(f"🔍 DEBUG: Calling action_executor.execute with action: {action.tool}")
             observation = self.action_executor.execute(action)
+            print(f"🔍 DEBUG: Got observation - success: {observation.success}, output: {observation.output[:100] if observation.output else 'None'}...")
             
             # Update action status based on result
             if observation.success:
+                print(f"🔍 DEBUG: Action succeeded")
                 action = action.with_status(ActionStatus.SUCCESS)
             else:
+                print(f"🔍 DEBUG: Action failed with error: {observation.error}")
                 action = action.with_status(ActionStatus.FAILED, str(observation.error))
             
             # Ensure execution time is recorded
@@ -329,6 +427,7 @@ class AgentIterator:
                 )
                 
         except Exception as e:
+            print(f"🔍 DEBUG: Exception during action execution: {e}")
             # Create error observation for execution failure
             observation = AgentObservation(
                 action_id=action.id,
@@ -355,23 +454,6 @@ class AgentIterator:
         )
         
         return obs_step
-    
-    def _create_validation_error_step(self, action: AgentAction, error_msg: str) -> AgentStep:
-        """Create step for validation error."""
-        obs = AgentObservation(
-            action_id=action.id,
-            tool=action.tool,
-            output=None,
-            success=False,
-            error=Exception(f"Validation failed: {error_msg}")
-        )
-        
-        self.observations.append(obs)
-        return AgentStep(StepType.OBSERVATION, obs, metadata={
-            "action_id": action.id,
-            "validation_error": True,
-            "error_message": error_msg
-        })
     
     def _create_skipped_action_step(self, action: AgentAction, reason: str) -> AgentStep:
         """Create step for skipped action."""
@@ -434,3 +516,31 @@ class AgentIterator:
             })
         
         self.stream(event)
+    
+    def _update_conversation_messages(self, steps: List[AgentStep]) -> None:
+        """
+        Update conversation messages with assistant responses.
+        
+        Maintains proper conversation flow by preserving assistant messages
+        that contain tool_calls or final answers. This ensures LLM providers
+        see the correct assistant → tool → assistant sequence.
+        
+        Args:
+            steps: Steps returned from strategy.think()
+        """
+        for step in steps:
+            # Preserve assistant messages that are part of the conversation
+            if (step.type == StepType.PLANNING and 
+                isinstance(step.data, ChatMessage) and 
+                step.data.role == Role.ASSISTANT):
+                # Assistant planning message (with tool_calls)
+                self.messages.append(step.data)
+                
+            elif (step.type == StepType.FINISH and 
+                  isinstance(step.data, AgentFinish)):
+                # Convert AgentFinish to assistant message for conversation history
+                finish_message = ChatMessage(
+                    role=Role.ASSISTANT,
+                    content=step.data.output
+                )
+                self.messages.append(finish_message)

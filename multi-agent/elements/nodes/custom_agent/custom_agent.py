@@ -11,6 +11,9 @@ from elements.nodes.common.capabilities.agent_capable import AgentCapableMixin
 from elements.nodes.common.capabilities.workload_capable import WorkloadCapableMixin
 from elements.nodes.common.workload import Task, AgentResult, WorkspaceContext
 from elements.providers.mcp_server_client.mcp_provider import McpProvider
+from elements.nodes.common.agent import AgentConfig
+from elements.nodes.common.agent.execution import ExecutionMode
+from elements.nodes.common.agent.constants import StrategyType
 
 
 class CustomAgentNode(
@@ -43,6 +46,7 @@ class CustomAgentNode(
             system_message: str = "",
             mcp_provider: McpProvider = None,
             max_rounds: Optional[int] = 15,
+            strategy_type: str = StrategyType.REACT.value,
             **kwargs: Any
     ):
         super().__init__(
@@ -53,19 +57,15 @@ class CustomAgentNode(
         )
         self.mcp_provider = mcp_provider
         self.max_rounds = max_rounds
-        self._domain_tools = tools or []
+        self.strategy_type = strategy_type
+        self.tools = tools or []
 
     def run(self, state: StateView) -> StateView:
         """Main entry point - process all incoming TaskPackets."""
-        # Gather all tools
-        all_tools = list(self._domain_tools)
-        
+
         # Add MCP tools if available
         if self.mcp_provider:
-            all_tools.extend(self.mcp_provider.get_tools())
-        
-        # Store tools for use in processing
-        self._current_tools = all_tools
+            self.tools.extend(self.mcp_provider.get_tools())
 
         # Process all incoming packets
         self.process_packets(state)
@@ -116,76 +116,67 @@ class CustomAgentNode(
         4. Add current task with retriever context if available
         """
         context_messages = []
-        
+
         # 1. Get workspace conversation history
         if task.thread_id:
             workspace_messages = self.get_recent_workspace_messages(task.thread_id, 20)
             context_messages.extend(deepcopy(workspace_messages))
-        
-        # 2. Add system message at the start if configured
-        if self.system_message:
-            system_msg = ChatMessage(role=Role.SYSTEM, content=self.system_message)
-            if not context_messages or context_messages[0].role != Role.SYSTEM:
-                context_messages.insert(0, system_msg)
-            else:
-                context_messages[0] = system_msg
-        
+
+        # 2. System message is now handled by strategy during creation
+        # No longer adding system message to context here
+
         # 3. Add agent results context
         agent_results_context = self._build_agent_results_context(task.thread_id)
         if agent_results_context:
             context_messages.append(agent_results_context)
-        
+
         # 4. Add current task with retriever context if available
         user_msg = ChatMessage(role=Role.USER, content=task.content)
         if self.retriever:
             user_msg = self.augment_with_context(user_msg)
         context_messages.append(user_msg)
-        
+
         return context_messages
 
     def _build_agent_results_context(self, thread_id: str) -> Optional[ChatMessage]:
         """Build agent results context from workspace."""
         if not thread_id:
             return None
-        
+
         workspace_context = self.get_workspace_context(thread_id)
-        
+
         if not workspace_context.results:
             return None
-        
+
         # Focus on agent results - organized by agent name in order
         results_text = "PREVIOUS AGENT RESULTS:\n"
         for i, result in enumerate(workspace_context.results, 1):
             results_text += f"{i}. {result.agent_name}: {result.content}\n"
-        
+
         return ChatMessage(role=Role.USER, content=results_text)
 
     def _process_with_llm(self, conversation_context: List[ChatMessage]) -> ChatMessage:
         """Process conversation with LLM (with optional tools)."""
-        if hasattr(self, '_current_tools') and self._current_tools:
+        if self.tools:
             # Use new agent execution system
-            from elements.nodes.common.agent import AgentConfig
-            from elements.nodes.common.agent.execution import ExecutionMode
-            
-            # Create strategy with current tools
-            from elements.nodes.common.agent.constants import StrategyType
-            
+
             strategy = self.create_strategy(
-                tools=self._current_tools,
-                strategy_type=StrategyType.REACT.value,
+                tools=self.tools,
+                strategy_type=self.strategy_type,
+                system_message=self.system_message,
                 max_steps=self.max_rounds
             )
-            
+
             config = AgentConfig(
                 execution_mode=ExecutionMode.AUTO
             )
-            
+
             result = self.run_agent(
                 messages=conversation_context,
                 strategy=strategy,
                 config=config
             )
-            
+
             # Extract the final assistant message from the result
             if result.get("success") and result.get("output"):
                 return ChatMessage(role=Role.ASSISTANT, content=str(result["output"]))
@@ -254,7 +245,7 @@ class CustomAgentNode(
         )
         response_task.should_respond = True
         response_task.response_to = task.response_to
-        
+
         self.broadcast_task(response_task)
 
     def _execute_normal_broadcast(self, task: Task, agent_result: AgentResult) -> None:
@@ -273,8 +264,7 @@ class CustomAgentNode(
             agent_id=self.uid,
             agent_name=self.display_name
         )
-    
+
     def _add_agent_result_to_workspace(self, thread_id: str, agent_result: AgentResult) -> None:
         """Add agent result to workspace."""
         self.add_result_to_workspace(thread_id, agent_result)
-

@@ -6,14 +6,12 @@ modes and validation capabilities. Includes:
 
 - AgentIterator: Step-by-step execution control with multiple modes
 - AgentActionExecutor: Bridge between agent actions and tool system
-- ToolValidator: Policy enforcement and permission checking
-- ExecutionMode: Different execution patterns (auto, manual, guided)
+- ExecutionMode: Different execution patterns (auto, guided)
 
 Key Components:
-- ExecutionMode: AUTO (automatic), MANUAL (user control), GUIDED (confirmation)
+- ExecutionMode: AUTO (automatic), GUIDED (confirmation)
 - AgentIterator: Main execution controller with streaming support
 - AgentActionExecutor: Executes actions using ToolExecutorManager directly
-- ToolValidator: Validates actions before execution
 
 Example:
     ```python

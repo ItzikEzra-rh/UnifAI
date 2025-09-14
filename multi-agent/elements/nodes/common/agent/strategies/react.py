@@ -20,8 +20,8 @@ import time
 from typing import List, Tuple, Callable, Optional, Dict, Any
 from elements.llms.common.chat.message import ChatMessage, Role
 from elements.tools.common.base_tool import BaseTool
-from ..primitives import AgentAction, AgentObservation, AgentStep, StepType
-from ..parsers import OutputParser, ParseError
+from ..primitives import AgentAction, AgentObservation, AgentFinish, AgentStep, StepType, SystemError
+from ..parsers import OutputParser, ParseError, ParseErrorType
 from .base import AgentStrategy
 from ..constants import StrategyDefaults, SystemPrompts, StrategyType
 
@@ -51,16 +51,17 @@ class ReActStrategy(AgentStrategy):
             system_prompt_template=custom_template
         )
     """
-    
+
     def __init__(
-        self,
-        *,
-        llm_chat: Callable[[List[ChatMessage], List[BaseTool]], ChatMessage],
-        tools: List[BaseTool],
-        parser: OutputParser,
-        max_steps: int = StrategyDefaults.MAX_STEPS,
-        system_prompt_template: Optional[str] = None,
-        min_reasoning_length: int = StrategyDefaults.MIN_REASONING_LENGTH
+            self,
+            *,
+            llm_chat: Callable[[List[ChatMessage], List[BaseTool]], ChatMessage],
+            tools: List[BaseTool],
+            parser: OutputParser,
+            max_steps: int = StrategyDefaults.MAX_STEPS,
+            system_prompt_template: Optional[str] = None,
+            min_reasoning_length: int = StrategyDefaults.MIN_REASONING_LENGTH,
+            system_message: Optional[str] = None
     ):
         """
         Initialize ReAct strategy.
@@ -72,16 +73,24 @@ class ReActStrategy(AgentStrategy):
             max_steps: Maximum reasoning steps before stopping
             system_prompt_template: Custom system prompt (optional)
             min_reasoning_length: Minimum characters expected in reasoning
+            system_message: System message from node (takes priority)
         """
         super().__init__(
             llm_chat=llm_chat,
             tools=tools,
-            parser=parser, 
-            max_steps=max_steps
+            parser=parser,
+            max_steps=max_steps,
+            system_message=system_message
         )
         self.min_reasoning_length = min_reasoning_length
         self.system_prompt_template = system_prompt_template or SystemPrompts.REACT_DEFAULT
-    
+        self._pending_system_error: Optional['SystemError'] = None  # Single error state
+
+    @property
+    def strategy_name(self) -> str:
+        """Return the name of this strategy."""
+        return StrategyType.REACT.value
+
     def get_tools_for_phase(self, phase: str, context: Dict[str, Any] = None) -> List[BaseTool]:
         """
         ReAct uses all tools in all phases.
@@ -94,105 +103,79 @@ class ReActStrategy(AgentStrategy):
             All available tools
         """
         return list(self.all_tools.values())
-    
+
     def think(
-        self,
-        messages: List[ChatMessage],
-        observations: List[AgentObservation]
+            self,
+            messages: List[ChatMessage],
+            observations: List[AgentObservation]
     ) -> List[AgentStep]:
         """
-        Perform one cycle of ReAct reasoning.
+        Clean thinking with minimal error handling.
         
         Process:
-        1. Build context from messages and observations
-        2. Add ReAct system prompt if this is the first step
-        3. Call LLM to get reasoning and next action
-        4. Parse response into actions or finish
-        5. Handle any parsing errors
+        1. Build context (includes error feedback if pending)
+        2. Get LLM response and parse
+        3. On success: clear errors and return steps
+        4. On error: store for next iteration and return error step
         
         Args:
             messages: Conversation history
             observations: Previous action-observation pairs
             
         Returns:
-            List of steps (usually planning + action, or planning + finish)
+            List of steps (planning + action/finish, or error)
         """
-        steps = []
+        print(f"🔍 DEBUG: ReActStrategy.think called with {len(messages)} messages, {len(observations)} observations")
+        if observations:
+            print(f"🔍 DEBUG: Latest observation - tool: {observations[-1].tool}, success: {observations[-1].success}")
         
         try:
-            # Build context for LLM
-            context = self._build_react_context(messages, observations)
-            
-            # Get tools for ReAct (all tools)
+            # Build context (includes error feedback if pending)
+            context = self.build_context(messages, observations)
             tools = self.get_tools_for_phase(StrategyType.REACT.value)
-            
-            # Get LLM response with tools
+
+            # Get LLM response
             start_time = time.time()
             response = self.llm_chat(context, tools)
             reasoning_time = time.time() - start_time
-            
-            # Create planning step
-            steps.append(AgentStep(
-                type=StepType.PLANNING,
-                data=response,
-                metadata={
-                    "strategy": StrategyType.REACT.value,
-                    "step_count": self._step_count,
-                    "reasoning_time": reasoning_time,
-                    "reasoning_content": response.content
-                }
-            ))
-            
-            # Validate reasoning quality
-            self._validate_reasoning(response)
-            
-            # Parse response into actions or finish
+
+            # Parse response first to understand what type it is
+            print(f"🔍 DEBUG: Parsing response with tool_calls: {response.tool_calls}")
             result = self.parser.parse(response)
-            
+            print(f"🔍 DEBUG: Parser returned type: {type(result)}")
             if isinstance(result, list):
-                # Multiple actions - add each as separate step
-                for action in result:
-                    steps.append(AgentStep(
-                        type=StepType.ACTION,
-                        data=action,
-                        metadata={
-                            "strategy": StrategyType.REACT.value,
-                            "reasoning": response.content or "",
-                            "step_count": self._step_count
-                        }
-                    ))
+                print(f"🔍 DEBUG: Got {len(result)} actions: {[action.tool for action in result]}")
             else:
-                # Single finish
-                steps.append(AgentStep(
-                    type=StepType.FINISH,
-                    data=result,
-                    metadata={
-                        "strategy": StrategyType.REACT.value,
-                        "reasoning": response.content or "",
-                        "step_count": self._step_count
-                    }
-                ))
+                print(f"🔍 DEBUG: Got finish: {result}")
             
+            # Validate reasoning only for final answers (AgentFinish)
+            # Tool calls (List[AgentAction]) don't need reasoning validation
+            if isinstance(result, AgentFinish):
+                self._validate_reasoning(response)
+
+            # SUCCESS - Clear any pending error
+            self._pending_system_error = None
+
+            # Return appropriate steps
+            steps = self._create_success_steps(response, result, reasoning_time)
+
         except ParseError as e:
-            # Handle parsing errors with reflection if enabled
-            error_steps = self.handle_parse_error(e)
-            steps.extend(error_steps)
-            
+            print(f"🔍 DEBUG: ParseError in ReActStrategy.think: {e}")
+            # Store system error for next iteration
+            self._pending_system_error = SystemError.from_parse_error(e)
+            steps = [self._create_error_step(e, "parse_error")]
+
         except Exception as e:
-            # Handle unexpected errors
-            steps.append(AgentStep(
-                type=StepType.ERROR,
-                data=e,
-                metadata={
-                    "strategy": StrategyType.REACT.value,
-                    "error_type": "execution_error",
-                    "step_count": self._step_count
-                }
-            ))
-        
+            print(f"🔍 DEBUG: Exception in ReActStrategy.think: {e}")
+            import traceback
+            traceback.print_exc()
+            # Store system error for next iteration  
+            self._pending_system_error = SystemError.from_exception(e, "strategy_error")
+            steps = [self._create_error_step(e, "strategy_error")]
+
         self.increment_step_count()
         return steps
-    
+
     def should_continue(self, history: List[AgentStep]) -> bool:
         """
         Check if ReAct strategy should continue.
@@ -211,11 +194,11 @@ class ReActStrategy(AgentStrategy):
         # Check for terminal steps
         if history and history[-1].is_terminal:
             return False
-        
+
         # Check step limit
         if self._step_count >= self.max_steps:
             return False
-        
+
         # Check for too many consecutive errors
         consecutive_errors = 0
         for step in reversed(history):
@@ -223,108 +206,175 @@ class ReActStrategy(AgentStrategy):
                 consecutive_errors += 1
             else:
                 break
-        
+
         if consecutive_errors >= 3:  # Configurable threshold
             return False
-        
+
         return True
-    
-    def _build_react_context(
-        self,
-        messages: List[ChatMessage],
-        observations: List[AgentObservation]
+
+    def build_context(
+            self,
+            messages: List[ChatMessage],
+            observations: List[AgentObservation]
     ) -> List[ChatMessage]:
         """
-        Build ReAct-specific context for LLM.
+        Build context with clean error feedback.
         
-        Adds ReAct system prompt on first step and formats observations
-        in a way that's conducive to the ReAct pattern.
+        Process:
+        1. Build base context with system message
+        2. Add tool observations as TOOL messages
+        3. Add system error feedback if pending
         
         Args:
             messages: Original messages
-            observations: Action-observation pairs
+            observations: Previous observations from tool executions
             
         Returns:
-            Complete context for LLM
+            Complete context for LLM with proper message roles and order
         """
-        context = list(messages)
+        print(f"🔍 DEBUG: build_context called with {len(messages)} messages, {len(observations)} observations")
+        context = self._build_base_context(messages)
+        context.extend(self._build_observation_context(observations))
+        print(f"🔍 DEBUG: Built context with {len(context)} total messages")
         
-        # Add system prompt on first step
-        if self._step_count == 0:
-            context.insert(0, ChatMessage(
-                role=Role.SYSTEM,
-                content=self.system_prompt_template
-            ))
-        
-        # Add formatted observations
-        if observations:
-            obs_text = self._format_react_observations(observations)
-            context.append(ChatMessage(
-                role=Role.ASSISTANT,
-                content=obs_text
-            ))
-        
+        # Debug: Print the actual context being sent to LLM
+        for i, msg in enumerate(context):
+            print(f"🔍 DEBUG: Context[{i}] - Role: {msg.role}, Content: {msg.content[:100] if msg.content else 'None'}...")
+            if msg.tool_calls:
+                print(f"🔍 DEBUG:   Tool calls: {[(tc.name, tc.tool_call_id) for tc in msg.tool_calls]}")
+            if msg.tool_call_id:
+                print(f"🔍 DEBUG:   Tool call ID: {msg.tool_call_id}, Name: {getattr(msg, 'name', 'None')}")
+
+        # Add system error feedback if pending
+        if self._pending_system_error:
+            error_feedback = self._build_error_feedback()
+            if error_feedback:
+                context.append(error_feedback)
+
         return context
-    
-    def _format_react_observations(
-        self,
-        observations: List[AgentObservation]
-    ) -> str:
-        """
-        Format observations in ReAct style.
-        
-        Formats as:
-        Action: tool_name
-        Action Input: {input}
-        Observation: result
-        
-        Args:
-            observations: Action-observation pairs
-            
-        Returns:
-            ReAct-formatted observation string
-        """
-        formatted = []
-        
-        for i, obs in enumerate(observations, 1):
-            # Format action info from observation
-            formatted.append(f"Action: {obs.tool}")
-            
-            # Format observation result
-            if obs.success:
-                formatted.append(f"Observation: {obs.output}")
-            else:
-                formatted.append(f"Observation: Error - {obs.error}")
-            
-            formatted.append("")  # Empty line between observations
-        
-        return "\n".join(formatted)
-    
+
     def _validate_reasoning(self, response: ChatMessage) -> None:
         """
-        Validate the quality of reasoning in the response.
+        Validate the quality of reasoning in final answers.
         
-        Checks that the LLM provided sufficient reasoning before
-        taking action. This helps ensure thoughtful decision-making.
+        Checks that the LLM provided sufficient reasoning when giving
+        a final answer (AgentFinish). Tool calls don't need this validation
+        since their reasoning is implicit in tool selection and arguments.
         
         Args:
-            response: LLM response to validate
+            response: LLM response containing final answer to validate
             
         Raises:
-            ParseError: If reasoning is insufficient
+            ParseError: If reasoning is insufficient for final answer
         """
         content = response.content or ""
-        
+
         # Check minimum length
         if len(content) < self.min_reasoning_length:
             raise ParseError(
                 f"Reasoning too short ({len(content)} chars, min {self.min_reasoning_length})",
+                ParseErrorType.VALIDATION_ERROR,
                 content,
                 recoverable=True
             )
-        
+
         # Could add more sophisticated reasoning quality checks here
         # - Presence of reasoning keywords
         # - Analysis of current situation
         # - Clear action justification
-    
+
+    def _build_base_context(self, messages: List[ChatMessage]) -> List[ChatMessage]:
+        """Build base context with system message."""
+        context = list(messages)
+
+        if self._step_count == 0:
+            system_content = self.system_message or self.system_prompt_template
+
+            if context and context[0].role == Role.SYSTEM:
+                context[0] = ChatMessage(role=Role.SYSTEM, content=system_content)
+            else:
+                context.insert(0, ChatMessage(role=Role.SYSTEM, content=system_content))
+
+        return context
+
+    def _build_observation_context(self, observations: List[AgentObservation]) -> List[ChatMessage]:
+        """Build observation context (tool results only)."""
+        return [
+            ChatMessage(
+                role=Role.TOOL,
+                content=obs.output if obs.success else f"Error: {obs.error}",
+                tool_call_id=obs.action_id,
+            )
+            for obs in observations
+        ]
+
+    def _build_error_feedback(self) -> Optional[ChatMessage]:
+        """Build clean error feedback message."""
+        if not self._pending_system_error:
+            return None
+
+        return ChatMessage(
+            role=Role.SYSTEM,
+            content=self._pending_system_error.guidance or f"Previous attempt failed: {self._pending_system_error.message}"
+        )
+
+    def _create_success_steps(self, response: ChatMessage, result, reasoning_time: float) -> List[AgentStep]:
+        """Create steps for successful execution."""
+        print(f"🔍 DEBUG: Creating success steps for result type: {type(result)}")
+        
+        steps = [
+            AgentStep(
+                type=StepType.PLANNING,
+                data=response,
+                metadata={
+                    "strategy": StrategyType.REACT.value,
+                    "step_count": self._step_count,
+                    "reasoning_time": reasoning_time,
+                    "reasoning_content": response.content
+                }
+            )
+        ]
+
+        if isinstance(result, list):
+            print(f"🔍 DEBUG: Creating {len(result)} ACTION steps")
+            action_steps = [
+                AgentStep(
+                    type=StepType.ACTION,
+                    data=action,
+                    metadata={
+                        "strategy": StrategyType.REACT.value,
+                        "reasoning": response.content or "",
+                        "step_count": self._step_count
+                    }
+                )
+                for action in result
+            ]
+            steps.extend(action_steps)
+            print(f"🔍 DEBUG: Created ACTION steps: {[step.data.tool for step in action_steps]}")
+        else:
+            print(f"🔍 DEBUG: Creating FINISH step")
+            steps.append(AgentStep(
+                type=StepType.FINISH,
+                data=result,
+                metadata={
+                    "strategy": StrategyType.REACT.value,
+                    "reasoning": response.content or "",
+                    "step_count": self._step_count
+                }
+            ))
+
+        print(f"🔍 DEBUG: Returning {len(steps)} total steps: {[step.type for step in steps]}")
+        return steps
+
+    def _create_error_step(self, error: Exception, error_type: str) -> AgentStep:
+        """Create clean error step."""
+        return AgentStep(
+            type=StepType.ERROR,
+            data=error,
+            metadata={
+                "strategy": StrategyType.REACT.value,
+                "error_type": error_type,
+                "step_count": self._step_count,
+                "recoverable": getattr(error, 'recoverable', error_type == "parse_error")
+            }
+        )

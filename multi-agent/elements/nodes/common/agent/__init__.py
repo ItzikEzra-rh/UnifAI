@@ -4,7 +4,7 @@ Agent orchestration system for multi-agent framework.
 This module provides a SOLID architecture for agent behavior:
 - Core primitives for actions, observations, and state
 - Pluggable strategies for different agent approaches (ReAct, PlanAndExecute, etc.)
-- Execution control with multiple modes (auto, manual, guided)
+- Execution control with multiple modes (auto, guided)
 - Integration with existing mixin capabilities
 
 Key Components:
@@ -32,11 +32,12 @@ Example:
 
 from .primitives import (
     AgentAction,
-    AgentObservation, 
+    AgentObservation,
     AgentFinish,
     AgentStep,
     StepType,
     ActionStatus,
+    SystemError,
     ActionObservationPair,
     ExecutionHistory
 )
@@ -57,7 +58,6 @@ from .execution import (
     AgentIterator,
     ExecutionMode,
     AgentActionExecutor,
-    ToolValidator
 )
 
 from .runner import (
@@ -88,8 +88,9 @@ __all__ = [
     "AgentObservation", 
     "AgentFinish",
     "AgentStep",
-    "StepType", 
+    "StepType",
     "ActionStatus",
+    "SystemError",
     "ActionObservationPair",
     "ExecutionHistory",
     
@@ -107,7 +108,6 @@ __all__ = [
     "AgentIterator",
     "ExecutionMode",
     "AgentActionExecutor", 
-    "ToolValidator",
     
     # Runners
     "AgentRunner",

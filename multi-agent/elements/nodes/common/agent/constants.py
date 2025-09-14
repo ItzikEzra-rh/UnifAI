@@ -194,6 +194,38 @@ class ErrorMessages:
     UNKNOWN_STRATEGY_TYPE = (
         "Unknown strategy type. Available types: {available_types}"
     )
+    
+    @staticmethod
+    def get_parse_error_guidance(parse_error) -> str:
+        """Get clean, actionable guidance for parse errors."""
+        from ..parsers.base import ParseError, ParseErrorType
+        
+        if not isinstance(parse_error, ParseError):
+            return f"Parsing failed: {parse_error}. Please check your output format."
+        
+        base_message = f"Your previous response had formatting issues: {parse_error}"
+        
+        guidance_map = {
+            ParseErrorType.JSON_ERROR: f"{base_message}\n\n{ErrorMessages.JSON_FORMAT}",
+            ParseErrorType.TOOL_CALL_ERROR: f"{base_message}\n\n{ErrorMessages.TOOL_CALL_FORMAT}",
+            ParseErrorType.INVALID_FORMAT: f"{base_message}\n\n{ErrorMessages.TEXT_FORMAT}",
+            ParseErrorType.MISSING_CONTENT: f"{base_message}\n\n{ErrorMessages.MISSING_CONTENT}",
+            ParseErrorType.VALIDATION_ERROR: f"{base_message}\n\n{ErrorMessages.VALIDATION_FAILED}",
+        }
+        
+        guidance = guidance_map.get(
+            parse_error.error_type, 
+            f"{base_message}\n\nPlease follow the expected format."
+        )
+        
+        # Add raw output if available (truncated)
+        if hasattr(parse_error, 'raw_output') and parse_error.raw_output:
+            raw_output = parse_error.raw_output[:200]
+            if len(parse_error.raw_output) > 200:
+                raw_output += "..."
+            guidance += f"\n\nYour output: {raw_output}"
+        
+        return guidance
 
 
 # =============================================================================

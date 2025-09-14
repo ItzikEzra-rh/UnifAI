@@ -75,6 +75,14 @@ class LlmCapableMixin(Generic[TSupportStream]):
         Returns:
             ChatMessage response from LLM
         """
+        print(f"🔍 DEBUG: LlmCapableMixin.chat called with {len(messages)} messages, {len(tools) if tools else 0} tools")
+        for i, msg in enumerate(messages):
+            print(f"🔍 DEBUG: Message[{i}] - Role: {msg.role}, Content: {msg.content[:50] if msg.content else 'None'}...")
+            if msg.tool_calls:
+                print(f"🔍 DEBUG:   Tool calls: {[(tc.name, tc.tool_call_id) for tc in msg.tool_calls]}")
+            if msg.tool_call_id:
+                print(f"🔍 DEBUG:   Tool call ID: {msg.tool_call_id}, Name: {getattr(msg, 'name', 'None')}")
+        
         llm_instance = self.llm.bind_tools(tools) if tools else self.llm
 
         if self.is_streaming():
@@ -115,6 +123,9 @@ class LlmCapableMixin(Generic[TSupportStream]):
         Returns:
             Final ChatMessage from LLM
         """
+        print(f"🔍 DEBUG: _stream_chat called with {len(messages)} messages")
+        print(f"🔍 DEBUG: LLM instance type: {type(llm_instance).__name__}")
+        
         accumulated_text = ""
         final_message: Optional[ChatMessage] = None
 

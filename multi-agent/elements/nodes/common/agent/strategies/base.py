@@ -13,7 +13,7 @@ Design Principles:
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Dict, Any, Callable
+from typing import List, Tuple, Dict, Any, Callable, Optional
 from elements.llms.common.chat.message import ChatMessage, Role
 from elements.tools.common.base_tool import BaseTool
 from ..primitives import AgentAction, AgentObservation, AgentStep, StepType
@@ -37,27 +37,36 @@ class AgentStrategy(ABC):
     Strategies are stateful and can maintain internal counters, memory, etc.
     """
     
+    @property
+    @abstractmethod
+    def strategy_name(self) -> str:
+        """Return the name/type of this strategy for identification."""
+        pass
+    
     def __init__(
         self, 
         *,
         llm_chat: Callable[[List[ChatMessage], List[BaseTool]], ChatMessage],
         tools: List[BaseTool],
         parser: OutputParser,
-        max_steps: int = StrategyDefaults.MAX_STEPS
+        max_steps: int = StrategyDefaults.MAX_STEPS,
+        system_message: Optional[str] = None
     ):
         """
         Initialize base strategy.
         
         Args:
-            llm_chat: Function to call LLM with messages and tools
+            llm_chat: Function to call LLM with messages and tools.
             tools: All available tools for this strategy
             parser: Output parser for converting LLM responses
             max_steps: Maximum planning steps before stopping
+            system_message: System message from the node (takes priority)
         """
         self.llm_chat = llm_chat
         self.all_tools = {tool.name: tool for tool in tools}
         self.parser = parser
         self.max_steps = max_steps
+        self.system_message = system_message
         self._step_count = 0
         self._error_count = 0
     
@@ -158,44 +167,27 @@ class AgentStrategy(ABC):
         
         return "\n\n".join(formatted)
     
+    @abstractmethod
     def build_context(
         self,
         messages: List[ChatMessage],
-        observations: List[AgentObservation],
-        additional_context: str = ""
+        observations: List[AgentObservation]
     ) -> List[ChatMessage]:
         """
         Build complete context for LLM including observations.
         
-        Combines the original messages with formatted observations and
-        any additional context. Can be overridden for custom context building.
+        Each strategy implements its own context building approach based on
+        its specific requirements (e.g., ReAct uses TOOL messages, others might
+        use SYSTEM messages with formatted text).
         
         Args:
             messages: Original conversation messages
-            observations: Observation history
-            additional_context: Extra context to include
+            observations: Previous action observations
             
         Returns:
             Complete message list for LLM
         """
-        context = list(messages)
-        
-        # Add observation history if present
-        if observations:
-            obs_text = self.format_observations(observations)
-            context.append(ChatMessage(
-                role=Role.SYSTEM,
-                content=f"Previous actions and observations:\n{obs_text}"
-            ))
-        
-        # Add any additional context
-        if additional_context:
-            context.append(ChatMessage(
-                role=Role.SYSTEM, 
-                content=additional_context
-            ))
-        
-        return context
+        ...
     
     def handle_parse_error(self, error: ParseError) -> List[AgentStep]:
         """
