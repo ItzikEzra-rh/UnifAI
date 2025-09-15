@@ -20,6 +20,143 @@ from elements.tools.common.base_tool import BaseTool
 from elements.nodes.common.agent.primitives import AgentAction, AgentObservation, AgentFinish
 from elements.nodes.common.agent.parsers import ToolCallParser
 
+# Import professional testing tools
+from tests.fixtures.testing_tools import (
+    create_flaky_tools, create_boundary_test_tools, create_performance_test_tools, create_load_testing_tools, create_stress_testing_tools,
+    UnreliableNetworkTool, AuthenticationTool, DataCorruptionTool, 
+    CircuitBreakerTool, BoundaryTestTool, SlowTool, MemoryIntensiveTool, ReliabilityTestTool,
+    ThreadSafetyTestTool, VariableDelayTestTool, ParserStressTool
+)
+from tests.fixtures.stress_testing_tools import (
+    create_concurrency_test_tools, create_parser_stress_tools, 
+    create_stateful_corruption_tools, create_comprehensive_stress_tools,
+    RacyTool, VariableDelayTool, RandomResponseTool, MemoryGrowthTool, StatefulCorruptionTool
+)
+from tests.fixtures.mock_tools import (
+    create_basic_mock_tools, create_react_demo_tools, create_mixed_reliability_tools,
+    MockTool, MockCalculatorTool, MockSearchTool, ConfigurableMockTool
+)
+from tests.fixtures.concurrent_testing_tools import (
+    create_semaphore_testing_tools, create_resource_contention_tools, 
+    create_timing_test_tools, create_comprehensive_concurrent_tools,
+    SemaphoreTestTool, ResourceContentionTool, TimingTestTool,
+    SharedCounter, SharedFileResource, ConcurrencyTracker
+)
+
+
+# =============================================================================
+# PROFESSIONAL TESTING TOOL FIXTURES
+# =============================================================================
+
+@pytest.fixture
+def advanced_testing_tools():
+    """Professional testing tools for advanced failure scenarios."""
+    return create_flaky_tools()
+
+@pytest.fixture
+def boundary_testing_tools():
+    """Professional testing tools for boundary condition testing."""
+    return create_boundary_test_tools()
+
+
+@pytest.fixture
+def reliability_testing_tools():
+    """Create tools for reliability and failure rate testing."""
+    return [
+        ReliabilityTestTool("network_tool", failure_rate=0.7, delay=0.05),
+        ReliabilityTestTool("api_tool", failure_rate=0.6, delay=0.1),
+        ReliabilityTestTool("memory_tool", failure_rate=0.2, delay=0.02),
+        ReliabilityTestTool("state_tool", failure_rate=0.3, delay=0.05)
+    ]
+
+@pytest.fixture
+def performance_testing_tools():
+    """Professional testing tools for performance and load testing."""
+    return create_performance_test_tools()
+
+@pytest.fixture
+def load_testing_tools():
+    """Reliable tools for load testing with high success rates and predictable performance."""
+    return create_load_testing_tools()
+
+@pytest.fixture
+def stress_testing_tools():
+    """Professional tools for extreme stress testing scenarios."""
+    return create_stress_testing_tools()
+
+@pytest.fixture
+def reliable_network_tool():
+    """Network tool in reliable state for baseline testing."""
+    return UnreliableNetworkTool("reliable_network", "connected")
+
+@pytest.fixture
+def unreliable_network_tool():
+    """Network tool in unreliable state for failure testing."""
+    return UnreliableNetworkTool("unreliable_network", "slow")
+
+@pytest.fixture
+def strict_auth_tool():
+    """Authentication tool with strict permissions for security testing."""
+    return AuthenticationTool("strict_auth", True, {"read": True, "write": False, "admin": False})
+
+@pytest.fixture
+def permissive_auth_tool():
+    """Authentication tool with permissive settings for functionality testing."""
+    return AuthenticationTool("permissive_auth", True, {"read": True, "write": True, "admin": True})
+
+# =============================================================================
+# STRESS TESTING TOOL FIXTURES
+# =============================================================================
+
+@pytest.fixture
+def concurrency_testing_tools():
+    """Tools for concurrency and race condition testing."""
+    return create_concurrency_test_tools()
+
+@pytest.fixture
+def parser_stress_testing_tools():
+    """Tools for parser stress testing with chaotic inputs."""
+    return create_parser_stress_tools()
+
+@pytest.fixture
+def stateful_corruption_testing_tools():
+    """Tools for stateful corruption and recovery testing."""
+    return create_stateful_corruption_tools()
+
+@pytest.fixture
+def comprehensive_stress_tools():
+    """Complete toolkit for comprehensive stress testing."""
+    return create_comprehensive_stress_tools()
+
+# =============================================================================
+# MOCK TESTING TOOL FIXTURES
+# =============================================================================
+
+@pytest.fixture
+def basic_mock_tools():
+    """Simple, reliable mock tools for basic testing."""
+    return create_basic_mock_tools()
+
+@pytest.fixture
+def react_demo_tools():
+    """Tools commonly used in ReAct demonstrations."""
+    return create_react_demo_tools()
+
+@pytest.fixture
+def mixed_reliability_tools():
+    """Tools with mixed reliability for error handling testing."""
+    return create_mixed_reliability_tools()
+
+@pytest.fixture
+def calculator_tool():
+    """Individual calculator tool for specific testing."""
+    return MockCalculatorTool()
+
+@pytest.fixture
+def search_tool():
+    """Individual search tool for specific testing."""
+    return MockSearchTool()
+
 
 # =============================================================================
 # AGENT SYSTEM FIXTURES
@@ -267,6 +404,71 @@ def sample_config():
         "retry_attempts": 3,
         "debug": True
     }
+
+
+# =============================================================================
+# CONCURRENT EXECUTION TESTING FIXTURES  
+# =============================================================================
+
+@pytest.fixture
+def semaphore_testing_tools():
+    """Create tools for testing semaphore/concurrency limits."""
+    tools, tracker = create_semaphore_testing_tools(count=10)  # Create 10 tools for test
+    return {'tools': tools, 'tracker': tracker}
+
+
+@pytest.fixture
+def resource_contention_tools():
+    """Create tools for testing shared resource access."""
+    tools, counter, file_resource = create_resource_contention_tools(count=3)
+    
+    # Ensure cleanup after test
+    yield {'tools': tools, 'counter': counter, 'file_resource': file_resource}
+    
+    # Cleanup shared resources
+    file_resource.cleanup()
+
+
+@pytest.fixture
+def timing_test_tools():
+    """Create tools for performance/timing testing."""
+    return create_timing_test_tools(['cpu', 'io', 'mixed'])
+
+
+@pytest.fixture
+def comprehensive_concurrent_tools():
+    """Create comprehensive set of concurrent testing tools."""
+    tools_dict = create_comprehensive_concurrent_tools()
+    
+    # Ensure cleanup after test
+    yield tools_dict
+    
+    # Cleanup shared resources
+    tools_dict['file_resource'].cleanup()
+
+
+@pytest.fixture
+def concurrency_tracker():
+    """Shared concurrency tracking instance."""
+    tracker = ConcurrencyTracker()
+    yield tracker
+    tracker.reset()
+
+
+@pytest.fixture
+def shared_counter():
+    """Shared counter for concurrent access testing."""
+    counter = SharedCounter()
+    yield counter
+    counter.reset()
+
+
+@pytest.fixture
+def shared_file_resource():
+    """Shared file resource for contention testing."""
+    resource = SharedFileResource()
+    yield resource
+    resource.cleanup()
 
 
 # =============================================================================

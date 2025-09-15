@@ -24,75 +24,10 @@ from elements.nodes.common.agent.parsers.tool_call_parser import ToolCallParser
 from elements.nodes.common.agent.primitives import AgentAction, AgentObservation, AgentFinish
 from elements.tools.common.base_tool import BaseTool
 from elements.tools.common.execution import ToolExecutorManager, ExecutorConfig
+from elements.tools.common.execution.models import ExecutionMode as ToolExecutionMode
 
 
-class RacyTool(BaseTool):
-    """Tool that simulates race conditions and thread safety issues."""
-    
-    def __init__(self, name: str):
-        self.name = name
-        self.description = f"Thread-unsafe tool {name}"
-        self.shared_counter = 0
-        self.shared_data = {}
-        self.lock = threading.Lock()
-        
-    def run(self, operation: str = "increment", key: str = None, value: str = None, use_lock: bool = False):
-        if use_lock:
-            with self.lock:
-                return self._unsafe_operation(operation, key, value)
-        else:
-            return self._unsafe_operation(operation, key, value)
-    
-    def _unsafe_operation(self, operation, key, value):
-        if operation == "increment":
-            old_value = self.shared_counter
-            time.sleep(0.001)  # Simulate race condition window
-            self.shared_counter = old_value + 1
-            return f"Counter: {self.shared_counter}"
-        elif operation == "set" and key and value:
-            self.shared_data[key] = value
-            time.sleep(0.001)
-            return f"Set {key}={value}"
-        elif operation == "get" and key:
-            time.sleep(0.001)
-            return self.shared_data.get(key, "NOT_FOUND")
-        else:
-            return "Invalid operation"
-
-
-class SlowTool(BaseTool):
-    """Tool with configurable delays to test timeouts."""
-    
-    def __init__(self, name: str, delay: float = 1.0):
-        self.name = name
-        self.description = f"Slow tool {name} with {delay}s delay"
-        self.delay = delay
-        
-    def run(self, *args, **kwargs):
-        time.sleep(self.delay)
-        return f"Completed after {self.delay}s delay"
-
-
-class RandomResponseTool(BaseTool):
-    """Tool that returns random responses to stress parser."""
-    
-    def __init__(self, name: str):
-        self.name = name
-        self.description = f"Random response tool {name}"
-        
-    def run(self, response_type: str = "normal", *args, **kwargs):
-        if response_type == "normal":
-            return f"Normal response from {self.name}"
-        elif response_type == "large":
-            return "x" * 10000  # Large response
-        elif response_type == "unicode":
-            return "🚀🔥💯🎉🌟⚡️🎯🔧🧪📊" * 100  # Unicode stress
-        elif response_type == "json":
-            return '{"nested": {"deeply": {"very": {"much": "so"}}}}'
-        elif response_type == "xml":
-            return "<root><data>test</data></root>"
-        else:
-            return "Unknown response type"
+# Note: Using professional stress testing tools from fixtures instead of ad-hoc tools
 
 
 @pytest.mark.integration
@@ -102,29 +37,23 @@ class TestAgentStress:
     """Stress tests for agent system."""
     
     @pytest.fixture
-    def stress_tools(self):
-        """Create tools for stress testing."""
-        return [
-            RacyTool("racy_tool"),
-            SlowTool("slow_tool", delay=0.1),  # Reduced for testing
-            RandomResponseTool("random_tool")
-        ]
+    def stress_tools(self, stress_testing_tools):
+        """Create tools for stress testing using professional fixtures."""
+        return stress_testing_tools
     
     @pytest.fixture
     def stress_tool_executor_manager(self, stress_tools):
         """Create ToolExecutorManager for stress testing."""
         # Use default config (no retries for stress testing)
         config = ExecutorConfig(
+            max_concurrent=10,
+            execution_mode=ToolExecutionMode.PARALLEL,  # High concurrency for stress testing
+            default_timeout=1.0,  # Short timeout for stress testing
             enable_circuit_breaker=False,
-            default_timeout=1.0  # Short timeout for stress testing
+            enable_metrics=True
         )
         
-        manager = ToolExecutorManager(
-            max_concurrent=10,
-            default_timeout=1.0,
-            enable_metrics=True,
-            **config.to_dict()
-        )
+        manager = ToolExecutorManager(**config.to_dict())
         manager.set_tools({tool.name: tool for tool in stress_tools})
         return manager
     
@@ -209,8 +138,8 @@ class TestAgentStress:
                     content=f"Rapid fire call {call_count}",
                     tool_calls=[
                         ToolCall(
-                            name="random_tool",
-                            args={"response_type": "normal"},
+                            name="parser_stress_tool",
+                            args={"operation": "normal"},
                             tool_call_id=f"rapid-{call_count}"
                         )
                     ]
@@ -273,7 +202,7 @@ class TestAgentStress:
                 content="Concurrent access test",
                 tool_calls=[
                     ToolCall(
-                        name="racy_tool",
+                        name="race_condition_tool",
                         args={"operation": "increment", "use_lock": False},
                         tool_call_id=f"concurrent-{threading.current_thread().ident}"
                     )
@@ -346,8 +275,8 @@ class TestAgentStress:
                 content="x" * 50000,  # 50KB of content
                 tool_calls=[
                     ToolCall(
-                        name="random_tool",
-                        args={"response_type": "large"},
+                        name="parser_stress_tool",
+                        args={"operation": "large_response", "intensity": 10},
                         tool_call_id="large-content"
                     )
                 ]
@@ -359,8 +288,8 @@ class TestAgentStress:
                 content="🚀" * 1000,
                 tool_calls=[
                     ToolCall(
-                        name="random_tool",
-                        args={"emoji": "🔥" * 100},
+                        name="parser_stress_tool",
+                        args={"operation": "unicode_stress", "intensity": 10},
                         tool_call_id="unicode-stress"
                     )
                 ]
@@ -372,18 +301,8 @@ class TestAgentStress:
                 content="Nested data test",
                 tool_calls=[
                     ToolCall(
-                        name="random_tool",
-                        args={
-                            "level1": {
-                                "level2": {
-                                    "level3": {
-                                        "level4": {
-                                            "level5": "deep_value"
-                                        }
-                                    }
-                                }
-                            }
-                        },
+                        name="parser_stress_tool",
+                        args={"operation": "json_response", "intensity": 5},
                         tool_call_id="nested-args"
                     )
                 ]
@@ -395,8 +314,8 @@ class TestAgentStress:
                 content="Many tool calls",
                 tool_calls=[
                     ToolCall(
-                        name="random_tool",
-                        args={"batch": i},
+                        name="parser_stress_tool",
+                        args={"operation": "normal", "intensity": i},
                         tool_call_id=f"batch-{i}"
                     )
                     for i in range(20)  # 20 tool calls
@@ -483,8 +402,8 @@ class TestAgentStress:
                 content="Memory pressure test",
                 tool_calls=[
                     ToolCall(
-                        name="random_tool",
-                        args={"response_type": "large"},
+                        name="parser_stress_tool",
+                        args={"operation": "large_response", "intensity": 10},
                         tool_call_id="memory-pressure"
                     )
                 ]
@@ -537,8 +456,8 @@ class TestAgentStress:
                 content="Testing timeout handling",
                 tool_calls=[
                     ToolCall(
-                        name="slow_tool",  # This tool has a delay
-                        args={},
+                        name="timeout_test_tool",  # This tool has a delay
+                        args={"operation": "timeout_test", "intensity": 5},
                         tool_call_id="timeout-test"
                     )
                 ]
@@ -592,7 +511,7 @@ class TestAgentStress:
                 content="Race condition test",
                 tool_calls=[
                     ToolCall(
-                        name="racy_tool",
+                        name="race_condition_tool",
                         args={"operation": "increment", "use_lock": False},
                         tool_call_id=f"race-{i}"
                     )
@@ -622,8 +541,8 @@ class TestAgentStress:
             ChatMessage(role=Role.USER, content="Test race conditions")
         ]
         
-        # Get the racy tool to check its state
-        racy_tool = next(tool for tool in stress_tools if tool.name == "racy_tool")
+        # Get the race condition tool to check its state
+        racy_tool = next(tool for tool in stress_tools if tool.name == "race_condition_tool")
         initial_counter = racy_tool.shared_counter
         
         steps = []

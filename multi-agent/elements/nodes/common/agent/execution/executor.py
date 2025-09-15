@@ -155,11 +155,12 @@ class AgentActionExecutor:
             
             if requests:
                 print(f"🔍 DEBUG: Executing {len(requests)} requests via ToolExecutorManager")
-                # Execute via ToolExecutorManager
+                # Execute via ToolExecutorManager (uses configured execution mode)
                 batch_response = await self.tool_executor_manager.execute_requests_async(
-                    requests=requests,
-                    mode=ExecutionMode.PARALLEL
+                    requests=requests
+                    # No mode specified - uses manager's configured execution_mode
                 )
+                print(f"🔍 DEBUG: Batch response received with {len(batch_response.responses)} responses")
                 
                 # Convert responses to observations for successful tools
                 for action in actions:
@@ -169,10 +170,9 @@ class AgentActionExecutor:
                     response = batch_response.get_response(action.id)
                     
                     if response:
-                        print(f"🔍 DEBUG: Converting response to observation for tool: {action.tool}, success: {response.success}")
                         observation = self._response_to_observation(action, response, start_time)
                     else:
-                        print(f"🔍 DEBUG: No response found for tool: {action.tool}")
+                        print(f"🔍 DEBUG: No response found for action.id: {action.id} (tool: {action.tool})")
                         # Missing response - shouldn't happen but handle gracefully
                         observation = AgentObservation(
                             action_id=action.id,

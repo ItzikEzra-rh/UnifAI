@@ -302,7 +302,7 @@ class ReActStrategy(AgentStrategy):
         return [
             ChatMessage(
                 role=Role.TOOL,
-                content=obs.output if obs.success else f"Error: {obs.error}",
+                content=obs.output if obs.success else f"Error: {obs.error or 'Unknown error'}",
                 tool_call_id=obs.action_id,
             )
             for obs in observations

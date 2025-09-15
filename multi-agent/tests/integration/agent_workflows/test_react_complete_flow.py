@@ -20,16 +20,7 @@ from elements.nodes.common.agent.primitives import AgentAction, AgentObservation
 from elements.tools.common.base_tool import BaseTool
 
 
-class MockTool(BaseTool):
-    """Mock tool for integration testing."""
-    
-    def __init__(self, name: str, description: str = "Mock tool"):
-        self.name = name
-        self.description = description
-    
-    def run(self, *args, **kwargs):
-        """Required abstract method from BaseTool."""
-        return f"Mock result from {self.name} with args: {kwargs}"
+# Note: Using professional mock tools from fixtures instead of ad-hoc tools
 
 
 @pytest.mark.integration
@@ -38,13 +29,9 @@ class TestReActCompleteFlow:
     """Integration tests for complete ReAct agent workflows."""
 
     @pytest.fixture
-    def mock_tools(self):
-        """Create mock tools for integration testing."""
-        return [
-            MockTool("search_tool", "Search for information"),
-            MockTool("calculator", "Perform calculations"),
-            MockTool("weather_tool", "Get weather information")
-        ]
+    def mock_tools(self, react_demo_tools):
+        """Create mock tools for integration testing using professional fixtures."""
+        return react_demo_tools
 
     @pytest.fixture
     def mock_tool_executor_manager(self, mock_tools):

@@ -231,6 +231,12 @@ class ExecutorConfig:
     
     Provides clean, typed configuration with sensible defaults for production use.
     """
+    # Core execution settings
+    max_concurrent: int = 10
+    execution_mode: ExecutionMode = ExecutionMode.PARALLEL
+    default_timeout: Optional[float] = None
+    enable_metrics: bool = True
+    
     # Error handling
     error_handler: Optional[Any] = None  # ErrorHandler type, avoiding circular import
     
@@ -240,10 +246,6 @@ class ExecutorConfig:
     # Circuit breaker
     enable_circuit_breaker: bool = False
     
-    # Execution settings
-    default_execution_mode: ExecutionMode = ExecutionMode.PARALLEL
-    default_timeout: Optional[float] = None
-    
     @classmethod
     def create_default(cls) -> 'ExecutorConfig':
         """Create a default configuration with production-ready settings."""
@@ -251,10 +253,12 @@ class ExecutorConfig:
         from .validators import ArgumentValidator
         
         return cls(
+            max_concurrent=10,
+            execution_mode=ExecutionMode.PARALLEL,
+            enable_metrics=True,
             error_handler=RetryPolicy(max_retries=2, initial_delay=0.5),
             validators=[ArgumentValidator(strict=True)],
-            enable_circuit_breaker=False,
-            default_execution_mode=ExecutionMode.PARALLEL
+            enable_circuit_breaker=False
         )
     
     @classmethod
@@ -264,23 +268,15 @@ class ExecutorConfig:
         from .validators import ArgumentValidator
         
         return cls(
+            max_concurrent=5,  # More conservative for robust mode
+            execution_mode=ExecutionMode.CONCURRENT_LIMITED,
+            enable_metrics=True,
             error_handler=RetryPolicy(max_retries=3, initial_delay=0.5, exponential_base=2.0),
             validators=[ArgumentValidator(strict=True)],
-            enable_circuit_breaker=True,
-            default_execution_mode=ExecutionMode.PARALLEL
+            enable_circuit_breaker=True
         )
     
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary for ToolExecutorManager constructor."""
-        config = {}
-        
-        if self.error_handler is not None:
-            config['error_handler'] = self.error_handler
-        
-        if self.validators is not None:
-            config['validators'] = self.validators
-            
-        if self.enable_circuit_breaker:
-            config['enable_circuit_breaker'] = self.enable_circuit_breaker
-            
-        return config
+        from dataclasses import asdict
+        return {k: v for k, v in asdict(self).items() if v is not None}
