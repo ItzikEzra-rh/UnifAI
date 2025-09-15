@@ -138,144 +138,132 @@ class TestConcurrentExecution:
         """
         Test performance differences between execution strategies.
         
-        Now properly tests SEQUENTIAL vs PARALLEL vs CONCURRENT_LIMITED strategies
-        using the cleaned up configuration system.
+        This test uses a scenario designed to show clear differences:
+        - 10 tools, each taking 0.5s 
+        - max_concurrent=2 for limited strategy
+        - This creates a clear bottleneck that demonstrates the differences
         """
-        
-        # Test different execution strategies
+
+        # Test different execution strategies with more pronounced differences
         configs = {
             'sequential': ExecutorConfig(
                 execution_mode=ToolExecutionMode.SEQUENTIAL,
                 max_concurrent=1,
                 enable_circuit_breaker=False,
-                default_timeout=5.0
+                default_timeout=10.0
             ),
             'parallel': ExecutorConfig(
                 execution_mode=ToolExecutionMode.PARALLEL,
                 max_concurrent=100,
                 enable_circuit_breaker=False,
-                default_timeout=5.0
+                default_timeout=10.0
             ),
             'limited': ExecutorConfig(
                 execution_mode=ToolExecutionMode.CONCURRENT_LIMITED,
-                max_concurrent=3,
+                max_concurrent=2,  # Very limited to create clear bottleneck
                 enable_circuit_breaker=False,
-                default_timeout=5.0
+                default_timeout=10.0
             )
         }
-        
+
         results = {}
-        
+
         for strategy_name, config in configs.items():
             manager = ToolExecutorManager(**config.to_dict())
             # Register timing test tools
             manager.set_tools({tool.name: tool for tool in timing_test_tools})
             executor = AgentActionExecutor(tool_executor_manager=manager)
-            
+
             def timing_test_llm_chat(messages, tools):
+                # Create 10 tool calls, each taking 0.5s to create clear timing differences
+                tool_calls = []
+                for i in range(10):
+                    tool_calls.append(ToolCall(
+                        name="timing_cpu",
+                        args={"duration": 0.5, "work_type": "cpu"},
+                        tool_call_id=f"{strategy_name}-tool-{i+1}"
+                    ))
+                
                 return ChatMessage(
                     role=Role.ASSISTANT,
-                    content=f"Testing {strategy_name} execution strategy with 6 tools.",
-                    tool_calls=[
-                        # First batch of 3 tools
-                        ToolCall(
-                            name="timing_cpu",
-                            args={"duration": 0.2, "work_type": "cpu"},
-                            tool_call_id=f"{strategy_name}-cpu-1"
-                        ),
-                        ToolCall(
-                            name="timing_io",
-                            args={"duration": 0.2, "work_type": "io"},
-                            tool_call_id=f"{strategy_name}-io-1"
-                        ),
-                        ToolCall(
-                            name="timing_mixed",
-                            args={"duration": 0.2, "work_type": "mixed"},
-                            tool_call_id=f"{strategy_name}-mixed-1"
-                        ),
-                        # Second batch of 3 tools (exceeds max_concurrent=3 for limited strategy)
-                        ToolCall(
-                            name="timing_cpu",
-                            args={"duration": 0.2, "work_type": "cpu"},
-                            tool_call_id=f"{strategy_name}-cpu-2"
-                        ),
-                        ToolCall(
-                            name="timing_io",
-                            args={"duration": 0.2, "work_type": "io"},
-                            tool_call_id=f"{strategy_name}-io-2"
-                        ),
-                        ToolCall(
-                            name="timing_mixed",
-                            args={"duration": 0.2, "work_type": "mixed"},
-                            tool_call_id=f"{strategy_name}-mixed-2"
-                        )
-                    ]
+                    content=f"Testing {strategy_name} execution strategy with 10 tools of 0.5s each.",
+                    tool_calls=tool_calls
                 )
-            
+
             strategy = ReActStrategy(
                 llm_chat=timing_test_llm_chat,
                 tools=timing_test_tools,
                 parser=ToolCallParser(),
                 max_steps=1
             )
-            
+
             execution_handler = ExecutionHandlerFactory.create(
                 mode=ExecutionMode.AUTO,
                 action_executor=executor
             )
-            
+
             iterator = AgentIterator(
                 strategy=strategy,
                 execution_handler=execution_handler
             )
-            
+
             iterator.messages = [
                 ChatMessage(role=Role.USER, content=f"Test {strategy_name} strategy")
             ]
-            
+
             # Measure execution time
             start_time = time.time()
             observations = []
-            
+
             for step in iterator:
                 if step.type.value == "observation":
                     observations.append(step.data)
-                if step.type.value in ["finish", "error"] or len(observations) >= 6:
+                if step.type.value in ["finish", "error"] or len(observations) >= 10:
                     break
-            
+
             execution_time = time.time() - start_time
             results[strategy_name] = {
                 'time': execution_time,
                 'observations': len(observations)
             }
-            
+
             print(f"Strategy {strategy_name}: {execution_time:.3f}s, {len(observations)} observations")
-        
-        # Verify performance characteristics with 6 tools @ 0.2s each
+
+        # Verify performance characteristics with 10 tools @ 0.5s each
         sequential_time = results['sequential']['time']
         parallel_time = results['parallel']['time']
         limited_time = results['limited']['time']
-        
-        # Sequential should be slowest (tools run one-by-one: ~1.2s for 6 × 0.2s tools)
+
+        # Expected times:
+        # Sequential: 10 × 0.5s = 5.0s
+        # Parallel: ~0.5s + overhead (all at once)
+        # Limited (max_concurrent=2): ~2.5s (pipelined execution)
+
+        # Core test purpose: Verify strategies execute in the expected performance order
+        # Sequential should be slowest
         assert sequential_time > parallel_time, f"Sequential not slower than parallel: {sequential_time:.3f} <= {parallel_time:.3f}"
         assert sequential_time > limited_time, f"Sequential not slower than limited: {sequential_time:.3f} <= {limited_time:.3f}"
 
-        # Parallel should be fastest (all tools run concurrently: ~0.2s max duration)
-        assert parallel_time <= limited_time, f"Parallel not faster than limited: {parallel_time:.3f} > {limited_time:.3f}"
+        # Parallel should be fastest
+        assert parallel_time < limited_time, f"Parallel not faster than limited: {parallel_time:.3f} >= {limited_time:.3f}"
         
-        # Limited should be slower than parallel due to concurrency bottleneck
-        # With max_concurrent=3, limited uses pipelined execution: tools start as others complete
-        # This results in better performance than strict batching (efficient semaphore usage)
-        assert limited_time > parallel_time * 1.2, f"Limited not measurably slower than parallel: {limited_time:.3f} <= {parallel_time * 1.2:.3f}"
+        # Verify strategies show meaningful performance differences (not just ordering)
+        # Sequential should be substantially slower than both others (at least 2x)
+        assert sequential_time > parallel_time * 2.0, f"Sequential not substantially slower than parallel: {sequential_time:.3f} <= {parallel_time * 2.0:.3f}"
+        assert sequential_time > limited_time * 1.5, f"Sequential not substantially slower than limited: {sequential_time:.3f} <= {limited_time * 1.5:.3f}"
         
-        # Verify expected timing ranges (with realistic tolerances for overhead)
-        assert sequential_time > 1.0, f"Sequential too fast: {sequential_time:.3f}s < 1.0s"  # Should be ~1.2s
-        assert parallel_time < 0.5, f"Parallel too slow: {parallel_time:.3f}s >= 0.5s"      # Allow for overhead
-        assert limited_time < 0.7, f"Limited too slow: {limited_time:.3f}s >= 0.7s"        # Should be ~0.5s
+        # Limited should show some bottleneck effect compared to parallel (at least 30% slower)
+        # This is a generous threshold that focuses on detecting the bottleneck rather than exact ratios
+        assert limited_time > parallel_time * 1.3, f"Limited shows no meaningful bottleneck vs parallel: {limited_time:.3f} <= {parallel_time * 1.3:.3f}"
         
-        # All should complete successfully
+        # Verify all strategies completed successfully
         for strategy_name, result in results.items():
-            assert result['observations'] == 6, f"{strategy_name} missing observations: {result['observations']} != 6"
+            assert result['observations'] == 10, f"Strategy {strategy_name} should complete all 10 observations, got {result['observations']}"
+        
+        # Verify reasonable timing ranges (generous bounds to focus on behavior, not exact timing)
+        assert sequential_time > 3.0, f"Sequential suspiciously fast: {sequential_time:.3f}s < 3.0s"    # Should be much slower
+        assert parallel_time < 2.0, f"Parallel suspiciously slow: {parallel_time:.3f}s >= 2.0s"        # Should be much faster
+        assert limited_time < 4.0, f"Limited suspiciously slow: {limited_time:.3f}s >= 4.0s"           # Should be faster than sequential
         
         print(f"✅ Strategy comparison: Sequential={sequential_time:.3f}s, Parallel={parallel_time:.3f}s, Limited={limited_time:.3f}s")
 
