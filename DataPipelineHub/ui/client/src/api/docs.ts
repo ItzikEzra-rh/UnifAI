@@ -24,12 +24,13 @@ export async function uploadDocs(files: {name: string, content: string}[]): Prom
 
 export async function embedDocs(docs: {source_name: string}[]): Promise<any> {
     const embedded = await api.put<any>(
-        'pipelines/embed',
-        { 
-            data: docs,
-            type: 'document'
-        }
-      );
+      'pipelines/embed',
+      {
+        data: docs,
+        type: 'document'
+      }
+    );
+    return embedded.data;
 }
 
 export async function deleteDoc(pipelineId: string): Promise<any> {

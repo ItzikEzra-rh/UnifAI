@@ -1,4 +1,6 @@
 import os
+import asyncio
+from datetime import datetime
 import uuid
 from pipeline.pipeline_repository import PipelineRepository
 from global_utils.helpers.helpers import calculate_date_range
@@ -13,6 +15,9 @@ from shared.source_types import (
 from shared.logger import logger
 from config.constants import DataSource, PipelineStatus
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
+from utils.file_hash import compute_file_md5
+from validator.validator import build_doc_validators, ValidatorRunner
+from services.documents.duplicate_checker import DocumentDuplicateChecker
 
 app_config = AppConfig.get_instance()
 upload_folder = app_config.upload_folder
@@ -42,6 +47,7 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
         logger.info(f"Starting registration for {len(data_list)} {source_type} sources by user {upload_by}")
         
         registered_sources = []
+        issues: list[dict] = []
         
         for instance in data_list:
             # Extract optional user-defined metadata from frontend
@@ -80,8 +86,32 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                 source_name = instance.get("source_name", "")
                 doc_path = os.path.join(upload_folder, source_name)
                 pipeline_id = f"{DataSource.DOCUMENT.value}_{source_id}"
+                file_md5 = compute_file_md5(doc_path)
                 
-                # Create metadata object
+                doc_validators = build_doc_validators()
+                validator = ValidatorRunner(doc_validators)
+                duplicate_checker = DocumentDuplicateChecker(mongo_storage)
+                context = {"duplicate_checker": duplicate_checker}
+
+                is_valid, issue = asyncio.run(validator.validate({
+                    "doc_path": doc_path,
+                    "source_name": source_name,
+                    "md5": file_md5,
+                }, context))
+
+                if not is_valid:
+                    # Consume structured ValidationIssue
+                    issue_key = (issue or {}).get("issue_key", "ValidationError")
+                    message = (issue or {}).get("message", "Validation error")
+                    validator_name = (issue or {}).get("validator_name", "Validator")
+                    issues.append({
+                        "doc_name": source_name,
+                        "issue_type": issue_key,
+                        "message": message,
+                        "validator": validator_name,
+                    })
+                    continue
+
                 metadata = DocumentMetadata(
                     doc_id=source_id,
                     doc_name=source_name,
@@ -96,6 +126,7 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                     page_count=0,
                     full_text="",
                     file_size=0,
+                    md5=file_md5,
                     **user_metadata  # Unpack user metadata into the model
                 )
                 type_data = doc_type_data.model_dump()
@@ -131,7 +162,8 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
         
         return RegistrationResponse(
             status="registration_complete",
-            registered_sources=registered_sources
+            registered_sources=registered_sources,
+            issues=issues
         ).model_dump()
         
     except Exception as e:

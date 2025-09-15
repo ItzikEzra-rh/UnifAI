@@ -32,7 +32,9 @@ class PipelineCeleryService:
         """
         try:
             current_user = session.get('user', {}).get('username', 'default')
-            registered_sources = self._execute_registration_tasks_sync(data, source_type, current_user)
+            registration_response = self._execute_registration_tasks_sync(data, source_type, current_user)
+            registered_sources = registration_response.get("registered_sources", [])
+
             pipeline_worker_tasks_submitted = self._dispatch_pipeline_worker_tasks(registered_sources, source_type)
             
             response_data = {
@@ -41,6 +43,7 @@ class PipelineCeleryService:
                 "registration_completed": True,
                 "pipeline_worker_tasks_submitted": pipeline_worker_tasks_submitted,
                 "source_count": len(registered_sources),
+                "registration": registration_response,
             }
             return response_data, 202
             
@@ -48,7 +51,7 @@ class PipelineCeleryService:
             logger.error(f"Failed to execute Celery pipeline workflow with registration: {str(e)}")
             raise e
     
-    def _execute_registration_tasks_sync(self, data: List[Dict[str, Any]], source_type: str, current_user: str) -> List[Dict[str, Any]]:
+    def _execute_registration_tasks_sync(self, data: List[Dict[str, Any]], source_type: str, current_user: str) -> Dict[str, Any]:
         """
         Execute source registration tasks synchronously via Celery workers and return registered sources.
         Waits for Celery worker completion before proceeding to next workflow step.
@@ -76,12 +79,7 @@ class PipelineCeleryService:
         
         # Wait for Celery worker registration completion with 5 minute timeout
         celery_registration_response = celery_registration_result.get(timeout=300)
-        registered_sources = celery_registration_response.get("registered_sources", [])
-        
-        if not registered_sources:
-            raise ValueError("No sources were registered successfully by Celery workers")
-            
-        return registered_sources
+        return celery_registration_response
     
     def _dispatch_pipeline_worker_tasks(self, registered_sources: List[Dict[str, Any]], source_type: str) -> int:
         """

@@ -1,10 +1,13 @@
 import { useState } from "react";
+import type React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FaFileAlt, FaUpload, FaTimes } from "react-icons/fa";
 import { Progress } from "@/components/ui/progress";
+import { CircleX } from "lucide-react";
 import { ProcessingOptions } from "./ProcessingOptions";
 import { embedDocs, uploadDocs } from "@/api/docs";
+import { toast } from "@/hooks/use-toast";
 
 interface UploadTabProps {
     setShowUploadModal: (showUploadModal: boolean) => void;
@@ -82,8 +85,40 @@ export const UploadTab: React.FC<UploadTabProps> = ({
 
     const startPipeline = async (docs: {source_name: string}[]) => {
         try {
-            await embedDocs(docs)
-            console.log("API submission successful!");
+            const res = await embedDocs(docs);
+            const issues = res?.registration?.issues || [];
+
+            if (issues.length > 0) {
+                // Backend provides: { doc_name, issue_type, message }
+                issues.forEach((issue: any) => {
+                    const issueType = String(issue.issue_type || "");
+                    const message = String(issue.message || "");
+                    const titleText = issueType ? issueType.toUpperCase() : "Upload issue";
+                    const descParts = [] as string[];
+                    if (message) descParts.push(message);
+                    const description = descParts.join(" — ");
+
+                    const isDuplicate =
+                        issueType.toLowerCase().includes("dup") ||
+                        message.toLowerCase().includes("duplicate") ||
+                        message.toLowerCase().includes("already exists") ||
+                        message.toLowerCase().includes("exists");
+                    const title: React.ReactNode = (
+                        <span className="inline-flex items-center gap-2">
+                            {isDuplicate && (
+                                <CircleX className="h-4 w-4 text-red-500" />
+                            )}
+                            <span>{titleText}</span>
+                        </span>
+                    );
+
+                    toast({
+                        variant: "destructive",
+                        title,
+                        description,
+                    });
+                });
+            }
         } catch (error) {
             console.error(error);
             setError((error as Error).message);
