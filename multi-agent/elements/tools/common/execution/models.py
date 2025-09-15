@@ -262,6 +262,21 @@ class ExecutorConfig:
         )
     
     @classmethod
+    def create_balanced(cls) -> 'ExecutorConfig':
+        """Create a balanced configuration with high performance and reliability."""
+        from .policies import RetryPolicy
+        from .validators import ArgumentValidator
+        
+        return cls(
+            max_concurrent=10,
+            execution_mode=ExecutionMode.PARALLEL,
+            enable_metrics=True,
+            error_handler=RetryPolicy(max_retries=2, initial_delay=0.5),
+            validators=[ArgumentValidator(strict=True)],
+            enable_circuit_breaker=True
+        )
+    
+    @classmethod
     def create_robust(cls) -> 'ExecutorConfig':
         """Create a robust configuration with circuit breaker and enhanced error handling."""
         from .policies import RetryPolicy

@@ -14,6 +14,7 @@ from elements.providers.mcp_server_client.mcp_provider import McpProvider
 from elements.nodes.common.agent import AgentConfig
 from elements.nodes.common.agent.execution import ExecutionMode
 from elements.nodes.common.agent.constants import StrategyType
+from elements.tools.common.execution.models import ExecutorConfig
 
 
 class CustomAgentNode(
@@ -168,7 +169,8 @@ class CustomAgentNode(
             )
 
             config = AgentConfig(
-                execution_mode=ExecutionMode.AUTO
+                execution_mode=ExecutionMode.AUTO,
+                executor_config=ExecutorConfig.create_balanced()
             )
 
             result = self.run_agent(
