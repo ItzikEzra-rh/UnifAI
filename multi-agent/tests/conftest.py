@@ -472,6 +472,137 @@ def shared_file_resource():
 
 
 # =============================================================================
+# GRAPH SYSTEM FIXTURES (Shared across all test types)
+# =============================================================================
+
+@pytest.fixture
+def graph_state():
+    """Create a basic GraphState for testing."""
+    from graph.state.graph_state import GraphState
+    
+    state = GraphState()
+    # Initialize all standard channels
+    state.user_prompt = ''
+    state.nodes_output = {}
+    state.messages = []
+    state.output = ''
+    state.target_branch = ''
+    state.inter_packets = []
+    state.task_threads = {}
+    state.threads = {}
+    state.workspaces = {}
+    return state
+
+
+@pytest.fixture
+def state_view(graph_state):
+    """Create a StateView with comprehensive channel access for testing."""
+    from graph.state.state_view import StateView
+    from graph.state.graph_state import Channel
+    
+    # Provide access to all standard channels for maximum test flexibility
+    reads = {
+        Channel.USER_PROMPT,     # User input
+        Channel.MESSAGES,        # Public conversation
+        Channel.NODES_OUTPUT,    # Node outputs
+        Channel.OUTPUT,          # Final output
+        Channel.TARGET_BRANCH,   # Branch targeting
+        Channel.INTER_PACKETS,   # IEM packets
+        Channel.TASK_THREADS,    # Task conversation threads
+        Channel.THREADS,         # Thread metadata
+        Channel.WORKSPACES       # Workspace data
+    }
+    writes = {
+        Channel.USER_PROMPT,     # User input
+        Channel.MESSAGES,        # Public conversation
+        Channel.NODES_OUTPUT,    # Node outputs
+        Channel.OUTPUT,          # Final output
+        Channel.TARGET_BRANCH,   # Branch targeting
+        Channel.INTER_PACKETS,   # IEM packets
+        Channel.TASK_THREADS,    # Task conversation threads
+        Channel.THREADS,         # Thread metadata
+        Channel.WORKSPACES       # Workspace data
+    }
+    
+    return StateView(graph_state, reads=reads, writes=writes)
+
+
+@pytest.fixture
+def step_context():
+    """Create a basic StepContext for testing."""
+    return create_step_context("test_node")
+
+
+@pytest.fixture
+def step_context_with_adjacency():
+    """Create a StepContext with adjacent nodes for testing."""
+    return create_step_context("test_node", ["adjacent_1", "adjacent_2", "adjacent_3"])
+
+
+def create_step_context(uid: str, adjacent_nodes: list = None):
+    """
+    Factory function to create StepContext instances for testing.
+    
+    Args:
+        uid: The unique identifier for the step
+        adjacent_nodes: List of adjacent node UIDs
+        
+    Returns:
+        StepContext instance properly configured for testing
+    """
+    from graph.step_context import StepContext
+    from core.models import ElementCard
+    from core.enums import ResourceCategory
+    from blueprints.models.blueprint import StepMeta
+    
+    # Create ElementCard objects for adjacent nodes
+    adjacent_nodes_dict = {}
+    for node_uid in (adjacent_nodes or []):
+        card = ElementCard(
+            uid=node_uid,
+            category=ResourceCategory.NODE,
+            type_key="test_node",
+            name=f"Test Node {node_uid}",
+            description=f"Test node for {node_uid}",
+            capabilities=set(),
+            reads=set(),
+            writes=set(),
+            instance=None,
+            config={},
+            skills={}
+        )
+        adjacent_nodes_dict[node_uid] = card
+    
+    return StepContext(
+        uid=uid,
+        metadata=StepMeta(),
+        adjacent_nodes=adjacent_nodes_dict,
+        branches={}
+    )
+
+
+@pytest.fixture
+def element_card():
+    """Create a basic ElementCard for testing."""
+    from core.models import ElementCard
+    from core.enums import ResourceCategory
+    
+    return ElementCard(
+        uid="test_element",
+        category=ResourceCategory.NODE,
+        type_key="test_type",
+        name="Test Element",
+        description="A test element for testing",
+        capabilities=set(),
+        reads=set(),
+        writes=set(),
+        instance=None,
+        config={},
+        skills={}
+    )
+
+
+# =============================================================================
 # PYTEST CONFIGURATION
 # =============================================================================
 
@@ -485,6 +616,7 @@ def pytest_configure(config):
     config.addinivalue_line("markers", "tool_execution: Tool execution tests")
     config.addinivalue_line("markers", "graph_engine: Graph engine tests")
     config.addinivalue_line("markers", "session_management: Session management tests")
+    config.addinivalue_line("markers", "iem_system: IEM system tests")
     config.addinivalue_line("markers", "slow: Slow running tests")
     config.addinivalue_line("markers", "fast: Fast running tests")
     config.addinivalue_line("markers", "stable: Stable tests")
