@@ -5,10 +5,10 @@ This module provides a single, cohesive interface for all phase-related concerns
 replacing multiple separate providers with a clean, unified design.
 """
 
-from typing import Protocol, List, Dict, Optional
+from typing import Protocol, List, Dict, Optional, Set
 from abc import ABC, abstractmethod
 from elements.tools.common.base_tool import BaseTool
-from .constants import ExecutionPhase
+from .constants import ExecutionPhase, ToolCategory
 from .phase_protocols import PhaseState
 from .phase_guidance import PhaseGuidanceProvider
 
@@ -55,6 +55,14 @@ class PhaseProvider(Protocol):
     ) -> ExecutionPhase:
         """Decide the next execution phase based on current state."""
         ...
+    
+    def get_supported_phases(self) -> List[ExecutionPhase]:
+        """Get list of phases supported by this provider."""
+        ...
+    
+    def get_phase_tool_categories(self, phase: ExecutionPhase) -> Set[ToolCategory]:
+        """Get tool categories allowed for a specific phase."""
+        ...
 
 
 class BasePhaseProvider(ABC):
@@ -63,6 +71,12 @@ class BasePhaseProvider(ABC):
     
     Provides common functionality while allowing customization of specific concerns.
     Follows Template Method pattern for extensibility.
+    
+    Key Design Principles:
+    - Each provider defines its own supported phases
+    - Each provider defines tool categorization for its phases  
+    - Common functionality (guidance) is shared via template methods
+    - Extensible for different phase systems and workflows
     """
     
     def __init__(self, tools: List[BaseTool]):
@@ -73,6 +87,7 @@ class BasePhaseProvider(ABC):
             tools: All available tools for phase categorization
         """
         self._tools = tools
+        self._validate_phase_definitions()
     
     def get_phase_guidance(self, phase: ExecutionPhase) -> str:
         """
@@ -81,6 +96,79 @@ class BasePhaseProvider(ABC):
         Uses PhaseGuidanceProvider for consistency across implementations.
         """
         return PhaseGuidanceProvider.get_guidance(phase)
+    
+    def get_supported_phases(self) -> List[ExecutionPhase]:
+        """
+        Get list of phases supported by this provider.
+        
+        Default implementation returns all standard execution phases.
+        Subclasses can override to support different phase sets.
+        """
+        return [
+            ExecutionPhase.PLANNING,
+            ExecutionPhase.ALLOCATION, 
+            ExecutionPhase.EXECUTION,
+            ExecutionPhase.MONITORING,
+            ExecutionPhase.SYNTHESIS
+        ]
+    
+    @abstractmethod
+    def get_phase_tool_categories(self, phase: ExecutionPhase) -> Set[ToolCategory]:
+        """
+        Get tool categories allowed for a specific phase.
+        
+        This method must be implemented by subclasses to define which
+        tool categories are appropriate for each phase in their context.
+        
+        Args:
+            phase: The execution phase
+            
+        Returns:
+            Set of tool categories allowed in this phase
+        """
+        pass
+    
+    def _validate_phase_definitions(self) -> None:
+        """
+        Validate that the provider properly defines its phase system.
+        
+        This template method ensures that subclasses properly implement
+        their phase definitions and tool categorizations.
+        """
+        try:
+            # Validate that supported phases are defined
+            supported_phases = self.get_supported_phases()
+            if not supported_phases:
+                raise ValueError(f"{self.__class__.__name__} must define supported phases")
+            
+            # Validate that each supported phase has tool categories defined
+            for phase in supported_phases:
+                categories = self.get_phase_tool_categories(phase)
+                if not isinstance(categories, set):
+                    raise ValueError(f"{self.__class__.__name__} must return Set[ToolCategory] for phase {phase}")
+                    
+        except NotImplementedError:
+            # Abstract methods not implemented yet - this is expected during construction
+            pass
+        except Exception as e:
+            print(f"Warning: Phase definition validation failed for {self.__class__.__name__}: {e}")
+    
+    def validate_phase_transition(self, from_phase: ExecutionPhase, to_phase: ExecutionPhase) -> bool:
+        """
+        Validate that a phase transition is allowed.
+        
+        Default implementation allows all transitions between supported phases.
+        Subclasses can override to enforce specific transition rules.
+        
+        Args:
+            from_phase: Current phase
+            to_phase: Target phase
+            
+        Returns:
+            True if transition is allowed, False otherwise
+        """
+        supported = self.get_supported_phases()
+        return from_phase in supported and to_phase in supported
     
     @abstractmethod
     def get_phase_context(self) -> PhaseState:
@@ -131,6 +219,18 @@ class DefaultPhaseProvider(BasePhaseProvider):
     def get_tools_for_phase(self, phase: ExecutionPhase) -> List[BaseTool]:
         """Return all tools for all phases (no filtering)."""
         return self._tools.copy()
+    
+    def get_phase_tool_categories(self, phase: ExecutionPhase) -> Set[ToolCategory]:
+        """Default implementation returns all categories for all phases."""
+        return {
+            ToolCategory.WORKPLAN,
+            ToolCategory.TOPOLOGY,
+            ToolCategory.IEM,
+            ToolCategory.DELEGATION,
+            ToolCategory.WORKSPACE,
+            ToolCategory.DOMAIN,
+            ToolCategory.SUMMARIZATION
+        }
     
     def decide_next_phase(
         self,

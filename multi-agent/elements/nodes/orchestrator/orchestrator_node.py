@@ -22,7 +22,7 @@ from elements.nodes.common.agent.execution import ExecutionMode
 from elements.nodes.common.agent.constants import StrategyType
 from elements.tools.common.execution.models import ExecutorConfig
 from elements.nodes.common.workload import Task, WorkPlanService, WorkItemStatus, WorkItemKind
-from elements.nodes.common.agent.unified_phase_provider import PhaseProviderFactory
+from .orchestrator_phase_provider import OrchestratorPhaseProvider
 from elements.tools.builtin import (
     CreateOrUpdateWorkPlanTool,
     AssignWorkItemTool,
@@ -317,9 +317,14 @@ class OrchestratorNode(
         tools = self._build_orchestration_tools(thread_id)
         print(f"🔧 [DEBUG] Built {len(tools)} tools: {[tool.name for tool in tools]}")
 
-        # Create unified phase provider
-        print(f"📊 [DEBUG] Creating unified phase provider")
-        phase_provider = PhaseProviderFactory.create_orchestrator_provider(self, thread_id, tools)
+        # Create orchestrator phase provider (no circular dependency!)
+        print(f"📊 [DEBUG] Creating orchestrator phase provider")
+        phase_provider = OrchestratorPhaseProvider(
+            tools=tools,
+            get_workspace=self.get_workspace,  # Inject function, not whole node
+            node_uid=self.uid,
+            thread_id=thread_id
+        )
 
         # Create strategy with unified provider
         print(f"🧠 [DEBUG] Creating PlanAndExecute strategy")

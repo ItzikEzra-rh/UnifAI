@@ -408,6 +408,7 @@ class ToolCategory(str, Enum):
     DELEGATION = "delegation"
     WORKSPACE = "workspace"
     DOMAIN = "domain"
+    SUMMARIZATION = "summarization"
 
 
 class ToolNames:
@@ -474,4 +475,44 @@ class PhaseToolMapping:
     }
     
     SYNTHESIS_KEYWORDS: Set[str] = {ToolKeywords.SUMMARIZE}
-    SYNTHESIS_CATEGORIES: Set[ToolCategory] = {ToolCategory.WORKPLAN}
+    SYNTHESIS_CATEGORIES: Set[ToolCategory] = {ToolCategory.WORKPLAN, ToolCategory.SUMMARIZATION}
+    
+    @classmethod
+    def get_categories_for_phase(cls, phase: 'ExecutionPhase') -> Set[ToolCategory]:
+        """
+        Get tool categories allowed for a specific execution phase.
+        
+        Args:
+            phase: The execution phase
+            
+        Returns:
+            Set of tool categories allowed in this phase
+        """
+        phase_mapping = {
+            ExecutionPhase.PLANNING: cls.PLANNING_CATEGORIES,
+            ExecutionPhase.ALLOCATION: cls.ALLOCATION_CATEGORIES,
+            ExecutionPhase.EXECUTION: cls.EXECUTION_CATEGORIES,
+            ExecutionPhase.MONITORING: cls.MONITORING_CATEGORIES,
+            ExecutionPhase.SYNTHESIS: cls.SYNTHESIS_CATEGORIES,
+        }
+        return phase_mapping.get(phase, set())
+    
+    @classmethod
+    def get_keywords_for_phase(cls, phase: 'ExecutionPhase') -> Set[str]:
+        """
+        Get tool keywords allowed for a specific execution phase.
+        
+        Args:
+            phase: The execution phase
+            
+        Returns:
+            Set of tool keywords allowed in this phase
+        """
+        phase_mapping = {
+            ExecutionPhase.PLANNING: cls.PLANNING_KEYWORDS,
+            ExecutionPhase.ALLOCATION: cls.ALLOCATION_KEYWORDS,
+            ExecutionPhase.EXECUTION: cls.EXECUTION_KEYWORDS,
+            ExecutionPhase.MONITORING: cls.MONITORING_KEYWORDS,
+            ExecutionPhase.SYNTHESIS: cls.SYNTHESIS_KEYWORDS,
+        }
+        return phase_mapping.get(phase, set())

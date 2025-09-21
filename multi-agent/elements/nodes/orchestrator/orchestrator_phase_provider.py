@@ -5,7 +5,7 @@ Implements unified PhaseProvider interface with orchestrator-specific logic
 for context, tools, and phase transitions.
 """
 
-from typing import List, Dict, Set
+from typing import List, Dict, Set, Callable, Any
 from elements.tools.common.base_tool import BaseTool
 from elements.nodes.common.agent.unified_phase_provider import BasePhaseProvider
 from elements.nodes.common.agent.constants import ExecutionPhase, ToolCategory, PhaseToolMapping
@@ -16,7 +16,6 @@ from elements.nodes.common.workload import WorkPlanService
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..primitives import AgentObservation
-    from .orchestrator_node import OrchestratorNode
 
 
 class OrchestratorPhaseProvider(BasePhaseProvider):
@@ -35,17 +34,25 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
     - Dependency Inversion: Depends on abstractions (WorkPlanService, etc.)
     """
     
-    def __init__(self, node: 'OrchestratorNode', thread_id: str, tools: List[BaseTool]):
+    def __init__(
+        self, 
+        tools: List[BaseTool],
+        get_workspace: Callable[[str], Any],
+        node_uid: str,
+        thread_id: str
+    ):
         """
         Initialize orchestrator phase provider.
         
         Args:
-            node: Orchestrator node instance for workspace access
-            thread_id: Current thread ID for context
             tools: All available tools for categorization
+            get_workspace: Function to get workspace by thread_id
+            node_uid: Node identifier
+            thread_id: Current thread ID for context
         """
         super().__init__(tools)
-        self._node = node
+        self._get_workspace = get_workspace
+        self._node_uid = node_uid
         self._thread_id = thread_id
         self._tool_categories = self._categorize_tools(tools)
     
@@ -56,9 +63,9 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         Provides rich context including work plan status and node information.
         """
         try:
-            workspace = self._node.get_workspace(self._thread_id)
+            workspace = self._get_workspace(self._thread_id)
             service = WorkPlanService(workspace)
-            status_summary = service.get_status_summary(self._node.uid)
+            status_summary = service.get_status_summary(self._node_uid)
             
             # Convert to PhaseState format
             work_plan_status = create_work_plan_status(
@@ -77,7 +84,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             return create_phase_state(
                 work_plan_status=work_plan_status,
                 thread_id=self._thread_id,
-                node_uid=self._node.uid
+                node_uid=self._node_uid
             )
             
         except Exception as e:
@@ -85,7 +92,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             # Return minimal context on error
             return create_phase_state(
                 thread_id=self._thread_id,
-                node_uid=self._node.uid
+                node_uid=self._node_uid
             )
     
     def get_tools_for_phase(self, phase: ExecutionPhase) -> List[BaseTool]:
@@ -95,8 +102,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         Uses tool categorization to filter tools based on phase requirements.
         """
         try:
-            # Get categories for this phase
-            phase_categories = PhaseToolMapping.get_categories_for_phase(phase)
+            # Get categories for this phase using the abstract method
+            phase_categories = self.get_phase_tool_categories(phase)
             
             # Collect tools from relevant categories
             phase_tools = []
@@ -176,6 +183,89 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         else:
             # Unknown phase, default to planning
             return ExecutionPhase.PLANNING
+    
+    def get_phase_tool_categories(self, phase: ExecutionPhase) -> Set[ToolCategory]:
+        """
+        Get tool categories allowed for orchestrator in a specific phase.
+        
+        Uses PhaseToolMapping to determine appropriate categories for each phase.
+        
+        Args:
+            phase: The execution phase
+            
+        Returns:
+            Set of tool categories allowed in this phase
+        """
+        return PhaseToolMapping.get_categories_for_phase(phase)
+    
+    def get_supported_phases(self) -> List[ExecutionPhase]:
+        """
+        Get phases supported by the orchestrator.
+        
+        Orchestrator supports the full plan-and-execute workflow:
+        1. PLANNING - Create and structure work plans
+        2. ALLOCATION - Assign work to local/remote execution  
+        3. EXECUTION - Execute local work items
+        4. MONITORING - Monitor progress and handle responses
+        5. SYNTHESIS - Summarize results and create deliverables
+        
+        Returns:
+            List of execution phases in orchestrator workflow order
+        """
+        return [
+            ExecutionPhase.PLANNING,
+            ExecutionPhase.ALLOCATION,
+            ExecutionPhase.EXECUTION, 
+            ExecutionPhase.MONITORING,
+            ExecutionPhase.SYNTHESIS
+        ]
+    
+    def validate_phase_transition(self, from_phase: ExecutionPhase, to_phase: ExecutionPhase) -> bool:
+        """
+        Validate orchestrator-specific phase transitions.
+        
+        Orchestrator has specific transition rules:
+        - PLANNING can go to ALLOCATION or stay in PLANNING
+        - ALLOCATION can go to EXECUTION, MONITORING, or back to PLANNING
+        - EXECUTION typically goes to MONITORING
+        - MONITORING can go to ALLOCATION, EXECUTION, or SYNTHESIS
+        - SYNTHESIS is terminal (stays in SYNTHESIS)
+        
+        Args:
+            from_phase: Current phase
+            to_phase: Target phase
+            
+        Returns:
+            True if transition is allowed for orchestrator workflow
+        """
+        # Define allowed transitions for orchestrator
+        allowed_transitions = {
+            ExecutionPhase.PLANNING: {
+                ExecutionPhase.PLANNING,    # Stay in planning
+                ExecutionPhase.ALLOCATION   # Move to allocation
+            },
+            ExecutionPhase.ALLOCATION: {
+                ExecutionPhase.PLANNING,    # Back to planning
+                ExecutionPhase.ALLOCATION,  # Stay in allocation  
+                ExecutionPhase.EXECUTION,   # Move to execution
+                ExecutionPhase.MONITORING   # Move to monitoring
+            },
+            ExecutionPhase.EXECUTION: {
+                ExecutionPhase.EXECUTION,   # Stay in execution
+                ExecutionPhase.MONITORING   # Move to monitoring
+            },
+            ExecutionPhase.MONITORING: {
+                ExecutionPhase.ALLOCATION,  # Back to allocation
+                ExecutionPhase.EXECUTION,   # Back to execution
+                ExecutionPhase.MONITORING,  # Stay in monitoring
+                ExecutionPhase.SYNTHESIS    # Move to synthesis
+            },
+            ExecutionPhase.SYNTHESIS: {
+                ExecutionPhase.SYNTHESIS    # Terminal phase
+            }
+        }
+        
+        return to_phase in allowed_transitions.get(from_phase, set())
     
     def _categorize_tools(self, tools: List[BaseTool]) -> Dict[ToolCategory, List[BaseTool]]:
         """
