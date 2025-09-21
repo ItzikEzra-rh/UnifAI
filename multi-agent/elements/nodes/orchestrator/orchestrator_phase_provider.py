@@ -14,6 +14,7 @@ from elements.nodes.common.workload import WorkPlanService
 
 # Built-in orchestration tools
 from elements.tools.builtin.workplan.create_or_update import CreateOrUpdateWorkPlanTool
+from elements.tools.builtin.workplan.assign_item import AssignWorkItemTool
 from elements.tools.builtin.workplan.mark_status import MarkWorkItemStatusTool
 from elements.tools.builtin.workplan.summarize import SummarizeWorkPlanTool
 from elements.tools.builtin.delegation.delegate_task import DelegateTaskTool
@@ -65,6 +66,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             domain_tools: List[BaseTool],
             get_workspace: Callable[[str], Any],
             get_adjacent_nodes: Callable[[], Any],
+            send_task: Callable[..., Any],
             node_uid: str,
             thread_id: str
     ):
@@ -75,11 +77,13 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             domain_tools: Domain-specific tools that this orchestrator can use
             get_workspace: Function to get workspace by thread_id
             get_adjacent_nodes: Function to get adjacent nodes dict
+            send_task: Function to send IEM tasks (dst_uid, task) -> packet_id
             node_uid: Node identifier
             thread_id: Current thread ID for context
         """
         self._get_workspace = get_workspace
         self._get_adjacent_nodes = get_adjacent_nodes
+        self._send_task = send_task
         self._node_uid = node_uid
         self._thread_id = thread_id
         self._domain_tools = domain_tools
@@ -94,72 +98,98 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         - Built-in tools: Initialize here (workplan, delegation, topology, etc.)
         - Domain tools: Already initialized, passed from constructor (execution tools)
         """
-        # Initialize built-in orchestration tools
-        create_plan_tool = CreateOrUpdateWorkPlanTool(get_workspace=self._get_workspace)
-        mark_status_tool = MarkWorkItemStatusTool(get_workspace=self._get_workspace)
-        summarize_tool = SummarizeWorkPlanTool(get_workspace=self._get_workspace)
-        delegate_tool = DelegateTaskTool(get_workspace=self._get_workspace)
+        # Accessors required by tools
+        get_ws = lambda: self._get_workspace(self._thread_id)
+        get_tid = lambda: self._thread_id
+        get_uid = lambda: self._node_uid
+
+        # Initialize built-in orchestration tools with correct callables
+        create_plan_tool = CreateOrUpdateWorkPlanTool(
+            get_workspace=get_ws,
+            get_thread_id=get_tid,
+            get_owner_uid=get_uid
+        )
+        assign_tool = AssignWorkItemTool(
+            get_workspace=get_ws,
+            get_owner_uid=get_uid
+        )
+        mark_status_tool = MarkWorkItemStatusTool(
+            get_workspace=get_ws,
+            get_owner_uid=get_uid
+        )
+        summarize_tool = SummarizeWorkPlanTool(
+            get_workspace=get_ws,
+            get_owner_uid=get_uid
+        )
+        delegate_tool = DelegateTaskTool(
+            send_task=self._send_task,
+            get_owner_uid=get_uid,
+            get_workspace=get_ws,
+            check_adjacency=lambda uid: uid in (self._get_adjacent_nodes() or {})
+        )
         list_nodes_tool = ListAdjacentNodesTool(get_adjacent_nodes=self._get_adjacent_nodes)
         get_node_card_tool = GetNodeCardTool(get_adjacent_nodes=self._get_adjacent_nodes)
 
-        # Define phase configurations
-        phase_configs = {
-            OrchestratorPhase.PLANNING: {
-                "description": "Create detailed work plan with dependencies and task breakdown",
-                "orchestration_tools": [create_plan_tool, list_nodes_tool],
-                "include_domain_tools": True,
-                "guidance": "PHASE: PLANNING - Create detailed work plan with dependencies. Break down tasks logically. Don't execute or delegate yet."
-            },
+        # Create phase definitions directly in execution order (no interim configs)
+        domain_tools_list = list(self._domain_tools)
 
-            OrchestratorPhase.ALLOCATION: {
-                "description": "Assign work items to appropriate nodes and delegate tasks",
-                "orchestration_tools": [delegate_tool, list_nodes_tool, create_plan_tool],
-                "include_domain_tools": False,
-                "guidance": "PHASE: ALLOCATION - Assign work items to appropriate nodes. Use adjacency info to delegate. Don't execute local work yet."
-            },
-
-            OrchestratorPhase.EXECUTION: {
-                "description": "Execute local work items using domain capabilities",
-                "orchestration_tools": [create_plan_tool],
-                "include_domain_tools": True,
-                "guidance": "PHASE: EXECUTION - Execute local work items only. Don't modify plan structure or delegate new work."
-            },
-
-            OrchestratorPhase.MONITORING: {
-                "description": "Interpret responses and manage work item lifecycle",
-                "orchestration_tools": [mark_status_tool, delegate_tool, list_nodes_tool, create_plan_tool],
-                "include_domain_tools": False,
-                "guidance": "PHASE: MONITORING - Interpret responses and decide next steps. Respect retry limits. Mark status only when certain about outcome."
-            },
-
-            OrchestratorPhase.SYNTHESIS: {
-                "description": "Summarize completed work and produce final deliverables",
-                "orchestration_tools": [summarize_tool, create_plan_tool],
-                "include_domain_tools": False,
-                "guidance": "PHASE: SYNTHESIS - Summarize completed work and produce final deliverables. Focus on results and outputs."
-            }
-        }
-
-        # Create phase definitions
-        phases = []
-        for phase_enum in OrchestratorPhase.get_execution_order():
-            config = phase_configs[phase_enum]
-
-            # Start with orchestration tools
-            phase_tools = config["orchestration_tools"].copy()
-
-            # Add domain tools if configured
-            if config["include_domain_tools"]:
-                phase_tools.extend(self._domain_tools)
-
-            # Create phase definition
-            phase_def = PhaseDefinition(
-                name=phase_enum.value,
-                description=config["description"],
-                tools=phase_tools,
-                guidance=config["guidance"]
+        planning_phase = PhaseDefinition(
+            name=OrchestratorPhase.PLANNING.value,
+            description="Create detailed work plan with dependencies and task breakdown",
+            tools=[create_plan_tool, list_nodes_tool, get_node_card_tool] + domain_tools_list,
+            guidance=(
+                "PHASE: PLANNING - Create detailed work plan with dependencies. "
+                "Break down tasks logically. Don't execute or delegate yet."
             )
-            phases.append(phase_def)
+        )
+
+        allocation_phase = PhaseDefinition(
+            name=OrchestratorPhase.ALLOCATION.value,
+            description="Assign work items to appropriate nodes and delegate tasks",
+            tools=[assign_tool, delegate_tool, list_nodes_tool, get_node_card_tool, create_plan_tool],
+            guidance=(
+                "PHASE: ALLOCATION - Assign work items to appropriate nodes. "
+                "Use adjacency info to delegate. Don't execute local work yet."
+            )
+        )
+
+        execution_phase = PhaseDefinition(
+            name=OrchestratorPhase.EXECUTION.value,
+            description="Execute local work items using domain capabilities",
+            tools=[create_plan_tool] + domain_tools_list,
+            guidance=(
+                "PHASE: EXECUTION - Execute local work items only. "
+                "Don't modify plan structure or delegate new work."
+            )
+        )
+
+        monitoring_phase = PhaseDefinition(
+            name=OrchestratorPhase.MONITORING.value,
+            description="Interpret responses and manage work item lifecycle",
+            tools=[mark_status_tool, delegate_tool, list_nodes_tool, create_plan_tool],
+            guidance=(
+                "PHASE: MONITORING - Interpret responses and decide next steps. "
+                "Respect retry limits. Mark status only when certain about outcome."
+            )
+        )
+
+        synthesis_phase = PhaseDefinition(
+            name=OrchestratorPhase.SYNTHESIS.value,
+            description="Summarize completed work and produce final deliverables",
+            tools=[summarize_tool, create_plan_tool],
+            guidance=(
+                "PHASE: SYNTHESIS - Summarize completed work and produce final deliverables. "
+                "Focus on results and outputs."
+            )
+        )
+
+        phases = [
+            planning_phase,
+            allocation_phase,
+            execution_phase,
+            monitoring_phase,
+            synthesis_phase
+        ]
 
         # Create the complete phase system
         return PhaseSystem(

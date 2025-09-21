@@ -323,6 +323,7 @@ class OrchestratorNode(
             domain_tools=tools,  # These are the domain tools this orchestrator can use
             get_workspace=self.get_workspace,  # Inject function, not whole node
             get_adjacent_nodes=self.get_adjacent_nodes,  # Inject adjacency function
+            send_task=self.send_task,  # Inject IEM sender for delegation tool
             node_uid=self.uid,
             thread_id=thread_id
         )
