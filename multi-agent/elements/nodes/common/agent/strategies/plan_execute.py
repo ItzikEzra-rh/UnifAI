@@ -172,7 +172,7 @@ class PlanAndExecuteStrategy(AgentStrategy):
             tools = self.get_tools_for_phase(self._current_phase)
             
             # If no tools available for this phase, skip it
-            if not tools and self._current_phase != ExecutionPhase.SYNTHESIS:
+            if not tools and self._current_phase != "synthesis":
                 print(f"⚠️ [DEBUG] No tools for phase {self._current_phase}, advancing")
                 self._advance_phase()
                 return self.think(messages, observations)

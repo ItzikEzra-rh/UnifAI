@@ -312,10 +312,10 @@ class OrchestratorNode(
         messages = self._build_context_messages(thread_id, content)
         print(f"💬 [DEBUG] Built {len(messages)} context messages")
 
-        # Build tools (domain + orchestration)
-        print(f"🔧 [DEBUG] Building orchestration tools")
-        tools = self._build_orchestration_tools(thread_id)
-        print(f"🔧 [DEBUG] Built {len(tools)} tools: {[tool.name for tool in tools]}")
+        # Build domain tools only (provider will build built-ins)
+        print(f"🔧 [DEBUG] Building domain tools")
+        tools = list(self.base_tools)
+        print(f"🔧 [DEBUG] Built {len(tools)} domain tools: {[tool.name for tool in tools]}")
 
         # Create orchestrator phase provider (no circular dependency!)
         print(f"📊 [DEBUG] Creating orchestrator phase provider")

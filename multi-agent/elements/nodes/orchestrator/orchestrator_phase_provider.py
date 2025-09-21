@@ -136,7 +136,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         planning_phase = PhaseDefinition(
             name=OrchestratorPhase.PLANNING.value,
             description="Create detailed work plan with dependencies and task breakdown",
-            tools=[create_plan_tool, list_nodes_tool, get_node_card_tool] + domain_tools_list,
+            tools=[create_plan_tool, list_nodes_tool, get_node_card_tool],
             guidance=(
                 "PHASE: PLANNING - Create detailed work plan with dependencies. "
                 "Break down tasks logically. Don't execute or delegate yet."
