@@ -33,16 +33,39 @@ class ToolArguments(BaseModel):
     class Config:
         extra = "allow"  # Allow arbitrary additional fields
     
-    def __init__(self, **data):
-        super().__init__(**data)
+    def __init__(self, data: Optional[Dict[str, Any]] = None, **kwargs):
+        """Initialize with either a dict or keyword arguments."""
+        if data is not None:
+            if kwargs:
+                raise ValueError("Cannot provide both 'data' dict and keyword arguments")
+            super().__init__(**data)
+        else:
+            super().__init__(**kwargs)
+    
+    def __len__(self) -> int:
+        """Return the number of arguments."""
+        return len(self.__dict__)
+    
+    def __getitem__(self, key: str) -> Any:
+        """Allow dict-like access."""
+        return getattr(self, key)
+    
+    def __setitem__(self, key: str, value: Any) -> None:
+        """Allow dict-like assignment."""
+        setattr(self, key, value)
+    
+    def __contains__(self, key: str) -> bool:
+        """Check if key exists."""
+        return hasattr(self, key)
 
 
 class WorkItemResult(BaseModel):
     """Result of work item execution."""
-    success: bool = Field(..., description="Whether the work item succeeded")
+    success: bool = Field(default=True, description="Whether the work item succeeded")
     content: Optional[str] = Field(None, description="Result content or summary")
+    data: Optional[Dict[str, Any]] = Field(None, description="Structured result data")
     artifacts: List[str] = Field(default_factory=list, description="List of created artifacts")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional result metadata")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Processing metadata (from_uid, needs_interpretation, etc.)")
 
 
 class WorkItem(BaseModel):
@@ -126,6 +149,11 @@ class WorkItemStatusCounts(BaseModel):
     done: int = 0
     failed: int = 0
     blocked: int = 0
+    
+    @property
+    def total(self) -> int:
+        """Total count of all items."""
+        return self.pending + self.waiting + self.in_progress + self.done + self.failed + self.blocked
 
 
 class WorkPlanStatusSummary(BaseModel):
@@ -250,32 +278,41 @@ class WorkPlanService:
         """Load work plan for owner."""
         print(f"💾 [DEBUG] WorkPlanService.load() - Loading plan for {owner_uid}")
         
-        # Try to get from workspace variables
-        plan_key = f"workplan_{owner_uid}"
-        plan_data = self.workspace.get_variable(plan_key)
-        
-        if plan_data:
-            try:
-                plan = WorkPlan(**plan_data)
-                print(f"💾 [DEBUG] Loaded plan: {plan.summary}, {len(plan.items)} items")
-                return plan
-            except Exception as e:
-                print(f"❌ [DEBUG] Error loading work plan: {e}")
-                return None
-        
-        print(f"💾 [DEBUG] No plan found for {owner_uid}")
-        return None
+        try:
+            # Try to get from workspace variables
+            plan_key = f"workplan_{owner_uid}"
+            plan_data = self.workspace.get_variable(plan_key)
+            
+            if plan_data:
+                try:
+                    plan = WorkPlan(**plan_data)
+                    print(f"💾 [DEBUG] Loaded plan: {plan.summary}, {len(plan.items)} items")
+                    return plan
+                except Exception as e:
+                    print(f"❌ [DEBUG] Error loading work plan: {e}")
+                    return None
+            
+            print(f"💾 [DEBUG] No plan found for {owner_uid}")
+            return None
+        except Exception as e:
+            print(f"❌ [DEBUG] Workspace error during load: {e}")
+            return None
     
-    def save(self, plan: WorkPlan) -> None:
+    def save(self, plan: WorkPlan) -> bool:
         """Save work plan to workspace."""
         print(f"💾 [DEBUG] WorkPlanService.save() - Saving plan for {plan.owner_uid}")
         print(f"💾 [DEBUG] Plan summary: {plan.summary}, {len(plan.items)} items")
         
-        plan.mark_updated()
-        plan_key = f"workplan_{plan.owner_uid}"
-        self.workspace.set_variable(plan_key, plan.model_dump())
-        
-        print(f"💾 [DEBUG] Plan saved successfully")
+        try:
+            plan.mark_updated()
+            plan_key = f"workplan_{plan.owner_uid}"
+            self.workspace.set_variable(plan_key, plan.model_dump())
+            
+            print(f"💾 [DEBUG] Plan saved successfully")
+            return True
+        except Exception as e:
+            print(f"❌ [DEBUG] Workspace error during save: {e}")
+            return False
     
     def get_status_summary(self, owner_uid: str) -> WorkPlanStatusSummary:
         """Get status summary for work plan."""
@@ -409,6 +446,7 @@ class WorkPlanService:
             print(f"❌ [DEBUG] Marking item as FAILED: {error}")
             target_item.status = WorkItemStatus.FAILED
             target_item.error = error
+            target_item.retry_count += 1  # Increment retry count on failure
         elif result and isinstance(result, dict) and result.get("success") is True:
             # Only auto-mark DONE for explicit success structures
             print(f"✅ [DEBUG] Marking item as DONE with explicit success result")
@@ -416,7 +454,7 @@ class WorkPlanService:
             target_item.result_ref = WorkItemResult(
                 success=True,
                 content=str(result.get("content", result)),
-                metadata=result
+                data=result
             )
         else:
             print(f"💬 [DEBUG] Result is not explicit success structure - not auto-marking DONE")

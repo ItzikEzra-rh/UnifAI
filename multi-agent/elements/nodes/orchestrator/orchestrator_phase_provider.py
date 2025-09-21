@@ -248,8 +248,9 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         
         Professional phase transition rules using OrchestratorPhase enum.
         """
-        if not context.work_plan_status:
-            return OrchestratorPhase.PLANNING.value  # No work plan, start planning
+        # Handle None context gracefully
+        if not context or not context.work_plan_status:
+            return OrchestratorPhase.PLANNING.value  # No context or work plan, start planning
 
         status = context.work_plan_status
 
