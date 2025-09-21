@@ -322,6 +322,7 @@ class OrchestratorNode(
         phase_provider = OrchestratorPhaseProvider(
             domain_tools=tools,  # These are the domain tools this orchestrator can use
             get_workspace=self.get_workspace,  # Inject function, not whole node
+            get_adjacent_nodes=self.get_adjacent_nodes,  # Inject adjacency function
             node_uid=self.uid,
             thread_id=thread_id
         )
