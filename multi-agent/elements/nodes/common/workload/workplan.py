@@ -67,6 +67,8 @@ class WorkItem(BaseModel):
     result_ref: Optional[WorkItemResult] = Field(None, description="Execution result")
     error: Optional[str] = Field(None, description="Error message if failed")
     correlation_task_id: Optional[str] = Field(None, description="Task ID for delegation tracking")
+    retry_count: int = Field(default=0, description="Number of retry attempts")
+    max_retries: int = Field(default=3, description="Maximum retry attempts before marking as failed")
     
     # Timestamps
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
@@ -95,6 +97,21 @@ class WorkItem(BaseModel):
                 return True
         
         return False
+    
+    def can_retry(self) -> bool:
+        """Check if this item can be retried."""
+        from .retry_policy import RetryPolicyService
+        return RetryPolicyService.can_retry(self)
+    
+    def increment_retry(self) -> bool:
+        """
+        Increment retry count and mark as updated.
+        
+        Returns:
+            True if increment was successful, False if max retries exceeded
+        """
+        from .retry_policy import RetryPolicyService
+        return RetryPolicyService.increment_retry(self)
     
     def mark_updated(self) -> None:
         """Update the updated_at timestamp."""
@@ -307,6 +324,55 @@ class WorkPlanService:
         print(f"📊 [DEBUG] Returning status summary: {summary.model_dump()}")
         return summary
     
+    def store_task_response(
+        self,
+        owner_uid: str,
+        correlation_task_id: str,
+        response_content: str,
+        from_uid: str
+    ) -> bool:
+        """Store task response as context without changing status - let LLM interpret."""
+        print(f"💬 [DEBUG] WorkPlanService.store_task_response() - Storing response for LLM interpretation")
+        print(f"💬 [DEBUG] correlation_task_id: {correlation_task_id}, from: {from_uid}")
+        
+        plan = self.load(owner_uid)
+        if not plan:
+            print(f"❌ [DEBUG] No plan found for {owner_uid}")
+            return False
+        
+        # Find item by correlation task ID
+        target_item = None
+        for item in plan.items.values():
+            if item.correlation_task_id == correlation_task_id:
+                target_item = item
+                break
+        
+        if not target_item:
+            print(f"❌ [DEBUG] No work item found for correlation task ID: {correlation_task_id}")
+            return False
+        
+        print(f"💬 [DEBUG] Found target item: {target_item.id} - {target_item.title}")
+        
+        # Store response content without changing status
+        if not target_item.result_ref:
+            target_item.result_ref = WorkItemResult(
+                success=False,  # Not finalized yet
+                content=response_content,
+                metadata={"from_uid": from_uid, "needs_interpretation": True}
+            )
+        else:
+            # Append to existing content
+            target_item.result_ref.content += f"\n\n--- Response from {from_uid} ---\n{response_content}"
+            if target_item.result_ref.metadata:
+                target_item.result_ref.metadata["needs_interpretation"] = True
+            else:
+                target_item.result_ref.metadata = {"from_uid": from_uid, "needs_interpretation": True}
+        
+        target_item.mark_updated()
+        self.save(plan)
+        print(f"💬 [DEBUG] Response stored for LLM interpretation")
+        return True
+
     def ingest_task_response(
         self, 
         owner_uid: str, 
@@ -314,7 +380,7 @@ class WorkPlanService:
         result: Any = None, 
         error: str = None
     ) -> bool:
-        """Ingest task response and update work item status."""
+        """Ingest task response and update work item status - only for explicit success/error."""
         print(f"📥 [DEBUG] WorkPlanService.ingest_task_response() - Processing response")
         print(f"📥 [DEBUG] correlation_task_id: {correlation_task_id}")
         print(f"📥 [DEBUG] has_result: {result is not None}, has_error: {error is not None}")
@@ -338,29 +404,75 @@ class WorkPlanService:
         
         print(f"✅ [DEBUG] Found target item: {target_item.id} - {target_item.title}")
         
-        # Update item based on response
+        # Update item based on response - only for explicit structures
         if error:
             print(f"❌ [DEBUG] Marking item as FAILED: {error}")
             target_item.status = WorkItemStatus.FAILED
             target_item.error = error
-        elif result:
-            print(f"✅ [DEBUG] Marking item as DONE with result")
+        elif result and isinstance(result, dict) and result.get("success") is True:
+            # Only auto-mark DONE for explicit success structures
+            print(f"✅ [DEBUG] Marking item as DONE with explicit success result")
             target_item.status = WorkItemStatus.DONE
-            if isinstance(result, dict):
-                target_item.result_ref = WorkItemResult(
-                    success=True,
-                    content=str(result),
-                    metadata=result
-                )
-            else:
-                target_item.result_ref = WorkItemResult(
-                    success=True,
-                    content=str(result)
-                )
+            target_item.result_ref = WorkItemResult(
+                success=True,
+                content=str(result.get("content", result)),
+                metadata=result
+            )
+        else:
+            print(f"💬 [DEBUG] Result is not explicit success structure - not auto-marking DONE")
+            return False  # Don't auto-mark, let LLM interpret
         
         target_item.mark_updated()
         self.save(plan)
         print(f"✅ [DEBUG] Task response ingested successfully")
+        return True
+    
+    def update_item_status(
+        self,
+        owner_uid: str,
+        item_id: str,
+        status: WorkItemStatus,
+        error: str = None,
+        correlation_task_id: str = None
+    ) -> bool:
+        """Update work item status - for LLM-driven status changes."""
+        print(f"🔄 [DEBUG] WorkPlanService.update_item_status() - Updating {item_id} to {status}")
+        
+        plan = self.load(owner_uid)
+        if not plan:
+            print(f"❌ [DEBUG] No plan found for {owner_uid}")
+            return False
+        
+        item = plan.items.get(item_id)
+        if not item:
+            print(f"❌ [DEBUG] No item found with ID: {item_id}")
+            print(f"📋 [DEBUG] Available item IDs: {list(plan.items.keys())}")
+            return False
+        
+        print(f"✅ [DEBUG] Found item: {item.title}")
+        print(f"🔄 [DEBUG] Changing status: {item.status} → {status}")
+        
+        old_status = item.status
+        item.status = status
+        
+        if error and status == WorkItemStatus.FAILED:
+            item.error = error
+            print(f"❌ [DEBUG] Added error message: {error}")
+        
+        if correlation_task_id:
+            item.correlation_task_id = correlation_task_id
+            print(f"🔗 [DEBUG] Set correlation_task_id: {correlation_task_id}")
+        
+        # If marking as DONE, finalize the result
+        if status == WorkItemStatus.DONE and item.result_ref:
+            item.result_ref.success = True
+            if item.result_ref.metadata:
+                item.result_ref.metadata.pop("needs_interpretation", None)
+            print(f"✅ [DEBUG] Finalized result as successful")
+        
+        item.mark_updated()
+        self.save(plan)
+        print(f"✅ [DEBUG] Item status updated: {old_status} → {status}")
         return True
     
     def mark_item_as_delegated(self, owner_uid: str, item_id: str, correlation_task_id: str) -> bool:

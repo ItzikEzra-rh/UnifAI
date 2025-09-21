@@ -467,9 +467,11 @@ class PhaseToolMapping:
     EXECUTION_CATEGORIES: Set[ToolCategory] = {ToolCategory.WORKPLAN, ToolCategory.DOMAIN}
     
     MONITORING_KEYWORDS: Set[str] = {
-        ToolKeywords.INGEST, ToolKeywords.COMPLETE, ToolKeywords.ASSIGN
+        ToolKeywords.INGEST, ToolKeywords.COMPLETE, ToolKeywords.ASSIGN, ToolKeywords.MARK
     }
-    MONITORING_CATEGORIES: Set[ToolCategory] = {ToolCategory.WORKPLAN}
+    MONITORING_CATEGORIES: Set[ToolCategory] = {
+        ToolCategory.WORKPLAN, ToolCategory.IEM, ToolCategory.DELEGATION, ToolCategory.TOPOLOGY
+    }
     
     SYNTHESIS_KEYWORDS: Set[str] = {ToolKeywords.SUMMARIZE}
     SYNTHESIS_CATEGORIES: Set[ToolCategory] = {ToolCategory.WORKPLAN}

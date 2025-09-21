@@ -21,9 +21,8 @@ from .base import AgentStrategy
 from ..constants import (
     StrategyDefaults, StrategyType, SystemPrompts, ExecutionPhase
 )
-from ..phase_protocols import (
-    PhaseContextProvider, PhaseToolProvider, PhaseState, WorkPlanStatus, PhaseTransitionPolicy
-)
+from ..phase_protocols import PhaseState, WorkPlanStatus
+from ..unified_phase_provider import PhaseProvider, PhaseProviderFactory
 
 
 
@@ -56,9 +55,7 @@ class PlanAndExecuteStrategy(AgentStrategy):
         system_message: Optional[str] = None,
         max_planning_iterations: int = 3,
         max_allocation_iterations: int = 3,
-        phase_tool_provider: Optional[PhaseToolProvider] = None,
-        phase_context_provider: Optional[PhaseContextProvider] = None,
-        phase_transition_policy: Optional[PhaseTransitionPolicy] = None
+        phase_provider: Optional[PhaseProvider] = None
     ):
         """
         Initialize Plan and Execute strategy.
@@ -71,9 +68,7 @@ class PlanAndExecuteStrategy(AgentStrategy):
             system_message: System message from node (takes priority)
             max_planning_iterations: Max iterations in planning phase
             max_allocation_iterations: Max iterations in allocation phase
-            phase_tool_provider: Provider for phase-specific tools
-            phase_context_provider: Provider for phase context information
-            phase_transition_policy: Policy for determining phase transitions
+            phase_provider: Unified provider for all phase-related concerns
         """
         super().__init__(
             llm_chat=llm_chat,
@@ -89,10 +84,8 @@ class PlanAndExecuteStrategy(AgentStrategy):
         self._phase_iterations = 0
         self._no_progress_count = 0
         
-        # Store providers (injected by node)
-        self._phase_tool_provider = phase_tool_provider
-        self._phase_context_provider = phase_context_provider
-        self._phase_transition_policy = phase_transition_policy
+        # Store unified phase provider or create default
+        self._phase_provider = phase_provider or PhaseProviderFactory.create_default_provider(tools)
     
     @property
     def strategy_name(self) -> str:
@@ -115,17 +108,18 @@ class PlanAndExecuteStrategy(AgentStrategy):
         """
         print(f"🔧 [DEBUG] get_tools_for_phase() - Requested phase: {phase}")
         
-        if self._phase_tool_provider:
-            # Convert string to ExecutionPhase enum for provider
-            try:
-                phase_enum = ExecutionPhase(phase)
-                tools = self._phase_tool_provider.get_tools_for_phase(phase_enum)
-                print(f"🔧 [DEBUG] Provider returned {len(tools)} tools for {phase}: {[t.name for t in tools]}")
-                return tools
-            except ValueError:
-                # Fallback if phase string doesn't match enum
-                print(f"⚠️ [DEBUG] Invalid phase string: {phase}, falling back to all tools")
-                pass
+        # Convert string to ExecutionPhase enum for provider
+        try:
+            phase_enum = ExecutionPhase(phase)
+            tools = self._phase_provider.get_tools_for_phase(phase_enum)
+            print(f"🔧 [DEBUG] Provider returned {len(tools)} tools for {phase}: {[t.name for t in tools]}")
+            return tools
+        except ValueError:
+            # Fallback if phase string doesn't match enum
+            print(f"⚠️ [DEBUG] Invalid phase string: {phase}, falling back to all tools")
+        except Exception as e:
+            print(f"Error getting phase tools: {e}")
+            # Fallback to all tools
         
         # Fallback to all tools if no provider or invalid phase
         all_tools = list(self.all_tools.values())
@@ -322,23 +316,22 @@ class PlanAndExecuteStrategy(AgentStrategy):
         """
         print(f"🔄 [DEBUG] _update_phase() - Current: {self._current_phase}")
         
-        # Use policy if available
-        if self._phase_transition_policy and self._phase_context_provider:
-            print(f"🔀 [DEBUG] Using phase transition policy")
-            try:
-                state = self._phase_context_provider.get_phase_context()
-                print(f"📊 [DEBUG] Phase context: total_items={state.work_plan_status.total_items if state.work_plan_status else 'None'}")
-                new_phase = self._phase_transition_policy.decide(
-                    state=state,
-                    current=self._current_phase,
-                    observations=observations
-                )
-                print(f"🔀 [DEBUG] Policy decided: {self._current_phase} → {new_phase}")
-                self._current_phase = new_phase
-                return
-            except Exception as e:
-                print(f"❌ [DEBUG] Error using phase transition policy: {e}")
-                # Fall through to built-in logic
+        # Use unified phase provider
+        print(f"🔀 [DEBUG] Using unified phase provider for transition")
+        try:
+            state = self._phase_provider.get_phase_context()
+            print(f"📊 [DEBUG] Phase context: total_items={state.work_plan_status.total_items if state.work_plan_status else 'None'}")
+            new_phase = self._phase_provider.decide_next_phase(
+                current_phase=self._current_phase,
+                phase_state=state,
+                observations=observations
+            )
+            print(f"🔀 [DEBUG] Provider decided: {self._current_phase} → {new_phase}")
+            self._current_phase = new_phase
+            return
+        except Exception as e:
+            print(f"❌ [DEBUG] Error using phase provider: {e}")
+            # Fall through to built-in logic
         
         # Built-in fallback logic
         print(f"🔄 [DEBUG] Using built-in phase logic")
@@ -428,42 +421,15 @@ class PlanAndExecuteStrategy(AgentStrategy):
     
     
     def _build_phase_prompt(self) -> str:
-        """Build phase-specific system prompt."""
+        """Build phase-specific system prompt using unified phase provider."""
         base_prompt = self.system_message or SystemPrompts.PLAN_AND_EXECUTE
         
-        phase_prompts = {
-            ExecutionPhase.PLANNING: """
-Current Phase: PLANNING
-Your task is to analyze the request and create a work plan.
-Break down the task into specific, actionable work items.
-Consider dependencies between items.
-Use the workplan tools to create or update the plan.""",
-            
-            ExecutionPhase.ALLOCATION: """
-Current Phase: ALLOCATION
-Assign work items to execution targets.
-- Local items: Can be executed with available tools on this node
-- Remote items: Must be delegated to adjacent nodes with appropriate capabilities
-Use topology tools to check node capabilities before assignment.""",
-            
-            ExecutionPhase.EXECUTION: """
-Current Phase: EXECUTION
-Execute local work items using available domain tools.
-Update work item status as you progress.
-Focus on completing one item at a time.""",
-            
-            ExecutionPhase.MONITORING: """
-Current Phase: MONITORING
-Check the status of all work items.
-Ingest any responses from remote executions.
-Identify any failed or blocked items that need attention.""",
-            
-            ExecutionPhase.SYNTHESIS: """
-Current Phase: SYNTHESIS
-Review the completed work plan and results.
-Provide a comprehensive summary of what was accomplished.
-Highlight any failures or incomplete items."""
-        }
+        # Get concise phase guidance from unified provider
+        try:
+            phase_guidance = self._phase_provider.get_phase_guidance(self._current_phase)
+            if phase_guidance:
+                return f"{base_prompt}\n\n{phase_guidance}"
+        except Exception as e:
+            print(f"Error getting phase guidance: {e}")
         
-        phase_prompt = phase_prompts.get(self._current_phase, "")
-        return f"{base_prompt}\n\n{phase_prompt}"
+        return base_prompt

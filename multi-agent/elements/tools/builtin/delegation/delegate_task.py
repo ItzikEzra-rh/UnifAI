@@ -38,11 +38,23 @@ class DelegateTaskTool(BaseTool):
     """Delegate a task to an adjacent node via IEM."""
     
     name = ToolNames.IEM_DELEGATE_TASK
-    description = """Send a task to an adjacent node for remote execution.
+    description = """Delegate a task to an adjacent node and track its progress.
     
-    Use this when a work item needs capabilities that an adjacent node has.
-    Always provide the parent_item_id to link delegation with work plan tracking.
-    The target node will work on the task and send results back automatically."""
+    Use this to:
+    - Send work items to specialized nodes (use parent_item_id to track status)
+    - Request information or analysis from other nodes
+    - Ask for clarification or approval ("Should I proceed with X?")
+    - Send follow-up instructions based on responses
+    
+    WORKFLOW:
+    1. Use ListAdjacentNodesTool to find capable nodes
+    2. Use GetNodeCardTool to understand their capabilities  
+    3. Use this tool to delegate with clear, specific instructions
+    4. The work item status will automatically update to 'waiting'
+    5. When response arrives, you'll see it in MONITORING phase for interpretation
+    
+    IMPORTANT: Be specific in 'content' - include context, requirements, and expected deliverables.
+    Always provide parent_item_id to link delegation with work plan tracking."""
     args_schema = DelegateTaskArgs
     
     def __init__(

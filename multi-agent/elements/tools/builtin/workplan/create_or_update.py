@@ -47,9 +47,26 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
     name = ToolNames.WORKPLAN_CREATE_OR_UPDATE
     description = """Create a new work plan or update existing plan with structured work items.
     
-    Use this tool to break down complex tasks into manageable work items with clear dependencies.
-    Each work item should be specific and actionable. Use LOCAL for tasks you can handle yourself,
-    REMOTE for tasks that need delegation to other nodes based on their capabilities."""
+    Use this to:
+    - Break down complex requests into manageable work items
+    - Add new work items to handle responses like "I need X and Y first"
+    - Update work items based on changing requirements
+    - Structure dependencies between work items
+    
+    WORK ITEM GUIDELINES:
+    - Each item should be specific and actionable
+    - Use LOCAL for tasks you can do yourself, REMOTE for delegation
+    - Set dependencies by item ID (items wait for dependencies to be 'done')
+    - Use snake_case for IDs (e.g., 'analyze_data', 'create_report')
+    
+    DEPENDENCY EXAMPLES:
+    - Item 'create_report' depends on ['analyze_data', 'gather_feedback']
+    - Item 'analyze_data' has no dependencies (can start immediately)
+    
+    WHEN TO USE:
+    - Initial planning: Break down the main request
+    - Response handling: Add items for "I need X first" scenarios
+    - Replanning: Adjust based on new information or failures"""
     args_schema = CreateOrUpdatePlanArgs
     
     def __init__(

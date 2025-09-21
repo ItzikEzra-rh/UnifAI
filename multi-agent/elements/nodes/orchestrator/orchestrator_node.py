@@ -22,6 +22,7 @@ from elements.nodes.common.agent.execution import ExecutionMode
 from elements.nodes.common.agent.constants import StrategyType
 from elements.tools.common.execution.models import ExecutorConfig
 from elements.nodes.common.workload import Task, WorkPlanService, WorkItemStatus, WorkItemKind
+from elements.nodes.common.agent.unified_phase_provider import PhaseProviderFactory
 from elements.tools.builtin import (
     CreateOrUpdateWorkPlanTool,
     AssignWorkItemTool,
@@ -33,129 +34,7 @@ from elements.tools.builtin import (
     GetNodeCardTool,
     DelegateTaskTool
 )
-from elements.nodes.common.agent.phase_tools import create_orchestrator_categorizer
-from elements.nodes.common.agent.phase_protocols import (
-    PhaseContextProvider, PhaseState, WorkPlanStatus, create_work_plan_status, create_phase_state,
-    PhaseTransitionPolicy
-)
 from elements.nodes.common.agent.constants import ExecutionPhase
-from elements.nodes.common.agent.primitives import AgentObservation
-
-
-class OrchestratorPhaseContextProvider(PhaseContextProvider):
-    """
-    Concrete implementation of PhaseContextProvider for orchestrator nodes.
-    
-    This class encapsulates the logic for providing phase context to strategies,
-    keeping the strategy decoupled from service implementations.
-    """
-
-    def __init__(self, node: 'OrchestratorNode', thread_id: str):
-        """
-        Initialize context provider.
-        
-        Args:
-            node: The orchestrator node instance
-            thread_id: Current thread ID
-        """
-        self.node = node
-        self.thread_id = thread_id
-
-    def get_phase_context(self) -> PhaseState:
-        """
-        Get current phase context for the orchestrator.
-        
-        Returns:
-            PhaseState with current work plan status and context
-        """
-        try:
-            workspace = self.node.get_workspace(self.thread_id)
-            service = WorkPlanService(workspace)
-
-            # Get status summary from service (now returns typed model)
-            status_summary = service.get_status_summary(self.node.uid)
-
-            if not status_summary.exists:
-                # No plan exists
-                work_plan_status = create_work_plan_status()
-            else:
-                # Convert typed service response to WorkPlanStatus
-                work_plan_status = create_work_plan_status(
-                    total_items=status_summary.total_items,
-                    pending_items=status_summary.pending_items,
-                    in_progress_items=status_summary.in_progress_items,
-                    waiting_items=status_summary.waiting_items,
-                    done_items=status_summary.done_items,
-                    failed_items=status_summary.failed_items,
-                    blocked_items=status_summary.blocked_items,
-                    has_local_ready=status_summary.has_local_ready,
-                    has_remote_waiting=status_summary.has_remote_waiting,
-                    is_complete=status_summary.is_complete
-                )
-
-            return create_phase_state(
-                work_plan_status=work_plan_status,
-                thread_id=self.thread_id,
-                node_uid=self.node.uid
-            )
-
-        except Exception as e:
-            print(f"Error getting phase context: {e}")
-            # Return empty state on error
-            return create_phase_state(
-                work_plan_status=create_work_plan_status(),
-                thread_id=self.thread_id,
-                node_uid=self.node.uid
-            )
-
-
-class OrchestratorPhaseTransitionPolicy(PhaseTransitionPolicy):
-    """
-    Orchestrator-specific phase transition policy.
-    
-    Implements orchestrator-specific logic for determining phase transitions
-    based on work plan status and recent observations.
-    """
-
-    def decide(
-            self,
-            *,
-            state: PhaseState,
-            current: ExecutionPhase,
-            observations: List['AgentObservation']
-    ) -> ExecutionPhase:
-        """
-        Decide the next execution phase for orchestrator.
-        
-        Args:
-            state: Current phase state with work plan status
-            current: Current execution phase
-            observations: Recent agent observations
-            
-        Returns:
-            The next execution phase to transition to
-        """
-        work_plan_status = state.work_plan_status
-
-        if not work_plan_status or work_plan_status.total_items == 0:
-            return ExecutionPhase.PLANNING
-
-        if work_plan_status.is_complete:
-            return ExecutionPhase.SYNTHESIS
-
-        if work_plan_status.pending_items > 0:
-            return ExecutionPhase.ALLOCATION
-
-        if work_plan_status.has_local_ready:
-            return ExecutionPhase.EXECUTION
-
-        if (work_plan_status.in_progress_items > 0 or
-                work_plan_status.waiting_items > 0 or
-                work_plan_status.has_remote_waiting):
-            return ExecutionPhase.MONITORING
-
-        # Default to monitoring if unclear
-        return ExecutionPhase.MONITORING
 
 
 class OrchestratorNode(
@@ -311,7 +190,8 @@ class OrchestratorNode(
         """
         Handle response from delegated work.
         
-        Updates the work plan item status based on the response.
+        Stores response as context for LLM interpretation instead of auto-marking DONE.
+        Only auto-marks for explicit success/error structures.
         Returns thread_id if work plan was updated.
         """
         print(f"🔄 [DEBUG] _handle_task_response() - Processing response from {task.created_by}")
@@ -324,24 +204,32 @@ class OrchestratorNode(
 
         print(f"🔗 [DEBUG] Found correlation_task_id: {correlation_task_id}")
 
-        # Update work plan
+        # Update work plan and workspace context
         workspace = self.get_workspace(task.thread_id)
         service = WorkPlanService(workspace)
 
-        success = False
+        # Store response as workspace fact for LLM context
+        response_content = ""
         if task.result:
-            # Success response
-            print(f"✅ [DEBUG] Processing SUCCESS response with result: {str(task.result)[:100]}...")
-            success = service.ingest_task_response(
-                owner_uid=self.uid,
-                correlation_task_id=correlation_task_id,
-                result=task.result
-            )
-            if success:
-                print(f"✅ [DEBUG] Marked item as DONE for task {correlation_task_id}")
+            response_content = str(task.result)
         elif task.error:
-            # Error response
-            print(f"❌ [DEBUG] Processing ERROR response: {str(task.error)[:100]}...")
+            response_content = f"ERROR: {task.error}"
+        elif task.content:
+            response_content = task.content
+        else:
+            response_content = "Empty response"
+
+        # Add to workspace facts for LLM context
+        self.add_fact_to_workspace(
+            task.thread_id,
+            f"Response from {task.created_by} for task {correlation_task_id}: {response_content}"
+        )
+
+        success = False
+        
+        # Try explicit success/error first
+        if task.error:
+            print(f"❌ [DEBUG] Processing explicit ERROR response: {str(task.error)[:100]}...")
             success = service.ingest_task_response(
                 owner_uid=self.uid,
                 correlation_task_id=correlation_task_id,
@@ -349,8 +237,26 @@ class OrchestratorNode(
             )
             if success:
                 print(f"❌ [DEBUG] Marked item as FAILED for task {correlation_task_id}")
+        elif task.result and isinstance(task.result, dict) and task.result.get("success") is True:
+            print(f"✅ [DEBUG] Processing explicit SUCCESS response: {str(task.result)[:100]}...")
+            success = service.ingest_task_response(
+                owner_uid=self.uid,
+                correlation_task_id=correlation_task_id,
+                result=task.result
+            )
+            if success:
+                print(f"✅ [DEBUG] Marked item as DONE for task {correlation_task_id}")
         else:
-            print(f"⚠️ [DEBUG] Response has neither result nor error - ignoring")
+            # Store for LLM interpretation - don't auto-mark status
+            print(f"💬 [DEBUG] Storing response for LLM interpretation: {response_content[:100]}...")
+            success = service.store_task_response(
+                owner_uid=self.uid,
+                correlation_task_id=correlation_task_id,
+                response_content=response_content,
+                from_uid=task.created_by
+            )
+            if success:
+                print(f"💬 [DEBUG] Response stored for LLM interpretation - status unchanged")
 
         # Return thread_id if we updated the work plan
         result_thread = task.thread_id if success else None
@@ -411,28 +317,18 @@ class OrchestratorNode(
         tools = self._build_orchestration_tools(thread_id)
         print(f"🔧 [DEBUG] Built {len(tools)} tools: {[tool.name for tool in tools]}")
 
-        # Create tool categorizer
-        print(f"📂 [DEBUG] Creating tool categorizer")
-        tool_categorizer = create_orchestrator_categorizer(tools)
+        # Create unified phase provider
+        print(f"📊 [DEBUG] Creating unified phase provider")
+        phase_provider = PhaseProviderFactory.create_orchestrator_provider(self, thread_id, tools)
 
-        # Create phase context provider
-        print(f"📊 [DEBUG] Creating phase context provider")
-        context_provider = OrchestratorPhaseContextProvider(self, thread_id)
-
-        # Create phase transition policy
-        print(f"🔀 [DEBUG] Creating phase transition policy")
-        transition_policy = OrchestratorPhaseTransitionPolicy()
-
-        # Create strategy with typed providers
+        # Create strategy with unified provider
         print(f"🧠 [DEBUG] Creating PlanAndExecute strategy")
         strategy = self.create_strategy(
             tools=tools,
             strategy_type=StrategyType.PLAN_AND_EXECUTE.value,
             system_message=self._build_complete_system_message(),
             max_steps=self.max_rounds,
-            phase_tool_provider=tool_categorizer,
-            phase_context_provider=context_provider,
-            phase_transition_policy=transition_policy
+            phase_provider=phase_provider
         )
         print(f"🧠 [DEBUG] Strategy created successfully")
 
@@ -646,6 +542,10 @@ class OrchestratorNode(
                             status_info += f" [depends on: {', '.join(item.dependencies)}]"
                         if item.assigned_uid:
                             status_info += f" [assigned to: {item.assigned_uid}]"
+                        if item.retry_count > 0:
+                            status_info += f" [retries: {item.retry_count}/{item.max_retries}]"
+                        if item.result_ref and item.result_ref.metadata and item.result_ref.metadata.get("needs_interpretation"):
+                            status_info += f" [needs interpretation]"
                         lines.append(status_info)
                     if len(items) > 5:
                         lines.append(f"    ... and {len(items) - 5} more")
@@ -654,23 +554,22 @@ class OrchestratorNode(
 
     @staticmethod
     def _get_orchestrator_behavior_message() -> str:
-        """Fixed orchestrator behavior instructions."""
+        """Compact orchestrator behavior instructions."""
         return """You are an orchestrator agent that coordinates work execution.
 
-Your responsibilities:
-1. Analyze incoming tasks and create detailed work plans
-2. Identify which parts can be done locally vs need delegation
-3. Assign work to appropriate adjacent nodes based on their capabilities
-4. Monitor progress and handle responses
-5. Synthesize results when work is complete
+Core responsibilities:
+1. Create detailed work plans with dependencies
+2. Delegate work to appropriate adjacent nodes
+3. Monitor progress and interpret responses
+4. Synthesize results when complete
 
-Guidelines:
-- Break complex tasks into manageable work items
-- Consider dependencies between items
-- Match work to node capabilities
-- Delegate when adjacent nodes have better tools/skills
-- Track all delegated work via correlation IDs
-- Update work plan status as responses arrive"""
+Key principles:
+- Break tasks into manageable work items
+- Match work to node capabilities  
+- Track delegated work via correlation IDs
+- Interpret responses carefully before marking status
+- Respect retry limits (check item retry_count vs max_retries)
+- Always explain reasoning for status changes"""
 
     def _build_complete_system_message(self) -> str:
         """Build complete system message combining behavior + specialization."""
