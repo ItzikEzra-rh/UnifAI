@@ -320,7 +320,7 @@ class OrchestratorNode(
         # Create orchestrator phase provider (no circular dependency!)
         print(f"📊 [DEBUG] Creating orchestrator phase provider")
         phase_provider = OrchestratorPhaseProvider(
-            tools=tools,
+            domain_tools=tools,  # These are the domain tools this orchestrator can use
             get_workspace=self.get_workspace,  # Inject function, not whole node
             node_uid=self.uid,
             thread_id=thread_id

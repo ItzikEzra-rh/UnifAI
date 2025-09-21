@@ -22,7 +22,7 @@ from ..constants import (
     StrategyDefaults, StrategyType, SystemPrompts, ExecutionPhase
 )
 from ..phase_protocols import PhaseState, WorkPlanStatus
-from ..unified_phase_provider import PhaseProvider, PhaseProviderFactory
+from ..unified_phase_provider import PhaseProvider
 
 
 
@@ -80,12 +80,17 @@ class PlanAndExecuteStrategy(AgentStrategy):
         
         self.max_planning_iterations = max_planning_iterations
         self.max_allocation_iterations = max_allocation_iterations
-        self._current_phase = ExecutionPhase.PLANNING
         self._phase_iterations = 0
         self._no_progress_count = 0
         
-        # Store unified phase provider or create default
-        self._phase_provider = phase_provider or PhaseProviderFactory.create_default_provider(tools)
+        # Store phase provider (required - no default)
+        if not phase_provider:
+            raise ValueError("PlanAndExecuteStrategy requires a phase_provider")
+        self._phase_provider = phase_provider
+        
+        # Get initial phase from provider (not hardcoded)
+        supported_phases = self._phase_provider.get_supported_phases()
+        self._current_phase = supported_phases[0] if supported_phases else "planning"
     
     @property
     def strategy_name(self) -> str:
@@ -108,15 +113,11 @@ class PlanAndExecuteStrategy(AgentStrategy):
         """
         print(f"🔧 [DEBUG] get_tools_for_phase() - Requested phase: {phase}")
         
-        # Convert string to ExecutionPhase enum for provider
+        # Use phase provider to get tools (phase provider handles string/enum conversion)
         try:
-            phase_enum = ExecutionPhase(phase)
-            tools = self._phase_provider.get_tools_for_phase(phase_enum)
+            tools = self._phase_provider.get_tools_for_phase(phase)
             print(f"🔧 [DEBUG] Provider returned {len(tools)} tools for {phase}: {[t.name for t in tools]}")
             return tools
-        except ValueError:
-            # Fallback if phase string doesn't match enum
-            print(f"⚠️ [DEBUG] Invalid phase string: {phase}, falling back to all tools")
         except Exception as e:
             print(f"Error getting phase tools: {e}")
             # Fallback to all tools
@@ -316,14 +317,14 @@ class PlanAndExecuteStrategy(AgentStrategy):
         """
         print(f"🔄 [DEBUG] _update_phase() - Current: {self._current_phase}")
         
-        # Use unified phase provider
-        print(f"🔀 [DEBUG] Using unified phase provider for transition")
+        # Use phase provider for transitions
+        print(f"🔀 [DEBUG] Using phase provider for transition")
         try:
-            state = self._phase_provider.get_phase_context()
-            print(f"📊 [DEBUG] Phase context: total_items={state.work_plan_status.total_items if state.work_plan_status else 'None'}")
+            context = self._phase_provider.get_phase_context()
+            print(f"📊 [DEBUG] Phase context: total_items={context.work_plan_status.total_items if context.work_plan_status else 'None'}")
             new_phase = self._phase_provider.decide_next_phase(
                 current_phase=self._current_phase,
-                phase_state=state,
+                context=context,
                 observations=observations
             )
             print(f"🔀 [DEBUG] Provider decided: {self._current_phase} → {new_phase}")
@@ -421,10 +422,10 @@ class PlanAndExecuteStrategy(AgentStrategy):
     
     
     def _build_phase_prompt(self) -> str:
-        """Build phase-specific system prompt using unified phase provider."""
+        """Build phase-specific system prompt using phase provider."""
         base_prompt = self.system_message or SystemPrompts.PLAN_AND_EXECUTE
         
-        # Get concise phase guidance from unified provider
+        # Get concise phase guidance from provider
         try:
             phase_guidance = self._phase_provider.get_phase_guidance(self._current_phase)
             if phase_guidance:
