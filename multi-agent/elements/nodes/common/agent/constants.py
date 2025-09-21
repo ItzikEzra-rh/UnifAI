@@ -13,7 +13,7 @@ Design Principles:
 """
 
 from enum import Enum
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Set
 from dataclasses import dataclass
 
 
@@ -381,3 +381,95 @@ def get_error_guidance(error_type: str) -> str:
     }
     
     return guidance_map.get(error_type, "Please check your input format and try again.")
+
+
+# =============================================================================
+# EXECUTION PHASE CONSTANTS
+# =============================================================================
+
+class ExecutionPhase(str, Enum):
+    """Phases of plan-and-execute strategy."""
+    PLANNING = "planning"
+    ALLOCATION = "allocation"
+    EXECUTION = "execution"
+    MONITORING = "monitoring"
+    SYNTHESIS = "synthesis"
+
+
+# =============================================================================
+# TOOL RELATED CONSTANTS
+# =============================================================================
+
+class ToolCategory(str, Enum):
+    """Categories of tools for phase-based filtering."""
+    WORKPLAN = "workplan"
+    TOPOLOGY = "topology" 
+    IEM = "iem"
+    DELEGATION = "delegation"
+    WORKSPACE = "workspace"
+    DOMAIN = "domain"
+
+
+class ToolNames:
+    """Standard tool names to avoid hardcoded strings."""
+    
+    # WorkPlan tools
+    WORKPLAN_CREATE_OR_UPDATE = "workplan.create_or_update"
+    WORKPLAN_ASSIGN = "workplan.assign"
+    WORKPLAN_MARK = "workplan.mark"
+    WORKPLAN_INGEST_RESULTS = "workplan.ingest_results"
+    WORKPLAN_IS_COMPLETE = "workplan.is_complete"
+    WORKPLAN_SUMMARIZE = "workplan.summarize"
+    
+    # Topology tools
+    TOPOLOGY_LIST_ADJACENT = "topology.list_adjacent"
+    TOPOLOGY_GET_NODE_CARD = "topology.get_node_card"
+    
+    # IEM/Delegation tools
+    IEM_DELEGATE_TASK = "iem.delegate_task"
+    DELEGATE_TASK = "delegate_task"  # Alternative name
+    
+    # Workspace tools
+    WORKSPACE_READ_SUMMARY = "workspace.read_summary"
+
+
+class ToolKeywords:
+    """Keywords used in tool names for filtering."""
+    
+    # WorkPlan operation keywords
+    CREATE = "create"
+    UPDATE = "update"
+    ASSIGN = "assign"
+    MARK = "mark"
+    INGEST = "ingest"
+    COMPLETE = "complete"
+    SUMMARIZE = "summarize"
+    
+    # Tool name prefixes
+    WORKPLAN_PREFIX = "workplan."
+    TOPOLOGY_PREFIX = "topology."
+    IEM_PREFIX = "iem."
+    WORKSPACE_PREFIX = "workspace."
+
+
+class PhaseToolMapping:
+    """Defines which tool categories/keywords are available in each phase."""
+    
+    PLANNING_KEYWORDS: Set[str] = {ToolKeywords.CREATE, ToolKeywords.UPDATE}
+    PLANNING_CATEGORIES: Set[ToolCategory] = {ToolCategory.WORKPLAN, ToolCategory.TOPOLOGY}
+    
+    ALLOCATION_KEYWORDS: Set[str] = {ToolKeywords.ASSIGN}
+    ALLOCATION_CATEGORIES: Set[ToolCategory] = {
+        ToolCategory.WORKPLAN, ToolCategory.TOPOLOGY, ToolCategory.IEM, ToolCategory.DELEGATION
+    }
+    
+    EXECUTION_KEYWORDS: Set[str] = set()  # No manual status marking
+    EXECUTION_CATEGORIES: Set[ToolCategory] = {ToolCategory.WORKPLAN, ToolCategory.DOMAIN}
+    
+    MONITORING_KEYWORDS: Set[str] = {
+        ToolKeywords.INGEST, ToolKeywords.COMPLETE, ToolKeywords.ASSIGN
+    }
+    MONITORING_CATEGORIES: Set[ToolCategory] = {ToolCategory.WORKPLAN}
+    
+    SYNTHESIS_KEYWORDS: Set[str] = {ToolKeywords.SUMMARIZE}
+    SYNTHESIS_CATEGORIES: Set[ToolCategory] = {ToolCategory.WORKPLAN}

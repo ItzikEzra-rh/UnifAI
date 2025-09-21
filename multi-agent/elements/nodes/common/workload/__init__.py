@@ -13,6 +13,10 @@ from .workspace import Workspace, ArtifactRef
 from .agent_thread import AgentThread
 from .in_memory_service import InMemoryWorkloadService
 from .state_bound_service import StateBoundWorkloadService
+from .workplan import (
+    WorkPlan, WorkItem, WorkPlanService, WorkItemStatus, WorkItemKind,
+    ToolArguments, WorkItemResult, WorkItemStatusCounts, WorkPlanStatusSummary
+)
 
 __all__ = [
     'IWorkloadService',
@@ -25,5 +29,14 @@ __all__ = [
     'ArtifactRef',
     'AgentThread',
     'InMemoryWorkloadService',
-    'StateBoundWorkloadService'
+    'StateBoundWorkloadService',
+    'WorkPlan',
+    'WorkItem',
+    'WorkPlanService',
+    'WorkItemStatus',
+    'WorkItemKind',
+    'ToolArguments',
+    'WorkItemResult',
+    'WorkItemStatusCounts',
+    'WorkPlanStatusSummary'
 ]
