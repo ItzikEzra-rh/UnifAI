@@ -30,6 +30,7 @@ from elements.nodes.common.agent import (
 )
 from elements.nodes.common.agent.parsers import OutputParser, ToolCallParser, ParseError
 from elements.nodes.common.agent.strategies import AgentStrategy, ReActStrategy
+from elements.nodes.common.agent.strategies.plan_execute import PlanAndExecuteStrategy
 from elements.nodes.common.agent.execution import (
     AgentIterator, AgentActionExecutor, ExecutionMode, ExecutionHandlerFactory
 )
@@ -242,6 +243,14 @@ class AgentCapableMixin(Generic[T]):
         
         if strategy_type == StrategyType.REACT.value:
             return ReActStrategy(
+                llm_chat=llm_chat,
+                tools=tools,
+                parser=parser,
+                system_message=system_message,
+                **kwargs
+            )
+        elif strategy_type == StrategyType.PLAN_AND_EXECUTE.value:
+            return PlanAndExecuteStrategy(
                 llm_chat=llm_chat,
                 tools=tools,
                 parser=parser,

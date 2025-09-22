@@ -147,7 +147,7 @@ class AgentIterator:
         try:
             # Get next steps from strategy
             steps = self.strategy.think(self.messages, self.execution_handler.get_observations())
-            print(f"🔍 DEBUG: AgentIterator got {len(steps)} steps from strategy: {[step.type for step in steps]}")
+            print(f"⚡ [AGENT] Processing {len(steps)} steps: {[step.type.value for step in steps]}")
 
             # Update conversation messages with assistant responses
             self._update_conversation_messages(steps)
@@ -156,7 +156,6 @@ class AgentIterator:
             actions_to_handle = []
 
             for step in steps:
-                print(f"🔍 DEBUG: AgentIterator processing step type: {step.type}")
 
                 # Add to history and emit event
                 self.history.append(step)
@@ -166,7 +165,7 @@ class AgentIterator:
                     # Validate action with callback
                     action = step.data
                     if self.on_action and not self.on_action(action):
-                        print(f"🔍 DEBUG: AgentIterator: Action {action.tool} rejected by policy")
+                        print(f"❌ [AGENT] Action {action.tool} rejected by policy")
                         # Create rejection step and queue it
                         rejection_step = self._create_rejection_step(action, "Rejected by policy")
                         self._step_queue.append(rejection_step)
@@ -176,13 +175,13 @@ class AgentIterator:
                     actions_to_handle.append(action)
 
                 elif step.type == StepType.FINISH:
-                    print(f"🔍 DEBUG: AgentIterator found FINISH step")
+                    print(f"✅ [AGENT] Execution finished")
                     self._finished = True
                     # Queue FINISH step for consistent ordering
                     self._step_queue.append(step)
 
                 elif step.type == StepType.ERROR:
-                    print(f"🔍 DEBUG: AgentIterator found ERROR step")
+                    print(f"❌ [AGENT] Error step encountered")
                     # Queue ERROR step for consistent ordering
                     self._step_queue.append(step)
 
@@ -192,7 +191,7 @@ class AgentIterator:
 
             # Handle collected actions via execution handler
             if actions_to_handle:
-                print(f"🔍 DEBUG: AgentIterator delegating {len(actions_to_handle)} actions to handler")
+                print(f"🔧 [TOOLS] Executing {len(actions_to_handle)} actions")
 
                 # Delegate to execution handler (Strategy pattern)
                 for result_step in self.execution_handler.handle_actions(actions_to_handle):
@@ -204,11 +203,9 @@ class AgentIterator:
             # Return next queued step if available
             if self._step_queue:
                 step = self._step_queue.pop(0)
-                print(f"🔍 DEBUG: AgentIterator returning step: {step.type}")
                 return step
 
             # If no steps to return, continue to next iteration
-            print(f"🔍 DEBUG: AgentIterator: No steps to return, continuing")
             return self.__next__()
 
         except Exception as e:

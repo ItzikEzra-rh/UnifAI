@@ -237,6 +237,10 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
                 node_uid=self._node_uid
             )
 
+    def get_initial_phase(self) -> str:
+        """Get the initial phase for orchestration."""
+        return OrchestratorPhase.PLANNING.value
+
     def decide_next_phase(
             self,
             current_phase: str,

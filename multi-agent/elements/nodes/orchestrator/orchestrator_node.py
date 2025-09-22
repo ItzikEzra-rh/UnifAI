@@ -100,12 +100,9 @@ class OrchestratorNode(
         2. Update work plan based on responses
         3. Run planning/execution if needed (once per thread)
         """
-        print(f"\n🚀 [DEBUG] OrchestratorNode.run() - Starting execution for {self.uid}")
-        
         # Process all incoming packets with batching
         self.process_packets_batched(state)
         
-        print(f"✅ [DEBUG] OrchestratorNode.run() - Completed execution for {self.uid}")
         return state
 
     def process_packets_batched(self, state: StateView) -> None:
@@ -117,36 +114,30 @@ class OrchestratorNode(
         2. Run orchestration cycle once per thread - reduces redundant cycles
         3. Better resource utilization and lower latency
         """
-        print(f"📦 [DEBUG] process_packets_batched() - Starting batch processing")
-        
         # Clear updated threads from previous batch
         self._updated_threads.clear()
 
         # Process all packets first (ingest phase)
         packets = list(self.inbox_packets())
-        print(f"📥 [DEBUG] Found {len(packets)} packets to process")
+        
+        if not packets:
+            return
+            
+        print(f"📥 [ORCHESTRATOR] Processing {len(packets)} packets")
         
         for i, packet in enumerate(packets):
-            print(f"📨 [DEBUG] Processing packet {i+1}/{len(packets)}: {packet.id}")
             try:
                 self.handle_task_packet(packet)
             finally:
                 self.acknowledge(packet.id)
-                print(f"✅ [DEBUG] Acknowledged packet {packet.id}")
 
-        print(f"🔄 [DEBUG] Updated threads: {self._updated_threads}")
-        
         # Run orchestration cycles for updated threads (planning phase)
         for thread_id in self._updated_threads:
-            print(f"🧠 [DEBUG] Checking orchestration cycle for thread {thread_id}")
             workspace = self.get_workspace(thread_id)
             service = WorkPlanService(workspace)
-
             status_summary = service.get_status_summary(self.uid)
-            print(f"📊 [DEBUG] Thread {thread_id} status: complete={status_summary.is_complete}, total={status_summary.total_items}")
             
             if not status_summary.is_complete:
-                print(f"🎯 [DEBUG] Running orchestration cycle for thread {thread_id}")
                 self._run_orchestration_cycle(thread_id, "Continuing after batch response processing")
             else:
                 print(f"🎉 [DEBUG] Work plan complete for thread {thread_id}")
@@ -162,25 +153,18 @@ class OrchestratorNode(
         Args:
             packet: Task packet to handle
         """
-        print(f"🔍 [DEBUG] handle_task_packet() - Extracting task from packet {packet.id}")
         task = packet.extract_task()
         task.mark_processed(self.uid)
-        
-        print(f"📋 [DEBUG] Task details: content='{task.content[:50]}...', is_response={task.is_response()}, thread_id={task.thread_id}")
 
         if task.is_response():
             # This is a response to delegated work
-            print(f"📤 [DEBUG] Processing response task with correlation_id={task.correlation_task_id}")
             thread_id = self._handle_task_response(task)
             if thread_id:
-                print(f"🔄 [DEBUG] Added thread {thread_id} to updated threads")
                 self._updated_threads.add(thread_id)
         else:
             # This is a new work request
-            print(f"📥 [DEBUG] Processing new work request")
             self._handle_new_work(task)
             if task.thread_id:
-                print(f"🔄 [DEBUG] Added thread {task.thread_id} to updated threads")
                 self._updated_threads.add(task.thread_id)
 
 
@@ -268,24 +252,18 @@ class OrchestratorNode(
         
         Creates context and runs orchestration cycle.
         """
-        print(f"🆕 [DEBUG] _handle_new_work() - Processing new work request")
-        print(f"📝 [DEBUG] Task content: {task.content[:100]}...")
+        # Processing new work request
         
         # Ensure we have a thread
         thread_id = task.thread_id
         if not thread_id:
-            print(f"🧵 [DEBUG] No thread_id provided, creating new thread")
             thread = self.create_thread(
                 title="Orchestrated Work",
                 objective=task.content[:100]
             )
             thread_id = thread.thread_id
-            print(f"🧵 [DEBUG] Created new thread: {thread_id}")
-        else:
-            print(f"🧵 [DEBUG] Using existing thread: {thread_id}")
 
         # Add initial context to workspace
-        print(f"💾 [DEBUG] Adding context to workspace for thread {thread_id}")
         self.add_fact_to_workspace(thread_id, f"Initial request: {task.content}")
         self.set_workspace_variable(thread_id, "orchestrator_uid", self.uid)
         self.set_workspace_variable(thread_id, "original_task_id", task.task_id)
@@ -294,7 +272,6 @@ class OrchestratorNode(
         self.copy_graphstate_messages_to_workspace(thread_id)
 
         # Run orchestration
-        print(f"🎯 [DEBUG] Starting orchestration cycle for thread {thread_id}")
         self._run_orchestration_cycle(thread_id, task.content)
 
     def _run_orchestration_cycle(self, thread_id: str, content: str) -> None:
@@ -303,20 +280,15 @@ class OrchestratorNode(
         
         Uses PlanAndExecuteStrategy with orchestration tools.
         """
-        print(f"🔄 [DEBUG] _run_orchestration_cycle() - Starting cycle for thread {thread_id}")
+        print(f"🎯 [ORCHESTRATOR] Starting cycle for thread {thread_id}")
         
         # Build conversation context
-        print(f"💬 [DEBUG] Building context messages")
         messages = self._build_context_messages(thread_id, content)
-        print(f"💬 [DEBUG] Built {len(messages)} context messages")
 
         # Build domain tools only (provider will build built-ins)
-        print(f"🔧 [DEBUG] Building domain tools")
         tools = list(self.base_tools)
-        print(f"🔧 [DEBUG] Built {len(tools)} domain tools: {[tool.name for tool in tools]}")
 
         # Create orchestrator phase provider (no circular dependency!)
-        print(f"📊 [DEBUG] Creating orchestrator phase provider")
         phase_provider = OrchestratorPhaseProvider(
             domain_tools=tools,  # These are the domain tools this orchestrator can use
             get_workspace=self.get_workspace,  # Inject function, not whole node
@@ -327,7 +299,6 @@ class OrchestratorNode(
         )
 
         # Create strategy with unified provider
-        print(f"🧠 [DEBUG] Creating PlanAndExecute strategy")
         strategy = self.create_strategy(
             tools=tools,
             strategy_type=StrategyType.PLAN_AND_EXECUTE.value,
@@ -335,17 +306,26 @@ class OrchestratorNode(
             max_steps=self.max_rounds,
             phase_provider=phase_provider
         )
-        print(f"🧠 [DEBUG] Strategy created successfully")
 
         # Configure execution
-        print(f"⚙️ [DEBUG] Configuring agent execution")
         config = AgentConfig(
             execution_mode=ExecutionMode.AUTO,
             executor_config=ExecutorConfig.create_balanced()
         )
 
+        # Ensure all phase provider tools are available to the executor
+        all_phase_tools = set()
+        for phase_name in phase_provider.get_supported_phases():
+            phase_tools = phase_provider.get_tools_for_phase(phase_name)
+            all_phase_tools.update(phase_tools)
+        
+        print(f"🔧 [TOOLS] Registered {len(all_phase_tools)} orchestration tools")
+        
+        # Add all phase tools to strategy's tool registry so they're available to executor
+        for tool in all_phase_tools:
+            strategy.all_tools[tool.name] = tool
+
         # Run agent
-        print(f"🚀 [DEBUG] Starting agent execution")
         result = self.run_agent(
             messages=messages,
             strategy=strategy,
@@ -353,11 +333,9 @@ class OrchestratorNode(
         )
 
         if result.get("success"):
-            print(f"✅ [DEBUG] Orchestration cycle COMPLETED successfully")
+            print(f"✅ [ORCHESTRATOR] Cycle completed for thread {thread_id}")
         else:
-            print(f"❌ [DEBUG] Orchestration FAILED: {result.get('error')}")
-            
-        print(f"🔄 [DEBUG] _run_orchestration_cycle() - Finished cycle for thread {thread_id}")
+            print(f"❌ [ORCHESTRATOR] Cycle failed: {result.get('error')}")
 
     def _build_context_messages(self, thread_id: str, content: str) -> List[ChatMessage]:
         """

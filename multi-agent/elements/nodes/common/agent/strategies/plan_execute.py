@@ -145,30 +145,19 @@ class PlanAndExecuteStrategy(AgentStrategy):
         Returns:
             List of steps to execute
         """
-        print(f"\n🧠 [DEBUG] PlanAndExecuteStrategy.think() - Starting")
-        print(f"📊 [DEBUG] Current phase: {self._current_phase}")
-        print(f"📝 [DEBUG] Messages: {len(messages)}, Observations: {len(observations)}")
+        print(f"🧠 [STRATEGY] Phase: {self._current_phase} | Observations: {len(observations)}")
         
         try:
             # Determine current phase based on context
-            print(f"🔄 [DEBUG] Updating phase based on observations")
             old_phase = self._current_phase
             self._update_phase(observations)
             if old_phase != self._current_phase:
-                print(f"🔄 [DEBUG] Phase transition: {old_phase} → {self._current_phase}")
-            else:
-                print(f"🔄 [DEBUG] Staying in phase: {self._current_phase}")
-            
-            # No automatic actions - strategy only manages phases
-            # All actions should be done by LLM using appropriate tools
+                print(f"🔀 [PHASE] {old_phase} → {self._current_phase}")
             
             # Build phase-specific context
-            print(f"💬 [DEBUG] Building context for phase {self._current_phase}")
             context = self.build_context(messages, observations)
-            print(f"💬 [DEBUG] Built context with {len(context)} messages")
             
             # Get phase-appropriate tools
-            print(f"🔧 [DEBUG] Getting tools for phase {self._current_phase}")
             tools = self.get_tools_for_phase(self._current_phase)
             
             # If no tools available for this phase, skip it

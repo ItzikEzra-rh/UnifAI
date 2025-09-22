@@ -75,13 +75,8 @@ class LlmCapableMixin(Generic[TSupportStream]):
         Returns:
             ChatMessage response from LLM
         """
-        print(f"🔍 DEBUG: LlmCapableMixin.chat called with {len(messages)} messages, {len(tools) if tools else 0} tools")
-        for i, msg in enumerate(messages):
-            print(f"🔍 DEBUG: Message[{i}] - Role: {msg.role}, Content: {msg.content[:50] if msg.content else 'None'}...")
-            if msg.tool_calls:
-                print(f"🔍 DEBUG:   Tool calls: {[(tc.name, tc.tool_call_id) for tc in msg.tool_calls]}")
-            if msg.tool_call_id:
-                print(f"🔍 DEBUG:   Tool call ID: {msg.tool_call_id}, Name: {getattr(msg, 'name', 'None')}")
+        # High-level LLM call logging only
+        print(f"🤖 [LLM] Chat with {len(tools) if tools else 0} tools")
         
         llm_instance = self.llm.bind_tools(tools) if tools else self.llm
 

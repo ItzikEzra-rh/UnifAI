@@ -646,3 +646,91 @@ def pytest_collection_modifyitems(config, items):
             item.add_marker(pytest.mark.graph_engine)
         elif "/session_management/" in test_path:
             item.add_marker(pytest.mark.session_management)
+
+
+# =============================================================================
+# ORCHESTRATOR INTEGRATION FIXTURES
+# =============================================================================
+
+@pytest.fixture
+def predictable_llm():
+    """Provide a deterministic LLM controller for testing."""
+    from tests.fixtures.orchestrator_integration import PredictableLLM
+    return PredictableLLM()
+
+
+@pytest.fixture
+def execution_tracker():
+    """Provide an execution tracker for monitoring orchestrator behavior."""
+    from tests.fixtures.orchestrator_integration import ExecutionTracker
+    return ExecutionTracker()
+
+
+@pytest.fixture
+def orchestrator_integration_state(state_view):
+    """Provide a state configured for orchestrator integration testing."""
+    return state_view
+
+
+@pytest.fixture
+def orchestrator_workspace_service(orchestrator_integration_state):
+    """Provide a workspace service bound to the integration state."""
+    from elements.nodes.common.workload.state_bound_service import StateBoundWorkloadService
+    return StateBoundWorkloadService(orchestrator_integration_state)
+
+
+@pytest.fixture
+def integration_orchestrator(predictable_llm, orchestrator_integration_state):
+    """Provide a fully configured orchestrator for integration testing."""
+    from elements.nodes.orchestrator.orchestrator_node import OrchestratorNode
+    
+    orchestrator = OrchestratorNode(llm=predictable_llm)
+    
+    # Set up context and state
+    step_context = create_step_context(
+        uid="test_orchestrator", 
+        adjacent_nodes=["worker_1", "worker_2"]
+    )
+    orchestrator.set_context(step_context)
+    orchestrator._state = orchestrator_integration_state
+    
+    return orchestrator
+
+
+@pytest.fixture
+def integration_task_factory():
+    """Provide a factory for creating tasks for integration testing."""
+    import uuid
+    from elements.nodes.common.workload import Task
+    
+    def create_task(content: str, thread_id: str = None, **kwargs) -> Task:
+        """Create a task for integration testing."""
+        return Task(
+            content=content,
+            thread_id=thread_id or f"test_thread_{uuid.uuid4().hex[:8]}",
+            should_respond=False,
+            created_by="integration_test",
+            **kwargs
+        )
+    return create_task
+
+
+@pytest.fixture
+def planning_scenario_helper():
+    """Provide helper for setting up planning scenarios."""
+    from tests.fixtures.orchestrator_integration import create_planning_scenario
+    return create_planning_scenario
+
+
+@pytest.fixture
+def synthesis_scenario_helper():
+    """Provide helper for setting up synthesis scenarios."""
+    from tests.fixtures.orchestrator_integration import create_synthesis_scenario
+    return create_synthesis_scenario
+
+
+@pytest.fixture
+def task_packet_helper():
+    """Provide helper for creating task packets."""
+    from tests.fixtures.orchestrator_integration import create_task_packet
+    return create_task_packet

@@ -276,8 +276,6 @@ class WorkPlanService:
     
     def load(self, owner_uid: str) -> Optional[WorkPlan]:
         """Load work plan for owner."""
-        print(f"💾 [DEBUG] WorkPlanService.load() - Loading plan for {owner_uid}")
-        
         try:
             # Try to get from workspace variables
             plan_key = f"workplan_{owner_uid}"
@@ -286,49 +284,39 @@ class WorkPlanService:
             if plan_data:
                 try:
                     plan = WorkPlan(**plan_data)
-                    print(f"💾 [DEBUG] Loaded plan: {plan.summary}, {len(plan.items)} items")
+                    print(f"💾 [PLAN] Loaded: {len(plan.items)} items")
                     return plan
                 except Exception as e:
-                    print(f"❌ [DEBUG] Error loading work plan: {e}")
+                    print(f"❌ [PLAN] Error loading: {e}")
                     return None
             
-            print(f"💾 [DEBUG] No plan found for {owner_uid}")
             return None
         except Exception as e:
-            print(f"❌ [DEBUG] Workspace error during load: {e}")
+            print(f"❌ [PLAN] Workspace error: {e}")
             return None
     
     def save(self, plan: WorkPlan) -> bool:
         """Save work plan to workspace."""
-        print(f"💾 [DEBUG] WorkPlanService.save() - Saving plan for {plan.owner_uid}")
-        print(f"💾 [DEBUG] Plan summary: {plan.summary}, {len(plan.items)} items")
-        
         try:
             plan.mark_updated()
             plan_key = f"workplan_{plan.owner_uid}"
             self.workspace.set_variable(plan_key, plan.model_dump())
             
-            print(f"💾 [DEBUG] Plan saved successfully")
+            print(f"💾 [PLAN] Saved: {len(plan.items)} items")
             return True
         except Exception as e:
-            print(f"❌ [DEBUG] Workspace error during save: {e}")
+            print(f"❌ [PLAN] Save error: {e}")
             return False
     
     def get_status_summary(self, owner_uid: str) -> WorkPlanStatusSummary:
         """Get status summary for work plan."""
-        print(f"📊 [DEBUG] WorkPlanService.get_status_summary() - Getting status for {owner_uid}")
-        
         plan = self.load(owner_uid)
         
         if not plan:
-            print(f"📊 [DEBUG] No plan exists - returning empty status")
             return WorkPlanStatusSummary(exists=False)
         
         counts = plan.get_status_counts()
         ready_items = plan.get_ready_items()
-        
-        print(f"📊 [DEBUG] Status counts: pending={counts.pending}, waiting={counts.waiting}, done={counts.done}, failed={counts.failed}")
-        print(f"📊 [DEBUG] Ready items: {len(ready_items)}")
         
         # Check for local ready items
         has_local_ready = any(
@@ -341,8 +329,6 @@ class WorkPlanService:
             item.status == WorkItemStatus.WAITING and item.kind == WorkItemKind.REMOTE
             for item in plan.items.values()
         )
-        
-        print(f"📊 [DEBUG] Flags: has_local_ready={has_local_ready}, has_remote_waiting={has_remote_waiting}, is_complete={plan.is_complete()}")
         
         summary = WorkPlanStatusSummary(
             exists=True,
