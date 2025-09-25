@@ -62,7 +62,7 @@ class MarkWorkItemStatusTool(BaseTool):
         self._get_workload_service = get_workload_service
     
     def run(self, **kwargs) -> Dict[str, Any]:
-        """Mark work item status."""
+        """Mark work item status (thread-safe)."""
         print(f"🏷️ [DEBUG] MarkWorkItemStatusTool.run() - Starting")
         args = MarkStatusArgs(**kwargs)
         print(f"🏷️ [DEBUG] Item ID: {args.item_id}")
@@ -75,26 +75,19 @@ class MarkWorkItemStatusTool(BaseTool):
         service = WorkPlanService(workload_service)
         print(f"🏷️ [DEBUG] Owner UID: {owner_uid}")
         
-        # Load plan, update item, and save
-        plan = service.load(thread_id, owner_uid)
-        if not plan or args.item_id not in plan.items:
-            print(f"❌ [DEBUG] Work plan or item not found")
-            return {"success": False, "error": "Work plan or work item not found"}
+        def update_status(item, plan):
+            """Update function for atomic status change."""
+            item.status = args.status
+            if args.status == WorkItemStatus.FAILED and args.notes:
+                item.error = args.notes
+            if args.correlation_task_id:
+                item.correlation_task_id = args.correlation_task_id
         
-        # Update the item status
-        item = plan.items[args.item_id]
-        item.status = args.status
-        if args.status == WorkItemStatus.FAILED and args.notes:
-            item.error = args.notes
-        if args.correlation_task_id:
-            item.correlation_task_id = args.correlation_task_id
-        
-        # Save the updated plan
-        success = service.save(plan)
+        success = service.atomic_update_item(thread_id, owner_uid, args.item_id, update_status)
         
         if not success:
-            print(f"❌ [DEBUG] Failed to save updated work plan")
-            return {"success": False, "error": "Failed to save work plan"}
+            print(f"❌ [DEBUG] Failed to update work item")
+            return {"success": False, "error": "Work plan or work item not found"}
         
         result = {
             "success": True,

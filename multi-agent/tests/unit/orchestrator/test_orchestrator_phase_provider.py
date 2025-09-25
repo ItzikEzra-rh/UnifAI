@@ -16,8 +16,8 @@ from typing import List, Dict, Any
 from elements.nodes.orchestrator.orchestrator_phase_provider import (
     OrchestratorPhaseProvider, OrchestratorPhase
 )
-from elements.nodes.common.agent.phase_definition import PhaseDefinition, PhaseSystem
-from elements.nodes.common.agent.phase_protocols import PhaseState, create_work_plan_status
+from elements.nodes.common.agent.phases.phase_definition import PhaseDefinition, PhaseSystem
+from elements.nodes.common.agent.phases.phase_protocols import PhaseState, create_work_plan_status
 from elements.nodes.common.workload import WorkPlanService, WorkPlanStatusSummary
 from elements.tools.common.base_tool import BaseTool
 from tests.fixtures.orchestrator_fixtures import *

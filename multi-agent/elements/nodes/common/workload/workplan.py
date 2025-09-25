@@ -10,6 +10,8 @@ from typing import Dict, List, Optional, Set, Any
 from datetime import datetime
 from enum import Enum
 import uuid
+import threading
+from collections import defaultdict
 
 
 class WorkItemStatus(str, Enum):
@@ -264,11 +266,56 @@ class WorkPlanService:
     
     SOLID design: Single dependency on IWorkloadService.
     WorkPlans are stored as workspace variables, not separate aggregates.
+    
+    Thread-safe: Uses RLock per (thread_id, owner_uid) to prevent race conditions.
     """
+    
+    # Class-level lock registry to ensure same lock instance per workplan
+    _locks: Dict[str, threading.RLock] = defaultdict(threading.RLock)
+    _locks_lock = threading.Lock()  # Protects the locks dictionary itself
     
     def __init__(self, workload_service):
         """Initialize with workload service only."""
         self._workload_service = workload_service
+    
+    def _get_lock(self, thread_id: str, owner_uid: str) -> threading.RLock:
+        """Get or create a lock for the specific workplan."""
+        lock_key = f"{thread_id}:{owner_uid}"
+        with self._locks_lock:
+            return self._locks[lock_key]
+    
+    def with_lock(self, thread_id: str, owner_uid: str):
+        """Context manager for thread-safe workplan operations."""
+        return self._get_lock(thread_id, owner_uid)
+    
+    def atomic_update_item(
+        self, 
+        thread_id: str, 
+        owner_uid: str, 
+        item_id: str, 
+        update_func: callable
+    ) -> bool:
+        """
+        Atomically update a work item using the provided function.
+        
+        Args:
+            thread_id: Thread identifier
+            owner_uid: Owner node identifier
+            item_id: Work item identifier
+            update_func: Function that takes (item, plan) and modifies the item
+            
+        Returns:
+            True if update succeeded, False otherwise
+        """
+        with self.with_lock(thread_id, owner_uid):
+            plan = self.load(thread_id, owner_uid)
+            if not plan or item_id not in plan.items:
+                return False
+            
+            item = plan.items[item_id]
+            update_func(item, plan)
+            item.mark_updated()
+            return self.save(plan)
     
     def create(self, thread_id: str, owner_uid: str) -> WorkPlan:
         """Create a new work plan."""
@@ -297,20 +344,21 @@ class WorkPlanService:
             return None
     
     def save(self, plan: WorkPlan) -> bool:
-        """Save work plan as workspace variable."""
-        try:
-            plan.mark_updated()
-            plan_key = f"workplan_{plan.owner_uid}"
-            
-            workspace = self._workload_service.get_workspace(plan.thread_id)
-            workspace.set_variable(plan_key, plan.model_dump())
-            self._workload_service.update_workspace(workspace)
-            
-            print(f"💾 [PLAN] Saved: {len(plan.items)} items")
-            return True
-        except Exception as e:
-            print(f"❌ [PLAN] Save error: {e}")
-            return False
+        """Save work plan as workspace variable (thread-safe)."""
+        with self.with_lock(plan.thread_id, plan.owner_uid):
+            try:
+                plan.mark_updated()
+                plan_key = f"workplan_{plan.owner_uid}"
+                
+                workspace = self._workload_service.get_workspace(plan.thread_id)
+                workspace.set_variable(plan_key, plan.model_dump())
+                self._workload_service.update_workspace(workspace)
+                
+                print(f"💾 [PLAN] Saved: {len(plan.items)} items")
+                return True
+            except Exception as e:
+                print(f"❌ [PLAN] Save error: {e}")
+                return False
     
     def get_status_summary(self, thread_id: str, owner_uid: str) -> WorkPlanStatusSummary:
         """Get status summary for work plan."""
@@ -409,53 +457,54 @@ class WorkPlanService:
         result: Any = None, 
         error: str = None
     ) -> bool:
-        """Ingest task response and update work item status - only for explicit success/error."""
+        """Ingest task response and update work item status - only for explicit success/error (thread-safe)."""
         print(f"📥 [DEBUG] WorkPlanService.ingest_task_response() - Processing response")
         print(f"📥 [DEBUG] correlation_task_id: {correlation_task_id}")
         print(f"📥 [DEBUG] has_result: {result is not None}, has_error: {error is not None}")
         
-        plan = self.load(thread_id, owner_uid)
-        if not plan:
-            print(f"❌ [DEBUG] No plan found for {owner_uid}")
-            return False
-        
-        # Find item by correlation task ID
-        target_item = None
-        for item in plan.items.values():
-            if item.correlation_task_id == correlation_task_id:
-                target_item = item
-                break
-        
-        if not target_item:
-            print(f"❌ [DEBUG] No work item found for correlation task ID: {correlation_task_id}")
-            print(f"📋 [DEBUG] Available correlation IDs: {[item.correlation_task_id for item in plan.items.values() if item.correlation_task_id]}")
-            return False
-        
-        print(f"✅ [DEBUG] Found target item: {target_item.id} - {target_item.title}")
-        
-        # Update item based on response - only for explicit structures
-        if error:
-            print(f"❌ [DEBUG] Marking item as FAILED: {error}")
-            target_item.status = WorkItemStatus.FAILED
-            target_item.error = error
-            target_item.retry_count += 1  # Increment retry count on failure
-        elif result and isinstance(result, dict) and result.get("success") is True:
-            # Only auto-mark DONE for explicit success structures
-            print(f"✅ [DEBUG] Marking item as DONE with explicit success result")
-            target_item.status = WorkItemStatus.DONE
-            target_item.result_ref = WorkItemResult(
-                success=True,
-                content=str(result.get("content", result)),
-                data=result
-            )
-        else:
-            print(f"💬 [DEBUG] Result is not explicit success structure - not auto-marking DONE")
-            return False  # Don't auto-mark, let LLM interpret
-        
-        target_item.mark_updated()
-        self.save(plan)
-        print(f"✅ [DEBUG] Task response ingested successfully")
-        return True
+        with self.with_lock(thread_id, owner_uid):
+            plan = self.load(thread_id, owner_uid)
+            if not plan:
+                print(f"❌ [DEBUG] No plan found for {owner_uid}")
+                return False
+            
+            # Find item by correlation task ID
+            target_item = None
+            for item in plan.items.values():
+                if item.correlation_task_id == correlation_task_id:
+                    target_item = item
+                    break
+            
+            if not target_item:
+                print(f"❌ [DEBUG] No work item found for correlation task ID: {correlation_task_id}")
+                print(f"📋 [DEBUG] Available correlation IDs: {[item.correlation_task_id for item in plan.items.values() if item.correlation_task_id]}")
+                return False
+            
+            print(f"✅ [DEBUG] Found target item: {target_item.id} - {target_item.title}")
+            
+            # Update item based on response - only for explicit structures
+            if error:
+                print(f"❌ [DEBUG] Marking item as FAILED: {error}")
+                target_item.status = WorkItemStatus.FAILED
+                target_item.error = error
+                target_item.retry_count += 1  # Increment retry count on failure
+            elif result and isinstance(result, dict) and result.get("success") is True:
+                # Only auto-mark DONE for explicit success structures
+                print(f"✅ [DEBUG] Marking item as DONE with explicit success result")
+                target_item.status = WorkItemStatus.DONE
+                target_item.result_ref = WorkItemResult(
+                    success=True,
+                    content=str(result.get("content", result)),
+                    data=result
+                )
+            else:
+                print(f"💬 [DEBUG] Result is not explicit success structure - not auto-marking DONE")
+                return False  # Don't auto-mark, let LLM interpret
+            
+            target_item.mark_updated()
+            self.save(plan)
+            print(f"✅ [DEBUG] Task response ingested successfully")
+            return True
     
     def update_item_status(
         self,
@@ -466,69 +515,71 @@ class WorkPlanService:
         error: str = None,
         correlation_task_id: str = None
     ) -> bool:
-        """Update work item status - for LLM-driven status changes."""
+        """Update work item status - for LLM-driven status changes (thread-safe)."""
         print(f"🔄 [DEBUG] WorkPlanService.update_item_status() - Updating {item_id} to {status}")
         
-        plan = self.load(thread_id, owner_uid)
-        if not plan:
-            print(f"❌ [DEBUG] No plan found for {owner_uid}")
-            return False
-        
-        item = plan.items.get(item_id)
-        if not item:
-            print(f"❌ [DEBUG] No item found with ID: {item_id}")
-            print(f"📋 [DEBUG] Available item IDs: {list(plan.items.keys())}")
-            return False
-        
-        print(f"✅ [DEBUG] Found item: {item.title}")
-        print(f"🔄 [DEBUG] Changing status: {item.status} → {status}")
-        
-        old_status = item.status
-        item.status = status
-        
-        if error and status == WorkItemStatus.FAILED:
-            item.error = error
-            print(f"❌ [DEBUG] Added error message: {error}")
-        
-        if correlation_task_id:
-            item.correlation_task_id = correlation_task_id
-            print(f"🔗 [DEBUG] Set correlation_task_id: {correlation_task_id}")
-        
-        # If marking as DONE, finalize the result
-        if status == WorkItemStatus.DONE and item.result_ref:
-            item.result_ref.success = True
-            if item.result_ref.metadata:
-                item.result_ref.metadata.pop("needs_interpretation", None)
-            print(f"✅ [DEBUG] Finalized result as successful")
-        
-        item.mark_updated()
-        self.save(plan)
-        print(f"✅ [DEBUG] Item status updated: {old_status} → {status}")
-        return True
+        with self.with_lock(thread_id, owner_uid):
+            plan = self.load(thread_id, owner_uid)
+            if not plan:
+                print(f"❌ [DEBUG] No plan found for {owner_uid}")
+                return False
+            
+            item = plan.items.get(item_id)
+            if not item:
+                print(f"❌ [DEBUG] No item found with ID: {item_id}")
+                print(f"📋 [DEBUG] Available item IDs: {list(plan.items.keys())}")
+                return False
+            
+            print(f"✅ [DEBUG] Found item: {item.title}")
+            print(f"🔄 [DEBUG] Changing status: {item.status} → {status}")
+            
+            old_status = item.status
+            item.status = status
+            
+            if error and status == WorkItemStatus.FAILED:
+                item.error = error
+                print(f"❌ [DEBUG] Added error message: {error}")
+            
+            if correlation_task_id:
+                item.correlation_task_id = correlation_task_id
+                print(f"🔗 [DEBUG] Set correlation_task_id: {correlation_task_id}")
+            
+            # If marking as DONE, finalize the result
+            if status == WorkItemStatus.DONE and item.result_ref:
+                item.result_ref.success = True
+                if item.result_ref.metadata:
+                    item.result_ref.metadata.pop("needs_interpretation", None)
+                print(f"✅ [DEBUG] Finalized result as successful")
+            
+            item.mark_updated()
+            self.save(plan)
+            print(f"✅ [DEBUG] Item status updated: {old_status} → {status}")
+            return True
     
     def mark_item_as_delegated(self, thread_id: str, owner_uid: str, item_id: str, correlation_task_id: str) -> bool:
-        """Mark work item as delegated (WAITING status)."""
+        """Mark work item as delegated (WAITING status) - thread-safe."""
         print(f"📤 [DEBUG] WorkPlanService.mark_item_as_delegated() - Marking {item_id} as delegated")
         print(f"📤 [DEBUG] correlation_task_id: {correlation_task_id}")
         
-        plan = self.load(thread_id, owner_uid)
-        if not plan:
-            print(f"❌ [DEBUG] No plan found for {owner_uid}")
-            return False
-        
-        item = plan.items.get(item_id)
-        if not item:
-            print(f"❌ [DEBUG] No item found with ID: {item_id}")
-            print(f"📋 [DEBUG] Available item IDs: {list(plan.items.keys())}")
-            return False
-        
-        print(f"✅ [DEBUG] Found item: {item.title}")
-        print(f"🔄 [DEBUG] Changing status: {item.status} → WAITING")
-        
-        item.status = WorkItemStatus.WAITING
-        item.correlation_task_id = correlation_task_id
-        item.mark_updated()
-        
-        self.save(plan)
-        print(f"✅ [DEBUG] Item marked as delegated successfully")
-        return True
+        with self.with_lock(thread_id, owner_uid):
+            plan = self.load(thread_id, owner_uid)
+            if not plan:
+                print(f"❌ [DEBUG] No plan found for {owner_uid}")
+                return False
+            
+            item = plan.items.get(item_id)
+            if not item:
+                print(f"❌ [DEBUG] No item found with ID: {item_id}")
+                print(f"📋 [DEBUG] Available item IDs: {list(plan.items.keys())}")
+                return False
+            
+            print(f"✅ [DEBUG] Found item: {item.title}")
+            print(f"🔄 [DEBUG] Changing status: {item.status} → WAITING")
+            
+            item.status = WorkItemStatus.WAITING
+            item.correlation_task_id = correlation_task_id
+            item.mark_updated()
+            
+            self.save(plan)
+            print(f"✅ [DEBUG] Item marked as delegated successfully")
+            return True

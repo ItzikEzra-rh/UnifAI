@@ -2,7 +2,7 @@
 Unified phase provider following SOLID principles.
 
 This module provides a single, cohesive interface for all phase-related concerns,
-using clean Pydantic models for phase definitions.
+using clean Pydantic models for phase definitions with validation support.
 """
 
 from typing import Protocol, List, Optional, Any
@@ -10,6 +10,11 @@ from abc import ABC, abstractmethod
 from elements.tools.common.base_tool import BaseTool
 from .phase_definition import PhaseSystem, PhaseDefinition
 from .phase_protocols import PhaseState
+
+# Import for typing - avoid circular imports
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from .models import PhaseValidationContext
 
 
 class PhaseProvider(Protocol):
@@ -95,6 +100,64 @@ class BasePhaseProvider(ABC):
     def get_phase_guidance(self, phase_name: str) -> str:
         """Get guidance text for the given phase."""
         return self._phase_system.get_guidance_for_phase(phase_name)
+    
+    @abstractmethod
+    def _build_validation_context(self, phase_name: str) -> "PhaseValidationContext":
+        """
+        Build validation context for the given phase.
+        
+        This is the extension point for providers to add their specific
+        context data (e.g., work plan, adjacent nodes, etc.).
+        
+        Args:
+            phase_name: Name of the phase to validate
+            
+        Returns:
+            PhaseValidationContext with provider-specific data
+        """
+        pass
+    
+    def get_phase_validation(self, phase_name: str) -> str:
+        """
+        Get validation guidance for the given phase.
+        
+        SRP: This method is responsible only for validation concerns.
+        
+        Args:
+            phase_name: Name of the phase to validate
+            
+        Returns:
+            Validation guidance text, empty if no issues found
+        """
+        phase = self._phase_system.get_phase(phase_name)
+        if not phase:
+            return ""
+            
+        try:
+            context = self._build_validation_context(phase_name)
+            return phase.run_validators(context)
+        except Exception as e:
+            print(f"Validation error in phase '{phase_name}': {e}")
+            return ""
+    
+    def build_phase_prompt(self, phase_name: str) -> str:
+        """
+        Build complete phase prompt with base guidance and validation.
+        
+        SRP: This method is responsible only for composing guidance.
+        
+        Args:
+            phase_name: Name of the phase
+            
+        Returns:
+            Complete prompt with base guidance and validation guidance
+        """
+        base_guidance = self.get_phase_guidance(phase_name)
+        validation_guidance = self.get_phase_validation(phase_name)
+        
+        if validation_guidance:
+            return f"{base_guidance}\n\n{validation_guidance}"
+        return base_guidance
     
     @abstractmethod
     def get_phase_context(self) -> PhaseState:

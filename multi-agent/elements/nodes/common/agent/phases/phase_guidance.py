@@ -6,7 +6,7 @@ without bloating the main system message.
 """
 
 from typing import Dict
-from .constants import ExecutionPhase
+from ..constants import ExecutionPhase
 
 
 class PhaseGuidanceProvider:

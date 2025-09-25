@@ -88,7 +88,7 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
         self._get_workload_service = get_workload_service
     
     def run(self, **kwargs) -> Dict[str, Any]:
-        """Create or update work plan."""
+        """Create or update work plan (thread-safe)."""
         print(f"📋 [DEBUG] CreateOrUpdateWorkPlanTool.run() - Starting")
         
         args = CreateOrUpdatePlanArgs(**kwargs)
@@ -103,37 +103,39 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
         
         print(f"📋 [DEBUG] Owner UID: {owner_uid}")
         
-        # Load existing plan or create new one
-        plan = service.load(thread_id, owner_uid)
-        if not plan:
-            print(f"📋 [DEBUG] No existing plan - creating new one")
-            plan = service.create(
-                thread_id=thread_id,
-                owner_uid=owner_uid
-            )
-        else:
-            print(f"📋 [DEBUG] Updating existing plan with {len(plan.items)} items")
-        
-        # Update summary
-        plan.summary = args.summary
-        
-        # Add items from structured specs
-        for i, item_spec in enumerate(args.items):
-            print(f"📋 [DEBUG] Adding item {i+1}: {item_spec.id} - {item_spec.title}")
-            print(f"📋 [DEBUG] Dependencies: {item_spec.dependencies}")
-            print(f"📋 [DEBUG] Kind: {item_spec.kind}")
+        # Thread-safe create or update operation
+        with service.with_lock(thread_id, owner_uid):
+            # Load existing plan or create new one
+            plan = service.load(thread_id, owner_uid)
+            if not plan:
+                print(f"📋 [DEBUG] No existing plan - creating new one")
+                plan = service.create(
+                    thread_id=thread_id,
+                    owner_uid=owner_uid
+                )
+            else:
+                print(f"📋 [DEBUG] Updating existing plan with {len(plan.items)} items")
             
-            item = WorkItem(
-                id=item_spec.id,
-                title=item_spec.title,
-                description=item_spec.description,
-                dependencies=item_spec.dependencies,
-                kind=item_spec.kind
-            )
-            plan.items[item.id] = item
-        
-        print(f"📋 [DEBUG] Saving plan with {len(plan.items)} total items")
-        service.save(plan)
+            # Update summary
+            plan.summary = args.summary
+            
+            # Add items from structured specs
+            for i, item_spec in enumerate(args.items):
+                print(f"📋 [DEBUG] Adding item {i+1}: {item_spec.id} - {item_spec.title}")
+                print(f"📋 [DEBUG] Dependencies: {item_spec.dependencies}")
+                print(f"📋 [DEBUG] Kind: {item_spec.kind}")
+                
+                item = WorkItem(
+                    id=item_spec.id,
+                    title=item_spec.title,
+                    description=item_spec.description,
+                    dependencies=item_spec.dependencies,
+                    kind=item_spec.kind
+                )
+                plan.items[item.id] = item
+            
+            print(f"📋 [DEBUG] Saving plan with {len(plan.items)} total items")
+            service.save(plan)
         
         # Get status summary for response
         status_summary = service.get_status_summary(thread_id, owner_uid)

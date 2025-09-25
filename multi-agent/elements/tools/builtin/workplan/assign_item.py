@@ -12,17 +12,22 @@ from elements.nodes.common.agent.constants import ToolNames
 class AssignItemArgs(BaseModel):
     """Arguments for assigning a work item."""
     item_id: str = Field(..., description="ID of the work item to assign")
-    kind: WorkItemKind = Field(..., description="Kind of assignment: local or remote")
-    assigned_uid: Optional[str] = Field(None, description="UID of target node (required for remote)")
-    tool: Optional[str] = Field(None, description="Tool name for local execution")
-    args: Dict[str, Any] = Field(default_factory=dict, description="Arguments for tool execution")
+    kind: WorkItemKind = Field(..., description="Assignment type: 'local' (execute on this node) or 'remote' (delegate to another node)")
+    assigned_uid: Optional[str] = Field(None, description="UID of target node (required for remote assignments only)")
 
 
 class AssignWorkItemTool(BaseTool):
     """Assign a work item to local or remote execution."""
     
     name = ToolNames.WORKPLAN_ASSIGN
-    description = "Assign a work item to local execution (with a tool) or remote execution (to an adjacent node)"
+    description = """Assign a work item for local or remote execution.
+    
+    ASSIGNMENT TYPES:
+    - 'local': Execute the work item on this node (you will handle it)
+    - 'remote': Delegate the work item to another node (specify assigned_uid)
+    
+    NOTE: This tool only assigns work items. For remote items, you must also 
+    use DelegateTaskTool to actually send the task to the assigned node."""
     args_schema = AssignItemArgs
     
     def __init__(
@@ -36,7 +41,7 @@ class AssignWorkItemTool(BaseTool):
         self._get_workload_service = get_workload_service
     
     def run(self, **kwargs) -> Dict[str, Any]:
-        """Assign work item."""
+        """Assign work item (thread-safe)."""
         args = AssignItemArgs(**kwargs)
         
         thread_id = self._get_thread_id()
@@ -44,28 +49,22 @@ class AssignWorkItemTool(BaseTool):
         workload_service = self._get_workload_service()
         service = WorkPlanService(workload_service)
         
-        plan = service.load(thread_id, owner_uid)
-        if not plan:
-            return {"success": False, "error": "No work plan found"}
+        def assign_item(item, plan):
+            """Update function for atomic assignment."""
+            item.kind = args.kind
+            item.assigned_uid = args.assigned_uid
+            item.updated_at = plan.updated_at
         
-        if args.item_id not in plan.items:
-            return {"success": False, "error": f"Work item {args.item_id} not found"}
+        success = service.atomic_update_item(thread_id, owner_uid, args.item_id, assign_item)
         
-        item = plan.items[args.item_id]
-        item.kind = args.kind
-        item.assigned_uid = args.assigned_uid
-        item.tool = args.tool
-        item.args = args.args
-        item.updated_at = plan.updated_at
-        
-        service.save(plan)
+        if not success:
+            return {"success": False, "error": f"Failed to assign work item {args.item_id} (not found or plan missing)"}
         
         return {
             "success": True,
             "item_id": args.item_id,
             "assignment": {
                 "kind": args.kind,
-                "assigned_uid": args.assigned_uid,
-                "tool": args.tool
+                "assigned_uid": args.assigned_uid
             }
         }

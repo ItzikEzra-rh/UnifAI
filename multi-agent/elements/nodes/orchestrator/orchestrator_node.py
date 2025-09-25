@@ -412,7 +412,8 @@ class OrchestratorNode(
             'get_workspace': lambda: self.get_workspace(thread_id),
             'get_thread_id': lambda: thread_id,
             'get_owner_uid': lambda: self.uid,
-            'get_adjacent_nodes': lambda: self.get_adjacent_nodes()
+            'get_adjacent_nodes': lambda: self.get_adjacent_nodes(),
+            'get_workload_service': lambda: self.get_workload_service()
         }
 
     def _build_workplan_tools(self, accessors: Dict[str, Any]) -> List[BaseTool]:
@@ -423,7 +424,11 @@ class OrchestratorNode(
                 accessors['get_thread_id'],
                 accessors['get_owner_uid']
             ),
-            AssignWorkItemTool(accessors['get_workspace'], accessors['get_owner_uid']),
+            AssignWorkItemTool(
+                get_thread_id=accessors['get_thread_id'],
+                get_owner_uid=accessors['get_owner_uid'],
+                get_workload_service=accessors['get_workload_service']
+            ),
             MarkWorkItemStatusTool(accessors['get_workspace'], accessors['get_owner_uid']),
             IngestWorkspaceResultsTool(accessors['get_workspace'], accessors['get_owner_uid']),
             IsWorkPlanCompleteTool(accessors['get_workspace'], accessors['get_owner_uid']),

@@ -7,10 +7,15 @@ Uses clean Pydantic models and enums to define orchestrator phases professionall
 from enum import Enum
 from typing import List, Callable, Any, Optional
 from elements.tools.common.base_tool import BaseTool
-from elements.nodes.common.agent.unified_phase_provider import BasePhaseProvider
-from elements.nodes.common.agent.phase_definition import PhaseSystem, PhaseDefinition
-from elements.nodes.common.agent.phase_protocols import PhaseState, create_phase_state, create_work_plan_status
+from elements.nodes.common.agent.phases.unified_phase_provider import BasePhaseProvider
+from elements.nodes.common.agent.phases.phase_definition import PhaseSystem, PhaseDefinition
+from elements.nodes.common.agent.phases.phase_protocols import PhaseState, create_phase_state, create_work_plan_status
 from elements.nodes.common.workload import WorkPlanService
+from elements.nodes.common.agent.phases.models import PhaseValidationContext
+from .phases.validators import (
+    AllocationValidator, PlanningValidator, ExecutionValidator, 
+    MonitoringValidator, SynthesisValidator
+)
 
 # Built-in orchestration tools
 from elements.tools.builtin.workplan.create_or_update import CreateOrUpdateWorkPlanTool
@@ -136,6 +141,13 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         # Create phase definitions directly in execution order (no interim configs)
         domain_tools_list = list(self._domain_tools)
 
+        # Create validators
+        planning_validator = PlanningValidator()
+        allocation_validator = AllocationValidator()
+        execution_validator = ExecutionValidator()
+        monitoring_validator = MonitoringValidator()
+        synthesis_validator = SynthesisValidator()
+
         planning_phase = PhaseDefinition(
             name=OrchestratorPhase.PLANNING.value,
             description="Create detailed work plan with dependencies and task breakdown",
@@ -145,6 +157,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
                 "Break down tasks logically. Don't execute or delegate yet."
             )
         )
+        planning_phase.add_validator(planning_validator)
 
         allocation_phase = PhaseDefinition(
             name=OrchestratorPhase.ALLOCATION.value,
@@ -155,6 +168,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
                 "Use adjacency info to delegate. Don't execute local work yet."
             )
         )
+        allocation_phase.add_validator(allocation_validator)
 
         execution_phase = PhaseDefinition(
             name=OrchestratorPhase.EXECUTION.value,
@@ -165,6 +179,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
                 "Don't modify plan structure or delegate new work."
             )
         )
+        execution_phase.add_validator(execution_validator)
 
         monitoring_phase = PhaseDefinition(
             name=OrchestratorPhase.MONITORING.value,
@@ -175,6 +190,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
                 "Respect retry limits. Mark status only when certain about outcome."
             )
         )
+        monitoring_phase.add_validator(monitoring_validator)
 
         synthesis_phase = PhaseDefinition(
             name=OrchestratorPhase.SYNTHESIS.value,
@@ -185,6 +201,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
                 "Focus on results and outputs."
             )
         )
+        synthesis_phase.add_validator(synthesis_validator)
 
         phases = [
             planning_phase,
@@ -310,3 +327,43 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         else:
             # Fallback (should not reach here with enum validation above)
             return OrchestratorPhase.PLANNING.value
+
+    def _build_validation_context(self, phase_name: str) -> PhaseValidationContext:
+        """
+        Build orchestrator-specific validation context.
+        
+        Extends base context with orchestrator-specific data:
+        - Work plan for validation
+        - Adjacent nodes for assignment validation
+        
+        Args:
+            phase_name: Name of the phase to validate
+            
+        Returns:
+            PhaseValidationContext with orchestrator-specific data
+        """
+        # Get base phase state
+        phase_state = self.get_phase_context()
+        
+        # Enrich with orchestrator-specific data
+        try:
+            workload_service = self._get_workload_service()
+            service = WorkPlanService(workload_service)
+            plan = service.load(self._thread_id, self._node_uid)
+            adjacent_nodes = self._get_adjacent_nodes() or {}
+            
+            return PhaseValidationContext(
+                phase_state=phase_state,
+                thread_id=self._thread_id,
+                node_uid=self._node_uid,
+                plan=plan,
+                adjacent_nodes=adjacent_nodes
+            )
+        except Exception as e:
+            print(f"Validation context error: {e}")
+            # Return minimal context on error
+            return PhaseValidationContext(
+                phase_state=phase_state,
+                thread_id=self._thread_id,
+                node_uid=self._node_uid
+            )

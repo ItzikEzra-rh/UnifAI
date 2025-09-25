@@ -18,7 +18,7 @@ from enum import Enum
 from elements.tools.common.base_tool import BaseTool
 
 # Import ExecutionPhase for stronger typing
-from .constants import ExecutionPhase
+from ..constants import ExecutionPhase
 
 # Forward declaration for AgentObservation
 from typing import TYPE_CHECKING

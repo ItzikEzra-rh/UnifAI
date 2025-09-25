@@ -223,7 +223,7 @@ class TestOrchestratorSystemConfidence:
                     assert len(phase_def.tools) > 0, f"Phase {phase_def.name} should have tools"
                 
                 # VERIFY: Phase transitions work
-                from elements.nodes.common.agent.phase_protocols import create_phase_state
+                from elements.nodes.common.agent.phases.phase_protocols import create_phase_state
                 test_state = create_phase_state(
                     work_plan_status=None,
                     thread_id="test_thread",

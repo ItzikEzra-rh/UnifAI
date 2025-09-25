@@ -11,7 +11,7 @@ from elements.tools.common.base_tool import BaseTool
 # Import for typing - avoid circular imports
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from .phases.models import PhaseValidationContext
+    from .models import PhaseValidationContext
 
 
 class PhaseValidator(Protocol):

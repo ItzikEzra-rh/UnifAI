@@ -21,8 +21,8 @@ from .base import AgentStrategy
 from ..constants import (
     StrategyDefaults, StrategyType, SystemPrompts, ExecutionPhase
 )
-from ..phase_protocols import PhaseState, WorkPlanStatus
-from ..unified_phase_provider import PhaseProvider
+from ..phases.phase_protocols import PhaseState, WorkPlanStatus
+from ..phases.unified_phase_provider import PhaseProvider
 
 
 
@@ -346,15 +346,27 @@ class PlanAndExecuteStrategy(AgentStrategy):
     
     
     def _build_phase_prompt(self) -> str:
-        """Build phase-specific system prompt using phase provider."""
+        """
+        Build phase-specific system prompt with validation guidance.
+        
+        Uses the new build_phase_prompt method from BasePhaseProvider
+        to include both base guidance and validation feedback.
+        """
         base_prompt = self.system_message or SystemPrompts.PLAN_AND_EXECUTE
         
-        # Get concise phase guidance from provider
+        # Get enhanced phase guidance (includes validation)
         try:
-            phase_guidance = self._phase_provider.get_phase_guidance(self._current_phase)
+            phase_guidance = self._phase_provider.build_phase_prompt(self._current_phase)
             if phase_guidance:
                 return f"{base_prompt}\n\n{phase_guidance}"
         except Exception as e:
-            print(f"Error getting phase guidance: {e}")
+            print(f"Error getting enhanced phase guidance: {e}")
+            # Fallback to basic guidance
+            try:
+                fallback_guidance = self._phase_provider.get_phase_guidance(self._current_phase)
+                if fallback_guidance:
+                    return f"{base_prompt}\n\n{fallback_guidance}"
+            except Exception as e2:
+                print(f"Error getting fallback guidance: {e2}")
         
         return base_prompt

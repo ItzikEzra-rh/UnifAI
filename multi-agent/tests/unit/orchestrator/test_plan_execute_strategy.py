@@ -18,7 +18,7 @@ from elements.nodes.common.agent.constants import StrategyType
 from elements.nodes.common.agent.primitives import AgentStep, StepType, AgentAction, AgentObservation, AgentFinish
 from elements.llms.common.chat.message import ChatMessage, Role, ToolCall
 from elements.tools.common.base_tool import BaseTool
-from elements.nodes.common.agent.unified_phase_provider import PhaseProvider
+from elements.nodes.common.agent.phases.unified_phase_provider import PhaseProvider
 from tests.fixtures.orchestrator_fixtures import *
 
 

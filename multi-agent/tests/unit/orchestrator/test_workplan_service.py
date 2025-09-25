@@ -5,11 +5,15 @@ Tests cover:
 - CRUD operations (create, load, save)
 - Status management and updates
 - Task response handling
+- Thread-safety and concurrency
 - Edge cases and error conditions
 - Performance with large plans
 """
 
 import pytest
+import threading
+import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from unittest.mock import Mock, patch
 from typing import Dict, Any
 
@@ -396,6 +400,290 @@ class TestWorkPlanServiceTaskResponses:
         assert success is False
 
 
+class TestWorkPlanServiceThreadSafety:
+    """Test thread-safety and concurrency protection."""
+    
+    def test_concurrent_atomic_operations_no_race_conditions(self, work_plan_service):
+        """Test that concurrent atomic operations don't cause race conditions."""
+        # Create initial plan with test items
+        thread_id = "concurrency_test_thread"
+        owner_uid = "concurrency_test_owner"
+        
+        plan = work_plan_service.create(thread_id, owner_uid)
+        plan.summary = "Concurrency Test Plan"
+        
+        # Add test items
+        for i in range(10):
+            item = WorkItem(
+                id=f"task_{i}",
+                title=f"Test Task {i}",
+                description=f"Task {i} for concurrency testing",
+                dependencies=[],
+                kind=WorkItemKind.LOCAL
+            )
+            plan.items[item.id] = item
+        
+        work_plan_service.save(plan)
+        
+        # Track successful operations
+        successful_operations = []
+        operation_lock = threading.Lock()
+        
+        def assign_worker(worker_id, items_to_assign):
+            """Worker that assigns items using atomic operations."""
+            for item_id in items_to_assign:
+                def assign_operation(item, plan):
+                    item.kind = WorkItemKind.REMOTE
+                    item.assigned_uid = f"node_{worker_id}"
+                
+                success = work_plan_service.atomic_update_item(
+                    thread_id, owner_uid, item_id, assign_operation
+                )
+                
+                if success:
+                    with operation_lock:
+                        successful_operations.append(f"assign_{worker_id}_{item_id}")
+        
+        def status_worker(worker_id, items_to_update):
+            """Worker that updates status using atomic operations."""
+            for item_id in items_to_update:
+                def status_operation(item, plan):
+                    item.status = WorkItemStatus.IN_PROGRESS
+                
+                success = work_plan_service.atomic_update_item(
+                    thread_id, owner_uid, item_id, status_operation
+                )
+                
+                if success:
+                    with operation_lock:
+                        successful_operations.append(f"status_{worker_id}_{item_id}")
+        
+        # Run concurrent operations
+        with ThreadPoolExecutor(max_workers=6) as executor:
+            futures = []
+            
+            # Submit assign workers (2 workers, each handling 3 items)
+            futures.append(executor.submit(assign_worker, 1, ["task_0", "task_1", "task_2"]))
+            futures.append(executor.submit(assign_worker, 2, ["task_3", "task_4", "task_5"]))
+            
+            # Submit status workers (2 workers, each handling 2 items)
+            futures.append(executor.submit(status_worker, 1, ["task_6", "task_7"]))
+            futures.append(executor.submit(status_worker, 2, ["task_8", "task_9"]))
+            
+            # Wait for completion
+            for future in as_completed(futures):
+                future.result()  # This will raise any exceptions
+        
+        # Verify final state - no data should be lost due to race conditions
+        final_plan = work_plan_service.load(thread_id, owner_uid)
+        assert final_plan is not None
+        assert len(final_plan.items) == 10
+        
+        # Count successful operations by type
+        assign_ops = [op for op in successful_operations if op.startswith("assign_")]
+        status_ops = [op for op in successful_operations if op.startswith("status_")]
+        
+        # All operations should have succeeded
+        assert len(assign_ops) == 6  # 2 workers * 3 items each
+        assert len(status_ops) == 4  # 2 workers * 2 items each
+        
+        # Verify actual changes in the plan
+        assigned_items = [item for item in final_plan.items.values() if item.assigned_uid]
+        in_progress_items = [item for item in final_plan.items.values() if item.status == WorkItemStatus.IN_PROGRESS]
+        
+        assert len(assigned_items) == 6
+        assert len(in_progress_items) == 4
+        
+        # Verify no data corruption (all items should still have valid data)
+        for item in final_plan.items.values():
+            assert item.id.startswith("task_")
+            assert item.title.startswith("Test Task")
+            assert item.description.startswith("Task")
+    
+    def test_concurrent_complex_operations_with_locking(self, work_plan_service):
+        """Test concurrent complex operations that use with_lock context manager."""
+        thread_id = "complex_concurrency_test"
+        owner_uid = "complex_test_owner"
+        
+        # Create initial plan
+        plan = work_plan_service.create(thread_id, owner_uid)
+        plan.summary = "Complex Concurrency Test"
+        
+        # Add some items
+        for i in range(5):
+            item = WorkItem(
+                id=f"item_{i}",
+                title=f"Item {i}",
+                description=f"Description {i}",
+                kind=WorkItemKind.LOCAL
+            )
+            plan.items[item.id] = item
+        
+        work_plan_service.save(plan)
+        
+        # Track modifications
+        modifications = []
+        mod_lock = threading.Lock()
+        
+        def complex_worker(worker_id):
+            """Worker that performs complex multi-step operations."""
+            with work_plan_service.with_lock(thread_id, owner_uid):
+                # Load, modify multiple items, save
+                current_plan = work_plan_service.load(thread_id, owner_uid)
+                if current_plan:
+                    # Modify multiple items in one transaction
+                    for item_id in [f"item_{i}" for i in range(worker_id, worker_id + 2)]:
+                        if item_id in current_plan.items:
+                            item = current_plan.items[item_id]
+                            item.assigned_uid = f"worker_{worker_id}"
+                            item.status = WorkItemStatus.IN_PROGRESS
+                            
+                            with mod_lock:
+                                modifications.append(f"worker_{worker_id}_modified_{item_id}")
+                    
+                    # Simulate some processing time
+                    time.sleep(0.01)
+                    
+                    # Save the changes
+                    work_plan_service.save(current_plan)
+        
+        # Run concurrent complex operations
+        with ThreadPoolExecutor(max_workers=4) as executor:
+            futures = [executor.submit(complex_worker, i) for i in range(4)]
+            
+            for future in as_completed(futures):
+                future.result()
+        
+        # Verify final state
+        final_plan = work_plan_service.load(thread_id, owner_uid)
+        assert final_plan is not None
+        
+        # All modifications should be preserved (no lost updates)
+        assert len(modifications) > 0
+        
+        # Verify data integrity
+        modified_items = [item for item in final_plan.items.values() if item.assigned_uid]
+        in_progress_items = [item for item in final_plan.items.values() if item.status == WorkItemStatus.IN_PROGRESS]
+        
+        # Due to overlapping item ranges, some items might be modified by multiple workers
+        # but the final state should be consistent
+        assert len(modified_items) <= 5  # At most all items
+        assert len(in_progress_items) <= 5  # At most all items
+        
+        # Verify no corruption - all items should have valid assigned_uid when set
+        for item in modified_items:
+            assert item.assigned_uid.startswith("worker_")
+    
+    def test_lock_per_workplan_isolation(self, work_plan_service):
+        """Test that locks are per-workplan (different plans don't block each other)."""
+        # Create two different plans
+        plan1_thread = "plan1_thread"
+        plan1_owner = "plan1_owner"
+        plan2_thread = "plan2_thread"
+        plan2_owner = "plan2_owner"
+        
+        # Create plans
+        for thread_id, owner_uid in [(plan1_thread, plan1_owner), (plan2_thread, plan2_owner)]:
+            plan = work_plan_service.create(thread_id, owner_uid)
+            plan.summary = f"Plan for {owner_uid}"
+            plan.items["test_item"] = WorkItem(
+                id="test_item",
+                title="Test Item",
+                description="Test Description",
+                kind=WorkItemKind.LOCAL
+            )
+            work_plan_service.save(plan)
+        
+        operation_times = []
+        time_lock = threading.Lock()
+        
+        def blocking_worker(thread_id, owner_uid, worker_id):
+            """Worker that holds lock for a longer time."""
+            start_time = time.time()
+            
+            with work_plan_service.with_lock(thread_id, owner_uid):
+                # Load and modify
+                plan = work_plan_service.load(thread_id, owner_uid)
+                if plan:
+                    plan.items["test_item"].assigned_uid = f"worker_{worker_id}"
+                    
+                    # Hold lock for some time
+                    time.sleep(0.05)  
+                    
+                    work_plan_service.save(plan)
+            
+            end_time = time.time()
+            with time_lock:
+                operation_times.append((worker_id, end_time - start_time))
+        
+        # Run workers on different plans simultaneously
+        start_time = time.time()
+        with ThreadPoolExecutor(max_workers=2) as executor:
+            future1 = executor.submit(blocking_worker, plan1_thread, plan1_owner, "plan1")
+            future2 = executor.submit(blocking_worker, plan2_thread, plan2_owner, "plan2")
+            
+            future1.result()
+            future2.result()
+        
+        total_time = time.time() - start_time
+        
+        # Both operations should run in parallel (not sequentially)
+        # If they were blocking each other, total time would be ~0.1s
+        # If they run in parallel, total time should be ~0.05s
+        assert total_time < 0.08  # Allow some overhead
+        
+        # Verify both plans were modified successfully
+        final_plan1 = work_plan_service.load(plan1_thread, plan1_owner)
+        final_plan2 = work_plan_service.load(plan2_thread, plan2_owner)
+        
+        assert final_plan1.items["test_item"].assigned_uid == "worker_plan1"
+        assert final_plan2.items["test_item"].assigned_uid == "worker_plan2"
+    
+    def test_reentrant_lock_behavior(self, work_plan_service):
+        """Test that RLock allows reentrant calls (same thread can acquire lock multiple times)."""
+        thread_id = "reentrant_test"
+        owner_uid = "reentrant_owner"
+        
+        # Create test plan
+        plan = work_plan_service.create(thread_id, owner_uid)
+        plan.items["test_item"] = WorkItem(
+            id="test_item",
+            title="Test Item",
+            description="Test Description",
+            kind=WorkItemKind.LOCAL
+        )
+        work_plan_service.save(plan)
+        
+        def nested_operation():
+            """Function that acquires the lock nested within another lock acquisition."""
+            with work_plan_service.with_lock(thread_id, owner_uid):
+                # This should work because RLock is reentrant
+                plan = work_plan_service.load(thread_id, owner_uid)
+                if plan:
+                    plan.items["test_item"].status = WorkItemStatus.IN_PROGRESS
+                    work_plan_service.save(plan)
+                return True
+        
+        # This should not deadlock
+        with work_plan_service.with_lock(thread_id, owner_uid):
+            plan = work_plan_service.load(thread_id, owner_uid)
+            plan.items["test_item"].assigned_uid = "outer_operation"
+            
+            # Call nested operation that also acquires the same lock
+            success = nested_operation()
+            assert success is True
+            
+            # Reload plan to get the latest state from nested operation
+            plan = work_plan_service.load(thread_id, owner_uid)
+            plan.items["test_item"].assigned_uid = "outer_operation"  # Reapply our change
+            work_plan_service.save(plan)
+        
+        # Verify both operations succeeded
+        final_plan = work_plan_service.load(thread_id, owner_uid)
+        assert final_plan.items["test_item"].assigned_uid == "outer_operation"
+        assert final_plan.items["test_item"].status == WorkItemStatus.IN_PROGRESS
+
+
 class TestWorkPlanServiceEdgeCases:
     """Test edge cases and error conditions."""
     
@@ -429,11 +717,15 @@ class TestWorkPlanServiceEdgeCases:
         except Exception:
             pytest.fail("Save should handle workspace errors gracefully")
     
-    def test_concurrent_plan_modifications(self, work_plan_service, sample_work_plan):
-        """Test concurrent modifications to the same plan."""
+    def test_concurrent_plan_modifications_old_behavior(self, work_plan_service, sample_work_plan):
+        """Test concurrent modifications without thread-safety (demonstrating the old problem)."""
+        # NOTE: This test demonstrates what WOULD happen without our thread-safety fix
+        # It's kept for educational purposes and to ensure our fix works
+        
         work_plan_service.save(sample_work_plan)
         
-        # Simulate concurrent access
+        # Simulate the old unsafe pattern (load-modify-save without locking)
+        # This test shows why we needed the thread-safety fix
         plan1 = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         plan2 = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         
@@ -441,16 +733,16 @@ class TestWorkPlanServiceEdgeCases:
         plan1.items["item_1"].status = WorkItemStatus.IN_PROGRESS
         plan2.items["item_2"].status = WorkItemStatus.DONE
         
-        # Save both (last one wins)
+        # Save both (last one wins - this was the race condition)
         work_plan_service.save(plan1)
         work_plan_service.save(plan2)
         
-        # Verify final state
+        # Verify final state shows the race condition
         final_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         # plan2 was saved last, so item_2 should be DONE
-        # but item_1 changes from plan1 are lost
+        # but item_1 changes from plan1 are lost (race condition)
         assert final_plan.items["item_2"].status == WorkItemStatus.DONE
-        assert final_plan.items["item_1"].status == WorkItemStatus.PENDING  # Original state
+        assert final_plan.items["item_1"].status == WorkItemStatus.PENDING  # Original state (changes lost)
     
     def test_large_plan_performance(self, work_plan_service, large_work_plan):
         """Test performance with large work plans."""

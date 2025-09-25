@@ -442,8 +442,7 @@ class TestAssignWorkItemTool:
         result = tool.run(
             item_id="item_1",
             kind=WorkItemKind.REMOTE,
-            assigned_uid="remote_node_1",
-            args={"param1": "value1"}
+            assigned_uid="remote_node_1"
         )
         
         assert result["success"] is True
@@ -455,7 +454,6 @@ class TestAssignWorkItemTool:
         item = updated_plan.items["item_1"]
         assert item.kind == WorkItemKind.REMOTE
         assert item.assigned_uid == "remote_node_1"
-        assert item.args["param1"] == "value1"
     
     def test_assign_item_for_local_execution(self, mock_tool_dependencies, sample_work_plan):
         """Test assigning item for local execution."""
@@ -471,9 +469,7 @@ class TestAssignWorkItemTool:
         
         result = tool.run(
             item_id="item_1",
-            kind=WorkItemKind.LOCAL,
-            tool="analyze_data_tool",
-            args={"data_source": "database"}
+            kind=WorkItemKind.LOCAL
         )
         
         assert result["success"] is True
@@ -483,8 +479,6 @@ class TestAssignWorkItemTool:
         updated_plan = service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.kind == WorkItemKind.LOCAL
-        assert item.tool == "analyze_data_tool"
-        assert item.args["data_source"] == "database"
     
     def test_assign_nonexistent_item(self, mock_tool_dependencies, sample_work_plan):
         """Test assigning non-existent work item."""
