@@ -302,9 +302,13 @@ class PlanAndExecuteStrategy(AgentStrategy):
         Update current phase based on observations and work plan state.
         
         Uses the injected phase provider to determine the next phase based on
-        current work plan status and observations. No fallback logic.
+        current work plan status and observations. Tracks iterations to prevent infinite loops.
         """
         print(f"🔄 [DEBUG] _update_phase() - Current: {self._current_phase}")
+        
+        # Increment current phase iteration before making decision
+        if hasattr(self._phase_provider, 'increment_phase_iteration'):
+            self._phase_provider.increment_phase_iteration(self._current_phase)
         
         # Use phase provider for transitions
         print(f"🔀 [DEBUG] Using phase provider for transition")
@@ -316,6 +320,13 @@ class PlanAndExecuteStrategy(AgentStrategy):
             observations=observations
         )
         print(f"🔀 [DEBUG] Provider decided: {self._current_phase} → {new_phase}")
+        
+        # Update phase and reset local iteration counter if phase changed
+        if new_phase != self._current_phase:
+            self._phase_iterations = 0
+        else:
+            self._phase_iterations += 1
+            
         self._current_phase = new_phase
     
     def _should_transition_phase(self, observations: List[AgentObservation]) -> bool:

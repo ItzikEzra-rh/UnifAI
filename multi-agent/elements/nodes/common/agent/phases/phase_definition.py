@@ -39,13 +39,14 @@ class PhaseDefinition(BaseModel):
     """
     Clean definition of a single execution phase.
     
-    Contains all phase-specific configuration in one place, including validators.
+    Contains all phase-specific configuration in one place, including validators and limits.
     """
     name: str = Field(..., description="Phase name (e.g., 'planning', 'execution')")
     description: str = Field(..., description="What this phase does")
     tools: List[BaseTool] = Field(default_factory=list, description="Actual tool objects for this phase")
     guidance: str = Field(..., description="LLM guidance for this phase")
     validators: List[Any] = Field(default_factory=list, description="Validators for this phase")
+    max_iterations: int = Field(default=10, ge=1, description="Maximum iterations for this phase")
     
     class Config:
         arbitrary_types_allowed = True  # Allow BaseTool objects and validators

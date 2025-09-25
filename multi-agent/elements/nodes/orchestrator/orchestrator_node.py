@@ -299,6 +299,7 @@ class OrchestratorNode(
             node_uid=self.uid,
             thread_id=thread_id,
             get_workload_service=self.get_workload_service  # Clean dependency injection
+            # Uses default PhaseIterationLimits (all phases = 10 iterations)
         )
 
         # Create strategy with unified provider

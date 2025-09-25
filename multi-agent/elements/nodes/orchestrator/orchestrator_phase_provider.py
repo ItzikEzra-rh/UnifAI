@@ -12,6 +12,7 @@ from elements.nodes.common.agent.phases.phase_definition import PhaseSystem, Pha
 from elements.nodes.common.agent.phases.phase_protocols import PhaseState, create_phase_state, create_work_plan_status
 from elements.nodes.common.workload import WorkPlanService
 from elements.nodes.common.agent.phases.models import PhaseValidationContext
+from .phases.models import PhaseIterationLimits, PhaseIterationState
 from .phases.validators import (
     AllocationValidator, PlanningValidator, ExecutionValidator, 
     MonitoringValidator, SynthesisValidator
@@ -64,6 +65,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
     - Domain tools come from init parameter (orchestrator's capabilities)
     - Orchestration tools are built-in (work plan, delegation, etc.)
     - Phases are defined using enums (no hardcoding)
+    - Iteration limits managed via Pydantic models in PhaseDefinition
     """
 
     def __init__(
@@ -73,7 +75,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             send_task: Callable[..., Any],
             node_uid: str,
             thread_id: str,
-            get_workload_service: Callable[[], Any]
+            get_workload_service: Callable[[], Any],
+            iteration_limits: Optional[PhaseIterationLimits] = None
     ):
         """
         Initialize orchestrator phase provider.
@@ -85,6 +88,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             node_uid: Node identifier
             thread_id: Current thread ID for context
             get_workload_service: Function to get workload service
+            iteration_limits: Custom iteration limits configuration (optional)
         """
         self._get_adjacent_nodes = get_adjacent_nodes
         self._send_task = send_task
@@ -92,8 +96,55 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         self._thread_id = thread_id
         self._domain_tools = domain_tools
         self._get_workload_service = get_workload_service
+        
+        # Configure iteration limits using Pydantic model
+        self._iteration_limits = iteration_limits or PhaseIterationLimits()
+        
+        # Track iteration state using Pydantic model
+        self._iteration_state = PhaseIterationState()
 
         super().__init__(domain_tools)  # This calls _create_phase_system()
+
+    def increment_phase_iteration(self, phase_name: str) -> None:
+        """
+        Increment iteration count for the given phase.
+        
+        SRP: Single responsibility for tracking phase iterations.
+        Uses immutable Pydantic state management.
+        
+        Args:
+            phase_name: Name of the phase to increment
+        """
+        self._iteration_state = self._iteration_state.increment(phase_name)
+        current = self._iteration_state.get_count(phase_name)
+        limit = self._iteration_limits.get_limit(phase_name)
+        print(f"🔢 [DEBUG] Phase {phase_name} iteration: {current}/{limit}")
+
+    def is_phase_limit_exceeded(self, phase_name: str) -> bool:
+        """
+        Check if phase iteration limit is exceeded.
+        
+        Args:
+            phase_name: Name of the phase to check
+            
+        Returns:
+            True if limit exceeded, False otherwise
+        """
+        return self._iteration_state.is_exceeded(phase_name, self._iteration_limits)
+
+    def reset_phase_iteration(self, phase_name: str) -> None:
+        """
+        Reset iteration count for the given phase.
+        
+        Called when transitioning away from a phase.
+        Uses immutable Pydantic state management.
+        
+        Args:
+            phase_name: Name of the phase to reset
+        """
+        old_count = self._iteration_state.get_count(phase_name)
+        self._iteration_state = self._iteration_state.reset(phase_name)
+        print(f"🔄 [DEBUG] Reset {phase_name} iterations: {old_count} → 0")
 
     def _create_phase_system(self) -> PhaseSystem:
         """
@@ -155,7 +206,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             guidance=(
                 "PHASE: PLANNING - Create detailed work plan with dependencies. "
                 "Break down tasks logically. Don't execute or delegate yet."
-            )
+            ),
+            max_iterations=self._iteration_limits.planning
         )
         planning_phase.add_validator(planning_validator)
 
@@ -166,7 +218,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             guidance=(
                 "PHASE: ALLOCATION - Assign work items to appropriate nodes. "
                 "Use adjacency info to delegate. Don't execute local work yet."
-            )
+            ),
+            max_iterations=self._iteration_limits.allocation
         )
         allocation_phase.add_validator(allocation_validator)
 
@@ -177,7 +230,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             guidance=(
                 "PHASE: EXECUTION - Execute local work items only. "
                 "Don't modify plan structure or delegate new work."
-            )
+            ),
+            max_iterations=self._iteration_limits.execution
         )
         execution_phase.add_validator(execution_validator)
 
@@ -188,7 +242,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             guidance=(
                 "PHASE: MONITORING - Interpret responses and decide next steps. "
                 "Respect retry limits. Mark status only when certain about outcome."
-            )
+            ),
+            max_iterations=self._iteration_limits.monitoring
         )
         monitoring_phase.add_validator(monitoring_validator)
 
@@ -199,7 +254,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             guidance=(
                 "PHASE: SYNTHESIS - Summarize completed work and produce final deliverables. "
                 "Focus on results and outputs."
-            )
+            ),
+            max_iterations=self._iteration_limits.synthesis
         )
         synthesis_phase.add_validator(synthesis_validator)
 
@@ -271,12 +327,21 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         Decide next phase based on orchestrator-specific logic using enums.
         
         Professional phase transition rules using OrchestratorPhase enum.
+        Enforces iteration limits to prevent infinite loops.
         """
+        print(f"📍 [DEBUG] decide_next_phase() - current: {current_phase}")
+        
         # Handle None context gracefully
         if not context or not context.work_plan_status:
             return OrchestratorPhase.PLANNING.value  # No context or work plan, start planning
 
         status = context.work_plan_status
+        print(f"📊 [DEBUG] Work plan status: total={status.total_items if status else 'None'}")
+        
+        # Check iteration limits first
+        if self.is_phase_limit_exceeded(current_phase):
+            print(f"⚠️ [DEBUG] Phase {current_phase} exceeded iteration limit")
+            return self._handle_phase_limit_exceeded(current_phase, status)
 
         # Convert current_phase to enum for type-safe comparison
         try:
@@ -289,6 +354,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         if current_phase_enum == OrchestratorPhase.PLANNING:
             # Move to allocation if we have items to allocate
             if status.total_items > 0:
+                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.ALLOCATION.value
             else:
                 return OrchestratorPhase.PLANNING.value  # Stay in planning
@@ -296,26 +362,32 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         elif current_phase_enum == OrchestratorPhase.ALLOCATION:
             # Move to execution if we have local work ready
             if status.has_local_ready:
+                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.EXECUTION.value
             # Move to monitoring if we have remote work waiting
             elif status.has_remote_waiting:
+                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.MONITORING.value
             else:
                 return OrchestratorPhase.ALLOCATION.value  # Stay in allocation
 
         elif current_phase_enum == OrchestratorPhase.EXECUTION:
             # Move to monitoring after execution attempts
+            self.reset_phase_iteration(current_phase)
             return OrchestratorPhase.MONITORING.value
 
         elif current_phase_enum == OrchestratorPhase.MONITORING:
             # Check if work is complete
             if status.is_complete:
+                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.SYNTHESIS.value
             # Go back to allocation if we have pending items
             elif status.pending_items > 0:
+                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.ALLOCATION.value
             # Go back to execution if we have local ready items
             elif status.has_local_ready:
+                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.EXECUTION.value
             else:
                 return OrchestratorPhase.MONITORING.value  # Stay in monitoring
@@ -327,6 +399,61 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         else:
             # Fallback (should not reach here with enum validation above)
             return OrchestratorPhase.PLANNING.value
+    
+    def _handle_phase_limit_exceeded(self, current_phase: str, status) -> str:
+        """
+        Handle when a phase exceeds its iteration limit.
+        
+        SRP: Single responsibility for limit exceeded logic.
+        
+        Args:
+            current_phase: Phase that exceeded limit
+            status: Current work plan status
+            
+        Returns:
+            Next phase to transition to (or synthesis for terminal)
+        """
+        print(f"🚨 [DEBUG] Handling phase limit exceeded for {current_phase}")
+        
+        try:
+            current_phase_enum = OrchestratorPhase(current_phase)
+        except ValueError:
+            # Unknown phase, go to synthesis
+            return OrchestratorPhase.SYNTHESIS.value
+        
+        # Phase-specific limit handling
+        if current_phase_enum == OrchestratorPhase.PLANNING:
+            # If planning stuck, try allocation anyway (maybe partial plan is enough)
+            if status and status.total_items > 0:
+                self.reset_phase_iteration(current_phase)
+                return OrchestratorPhase.ALLOCATION.value
+            else:
+                # No plan at all - terminal failure
+                return OrchestratorPhase.SYNTHESIS.value
+                
+        elif current_phase_enum == OrchestratorPhase.ALLOCATION:
+            # If allocation stuck, try execution with what we have
+            if status and status.has_local_ready:
+                self.reset_phase_iteration(current_phase)
+                return OrchestratorPhase.EXECUTION.value
+            else:
+                # Skip to monitoring or synthesis
+                self.reset_phase_iteration(current_phase)
+                return OrchestratorPhase.MONITORING.value
+                
+        elif current_phase_enum == OrchestratorPhase.EXECUTION:
+            # If execution stuck, move to monitoring
+            self.reset_phase_iteration(current_phase)
+            return OrchestratorPhase.MONITORING.value
+            
+        elif current_phase_enum == OrchestratorPhase.MONITORING:
+            # If monitoring stuck (waiting too long), force synthesis
+            self.reset_phase_iteration(current_phase)
+            return OrchestratorPhase.SYNTHESIS.value
+            
+        else:
+            # For synthesis or unknown phases, stay in synthesis
+            return OrchestratorPhase.SYNTHESIS.value
 
     def _build_validation_context(self, phase_name: str) -> PhaseValidationContext:
         """
