@@ -481,9 +481,9 @@ class TestOrchestratorPerformanceIntegration:
                 assert memory_delta < 100 * 1024 * 1024, f"Large plan memory usage too high: {memory_delta / 1024 / 1024:.1f}MB"
                 
                 # VERIFY: Work plan created successfully
-                workspace = integration_orchestrator.get_workspace(task.thread_id)
-                plan_service = WorkPlanService(workspace)
-                work_plan = plan_service.load(integration_orchestrator.uid)
+                workload_service = integration_orchestrator.get_workload_service()
+                plan_service = WorkPlanService(workload_service)
+                work_plan = plan_service.load(task.thread_id, integration_orchestrator.uid)
                 
                 if work_plan:
                     execution_tracker.track_work_plan_creation(work_plan)

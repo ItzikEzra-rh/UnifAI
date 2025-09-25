@@ -71,21 +71,21 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
     
     def __init__(
         self,
-        get_workspace: Callable[[], Any],
         get_thread_id: Callable[[], str],
-        get_owner_uid: Callable[[], str]
+        get_owner_uid: Callable[[], str],
+        get_workload_service: Callable[[], Any]
     ):
         """
-        Initialize with workspace accessors.
+        Initialize with clean SOLID dependencies.
         
         Args:
-            get_workspace: Function to get current workspace
             get_thread_id: Function to get current thread ID
             get_owner_uid: Function to get owner node UID
+            get_workload_service: Function to get workload service
         """
-        self._get_workspace = get_workspace
         self._get_thread_id = get_thread_id
         self._get_owner_uid = get_owner_uid
+        self._get_workload_service = get_workload_service
     
     def run(self, **kwargs) -> Dict[str, Any]:
         """Create or update work plan."""
@@ -95,20 +95,21 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
         print(f"📋 [DEBUG] Plan summary: {args.summary}")
         print(f"📋 [DEBUG] Number of items: {len(args.items)}")
         
-        workspace = self._get_workspace()
-        service = WorkPlanService(workspace)
+        # Get context and create domain service
+        thread_id = self._get_thread_id()
         owner_uid = self._get_owner_uid()
+        workload_service = self._get_workload_service()
+        service = WorkPlanService(workload_service)
         
         print(f"📋 [DEBUG] Owner UID: {owner_uid}")
         
         # Load existing plan or create new one
-        plan = service.load(owner_uid)
+        plan = service.load(thread_id, owner_uid)
         if not plan:
             print(f"📋 [DEBUG] No existing plan - creating new one")
             plan = service.create(
-                thread_id=self._get_thread_id(),
-                owner_uid=owner_uid,
-                created_by=owner_uid
+                thread_id=thread_id,
+                owner_uid=owner_uid
             )
         else:
             print(f"📋 [DEBUG] Updating existing plan with {len(plan.items)} items")
@@ -134,11 +135,21 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
         print(f"📋 [DEBUG] Saving plan with {len(plan.items)} total items")
         service.save(plan)
         
+        # Get status summary for response
+        status_summary = service.get_status_summary(thread_id, owner_uid)
+        
         result = {
             "success": True,
-            "plan_id": f"{plan.thread_id}:{plan.owner_uid}",
-            "total_items": len(plan.items),
-            "status_counts": plan.get_status_counts().model_dump()
+            "plan_id": f"{thread_id}:{owner_uid}",
+            "total_items": status_summary.total_items,
+            "status_counts": {
+                "pending": status_summary.pending_items,
+                "waiting": status_summary.waiting_items,
+                "in_progress": status_summary.in_progress_items,
+                "done": status_summary.done_items,
+                "failed": status_summary.failed_items,
+                "blocked": status_summary.blocked_items
+            }
         }
         
         print(f"📋 [DEBUG] CreateOrUpdateWorkPlanTool completed: {result}")

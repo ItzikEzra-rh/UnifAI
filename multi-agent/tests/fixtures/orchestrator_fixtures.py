@@ -194,15 +194,31 @@ def mock_workspace():
 
 
 @pytest.fixture
-def work_plan_service(mock_workspace):
+def mock_workload_service():
+    """Create a mock workload service for testing."""
+    workload_service = Mock()
+    
+    # Mock workspace that gets returned
+    mock_workspace = Mock()
+    mock_workspace.variables = {}
+    mock_workspace.get_variable = lambda k: mock_workspace.variables.get(k)
+    mock_workspace.set_variable = lambda k, v: mock_workspace.variables.update({k: v})
+    
+    workload_service.get_workspace.return_value = mock_workspace
+    workload_service.update_workspace = Mock()
+    
+    return workload_service
+
+@pytest.fixture
+def work_plan_service(mock_workload_service):
     """Create a WorkPlanService instance for testing."""
-    return WorkPlanService(mock_workspace)
+    return WorkPlanService(mock_workload_service)
 
 
 @pytest.fixture
-def work_plan_service_with_data(mock_workspace, sample_work_plan):
+def work_plan_service_with_data(mock_workload_service, sample_work_plan):
     """Create a WorkPlanService with pre-loaded data."""
-    service = WorkPlanService(mock_workspace)
+    service = WorkPlanService(mock_workload_service)
     service.save(sample_work_plan)
     return service
 
@@ -228,7 +244,8 @@ def mock_domain_tools():
 @pytest.fixture
 def mock_orchestrator_dependencies():
     """Create mock dependencies for OrchestratorPhaseProvider."""
-    get_workspace = Mock(return_value=Mock())
+    workload_service = Mock()
+    get_workload_service = Mock(return_value=workload_service)
     get_adjacent_nodes = Mock(return_value={
         "node_1": {"type": "data_processor", "specialization": "Data processing"},
         "node_2": {"type": "report_generator", "specialization": "Report generation"}
@@ -236,7 +253,7 @@ def mock_orchestrator_dependencies():
     send_task = Mock(return_value="packet_123")
     
     return {
-        "get_workspace": get_workspace,
+        "get_workload_service": get_workload_service,
         "get_adjacent_nodes": get_adjacent_nodes,
         "send_task": send_task,
         "node_uid": "test_orchestrator",
@@ -260,13 +277,17 @@ def orchestrator_phase_provider(mock_domain_tools, mock_orchestrator_dependencie
 @pytest.fixture
 def mock_tool_dependencies():
     """Create mock dependencies for orchestration tools."""
+    # Create mock workload service for SOLID design
+    workload_service = Mock()
     workspace = Mock()
     workspace.variables = {}
     workspace.get_variable = lambda k: workspace.variables.get(k)
     workspace.set_variable = lambda k, v: workspace.variables.update({k: v})
+    workload_service.get_workspace.return_value = workspace
+    workload_service.update_workspace = Mock()
     
     return {
-        "get_workspace": lambda: workspace,
+        "get_workload_service": lambda: workload_service,
         "get_thread_id": lambda: "test_thread",
         "get_owner_uid": lambda: "test_orchestrator",
         "send_task": Mock(return_value="packet_123"),

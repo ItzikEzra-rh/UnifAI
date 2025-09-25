@@ -5,7 +5,7 @@ Uses clean Pydantic models and enums to define orchestrator phases professionall
 """
 
 from enum import Enum
-from typing import List, Callable, Any
+from typing import List, Callable, Any, Optional
 from elements.tools.common.base_tool import BaseTool
 from elements.nodes.common.agent.unified_phase_provider import BasePhaseProvider
 from elements.nodes.common.agent.phase_definition import PhaseSystem, PhaseDefinition
@@ -64,29 +64,29 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
     def __init__(
             self,
             domain_tools: List[BaseTool],
-            get_workspace: Callable[[str], Any],
             get_adjacent_nodes: Callable[[], Any],
             send_task: Callable[..., Any],
             node_uid: str,
-            thread_id: str
+            thread_id: str,
+            get_workload_service: Callable[[], Any]
     ):
         """
         Initialize orchestrator phase provider.
         
         Args:
             domain_tools: Domain-specific tools that this orchestrator can use
-            get_workspace: Function to get workspace by thread_id
             get_adjacent_nodes: Function to get adjacent nodes dict
             send_task: Function to send IEM tasks (dst_uid, task) -> packet_id
             node_uid: Node identifier
             thread_id: Current thread ID for context
+            get_workload_service: Function to get workload service
         """
-        self._get_workspace = get_workspace
         self._get_adjacent_nodes = get_adjacent_nodes
         self._send_task = send_task
         self._node_uid = node_uid
         self._thread_id = thread_id
         self._domain_tools = domain_tools
+        self._get_workload_service = get_workload_service
 
         super().__init__(domain_tools)  # This calls _create_phase_system()
 
@@ -98,33 +98,36 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         - Built-in tools: Initialize here (workplan, delegation, topology, etc.)
         - Domain tools: Already initialized, passed from constructor (execution tools)
         """
-        # Accessors required by tools
-        get_ws = lambda: self._get_workspace(self._thread_id)
+        # Clean SOLID dependencies
         get_tid = lambda: self._thread_id
         get_uid = lambda: self._node_uid
 
-        # Initialize built-in orchestration tools with correct callables
+        # Initialize built-in orchestration tools with clean dependencies
         create_plan_tool = CreateOrUpdateWorkPlanTool(
-            get_workspace=get_ws,
             get_thread_id=get_tid,
-            get_owner_uid=get_uid
+            get_owner_uid=get_uid,
+            get_workload_service=self._get_workload_service
         )
         assign_tool = AssignWorkItemTool(
-            get_workspace=get_ws,
-            get_owner_uid=get_uid
+            get_thread_id=get_tid,
+            get_owner_uid=get_uid,
+            get_workload_service=self._get_workload_service
         )
         mark_status_tool = MarkWorkItemStatusTool(
-            get_workspace=get_ws,
-            get_owner_uid=get_uid
+            get_thread_id=get_tid,
+            get_owner_uid=get_uid,
+            get_workload_service=self._get_workload_service
         )
         summarize_tool = SummarizeWorkPlanTool(
-            get_workspace=get_ws,
-            get_owner_uid=get_uid
+            get_thread_id=get_tid,
+            get_owner_uid=get_uid,
+            get_workload_service=self._get_workload_service
         )
         delegate_tool = DelegateTaskTool(
             send_task=self._send_task,
             get_owner_uid=get_uid,
-            get_workspace=get_ws,
+            get_thread_id=get_tid,
+            get_workload_service=self._get_workload_service,
             check_adjacency=lambda uid: uid in (self._get_adjacent_nodes() or {})
         )
         list_nodes_tool = ListAdjacentNodesTool(get_adjacent_nodes=self._get_adjacent_nodes)
@@ -205,9 +208,9 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         Provides rich context including work plan status and node information.
         """
         try:
-            workspace = self._get_workspace(self._thread_id)
-            service = WorkPlanService(workspace)
-            status_summary = service.get_status_summary(self._node_uid)
+            workload_service = self._get_workload_service()
+            service = WorkPlanService(workload_service)
+            status_summary = service.get_status_summary(self._thread_id, self._node_uid)
 
             # Convert to PhaseState format
             work_plan_status = create_work_plan_status(

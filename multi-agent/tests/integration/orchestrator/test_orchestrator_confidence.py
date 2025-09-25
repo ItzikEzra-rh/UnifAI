@@ -100,11 +100,11 @@ class TestOrchestratorSystemConfidence:
                 assert predictable_llm.call_count > 0, "LLM should have been called for orchestration"
                 
                 # VERIFY: Work plan was created and persisted
-                # Get the workspace for this thread and create a WorkPlanService
-                workspace = integration_orchestrator.get_workspace(task.thread_id)
+                # Get the workload service and create a WorkPlanService
+                workload_service = integration_orchestrator.get_workload_service()
                 from elements.nodes.common.workload import WorkPlanService
-                plan_service = WorkPlanService(workspace)
-                work_plan = plan_service.load(integration_orchestrator.uid)
+                plan_service = WorkPlanService(workload_service)
+                work_plan = plan_service.load(task.thread_id, integration_orchestrator.uid)
                 if work_plan:
                     execution_tracker.track_work_plan_creation(work_plan)
                     assert work_plan.summary is not None
@@ -188,12 +188,12 @@ class TestOrchestratorSystemConfidence:
         """
         try:
             # Mock dependencies to test phase provider creation
-            with patch.object(integration_orchestrator, 'get_workspace') as mock_get_workspace, \
+            with patch.object(integration_orchestrator, 'get_workload_service') as mock_get_workload_service, \
                  patch.object(integration_orchestrator, 'get_adjacent_nodes') as mock_get_adjacent, \
                  patch.object(integration_orchestrator, 'send_task') as mock_send_task:
                 
                 # Set up mocks
-                mock_get_workspace.return_value = integration_orchestrator.get_workspace("test_thread")
+                mock_get_workload_service.return_value = integration_orchestrator.get_workload_service()
                 mock_get_adjacent.return_value = {}
                 mock_send_task.return_value = "test_task_id"
                 
@@ -202,11 +202,11 @@ class TestOrchestratorSystemConfidence:
                 
                 phase_provider = OrchestratorPhaseProvider(
                     domain_tools=[],
-                    get_workspace=mock_get_workspace,
                     get_adjacent_nodes=mock_get_adjacent,
                     send_task=mock_send_task,
                     node_uid=integration_orchestrator.uid,
-                    thread_id="test_thread"
+                    thread_id="test_thread",
+                    get_workload_service=mock_get_workload_service
                 )
                 
                 # VERIFY: Phase provider was created

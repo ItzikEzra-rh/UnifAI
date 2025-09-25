@@ -23,17 +23,16 @@ from tests.fixtures.orchestrator_fixtures import *
 class TestWorkPlanServiceBasics:
     """Test basic WorkPlanService functionality."""
     
-    def test_service_initialization(self, mock_workspace):
+    def test_service_initialization(self, mock_workload_service):
         """Test WorkPlanService initialization."""
-        service = WorkPlanService(mock_workspace)
-        assert service.workspace == mock_workspace
+        service = WorkPlanService(mock_workload_service)
+        assert service._workload_service == mock_workload_service
     
     def test_create_work_plan(self, work_plan_service):
         """Test creating a new work plan."""
         plan = work_plan_service.create(
             thread_id="test_thread",
-            owner_uid="test_owner",
-            created_by="test_creator"
+            owner_uid="test_owner"
         )
         
         assert isinstance(plan, WorkPlan)
@@ -47,12 +46,8 @@ class TestWorkPlanServiceBasics:
         # Save plan
         work_plan_service.save(sample_work_plan)
         
-        # Verify it was saved to workspace
-        plan_key = f"workplan_{sample_work_plan.owner_uid}"
-        assert plan_key in work_plan_service.workspace.variables
-        
-        # Load plan
-        loaded_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        # Load plan (using new SOLID API)
+        loaded_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         
         assert loaded_plan is not None
         assert loaded_plan.summary == sample_work_plan.summary
@@ -62,7 +57,7 @@ class TestWorkPlanServiceBasics:
     
     def test_load_nonexistent_plan(self, work_plan_service):
         """Test loading a non-existent work plan."""
-        plan = work_plan_service.load("nonexistent_owner")
+        plan = work_plan_service.load("test_thread", "nonexistent_owner")
         assert plan is None
     
     def test_load_corrupted_plan_data(self, work_plan_service, mock_workspace):
@@ -70,7 +65,7 @@ class TestWorkPlanServiceBasics:
         # Set corrupted data in workspace
         mock_workspace.variables["workplan_corrupted"] = {"invalid": "data"}
         
-        plan = work_plan_service.load("corrupted")
+        plan = work_plan_service.load("test_thread", "corrupted")
         assert plan is None
 
 
@@ -79,7 +74,7 @@ class TestWorkPlanServiceStatusManagement:
     
     def test_get_status_summary_empty_plan(self, work_plan_service):
         """Test status summary for non-existent plan."""
-        summary = work_plan_service.get_status_summary("nonexistent_owner")
+        summary = work_plan_service.get_status_summary("test_thread", "nonexistent_owner")
         
         assert isinstance(summary, WorkPlanStatusSummary)
         assert summary.total_items == 0
@@ -89,7 +84,7 @@ class TestWorkPlanServiceStatusManagement:
         """Test status summary for complex plan."""
         work_plan_service.save(complex_work_plan)
         
-        summary = work_plan_service.get_status_summary(complex_work_plan.owner_uid)
+        summary = work_plan_service.get_status_summary(complex_work_plan.thread_id, complex_work_plan.owner_uid)
         
         assert summary.total_items == 5
         assert summary.pending_items == 1  # ready_item (no dependencies)
@@ -129,7 +124,7 @@ class TestWorkPlanServiceStatusManagement:
         )
         
         work_plan_service.save(complete_plan)
-        summary = work_plan_service.get_status_summary("complete_owner")
+        summary = work_plan_service.get_status_summary("complete_thread", "complete_owner")
         
         assert summary.total_items == 2
         assert summary.done_items == 2
@@ -140,6 +135,7 @@ class TestWorkPlanServiceStatusManagement:
         work_plan_service.save(sample_work_plan)
         
         success = work_plan_service.update_item_status(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             item_id="item_1",
             status=WorkItemStatus.DONE,
@@ -150,7 +146,7 @@ class TestWorkPlanServiceStatusManagement:
         assert success is True
         
         # Verify update
-        updated_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        updated_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.status == WorkItemStatus.DONE
         assert item.correlation_task_id == "task_123"
@@ -160,6 +156,7 @@ class TestWorkPlanServiceStatusManagement:
         work_plan_service.save(sample_work_plan)
         
         success = work_plan_service.update_item_status(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             item_id="item_1",
             status=WorkItemStatus.FAILED,
@@ -169,7 +166,7 @@ class TestWorkPlanServiceStatusManagement:
         assert success is True
         
         # Verify update
-        updated_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        updated_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.status == WorkItemStatus.FAILED
         assert item.error == "Task failed due to network error"
@@ -186,6 +183,7 @@ class TestWorkPlanServiceStatusManagement:
         
         # Update to DONE should finalize result
         success = work_plan_service.update_item_status(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             item_id="item_1",
             status=WorkItemStatus.DONE
@@ -194,7 +192,7 @@ class TestWorkPlanServiceStatusManagement:
         assert success is True
         
         # Verify result finalization
-        updated_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        updated_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.status == WorkItemStatus.DONE
         assert item.result_ref.success is True
@@ -205,6 +203,7 @@ class TestWorkPlanServiceStatusManagement:
         work_plan_service.save(sample_work_plan)
         
         success = work_plan_service.update_item_status(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             item_id="nonexistent_item",
             status=WorkItemStatus.DONE
@@ -215,6 +214,7 @@ class TestWorkPlanServiceStatusManagement:
     def test_update_item_nonexistent_plan(self, work_plan_service):
         """Test updating item in non-existent plan."""
         success = work_plan_service.update_item_status(
+            thread_id="nonexistent_thread",
             owner_uid="nonexistent_owner",
             item_id="any_item",
             status=WorkItemStatus.DONE
@@ -233,6 +233,7 @@ class TestWorkPlanServiceTaskResponses:
         work_plan_service.save(sample_work_plan)
         
         success = work_plan_service.store_task_response(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             correlation_task_id="task_123",
             response_content="I found the data but it needs cleaning",
@@ -242,7 +243,7 @@ class TestWorkPlanServiceTaskResponses:
         assert success is True
         
         # Verify response was stored
-        updated_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        updated_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.result_ref is not None
         assert item.result_ref.success is False  # Not finalized
@@ -263,6 +264,7 @@ class TestWorkPlanServiceTaskResponses:
         
         # Store additional response
         success = work_plan_service.store_task_response(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             correlation_task_id="task_123",
             response_content="Second response with more details",
@@ -272,7 +274,7 @@ class TestWorkPlanServiceTaskResponses:
         assert success is True
         
         # Verify content was appended
-        updated_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        updated_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert "First response" in item.result_ref.content
         assert "Second response with more details" in item.result_ref.content
@@ -284,6 +286,7 @@ class TestWorkPlanServiceTaskResponses:
         work_plan_service.save(sample_work_plan)
         
         success = work_plan_service.store_task_response(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             correlation_task_id="nonexistent_task",
             response_content="Response content",
@@ -299,7 +302,8 @@ class TestWorkPlanServiceTaskResponses:
         sample_work_plan.items["item_1"].status = WorkItemStatus.WAITING
         work_plan_service.save(sample_work_plan)
         
-        success = work_plan_service.ingest_task_response(
+        success =         work_plan_service.ingest_task_response(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             correlation_task_id="task_123",
             result={"success": True, "data": {"value": 42}}
@@ -308,7 +312,7 @@ class TestWorkPlanServiceTaskResponses:
         assert success is True
         
         # Verify item was marked as DONE
-        updated_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        updated_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.status == WorkItemStatus.DONE
         assert item.result_ref is not None
@@ -322,7 +326,8 @@ class TestWorkPlanServiceTaskResponses:
         sample_work_plan.items["item_1"].status = WorkItemStatus.WAITING
         work_plan_service.save(sample_work_plan)
         
-        success = work_plan_service.ingest_task_response(
+        success =         work_plan_service.ingest_task_response(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             correlation_task_id="task_123",
             error="Network connection failed"
@@ -331,7 +336,7 @@ class TestWorkPlanServiceTaskResponses:
         assert success is True
         
         # Verify item was marked as FAILED
-        updated_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        updated_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.status == WorkItemStatus.FAILED
         assert item.error == "Network connection failed"
@@ -344,7 +349,8 @@ class TestWorkPlanServiceTaskResponses:
         sample_work_plan.items["item_1"].retry_count = 1
         work_plan_service.save(sample_work_plan)
         
-        success = work_plan_service.ingest_task_response(
+        success =         work_plan_service.ingest_task_response(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             correlation_task_id="task_123",
             error="Temporary failure"
@@ -353,7 +359,7 @@ class TestWorkPlanServiceTaskResponses:
         assert success is True
         
         # Verify retry count was incremented
-        updated_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        updated_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.retry_count == 2
     
@@ -361,7 +367,8 @@ class TestWorkPlanServiceTaskResponses:
         """Test marking item as delegated."""
         work_plan_service.save(sample_work_plan)
         
-        success = work_plan_service.mark_item_as_delegated(
+        success =         work_plan_service.mark_item_as_delegated(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             item_id="item_1",
             correlation_task_id="task_456"
@@ -370,7 +377,7 @@ class TestWorkPlanServiceTaskResponses:
         assert success is True
         
         # Verify item was updated
-        updated_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        updated_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.status == WorkItemStatus.WAITING
         assert item.correlation_task_id == "task_456"
@@ -379,7 +386,8 @@ class TestWorkPlanServiceTaskResponses:
         """Test marking non-existent item as delegated."""
         work_plan_service.save(sample_work_plan)
         
-        success = work_plan_service.mark_item_as_delegated(
+        success =         work_plan_service.mark_item_as_delegated(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             item_id="nonexistent_item",
             correlation_task_id="task_456"
@@ -397,10 +405,15 @@ class TestWorkPlanServiceEdgeCases:
         failing_workspace.get_variable.side_effect = Exception("Workspace error")
         failing_workspace.set_variable.side_effect = Exception("Workspace error")
         
-        service = WorkPlanService(failing_workspace)
+        # Create failing workload service for SOLID design
+        failing_workload_service = Mock()
+        failing_workload_service.get_workspace.return_value = failing_workspace
+        failing_workload_service.update_workspace.side_effect = Exception("Workload service error")
+        
+        service = WorkPlanService(failing_workload_service)
         
         # Load should handle workspace errors gracefully
-        plan = service.load("test_owner")
+        plan = service.load("test_thread", "test_owner")
         assert plan is None
         
         # Save should handle workspace errors gracefully
@@ -421,8 +434,8 @@ class TestWorkPlanServiceEdgeCases:
         work_plan_service.save(sample_work_plan)
         
         # Simulate concurrent access
-        plan1 = work_plan_service.load(sample_work_plan.owner_uid)
-        plan2 = work_plan_service.load(sample_work_plan.owner_uid)
+        plan1 = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
+        plan2 = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         
         # Modify both plans
         plan1.items["item_1"].status = WorkItemStatus.IN_PROGRESS
@@ -433,7 +446,7 @@ class TestWorkPlanServiceEdgeCases:
         work_plan_service.save(plan2)
         
         # Verify final state
-        final_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        final_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         # plan2 was saved last, so item_2 should be DONE
         # but item_1 changes from plan1 are lost
         assert final_plan.items["item_2"].status == WorkItemStatus.DONE
@@ -445,12 +458,12 @@ class TestWorkPlanServiceEdgeCases:
         work_plan_service.save(large_work_plan)
         
         # Load should still work efficiently
-        loaded_plan = work_plan_service.load(large_work_plan.owner_uid)
+        loaded_plan = work_plan_service.load(large_work_plan.thread_id, large_work_plan.owner_uid)
         assert loaded_plan is not None
         assert len(loaded_plan.items) == 100
         
         # Status summary should work efficiently
-        summary = work_plan_service.get_status_summary(large_work_plan.owner_uid)
+        summary = work_plan_service.get_status_summary(large_work_plan.thread_id, large_work_plan.owner_uid)
         assert summary.total_items == 100
     
     def test_malformed_response_data(self, work_plan_service, sample_work_plan):
@@ -461,6 +474,7 @@ class TestWorkPlanServiceEdgeCases:
         
         # Store malformed response
         success = work_plan_service.store_task_response(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             correlation_task_id="task_123",
             response_content="",  # Empty response
@@ -470,7 +484,7 @@ class TestWorkPlanServiceEdgeCases:
         assert success is True
         
         # Verify it was stored despite being malformed
-        updated_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        updated_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.result_ref is not None
         assert item.result_ref.metadata["needs_interpretation"] is True
@@ -493,7 +507,7 @@ class TestWorkPlanServiceEdgeCases:
         
         # Should save and load correctly
         work_plan_service.save(unicode_plan)
-        loaded_plan = work_plan_service.load("unicode_owner")
+        loaded_plan = work_plan_service.load("unicode_thread", "unicode_owner")
         
         assert loaded_plan is not None
         assert "🚀" in loaded_plan.summary
@@ -509,6 +523,7 @@ class TestWorkPlanServiceEdgeCases:
         # Store very large response
         large_content = "x" * 1000000  # 1MB of content
         success = work_plan_service.store_task_response(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             correlation_task_id="task_123",
             response_content=large_content,
@@ -518,7 +533,7 @@ class TestWorkPlanServiceEdgeCases:
         assert success is True
         
         # Should still be able to load and work with the plan
-        updated_plan = work_plan_service.load(sample_work_plan.owner_uid)
+        updated_plan = work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         assert updated_plan is not None
         assert len(updated_plan.items["item_1"].result_ref.content) >= 1000000
 
@@ -532,13 +547,13 @@ class TestWorkPlanServiceDebugOutput:
         work_plan_service.save(sample_work_plan)
         
         debug_messages = capture_debug_output
-        save_messages = [msg for msg in debug_messages if "WorkPlanService.save()" in msg]
+        save_messages = [msg for msg in debug_messages if "[PLAN] Saved:" in msg]
         assert len(save_messages) > 0
         
         # Load operation should generate debug output
-        work_plan_service.load(sample_work_plan.owner_uid)
+        work_plan_service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         
-        load_messages = [msg for msg in debug_messages if "WorkPlanService.load()" in msg]
+        load_messages = [msg for msg in debug_messages if "[PLAN] Loaded:" in msg]
         assert len(load_messages) > 0
     
     def test_debug_output_on_status_operations(self, work_plan_service, sample_work_plan, capture_debug_output):
@@ -547,6 +562,7 @@ class TestWorkPlanServiceDebugOutput:
         
         # Update item status should generate debug output
         work_plan_service.update_item_status(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             item_id="item_1",
             status=WorkItemStatus.DONE
@@ -563,6 +579,7 @@ class TestWorkPlanServiceDebugOutput:
         
         # Store response should generate debug output
         work_plan_service.store_task_response(
+            thread_id=sample_work_plan.thread_id,
             owner_uid=sample_work_plan.owner_uid,
             correlation_task_id="task_123",
             response_content="Test response",

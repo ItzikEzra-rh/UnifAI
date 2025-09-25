@@ -53,11 +53,13 @@ class MarkWorkItemStatusTool(BaseTool):
     
     def __init__(
         self,
-        get_workspace: Callable[[], Any],
-        get_owner_uid: Callable[[], str]
+        get_thread_id: Callable[[], str],
+        get_owner_uid: Callable[[], str],
+        get_workload_service: Callable[[], Any]
     ):
-        self._get_workspace = get_workspace
+        self._get_thread_id = get_thread_id
         self._get_owner_uid = get_owner_uid
+        self._get_workload_service = get_workload_service
     
     def run(self, **kwargs) -> Dict[str, Any]:
         """Mark work item status."""
@@ -67,22 +69,32 @@ class MarkWorkItemStatusTool(BaseTool):
         print(f"🏷️ [DEBUG] New status: {args.status}")
         print(f"🏷️ [DEBUG] Notes: {args.notes}")
         
-        workspace = self._get_workspace()
-        service = WorkPlanService(workspace)
+        thread_id = self._get_thread_id()
         owner_uid = self._get_owner_uid()
+        workload_service = self._get_workload_service()
+        service = WorkPlanService(workload_service)
         print(f"🏷️ [DEBUG] Owner UID: {owner_uid}")
         
-        success = service.update_item_status(
-            owner_uid=owner_uid,
-            item_id=args.item_id,
-            status=args.status,
-            error=args.notes if args.status == WorkItemStatus.FAILED else None,
-            correlation_task_id=args.correlation_task_id
-        )
+        # Load plan, update item, and save
+        plan = service.load(thread_id, owner_uid)
+        if not plan or args.item_id not in plan.items:
+            print(f"❌ [DEBUG] Work plan or item not found")
+            return {"success": False, "error": "Work plan or work item not found"}
+        
+        # Update the item status
+        item = plan.items[args.item_id]
+        item.status = args.status
+        if args.status == WorkItemStatus.FAILED and args.notes:
+            item.error = args.notes
+        if args.correlation_task_id:
+            item.correlation_task_id = args.correlation_task_id
+        
+        # Save the updated plan
+        success = service.save(plan)
         
         if not success:
-            print(f"❌ [DEBUG] Failed to update work item status")
-            return {"success": False, "error": "Work item not found"}
+            print(f"❌ [DEBUG] Failed to save updated work plan")
+            return {"success": False, "error": "Failed to save work plan"}
         
         result = {
             "success": True,

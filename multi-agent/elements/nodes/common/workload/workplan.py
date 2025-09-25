@@ -259,13 +259,18 @@ class WorkPlan(BaseModel):
 
 
 class WorkPlanService:
-    """Service for managing work plans in workspaces."""
+    """
+    Domain service for WorkPlan operations.
     
-    def __init__(self, workspace):
-        """Initialize with workspace."""
-        self.workspace = workspace
+    SOLID design: Single dependency on IWorkloadService.
+    WorkPlans are stored as workspace variables, not separate aggregates.
+    """
     
-    def create(self, thread_id: str, owner_uid: str, created_by: str) -> WorkPlan:
+    def __init__(self, workload_service):
+        """Initialize with workload service only."""
+        self._workload_service = workload_service
+    
+    def create(self, thread_id: str, owner_uid: str) -> WorkPlan:
         """Create a new work plan."""
         plan = WorkPlan(
             summary="New Work Plan",
@@ -274,33 +279,32 @@ class WorkPlanService:
         )
         return plan
     
-    def load(self, owner_uid: str) -> Optional[WorkPlan]:
-        """Load work plan for owner."""
+    def load(self, thread_id: str, owner_uid: str) -> Optional[WorkPlan]:
+        """Load work plan from workspace variables."""
         try:
-            # Try to get from workspace variables
             plan_key = f"workplan_{owner_uid}"
-            plan_data = self.workspace.get_variable(plan_key)
+            workspace = self._workload_service.get_workspace(thread_id)
+            plan_data = workspace.get_variable(plan_key)
             
             if plan_data:
-                try:
-                    plan = WorkPlan(**plan_data)
-                    print(f"💾 [PLAN] Loaded: {len(plan.items)} items")
-                    return plan
-                except Exception as e:
-                    print(f"❌ [PLAN] Error loading: {e}")
-                    return None
+                plan = WorkPlan(**plan_data)
+                print(f"💾 [PLAN] Loaded: {len(plan.items)} items")
+                return plan
             
             return None
         except Exception as e:
-            print(f"❌ [PLAN] Workspace error: {e}")
+            print(f"❌ [PLAN] Error loading: {e}")
             return None
     
     def save(self, plan: WorkPlan) -> bool:
-        """Save work plan to workspace."""
+        """Save work plan as workspace variable."""
         try:
             plan.mark_updated()
             plan_key = f"workplan_{plan.owner_uid}"
-            self.workspace.set_variable(plan_key, plan.model_dump())
+            
+            workspace = self._workload_service.get_workspace(plan.thread_id)
+            workspace.set_variable(plan_key, plan.model_dump())
+            self._workload_service.update_workspace(workspace)
             
             print(f"💾 [PLAN] Saved: {len(plan.items)} items")
             return True
@@ -308,9 +312,9 @@ class WorkPlanService:
             print(f"❌ [PLAN] Save error: {e}")
             return False
     
-    def get_status_summary(self, owner_uid: str) -> WorkPlanStatusSummary:
+    def get_status_summary(self, thread_id: str, owner_uid: str) -> WorkPlanStatusSummary:
         """Get status summary for work plan."""
-        plan = self.load(owner_uid)
+        plan = self.load(thread_id, owner_uid)
         
         if not plan:
             return WorkPlanStatusSummary(exists=False)
@@ -349,6 +353,7 @@ class WorkPlanService:
     
     def store_task_response(
         self,
+        thread_id: str,
         owner_uid: str,
         correlation_task_id: str,
         response_content: str,
@@ -358,7 +363,7 @@ class WorkPlanService:
         print(f"💬 [DEBUG] WorkPlanService.store_task_response() - Storing response for LLM interpretation")
         print(f"💬 [DEBUG] correlation_task_id: {correlation_task_id}, from: {from_uid}")
         
-        plan = self.load(owner_uid)
+        plan = self.load(thread_id, owner_uid)
         if not plan:
             print(f"❌ [DEBUG] No plan found for {owner_uid}")
             return False
@@ -398,6 +403,7 @@ class WorkPlanService:
 
     def ingest_task_response(
         self, 
+        thread_id: str,
         owner_uid: str, 
         correlation_task_id: str, 
         result: Any = None, 
@@ -408,7 +414,7 @@ class WorkPlanService:
         print(f"📥 [DEBUG] correlation_task_id: {correlation_task_id}")
         print(f"📥 [DEBUG] has_result: {result is not None}, has_error: {error is not None}")
         
-        plan = self.load(owner_uid)
+        plan = self.load(thread_id, owner_uid)
         if not plan:
             print(f"❌ [DEBUG] No plan found for {owner_uid}")
             return False
@@ -453,6 +459,7 @@ class WorkPlanService:
     
     def update_item_status(
         self,
+        thread_id: str,
         owner_uid: str,
         item_id: str,
         status: WorkItemStatus,
@@ -462,7 +469,7 @@ class WorkPlanService:
         """Update work item status - for LLM-driven status changes."""
         print(f"🔄 [DEBUG] WorkPlanService.update_item_status() - Updating {item_id} to {status}")
         
-        plan = self.load(owner_uid)
+        plan = self.load(thread_id, owner_uid)
         if not plan:
             print(f"❌ [DEBUG] No plan found for {owner_uid}")
             return False
@@ -499,12 +506,12 @@ class WorkPlanService:
         print(f"✅ [DEBUG] Item status updated: {old_status} → {status}")
         return True
     
-    def mark_item_as_delegated(self, owner_uid: str, item_id: str, correlation_task_id: str) -> bool:
+    def mark_item_as_delegated(self, thread_id: str, owner_uid: str, item_id: str, correlation_task_id: str) -> bool:
         """Mark work item as delegated (WAITING status)."""
         print(f"📤 [DEBUG] WorkPlanService.mark_item_as_delegated() - Marking {item_id} as delegated")
         print(f"📤 [DEBUG] correlation_task_id: {correlation_task_id}")
         
-        plan = self.load(owner_uid)
+        plan = self.load(thread_id, owner_uid)
         if not plan:
             print(f"❌ [DEBUG] No plan found for {owner_uid}")
             return False

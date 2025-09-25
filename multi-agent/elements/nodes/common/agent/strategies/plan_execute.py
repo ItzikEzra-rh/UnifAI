@@ -301,67 +301,22 @@ class PlanAndExecuteStrategy(AgentStrategy):
         """
         Update current phase based on observations and work plan state.
         
-        Uses injected PhaseTransitionPolicy if available, otherwise falls back
-        to built-in heuristics. This allows nodes to customize phase logic.
+        Uses the injected phase provider to determine the next phase based on
+        current work plan status and observations. No fallback logic.
         """
         print(f"🔄 [DEBUG] _update_phase() - Current: {self._current_phase}")
         
         # Use phase provider for transitions
         print(f"🔀 [DEBUG] Using phase provider for transition")
-        try:
-            context = self._phase_provider.get_phase_context()
-            print(f"📊 [DEBUG] Phase context: total_items={context.work_plan_status.total_items if context.work_plan_status else 'None'}")
-            new_phase = self._phase_provider.decide_next_phase(
-                current_phase=self._current_phase,
-                context=context,
-                observations=observations
-            )
-            print(f"🔀 [DEBUG] Provider decided: {self._current_phase} → {new_phase}")
-            self._current_phase = new_phase
-            return
-        except Exception as e:
-            print(f"❌ [DEBUG] Error using phase provider: {e}")
-            # Fall through to built-in logic
-        
-        # Built-in fallback logic
-        print(f"🔄 [DEBUG] Using built-in phase logic")
-        plan_status = self._get_work_plan_status()
-        
-        if not plan_status:
-            # No plan exists - should be in planning
-            print(f"📋 [DEBUG] No plan status - going to PLANNING")
-            self._current_phase = ExecutionPhase.PLANNING
-            return
-        
-        print(f"📊 [DEBUG] Plan status: total={plan_status.total_items}, pending={plan_status.pending_items}, complete={plan_status.is_complete}")
-        
-        # Determine phase based on typed work plan state
-        if plan_status.total_items == 0:
-            # Empty plan - stay in planning
-            print(f"📋 [DEBUG] Empty plan - staying in PLANNING")
-            self._current_phase = ExecutionPhase.PLANNING
-        elif plan_status.pending_items > 0:
-            # Unassigned items - should be in allocation
-            print(f"📋 [DEBUG] {plan_status.pending_items} pending items - going to ALLOCATION")
-            self._current_phase = ExecutionPhase.ALLOCATION
-        elif plan_status.in_progress_items > 0 or plan_status.waiting_items > 0:
-            # Items executing or waiting for responses - monitor
-            print(f"📋 [DEBUG] Items in progress/waiting - going to MONITORING")
-            self._current_phase = ExecutionPhase.MONITORING
-        elif plan_status.is_complete:
-            # All items complete - synthesize
-            print(f"📋 [DEBUG] Plan complete - going to SYNTHESIS")
-            self._current_phase = ExecutionPhase.SYNTHESIS
-        elif plan_status.has_local_ready:
-            # Local items ready to execute
-            print(f"📋 [DEBUG] Local items ready - going to EXECUTION")
-            self._current_phase = ExecutionPhase.EXECUTION
-        else:
-            # Default to monitoring if unclear
-            print(f"📋 [DEBUG] Unclear state - defaulting to MONITORING")
-            self._current_phase = ExecutionPhase.MONITORING
-            
-        print(f"🔄 [DEBUG] _update_phase() - Final: {self._current_phase}")
+        context = self._phase_provider.get_phase_context()
+        print(f"📊 [DEBUG] Phase context: total_items={context.work_plan_status.total_items if context.work_plan_status else 'None'}")
+        new_phase = self._phase_provider.decide_next_phase(
+            current_phase=self._current_phase,
+            context=context,
+            observations=observations
+        )
+        print(f"🔀 [DEBUG] Provider decided: {self._current_phase} → {new_phase}")
+        self._current_phase = new_phase
     
     def _should_transition_phase(self, observations: List[AgentObservation]) -> bool:
         """
@@ -388,26 +343,6 @@ class PlanAndExecuteStrategy(AgentStrategy):
         if current_idx < len(phases) - 1:
             self._current_phase = phases[current_idx + 1]
             self._phase_iterations = 0
-    
-    def _get_work_plan_status(self) -> Optional[WorkPlanStatus]:
-        """
-        Get current work plan status from phase context provider.
-        
-        Single Responsibility: Strategy only manages phases,
-        node provides the context information needed via typed provider.
-        
-        Returns None if no context provider is available.
-        """
-        if not self._phase_context_provider:
-            return None
-        
-        try:
-            # Get typed context from provider
-            phase_state = self._phase_context_provider.get_phase_context()
-            return phase_state.work_plan_status
-        except Exception as e:
-            print(f"Error getting phase context: {e}")
-            return None
     
     
     def _build_phase_prompt(self) -> str:

@@ -102,9 +102,9 @@ class TestOrchestratorBasicIntegration:
                 assert predictable_llm.call_count > 0
                 
                 # VERIFY: Work plan was created
-                workspace = integration_orchestrator.get_workspace(task.thread_id)
-                plan_service = WorkPlanService(workspace)
-                work_plan = plan_service.load(integration_orchestrator.uid)
+                workload_service = integration_orchestrator.get_workload_service()
+                plan_service = WorkPlanService(workload_service)
+                work_plan = plan_service.load(task.thread_id, integration_orchestrator.uid)
                 
                 if work_plan:
                     execution_tracker.track_work_plan_creation(work_plan)
@@ -266,9 +266,9 @@ class TestOrchestratorBasicIntegration:
                 execution_tracker.track_llm_call()
                 
                 # VERIFY: Work plan created with local items
-                workspace = integration_orchestrator.get_workspace(task.thread_id)
-                plan_service = WorkPlanService(workspace)
-                work_plan = plan_service.load(integration_orchestrator.uid)
+                workload_service = integration_orchestrator.get_workload_service()
+                plan_service = WorkPlanService(workload_service)
+                work_plan = plan_service.load(task.thread_id, integration_orchestrator.uid)
                 
                 if work_plan:
                     execution_tracker.track_work_plan_creation(work_plan)

@@ -66,7 +66,7 @@ class TestOrchestratorPhaseProviderInitialization:
         assert provider._domain_tools == mock_domain_tools
         assert provider._node_uid == "test_orchestrator"
         assert provider._thread_id == "test_thread"
-        assert provider._get_workspace is not None
+        assert provider._get_workload_service is not None
         assert provider._get_adjacent_nodes is not None
         assert provider._send_task is not None
     
@@ -215,7 +215,7 @@ class TestOrchestratorPhaseProviderContext:
         """Test successful phase context creation."""
         # Mock workspace and service
         mock_workspace = Mock()
-        orchestrator_phase_provider._get_workspace.return_value = mock_workspace
+        orchestrator_phase_provider._get_workload_service.return_value.get_workspace.return_value = mock_workspace
         
         with patch('elements.nodes.orchestrator.orchestrator_phase_provider.WorkPlanService') as mock_service_class:
             mock_service = Mock()
@@ -246,7 +246,7 @@ class TestOrchestratorPhaseProviderContext:
     
     def test_get_phase_context_no_workspace(self, orchestrator_phase_provider):
         """Test phase context when workspace is unavailable."""
-        orchestrator_phase_provider._get_workspace.side_effect = Exception("Workspace error")
+        orchestrator_phase_provider._get_workload_service.return_value.get_workspace.side_effect = Exception("Workspace error")
         
         context = orchestrator_phase_provider.get_phase_context()
         
@@ -262,7 +262,7 @@ class TestOrchestratorPhaseProviderContext:
         
         # Mock workspace
         mock_workspace = Mock()
-        orchestrator_phase_provider._get_workspace.return_value = mock_workspace
+        orchestrator_phase_provider._get_workload_service.return_value.get_workspace.return_value = mock_workspace
         
         with patch('elements.nodes.orchestrator.orchestrator_phase_provider.WorkPlanService') as mock_service_class:
             mock_service = Mock()
@@ -947,7 +947,7 @@ class TestOrchestratorPhaseProviderEdgeCases:
         # The system should handle None gracefully, not raise TypeError
         provider = OrchestratorPhaseProvider(
             domain_tools=[],
-            get_workspace=Mock(),
+            get_workload_service=Mock(),
             get_adjacent_nodes=Mock(),
             send_task=Mock(),
             node_uid="test",
@@ -1066,7 +1066,7 @@ class TestOrchestratorPhaseProviderEdgeCases:
         """Test provider with unicode node/thread identifiers."""
         provider = OrchestratorPhaseProvider(
             domain_tools=mock_domain_tools,
-            get_workspace=Mock(),
+            get_workload_service=Mock(),
             get_adjacent_nodes=Mock(return_value={}),
             send_task=Mock(),
             node_uid="orchestrator_🚀_node",
@@ -1120,7 +1120,7 @@ class TestOrchestratorPhaseProviderIntegration:
         workspace.get_variable = lambda k: workspace.variables.get(k)
         workspace.set_variable = lambda k, v: workspace.variables.update({k: v})
         
-        orchestrator_phase_provider._get_workspace.return_value = workspace
+        orchestrator_phase_provider._get_workload_service.return_value.get_workspace.return_value = workspace
         
         # Get phase context should work with real data
         context = orchestrator_phase_provider.get_phase_context()

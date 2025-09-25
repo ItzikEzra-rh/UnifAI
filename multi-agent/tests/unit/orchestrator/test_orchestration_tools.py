@@ -42,9 +42,9 @@ class TestCreateOrUpdateWorkPlanTool:
     def test_tool_initialization(self, mock_tool_dependencies):
         """Test tool initialization with dependencies."""
         tool = CreateOrUpdateWorkPlanTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
             get_thread_id=mock_tool_dependencies["get_thread_id"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         assert tool.name == "workplan.create_or_update"
@@ -54,9 +54,9 @@ class TestCreateOrUpdateWorkPlanTool:
     def test_create_new_work_plan(self, mock_tool_dependencies, capture_debug_output):
         """Test creating a new work plan."""
         tool = CreateOrUpdateWorkPlanTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
             get_thread_id=mock_tool_dependencies["get_thread_id"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         result = tool.run(
@@ -92,14 +92,14 @@ class TestCreateOrUpdateWorkPlanTool:
     def test_update_existing_work_plan(self, mock_tool_dependencies, sample_work_plan):
         """Test updating an existing work plan."""
         # Pre-populate workspace with existing plan
-        workspace = mock_tool_dependencies["get_workspace"]()
-        service = WorkPlanService(workspace)
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        service = WorkPlanService(workload_service)
         service.save(sample_work_plan)
         
         tool = CreateOrUpdateWorkPlanTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
             get_thread_id=mock_tool_dependencies["get_thread_id"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         result = tool.run(
@@ -119,7 +119,7 @@ class TestCreateOrUpdateWorkPlanTool:
         assert result["total_items"] == 4  # 3 existing + 1 new
         
         # Verify plan was updated
-        updated_plan = service.load(sample_work_plan.owner_uid)
+        updated_plan = service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         assert updated_plan.summary == "Updated Work Plan"
         assert "new_item" in updated_plan.items
         # Original items should still exist
@@ -145,9 +145,9 @@ class TestCreateOrUpdateWorkPlanTool:
     def test_tool_with_invalid_arguments(self, mock_tool_dependencies):
         """Test tool with invalid arguments."""
         tool = CreateOrUpdateWorkPlanTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
             get_thread_id=mock_tool_dependencies["get_thread_id"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         # Missing required arguments
@@ -170,7 +170,8 @@ class TestDelegateTaskTool:
         tool = DelegateTaskTool(
             send_task=mock_tool_dependencies["send_task"],
             get_owner_uid=mock_tool_dependencies["get_owner_uid"],
-            get_workspace=mock_tool_dependencies["get_workspace"],
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"],
             check_adjacency=mock_tool_dependencies["check_adjacency"]
         )
         
@@ -181,14 +182,15 @@ class TestDelegateTaskTool:
     def test_successful_task_delegation(self, mock_tool_dependencies, sample_work_plan, capture_debug_output):
         """Test successful task delegation."""
         # Setup workspace with work plan
-        workspace = mock_tool_dependencies["get_workspace"]()
-        service = WorkPlanService(workspace)
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        service = WorkPlanService(workload_service)
         service.save(sample_work_plan)
         
         tool = DelegateTaskTool(
             send_task=mock_tool_dependencies["send_task"],
             get_owner_uid=mock_tool_dependencies["get_owner_uid"],
-            get_workspace=mock_tool_dependencies["get_workspace"],
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"],
             check_adjacency=mock_tool_dependencies["check_adjacency"]
         )
         
@@ -206,7 +208,7 @@ class TestDelegateTaskTool:
         assert "correlation_info" in result
         
         # Verify work item was marked as delegated
-        updated_plan = service.load(sample_work_plan.owner_uid)
+        updated_plan = service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.status == WorkItemStatus.WAITING
         assert item.correlation_task_id is not None
@@ -224,7 +226,8 @@ class TestDelegateTaskTool:
         tool = DelegateTaskTool(
             send_task=mock_tool_dependencies["send_task"],
             get_owner_uid=mock_tool_dependencies["get_owner_uid"],
-            get_workspace=mock_tool_dependencies["get_workspace"],
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"],
             check_adjacency=mock_tool_dependencies["check_adjacency"]
         )
         
@@ -243,7 +246,8 @@ class TestDelegateTaskTool:
         tool = DelegateTaskTool(
             send_task=mock_tool_dependencies["send_task"],
             get_owner_uid=mock_tool_dependencies["get_owner_uid"],
-            get_workspace=mock_tool_dependencies["get_workspace"],
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"],
             check_adjacency=mock_tool_dependencies["check_adjacency"]
         )
         
@@ -264,7 +268,8 @@ class TestDelegateTaskTool:
         tool = DelegateTaskTool(
             send_task=mock_tool_dependencies["send_task"],
             get_owner_uid=mock_tool_dependencies["get_owner_uid"],
-            get_workspace=mock_tool_dependencies["get_workspace"],
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"],
             check_adjacency=mock_tool_dependencies["check_adjacency"]
         )
         
@@ -304,8 +309,9 @@ class TestMarkWorkItemStatusTool:
     def test_tool_initialization(self, mock_tool_dependencies):
         """Test tool initialization."""
         tool = MarkWorkItemStatusTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         assert tool.name == "workplan.mark"
@@ -315,13 +321,14 @@ class TestMarkWorkItemStatusTool:
     def test_mark_item_as_done(self, mock_tool_dependencies, sample_work_plan, capture_debug_output):
         """Test marking work item as done."""
         # Setup workspace
-        workspace = mock_tool_dependencies["get_workspace"]()
-        service = WorkPlanService(workspace)
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        service = WorkPlanService(workload_service)
         service.save(sample_work_plan)
         
         tool = MarkWorkItemStatusTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         result = tool.run(
@@ -335,7 +342,7 @@ class TestMarkWorkItemStatusTool:
         assert result["new_status"] == WorkItemStatus.DONE.value
         
         # Verify item was updated
-        updated_plan = service.load(sample_work_plan.owner_uid)
+        updated_plan = service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.status == WorkItemStatus.DONE
         
@@ -345,13 +352,14 @@ class TestMarkWorkItemStatusTool:
     
     def test_mark_item_as_failed(self, mock_tool_dependencies, sample_work_plan):
         """Test marking work item as failed."""
-        workspace = mock_tool_dependencies["get_workspace"]()
-        service = WorkPlanService(workspace)
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        service = WorkPlanService(workload_service)
         service.save(sample_work_plan)
         
         tool = MarkWorkItemStatusTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         result = tool.run(
@@ -363,20 +371,21 @@ class TestMarkWorkItemStatusTool:
         assert result["success"] is True
         
         # Verify item was updated with error
-        updated_plan = service.load(sample_work_plan.owner_uid)
+        updated_plan = service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.status == WorkItemStatus.FAILED
         assert item.error == "Task failed due to network error"
     
     def test_mark_nonexistent_item(self, mock_tool_dependencies, sample_work_plan):
         """Test marking non-existent work item."""
-        workspace = mock_tool_dependencies["get_workspace"]()
-        service = WorkPlanService(workspace)
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        service = WorkPlanService(workload_service)
         service.save(sample_work_plan)
         
         tool = MarkWorkItemStatusTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         result = tool.run(
@@ -385,7 +394,7 @@ class TestMarkWorkItemStatusTool:
         )
         
         assert result["success"] is False
-        assert "Work item not found" in result["error"]
+        assert "Work plan or work item not found" in result["error"]
     
     def test_mark_status_args_validation(self):
         """Test MarkStatusArgs validation."""
@@ -409,8 +418,9 @@ class TestAssignWorkItemTool:
     def test_tool_initialization(self, mock_tool_dependencies):
         """Test tool initialization."""
         tool = AssignWorkItemTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         assert tool.name == "workplan.assign"
@@ -419,13 +429,14 @@ class TestAssignWorkItemTool:
     
     def test_assign_item_for_remote_execution(self, mock_tool_dependencies, sample_work_plan):
         """Test assigning item for remote execution."""
-        workspace = mock_tool_dependencies["get_workspace"]()
-        service = WorkPlanService(workspace)
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        service = WorkPlanService(workload_service)
         service.save(sample_work_plan)
         
         tool = AssignWorkItemTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         result = tool.run(
@@ -440,7 +451,7 @@ class TestAssignWorkItemTool:
         assert result["assignment"]["kind"] == WorkItemKind.REMOTE
         
         # Verify item was updated
-        updated_plan = service.load(sample_work_plan.owner_uid)
+        updated_plan = service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.kind == WorkItemKind.REMOTE
         assert item.assigned_uid == "remote_node_1"
@@ -448,13 +459,14 @@ class TestAssignWorkItemTool:
     
     def test_assign_item_for_local_execution(self, mock_tool_dependencies, sample_work_plan):
         """Test assigning item for local execution."""
-        workspace = mock_tool_dependencies["get_workspace"]()
-        service = WorkPlanService(workspace)
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        service = WorkPlanService(workload_service)
         service.save(sample_work_plan)
         
         tool = AssignWorkItemTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         result = tool.run(
@@ -468,7 +480,7 @@ class TestAssignWorkItemTool:
         assert result["assignment"]["kind"] == WorkItemKind.LOCAL
         
         # Verify item was updated
-        updated_plan = service.load(sample_work_plan.owner_uid)
+        updated_plan = service.load(sample_work_plan.thread_id, sample_work_plan.owner_uid)
         item = updated_plan.items["item_1"]
         assert item.kind == WorkItemKind.LOCAL
         assert item.tool == "analyze_data_tool"
@@ -476,13 +488,14 @@ class TestAssignWorkItemTool:
     
     def test_assign_nonexistent_item(self, mock_tool_dependencies, sample_work_plan):
         """Test assigning non-existent work item."""
-        workspace = mock_tool_dependencies["get_workspace"]()
-        service = WorkPlanService(workspace)
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        service = WorkPlanService(workload_service)
         service.save(sample_work_plan)
         
         tool = AssignWorkItemTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         result = tool.run(
@@ -500,8 +513,9 @@ class TestSummarizeWorkPlanTool:
     def test_tool_initialization(self, mock_tool_dependencies):
         """Test tool initialization."""
         tool = SummarizeWorkPlanTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         assert tool.name == "workplan.summarize"  # Uses ToolNames constant
@@ -510,13 +524,14 @@ class TestSummarizeWorkPlanTool:
     
     def test_summarize_complex_work_plan(self, mock_tool_dependencies, complex_work_plan):
         """Test summarizing a complex work plan."""
-        workspace = mock_tool_dependencies["get_workspace"]()
-        service = WorkPlanService(workspace)
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        service = WorkPlanService(workload_service)
         service.save(complex_work_plan)
         
         tool = SummarizeWorkPlanTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         result = tool.run()  # SummarizeWorkPlanTool takes no arguments
@@ -533,8 +548,9 @@ class TestSummarizeWorkPlanTool:
     def test_summarize_empty_work_plan(self, mock_tool_dependencies):
         """Test summarizing when no work plan exists."""
         tool = SummarizeWorkPlanTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         result = tool.run()
@@ -544,13 +560,14 @@ class TestSummarizeWorkPlanTool:
     
     def test_summarize_with_options(self, mock_tool_dependencies, complex_work_plan):
         """Test summarize with different options."""
-        workspace = mock_tool_dependencies["get_workspace"]()
-        service = WorkPlanService(workspace)
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        service = WorkPlanService(workload_service)
         service.save(complex_work_plan)
         
         tool = SummarizeWorkPlanTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         # Test basic summarization (no arguments)
@@ -572,13 +589,14 @@ class TestOrchestrationToolsEdgeCases:
         failing_workspace = Mock()
         failing_workspace.get_variable.side_effect = Exception("Workspace error")
         failing_workspace.set_variable.side_effect = Exception("Workspace error")
-        mock_tool_dependencies["get_workspace"].return_value = failing_workspace
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        workload_service.get_workspace.return_value = failing_workspace
         
         # Test CreateOrUpdateWorkPlanTool
         create_tool = CreateOrUpdateWorkPlanTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
             get_thread_id=mock_tool_dependencies["get_thread_id"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         # Should handle workspace errors gracefully
@@ -600,15 +618,16 @@ class TestOrchestrationToolsEdgeCases:
     
     def test_tools_with_unicode_content(self, mock_tool_dependencies, sample_work_plan):
         """Test tools with unicode content."""
-        workspace = mock_tool_dependencies["get_workspace"]()
-        service = WorkPlanService(workspace)
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        service = WorkPlanService(workload_service)
         service.save(sample_work_plan)
         
         # Test DelegateTaskTool with unicode
         delegate_tool = DelegateTaskTool(
             send_task=mock_tool_dependencies["send_task"],
             get_owner_uid=mock_tool_dependencies["get_owner_uid"],
-            get_workspace=mock_tool_dependencies["get_workspace"],
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"],
             check_adjacency=mock_tool_dependencies["check_adjacency"]
         )
         
@@ -623,8 +642,9 @@ class TestOrchestrationToolsEdgeCases:
         
         # Test MarkWorkItemStatusTool with unicode
         mark_tool = MarkWorkItemStatusTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_thread_id=mock_tool_dependencies["get_thread_id"],
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         result = mark_tool.run(
@@ -639,9 +659,9 @@ class TestOrchestrationToolsEdgeCases:
         """Test tools with large data inputs."""
         # Test CreateOrUpdateWorkPlanTool with many items
         create_tool = CreateOrUpdateWorkPlanTool(
-            get_workspace=mock_tool_dependencies["get_workspace"],
             get_thread_id=mock_tool_dependencies["get_thread_id"],
-            get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+            get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+            get_workload_service=mock_tool_dependencies["get_workload_service"]
         )
         
         # Create 100 work items
@@ -665,8 +685,8 @@ class TestOrchestrationToolsEdgeCases:
     
     def test_tools_concurrent_access(self, mock_tool_dependencies, sample_work_plan):
         """Test tools under concurrent access."""
-        workspace = mock_tool_dependencies["get_workspace"]()
-        service = WorkPlanService(workspace)
+        workload_service = mock_tool_dependencies["get_workload_service"]()
+        service = WorkPlanService(workload_service)
         service.save(sample_work_plan)
         
         import threading
@@ -676,8 +696,9 @@ class TestOrchestrationToolsEdgeCases:
         def use_mark_tool():
             try:
                 mark_tool = MarkWorkItemStatusTool(
-                    get_workspace=mock_tool_dependencies["get_workspace"],
-                    get_owner_uid=mock_tool_dependencies["get_owner_uid"]
+                    get_thread_id=mock_tool_dependencies["get_thread_id"],
+                    get_owner_uid=mock_tool_dependencies["get_owner_uid"],
+                    get_workload_service=mock_tool_dependencies["get_workload_service"]
                 )
                 
                 result = mark_tool.run(

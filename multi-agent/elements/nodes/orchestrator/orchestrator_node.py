@@ -133,9 +133,9 @@ class OrchestratorNode(
 
         # Run orchestration cycles for updated threads (planning phase)
         for thread_id in self._updated_threads:
-            workspace = self.get_workspace(thread_id)
-            service = WorkPlanService(workspace)
-            status_summary = service.get_status_summary(self.uid)
+            workload_service = self.get_workload_service()
+            service = WorkPlanService(workload_service)
+            status_summary = service.get_status_summary(thread_id, self.uid)
             
             if not status_summary.is_complete:
                 self._run_orchestration_cycle(thread_id, "Continuing after batch response processing")
@@ -187,8 +187,8 @@ class OrchestratorNode(
         print(f"🔗 [DEBUG] Found correlation_task_id: {correlation_task_id}")
 
         # Update work plan and workspace context
-        workspace = self.get_workspace(task.thread_id)
-        service = WorkPlanService(workspace)
+        workload_service = self.get_workload_service()
+        service = WorkPlanService(workload_service)
 
         # Store response as workspace fact for LLM context
         response_content = ""
@@ -213,6 +213,7 @@ class OrchestratorNode(
         if task.error:
             print(f"❌ [DEBUG] Processing explicit ERROR response: {str(task.error)[:100]}...")
             success = service.ingest_task_response(
+                thread_id=task.thread_id,
                 owner_uid=self.uid,
                 correlation_task_id=correlation_task_id,
                 error=str(task.error)
@@ -222,6 +223,7 @@ class OrchestratorNode(
         elif task.result and isinstance(task.result, dict) and task.result.get("success") is True:
             print(f"✅ [DEBUG] Processing explicit SUCCESS response: {str(task.result)[:100]}...")
             success = service.ingest_task_response(
+                thread_id=task.thread_id,
                 owner_uid=self.uid,
                 correlation_task_id=correlation_task_id,
                 result=task.result
@@ -232,6 +234,7 @@ class OrchestratorNode(
             # Store for LLM interpretation - don't auto-mark status
             print(f"💬 [DEBUG] Storing response for LLM interpretation: {response_content[:100]}...")
             success = service.store_task_response(
+                thread_id=task.thread_id,
                 owner_uid=self.uid,
                 correlation_task_id=correlation_task_id,
                 response_content=response_content,
@@ -288,14 +291,14 @@ class OrchestratorNode(
         # Build domain tools only (provider will build built-ins)
         tools = list(self.base_tools)
 
-        # Create orchestrator phase provider (no circular dependency!)
+        # Create orchestrator phase provider with clean SOLID dependencies
         phase_provider = OrchestratorPhaseProvider(
             domain_tools=tools,  # These are the domain tools this orchestrator can use
-            get_workspace=self.get_workspace,  # Inject function, not whole node
             get_adjacent_nodes=self.get_adjacent_nodes,  # Inject adjacency function
             send_task=self.send_task,  # Inject IEM sender for delegation tool
             node_uid=self.uid,
-            thread_id=thread_id
+            thread_id=thread_id,
+            get_workload_service=self.get_workload_service  # Clean dependency injection
         )
 
         # Create strategy with unified provider
@@ -496,10 +499,10 @@ class OrchestratorNode(
 
     def _build_plan_snapshot(self, thread_id: str) -> str:
         """Build a comprehensive snapshot of current work plan."""
-        workspace = self.get_workspace(thread_id)
-        service = WorkPlanService(workspace)
+        workload_service = self.get_workload_service()
+        service = WorkPlanService(workload_service)
 
-        summary = service.get_status_summary(self.uid)
+        summary = service.get_status_summary(thread_id, self.uid)
         if not summary.exists:
             return "No work plan exists yet."
 
@@ -510,7 +513,7 @@ class OrchestratorNode(
         ]
 
         # Load plan to get detailed item information
-        plan = service.load(self.uid)
+        plan = service.load(thread_id, self.uid)
         if plan:
             lines.append(f"\nPlan Summary: {plan.summary}")
             

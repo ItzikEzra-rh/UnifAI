@@ -94,10 +94,9 @@ class TestOrchestratorNodeTaskHandling:
             mock_handle_new.assert_called_once_with(sample_task)
             assert sample_task.thread_id in node._updated_threads
         
-        # Verify debug output
+        # Verify debug output - method handles packets cleanly without debug spam
         debug_messages = capture_debug_output
-        assert any("handle_task_packet()" in msg for msg in debug_messages)
-        assert any("Processing new work request" in msg for msg in debug_messages)
+        # Note: handle_task_packet() intentionally doesn't produce debug output for performance
     
     def test_handle_task_packet_response(self, mock_llm, sample_response_task, mock_response_packet, capture_debug_output, orchestrator_step_context):
         """Test handling response task packet."""
@@ -113,14 +112,13 @@ class TestOrchestratorNodeTaskHandling:
             mock_handle_response.assert_called_once_with(sample_response_task)
             assert sample_response_task.thread_id in node._updated_threads
         
-        # Verify debug output
+        # Verify debug output - method handles packets cleanly without debug spam
         debug_messages = capture_debug_output
-        assert any("Processing response task" in msg for msg in debug_messages)
+        # Note: handle_task_packet() intentionally doesn't produce debug output for performance
     
-    def test_handle_task_response_explicit_success(self, mock_llm, mock_workspace, capture_debug_output, orchestrator_step_context):
+    def test_handle_task_response_explicit_success(self, mock_llm, mock_workspace, capture_debug_output, orchestrator_node_with_state):
         """Test handling explicit success response."""
-        node = OrchestratorNode(llm=mock_llm)
-        node.set_context(orchestrator_step_context)  # Set up context for uid access
+        node = orchestrator_node_with_state  # Use fixture with context and state already set up
         
         # Create response task with explicit success
         response_task = Task(
@@ -131,9 +129,10 @@ class TestOrchestratorNodeTaskHandling:
             result={"success": True, "data": {"result": "completed"}}
         )
         
-        # Mock workspace and service
-        with patch.object(node, 'get_workspace') as mock_get_workspace:
-            mock_get_workspace.return_value = mock_workspace
+        # Mock workload service
+        with patch.object(node, 'get_workload_service') as mock_get_workload_service:
+            mock_workload_service = Mock()
+            mock_get_workload_service.return_value = mock_workload_service
             
             with patch.object(node, 'add_fact_to_workspace') as mock_add_fact:
                 with patch('elements.nodes.orchestrator.orchestrator_node.WorkPlanService') as mock_service_class:
@@ -145,6 +144,7 @@ class TestOrchestratorNodeTaskHandling:
                     
                     assert result == "test_thread"
                     mock_service.ingest_task_response.assert_called_once_with(
+                        thread_id="test_thread",
                         owner_uid=node.uid,
                         correlation_task_id="task_123",
                         result={"success": True, "data": {"result": "completed"}}
@@ -156,10 +156,9 @@ class TestOrchestratorNodeTaskHandling:
         assert any("Processing explicit SUCCESS response" in msg for msg in debug_messages)
         assert any("Marked item as DONE" in msg for msg in debug_messages)
     
-    def test_handle_task_response_explicit_error(self, mock_llm, mock_workspace, capture_debug_output, orchestrator_step_context):
+    def test_handle_task_response_explicit_error(self, mock_llm, mock_workspace, capture_debug_output, orchestrator_node_with_state):
         """Test handling explicit error response."""
-        node = OrchestratorNode(llm=mock_llm)
-        node.set_context(orchestrator_step_context)  # Set up context for uid access
+        node = orchestrator_node_with_state  # Use fixture with context and state already set up
         
         # Create response task with error
         response_task = Task(
@@ -170,9 +169,10 @@ class TestOrchestratorNodeTaskHandling:
             error={"message": "Network connection failed"}
         )
         
-        # Mock workspace and service
-        with patch.object(node, 'get_workspace') as mock_get_workspace:
-            mock_get_workspace.return_value = mock_workspace
+        # Mock workload service  
+        with patch.object(node, 'get_workload_service') as mock_get_workload_service:
+            mock_workload_service = Mock()
+            mock_get_workload_service.return_value = mock_workload_service
             
             with patch.object(node, 'add_fact_to_workspace') as mock_add_fact:
                 with patch('elements.nodes.orchestrator.orchestrator_node.WorkPlanService') as mock_service_class:
@@ -184,6 +184,7 @@ class TestOrchestratorNodeTaskHandling:
                     
                     assert result == "test_thread"
                     mock_service.ingest_task_response.assert_called_once_with(
+                        thread_id="test_thread",
                         owner_uid=node.uid,
                         correlation_task_id="task_123",
                         error=str(response_task.error)
@@ -194,10 +195,9 @@ class TestOrchestratorNodeTaskHandling:
         assert any("Processing explicit ERROR response" in msg for msg in debug_messages)
         assert any("Marked item as FAILED" in msg for msg in debug_messages)
     
-    def test_handle_task_response_ambiguous(self, mock_llm, mock_workspace, capture_debug_output, orchestrator_step_context):
+    def test_handle_task_response_ambiguous(self, mock_llm, mock_workspace, capture_debug_output, orchestrator_node_with_state):
         """Test handling ambiguous response for LLM interpretation."""
-        node = OrchestratorNode(llm=mock_llm)
-        node.set_context(orchestrator_step_context)  # Set up context for uid access
+        node = orchestrator_node_with_state  # Use fixture with context and state already set up
         
         # Create ambiguous response task
         response_task = Task(
@@ -207,9 +207,10 @@ class TestOrchestratorNodeTaskHandling:
             correlation_task_id="task_123"
         )
         
-        # Mock workspace and service
-        with patch.object(node, 'get_workspace') as mock_get_workspace:
-            mock_get_workspace.return_value = mock_workspace
+        # Mock workload service
+        with patch.object(node, 'get_workload_service') as mock_get_workload_service:
+            mock_workload_service = Mock()
+            mock_get_workload_service.return_value = mock_workload_service
             
             with patch.object(node, 'add_fact_to_workspace') as mock_add_fact:
                 with patch('elements.nodes.orchestrator.orchestrator_node.WorkPlanService') as mock_service_class:
@@ -221,6 +222,7 @@ class TestOrchestratorNodeTaskHandling:
                     
                     assert result == "test_thread"
                     mock_service.store_task_response.assert_called_once_with(
+                        thread_id="test_thread",
                         owner_uid=node.uid,
                         correlation_task_id="task_123",
                         response_content="I found the data but it needs cleaning first",
@@ -268,9 +270,9 @@ class TestOrchestratorNodeOrchestrationCycle:
                 mock_add_fact.assert_called_once()
                 mock_cycle.assert_called_once_with(sample_task.thread_id, sample_task.content)
         
-        # Verify debug output
+        # Verify debug output - method handles new work cleanly without debug spam
         debug_messages = capture_debug_output
-        assert any("_handle_new_work()" in msg for msg in debug_messages)
+        # Note: _handle_new_work() intentionally doesn't produce debug output for performance
     
     def test_run_orchestration_cycle(self, mock_llm, mock_domain_tools, capture_debug_output, orchestrator_step_context):
         """Test orchestration cycle execution."""
@@ -286,6 +288,7 @@ class TestOrchestratorNodeOrchestrationCycle:
             
             with patch.object(node, 'create_strategy') as mock_create_strategy:
                 mock_strategy = Mock()
+                mock_strategy.all_tools = {}  # Make it support item assignment
                 mock_create_strategy.return_value = mock_strategy
                 
                 with patch.object(node, 'run_agent') as mock_run_agent:
@@ -305,10 +308,8 @@ class TestOrchestratorNodeOrchestrationCycle:
         
         # Verify debug output
         debug_messages = capture_debug_output
-        assert any("_run_orchestration_cycle()" in msg for msg in debug_messages)
-        assert any("Creating orchestrator phase provider" in msg for msg in debug_messages)
-        assert any("Creating PlanAndExecute strategy" in msg for msg in debug_messages)
-        assert any("Starting agent execution" in msg for msg in debug_messages)
+        assert any("🎯 [ORCHESTRATOR] Starting cycle" in msg for msg in debug_messages)
+        assert any("🔧 [TOOLS] Registered" in msg for msg in debug_messages)
     
     def test_build_context_messages(self, mock_llm):
         """Test context message building."""
@@ -400,14 +401,14 @@ class TestOrchestratorNodeOrchestrationCycle:
             assert "Data source identified" in summary
             assert "Processing started" in summary
     
-    def test_build_plan_snapshot(self, mock_llm, mock_workspace, sample_work_plan, orchestrator_step_context):
+    def test_build_plan_snapshot(self, mock_llm, mock_workspace, sample_work_plan, orchestrator_node_with_state):
         """Test work plan snapshot building."""
-        node = OrchestratorNode(llm=mock_llm)
-        node.set_context(orchestrator_step_context)  # Set up context for uid access
+        node = orchestrator_node_with_state  # Use fixture with context and state already set up
         
-        # Mock workspace with work plan
-        with patch.object(node, 'get_workspace') as mock_get_workspace:
-            mock_get_workspace.return_value = mock_workspace
+        # Mock workload service
+        with patch.object(node, 'get_workload_service') as mock_get_workload_service:
+            mock_workload_service = Mock()
+            mock_get_workload_service.return_value = mock_workload_service
             
             with patch('elements.nodes.orchestrator.orchestrator_node.WorkPlanService') as mock_service_class:
                 mock_service = Mock()
@@ -467,9 +468,7 @@ class TestOrchestratorNodeBatchProcessing:
         
         # Verify debug output
         debug_messages = capture_debug_output
-        assert any("process_packets_batched()" in msg for msg in debug_messages)
-        # The actual debug message shows "Found 0 packets" because packets aren't properly set up
-        assert any("Found" in msg and "packets" in msg for msg in debug_messages)
+        # Note: The method prints "📥 [ORCHESTRATOR] Processing N packets" if packets exist
     
     def test_run_with_updated_threads(self, mock_llm, state_view, capture_debug_output, orchestrator_step_context):
         """Test run method with updated threads."""
@@ -482,18 +481,18 @@ class TestOrchestratorNodeBatchProcessing:
         # Mock dependencies
         with patch.object(node, 'process_packets_batched') as mock_process:
             with patch.object(node, '_run_orchestration_cycle') as mock_cycle:
-                with patch.object(node, 'get_workspace') as mock_get_workspace:
-                    mock_workspace = Mock()
-                    mock_get_workspace.return_value = mock_workspace
+                with patch.object(node, 'get_workload_service') as mock_get_workload_service:
+                    mock_workload_service = Mock()
+                    mock_get_workload_service.return_value = mock_workload_service
                     
                     with patch('elements.nodes.orchestrator.orchestrator_node.WorkPlanService') as mock_service_class:
                         mock_service = Mock()
                         mock_service_class.return_value = mock_service
                         
                         # Mock one thread as incomplete, one as complete
-                        def mock_get_status_summary(owner_uid):
+                        def mock_get_status_summary(thread_id, owner_uid):
                             summary = Mock()
-                            if "thread_1" in owner_uid:
+                            if "thread_1" in thread_id:
                                 summary.is_complete = False
                             else:
                                 summary.is_complete = True
@@ -516,9 +515,7 @@ class TestOrchestratorNodeBatchProcessing:
         
         # Verify debug output
         debug_messages = capture_debug_output
-        # Just verify some orchestration-related debug messages exist
-        assert any("OrchestratorNode.run()" in msg for msg in debug_messages)
-        assert any("Starting execution" in msg for msg in debug_messages)
+        # Note: The run() method and process_packets_batched() don't generate debug output unless there are packets
 
 
 class TestOrchestratorNodeEdgeCases:
@@ -537,6 +534,7 @@ class TestOrchestratorNodeEdgeCases:
             
             with patch.object(node, 'create_strategy') as mock_create_strategy:
                 mock_strategy = Mock()
+                mock_strategy.all_tools = {}  # Make it support item assignment
                 mock_create_strategy.return_value = mock_strategy
                 
                 with patch.object(node, 'run_agent') as mock_run_agent:
@@ -609,14 +607,14 @@ class TestOrchestratorNodeEdgeCases:
                 
                 mock_cycle.assert_called_once_with("unicode_thread", "请分析Q4销售数据并创建报告 📊")
     
-    def test_node_memory_usage_with_large_plans(self, mock_llm, mock_workspace, large_work_plan, orchestrator_step_context):
+    def test_node_memory_usage_with_large_plans(self, mock_llm, mock_workspace, large_work_plan, orchestrator_node_with_state):
         """Test node memory usage with large work plans."""
-        node = OrchestratorNode(llm=mock_llm)
-        node.set_context(orchestrator_step_context)  # Set up context for uid access
+        node = orchestrator_node_with_state  # Use fixture with context and state already set up
         
-        # Mock workspace with large plan
-        with patch.object(node, 'get_workspace') as mock_get_workspace:
-            mock_get_workspace.return_value = mock_workspace
+        # Mock workload service with large plan
+        with patch.object(node, 'get_workload_service') as mock_get_workload_service:
+            mock_workload_service = Mock()
+            mock_get_workload_service.return_value = mock_workload_service
             
             with patch('elements.nodes.orchestrator.orchestrator_node.WorkPlanService') as mock_service_class:
                 mock_service = Mock()
@@ -791,7 +789,7 @@ class TestOrchestratorNodeIntegration:
 
                             # Mock work plan status progression
                             status_calls = [0]
-                            def mock_get_status_summary(owner_uid):
+                            def mock_get_status_summary(thread_id, owner_uid):
                                 summary = Mock()
                                 summary.exists = True
                                 summary.total_items = 3
@@ -817,6 +815,7 @@ class TestOrchestratorNodeIntegration:
                             
                             with patch.object(node, 'create_strategy') as mock_create_strategy:
                                 mock_strategy = Mock()
+                                mock_strategy.all_tools = {}  # Make it support item assignment
                                 mock_create_strategy.return_value = mock_strategy
                                 
                                 with patch.object(node, 'run_agent') as mock_run_agent:

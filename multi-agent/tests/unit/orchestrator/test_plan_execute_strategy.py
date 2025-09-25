@@ -149,8 +149,8 @@ class TestPlanAndExecuteStrategyPhaseManagement:
                 observations=sample_agent_observations
             )
     
-    def test_update_phase_provider_failure_fallback(self, mock_llm_chat, mock_output_parser, orchestrator_phase_provider, capture_debug_output):
-        """Test phase update fallback when provider fails."""
+    def test_update_phase_provider_required(self, mock_llm_chat, mock_output_parser, orchestrator_phase_provider):
+        """Test that phase provider is required for phase updates."""
         strategy = PlanAndExecuteStrategy(
             llm_chat=mock_llm_chat,
             tools=[],
@@ -158,20 +158,21 @@ class TestPlanAndExecuteStrategyPhaseManagement:
             phase_provider=orchestrator_phase_provider
         )
         
-        # Mock phase provider to fail
-        with patch.object(orchestrator_phase_provider, 'get_phase_context', side_effect=Exception("Context error")):
-            # Mock built-in fallback
-            with patch.object(strategy, '_get_work_plan_status') as mock_status:
-                mock_status.return_value = None
-                
-                strategy._update_phase([])
-                
-                # Should use built-in logic and stay in planning
-                assert strategy._current_phase == "planning"
-                
-                # Should log error
-                debug_messages = capture_debug_output
-                assert any("Error using phase provider" in msg for msg in debug_messages)
+        # Mock phase provider methods
+        mock_context = Mock()
+        with patch.object(orchestrator_phase_provider, 'get_phase_context', return_value=mock_context) as mock_get_context, \
+             patch.object(orchestrator_phase_provider, 'decide_next_phase', return_value="execution") as mock_decide_phase:
+            
+            strategy._update_phase([])
+            
+            # Should use phase provider exclusively
+            assert strategy._current_phase == "execution"
+            mock_get_context.assert_called_once()
+            mock_decide_phase.assert_called_once_with(
+                current_phase="planning",
+                context=mock_context,
+                observations=[]
+            )
 
 
 class TestPlanAndExecuteStrategyThinking:
@@ -222,8 +223,8 @@ class TestPlanAndExecuteStrategyThinking:
             
             # Verify debug output
             debug_messages = capture_debug_output
-            assert any("PlanAndExecuteStrategy.think()" in msg for msg in debug_messages)
-            assert any("Current phase: planning" in msg for msg in debug_messages)
+            assert any("🧠 [STRATEGY]" in msg for msg in debug_messages)
+            assert any("Phase: planning" in msg for msg in debug_messages)
     
     def test_think_with_phase_transition(self, mock_llm_chat, mock_output_parser, orchestrator_phase_provider, sample_chat_messages):
         """Test think with phase transition."""
