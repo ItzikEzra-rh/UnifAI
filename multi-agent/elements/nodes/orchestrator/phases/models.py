@@ -5,7 +5,7 @@ Contains Pydantic models for orchestrator phase configuration and state manageme
 """
 
 from pydantic import BaseModel, Field
-from typing import Dict, Optional
+from typing import Dict
 
 
 class PhaseIterationLimits(BaseModel):

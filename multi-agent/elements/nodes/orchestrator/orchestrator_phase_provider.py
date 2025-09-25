@@ -418,7 +418,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         try:
             current_phase_enum = OrchestratorPhase(current_phase)
         except ValueError:
-            # Unknown phase, go to synthesis
+            # Unknown phase, reset and go to synthesis
+            self.reset_phase_iteration(current_phase)
             return OrchestratorPhase.SYNTHESIS.value
         
         # Phase-specific limit handling
@@ -428,7 +429,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
                 self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.ALLOCATION.value
             else:
-                # No plan at all - terminal failure
+                # No plan at all - terminal failure, reset and go to synthesis
+                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.SYNTHESIS.value
                 
         elif current_phase_enum == OrchestratorPhase.ALLOCATION:
@@ -452,7 +454,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             return OrchestratorPhase.SYNTHESIS.value
             
         else:
-            # For synthesis or unknown phases, stay in synthesis
+            # For synthesis or unknown phases, reset and stay in synthesis
+            self.reset_phase_iteration(current_phase)
             return OrchestratorPhase.SYNTHESIS.value
 
     def _build_validation_context(self, phase_name: str) -> PhaseValidationContext:
