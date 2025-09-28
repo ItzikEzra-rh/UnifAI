@@ -238,21 +238,41 @@ def create_step_context_local(uid: str, adjacent_nodes: List[str] = None):
     Returns:
         StepContext instance for testing
     """
-    from graph.step_context import StepContext
+    from graph.models import StepContext
+    from graph.models import AdjacentNodes
     from core.models import ElementCard
+    from core.enums import ResourceCategory
+    from blueprints.models.blueprint import StepMeta
     
     if adjacent_nodes is None:
         adjacent_nodes = []
     
     # Create adjacency data structure
-    adjacency = {uid: []}
+    adjacent_nodes_dict = {}
     for node_uid in adjacent_nodes:
-        card = ElementCard(uid=node_uid, name=node_uid, description=f"Test node {node_uid}")
-        adjacency[uid].append(card)
+        card = ElementCard(
+            uid=node_uid,
+            category=ResourceCategory.NODE,
+            type_key="test_node",
+            name=node_uid,
+            description=f"Test node {node_uid}",
+            capabilities=set(),
+            reads=set(),
+            writes=set(),
+            instance=None,
+            config={},
+            skills={}
+        )
+        adjacent_nodes_dict[node_uid] = card
+    
+    # Create clean Pydantic model
+    adjacent_nodes_model = AdjacentNodes.from_dict(adjacent_nodes_dict)
     
     return StepContext(
         uid=uid,
-        adjacency=adjacency
+        metadata=StepMeta(),
+        adjacent_nodes=adjacent_nodes_model,
+        branches={}
     )
 
 

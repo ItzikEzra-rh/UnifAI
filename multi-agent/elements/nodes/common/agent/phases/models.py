@@ -72,4 +72,4 @@ class PhaseValidationContext:
     thread_id: Optional[str] = None                     # Common field 
     node_uid: Optional[str] = None                      # Common field
     plan: Optional[Any] = None                          # Provider-specific (e.g., WorkPlan)
-    adjacent_nodes: Optional[Dict[str, Any]] = None     # Provider-specific
+    adjacent_nodes: Optional[Any] = None                # Provider-specific (AdjacentNodes model or dict for backward compatibility)

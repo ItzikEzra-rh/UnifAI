@@ -184,7 +184,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             get_owner_uid=get_uid,
             get_thread_id=get_tid,
             get_workload_service=self._get_workload_service,
-            check_adjacency=lambda uid: uid in (self._get_adjacent_nodes() or {})
+            check_adjacency=lambda uid: uid in self._get_adjacent_nodes()
         )
         list_nodes_tool = ListAdjacentNodesTool(get_adjacent_nodes=self._get_adjacent_nodes)
         get_node_card_tool = GetNodeCardTool(get_adjacent_nodes=self._get_adjacent_nodes)
@@ -477,10 +477,14 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         
         # Enrich with orchestrator-specific data
         try:
+            from graph.models import AdjacentNodes
+            
             workload_service = self._get_workload_service()
             service = WorkPlanService(workload_service)
             plan = service.load(self._thread_id, self._node_uid)
-            adjacent_nodes = self._get_adjacent_nodes() or {}
+            
+            # Get adjacent nodes (already an AdjacentNodes model)
+            adjacent_nodes = self._get_adjacent_nodes()
             
             return PhaseValidationContext(
                 phase_state=phase_state,

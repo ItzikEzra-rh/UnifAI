@@ -18,7 +18,7 @@ from elements.conditions.router_direct.config import RouterDirectConditionConfig
 from elements.conditions.router_direct.router_condition_factory import RouterDirectConditionFactory
 from graph.state.state_view import StateView
 from graph.state.graph_state import GraphState, Channel
-from graph.step_context import StepContext
+from graph.models import StepContext
 from core.iem.packets import TaskPacket, SystemPacket
 from core.iem.models import ElementAddress
 from elements.nodes.common.workload import Task

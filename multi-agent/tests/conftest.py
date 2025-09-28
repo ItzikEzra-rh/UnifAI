@@ -550,7 +550,8 @@ def create_step_context(uid: str, adjacent_nodes: list = None):
     Returns:
         StepContext instance properly configured for testing
     """
-    from graph.step_context import StepContext
+    from graph.models import StepContext
+    from graph.models import AdjacentNodes
     from core.models import ElementCard
     from core.enums import ResourceCategory
     from blueprints.models.blueprint import StepMeta
@@ -573,10 +574,13 @@ def create_step_context(uid: str, adjacent_nodes: list = None):
         )
         adjacent_nodes_dict[node_uid] = card
     
+    # Create clean Pydantic model
+    adjacent_nodes_model = AdjacentNodes.from_dict(adjacent_nodes_dict)
+    
     return StepContext(
         uid=uid,
         metadata=StepMeta(),
-        adjacent_nodes=adjacent_nodes_dict,
+        adjacent_nodes=adjacent_nodes_model,
         branches={}
     )
 

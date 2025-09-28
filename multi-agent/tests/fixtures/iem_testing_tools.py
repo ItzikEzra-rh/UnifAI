@@ -27,7 +27,7 @@ from core.iem.factory import create_messenger, messenger_from_ctx
 from elements.nodes.common.workload import Task, AgentResult
 from graph.state.state_view import StateView
 from graph.state.graph_state import GraphState, Channel
-from graph.step_context import StepContext
+from graph.models import StepContext
 
 
 # =============================================================================

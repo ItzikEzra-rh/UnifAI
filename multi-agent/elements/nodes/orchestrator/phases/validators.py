@@ -31,7 +31,12 @@ class AllocationValidator:
         if not isinstance(plan, WorkPlan) or not plan.items:
             return ""
         
-        adjacent_nodes = context.adjacent_nodes or {}
+        # Get adjacent nodes (AdjacentNodes model)
+        adjacent_nodes = context.adjacent_nodes
+        if adjacent_nodes is None:
+            from graph.models import AdjacentNodes
+            adjacent_nodes = AdjacentNodes.empty()
+            
         issues: List[str] = []
         
         # Check assignment-delegation coordination for remote items

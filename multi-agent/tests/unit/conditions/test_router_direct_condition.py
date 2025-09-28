@@ -19,7 +19,7 @@ from elements.conditions.router_direct.router_condition_factory import RouterDir
 from elements.conditions.common.models import BranchType, DirectBranchDef
 from graph.state.state_view import StateView
 from graph.state.graph_state import GraphState, Channel
-from graph.step_context import StepContext
+from graph.models import StepContext
 from core.iem.packets import TaskPacket, SystemPacket
 from core.iem.models import ElementAddress
 from tests.fixtures.iem_testing_tools import PacketFactory, create_test_step_context, create_test_state_view

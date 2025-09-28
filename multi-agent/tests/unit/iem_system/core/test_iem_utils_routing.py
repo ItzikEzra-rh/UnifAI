@@ -17,7 +17,7 @@ from core.iem.utils import get_outgoing_targets
 from core.iem.packets import TaskPacket, SystemPacket, DebugPacket
 from core.iem.models import ElementAddress
 from graph.state.state_view import StateView
-from graph.step_context import StepContext
+from graph.models import StepContext
 from tests.fixtures.iem_testing_tools import (
     PacketFactory, create_test_step_context, create_test_state_view
 )

@@ -180,15 +180,16 @@ class TestMessengerFactory:
         
         # Create a mock context without adjacent_nodes
         from unittest.mock import Mock
+        from graph.models import AdjacentNodes
         mock_context = Mock()
         mock_context.uid = "test_node"
-        mock_context.adjacent_nodes = {}  # Empty adjacent nodes
+        mock_context.adjacent_nodes = AdjacentNodes.empty()  # Empty adjacent nodes
         
         messenger = messenger_from_ctx(state=state, ctx=mock_context)
         
         # Should handle empty adjacent_nodes gracefully
         assert messenger._me.uid == "test_node"
-        assert messenger.get_adjacent_nodes() == []
+        assert len(messenger.get_adjacent_nodes()) == 0
         
     def test_messenger_for_testing_basic(self):
         """Test messenger creation for testing with minimal configuration."""
@@ -350,26 +351,56 @@ class TestMessengerFactory:
         assert messenger._is_adjacent("random_node") is False
         assert messenger._is_adjacent("team_beta") is False
         
-    def test_messenger_from_ctx_with_dynamic_context(self):
-        """Test messenger creation with dynamically modified context."""
+    def test_messenger_from_ctx_with_different_contexts(self):
+        """Test messenger creation with different context configurations."""
         state = create_test_state_view()
-        context = create_test_step_context(
+        
+        # Create initial context
+        initial_context = create_test_step_context(
             uid="dynamic_node",
             adjacent_nodes=["initial_1", "initial_2"]
         )
         
-        # Create messenger
-        messenger = messenger_from_ctx(state=state, ctx=context)
+        # Create messenger with initial context
+        messenger1 = messenger_from_ctx(state=state, ctx=initial_context)
         
         # Verify initial adjacency
-        assert messenger._is_adjacent("initial_1") is True
-        assert messenger._is_adjacent("new_node") is False
+        assert messenger1._is_adjacent("initial_1") is True
+        assert messenger1._is_adjacent("new_node") is False
         
-        # Modify context after messenger creation
-        context.adjacent_nodes["new_node"] = {}
+        # Create new context with additional node (immutable approach)
+        from core.models import ElementCard
+        from core.enums import ResourceCategory
+        new_card = ElementCard(
+            uid="new_node",
+            category=ResourceCategory.NODE,
+            type_key="test",
+            name="New Node",
+            description="Test node",
+            capabilities=set(),
+            reads=set(),
+            writes=set(),
+            instance=None,
+            config={},
+            skills={}
+        )
         
-        # Messenger should reflect the change (since it holds reference to context)
-        assert messenger._is_adjacent("new_node") is True
+        # Create new context with the additional node
+        updated_context = create_test_step_context(
+            uid="dynamic_node",
+            adjacent_nodes=["initial_1", "initial_2", "new_node"]
+        )
+        
+        # Create new messenger with updated context
+        messenger2 = messenger_from_ctx(state=state, ctx=updated_context)
+        
+        # Original messenger still has original adjacency
+        assert messenger1._is_adjacent("initial_1") is True
+        assert messenger1._is_adjacent("new_node") is False
+        
+        # New messenger has updated adjacency
+        assert messenger2._is_adjacent("initial_1") is True
+        assert messenger2._is_adjacent("new_node") is True
         
     def test_integration_test_all_factory_types(self):
         """Integration test using all factory types together."""

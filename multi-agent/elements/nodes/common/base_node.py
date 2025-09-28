@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from graph.step_context import StepContext
+from graph.models import StepContext
 from graph.state.graph_state import GraphState, Channel
 from graph.state.state_view import StateView
 from core.types import StreamWriter
@@ -116,15 +116,19 @@ class BaseNode(SupportsStreaming, SupportsStateContext, ABC):
             raise RuntimeError("Context not available - called outside of execution")
         return self._ctx
     
-    def get_adjacent_nodes(self) -> dict:
+    def get_adjacent_nodes(self):
         """
         Get adjacent nodes from context.
         
         Returns:
-            Dict[str, ElementCard] mapping of adjacent node UIDs to their ElementCard info
+            AdjacentNodes model with rich API for working with adjacent nodes
         """
+        from graph.models import AdjacentNodes
         context = self.get_context()
-        return getattr(context, 'adjacent_nodes', {})
+        adjacent_nodes = getattr(context, 'adjacent_nodes', None)
+        if adjacent_nodes is None:
+            return AdjacentNodes.empty()
+        return adjacent_nodes
 
 
 
