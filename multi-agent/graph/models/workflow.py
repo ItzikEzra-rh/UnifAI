@@ -90,3 +90,5 @@ class RTStep(BaseModel):
         has_func = self.func is not None
         has_condition_if_needed = not self.has_condition or self.exit_condition is not None
         return has_func and has_condition_if_needed
+
+

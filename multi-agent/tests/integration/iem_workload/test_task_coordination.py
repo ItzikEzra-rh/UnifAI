@@ -619,7 +619,7 @@ class TestTaskCoordination:
                 # Send error response
                 task.result = error_result.__dict__
                 task.__dict__['status'] = TaskStatus.FAILED
-                task.error = {"message": "Simulated processing error", "type": "processing_error"}
+                task.error = "Simulated processing error"  # Error is now a string
                 
                 response_packet = TaskPacket.create(
                     src=ElementAddress(uid="worker1"),

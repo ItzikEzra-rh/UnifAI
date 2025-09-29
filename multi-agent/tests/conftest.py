@@ -1,8 +1,14 @@
 """
 Global test configuration and shared fixtures.
 
-This module provides common fixtures and configuration for the multi-agent system tests.
-Organized by component areas for easy maintenance and reuse.
+This module imports ALL fixtures from the organized structure and provides
+pytest configuration.
+
+ALL TESTS MUST USE THE NEW ARCHITECTURE:
+- Inherit from base test classes (BaseNodeTest, BaseOrchestratorTest, etc.)
+- Use factories for object creation (NodeFactory, TaskFactory, etc.)
+- Use organized fixtures from tests/fixtures/
+- Use current workload API (UnifiedWorkloadService, not deprecated WorkPlanService)
 """
 
 import pytest
@@ -13,6 +19,43 @@ from typing import List, Dict, Any
 
 # Add the multi-agent directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+# ============================================================================
+# IMPORT ALL FIXTURES FROM ORGANIZED STRUCTURE
+# ============================================================================
+
+# Common fixtures - state, context, LLM, tools
+from tests.fixtures.common.state_fixtures import graph_state, state_view, readonly_state_view
+from tests.fixtures.common.context_fixtures import (
+    step_context, step_context_with_adjacency, orchestrator_step_context,
+    orchestrator_step_context_with_many_nodes, orchestrator_step_context_isolated
+)
+from tests.fixtures.common.llm_fixtures import (
+    mock_llm, mock_llm_chat, mock_llm_provider, predictable_llm
+)
+from tests.fixtures.common.tool_fixtures import (
+    mock_tools, basic_test_tools, mock_domain_tools, calculator_tool, 
+    search_tool, basic_mock_tools, react_demo_tools
+)
+
+# Workload fixtures - tasks, workplans, workspaces
+from tests.fixtures.workload.task_fixtures import (
+    sample_task, sample_response_task, sample_ambiguous_response_task,
+    integration_task_factory
+)
+from tests.fixtures.workload.workplan_fixtures import (
+    sample_work_item, sample_work_item_with_result, sample_work_plan,
+    complex_work_plan, empty_work_plan, large_work_plan
+)
+from tests.fixtures.workload.workspace_fixtures import (
+    mock_workspace, mock_workload_service, workspace_service,
+    workspace_service_with_data, orchestrator_workspace_service
+)
+
+# Node fixtures - node-specific utilities
+from tests.fixtures.nodes.base_node_fixtures import (
+    mock_tool_executor_manager, mock_agent_action_executor, sample_config
+)
 
 # Import core types
 from elements.llms.common.chat.message import ChatMessage, Role, ToolCall
@@ -471,73 +514,10 @@ def shared_file_resource():
     resource.cleanup()
 
 
-# =============================================================================
-# GRAPH SYSTEM FIXTURES (Shared across all test types)
-# =============================================================================
-
-@pytest.fixture
-def graph_state():
-    """Create a basic GraphState for testing."""
-    from graph.state.graph_state import GraphState
-    
-    state = GraphState()
-    # Initialize all standard channels
-    state.user_prompt = ''
-    state.nodes_output = {}
-    state.messages = []
-    state.output = ''
-    state.target_branch = ''
-    state.inter_packets = []
-    state.task_threads = {}
-    state.threads = {}
-    state.workspaces = {}
-    return state
-
-
-@pytest.fixture
-def state_view(graph_state):
-    """Create a StateView with comprehensive channel access for testing."""
-    from graph.state.state_view import StateView
-    from graph.state.graph_state import Channel
-    
-    # Provide access to all standard channels for maximum test flexibility
-    reads = {
-        Channel.USER_PROMPT,     # User input
-        Channel.MESSAGES,        # Public conversation
-        Channel.NODES_OUTPUT,    # Node outputs
-        Channel.OUTPUT,          # Final output
-        Channel.TARGET_BRANCH,   # Branch targeting
-        Channel.INTER_PACKETS,   # IEM packets
-        Channel.TASK_THREADS,    # Task conversation threads
-        Channel.THREADS,         # Thread metadata
-        Channel.WORKSPACES       # Workspace data
-    }
-    writes = {
-        Channel.USER_PROMPT,     # User input
-        Channel.MESSAGES,        # Public conversation
-        Channel.NODES_OUTPUT,    # Node outputs
-        Channel.OUTPUT,          # Final output
-        Channel.TARGET_BRANCH,   # Branch targeting
-        Channel.INTER_PACKETS,   # IEM packets
-        Channel.TASK_THREADS,    # Task conversation threads
-        Channel.THREADS,         # Thread metadata
-        Channel.WORKSPACES       # Workspace data
-    }
-    
-    return StateView(graph_state, reads=reads, writes=writes)
-
-
-@pytest.fixture
-def step_context():
-    """Create a basic StepContext for testing."""
-    return create_step_context("test_node")
-
-
-@pytest.fixture
-def step_context_with_adjacency():
-    """Create a StepContext with adjacent nodes for testing."""
-    return create_step_context("test_node", ["adjacent_1", "adjacent_2", "adjacent_3"])
-
+# ============================================================================
+# HELPER FUNCTIONS
+# ============================================================================
+# Use test_helpers module for standalone helper functions
 
 def create_step_context(uid: str, adjacent_nodes: list = None):
     """
@@ -550,39 +530,8 @@ def create_step_context(uid: str, adjacent_nodes: list = None):
     Returns:
         StepContext instance properly configured for testing
     """
-    from graph.models import StepContext
-    from graph.models import AdjacentNodes
-    from core.models import ElementCard
-    from core.enums import ResourceCategory
-    from blueprints.models.blueprint import StepMeta
-    
-    # Create ElementCard objects for adjacent nodes
-    adjacent_nodes_dict = {}
-    for node_uid in (adjacent_nodes or []):
-        card = ElementCard(
-            uid=node_uid,
-            category=ResourceCategory.NODE,
-            type_key="test_node",
-            name=f"Test Node {node_uid}",
-            description=f"Test node for {node_uid}",
-            capabilities=set(),
-            reads=set(),
-            writes=set(),
-            instance=None,
-            config={},
-            skills={}
-        )
-        adjacent_nodes_dict[node_uid] = card
-    
-    # Create clean Pydantic model
-    adjacent_nodes_model = AdjacentNodes.from_dict(adjacent_nodes_dict)
-    
-    return StepContext(
-        uid=uid,
-        metadata=StepMeta(),
-        adjacent_nodes=adjacent_nodes_model,
-        branches={}
-    )
+    from tests.base.test_helpers import create_test_step_context
+    return create_test_step_context(uid, adjacent_nodes or [])
 
 
 @pytest.fixture

@@ -1,42 +1,62 @@
 """
 Workload Management Module
 
-Core components for thread and workspace management in the engentic system.
-Provides SOLID interfaces and implementations for workload orchestration.
+SOLID design for thread and workspace management in the multi-agent system.
+Provides focused interfaces and implementations for workload orchestration.
 """
 
-from .interfaces import IWorkloadService
-from .models import AgentResult, WorkspaceContext
+# Core models
+from .models import AgentResult
 from .task import Task
+from .context import WorkspaceContext
 from .thread import Thread, ThreadStatus
 from .workspace import Workspace, ArtifactRef
 from .agent_thread import AgentThread
-from .in_memory_service import InMemoryWorkloadService
-from .state_bound_service import StateBoundWorkloadService
+
+# Work plan components (WorkPlanService is deprecated - use WorkspaceService instead)
 from .workplan import (
-    WorkPlan, WorkItem, WorkPlanService, WorkItemStatus, WorkItemKind,
+    WorkPlan, WorkItem, WorkItemStatus, WorkItemKind,
     ToolArguments, WorkItemResult, WorkItemStatusCounts, WorkPlanStatusSummary
 )
 
+# New SOLID services
+from .thread_service import IThreadService, ThreadService
+from .workspace_service import IWorkspaceService, WorkspaceService
+from .storage import IWorkloadStorage, InMemoryStorage, StateBoundStorage
+from .unified_service import IWorkloadService, UnifiedWorkloadService
+
+# Legacy components can be imported from storage and unified_service if needed
+
 __all__ = [
-    'IWorkloadService',
+    # Core models
     'AgentResult',
-    'WorkspaceContext',
+    'WorkspaceContext', 
     'Task',
     'Thread',
     'ThreadStatus',
     'Workspace',
     'ArtifactRef',
     'AgentThread',
-    'InMemoryWorkloadService',
-    'StateBoundWorkloadService',
+    
+    # Work plan components (WorkPlanService removed - use WorkspaceService.load_work_plan() instead)
     'WorkPlan',
     'WorkItem',
-    'WorkPlanService',
     'WorkItemStatus',
     'WorkItemKind',
     'ToolArguments',
     'WorkItemResult',
     'WorkItemStatusCounts',
-    'WorkPlanStatusSummary'
+    'WorkPlanStatusSummary',
+    
+    # New SOLID services
+    'IThreadService',
+    'ThreadService',
+    'IWorkspaceService', 
+    'WorkspaceService',
+    'IWorkloadStorage',
+    'InMemoryStorage',
+    'StateBoundStorage',
+    'IWorkloadService',
+    'UnifiedWorkloadService',
+    
 ]

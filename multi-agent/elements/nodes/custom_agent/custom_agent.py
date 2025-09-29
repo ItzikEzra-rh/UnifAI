@@ -26,13 +26,14 @@ class CustomAgentNode(
     BaseNode
 ):
     """
-    Enhanced CustomAgentNode with workload integration.
+    CustomAgentNode with SOLID workload architecture integration.
     
     Features:
+    - Uses new focused workload services (threads, workspaces, work_plans)
     - Processes work using workspace conversation context
     - Intelligent response routing based on task.should_respond
-    - Adds agent results to workspace
-    - Clean SOLID architecture with simple methods
+    - Clean service-based architecture for all workload operations
+    - Comprehensive task and result tracking in workspace
     """
 
     READS: ClassVar[set[str]] = set()
@@ -76,16 +77,21 @@ class CustomAgentNode(
         """
         Process work using workspace conversation context.
         
-        Flow:
-        1. Build conversation context (workspace + system + task)
-        2. Process with LLM
-        3. Add agent result to workspace
-        4. Route response based on task.should_respond
+        SOLID Architecture Flow:
+        1. Record task in workspace (self.workspaces.add_task)
+        2. Build conversation context (self.workspaces.get_recent_messages + results)
+        3. Process with LLM using agent execution system
+        4. Add agent result to workspace (self.workspaces.add_result)
+        5. Route response based on task.should_respond
         """
         try:
             # Extract and mark task as processed
             task = packet.extract_task()
             task.mark_processed(self.uid)
+            
+            # Record task in workspace for tracking
+            if task.thread_id:
+                self.workspaces.add_task(task.thread_id, task)
 
             # 1. Build conversation context
             conversation_context = self._build_conversation_context(task)
@@ -120,7 +126,7 @@ class CustomAgentNode(
 
         # 1. Get workspace conversation history
         if task.thread_id:
-            workspace_messages = self.get_recent_workspace_messages(task.thread_id, 20)
+            workspace_messages = self.workspaces.get_recent_messages(task.thread_id, 20)
             context_messages.extend(deepcopy(workspace_messages))
 
         # 2. System message is now handled by strategy during creation
@@ -144,14 +150,14 @@ class CustomAgentNode(
         if not thread_id:
             return None
 
-        workspace_context = self.get_workspace_context(thread_id)
+        workspace_results = self.workspaces.get_results(thread_id)
 
-        if not workspace_context.results:
+        if not workspace_results:
             return None
 
         # Focus on agent results - organized by agent name in order
         results_text = "PREVIOUS AGENT RESULTS:\n"
-        for i, result in enumerate(workspace_context.results, 1):
+        for i, result in enumerate(workspace_results, 1):
             results_text += f"{i}. {result.agent_name}: {result.content}\n"
 
         return ChatMessage(role=Role.USER, content=results_text)
@@ -247,6 +253,7 @@ class CustomAgentNode(
         )
         response_task.should_respond = True
         response_task.response_to = task.response_to
+        response_task.correlation_task_id = task.task_id  # Set correlation for response tracking
 
         self.broadcast_task(response_task)
 
@@ -268,5 +275,69 @@ class CustomAgentNode(
         )
 
     def _add_agent_result_to_workspace(self, thread_id: str, agent_result: AgentResult) -> None:
-        """Add agent result to workspace."""
-        self.add_result_to_workspace(thread_id, agent_result)
+        """Add agent result to workspace using new service architecture."""
+        self.workspaces.add_result(thread_id, agent_result)
+    
+    def get_thread_hierarchy_info(self, thread_id: str) -> str:
+        """
+        Example method showing clean usage of thread service.
+        
+        Demonstrates how to access thread hierarchy information
+        using the new SOLID architecture.
+        """
+        if not thread_id:
+            return "No thread ID provided"
+        
+        # Get thread hierarchy information
+        thread = self.threads.get_thread(thread_id)
+        if not thread:
+            return f"Thread {thread_id} not found"
+        
+        # Get hierarchy path
+        hierarchy_path = self.threads.get_hierarchy_path(thread_id)
+        depth = self.threads.get_thread_depth(thread_id)
+        root_thread = self.threads.find_root_thread(thread_id)
+        
+        info = [
+            f"Thread: {thread.title} ({thread_id})",
+            f"Initiator: {thread.initiator}",
+            f"Hierarchy Depth: {depth}",
+            f"Root Thread: {root_thread}",
+            f"Hierarchy Path: {' → '.join(hierarchy_path)}"
+        ]
+        
+        return "\n".join(info)
+    
+    def get_workspace_summary(self, thread_id: str) -> str:
+        """
+        Example method showing clean usage of workspace service.
+        
+        Demonstrates comprehensive workspace content access
+        using the new SOLID architecture.
+        """
+        if not thread_id:
+            return "No thread ID provided"
+        
+        # Get workspace content using focused services
+        summary = self.workspaces.get_workspace_summary(thread_id)
+        facts = self.workspaces.get_facts(thread_id)
+        results = self.workspaces.get_results(thread_id)
+        tasks = self.workspaces.get_tasks(thread_id)
+        recent_messages = self.workspaces.get_recent_messages(thread_id, 5)
+        
+        info = [
+            f"Workspace Summary for Thread: {thread_id}",
+            f"Facts: {len(facts)} items",
+            f"Results: {len(results)} items", 
+            f"Tasks: {len(tasks)} items",
+            f"Recent Messages: {len(recent_messages)} items",
+            f"Last Updated: {summary.get('last_updated', 'Unknown')}"
+        ]
+        
+        # Add recent facts if any
+        if facts:
+            info.append("\nRecent Facts:")
+            for fact in facts[-3:]:  # Last 3 facts
+                info.append(f"  - {fact}")
+        
+        return "\n".join(info)

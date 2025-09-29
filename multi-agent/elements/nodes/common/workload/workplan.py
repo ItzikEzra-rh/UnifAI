@@ -264,8 +264,14 @@ class WorkPlanService:
     """
     Domain service for WorkPlan operations.
     
-    SOLID design: Single dependency on IWorkloadService.
-    WorkPlans are stored as workspace variables, not separate aggregates.
+    SOLID design: Handles all work plan business logic and workspace access.
+    Directly manages work plans stored in workspace.context.work_plans field.
+    
+    Responsibilities:
+    - Work plan CRUD operations (create, load, save, remove)
+    - Business logic (status transitions, delegation, response ingestion)
+    - Thread-safe atomic updates with per-plan locking
+    - Direct workspace access for work plan data management
     
     Thread-safe: Uses RLock per (thread_id, owner_uid) to prevent race conditions.
     """
@@ -274,9 +280,16 @@ class WorkPlanService:
     _locks: Dict[str, threading.RLock] = defaultdict(threading.RLock)
     _locks_lock = threading.Lock()  # Protects the locks dictionary itself
     
-    def __init__(self, workload_service):
-        """Initialize with workload service only."""
-        self._workload_service = workload_service
+    def __init__(self, workspace_service, thread_service):
+        """
+        Initialize with focused service dependencies.
+        
+        Args:
+            workspace_service: IWorkspaceService for workspace operations
+            thread_service: IThreadService for thread hierarchy operations
+        """
+        self._workspace_service = workspace_service
+        self._thread_service = thread_service
     
     def _get_lock(self, thread_id: str, owner_uid: str) -> threading.RLock:
         """Get or create a lock for the specific workplan."""
@@ -327,11 +340,10 @@ class WorkPlanService:
         return plan
     
     def load(self, thread_id: str, owner_uid: str) -> Optional[WorkPlan]:
-        """Load work plan from workspace variables."""
+        """Load work plan from dedicated workspace field."""
         try:
-            plan_key = f"workplan_{owner_uid}"
-            workspace = self._workload_service.get_workspace(thread_id)
-            plan_data = workspace.get_variable(plan_key)
+            workspace = self._workspace_service.get_workspace(thread_id)
+            plan_data = workspace.context.work_plans.get(owner_uid)
             
             if plan_data:
                 plan = WorkPlan(**plan_data)
@@ -343,16 +355,36 @@ class WorkPlanService:
             print(f"❌ [PLAN] Error loading: {e}")
             return None
     
+    def load_for_response(self, response_thread_id: str, owner_uid: str) -> Optional[WorkPlan]:
+        """
+        Load work plan for response processing.
+        
+        Automatically resolves target thread using thread service.
+        This handles child thread responses by finding the parent thread that owns the work plan.
+        
+        Args:
+            response_thread_id: Thread ID from response (may be child thread)
+            owner_uid: Owner node identifier
+            
+        Returns:
+            WorkPlan instance for the correct thread, or None if not found
+        """
+        target_thread_id = self._thread_service.find_work_plan_owner(response_thread_id)
+        if not target_thread_id:
+            print(f"❌ [PLAN] Could not resolve work plan owner for thread {response_thread_id}")
+            return None
+            
+        return self.load(target_thread_id, owner_uid)
+    
     def save(self, plan: WorkPlan) -> bool:
-        """Save work plan as workspace variable (thread-safe)."""
+        """Save work plan to dedicated workspace field (thread-safe)."""
         with self.with_lock(plan.thread_id, plan.owner_uid):
             try:
                 plan.mark_updated()
-                plan_key = f"workplan_{plan.owner_uid}"
                 
-                workspace = self._workload_service.get_workspace(plan.thread_id)
-                workspace.set_variable(plan_key, plan.model_dump())
-                self._workload_service.update_workspace(workspace)
+                workspace = self._workspace_service.get_workspace(plan.thread_id)
+                workspace.context.work_plans[plan.owner_uid] = plan.model_dump()
+                self._workspace_service.update_workspace(workspace)
                 
                 print(f"💾 [PLAN] Saved: {len(plan.items)} items")
                 return True
@@ -583,3 +615,22 @@ class WorkPlanService:
             self.save(plan)
             print(f"✅ [DEBUG] Item marked as delegated successfully")
             return True
+    
+    # ========== WORKSPACE WORK PLAN ACCESS ==========
+    
+    def get_work_plans(self, thread_id: str) -> Dict[str, Dict[str, Any]]:
+        """Get all work plans in workspace."""
+        workspace = self._workspace_service.get_workspace(thread_id)
+        return workspace.context.work_plans.copy()
+    
+    def remove_work_plan(self, thread_id: str, owner_uid: str) -> None:
+        """Remove work plan for specific owner."""
+        workspace = self._workspace_service.get_workspace(thread_id)
+        if owner_uid in workspace.context.work_plans:
+            del workspace.context.work_plans[owner_uid]
+            self._workspace_service.update_workspace(workspace)
+    
+    def work_plan_exists(self, thread_id: str, owner_uid: str) -> bool:
+        """Check if work plan exists for specific owner."""
+        workspace = self._workspace_service.get_workspace(thread_id)
+        return owner_uid in workspace.context.work_plans

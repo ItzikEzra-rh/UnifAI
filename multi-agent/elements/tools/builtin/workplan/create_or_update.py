@@ -5,7 +5,7 @@ Tool for creating or updating work plans.
 from typing import Dict, Any, List, Optional, Callable
 from pydantic import BaseModel, Field
 from elements.tools.common.base_tool import BaseTool
-from elements.nodes.common.workload import WorkPlan, WorkItem, WorkPlanService, WorkItemKind
+from elements.nodes.common.workload import WorkPlan, WorkItem, WorkItemKind
 from elements.nodes.common.agent.constants import ToolNames
 
 
@@ -95,50 +95,47 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
         print(f"📋 [DEBUG] Plan summary: {args.summary}")
         print(f"📋 [DEBUG] Number of items: {len(args.items)}")
         
-        # Get context and create domain service
+        # Get context - now just need workspace_service!
         thread_id = self._get_thread_id()
         owner_uid = self._get_owner_uid()
         workload_service = self._get_workload_service()
-        service = WorkPlanService(workload_service)
+        workspace_service = workload_service.get_workspace_service()
         
         print(f"📋 [DEBUG] Owner UID: {owner_uid}")
         
-        # Thread-safe create or update operation
-        with service.with_lock(thread_id, owner_uid):
-            # Load existing plan or create new one
-            plan = service.load(thread_id, owner_uid)
-            if not plan:
-                print(f"📋 [DEBUG] No existing plan - creating new one")
-                plan = service.create(
-                    thread_id=thread_id,
-                    owner_uid=owner_uid
-                )
-            else:
-                print(f"📋 [DEBUG] Updating existing plan with {len(plan.items)} items")
-            
-            # Update summary
+        # Load existing plan or create new one
+        plan = workspace_service.load_work_plan(thread_id, owner_uid)
+        if not plan:
+            print(f"📋 [DEBUG] No existing plan - creating new one")
+            plan = workspace_service.create_work_plan(
+                thread_id=thread_id,
+                owner_uid=owner_uid,
+                summary=args.summary
+            )
+        else:
+            print(f"📋 [DEBUG] Updating existing plan with {len(plan.items)} items")
             plan.summary = args.summary
+        
+        # Add items from structured specs
+        for i, item_spec in enumerate(args.items):
+            print(f"📋 [DEBUG] Adding item {i+1}: {item_spec.id} - {item_spec.title}")
+            print(f"📋 [DEBUG] Dependencies: {item_spec.dependencies}")
+            print(f"📋 [DEBUG] Kind: {item_spec.kind}")
             
-            # Add items from structured specs
-            for i, item_spec in enumerate(args.items):
-                print(f"📋 [DEBUG] Adding item {i+1}: {item_spec.id} - {item_spec.title}")
-                print(f"📋 [DEBUG] Dependencies: {item_spec.dependencies}")
-                print(f"📋 [DEBUG] Kind: {item_spec.kind}")
-                
-                item = WorkItem(
-                    id=item_spec.id,
-                    title=item_spec.title,
-                    description=item_spec.description,
-                    dependencies=item_spec.dependencies,
-                    kind=item_spec.kind
-                )
-                plan.items[item.id] = item
-            
-            print(f"📋 [DEBUG] Saving plan with {len(plan.items)} total items")
-            service.save(plan)
+            item = WorkItem(
+                id=item_spec.id,
+                title=item_spec.title,
+                description=item_spec.description,
+                dependencies=item_spec.dependencies,
+                kind=item_spec.kind
+            )
+            plan.items[item.id] = item
+        
+        print(f"📋 [DEBUG] Saving plan with {len(plan.items)} total items")
+        workspace_service.save_work_plan(plan)
         
         # Get status summary for response
-        status_summary = service.get_status_summary(thread_id, owner_uid)
+        status_summary = workspace_service.get_work_plan_status(thread_id, owner_uid)
         
         result = {
             "success": True,

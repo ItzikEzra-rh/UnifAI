@@ -188,7 +188,7 @@ class LLMMergerNode(WorkloadCapableMixin, IEMCapableMixin, LlmCapableMixin, Base
 
     def _add_agent_result_to_workspace(self, thread_id: str, agent_result: AgentResult) -> None:
         """Add merged agent result to workspace."""
-        self.add_result_to_workspace(thread_id, agent_result)
+        self.workspaces.add_result(thread_id, agent_result)
 
     def _broadcast_merged_task_for_thread(self, thread_id: str, agent_result: AgentResult) -> None:
         """Broadcast merged task for a specific thread."""

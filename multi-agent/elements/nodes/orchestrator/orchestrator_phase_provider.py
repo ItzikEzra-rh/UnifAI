@@ -10,7 +10,6 @@ from elements.tools.common.base_tool import BaseTool
 from elements.nodes.common.agent.phases.unified_phase_provider import BasePhaseProvider
 from elements.nodes.common.agent.phases.phase_definition import PhaseSystem, PhaseDefinition
 from elements.nodes.common.agent.phases.phase_protocols import PhaseState, create_phase_state, create_work_plan_status
-from elements.nodes.common.workload import WorkPlanService
 from elements.nodes.common.agent.phases.models import PhaseValidationContext
 from .phases.models import PhaseIterationLimits, PhaseIterationState
 from .phases.validators import (
@@ -104,6 +103,11 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         self._iteration_state = PhaseIterationState()
 
         super().__init__(domain_tools)  # This calls _create_phase_system()
+    
+    def _get_current_thread(self):
+        """Get current thread for delegation context."""
+        workload_service = self._get_workload_service()
+        return workload_service.get_thread(self._thread_id)
 
     def increment_phase_iteration(self, phase_name: str) -> None:
         """
@@ -182,8 +186,9 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         delegate_tool = DelegateTaskTool(
             send_task=self._send_task,
             get_owner_uid=get_uid,
-            get_thread_id=get_tid,
-            get_workload_service=self._get_workload_service,
+            get_current_thread=lambda: self._get_current_thread(),
+            get_thread_service=lambda: self._get_workload_service().get_thread_service(),
+            get_workspace_service=lambda: self._get_workload_service().get_workspace_service(),
             check_adjacency=lambda uid: uid in self._get_adjacent_nodes()
         )
         list_nodes_tool = ListAdjacentNodesTool(get_adjacent_nodes=self._get_adjacent_nodes)
@@ -282,8 +287,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         """
         try:
             workload_service = self._get_workload_service()
-            service = WorkPlanService(workload_service)
-            status_summary = service.get_status_summary(self._thread_id, self._node_uid)
+            workspace_service = workload_service.get_workspace_service()
+            status_summary = workspace_service.get_work_plan_status(self._thread_id, self._node_uid)
 
             # Convert to PhaseState format
             work_plan_status = create_work_plan_status(
@@ -480,8 +485,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             from graph.models import AdjacentNodes
             
             workload_service = self._get_workload_service()
-            service = WorkPlanService(workload_service)
-            plan = service.load(self._thread_id, self._node_uid)
+            workspace_service = workload_service.get_workspace_service()
+            plan = workspace_service.load_work_plan(self._thread_id, self._node_uid)
             
             # Get adjacent nodes (already an AdjacentNodes model)
             adjacent_nodes = self._get_adjacent_nodes()

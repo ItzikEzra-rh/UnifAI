@@ -63,21 +63,22 @@ class UserQuestionNode(WorkloadCapableMixin, IEMCapableMixin, BaseNode):
         4. Create and broadcast task with thread context
         """
         # Create thread for this workflow
-        thread = self.create_thread(
+        thread = self.threads.create_root_thread(
             title="User Query Processing",
-            objective=f"Process user query: {user_query[:50]}..."
+            objective=f"Process user query: {user_query[:50]}...",
+            initiator=self.uid
         )
         
         print(f"UserQuestion: Created thread {thread.thread_id} for workflow")
         
-        # Copy current conversation to workspace
+        # Copy current conversation to workspace using new SOLID API
         self.copy_graphstate_messages_to_workspace(thread.thread_id)
         
         # Add workflow context to workspace
-        self.add_fact_to_workspace(thread.thread_id, f"User query: {user_query}")
-        self.add_fact_to_workspace(thread.thread_id, f"Initiated by: {self.uid}")
-        self.set_workspace_variable(thread.thread_id, "workflow_type", "user_query_processing")
-        self.set_workspace_variable(thread.thread_id, "initiator", self.uid)
+        self.workspaces.add_fact(thread.thread_id, f"User query: {user_query}")
+        self.workspaces.add_fact(thread.thread_id, f"Initiated by: {self.uid}")
+        self.workspaces.set_variable(thread.thread_id, "workflow_type", "user_query_processing")
+        self.workspaces.set_variable(thread.thread_id, "initiator", self.uid)
 
         
         # Create clean, minimal task
@@ -92,5 +93,6 @@ class UserQuestionNode(WorkloadCapableMixin, IEMCapableMixin, BaseNode):
         packet_ids = self.broadcast_task(task)
         
         # Log workflow initiation with enhanced context
-        workspace_summary = self.get_workspace_summary(thread.thread_id)
+        workspace_summary = self.workspaces.get_summary(thread.thread_id)
         print(f"UserQuestion: Initiated workflow {thread.thread_id}")
+

@@ -5,7 +5,7 @@ Tool for summarizing work plans.
 from typing import Dict, Any, Callable
 from pydantic import BaseModel
 from elements.tools.common.base_tool import BaseTool
-from elements.nodes.common.workload import WorkPlanService, WorkItemStatus
+from elements.nodes.common.workload import WorkItemStatus
 from elements.nodes.common.agent.constants import ToolNames
 
 
@@ -34,9 +34,9 @@ class SummarizeWorkPlanTool(BaseTool):
         thread_id = self._get_thread_id()
         owner_uid = self._get_owner_uid()
         workload_service = self._get_workload_service()
-        service = WorkPlanService(workload_service)
+        workspace_service = workload_service.get_workspace_service()
         
-        plan = service.load(thread_id, owner_uid)
+        plan = workspace_service.load_work_plan(thread_id, owner_uid)
         if not plan:
             return {"summary": "No work plan found"}
         

@@ -4,11 +4,10 @@ Common Models for Node Elements
 Shared data structures used across different node types.
 """
 
-from typing import Dict, Any, List, TYPE_CHECKING
+from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from pydantic import BaseModel, Field
 from datetime import datetime
-from elements.llms.common.chat.message import ChatMessage
 
 
 @dataclass
@@ -19,12 +18,19 @@ class AgentResult:
     agent_name: str
     artifacts: Dict[str, Any] = None
     metrics: Dict[str, Any] = None
+    success: bool = True
+    error: Optional[str] = None
+    reasoning: str = ""
+    execution_metadata: Dict[str, Any] = None
 
     def __post_init__(self):
         if self.artifacts is None:
             self.artifacts = {}
         if self.metrics is None:
             self.metrics = {}
+        if self.execution_metadata is None:
+            self.execution_metadata = {}
+
 
 
 class ArtifactRef(BaseModel):
@@ -37,15 +43,4 @@ class ArtifactRef(BaseModel):
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
 
-class WorkspaceContext(BaseModel):
-    """
-    Workspace context data model.
-    
-    Contains all shared context data for a workspace.
-    """
-    # Shared Context Data
-    facts: List[str] = Field(default_factory=list)
-    results: List[AgentResult] = Field(default_factory=list)
-    artifacts: Dict[str, ArtifactRef] = Field(default_factory=dict)
-    variables: Dict[str, Any] = Field(default_factory=dict)
-    conversation_history: List[ChatMessage] = Field(default_factory=list)
+# WorkspaceContext moved to task.py to avoid circular imports

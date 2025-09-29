@@ -270,7 +270,7 @@ def create_step_context_local(uid: str, adjacent_nodes: List[str] = None):
     
     return StepContext(
         uid=uid,
-        metadata=StepMeta(),
+        metadata=StepMeta(display_name=uid),
         adjacent_nodes=adjacent_nodes_model,
         branches={}
     )
@@ -359,8 +359,9 @@ def orchestrator_integration_state(state_view):
 @pytest.fixture
 def orchestrator_workspace_service(orchestrator_integration_state):
     """Provide a workspace service bound to the integration state."""
-    from elements.nodes.common.workload.state_bound_service import StateBoundWorkloadService
-    return StateBoundWorkloadService(orchestrator_integration_state)
+    from elements.nodes.common.workload import UnifiedWorkloadService, StateBoundStorage
+    storage = StateBoundStorage(orchestrator_integration_state)
+    return UnifiedWorkloadService(storage)
 
 
 @pytest.fixture

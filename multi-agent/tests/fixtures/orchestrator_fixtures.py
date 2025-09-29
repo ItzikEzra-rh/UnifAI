@@ -3,11 +3,13 @@ Comprehensive test fixtures for orchestrator system testing.
 
 This module provides fixtures for all orchestrator components including:
 - WorkPlan and WorkItem models
-- WorkPlanService
+- UnifiedWorkloadService (replaces deprecated WorkPlanService)
 - OrchestratorPhaseProvider
 - Orchestration tools
 - PlanAndExecuteStrategy
 - OrchestratorNode
+
+Note: WorkPlanService is DEPRECATED. Use UnifiedWorkloadService.get_workspace_service() instead.
 """
 
 import pytest
@@ -21,8 +23,9 @@ from elements.tools.common.base_tool import BaseTool
 from elements.llms.common.chat.message import ChatMessage, Role
 from elements.nodes.common.agent.primitives import AgentObservation, AgentAction
 from elements.nodes.common.workload import (
-    WorkPlan, WorkItem, WorkPlanService, WorkItemStatus, WorkItemKind,
-    WorkItemResult, ToolArguments, WorkPlanStatusSummary, Task
+    WorkPlan, WorkItem, WorkItemStatus, WorkItemKind,
+    WorkItemResult, ToolArguments, WorkPlanStatusSummary, Task,
+    UnifiedWorkloadService, InMemoryStorage
 )
 from elements.nodes.orchestrator.orchestrator_phase_provider import (
     OrchestratorPhaseProvider, OrchestratorPhase
@@ -210,16 +213,49 @@ def mock_workload_service():
     return workload_service
 
 @pytest.fixture
+def real_workload_service():
+    """
+    Create REAL UnifiedWorkloadService with in-memory storage.
+    
+    USE THIS instead of mock_workload_service for meaningful tests.
+    Provides real behavior testing with isolated in-memory storage.
+    """
+    storage = InMemoryStorage()
+    return UnifiedWorkloadService(storage)
+
+
+@pytest.fixture
+def workspace_service_real(real_workload_service):
+    """
+    Get real WorkspaceService from unified service.
+    
+    This is the CURRENT API pattern:
+        workspace_service = workload_service.get_workspace_service()
+        work_plan = workspace_service.load_work_plan(thread_id, owner_uid)
+    """
+    return real_workload_service.get_workspace_service()
+
+
+@pytest.fixture
 def work_plan_service(mock_workload_service):
-    """Create a WorkPlanService instance for testing."""
-    return WorkPlanService(mock_workload_service)
+    """
+    DEPRECATED: Use workspace_service_real instead.
+    Create a WorkPlanService instance (for backward compatibility).
+    """
+    from elements.nodes.common.workload.workplan import WorkPlanService as LegacyWorkPlanService
+    # WorkPlanService now requires workspace_service and thread_service
+    # This is a simplified mock version
+    return Mock()
 
 
 @pytest.fixture
 def work_plan_service_with_data(mock_workload_service, sample_work_plan):
-    """Create a WorkPlanService with pre-loaded data."""
-    service = WorkPlanService(mock_workload_service)
-    service.save(sample_work_plan)
+    """
+    DEPRECATED: Use workspace_service_real with save_work_plan instead.
+    Create a WorkPlanService with pre-loaded data (for backward compatibility).
+    """
+    service = Mock()
+    service.load = Mock(return_value=sample_work_plan)
     return service
 
 
@@ -286,9 +322,21 @@ def mock_tool_dependencies():
     workload_service.get_workspace.return_value = workspace
     workload_service.update_workspace = Mock()
     
+    # Create mock thread for delegation testing
+    from elements.nodes.common.workload import Thread
+    mock_thread = Thread(
+        title="Test Thread",
+        objective="Test objective",
+        initiator="test_orchestrator"
+    )
+    mock_thread.thread_id = "test_thread"
+    workload_service.get_thread.return_value = mock_thread
+    workload_service.save_thread = Mock()
+    
     return {
         "get_workload_service": lambda: workload_service,
-        "get_thread_id": lambda: "test_thread",
+        "get_thread_id": lambda: "test_thread",  # Keep for backward compatibility
+        "get_current_thread": lambda: mock_thread,  # New enhanced injection
         "get_owner_uid": lambda: "test_orchestrator",
         "send_task": Mock(return_value="packet_123"),
         "check_adjacency": lambda uid: uid in ["node_1", "node_2"],

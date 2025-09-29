@@ -5,7 +5,7 @@ Tool for assigning work items to execution targets.
 from typing import Dict, Any, Optional, Callable
 from pydantic import BaseModel, Field
 from elements.tools.common.base_tool import BaseTool
-from elements.nodes.common.workload import WorkPlanService, WorkItemKind
+from elements.nodes.common.workload import WorkItemKind
 from elements.nodes.common.agent.constants import ToolNames
 
 
@@ -47,7 +47,7 @@ class AssignWorkItemTool(BaseTool):
         thread_id = self._get_thread_id()
         owner_uid = self._get_owner_uid()
         workload_service = self._get_workload_service()
-        service = WorkPlanService(workload_service)
+        workspace_service = workload_service.get_workspace_service()
         
         def assign_item(item, plan):
             """Update function for atomic assignment."""
@@ -55,7 +55,7 @@ class AssignWorkItemTool(BaseTool):
             item.assigned_uid = args.assigned_uid
             item.updated_at = plan.updated_at
         
-        success = service.atomic_update_item(thread_id, owner_uid, args.item_id, assign_item)
+        success = workspace_service.atomic_update_work_item(thread_id, owner_uid, args.item_id, assign_item)
         
         if not success:
             return {"success": False, "error": f"Failed to assign work item {args.item_id} (not found or plan missing)"}

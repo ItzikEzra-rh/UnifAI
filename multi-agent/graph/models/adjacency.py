@@ -114,3 +114,5 @@ class AdjacentNodes(BaseModel):
         """Remove a node (returns new instance since frozen)."""
         new_nodes = {k: v for k, v in self.nodes.items() if k != uid}
         return AdjacentNodes(nodes=new_nodes)
+
+

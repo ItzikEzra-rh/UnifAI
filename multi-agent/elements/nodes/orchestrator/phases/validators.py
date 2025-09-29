@@ -50,7 +50,7 @@ class AllocationValidator:
                 elif not item.correlation_task_id:
                     issues.append(
                         f"Remote item {item.id} assigned but not delegated. "
-                        f"Use DelegateTaskTool to send it to {item.assigned_uid}. Set parent_item_id={item.id}."
+                        f"Use DelegateTaskTool to send it to {item.assigned_uid}. Set work_item_id={item.id}."
                     )
                 elif item.assigned_uid not in adjacent_nodes:
                     issues.append(

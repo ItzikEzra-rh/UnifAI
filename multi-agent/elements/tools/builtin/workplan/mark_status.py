@@ -5,7 +5,7 @@ Tool for marking work item status.
 from typing import Dict, Any, Optional, Callable
 from pydantic import BaseModel, Field
 from elements.tools.common.base_tool import BaseTool
-from elements.nodes.common.workload import WorkItemStatus, WorkPlanService
+from elements.nodes.common.workload import WorkItemStatus
 from elements.nodes.common.agent.constants import ToolNames
 
 
@@ -72,7 +72,7 @@ class MarkWorkItemStatusTool(BaseTool):
         thread_id = self._get_thread_id()
         owner_uid = self._get_owner_uid()
         workload_service = self._get_workload_service()
-        service = WorkPlanService(workload_service)
+        workspace_service = workload_service.get_workspace_service()
         print(f"🏷️ [DEBUG] Owner UID: {owner_uid}")
         
         def update_status(item, plan):
@@ -83,7 +83,7 @@ class MarkWorkItemStatusTool(BaseTool):
             if args.correlation_task_id:
                 item.correlation_task_id = args.correlation_task_id
         
-        success = service.atomic_update_item(thread_id, owner_uid, args.item_id, update_status)
+        success = workspace_service.atomic_update_work_item(thread_id, owner_uid, args.item_id, update_status)
         
         if not success:
             print(f"❌ [DEBUG] Failed to update work item")
