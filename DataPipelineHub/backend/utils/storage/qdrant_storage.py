@@ -263,7 +263,8 @@ class QdrantStorage(VectorStorage):
                 collection_name=self.collection_name,
                 points_selector=qmodels.PointIdsList(
                     points=ids
-                )
+                ),
+                wait=True
             )
             return len(ids)
         
@@ -279,7 +280,8 @@ class QdrantStorage(VectorStorage):
                 collection_name=self.collection_name,
                 points_selector=qmodels.FilterSelector(
                     filter=qdrant_filter
-                )
+                ),
+                wait=True
             )
             
             return count_before
@@ -355,7 +357,7 @@ class QdrantStorage(VectorStorage):
             logger.info(f"Deleted {deleted_count} embeddings from Qdrant for source {source_id}")
             
             # Verify deletion
-            remaining_count = self.count(filters=filters)
+            remaining_count = self.count(filters=filters, exact=True)
             if remaining_count > 0:
                 logger.error(f"Deletion incomplete: {remaining_count} embeddings still remain for source {source_id}")
                 return {

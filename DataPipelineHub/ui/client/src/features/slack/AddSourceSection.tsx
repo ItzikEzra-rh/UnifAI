@@ -6,6 +6,7 @@ import { HiOutlineLockClosed } from 'react-icons/hi';
 import { fetchAvailableSlackChannels, fetchEmbeddedSlackChannels, PaginatedChannelsResponse } from '@/api/slack';
 import type { EmbedChannel, Channel } from '@/types';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -83,6 +84,7 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
 
   // Debounced search effect
   useEffect(() => {
+    
     // Clear existing timeout
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
@@ -458,6 +460,7 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
           )}
         </div>
 
+        <TooltipProvider>
         <div 
           ref={scrollContainerRef}
           className="border border-gray-800 rounded-md h-48 overflow-y-auto bg-background-dark"
@@ -484,19 +487,30 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
           {filteredChannels.map(c => {
             const isEmbedded = isChannelEmbedded(c);
             const uniqueId = getChannelUniqueId(c);
+            const notMember = c.is_app_member === false || c.is_app_member === null;
             return (
               <div 
                 key={uniqueId} 
                 className={`flex items-center justify-between p-3 border-b border-gray-800 ${
-                  isEmbedded ? 'opacity-60 cursor-not-allowed' : 'hover:bg-background-surface cursor-pointer'
+                  (isEmbedded || notMember) ? 'opacity-60 cursor-not-allowed' : 'hover:bg-background-surface cursor-pointer'
                 }`}
-                onClick={() => !isEmbedded && handleToggleChannel(c)}
+                onClick={() => !(isEmbedded || notMember) && handleToggleChannel(c)}
               >
                 <div className="flex items-center">
                   <span className="text-gray-400 mr-2">{c.is_private ? <HiOutlineLockClosed className="inline" /> : '#'}</span>
                   <span>{c.channel_name}</span>
                   {c.is_private && <Badge className="ml-2 bg-gray-700/40 text-gray-400 border border-gray-700/40">Private</Badge>}
                   {!c.is_private && <Badge className="ml-2 bg-gray-700/40 text-gray-400 border border-gray-700/40">Public</Badge>}
+                  {notMember && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Badge className="ml-2 bg-amber-500/20 text-amber-400 border border-amber-500/30">TAG user not in channel</Badge>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        Invite the TAG app user to this channel to enable it. See the instructions above.
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
                   {isEmbedded && <Badge className="ml-2 bg-[hsl(var(--success))]/20 text-[hsl(var(--success))] border border-[hsl(var(--success))]/30">Embedded</Badge>}
                 </div>
                 <div 
@@ -506,7 +520,7 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
                 >
                   <Switch 
                     checked={isEmbedded || selectedChannels.includes(uniqueId)} 
-                    disabled={isEmbedded}
+                    disabled={isEmbedded || notMember}
                     onCheckedChange={() => handleToggleChannel(c)} 
                   />
                 </div>
@@ -536,6 +550,7 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
             </div>
           )}
         </div>
+        </TooltipProvider>
 
         <div className="flex justify-between items-center">
           <span className="text-sm">{selectedChannels.length} channel{selectedChannels.length !== 1 && 's'} selected</span>
