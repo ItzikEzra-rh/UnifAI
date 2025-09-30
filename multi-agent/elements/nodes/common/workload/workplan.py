@@ -170,6 +170,7 @@ class WorkPlanStatusSummary(BaseModel):
     blocked_items: int = 0
     has_local_ready: bool = False
     has_remote_waiting: bool = False
+    has_responses: bool = False
     is_complete: bool = False
 
 
@@ -187,6 +188,11 @@ class WorkPlan(BaseModel):
     # Timestamps
     created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
     updated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    
+    @property
+    def total_items(self) -> int:
+        """Get the total number of work items in this plan."""
+        return len(self.items)
     
     def get_completed_item_ids(self) -> Set[str]:
         """Get IDs of completed items (DONE or FAILED)."""

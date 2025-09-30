@@ -42,6 +42,7 @@ class WorkPlanStatus:
     blocked_items: int
     has_local_ready: bool
     has_remote_waiting: bool
+    has_responses: bool
     is_complete: bool
 
 
@@ -156,6 +157,7 @@ def create_work_plan_status(
     blocked_items: int = 0,
     has_local_ready: bool = False,
     has_remote_waiting: bool = False,
+    has_responses: bool = False,
     is_complete: bool = False
 ) -> WorkPlanStatus:
     """
@@ -174,6 +176,7 @@ def create_work_plan_status(
         blocked_items=blocked_items,
         has_local_ready=has_local_ready,
         has_remote_waiting=has_remote_waiting,
+        has_responses=has_responses,
         is_complete=is_complete
     )
 

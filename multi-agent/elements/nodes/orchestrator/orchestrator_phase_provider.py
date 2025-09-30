@@ -255,10 +255,10 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         synthesis_phase = PhaseDefinition(
             name=OrchestratorPhase.SYNTHESIS.value,
             description="Summarize completed work and produce final deliverables",
-            tools=[summarize_tool, create_plan_tool],
+            tools=[summarize_tool],  # ✅ ONLY summarize - NO plan modification in Synthesis!
             guidance=(
                 "PHASE: SYNTHESIS - Summarize completed work and produce final deliverables. "
-                "Focus on results and outputs."
+                "Focus on results and outputs. Work plan is complete - do NOT add new items."
             ),
             max_iterations=self._iteration_limits.synthesis
         )
@@ -301,6 +301,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
                 blocked_items=status_summary.blocked_items,
                 has_local_ready=status_summary.has_local_ready,
                 has_remote_waiting=status_summary.has_remote_waiting,
+                has_responses=status_summary.has_responses,
                 is_complete=status_summary.is_complete
             )
 
@@ -369,10 +370,13 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             if status.has_local_ready:
                 self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.EXECUTION.value
-            # Move to monitoring if we have remote work waiting
-            elif status.has_remote_waiting:
+            # Move to monitoring if we have responses to interpret
+            elif status.has_responses:
                 self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.MONITORING.value
+            # If just waiting (no responses yet), stay in allocation (will finish and wait for graph)
+            elif status.has_remote_waiting:
+                return OrchestratorPhase.ALLOCATION.value  # Stay → finish
             else:
                 return OrchestratorPhase.ALLOCATION.value  # Stay in allocation
 
@@ -386,7 +390,11 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             if status.is_complete:
                 self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.SYNTHESIS.value
-            # Go back to allocation if we have pending items
+            # PRIORITY: Stay in monitoring if we still have responses to interpret
+            # (Process responses BEFORE transitioning to handle new pending work)
+            elif status.has_responses:
+                return OrchestratorPhase.MONITORING.value
+            # Go back to allocation if we have pending items (and no responses)
             elif status.pending_items > 0:
                 self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.ALLOCATION.value

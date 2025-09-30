@@ -5,31 +5,25 @@ Shared data structures used across different node types.
 """
 
 from typing import Dict, Any, List, Optional
-from dataclasses import dataclass
 from pydantic import BaseModel, Field
 from datetime import datetime
 
 
-@dataclass
-class AgentResult:
-    """Result from agent processing."""
-    content: str
-    agent_id: str
-    agent_name: str
-    artifacts: Dict[str, Any] = None
-    metrics: Dict[str, Any] = None
-    success: bool = True
-    error: Optional[str] = None
-    reasoning: str = ""
-    execution_metadata: Dict[str, Any] = None
-
-    def __post_init__(self):
-        if self.artifacts is None:
-            self.artifacts = {}
-        if self.metrics is None:
-            self.metrics = {}
-        if self.execution_metadata is None:
-            self.execution_metadata = {}
+class AgentResult(BaseModel):
+    """Result from agent processing.
+    
+    Pydantic model (not dataclass) to preserve type when nested in other Pydantic models.
+    This ensures isinstance(result, AgentResult) works correctly in orchestrator.
+    """
+    content: str = Field(..., description="Main result content")
+    agent_id: str = Field(..., description="ID of the agent that produced this result")
+    agent_name: str = Field(..., description="Name of the agent")
+    artifacts: List[str] = Field(default_factory=list, description="List of artifact paths/names produced")
+    metrics: Dict[str, Any] = Field(default_factory=dict, description="Performance metrics")
+    success: bool = Field(default=True, description="Whether the agent task succeeded")
+    error: Optional[str] = Field(default=None, description="Error message if failed")
+    reasoning: str = Field(default="", description="Agent's reasoning process")
+    execution_metadata: Dict[str, Any] = Field(default_factory=dict, description="Execution metadata")
 
 
 

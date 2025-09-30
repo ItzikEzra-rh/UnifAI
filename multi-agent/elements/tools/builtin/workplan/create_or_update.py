@@ -88,14 +88,14 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
         self._get_workload_service = get_workload_service
     
     def run(self, **kwargs) -> Dict[str, Any]:
-        """Create or update work plan (thread-safe)."""
+        """Create or update work plan (thread-safe with atomic operations)."""
         print(f"📋 [DEBUG] CreateOrUpdateWorkPlanTool.run() - Starting")
         
         args = CreateOrUpdatePlanArgs(**kwargs)
         print(f"📋 [DEBUG] Plan summary: {args.summary}")
         print(f"📋 [DEBUG] Number of items: {len(args.items)}")
         
-        # Get context - now just need workspace_service!
+        # Get context
         thread_id = self._get_thread_id()
         owner_uid = self._get_owner_uid()
         workload_service = self._get_workload_service()
@@ -103,36 +103,58 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
         
         print(f"📋 [DEBUG] Owner UID: {owner_uid}")
         
-        # Load existing plan or create new one
-        plan = workspace_service.load_work_plan(thread_id, owner_uid)
-        if not plan:
-            print(f"📋 [DEBUG] No existing plan - creating new one")
-            plan = workspace_service.create_work_plan(
-                thread_id=thread_id,
-                owner_uid=owner_uid,
-                summary=args.summary
-            )
-        else:
-            print(f"📋 [DEBUG] Updating existing plan with {len(plan.items)} items")
-            plan.summary = args.summary
-        
-        # Add items from structured specs
-        for i, item_spec in enumerate(args.items):
-            print(f"📋 [DEBUG] Adding item {i+1}: {item_spec.id} - {item_spec.title}")
-            print(f"📋 [DEBUG] Dependencies: {item_spec.dependencies}")
-            print(f"📋 [DEBUG] Kind: {item_spec.kind}")
+        # ✅ FIX: Use lock to prevent race conditions with mark tool
+        # All operations within single lock to ensure atomicity
+        with workspace_service._with_work_plan_lock(thread_id, owner_uid):
+            # Load existing plan or create new one
+            plan = workspace_service.load_work_plan(thread_id, owner_uid)
+            if not plan:
+                print(f"📋 [DEBUG] No existing plan - creating new one")
+                plan = workspace_service.create_work_plan(
+                    thread_id=thread_id,
+                    owner_uid=owner_uid,
+                    summary=args.summary
+                )
+                workspace_service.save_work_plan(plan)
+            else:
+                print(f"📋 [DEBUG] Updating existing plan with {len(plan.items)} items")
+                plan.summary = args.summary
             
-            item = WorkItem(
-                id=item_spec.id,
-                title=item_spec.title,
-                description=item_spec.description,
-                dependencies=item_spec.dependencies,
-                kind=item_spec.kind
-            )
-            plan.items[item.id] = item
-        
-        print(f"📋 [DEBUG] Saving plan with {len(plan.items)} total items")
-        workspace_service.save_work_plan(plan)
+            # Process each item atomically
+            for i, item_spec in enumerate(args.items):
+                print(f"📋 [DEBUG] Processing item {i+1}: {item_spec.id} - {item_spec.title}")
+                print(f"📋 [DEBUG] Dependencies: {item_spec.dependencies}")
+                print(f"📋 [DEBUG] Kind: {item_spec.kind}")
+                
+                if item_spec.id in plan.items:
+                    # ✅ UPDATE: Preserve runtime state (status, result_ref, error, etc.)
+                    print(f"📋 [DEBUG] Item {item_spec.id} exists - updating ONLY LLM-specified fields")
+                    existing_item = plan.items[item_spec.id]
+                    
+                    # Only update fields from LLM spec, preserve all runtime state
+                    existing_item.title = item_spec.title
+                    existing_item.description = item_spec.description
+                    existing_item.dependencies = item_spec.dependencies
+                    existing_item.kind = item_spec.kind
+                    existing_item.mark_updated()
+                    
+                    # ✅ Preserved properties: status, result_ref, correlation_task_id, error, assigned_uid
+                    print(f"📋 [DEBUG] Item {item_spec.id} updated - status={existing_item.status} preserved")
+                else:
+                    # ✅ CREATE: New item with defaults
+                    print(f"📋 [DEBUG] Item {item_spec.id} is new - creating with default status")
+                    new_item = WorkItem(
+                        id=item_spec.id,
+                        title=item_spec.title,
+                        description=item_spec.description,
+                        dependencies=item_spec.dependencies,
+                        kind=item_spec.kind
+                    )
+                    plan.items[item_spec.id] = new_item
+            
+            # Save once at the end (within lock)
+            print(f"📋 [DEBUG] Saving plan with {len(plan.items)} total items")
+            workspace_service.save_work_plan(plan)
         
         # Get status summary for response
         status_summary = workspace_service.get_work_plan_status(thread_id, owner_uid)

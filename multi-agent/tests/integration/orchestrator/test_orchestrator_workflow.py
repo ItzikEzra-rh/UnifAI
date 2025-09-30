@@ -44,16 +44,16 @@ class TestOrchestratorBasicWorkflow(BaseIntegrationTest):
             is_response=False
         )
         
-        # Mock LLM to avoid real calls and mock _run_orchestration_cycle
-        with patch.object(node, '_run_orchestration_cycle') as mock_cycle:
-            node._handle_new_work(task)
+        # Handle new work (no longer calls _run_orchestration_cycle directly - fixed double-cycle bug)
+        node._handle_new_work(task)
         
         # Verify thread was created
         assert task.thread_id is not None
         
-        # Verify orchestration cycle was called
-        mock_cycle.assert_called_once()
-        assert task.thread_id in mock_cycle.call_args[0]
+        # Verify workspace was created for the thread
+        workspace = node.workspaces.get_workspace(task.thread_id)
+        assert workspace is not None
+        assert workspace.thread_id == task.thread_id
     
     def test_orchestrator_handles_response_and_updates_work_plan(self, mock_llm):
         """Orchestrator should handle responses and update work plan."""

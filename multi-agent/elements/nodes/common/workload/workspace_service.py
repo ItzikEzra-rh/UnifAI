@@ -509,7 +509,8 @@ class IWorkspaceService(ABC):
         owner_uid: str,
         correlation_task_id: str,
         response_content: str,
-        from_uid: str
+        from_uid: str,
+        result_data: Any = None
     ) -> bool:
         """
         Store task response as context without changing status - let LLM interpret.
@@ -518,8 +519,9 @@ class IWorkspaceService(ABC):
             thread_id: Thread ID
             owner_uid: Owner node UID
             correlation_task_id: Correlation task ID
-            response_content: Response content
+            response_content: Response content (string for LLM)
             from_uid: UID of responder
+            result_data: Optional structured result data to preserve
             
         Returns:
             True if stored successfully
@@ -971,6 +973,13 @@ class WorkspaceService(IWorkspaceService):
             for item in plan.items.values()
         )
         
+        # Check for responses needing interpretation
+        has_responses = any(
+            item.status == WorkItemStatus.WAITING 
+            and item.result_ref is not None
+            for item in plan.items.values()
+        )
+        
         summary = WorkPlanStatusSummary(
             exists=True,
             total_items=len(plan.items),
@@ -982,6 +991,7 @@ class WorkspaceService(IWorkspaceService):
             blocked_items=counts.blocked,
             has_local_ready=has_local_ready,
             has_remote_waiting=has_remote_waiting,
+            has_responses=has_responses,
             is_complete=plan.is_complete()
         )
         
@@ -1078,7 +1088,8 @@ class WorkspaceService(IWorkspaceService):
         owner_uid: str,
         correlation_task_id: str,
         response_content: str,
-        from_uid: str
+        from_uid: str,
+        result_data: Any = None
     ) -> bool:
         """Store task response as context without changing status - let LLM interpret."""
         print(f"💬 [DEBUG] WorkspaceService.store_task_response_for_work_item() - Storing response for LLM interpretation")
@@ -1102,16 +1113,32 @@ class WorkspaceService(IWorkspaceService):
         
         print(f"💬 [DEBUG] Found target item: {target_item.id} - {target_item.title}")
         
+        # ✅ Extract structured data from result_data
+        from elements.nodes.common.workload.models import AgentResult
+        data_to_store = None
+        if isinstance(result_data, AgentResult):
+            # Convert AgentResult (Pydantic model) to dict for storage
+            print(f"💬 [DEBUG] Storing full AgentResult as structured data")
+            data_to_store = result_data.model_dump()  # Pydantic method
+        elif isinstance(result_data, dict):
+            # Already a dict, store as-is
+            print(f"💬 [DEBUG] Storing dict as structured data")
+            data_to_store = result_data
+        
         # Store response content without changing status
         if not target_item.result_ref:
             target_item.result_ref = WorkItemResult(
                 success=False,  # Not finalized yet
                 content=response_content,
+                data=data_to_store,  # ✅ Store structured data!
                 metadata={"from_uid": from_uid, "needs_interpretation": True}
             )
         else:
             # Append to existing content
             target_item.result_ref.content += f"\n\n--- Response from {from_uid} ---\n{response_content}"
+            # Update data if new structured data is provided
+            if data_to_store and not target_item.result_ref.data:
+                target_item.result_ref.data = data_to_store
             if target_item.result_ref.metadata:
                 target_item.result_ref.metadata["needs_interpretation"] = True
             else:
@@ -1156,14 +1183,28 @@ class WorkspaceService(IWorkspaceService):
             print(f"✅ [DEBUG] Found target item: {target_item.id} - {target_item.title}")
             
             # Update item based on response - only for explicit structures
+            from elements.nodes.common.workload.models import AgentResult
+            
             if error:
                 print(f"❌ [DEBUG] Marking item as FAILED: {error}")
                 target_item.status = WorkItemStatus.FAILED
                 target_item.error = error
                 target_item.retry_count += 1  # Increment retry count on failure
+            
+            # ✅ Handle AgentResult explicitly
+            elif isinstance(result, AgentResult):
+                print(f"✅ [DEBUG] Marking item as DONE with AgentResult")
+                target_item.status = WorkItemStatus.DONE
+                target_item.result_ref = WorkItemResult(
+                    success=result.success,
+                    content=result.content,
+                    data=result.model_dump()  # Pydantic method - converts to dict
+                )
+            
+            # Handle dict with explicit success
             elif result and isinstance(result, dict) and result.get("success") is True:
                 # Only auto-mark DONE for explicit success structures
-                print(f"✅ [DEBUG] Marking item as DONE with explicit success result")
+                print(f"✅ [DEBUG] Marking item as DONE with explicit success dict")
                 target_item.status = WorkItemStatus.DONE
                 target_item.result_ref = WorkItemResult(
                     success=True,

@@ -203,7 +203,11 @@ class OrchestratorNode(
         # Store response as workspace fact for LLM context
         response_content = ""
         if task.result:
-            response_content = str(task.result)
+            # ✅ Handle AgentResult properly (use .content field, not str())
+            if isinstance(task.result, AgentResult):
+                response_content = task.result.content
+            else:
+                response_content = str(task.result)
         elif task.error:
             response_content = f"ERROR: {task.error}"
         elif task.content:
@@ -219,8 +223,11 @@ class OrchestratorNode(
 
         success = False
 
-        # Try explicit success/error first
+        # ✅ ARCHITECTURE: LLM always interprets responses (except explicit errors)
+        # The LLM will use mark_work_item_status tool to finalize status
+        
         if task.error:
+            # Case A: Explicit ERROR - Auto-mark FAILED (errors are unambiguous)
             print(f"❌ [DEBUG] Processing explicit ERROR response: {task.error[:100]}...")
             success = service.ingest_task_response_for_work_item(
                 thread_id=target_thread_id,
@@ -230,28 +237,27 @@ class OrchestratorNode(
             )
             if success:
                 print(f"❌ [DEBUG] Marked item as FAILED for task {correlation_task_id}")
-        elif task.result and isinstance(task.result, dict) and task.result.get("success") is True:
-            print(f"✅ [DEBUG] Processing explicit SUCCESS response: {str(task.result)[:100]}...")
-            success = service.ingest_task_response_for_work_item(
+        
+        else:
+            # Case B: ALL other responses → Store for LLM interpretation
+            # LLM will decide if work is truly done based on:
+            # - Quality of response
+            # - Completeness
+            # - Alignment with requirements
+            # - Overall work plan context
+            
+            print(f"💬 [DEBUG] Storing response for LLM interpretation: {response_content[:100]}...")
+            success = service.store_task_response_for_work_item(
                 thread_id=target_thread_id,
                 owner_uid=self.uid,
                 correlation_task_id=correlation_task_id,
-                result=task.result
-            )
-            if success:
-                print(f"✅ [DEBUG] Marked item as DONE for task {correlation_task_id}")
-        else:
-            # Store for LLM interpretation - don't auto-mark status
-            print(f"💬 [DEBUG] Storing response for LLM interpretation: {response_content[:100]}...")
-            success = service.store_task_response_for_work_item(
-                thread_id=task.thread_id,
-                owner_uid=self.uid,
-                correlation_task_id=correlation_task_id,
                 response_content=response_content,
-                from_uid=task.created_by
+                from_uid=task.created_by,
+                result_data=task.result  # ✅ Preserve all structured data (AgentResult, dict, or None)
             )
             if success:
-                print(f"💬 [DEBUG] Response stored for LLM interpretation - status unchanged")
+                print(f"💬 [DEBUG] Response stored for LLM interpretation - status stays WAITING")
+                print(f"💬 [DEBUG] LLM will use mark_work_item_status tool to finalize")
 
         # Return thread_id if we updated the work plan
         result_thread = target_thread_id if success else None
@@ -293,7 +299,8 @@ class OrchestratorNode(
         """
         Handle new work request.
         
-        Creates context and runs orchestration cycle.
+        Sets up thread and workspace context. Orchestration runs in batch processing phase.
+        This ensures all packets are processed before orchestration begins.
         """
         # Processing new work request
 
@@ -320,8 +327,11 @@ class OrchestratorNode(
         # Copy any existing conversation to workspace
         self.copy_graphstate_messages_to_workspace(thread_id)
 
-        # Run orchestration
-        self._run_orchestration_cycle(thread_id, task.content)
+        # ✅ Orchestration will run in the batch processing loop (lines 137-143)
+        # This ensures:
+        # 1. Consistent behavior: 1 cycle per thread (new work OR responses)
+        # 2. Better batching: All packets processed before orchestration
+        # 3. Correct context: LLM sees all available information
 
     def _run_orchestration_cycle(self, thread_id: str, content: str) -> AgentResult:
         """
@@ -392,7 +402,7 @@ class OrchestratorNode(
             error=result.get("error"),
             reasoning=result.get("reasoning", ""),
             execution_metadata=result.get("metadata", {}),
-            artifacts=result.get("artifacts", {}),
+            artifacts=result.get("artifacts", []) if isinstance(result.get("artifacts"), list) else [],
             metrics=result.get("metrics", {})
         )
 
@@ -536,7 +546,7 @@ class OrchestratorNode(
         ]
 
         # Load plan to get detailed item information
-        plan = service.load(thread_id, self.uid)
+        plan = service.load_work_plan(thread_id, self.uid)
         if plan:
             lines.append(f"\nPlan Summary: {plan.summary}")
 

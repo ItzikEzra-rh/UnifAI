@@ -261,7 +261,7 @@ class SynthesisValidator:
         # Check for incomplete items
         incomplete_items = [
             item for item in plan.items.values()
-            if item.status not in [WorkItemStatus.COMPLETED, WorkItemStatus.FAILED]
+            if item.status not in [WorkItemStatus.DONE, WorkItemStatus.FAILED]
         ]
         
         if incomplete_items:
@@ -273,7 +273,7 @@ class SynthesisValidator:
             # All items complete - good for synthesis
             completed_items = [
                 item for item in plan.items.values()
-                if item.status == WorkItemStatus.COMPLETED
+                if item.status == WorkItemStatus.DONE
             ]
             issues.append(
                 f"All {len(plan.items)} work items completed. Ready for synthesis."

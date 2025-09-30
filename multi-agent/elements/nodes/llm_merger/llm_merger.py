@@ -174,7 +174,8 @@ class LLMMergerNode(WorkloadCapableMixin, IEMCapableMixin, LlmCapableMixin, Base
             content=assistant_response.content,
             agent_id=self.uid,
             agent_name=getattr(self, 'name', self.uid),
-            artifacts={
+            artifacts=[],  # No artifact files produced by merger
+            execution_metadata={
                 "merged_count": len(original_results),
                 "source_agents": [result.agent_name for result in original_results],
                 "merge_type": "llm_merge"

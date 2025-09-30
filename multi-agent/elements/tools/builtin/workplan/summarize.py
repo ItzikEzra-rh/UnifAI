@@ -30,7 +30,7 @@ class SummarizeWorkPlanTool(BaseTool):
         self._get_workload_service = get_workload_service
     
     def run(self, **kwargs) -> Dict[str, Any]:
-        """Generate summary."""
+        """Generate summary with full structured data."""
         thread_id = self._get_thread_id()
         owner_uid = self._get_owner_uid()
         workload_service = self._get_workload_service()
@@ -38,7 +38,7 @@ class SummarizeWorkPlanTool(BaseTool):
         
         plan = workspace_service.load_work_plan(thread_id, owner_uid)
         if not plan:
-            return {"summary": "No work plan found"}
+            return {"summary": "No work plan found", "items": []}
         
         # Build comprehensive summary with results
         lines = [
@@ -46,6 +46,9 @@ class SummarizeWorkPlanTool(BaseTool):
             f"Total Items: {len(plan.items)}",
             f"Status: {plan.get_status_counts().model_dump()}"
         ]
+        
+        # ✅ NEW: Collect structured item data for LLM
+        items_data = []
         
         # Add completed items with results
         completed_items = plan.get_items_by_status(WorkItemStatus.DONE)
@@ -57,6 +60,48 @@ class SummarizeWorkPlanTool(BaseTool):
                     lines.append(f"     Result: {item.result_ref.content[:100]}...")
                 if item.assigned_uid:
                     lines.append(f"     Completed by: {item.assigned_uid}")
+                
+                # ✅ Add structured data
+                items_data.append({
+                    "id": item.id,
+                    "title": item.title,
+                    "status": item.status.value,
+                    "assigned_to": item.assigned_uid,  # 🎯 Agent/node UID shown here
+                    "result": {
+                        "content": item.result_ref.content if item.result_ref else None,
+                        "data": item.result_ref.data if item.result_ref else None,
+                        "success": item.result_ref.success if item.result_ref else None,
+                        "metadata": item.result_ref.metadata if item.result_ref else None
+                    } if item.result_ref else None
+                })
+        
+        # Add WAITING items with responses (pending interpretation)
+        waiting_items = plan.get_items_by_status(WorkItemStatus.WAITING)
+        if waiting_items:
+            # Check if any have responses
+            waiting_with_responses = [item for item in waiting_items if item.result_ref]
+            if waiting_with_responses:
+                lines.append(f"\nWaiting for Interpretation ({len(waiting_with_responses)}):")
+                for item in waiting_with_responses:
+                    lines.append(f"  ⏳ {item.title}")
+                    if item.result_ref and item.result_ref.content:
+                        lines.append(f"     Response: {item.result_ref.content[:100]}...")
+                    if item.assigned_uid:
+                        lines.append(f"     From: {item.assigned_uid}")
+                    
+                    # ✅ Add structured data (this is critical for LLM interpretation!)
+                    items_data.append({
+                        "id": item.id,
+                        "title": item.title,
+                        "status": item.status.value,
+                        "assigned_to": item.assigned_uid,  # 🎯 Agent/node UID shown here
+                        "result": {
+                            "content": item.result_ref.content,
+                            "data": item.result_ref.data,
+                            "success": item.result_ref.success,
+                            "metadata": item.result_ref.metadata
+                        }
+                    })
         
         # Add failed items with errors
         failed_items = plan.get_items_by_status(WorkItemStatus.FAILED)
@@ -66,9 +111,18 @@ class SummarizeWorkPlanTool(BaseTool):
                 lines.append(f"  ❌ {item.title}")
                 if item.error:
                     lines.append(f"     Error: {item.error}")
+                
+                # ✅ Add structured data
+                items_data.append({
+                    "id": item.id,
+                    "title": item.title,
+                    "status": item.status.value,
+                    "assigned_to": item.assigned_uid,  # 🎯 Agent/node UID shown here
+                    "error": item.error
+                })
         
         # Add any incomplete items
-        incomplete_statuses = [WorkItemStatus.PENDING, WorkItemStatus.WAITING, WorkItemStatus.IN_PROGRESS]
+        incomplete_statuses = [WorkItemStatus.PENDING, WorkItemStatus.IN_PROGRESS]
         incomplete_items = []
         for status in incomplete_statuses:
             incomplete_items.extend(plan.get_items_by_status(status))
@@ -77,5 +131,17 @@ class SummarizeWorkPlanTool(BaseTool):
             lines.append(f"\nIncomplete Work ({len(incomplete_items)}):")
             for item in incomplete_items:
                 lines.append(f"  ⏳ {item.title} ({item.status.value})")
+                
+                # ✅ Add structured data  
+                items_data.append({
+                    "id": item.id,
+                    "title": item.title,
+                    "status": item.status.value,
+                    "assigned_to": item.assigned_uid  # 🎯 Agent/node UID shown here
+                })
         
-        return {"summary": "\n".join(lines)}
+        # ✅ Return BOTH text summary AND structured data
+        return {
+            "summary": "\n".join(lines),
+            "items": items_data  # LLM can now access all AgentResult fields!
+        }

@@ -149,6 +149,7 @@ class PlanAndExecuteStrategy(AgentStrategy):
         
         try:
             # Determine current phase based on context
+            # _update_phase now handles cascading transitions internally
             old_phase = self._current_phase
             self._update_phase(observations)
             if old_phase != self._current_phase:
@@ -299,35 +300,86 @@ class PlanAndExecuteStrategy(AgentStrategy):
     
     def _update_phase(self, observations: List[AgentObservation]) -> None:
         """
-        Update current phase based on observations and work plan state.
+        Update the current phase based on work plan status and observations.
+        Continues transitioning until the phase is stable (no more transitions).
         
-        Uses the injected phase provider to determine the next phase based on
-        current work plan status and observations. Tracks iterations to prevent infinite loops.
+        This handles cascading phase transitions automatically, e.g.:
+        - Planning → Allocation → Monitoring (when responses are ready)
+        - Planning → Allocation → Execution (when local work is ready)
+        - Monitoring → Allocation → Execution (when new work becomes ready)
+        
+        Safety measures:
+        - Max 10 iterations to prevent infinite loops
+        - Cycle detection to catch phase transition bugs
+        - Detailed logging for debugging
+        
+        Args:
+            observations: Recent observations from tool execution
         """
-        print(f"🔄 [DEBUG] _update_phase() - Current: {self._current_phase}")
+        print(f"🔄 [DEBUG] _update_phase() - Starting from: {self._current_phase}")
         
-        # Increment current phase iteration before making decision
-        if hasattr(self._phase_provider, 'increment_phase_iteration'):
-            self._phase_provider.increment_phase_iteration(self._current_phase)
+        # Safety limits
+        max_transitions = 10
+        transitions = 0
+        visited_phases = []  # Track transition path for cycle detection
         
-        # Use phase provider for transitions
-        print(f"🔀 [DEBUG] Using phase provider for transition")
-        context = self._phase_provider.get_phase_context()
-        print(f"📊 [DEBUG] Phase context: total_items={context.work_plan_status.total_items if context.work_plan_status else 'None'}")
-        new_phase = self._phase_provider.decide_next_phase(
-            current_phase=self._current_phase,
-            context=context,
-            observations=observations
-        )
-        print(f"🔀 [DEBUG] Provider decided: {self._current_phase} → {new_phase}")
-        
-        # Update phase and reset local iteration counter if phase changed
-        if new_phase != self._current_phase:
-            self._phase_iterations = 0
-        else:
-            self._phase_iterations += 1
+        # Loop until phase is stable
+        while transitions < max_transitions:
+            # Increment current phase iteration before making decision
+            if hasattr(self._phase_provider, 'increment_phase_iteration'):
+                self._phase_provider.increment_phase_iteration(self._current_phase)
             
-        self._current_phase = new_phase
+            # Get current context
+            context = self._phase_provider.get_phase_context()
+            if context and context.work_plan_status:
+                status = context.work_plan_status
+                print(f"📊 [DEBUG] Phase context: total={status.total_items}, pending={status.pending_items}, "
+                      f"waiting={status.waiting_items}, has_responses={status.has_responses}, "
+                      f"has_local_ready={status.has_local_ready}")
+            
+            # Decide next phase
+            print(f"📍 [DEBUG] decide_next_phase() - current: {self._current_phase}")
+            new_phase = self._phase_provider.decide_next_phase(
+                current_phase=self._current_phase,
+                context=context,
+                observations=observations
+            )
+            
+            print(f"🔀 [DEBUG] Provider decided: {self._current_phase} → {new_phase}")
+            
+            # Check if phase changed
+            if new_phase != self._current_phase:
+                # Cycle detection: Check if we've seen this phase before in this cascade
+                if new_phase in visited_phases:
+                    transition_path = " → ".join(visited_phases + [self._current_phase, new_phase])
+                    print(f"⚠️ [CYCLE DETECTED] Phase cycle in transition path: {transition_path}")
+                    print(f"⚠️ [CYCLE DETECTED] Stopping at: {self._current_phase}")
+                    break
+                
+                # Record the transition
+                visited_phases.append(self._current_phase)
+                
+                # Transition to new phase
+                print(f"🔄 [CASCADE] Transitioning: {self._current_phase} → {new_phase} (cascade #{transitions + 1})")
+                self._phase_iterations = 0
+                self._current_phase = new_phase
+                transitions += 1
+            else:
+                # Phase is stable
+                print(f"✅ [STABLE] Phase stable at: {self._current_phase}")
+                self._phase_iterations += 1
+                break
+        
+        # Safety check: max transitions reached
+        if transitions >= max_transitions:
+            transition_path = " → ".join(visited_phases + [self._current_phase])
+            print(f"⚠️ [MAX TRANSITIONS] Reached limit ({max_transitions}) in path: {transition_path}")
+            print(f"⚠️ [MAX TRANSITIONS] Stopping at: {self._current_phase}")
+        
+        # Log final transition summary if we cascaded
+        if transitions > 0:
+            transition_path = " → ".join(visited_phases + [self._current_phase])
+            print(f"🎯 [PHASE CASCADE] Completed {transitions} transition(s): {transition_path}")
     
     def _should_transition_phase(self, observations: List[AgentObservation]) -> bool:
         """
