@@ -22,27 +22,31 @@ from ..constants import (
     StrategyDefaults, StrategyType, SystemPrompts, ExecutionPhase
 )
 from ..phases.phase_protocols import PhaseState, WorkPlanStatus
-from ..phases.unified_phase_provider import PhaseProvider
+from ..phases.unified_phase_provider import PhaseProvider  # Uses PhaseProvider abstraction
 
 
 
 
 class PlanAndExecuteStrategy(AgentStrategy):
     """
-    Plan and Execute strategy implementation.
+    Plan and Execute strategy - SOLID compliant.
     
-    Creates and executes work plans with clear phase separation:
-    - Planning: Create/update work plan
-    - Allocation: Assign work to local/remote targets
-    - Execution: Run local work items
-    - Monitoring: Track progress and handle responses
-    - Synthesis: Summarize results
+    Delegates ALL phase logic to PhaseProvider:
+    - No hardcoded phase names
+    - No knowledge of provider internals (cascade, iteration, limits)
+    - No interpretation of provider implementation details
     
-    Features:
-    - Phase-based tool exposure
-    - Support for local and remote execution
-    - Graceful degradation when tools missing
-    - Re-entrant for graph-based execution
+    Strategy responsibilities:
+    - Execution flow (think → act → observe loop)
+    - Tool execution coordination
+    - LLM interaction
+    - Step creation
+    
+    Provider responsibilities:
+    - Phase definitions and transitions
+    - Cascade logic (if any)
+    - Iteration tracking (if any)
+    - All phase-specific logic
     """
     
     def __init__(
@@ -83,14 +87,13 @@ class PlanAndExecuteStrategy(AgentStrategy):
         self._phase_iterations = 0
         self._no_progress_count = 0
         
-        # Store phase provider (required - no default)
+        # Store phase provider (required)
         if not phase_provider:
             raise ValueError("PlanAndExecuteStrategy requires a phase_provider")
         self._phase_provider = phase_provider
         
-        # Get initial phase from provider (not hardcoded)
-        supported_phases = self._phase_provider.get_supported_phases()
-        self._current_phase = supported_phases[0] if supported_phases else "planning"
+        # Get initial phase from provider (NOT hardcoded)
+        self._current_phase = self._phase_provider.get_initial_phase()
     
     @property
     def strategy_name(self) -> str:
@@ -161,9 +164,9 @@ class PlanAndExecuteStrategy(AgentStrategy):
             # Get phase-appropriate tools
             tools = self.get_tools_for_phase(self._current_phase)
             
-            # If no tools available for this phase, skip it
-            if not tools and self._current_phase != "synthesis":
-                print(f"⚠️ [DEBUG] No tools for phase {self._current_phase}, advancing")
+            # If no tools available and phase requires tools, advance
+            if not tools and self._phase_provider.requires_tools(self._current_phase):
+                print(f"⚠️ [STRATEGY] Phase {self._current_phase} needs tools but has none, advancing")
                 self._advance_phase()
                 return self.think(messages, observations)
             
@@ -292,94 +295,41 @@ class PlanAndExecuteStrategy(AgentStrategy):
         if self._no_progress_count > 3:
             return False
         
-        # Check if all phases complete
-        if self._current_phase == ExecutionPhase.SYNTHESIS and self._phase_iterations > 0:
-            return False
+        # Check if in terminal phase (ask provider, don't hardcode)
+        if self._phase_provider.is_terminal_phase(self._current_phase):
+            if self._phase_iterations > 0:
+                return False
         
         return True
     
     def _update_phase(self, observations: List[AgentObservation]) -> None:
         """
-        Update the current phase based on work plan status and observations.
-        Continues transitioning until the phase is stable (no more transitions).
+        Update phase using provider.
         
-        This handles cascading phase transitions automatically, e.g.:
-        - Planning → Allocation → Monitoring (when responses are ready)
-        - Planning → Allocation → Execution (when local work is ready)
-        - Monitoring → Allocation → Execution (when new work becomes ready)
+        Provider is completely opaque - strategy doesn't know:
+        - If cascade happens
+        - How many transitions occur
+        - If iteration limits are checked
+        - Any other internal logic
         
-        Safety measures:
-        - Max 10 iterations to prevent infinite loops
-        - Cycle detection to catch phase transition bugs
-        - Detailed logging for debugging
+        Just: "I'm in phase X" → Provider → "Now in phase Y"
         
         Args:
             observations: Recent observations from tool execution
         """
-        print(f"🔄 [DEBUG] _update_phase() - Starting from: {self._current_phase}")
+        old_phase = self._current_phase
         
-        # Safety limits
-        max_transitions = 10
-        transitions = 0
-        visited_phases = []  # Track transition path for cycle detection
+        # Provider returns new phase (all logic internal)
+        self._current_phase = self._phase_provider.update_phase(
+            current_phase=self._current_phase,
+            observations=observations
+        )
         
-        # Loop until phase is stable
-        while transitions < max_transitions:
-            # Increment current phase iteration before making decision
-            if hasattr(self._phase_provider, 'increment_phase_iteration'):
-                self._phase_provider.increment_phase_iteration(self._current_phase)
-            
-            # Get current context
-            context = self._phase_provider.get_phase_context()
-            if context and context.work_plan_status:
-                status = context.work_plan_status
-                print(f"📊 [DEBUG] Phase context: total={status.total_items}, pending={status.pending_items}, "
-                      f"waiting={status.waiting_items}, has_responses={status.has_responses}, "
-                      f"has_local_ready={status.has_local_ready}")
-            
-            # Decide next phase
-            print(f"📍 [DEBUG] decide_next_phase() - current: {self._current_phase}")
-            new_phase = self._phase_provider.decide_next_phase(
-                current_phase=self._current_phase,
-                context=context,
-                observations=observations
-            )
-            
-            print(f"🔀 [DEBUG] Provider decided: {self._current_phase} → {new_phase}")
-            
-            # Check if phase changed
-            if new_phase != self._current_phase:
-                # Cycle detection: Check if we've seen this phase before in this cascade
-                if new_phase in visited_phases:
-                    transition_path = " → ".join(visited_phases + [self._current_phase, new_phase])
-                    print(f"⚠️ [CYCLE DETECTED] Phase cycle in transition path: {transition_path}")
-                    print(f"⚠️ [CYCLE DETECTED] Stopping at: {self._current_phase}")
-                    break
-                
-                # Record the transition
-                visited_phases.append(self._current_phase)
-                
-                # Transition to new phase
-                print(f"🔄 [CASCADE] Transitioning: {self._current_phase} → {new_phase} (cascade #{transitions + 1})")
-                self._phase_iterations = 0
-                self._current_phase = new_phase
-                transitions += 1
-            else:
-                # Phase is stable
-                print(f"✅ [STABLE] Phase stable at: {self._current_phase}")
-                self._phase_iterations += 1
-                break
+        # Simple log (no internal details)
+        if old_phase != self._current_phase:
+            print(f"🔀 [STRATEGY] Phase: {old_phase} → {self._current_phase}")
         
-        # Safety check: max transitions reached
-        if transitions >= max_transitions:
-            transition_path = " → ".join(visited_phases + [self._current_phase])
-            print(f"⚠️ [MAX TRANSITIONS] Reached limit ({max_transitions}) in path: {transition_path}")
-            print(f"⚠️ [MAX TRANSITIONS] Stopping at: {self._current_phase}")
-        
-        # Log final transition summary if we cascaded
-        if transitions > 0:
-            transition_path = " → ".join(visited_phases + [self._current_phase])
-            print(f"🎯 [PHASE CASCADE] Completed {transitions} transition(s): {transition_path}")
+        self._phase_iterations = 0
     
     def _should_transition_phase(self, observations: List[AgentObservation]) -> bool:
         """
@@ -393,19 +343,18 @@ class PlanAndExecuteStrategy(AgentStrategy):
         return False
     
     def _advance_phase(self) -> None:
-        """Advance to the next phase and reset iteration counter."""
-        phases = [
-            ExecutionPhase.PLANNING,
-            ExecutionPhase.ALLOCATION,
-            ExecutionPhase.EXECUTION,
-            ExecutionPhase.MONITORING,
-            ExecutionPhase.SYNTHESIS
-        ]
+        """
+        Advance to next phase in sequence.
         
-        current_idx = phases.index(self._current_phase)
-        if current_idx < len(phases) - 1:
-            self._current_phase = phases[current_idx + 1]
+        Delegates to provider - NO hardcoded phase knowledge.
+        """
+        next_phase = self._phase_provider.get_next_phase_in_sequence(self._current_phase)
+        if next_phase:
+            print(f"➡️ [STRATEGY] Advancing: {self._current_phase} → {next_phase}")
+            self._current_phase = next_phase
             self._phase_iterations = 0
+        else:
+            print(f"⚠️ [STRATEGY] No next phase after {self._current_phase}, staying")
     
     
     def _build_phase_prompt(self) -> str:

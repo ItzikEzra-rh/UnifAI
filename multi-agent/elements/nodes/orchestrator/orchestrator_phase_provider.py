@@ -7,7 +7,7 @@ Uses clean Pydantic models and enums to define orchestrator phases professionall
 from enum import Enum
 from typing import List, Callable, Any, Optional
 from elements.tools.common.base_tool import BaseTool
-from elements.nodes.common.agent.phases.unified_phase_provider import BasePhaseProvider
+from elements.nodes.common.agent.phases.unified_phase_provider import PhaseProvider
 from elements.nodes.common.agent.phases.phase_definition import PhaseSystem, PhaseDefinition
 from elements.nodes.common.agent.phases.phase_protocols import PhaseState, create_phase_state, create_work_plan_status
 from elements.nodes.common.agent.phases.models import PhaseValidationContext
@@ -56,7 +56,7 @@ class OrchestratorPhase(Enum):
         return [phase.value for phase in cls.get_execution_order()]
 
 
-class OrchestratorPhaseProvider(BasePhaseProvider):
+class OrchestratorPhaseProvider(PhaseProvider):
     """
     Professional orchestrator phase provider using clean Pydantic models and enums.
     
@@ -101,6 +101,9 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         
         # Track iteration state using Pydantic model
         self._iteration_state = PhaseIterationState()
+        
+        # Private: Cascade safety limit
+        self._max_cascade_transitions = 10
 
         super().__init__(domain_tools)  # This calls _create_phase_system()
     
@@ -109,12 +112,9 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         workload_service = self._get_workload_service()
         return workload_service.get_thread(self._thread_id)
 
-    def increment_phase_iteration(self, phase_name: str) -> None:
+    def _increment_phase_iteration(self, phase_name: str) -> None:
         """
-        Increment iteration count for the given phase.
-        
-        SRP: Single responsibility for tracking phase iterations.
-        Uses immutable Pydantic state management.
+        Private: Increment iteration count for the given phase.
         
         Args:
             phase_name: Name of the phase to increment
@@ -122,11 +122,11 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         self._iteration_state = self._iteration_state.increment(phase_name)
         current = self._iteration_state.get_count(phase_name)
         limit = self._iteration_limits.get_limit(phase_name)
-        print(f"🔢 [DEBUG] Phase {phase_name} iteration: {current}/{limit}")
+        print(f"🔢 [ORCHESTRATOR] Phase {phase_name}: {current}/{limit} iterations")
 
-    def is_phase_limit_exceeded(self, phase_name: str) -> bool:
+    def _is_phase_limit_exceeded(self, phase_name: str) -> bool:
         """
-        Check if phase iteration limit is exceeded.
+        Private: Check if phase iteration limit is exceeded.
         
         Args:
             phase_name: Name of the phase to check
@@ -136,19 +136,16 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         """
         return self._iteration_state.is_exceeded(phase_name, self._iteration_limits)
 
-    def reset_phase_iteration(self, phase_name: str) -> None:
+    def _reset_phase_iteration(self, phase_name: str) -> None:
         """
-        Reset iteration count for the given phase.
-        
-        Called when transitioning away from a phase.
-        Uses immutable Pydantic state management.
+        Private: Reset iteration count for the given phase.
         
         Args:
             phase_name: Name of the phase to reset
         """
         old_count = self._iteration_state.get_count(phase_name)
         self._iteration_state = self._iteration_state.reset(phase_name)
-        print(f"🔄 [DEBUG] Reset {phase_name} iterations: {old_count} → 0")
+        print(f"🔄 [ORCHESTRATOR] Reset {phase_name}: {old_count} → 0")
 
     def _create_phase_system(self) -> PhaseSystem:
         """
@@ -320,8 +317,144 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
             )
 
     def get_initial_phase(self) -> str:
-        """Get the initial phase for orchestration."""
+        """
+        Get the initial phase for orchestration.
+        
+        Orchestrator always starts with planning.
+        """
         return OrchestratorPhase.PLANNING.value
+    
+    def is_terminal_phase(self, phase_name: str) -> bool:
+        """
+        Check if phase is terminal.
+        
+        SYNTHESIS is the only terminal phase - represents workflow completion.
+        Other phases may stay in themselves temporarily (processing, waiting)
+        but will eventually transition.
+        
+        Args:
+            phase_name: Phase name to check
+            
+        Returns:
+            True if terminal (SYNTHESIS), False otherwise
+        """
+        return phase_name == OrchestratorPhase.SYNTHESIS.value
+    
+    def update_phase(
+        self,
+        current_phase: str,
+        observations: List[Any]
+    ) -> str:
+        """
+        Update phase with orchestrator's internal cascade logic.
+        
+        PRIVATE IMPLEMENTATION:
+        - Increment iteration
+        - Cascade until stable
+        - Reset iteration on transition
+        - Safety limits and cycle detection
+        
+        Strategy doesn't see any of this - just gets final phase.
+        
+        Args:
+            current_phase: Current phase name
+            observations: Recent observations from execution
+            
+        Returns:
+            Final stable phase name
+        """
+        # Increment iteration for current phase
+        self._increment_phase_iteration(current_phase)
+        
+        # Get initial context
+        context = self.get_phase_context()
+        
+        # Private cascade logic (internal to orchestrator)
+        final_phase = self._cascade_to_stable(current_phase, context, observations)
+        
+        # Reset iteration if phase changed
+        if final_phase != current_phase:
+            self._reset_phase_iteration(current_phase)
+        
+        return final_phase
+    
+    def _cascade_to_stable(
+        self,
+        current_phase: str,
+        context: PhaseState,
+        observations: List[Any]
+    ) -> str:
+        """
+        Private: Cascade transitions until reaching stable phase.
+        
+        Keeps calling decide_next_phase() until phase is stable.
+        Includes safety mechanisms: max transitions, cycle detection, validation.
+        
+        Args:
+            current_phase: Starting phase
+            context: Current phase state
+            observations: Recent observations
+            
+        Returns:
+            Final stable phase
+        """
+        transitions = [current_phase]
+        visited = {current_phase}
+        current = current_phase
+        
+        for cascade_num in range(self._max_cascade_transitions):
+            # Decide next phase
+            next_phase = self.decide_next_phase(current, context, observations)
+            
+            # Stable - done
+            if next_phase == current:
+                self._log_cascade(transitions, cascade_num, 'stable')
+                return current
+            
+            # Validate transition
+            if not self.validate_transition(current, next_phase):
+                self._log_cascade(transitions, cascade_num, 'invalid')
+                return current
+            
+            # Cycle detection
+            if next_phase in visited:
+                self._log_cascade(transitions + [next_phase], cascade_num, 'cycle')
+                return current
+            
+            # Continue cascade
+            transitions.append(next_phase)
+            visited.add(next_phase)
+            current = next_phase
+            
+            # Refresh context for next iteration
+            context = self.get_phase_context()
+        
+        # Max transitions reached
+        self._log_cascade(transitions, self._max_cascade_transitions, 'max_transitions')
+        return current
+    
+    def _log_cascade(self, transitions: List[str], count: int, reason: str) -> None:
+        """
+        Private: Log cascade results.
+        
+        Args:
+            transitions: List of phases visited
+            count: Number of transitions
+            reason: Why cascade stopped
+        """
+        if count == 0:
+            return  # No cascade happened, no log needed
+        
+        path = " → ".join(transitions)
+        
+        if reason == 'stable':
+            print(f"🎯 [ORCHESTRATOR] Phase cascade: {path} ({count} steps)")
+        elif reason == 'cycle':
+            print(f"⚠️ [ORCHESTRATOR] Cycle detected: {path}")
+        elif reason == 'max_transitions':
+            print(f"⚠️ [ORCHESTRATOR] Max transitions ({count}): {path}")
+        elif reason == 'invalid':
+            print(f"⚠️ [ORCHESTRATOR] Invalid transition: {path}")
 
     def decide_next_phase(
             self,
@@ -345,8 +478,8 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         print(f"📊 [DEBUG] Work plan status: total={status.total_items if status else 'None'}")
         
         # Check iteration limits first
-        if self.is_phase_limit_exceeded(current_phase):
-            print(f"⚠️ [DEBUG] Phase {current_phase} exceeded iteration limit")
+        if self._is_phase_limit_exceeded(current_phase):
+            print(f"⚠️ [ORCHESTRATOR] Phase {current_phase} exceeded iteration limit")
             return self._handle_phase_limit_exceeded(current_phase, status)
 
         # Convert current_phase to enum for type-safe comparison
@@ -360,7 +493,6 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         if current_phase_enum == OrchestratorPhase.PLANNING:
             # Move to allocation if we have items to allocate
             if status.total_items > 0:
-                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.ALLOCATION.value
             else:
                 return OrchestratorPhase.PLANNING.value  # Stay in planning
@@ -368,11 +500,9 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         elif current_phase_enum == OrchestratorPhase.ALLOCATION:
             # Move to execution if we have local work ready
             if status.has_local_ready:
-                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.EXECUTION.value
             # Move to monitoring if we have responses to interpret
             elif status.has_responses:
-                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.MONITORING.value
             # If just waiting (no responses yet), stay in allocation (will finish and wait for graph)
             elif status.has_remote_waiting:
@@ -382,13 +512,11 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
 
         elif current_phase_enum == OrchestratorPhase.EXECUTION:
             # Move to monitoring after execution attempts
-            self.reset_phase_iteration(current_phase)
             return OrchestratorPhase.MONITORING.value
 
         elif current_phase_enum == OrchestratorPhase.MONITORING:
             # Check if work is complete
             if status.is_complete:
-                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.SYNTHESIS.value
             # PRIORITY: Stay in monitoring if we still have responses to interpret
             # (Process responses BEFORE transitioning to handle new pending work)
@@ -396,11 +524,9 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
                 return OrchestratorPhase.MONITORING.value
             # Go back to allocation if we have pending items (and no responses)
             elif status.pending_items > 0:
-                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.ALLOCATION.value
             # Go back to execution if we have local ready items
             elif status.has_local_ready:
-                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.EXECUTION.value
             else:
                 return OrchestratorPhase.MONITORING.value  # Stay in monitoring
@@ -415,9 +541,7 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
     
     def _handle_phase_limit_exceeded(self, current_phase: str, status) -> str:
         """
-        Handle when a phase exceeds its iteration limit.
-        
-        SRP: Single responsibility for limit exceeded logic.
+        Private: Handle when a phase exceeds its iteration limit.
         
         Args:
             current_phase: Phase that exceeded limit
@@ -426,49 +550,41 @@ class OrchestratorPhaseProvider(BasePhaseProvider):
         Returns:
             Next phase to transition to (or synthesis for terminal)
         """
-        print(f"🚨 [DEBUG] Handling phase limit exceeded for {current_phase}")
+        print(f"🚨 [ORCHESTRATOR] Phase limit exceeded for {current_phase}")
         
         try:
             current_phase_enum = OrchestratorPhase(current_phase)
         except ValueError:
-            # Unknown phase, reset and go to synthesis
-            self.reset_phase_iteration(current_phase)
+            # Unknown phase, go to synthesis
             return OrchestratorPhase.SYNTHESIS.value
         
         # Phase-specific limit handling
         if current_phase_enum == OrchestratorPhase.PLANNING:
             # If planning stuck, try allocation anyway (maybe partial plan is enough)
             if status and status.total_items > 0:
-                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.ALLOCATION.value
             else:
-                # No plan at all - terminal failure, reset and go to synthesis
-                self.reset_phase_iteration(current_phase)
+                # No plan at all - terminal failure, go to synthesis
                 return OrchestratorPhase.SYNTHESIS.value
                 
         elif current_phase_enum == OrchestratorPhase.ALLOCATION:
             # If allocation stuck, try execution with what we have
             if status and status.has_local_ready:
-                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.EXECUTION.value
             else:
                 # Skip to monitoring or synthesis
-                self.reset_phase_iteration(current_phase)
                 return OrchestratorPhase.MONITORING.value
                 
         elif current_phase_enum == OrchestratorPhase.EXECUTION:
             # If execution stuck, move to monitoring
-            self.reset_phase_iteration(current_phase)
             return OrchestratorPhase.MONITORING.value
             
         elif current_phase_enum == OrchestratorPhase.MONITORING:
             # If monitoring stuck (waiting too long), force synthesis
-            self.reset_phase_iteration(current_phase)
             return OrchestratorPhase.SYNTHESIS.value
             
         else:
-            # For synthesis or unknown phases, reset and stay in synthesis
-            self.reset_phase_iteration(current_phase)
+            # For synthesis or unknown phases, stay in synthesis
             return OrchestratorPhase.SYNTHESIS.value
 
     def _build_validation_context(self, phase_name: str) -> PhaseValidationContext:

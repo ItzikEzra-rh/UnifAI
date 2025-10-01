@@ -1,11 +1,11 @@
 """
-Unified phase provider following SOLID principles.
+Core phase provider abstraction.
 
-This module provides a single, cohesive interface for all phase-related concerns,
-using clean Pydantic models for phase definitions with validation support.
+This is the main interface that strategies and nodes depend on.
+All phase providers must implement this contract.
 """
 
-from typing import Protocol, List, Optional, Any
+from typing import List, Optional, Any
 from abc import ABC, abstractmethod
 from elements.tools.common.base_tool import BaseTool
 from .phase_definition import PhaseSystem, PhaseDefinition
@@ -17,49 +17,18 @@ if TYPE_CHECKING:
     from .models import PhaseValidationContext
 
 
-class PhaseProvider(Protocol):
+class PhaseProvider(ABC):
     """
-    Clean, unified protocol for all phase-related concerns.
+    Abstract base class for phase management.
     
-    Uses Pydantic models for type-safe, well-defined phase management.
-    """
+    This is the core abstraction that strategies depend on.
     
-    def get_phase_system(self) -> PhaseSystem:
-        """Get the complete phase system definition."""
-        ...
-    
-    def get_phase_context(self) -> PhaseState:
-        """Get current phase context for decision making."""
-        ...
-    
-    def get_tools_for_phase(self, phase_name: str) -> List[BaseTool]:
-        """Get actual tool objects for the given phase."""
-        ...
-    
-    def get_phase_guidance(self, phase_name: str) -> str:
-        """Get guidance text for the given phase."""
-        ...
-    
-    def decide_next_phase(
-        self,
-        current_phase: str,
-        context: PhaseState,
-        observations: List[Any]
-    ) -> str:
-        """Decide the next execution phase based on current state."""
-        ...
-    
-    def get_supported_phases(self) -> List[str]:
-        """Get list of phase names supported by this provider."""
-        ...
-
-
-class BasePhaseProvider(ABC):
-    """
-    Clean abstract base class for phase providers.
+    Key Contract:
+    - Strategies call update_phase() and get back a phase name
+    - All internal logic (cascade, iteration, limits) is provider's business
+    - Strategy knows NOTHING about provider internals
     
     Uses Pydantic models for well-defined, type-safe phase management.
-    Each subclass defines its complete phase system using PhaseSystem model.
     """
     
     def __init__(self, tools: List[BaseTool]):
@@ -171,7 +140,147 @@ class BasePhaseProvider(ABC):
         context: PhaseState,
         observations: List[Any]
     ) -> str:
-        """Decide next phase - must be implemented by subclasses."""
+        """
+        Decide the next phase (single-step decision).
+        
+        This is the core state machine logic.
+        May return same phase (stable) or different phase (transition).
+        
+        Args:
+            current_phase: Current phase name
+            context: Current phase state
+            observations: Recent observations from execution
+            
+        Returns:
+            Next phase name (may be same as current if stable)
+        """
         pass
+    
+    @abstractmethod
+    def update_phase(
+        self,
+        current_phase: str,
+        observations: List[Any]
+    ) -> str:
+        """
+        Update phase and return the new phase.
+        
+        This is the PRIMARY method strategies use.
+        Provider handles all internal logic and returns final phase.
+        
+        Implementation can be:
+        - Simple: Just call decide_next_phase() once
+        - Complex: Cascade, iteration tracking, limits, etc. (all internal)
+        
+        Args:
+            current_phase: Current phase name
+            observations: Recent observations from execution
+            
+        Returns:
+            Final phase name (after any internal processing)
+        """
+        pass
+    
+    # =================================================================
+    # CONCRETE METHODS - Shared implementation
+    # =================================================================
+    
+    def get_initial_phase(self) -> str:
+        """
+        Get the initial/starting phase for this provider.
+        
+        Default: First phase in the system.
+        Subclasses can override for custom initial phase.
+        
+        Returns:
+            Initial phase name
+        """
+        phases = self.get_supported_phases()
+        if not phases:
+            raise ValueError("Phase system has no phases")
+        return phases[0]
+    
+    def is_terminal_phase(self, phase_name: str) -> bool:
+        """
+        Check if a phase is terminal (workflow ends here).
+        
+        Default: Phase that transitions only to itself.
+        Subclasses should override for provider-specific logic.
+        
+        Args:
+            phase_name: Phase name to check
+            
+        Returns:
+            True if terminal, False otherwise
+        """
+        try:
+            context = self.get_phase_context()
+            next_phase = self.decide_next_phase(phase_name, context, [])
+            return next_phase == phase_name
+        except:
+            return False
+    
+    def requires_tools(self, phase_name: str) -> bool:
+        """
+        Check if phase requires tools to proceed.
+        
+        Terminal phases typically don't require tools.
+        
+        Args:
+            phase_name: Phase name to check
+            
+        Returns:
+            True if tools required, False otherwise
+        """
+        # Terminal phases don't require tools
+        if self.is_terminal_phase(phase_name):
+            return False
+        
+        # Check if phase has tools
+        tools = self.get_tools_for_phase(phase_name)
+        return len(tools) > 0
+    
+    def get_next_phase_in_sequence(self, current_phase: str) -> Optional[str]:
+        """
+        Get next phase in natural sequential order (for fallback).
+        
+        This is the "default" progression when no state-based decision applies.
+        
+        Args:
+            current_phase: Current phase name
+            
+        Returns:
+            Next phase name, or None if at end or terminal
+        """
+        if self.is_terminal_phase(current_phase):
+            return None
+        
+        phases = self.get_supported_phases()
+        try:
+            idx = phases.index(current_phase)
+            if idx < len(phases) - 1:
+                return phases[idx + 1]
+        except ValueError:
+            pass
+        
+        return None
+    
+    def validate_transition(self, from_phase: str, to_phase: str) -> bool:
+        """
+        Validate that a phase transition is allowed.
+        
+        Default: All transitions allowed.
+        Subclasses can override for strict validation.
+        
+        Args:
+            from_phase: Source phase
+            to_phase: Target phase
+            
+        Returns:
+            True if transition valid, False otherwise
+        """
+        return True
 
 
+# Backward compatibility alias
+BasePhaseProvider = PhaseProvider
