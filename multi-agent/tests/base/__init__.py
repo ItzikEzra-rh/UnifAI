@@ -45,6 +45,7 @@ from tests.base.test_helpers import (
     create_multi_node_scenario,
     # Real flow execution helpers
     setup_node_for_execution,
+    setup_multi_node_env,
     create_task_packet,
     add_packet_to_inbox,
     add_packets_to_inbox,
@@ -74,6 +75,7 @@ from tests.base.flow_test_helpers import (
     run_orchestration_flow,
     # Multi-round orchestration (Priority 2)
     create_stateful_llm,
+    create_simple_agent_llm,
     create_multi_round_planning_llm,
     run_orchestration_until_complete,
     create_monitoring_llm,
@@ -134,6 +136,7 @@ __all__ = [
     
     # Real Flow Execution Helpers
     'setup_node_for_execution',
+    'setup_multi_node_env',
     'create_task_packet',
     'add_packet_to_inbox',
     'add_packets_to_inbox',
@@ -156,6 +159,7 @@ __all__ = [
     'run_orchestration_flow',
     # Multi-round orchestration (Priority 2)
     'create_stateful_llm',
+    'create_simple_agent_llm',
     'create_multi_round_planning_llm',
     'run_orchestration_until_complete',
     'create_monitoring_llm',

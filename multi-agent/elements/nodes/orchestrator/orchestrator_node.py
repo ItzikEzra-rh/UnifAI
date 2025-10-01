@@ -133,17 +133,19 @@ class OrchestratorNode(
             finally:
                 self.acknowledge(packet.id)
 
-        # Run orchestration cycles for updated threads (planning phase)
+        # Run orchestration cycles for updated threads
         for thread_id in self._updated_threads:
-            service = self.workspaces
-            status_summary = service.get_work_plan_status(thread_id, self.uid)
+            status_summary = self.workspaces.get_work_plan_status(thread_id, self.uid)
 
+            # Run orchestration cycle if work is not yet complete
             if not status_summary.is_complete:
-                # Run orchestration and get result
-                agent_result = self._run_orchestration_cycle(thread_id, "Continuing after batch response processing")
-            else:
+                self._run_orchestration_cycle(thread_id, "Continuing after batch response processing")
+                # Re-check status - work might have completed during the cycle
+                status_summary = self.workspaces.get_work_plan_status(thread_id, self.uid)
+            
+            # Finalize if work is complete (either was already complete or became complete during cycle)
+            if status_summary.is_complete:
                 print(f"🎉 [DEBUG] Work plan complete for thread {thread_id}")
-                # Get the final result and finalize
                 final_result = self._get_final_orchestration_result(thread_id)
                 if final_result:
                     self._finalize_completed_work(thread_id, final_result)
@@ -269,12 +271,13 @@ class OrchestratorNode(
         Resolve the target thread for updating work plan from a response.
         
         Enhanced to handle nested thread hierarchies by using ThreadService.
+        Walks up the thread hierarchy to find where this orchestrator's work plan lives.
         
         Args:
             task: Response task (may be from deeply nested child thread)
             
         Returns:
-            Root thread ID where the work plan should be updated
+            Thread ID where this orchestrator's work plan is stored
         """
         response_thread_id = task.thread_id
         if not response_thread_id:
@@ -282,12 +285,12 @@ class OrchestratorNode(
             return getattr(self, '_current_thread_id', None) or 'default'
 
         try:
-            # Use thread service to find work plan owner
-            target_thread_id = self.threads.find_work_plan_owner(response_thread_id)
+            # Use thread service to find where THIS orchestrator's work plan is
+            target_thread_id = self.threads.find_work_plan_owner(response_thread_id, self.uid)
 
             if target_thread_id != response_thread_id:
                 print(
-                    f"🔗 [DEBUG] Response from nested thread {response_thread_id}, updating root thread {target_thread_id}")
+                    f"🔗 [DEBUG] Response from nested thread {response_thread_id}, updating work plan in thread {target_thread_id}")
 
             return target_thread_id or response_thread_id
 
@@ -574,14 +577,23 @@ class OrchestratorNode(
         return "\n".join(lines)
 
     def _get_final_orchestration_result(self, thread_id: str) -> Optional[AgentResult]:
-        """Get the final orchestration result for completed work."""
+        """
+        Get the final orchestration result from the completed synthesis phase.
+        
+        The synthesis phase should have:
+        1. Called workplan.summarize tool
+        2. Returned AgentFinish with the LLM's summary
+        3. Created an AgentResult with that summary as content
+        
+        We retrieve the most recent successful result from this orchestrator.
+        """
         results = self.workspaces.get_results(thread_id)
-
-        # Find the most recent result from this orchestrator (success or failure)
+        
+        # Find the most recent result from this orchestrator
         for result in reversed(results):
             if result.agent_id == self.uid:
                 return result
-
+        
         return None
 
     def _finalize_completed_work(self, thread_id: str, agent_result: AgentResult) -> None:

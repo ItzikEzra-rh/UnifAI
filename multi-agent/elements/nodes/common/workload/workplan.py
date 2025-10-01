@@ -366,7 +366,7 @@ class WorkPlanService:
         Load work plan for response processing.
         
         Automatically resolves target thread using thread service.
-        This handles child thread responses by finding the parent thread that owns the work plan.
+        This handles child thread responses by finding the thread that owns the work plan.
         
         Args:
             response_thread_id: Thread ID from response (may be child thread)
@@ -375,9 +375,9 @@ class WorkPlanService:
         Returns:
             WorkPlan instance for the correct thread, or None if not found
         """
-        target_thread_id = self._thread_service.find_work_plan_owner(response_thread_id)
+        target_thread_id = self._thread_service.find_work_plan_owner(response_thread_id, owner_uid)
         if not target_thread_id:
-            print(f"❌ [PLAN] Could not resolve work plan owner for thread {response_thread_id}")
+            print(f"❌ [PLAN] Could not resolve work plan owner for thread {response_thread_id}, owner: {owner_uid}")
             return None
             
         return self.load(target_thread_id, owner_uid)

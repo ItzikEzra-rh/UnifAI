@@ -229,6 +229,11 @@ class TestResponseRouting(BaseUnitTest):
         parent = hierarchy["parent"]
         child = hierarchy["children"][0]
         
+        # Create work plan in parent thread (this is where orch1's work plan would be)
+        workspace_service = orch.get_workload_service().get_workspace_service()
+        plan = workspace_service.create_work_plan(parent.thread_id, "orch1", "Parent plan")
+        workspace_service.save_work_plan(plan)
+        
         # ✅ GENERIC: Use assertion helper
         assert_response_routes_to_root(orch, child.thread_id, parent.thread_id)
     
@@ -243,26 +248,41 @@ class TestResponseRouting(BaseUnitTest):
         root = threads[0]
         grandchild = threads[2]
         
+        # Create work plan in root thread (this is where orch1's work plan would be)
+        workspace_service = orch.get_workload_service().get_workspace_service()
+        plan = workspace_service.create_work_plan(root.thread_id, "orch1", "Root plan")
+        workspace_service.save_work_plan(plan)
+        
         # ✅ GENERIC: Use assertion helper
         assert_response_routes_to_root(orch, grandchild.thread_id, root.thread_id)
     
-    def test_work_plan_owner_is_root_thread(self, mock_llm_provider):
-        """✅ MEDIUM: Test work plan owner is always root thread."""
+    def test_work_plan_owner_walks_hierarchy(self, mock_llm_provider):
+        """✅ MEDIUM: Test work plan owner search walks up hierarchy to find owner's plan."""
         # ✅ GENERIC: Use setup helper
         orch = OrchestratorNode(llm=mock_llm_provider)
         state_view, context = setup_node_with_context(orch, "orch1", [])
         
         thread_service = orch.get_workload_service().get_thread_service()
+        workspace_service = orch.get_workload_service().get_workspace_service()
         
-        # Create 5-level deep hierarchy
-        threads = create_multi_level_hierarchy(orch, levels=5)
-        root = threads[0]
+        # Create 3-level hierarchy
+        threads = create_multi_level_hierarchy(orch, levels=3)
+        root, child, grandchild = threads
         
-        # Check work plan owner for each level
+        # Create work plan in root thread for orch1
+        plan = workspace_service.create_work_plan(root.thread_id, "orch1", "Root plan")
+        workspace_service.save_work_plan(plan)
+        
+        # Check work plan owner search from different levels
+        # All should route to root (where orch1's work plan is)
         for thread in threads:
-            owner = thread_service.find_work_plan_owner(thread.thread_id)
+            owner = thread_service.find_work_plan_owner(thread.thread_id, "orch1")
             assert owner == root.thread_id, \
                 f"Work plan owner for {thread.thread_id} should be root {root.thread_id}, got {owner}"
+        
+        # Test with non-existent owner - should return None
+        no_owner = thread_service.find_work_plan_owner(grandchild.thread_id, "nonexistent")
+        assert no_owner is None, f"Should return None for non-existent owner, got {no_owner}"
     
     def test_response_updates_parent_work_plan(self, mock_llm_provider):
         """✅ COMPLEX: Test response from child updates parent's work plan."""

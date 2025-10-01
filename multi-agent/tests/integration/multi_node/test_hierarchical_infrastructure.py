@@ -386,7 +386,7 @@ class TestHierarchicalWorkPlanOwnership(BaseIntegrationTest):
         
         # Work plan owner should be found via root thread
         thread_service = parent_orch.get_workload_service().get_thread_service()
-        owner_thread = thread_service.find_work_plan_owner(grandchild_thread.thread_id)
+        owner_thread = thread_service.find_work_plan_owner(grandchild_thread.thread_id, "parent_orch")
         
         assert owner_thread == root_thread.thread_id
     

@@ -532,6 +532,41 @@ def create_stateful_llm(responses_per_call: List[List[Dict]]):
     return create_mock_llm_with_tools(responses_per_call)
 
 
+def create_simple_agent_llm(response_content: str):
+    """
+    ✅ GENERIC: Create a simple mock LLM for agents that just return content (no tools).
+    
+    For agents without tools, the LLM just needs to return final answer content.
+    This is cleaner than using create_stateful_llm which is designed for tool calls.
+    
+    Useful for: CustomAgentNode tests where agent completes work without using tools.
+    Works for: ANY agent that returns simple text responses.
+    
+    Args:
+        response_content: The content the agent should return
+        
+    Returns:
+        Mock LLM configured to return the content with no tool calls
+        
+    Example:
+        # Create agent that returns simple response
+        agent_llm = create_simple_agent_llm("Analysis complete: Found 150 records")
+        agent = create_custom_agent_node("agent1", agent_llm)
+        
+        # Use in real flow test
+        state = execute_agent_work(agent, state, task)
+    """
+    from elements.llms.common.chat.message import ChatMessage, Role
+    
+    llm = Mock()
+    llm.chat = Mock(return_value=ChatMessage(
+        role=Role.ASSISTANT,
+        content=response_content,
+        tool_calls=[]  # No tools = final answer
+    ))
+    return llm
+
+
 def create_multi_round_planning_llm(rounds: List[Dict]):
     """
     ✅ GENERIC: Create LLM for multi-round orchestration with different actions per round.

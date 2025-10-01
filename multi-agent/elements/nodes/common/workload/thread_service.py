@@ -174,18 +174,19 @@ class IThreadService(ABC):
     # ========== WORK PLAN RESOLUTION ==========
     
     @abstractmethod
-    def find_work_plan_owner(self, thread_id: str) -> Optional[str]:
+    def find_work_plan_owner(self, thread_id: str, owner_uid: str) -> Optional[str]:
         """
-        Find thread that owns work plan for response processing.
+        Find thread that owns work plan for the given owner_uid.
         
-        Default behavior: work plans owned by root threads.
-        Can be overridden for custom ownership rules.
+        Walks UP the thread hierarchy from response thread until finding
+        a thread where owner_uid has a work plan.
         
         Args:
             thread_id: Thread ID (may be child thread from response)
+            owner_uid: Node UID that owns the work plan
             
         Returns:
-            Thread ID that owns the work plan
+            Thread ID where owner_uid's work plan exists, or None
         """
         pass
     
@@ -360,9 +361,41 @@ class ThreadService(IThreadService):
         path = self.get_hierarchy_path(thread_id)
         return len(path) - 1  # 0-based depth
     
-    def find_work_plan_owner(self, thread_id: str) -> Optional[str]:
-        """Default: work plans owned by root threads."""
-        return self.find_root_thread(thread_id)
+    def find_work_plan_owner(self, thread_id: str, owner_uid: str) -> Optional[str]:
+        """
+        Find thread that owns work plan for the given owner_uid.
+        
+        Walks UP the thread hierarchy from response thread until finding
+        a thread where owner_uid has a work plan.
+        
+        This supports arbitrary nesting depths:
+        - Orch → Agent (1 level)
+        - Orch → Orch → Agent (2 levels)
+        - Orch → Orch → Orch → Agent (3+ levels)
+        - Agent chains with delegation
+        """
+        current_id = thread_id
+        depth = 0
+        
+        while depth < self._max_depth:
+            # Check if owner_uid has a work plan in current thread
+            try:
+                workspace = self._storage.get_workspace(current_id)
+                if workspace and owner_uid in workspace.context.work_plans:
+                    return current_id  # Found it!
+            except Exception as e:
+                # Workspace doesn't exist for this thread, continue searching
+                pass
+            
+            # Move up to parent thread
+            thread = self._storage.get_thread(current_id)
+            if not thread or not thread.parent_thread_id:
+                return None  # Reached root, not found
+            
+            current_id = thread.parent_thread_id
+            depth += 1
+        
+        return None  # Max depth reached
     
     def list_threads_by_initiator(self, initiator: str) -> List[Thread]:
         """Get all threads by initiator."""

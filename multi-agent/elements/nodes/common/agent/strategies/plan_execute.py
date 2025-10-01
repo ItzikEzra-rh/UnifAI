@@ -296,8 +296,11 @@ class PlanAndExecuteStrategy(AgentStrategy):
             return False
         
         # Check if in terminal phase (ask provider, don't hardcode)
+        # Terminal phases (like SYNTHESIS) need at least 2 iterations:
+        # 1. Call synthesis tool (e.g., workplan.summarize)
+        # 2. See results, return AgentFinish with summary
         if self._phase_provider.is_terminal_phase(self._current_phase):
-            if self._phase_iterations > 0:
+            if self._phase_iterations > 1:  # ✅ Allow tool call + finish
                 return False
         
         return True

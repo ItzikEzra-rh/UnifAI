@@ -745,7 +745,7 @@ def assert_thread_hierarchy(parent_thread, child_thread):
 
 def assert_response_routes_to_root(orchestrator, child_thread_id: str, expected_root_id: str):
     """
-    ✅ GENERIC: Assert response from child routes to correct root thread.
+    ✅ GENERIC: Assert response from child routes to correct thread (where orchestrator's work plan is).
     
     Useful for: Verifying response routing through hierarchy.
     Works for: ANY orchestrator with ThreadService.
@@ -753,13 +753,14 @@ def assert_response_routes_to_root(orchestrator, child_thread_id: str, expected_
     Args:
         orchestrator: Orchestrator node
         child_thread_id: Child thread ID (where response originates)
-        expected_root_id: Expected root thread ID (where work plan lives)
+        expected_root_id: Expected thread ID (where orchestrator's work plan lives)
         
     Example:
-        assert_response_routes_to_root(orch, "child_123", "root_1")
+        assert_response_routes_to_root(orch, "child_123", "orch_thread_1")
     """
     thread_service = orchestrator.get_workload_service().get_thread_service()
-    actual_root = thread_service.find_work_plan_owner(child_thread_id)
+    # Find where THIS orchestrator's work plan is stored
+    actual_root = thread_service.find_work_plan_owner(child_thread_id, orchestrator.uid)
     
     assert actual_root == expected_root_id, \
         f"Response from {child_thread_id} routes to {actual_root}, expected {expected_root_id}"
@@ -1026,7 +1027,52 @@ def create_multi_node_scenario(orchestrator, agents: list, thread_id: str = "tes
 # REAL FLOW EXECUTION HELPERS
 # ══════════════════════════════════════════════════════════════════════════════
 
-def setup_node_for_execution(node, uid: str, adjacent_node_uids: list = None):
+def setup_multi_node_env(nodes_config: list):
+    """
+    ✅ GENERIC: Setup multiple nodes with shared state and bidirectional adjacency.
+    
+    This is the PREFERRED way to setup multi-node tests as it ensures:
+    - All nodes share the same GraphState (can see each other's packets)
+    - Bidirectional adjacency is automatically configured
+    - Cleaner, more maintainable test code
+    
+    Args:
+        nodes_config: List of tuples (node, uid, adjacent_uids)
+                     Example: [(orch, "orch1", ["agent1", "agent2"]),
+                               (agent1, "agent1", ["orch1"]),
+                               (agent2, "agent2", ["orch1"])]
+        
+    Returns:
+        Shared state_view that all nodes use
+        
+    Example - Orchestrator with 2 agents:
+        orch = create_orchestrator_node("orch1", orch_llm)
+        agent1 = create_custom_agent_node("agent1", agent1_llm)
+        agent2 = create_custom_agent_node("agent2", agent2_llm)
+        
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1", "agent2"]),  # Orch can delegate to both agents
+            (agent1, "agent1", ["orch1"]),          # Agent1 can respond to orch
+            (agent2, "agent2", ["orch1"])           # Agent2 can respond to orch
+        ])
+        
+        # All nodes now share state and have correct adjacency!
+    """
+    if not nodes_config:
+        raise ValueError("nodes_config cannot be empty")
+    
+    # First node creates the state
+    first_node, first_uid, first_adjacent = nodes_config[0]
+    state_view, _ = setup_node_for_execution(first_node, first_uid, first_adjacent)
+    
+    # Remaining nodes share that state
+    for node, uid, adjacent_uids in nodes_config[1:]:
+        setup_node_for_execution(node, uid, adjacent_uids or [], shared_state_view=state_view)
+    
+    return state_view
+
+
+def setup_node_for_execution(node, uid: str, adjacent_node_uids: list = None, shared_state_view=None):
     """
     ✅ GENERIC: Setup node with FULL execution environment (state + context).
     
@@ -1039,25 +1085,44 @@ def setup_node_for_execution(node, uid: str, adjacent_node_uids: list = None):
         node: Node instance to setup
         uid: UID for the node
         adjacent_node_uids: List of adjacent node UIDs (for delegation)
+        shared_state_view: (Optional) Existing StateView to share between multiple nodes.
+                          If provided, nodes will share the same GraphState (for multi-node tests).
+                          If None, creates a new GraphState.
         
     Returns:
         Tuple of (state_view, context)
         
-    Example:
+    Example - Single node:
         orch = create_orchestrator_node("orch1", mock_llm)
         state_view, ctx = setup_node_for_execution(orch, "orch1", ["agent1", "agent2"])
         # Now ready to call orch.run(state_view)
+        
+    Example - Multi-node (SHARED STATE):
+        orch = create_orchestrator_node("orch1", mock_llm)
+        agent1 = create_custom_agent_node("agent1", agent_llm)
+        
+        # First node creates state
+        state_view, _ = setup_node_for_execution(orch, "orch1", ["agent1"])
+        
+        # Subsequent nodes share the same state
+        setup_node_for_execution(agent1, "agent1", [], shared_state_view=state_view)
+        
+        # Now orch and agent1 share the same GraphState and can see each other's packets!
     """
     from graph.state.graph_state import GraphState, Channel
     from graph.state.state_view import StateView
     
-    # Create state with all necessary channels for execution
-    state = GraphState()
-    state_view = StateView(
-        state,
-        reads={Channel.INTER_PACKETS, Channel.THREADS, Channel.WORKSPACES, Channel.TASK_THREADS},
-        writes={Channel.INTER_PACKETS, Channel.THREADS, Channel.WORKSPACES, Channel.TASK_THREADS}
-    )
+    # Use shared state if provided, otherwise create new
+    if shared_state_view is not None:
+        state_view = shared_state_view
+    else:
+        # Create state with all necessary channels for execution
+        state = GraphState()
+        state_view = StateView(
+            state,
+            reads={Channel.INTER_PACKETS, Channel.THREADS, Channel.WORKSPACES, Channel.TASK_THREADS},
+            writes={Channel.INTER_PACKETS, Channel.THREADS, Channel.WORKSPACES, Channel.TASK_THREADS}
+        )
     
     # Setup context
     context = create_test_step_context(uid, adjacent_node_uids or [])

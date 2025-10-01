@@ -9,6 +9,11 @@ from elements.nodes.common.workload import WorkItemStatus
 from elements.nodes.common.agent.constants import ToolNames
 
 
+class SummarizeWorkPlanArgs(BaseModel):
+    """Empty args schema (no arguments required)."""
+    pass
+
+
 class SummarizeWorkPlanTool(BaseTool):
     """Generate a final summary of completed work plan with results."""
     
@@ -17,7 +22,7 @@ class SummarizeWorkPlanTool(BaseTool):
     
     Use this in SYNTHESIS phase to create a final report for the user. This should include
     what was accomplished, key results from each work item, and any deliverables created."""
-    args_schema = BaseModel  # No arguments
+    args_schema = SummarizeWorkPlanArgs
     
     def __init__(
         self,
