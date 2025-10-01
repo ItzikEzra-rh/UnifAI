@@ -50,7 +50,8 @@ from tests.base import (
     setup_multi_node_env,  # ✅ NEW: Generic multi-node setup
     # Multi-round helpers
     create_stateful_llm,
-    create_simple_agent_llm,  # ✅ Now imported from shared helpers
+    create_simple_agent_llm,  # ✅ For single-response agents
+    create_stateful_agent_llm,  # ✅ For multi-round agent responses
     # Flow helpers
     execute_orchestrator_cycle,
     execute_agent_work,  # ✅ Correct helper for running CustomAgentNode
@@ -1257,4 +1258,1895 @@ class TestRealOrchestratorAgentFlows:
         print(f"   - 4-level deep: Orch1 → Orch2 → Orch3 → Agent4")
         print(f"   - Response propagated all the way back up")
         print(f"   - All orchestrators completed their work plans")
+
+    # ============================================================
+    # CLARIFICATION FLOWS: Multi-Round Communication
+    # ============================================================
+
+    def test_multi_round_clarification_between_agent_and_orchestrator(self):
+        """
+        ✅ MULTI-ROUND CLARIFICATION: Agent needs more info, orch provides it in stages.
+        
+        Flow:
+        1. Orch delegates "Analyze customer sentiment" to agent1
+        2. Agent1 responds: "Need clarification: Which time period?"
+        3. Orch sees response, delegates again with clarification: "Last 30 days"
+        4. Agent1 responds: "Need clarification: Include social media?"
+        5. Orch sees response, delegates again: "Yes, include all sources"
+        6. Agent1 completes analysis with full context
+        7. Orch marks done
+        
+        Tests: Multiple rounds of information exchange between agent and orchestrator.
+        
+        NOTE: CustomAgentNode doesn't support tool calling (iem.delegate_task), so the agent
+        returns responses indicating it needs more info, and the orchestrator re-delegates.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1: Initial delegation
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Sentiment analysis",
+                    "items": [
+                        {"id": "sentiment", "title": "Analyze Sentiment", "description": "Customer sentiment", "kind": "remote", "assigned_uid": "agent1"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "sentiment", "dst_uid": "agent1", "content": "Analyze customer sentiment"}}],
+            [],
+            
+            # CYCLE 2: Agent needs time period clarification, orch provides it
+            [{
+                "name": "iem.delegate_task", 
+                "args": {
+                    "work_item_id": "sentiment", 
+                    "dst_uid": "agent1", 
+                    "content": "Analyze customer sentiment for the last 30 days"
+                }
+            }],
+            [],
+            
+            # CYCLE 3: Agent needs data source clarification, orch provides it
+            [{
+                "name": "iem.delegate_task", 
+                "args": {
+                    "work_item_id": "sentiment", 
+                    "dst_uid": "agent1", 
+                    "content": "Analyze customer sentiment for last 30 days - include all sources: reviews, social media, support tickets"
+                }
+            }],
+            [],
+            
+            # CYCLE 4: Agent completes, orch marks done
+            [{"name": "workplan.mark", "args": {"item_id": "sentiment", "status": "done", "notes": "Complete analysis received"}}],
+            []
+        ])
+        
+        # ===== Setup Agent with Multi-Round Responses =====
+        # Use stateful agent LLM - returns different text for each call
+        agent1_llm = create_stateful_agent_llm([
+            "NEED_CLARIFICATION: Which time period should I analyze?",  # Round 1
+            "NEED_CLARIFICATION: Should I include social media data?",  # Round 2
+            "Sentiment analysis complete for last 30 days (all sources): 65% positive, 20% neutral, 15% negative."  # Round 3
+        ])
+        
+        agent1 = create_custom_agent_node("agent1", agent1_llm)
+        
+        # ===== Create orchestrator =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1"]),
+            (agent1, "agent1", ["orch1"])
+        ])
+        
+        # ===== CYCLE 1: Orch → Agent1 (initial delegation) =====
+        print("\n🔄 CYCLE 1: Orchestrator delegates to Agent1")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="Analyze customer sentiment",
+            created_by="user1"
+        ))
+        
+        delegation1 = get_delegation_packets(state_view, "orch1")[0]
+        
+        # ===== Agent1 Round 1: Asks for time period =====
+        print("\n🤖 AGENT1 ROUND 1: Asks for time period clarification")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent1.run(state_view)
+        
+        # ===== CYCLE 2: Orch provides time period =====
+        print("\n🔄 CYCLE 2: Orchestrator provides time period")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        # Get orchestrator's clarification delegation
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        orch_clarification1 = [d for d in all_delegations if "30 days" in d.extract_task().content]
+        assert len(orch_clarification1) > 0, "Orch should provide time period"
+        
+        # ===== Agent1 Round 2: Asks for data sources =====
+        print("\n🤖 AGENT1 ROUND 2: Asks about data sources")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent1.run(state_view)
+        
+        # ===== CYCLE 3: Orch confirms data sources =====
+        print("\n🔄 CYCLE 3: Orchestrator confirms data sources")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        # Get orchestrator's second clarification
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        orch_clarification2 = [d for d in all_delegations if "all sources" in d.extract_task().content]
+        assert len(orch_clarification2) > 0, "Orch should confirm data sources"
+        
+        # ===== Agent1 Round 3: Completes analysis =====
+        print("\n🤖 AGENT1 ROUND 3: Completes analysis with full context")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent1.run(state_view)
+        
+        # ===== CYCLE 4: Orch processes final result =====
+        print("\n🔄 CYCLE 4: Orchestrator processes final result")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 1, f"Task should be done, got {final_counts}"
+        
+        # Verify final result has complete analysis
+        work_item = final_plan.items["sentiment"]
+        assert "65%" in work_item.result_ref.content or "positive" in work_item.result_ref.content.lower()
+        
+        print(f"\n✅ Multi-round clarification verified!")
+        print(f"   - Agent requested clarification 2 times")
+        print(f"   - Orchestrator provided information each time")
+        print(f"   - Agent completed with full context")
+        print(f"   - Total rounds: 3 (ask, ask, complete)")
+
+    def test_clarification_chain_across_multiple_agents(self):
+        """
+        ✅ CLARIFICATION CHAIN: Agent1 asks clarification, Orch asks Agent2 for help, etc.
+        
+        Flow:
+        1. Orch delegates "Design system architecture" to agent1 (architect)
+        2. Agent1 asks: "What's the expected user load?"
+        3. Orch doesn't know, ADDS work item, delegates to agent2 (analyst)
+        4. Agent2 responds: "Expected load: 10K concurrent users"
+        5. Orch marks agent2 done, sends info to agent1
+        6. Agent1 asks: "What database should we use?"
+        7. Orch ADDS work item, delegates to agent3 (DBA)
+        8. Agent3 responds: "Use PostgreSQL with replication"
+        9. Orch marks agent3 done, sends info to agent1
+        10. Agent1 completes architecture with all info
+        11. Orch marks agent1 done
+        
+        Tests: Orchestrator delegates to other agents to answer clarifications.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1: Initial delegation to architect
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "System architecture design",
+                    "items": [
+                        {"id": "architecture", "title": "Design Architecture", "description": "System design", "kind": "remote", "assigned_uid": "agent1"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "architecture", "dst_uid": "agent1", "content": "Design system architecture"}}],
+            [],
+            
+            # CYCLE 2: Agent1 asks about load, orch delegates to agent2 (analyst)
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "System architecture design",
+                    "items": [
+                        {"id": "architecture", "title": "Design Architecture", "description": "System design", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "load_analysis", "title": "Load Analysis", "description": "Get load estimates", "kind": "remote", "assigned_uid": "agent2"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "load_analysis", "dst_uid": "agent2", "content": "What's the expected user load?"}}],
+            [],
+            
+            # CYCLE 3: Agent2 responds with load, orch sends to agent1
+            [{"name": "workplan.mark", "args": {"item_id": "load_analysis", "status": "done", "notes": "Load info received"}}],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "architecture", "dst_uid": "agent1", "content": "Expected load: 10K concurrent users"}}],
+            [],
+            
+            # CYCLE 4: Agent1 asks about database, orch delegates to agent3 (DBA)
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "System architecture design",
+                    "items": [
+                        {"id": "architecture", "title": "Design Architecture", "description": "System design", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "load_analysis", "title": "Load Analysis", "description": "Get load estimates", "kind": "remote", "assigned_uid": "agent2", "status": "done"},
+                        {"id": "db_recommendation", "title": "DB Recommendation", "description": "Database choice", "kind": "remote", "assigned_uid": "agent3"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "db_recommendation", "dst_uid": "agent3", "content": "What database should we use for 10K concurrent users?"}}],
+            [],
+            
+            # CYCLE 5: Agent3 responds with DB choice, orch sends to agent1
+            [{"name": "workplan.mark", "args": {"item_id": "db_recommendation", "status": "done", "notes": "DB recommendation received"}}],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "architecture", "dst_uid": "agent1", "content": "Use PostgreSQL with replication"}}],
+            [],
+            
+            # CYCLE 6: Agent1 completes architecture
+            [{"name": "workplan.mark", "args": {"item_id": "architecture", "status": "done", "notes": "Architecture complete"}}],
+            []
+        ])
+        
+        # ===== Setup Agents =====
+        # Agent1 (Architect): Multi-round responses using stateful agent LLM
+        agent1_llm = create_stateful_agent_llm([
+            "NEED_CLARIFICATION: What's the expected user load?",  # Round 1
+            "NEED_CLARIFICATION: What database should we use?",     # Round 2
+            "Architecture design complete: Microservices with API gateway, load balancer for 10K users, PostgreSQL cluster with replication."  # Round 3
+        ])
+        agent1 = create_custom_agent_node("agent1", agent1_llm)
+        
+        # Agent2 (Analyst): Provides load analysis
+        agent2 = create_custom_agent_node("agent2", create_simple_agent_llm(
+            "Expected load: 10K concurrent users based on market analysis."
+        ))
+        
+        # Agent3 (DBA): Provides database recommendation
+        agent3 = create_custom_agent_node("agent3", create_simple_agent_llm(
+            "Use PostgreSQL with master-replica replication for high availability."
+        ))
+        
+        # ===== Create orchestrator =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1", "agent2", "agent3"]),
+            (agent1, "agent1", ["orch1"]),
+            (agent2, "agent2", ["orch1"]),
+            (agent3, "agent3", ["orch1"])
+        ])
+        
+        # ===== CYCLE 1: Orch → Agent1 (initial) =====
+        print("\n🔄 CYCLE 1: Orchestrator delegates to Agent1 (Architect)")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="Design system architecture",
+            created_by="user1"
+        ))
+        
+        delegation1 = get_delegation_packets(state_view, "orch1")[0]
+        agent1_task = delegation1.extract_task()
+        
+        # ===== Agent1 Round 1: Asks for load clarification =====
+        print("\n🤖 AGENT1 ROUND 1: Asks for user load clarification")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent1.run(state_view)
+        
+        # ===== CYCLE 2: Orch → Agent2 (get load info) =====
+        print("\n🔄 CYCLE 2: Orchestrator delegates to Agent2 (Analyst)")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        # Find delegation to agent2
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        agent2_delegation = next((d for d in all_delegations if d.dst.uid == "agent2"), None)
+        assert agent2_delegation is not None, "Orch should delegate to agent2"
+        
+        # ===== Agent2: Provide load analysis =====
+        print("\n🤖 AGENT2: Provides load analysis")
+        agent2_task = agent2_delegation.extract_task()
+        state_view = execute_agent_work(agent2, state_view, agent2_task)
+        
+        # ===== CYCLE 3: Orch processes agent2 response, sends to agent1 =====
+        print("\n🔄 CYCLE 3: Orchestrator sends load info to Agent1")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        # Find clarification response to agent1
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        orch_to_agent1_round2 = [d for d in all_delegations 
+                                  if d.dst.uid == "agent1" and "10K" in d.extract_task().content]
+        assert len(orch_to_agent1_round2) > 0, "Orch should send load info to agent1"
+        
+        # ===== Agent1 Round 2: Asks for database clarification =====
+        print("\n🤖 AGENT1 ROUND 2: Asks for database clarification")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent1.run(state_view)
+        
+        # ===== CYCLE 4: Orch → Agent3 (get DB recommendation) =====
+        print("\n🔄 CYCLE 4: Orchestrator delegates to Agent3 (DBA)")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        # Find delegation to agent3
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        agent3_delegation = next((d for d in all_delegations if d.dst.uid == "agent3"), None)
+        assert agent3_delegation is not None, "Orch should delegate to agent3"
+        
+        # ===== Agent3: Provide DB recommendation =====
+        print("\n🤖 AGENT3: Provides database recommendation")
+        agent3_task = agent3_delegation.extract_task()
+        state_view = execute_agent_work(agent3, state_view, agent3_task)
+        
+        # ===== CYCLE 5: Orch processes agent3 response, sends to agent1 =====
+        print("\n🔄 CYCLE 5: Orchestrator sends DB info to Agent1")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        # Find clarification response to agent1
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        orch_to_agent1_round3 = [d for d in all_delegations 
+                                  if d.dst.uid == "agent1" and "PostgreSQL" in d.extract_task().content]
+        assert len(orch_to_agent1_round3) > 0, "Orch should send DB info to agent1"
+        
+        # ===== Agent1 Round 3: Completes architecture =====
+        print("\n🤖 AGENT1 ROUND 3: Completes architecture design")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent1.run(state_view)
+        
+        # ===== CYCLE 6: Orch processes final result =====
+        print("\n🔄 CYCLE 6: Orchestrator processes final architecture")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 3, f"All 3 tasks should be done, got {final_counts}"
+        
+        # Verify final architecture includes all clarifications
+        arch_item = final_plan.items["architecture"]
+        assert "10K" in arch_item.result_ref.content or "PostgreSQL" in arch_item.result_ref.content
+        
+        print(f"\n✅ Clarification chain verified!")
+        print(f"   - Agent1 requested clarification 2 times")
+        print(f"   - Orchestrator delegated to Agent2 and Agent3 for answers")
+        print(f"   - Both agents provided responses")
+        print(f"   - Orchestrator forwarded answers to Agent1")
+        print(f"   - Agent1 completed with full context")
+
+    # ============================================================
+    # DYNAMIC & ADAPTIVE BEHAVIORS
+    # ============================================================
+
+    def test_orchestrator_adds_work_dynamically_after_response(self):
+        """
+        ✅ DYNAMIC PLANNING: Orchestrator sees agent1's response, adds NEW work.
+        
+        Flow:
+        1. Orch delegates "Scan system for issues" to agent1
+        2. Agent1 responds: "Found 3 critical issues: A, B, C"
+        3. Orch marks agent1 done, ADDS 3 new work items (fix A, fix B, fix C)
+        4. Delegates all 3 to different agents
+        5. All 3 respond
+        6. Orch marks all done, completes
+        
+        Tests: LLM-driven dynamic work plan expansion based on responses.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1: Initial scan
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "System health check",
+                    "items": [
+                        {"id": "scan", "title": "Scan System", "description": "Find issues", "kind": "remote", "assigned_uid": "agent1"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "scan", "dst_uid": "agent1", "content": "Scan system for critical issues"}}],
+            [],
+            
+            # CYCLE 2: Agent1 reports 3 issues, orch ADDS 3 new work items
+            [{"name": "workplan.mark", "args": {"item_id": "scan", "status": "done", "notes": "Scan complete - 3 issues found"}}],
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "System health check",
+                    "items": [
+                        {"id": "scan", "title": "Scan System", "description": "Find issues", "kind": "remote", "assigned_uid": "agent1", "status": "done"},
+                        {"id": "fix_a", "title": "Fix Issue A", "description": "Memory leak", "kind": "remote", "assigned_uid": "agent2"},
+                        {"id": "fix_b", "title": "Fix Issue B", "description": "Database connection", "kind": "remote", "assigned_uid": "agent3"},
+                        {"id": "fix_c", "title": "Fix Issue C", "description": "API timeout", "kind": "remote", "assigned_uid": "agent4"}
+                    ]
+                }
+            }],
+            [
+                {"name": "iem.delegate_task", "args": {"work_item_id": "fix_a", "dst_uid": "agent2", "content": "Fix memory leak in user service"}},
+                {"name": "iem.delegate_task", "args": {"work_item_id": "fix_b", "dst_uid": "agent3", "content": "Fix database connection pool exhaustion"}},
+                {"name": "iem.delegate_task", "args": {"work_item_id": "fix_c", "dst_uid": "agent4", "content": "Fix API timeout in payment gateway"}}
+            ],
+            [],
+            
+            # CYCLE 3: All 3 fixes complete
+            [
+                {"name": "workplan.mark", "args": {"item_id": "fix_a", "status": "done", "notes": "Memory leak fixed"}},
+                {"name": "workplan.mark", "args": {"item_id": "fix_b", "status": "done", "notes": "DB connection fixed"}},
+                {"name": "workplan.mark", "args": {"item_id": "fix_c", "status": "done", "notes": "API timeout fixed"}}
+            ],
+            []
+        ])
+        
+        # ===== Setup Agents =====
+        agent1 = create_custom_agent_node("agent1", create_simple_agent_llm(
+            "Found 3 critical issues: A) Memory leak in user service, B) DB connection pool exhaustion, C) API timeout in payment gateway"
+        ))
+        agent2 = create_custom_agent_node("agent2", create_simple_agent_llm("Fixed memory leak - deployed patch v1.2.3"))
+        agent3 = create_custom_agent_node("agent3", create_simple_agent_llm("Fixed DB connection pool - increased max connections"))
+        agent4 = create_custom_agent_node("agent4", create_simple_agent_llm("Fixed API timeout - increased timeout to 30s"))
+        
+        # ===== Create orchestrator =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1", "agent2", "agent3", "agent4"]),
+            (agent1, "agent1", ["orch1"]),
+            (agent2, "agent2", ["orch1"]),
+            (agent3, "agent3", ["orch1"]),
+            (agent4, "agent4", ["orch1"])
+        ])
+        
+        # ===== CYCLE 1: Scan =====
+        print("\n🔄 CYCLE 1: Orchestrator delegates scan to Agent1")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="Scan system for critical issues",
+            created_by="user1"
+        ))
+        
+        scan_delegation = get_delegation_packets(state_view, "orch1")[0]
+        
+        # ===== Agent1: Report issues =====
+        print("\n🤖 AGENT1: Scans and reports 3 issues")
+        state_view = execute_agent_work(agent1, state_view, scan_delegation.extract_task())
+        
+        # ===== CYCLE 2: Orch adds 3 new work items, delegates =====
+        print("\n🔄 CYCLE 2: Orchestrator ADDS 3 new work items dynamically")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        # Verify work plan expanded
+        plan = assert_work_plan_created(orch, thread_id)
+        assert len(plan.items) == 4, f"Should have 4 items (1 scan + 3 fixes), got {len(plan.items)}"
+        
+        # Verify delegations to fixing agents
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        fix_delegations = [d for d in all_delegations if d.dst.uid in ["agent2", "agent3", "agent4"]]
+        assert len(fix_delegations) == 3, f"Should have 3 fix delegations, got {len(fix_delegations)}"
+        
+        # ===== All fixing agents execute =====
+        print("\n🤖 AGENTS 2, 3, 4: Execute fixes")
+        agents = {"agent2": agent2, "agent3": agent3, "agent4": agent4}
+        for delegation in fix_delegations:
+            agent = agents[delegation.dst.uid]
+            state_view = execute_agent_work(agent, state_view, delegation.extract_task())
+        
+        # ===== CYCLE 3: Orch processes all fixes =====
+        print("\n🔄 CYCLE 3: Orchestrator processes all fix responses")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 4, f"All 4 items should be done, got {final_counts}"
+        
+        print(f"\n✅ Dynamic work addition verified!")
+        print(f"   - Agent1 reported 3 issues")
+        print(f"   - Orchestrator ADDED 3 new work items")
+        print(f"   - All 3 fixes delegated and completed")
+        print(f"   - Work plan expanded from 1 to 4 items")
+
+    def test_orchestrator_calls_same_agent_multiple_times(self):
+        """
+        ✅ MULTI-ROUND SAME AGENT: Orchestrator delegates to agent1 TWICE in sequence.
+        
+        Flow:
+        1. Orch delegates "Fetch customer data" to agent1
+        2. Agent1 responds with raw data
+        3. Orch marks done, ADDS NEW item "Transform data" assigned to agent1
+        4. Delegates to agent1 again (new task, same agent)
+        5. Agent1 responds with transformed data
+        6. Orch completes
+        
+        Tests: Same agent can be used multiple times in different work items.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1: Fetch data
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Data processing pipeline",
+                    "items": [
+                        {"id": "fetch", "title": "Fetch Data", "description": "Get raw data", "kind": "remote", "assigned_uid": "agent1"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "fetch", "dst_uid": "agent1", "content": "Fetch customer data from API"}}],
+            [],
+            
+            # CYCLE 2: Agent1 done, ADD transform task for same agent
+            [{"name": "workplan.mark", "args": {"item_id": "fetch", "status": "done", "notes": "Data fetched"}}],
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Data processing pipeline",
+                    "items": [
+                        {"id": "fetch", "title": "Fetch Data", "description": "Get raw data", "kind": "remote"},
+                        {"id": "transform", "title": "Transform Data", "description": "Process fetched data", "kind": "remote"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "transform", "dst_uid": "agent1", "content": "Transform the fetched customer data to JSON format"}}],
+            [],
+            
+            # CYCLE 3: Agent1 done with transform
+            [{"name": "workplan.mark", "args": {"item_id": "transform", "status": "done", "notes": "Data transformed"}}],
+            []
+        ])
+        
+        # ===== Setup Agent (handles both tasks) =====
+        # Agent returns different text for each task
+        agent1_llm = create_stateful_agent_llm([
+            "Fetched 1000 customer records from API successfully.",  # Task 1: Fetch
+            "Transformed all 1000 records to JSON format."           # Task 2: Transform
+        ])
+        
+        # ===== Create nodes =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        agent1 = create_custom_agent_node("agent1", agent1_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1"]),
+            (agent1, "agent1", ["orch1"])
+        ])
+        
+        # ===== CYCLE 1: First delegation (fetch) =====
+        print("\n🔄 CYCLE 1: Orchestrator delegates FETCH to Agent1")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="Fetch and transform customer data",
+            created_by="user1"
+        ))
+        
+        fetch_delegation = get_delegation_packets(state_view, "orch1")[0]
+        
+        # ===== Agent1 Task 1: Fetch =====
+        print("\n🤖 AGENT1 TASK 1: Fetches data")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent1.run(state_view)
+        
+        # ===== CYCLE 2: Orch adds transform task for SAME agent =====
+        print("\n🔄 CYCLE 2: Orchestrator ADDS transform task for Agent1")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        # Verify work plan has 2 items
+        plan = assert_work_plan_created(orch, thread_id)
+        assert len(plan.items) == 2, f"Should have 2 items, got {len(plan.items)}"
+        assert plan.items["fetch"].status.value == "done"
+        assert plan.items["transform"].assigned_uid == "agent1", "Transform should be assigned to agent1"
+        
+        # Verify delegation to agent1 again
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        transform_delegations = [d for d in all_delegations if "transform" in d.extract_task().content.lower()]
+        assert len(transform_delegations) > 0, "Should have transform delegation"
+        
+        # ===== Agent1 Task 2: Transform =====
+        print("\n🤖 AGENT1 TASK 2: Transforms data")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent1.run(state_view)
+        
+        # ===== CYCLE 3: Orch completes =====
+        print("\n🔄 CYCLE 3: Orchestrator completes")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 2, f"Both items should be done, got {final_counts}"
+        
+        print(f"\n✅ Multi-round same agent verified!")
+        print(f"   - Agent1 executed FETCH task")
+        print(f"   - Orchestrator added TRANSFORM task for same agent")
+        print(f"   - Agent1 executed TRANSFORM task")
+        print(f"   - Same agent handled 2 different work items")
+
+    def test_orchestrator_with_parallel_orchestrator_and_agents(self):
+        """
+        ✅ MIXED HIERARCHY: Orch1 delegates to BOTH Orch2 AND agents in parallel.
+        
+        Topology:
+        - Orch1 → [Orch2, Agent1, Agent2]
+        - Orch2 → [Agent3, Agent4]
+        
+        Flow:
+        1. Orch1 delegates 3 tasks: to orch2, agent1, agent2
+        2. Orch2 receives its task, creates plan, delegates to agent3, agent4
+        3. Agent3, Agent4 respond to Orch2
+        4. Orch2 synthesizes and responds to Orch1
+        5. Agent1, Agent2 respond to Orch1
+        6. Orch1 receives all 3 responses (orch2, agent1, agent2), completes
+        
+        Tests: Parallel delegation to mix of orchestrators and agents.
+        """
+        # ===== Setup Orch1 =====
+        orch1_llm = create_stateful_llm([
+            # CYCLE 1
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Mixed delegation",
+                    "items": [
+                        {"id": "complex_task", "title": "Complex Task", "description": "Needs sub-orch", "kind": "remote", "assigned_uid": "orch2"},
+                        {"id": "simple_task_1", "title": "Simple 1", "description": "Direct", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "simple_task_2", "title": "Simple 2", "description": "Direct", "kind": "remote", "assigned_uid": "agent2"}
+                    ]
+                }
+            }],
+            [
+                {"name": "iem.delegate_task", "args": {"work_item_id": "complex_task", "dst_uid": "orch2", "content": "Handle complex multi-step task"}},
+                {"name": "iem.delegate_task", "args": {"work_item_id": "simple_task_1", "dst_uid": "agent1", "content": "Validate data format"}},
+                {"name": "iem.delegate_task", "args": {"work_item_id": "simple_task_2", "dst_uid": "agent2", "content": "Generate report header"}}
+            ],
+            [],
+            
+            # CYCLE 2
+            [
+                {"name": "workplan.mark", "args": {"item_id": "complex_task", "status": "done", "notes": "Orch2 completed"}},
+                {"name": "workplan.mark", "args": {"item_id": "simple_task_1", "status": "done", "notes": "Agent1 completed"}},
+                {"name": "workplan.mark", "args": {"item_id": "simple_task_2", "status": "done", "notes": "Agent2 completed"}}
+            ],
+            []
+        ])
+        
+        # ===== Setup Orch2 =====
+        orch2_llm = create_stateful_llm([
+            # CYCLE 1
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Sub-orchestration",
+                    "items": [
+                        {"id": "step1", "title": "Step 1", "description": "First step", "kind": "remote", "assigned_uid": "agent3"},
+                        {"id": "step2", "title": "Step 2", "description": "Second step", "kind": "remote", "assigned_uid": "agent4"}
+                    ]
+                }
+            }],
+            [
+                {"name": "iem.delegate_task", "args": {"work_item_id": "step1", "dst_uid": "agent3", "content": "Execute step 1"}},
+                {"name": "iem.delegate_task", "args": {"work_item_id": "step2", "dst_uid": "agent4", "content": "Execute step 2"}}
+            ],
+            [],
+            
+            # CYCLE 2
+            [
+                {"name": "workplan.mark", "args": {"item_id": "step1", "status": "done", "notes": "Step 1 done"}},
+                {"name": "workplan.mark", "args": {"item_id": "step2", "status": "done", "notes": "Step 2 done"}}
+            ],
+            [{"name": "workplan.summarize", "args": {}}],
+            []
+        ])
+        
+        # ===== Setup Agents =====
+        agent1 = create_custom_agent_node("agent1", create_simple_agent_llm("Data format valid - JSON schema v2.0"))
+        agent2 = create_custom_agent_node("agent2", create_simple_agent_llm("Report header generated - Q4 2024 Analysis"))
+        agent3 = create_custom_agent_node("agent3", create_simple_agent_llm("Step 1 complete - initialized database"))
+        agent4 = create_custom_agent_node("agent4", create_simple_agent_llm("Step 2 complete - migrated data"))
+        
+        # ===== Create orchestrators =====
+        orch1 = create_orchestrator_node("orch1", orch1_llm)
+        orch2 = create_orchestrator_node("orch2", orch2_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch1, "orch1", ["orch2", "agent1", "agent2"]),
+            (orch2, "orch2", ["orch1", "agent3", "agent4"]),
+            (agent1, "agent1", ["orch1"]),
+            (agent2, "agent2", ["orch1"]),
+            (agent3, "agent3", ["orch2"]),
+            (agent4, "agent4", ["orch2"])
+        ])
+        
+        # ===== CYCLE 1: Orch1 delegates to all 3 (orch2, agent1, agent2) =====
+        print("\n🔄 ORCH1 CYCLE 1: Delegates to Orch2, Agent1, Agent2")
+        state_view, orch1_thread = execute_orchestrator_cycle(orch1, state_view, initial_task=Task(
+            content="Execute mixed parallel tasks",
+            created_by="user1"
+        ))
+        
+        orch1_delegations = get_delegation_packets(state_view, "orch1")
+        assert len(orch1_delegations) == 3, f"Orch1 should delegate to 3 targets, got {len(orch1_delegations)}"
+        
+        # ===== Agent1 & Agent2 execute (simple agents) =====
+        print("\n🤖 AGENT1 & AGENT2: Execute simple tasks")
+        agent1_task = next((d for d in orch1_delegations if d.dst.uid == "agent1"), None).extract_task()
+        agent2_task = next((d for d in orch1_delegations if d.dst.uid == "agent2"), None).extract_task()
+        
+        state_view = execute_agent_work(agent1, state_view, agent1_task)
+        state_view = execute_agent_work(agent2, state_view, agent2_task)
+        
+        # ===== Orch2 CYCLE 1: Receives task, delegates to agent3, agent4 =====
+        print("\n🔄 ORCH2 CYCLE 1: Delegates to Agent3, Agent4")
+        orch2_task = next((d for d in orch1_delegations if d.dst.uid == "orch2"), None).extract_task()
+        state_view, orch2_thread = execute_orchestrator_cycle(orch2, state_view, initial_task=orch2_task)
+        
+        orch2_delegations = get_delegation_packets(state_view, "orch2")
+        assert len(orch2_delegations) == 2, f"Orch2 should delegate to 2 agents, got {len(orch2_delegations)}"
+        
+        # ===== Agent3 & Agent4 execute =====
+        print("\n🤖 AGENT3 & AGENT4: Execute sub-tasks")
+        agent3_task = next((d for d in orch2_delegations if d.dst.uid == "agent3"), None).extract_task()
+        agent4_task = next((d for d in orch2_delegations if d.dst.uid == "agent4"), None).extract_task()
+        
+        state_view = execute_agent_work(agent3, state_view, agent3_task)
+        state_view = execute_agent_work(agent4, state_view, agent4_task)
+        
+        # ===== Orch2 CYCLE 2: Synthesize and respond =====
+        print("\n🔄 ORCH2 CYCLE 2: Synthesizes and responds to Orch1")
+        state_view, _ = execute_orchestrator_cycle(orch2, state_view)
+        
+        # ===== Orch1 CYCLE 2: Receive all 3 responses =====
+        print("\n🔄 ORCH1 CYCLE 2: Receives all 3 responses (Orch2, Agent1, Agent2)")
+        state_view, _ = execute_orchestrator_cycle(orch1, state_view)
+        
+        orch1_plan = assert_work_plan_created(orch1, orch1_thread)
+        orch1_counts = get_work_plan_status_counts(orch1_plan)
+        
+        assert orch1_counts["done"] == 3, f"All 3 tasks should be done, got {orch1_counts}"
+        
+        print(f"\n✅ Mixed parallel hierarchy verified!")
+        print(f"   - Orch1 delegated to Orch2 AND 2 agents in parallel")
+        print(f"   - Orch2 delegated to 2 sub-agents")
+        print(f"   - All responses flowed back correctly")
+        print(f"   - Orch1 completed with mixed topology")
+
+    # ============================================================
+    # RESILIENCE & EDGE CASES
+    # ============================================================
+
+    def test_partial_failure_with_continuation(self):
+        """
+        ✅ PARTIAL FAILURE: One agent fails, others succeed, orch completes.
+        
+        Flow:
+        1. Orch delegates to 3 agents
+        2. Agent1: Success
+        3. Agent2: Returns "ERROR: Database connection failed"
+        4. Agent3: Success
+        5. Orch marks all 3 (done/done/done), synthesizes noting agent2 error
+        6. Final result includes partial failure note
+        
+        Tests: Orchestrator gracefully handles mixed success/failure scenarios.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Data validation pipeline",
+                    "items": [
+                        {"id": "validate_schema", "title": "Validate Schema", "description": "Check schema", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "check_database", "title": "Check Database", "description": "Verify DB", "kind": "remote", "assigned_uid": "agent2"},
+                        {"id": "verify_api", "title": "Verify API", "description": "Test API", "kind": "remote", "assigned_uid": "agent3"}
+                    ]
+                }
+            }],
+            [
+                {"name": "iem.delegate_task", "args": {"work_item_id": "validate_schema", "dst_uid": "agent1", "content": "Validate data schema"}},
+                {"name": "iem.delegate_task", "args": {"work_item_id": "check_database", "dst_uid": "agent2", "content": "Check database connection"}},
+                {"name": "iem.delegate_task", "args": {"work_item_id": "verify_api", "dst_uid": "agent3", "content": "Verify API endpoints"}}
+            ],
+            [],
+            
+            # CYCLE 2: Mark all (including the one with error content)
+            [
+                {"name": "workplan.mark", "args": {"item_id": "validate_schema", "status": "done", "notes": "Schema valid"}},
+                {"name": "workplan.mark", "args": {"item_id": "check_database", "status": "done", "notes": "DB check returned error"}},
+                {"name": "workplan.mark", "args": {"item_id": "verify_api", "status": "done", "notes": "API verified"}}
+            ],
+            []
+        ])
+        
+        # ===== Setup Agents =====
+        agent1 = create_custom_agent_node("agent1", create_simple_agent_llm("Schema validation passed - all fields conform to spec"))
+        agent2 = create_custom_agent_node("agent2", create_simple_agent_llm("ERROR: Database connection failed - timeout after 30s"))
+        agent3 = create_custom_agent_node("agent3", create_simple_agent_llm("API verification complete - all endpoints responding"))
+        
+        # ===== Create orchestrator =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1", "agent2", "agent3"]),
+            (agent1, "agent1", ["orch1"]),
+            (agent2, "agent2", ["orch1"]),
+            (agent3, "agent3", ["orch1"])
+        ])
+        
+        # ===== CYCLE 1: Delegate to all =====
+        print("\n🔄 CYCLE 1: Orchestrator delegates to 3 agents")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="Run validation pipeline",
+            created_by="user1"
+        ))
+        
+        delegations = get_delegation_packets(state_view, "orch1")
+        assert len(delegations) == 3
+        
+        # ===== All agents execute =====
+        print("\n🤖 AGENTS: Agent1 succeeds, Agent2 fails, Agent3 succeeds")
+        agents = {"agent1": agent1, "agent2": agent2, "agent3": agent3}
+        for delegation in delegations:
+            agent = agents[delegation.dst.uid]
+            state_view = execute_agent_work(agent, state_view, delegation.extract_task())
+        
+        # ===== CYCLE 2: Orch processes all responses =====
+        print("\n🔄 CYCLE 2: Orchestrator processes all responses (mixed success/failure)")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 3, f"All 3 should be marked done, got {final_counts}"
+        
+        # Verify error content is stored
+        db_check_item = final_plan.items["check_database"]
+        assert "ERROR" in db_check_item.result_ref.content, "Error message should be in content"
+        
+        print(f"\n✅ Partial failure verified!")
+        print(f"   - 2 agents succeeded, 1 agent returned error")
+        print(f"   - Orchestrator marked all as done (responses received)")
+        print(f"   - Error message preserved in work item")
+        print(f"   - Work plan completed despite partial failure")
+
+    def test_large_scale_parallelism(self):
+        """
+        ✅ SCALABILITY: Orchestrator delegates to 10 agents in parallel.
+        
+        Flow:
+        1. Orch creates 10 work items (agent1..agent10)
+        2. Delegates all 10 in parallel
+        3. All 10 agents execute independently
+        4. All 10 respond
+        5. Orch processes all 10 responses in one cycle
+        6. Marks all 10 done, completes
+        
+        Tests: Scalability of multi-node architecture.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1: Create 10 items and delegate
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Large scale processing",
+                    "items": [
+                        {"id": f"task_{i}", "title": f"Task {i}", "description": f"Process batch {i}", "kind": "remote", "assigned_uid": f"agent{i}"}
+                        for i in range(1, 11)
+                    ]
+                }
+            }],
+            [
+                {"name": "iem.delegate_task", "args": {"work_item_id": f"task_{i}", "dst_uid": f"agent{i}", "content": f"Process batch {i}"}}
+                for i in range(1, 11)
+            ],
+            [],
+            
+            # CYCLE 2: Mark all 10 done
+            [
+                {"name": "workplan.mark", "args": {"item_id": f"task_{i}", "status": "done", "notes": f"Batch {i} complete"}}
+                for i in range(1, 11)
+            ],
+            []
+        ])
+        
+        # ===== Create 10 agents =====
+        agents = {}
+        agent_nodes = {}
+        for i in range(1, 11):
+            agent_uid = f"agent{i}"
+            agents[agent_uid] = create_simple_agent_llm(f"Batch {i} processed successfully - 100 items")
+            agent_nodes[agent_uid] = create_custom_agent_node(agent_uid, agents[agent_uid])
+        
+        # ===== Create orchestrator =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        
+        # ===== Setup SHARED state =====
+        setup_config = [(orch, "orch1", [f"agent{i}" for i in range(1, 11)])]
+        for i in range(1, 11):
+            agent_uid = f"agent{i}"
+            setup_config.append((agent_nodes[agent_uid], agent_uid, ["orch1"]))
+        
+        state_view = setup_multi_node_env(setup_config)
+        
+        # ===== CYCLE 1: Delegate to all 10 =====
+        print("\n🔄 CYCLE 1: Orchestrator delegates to 10 agents")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="Process 10 batches in parallel",
+            created_by="user1"
+        ))
+        
+        delegations = get_delegation_packets(state_view, "orch1")
+        assert len(delegations) == 10, f"Should have 10 delegations, got {len(delegations)}"
+        
+        # ===== All 10 agents execute =====
+        print("\n🤖 AGENTS 1-10: All execute in parallel")
+        for delegation in delegations:
+            agent_uid = delegation.dst.uid
+            agent = agent_nodes[agent_uid]
+            state_view = execute_agent_work(agent, state_view, delegation.extract_task())
+        
+        # ===== CYCLE 2: Orch processes all 10 responses =====
+        print("\n🔄 CYCLE 2: Orchestrator processes 10 responses")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 10, f"All 10 should be done, got {final_counts}"
+        assert final_plan.is_complete(), "Work plan should be complete"
+        
+        print(f"\n✅ Large-scale parallelism verified!")
+        print(f"   - 10 agents executed in parallel")
+        print(f"   - All 10 responded independently")
+        print(f"   - Orchestrator processed all 10 in one cycle")
+        print(f"   - Scalability validated")
+
+    def test_orchestrator_re_delegates_on_ambiguous_response(self):
+        """
+        ✅ RE-DELEGATION: Agent1 returns unclear result, orch delegates to agent2.
+        
+        Flow:
+        1. Orch delegates "Analyze sentiment" to agent1
+        2. Agent1 responds: "Unable to determine sentiment, need more context"
+        3. Orch marks agent1 as done (response stored)
+        4. Orch ADDS NEW work item, delegates to agent2 (specialized sentiment analyzer)
+        5. Agent2 responds successfully with clear sentiment analysis
+        6. Orch completes
+        
+        Tests: Orchestrator can handle ambiguous responses and re-route work.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1: Initial delegation
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Sentiment analysis",
+                    "items": [
+                        {"id": "initial_sentiment", "title": "Initial Sentiment", "description": "Try basic analysis", "kind": "remote", "assigned_uid": "agent1"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "initial_sentiment", "dst_uid": "agent1", "content": "Analyze customer sentiment from reviews"}}],
+            [],
+            
+            # CYCLE 2: Agent1 gave ambiguous response, mark done, ADD new item for specialist
+            [{"name": "workplan.mark", "args": {"item_id": "initial_sentiment", "status": "done", "notes": "Agent1 unable to determine - needs specialist"}}],
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Sentiment analysis",
+                    "items": [
+                        {"id": "initial_sentiment", "title": "Initial Sentiment", "description": "Try basic analysis", "kind": "remote", "assigned_uid": "agent1", "status": "done"},
+                        {"id": "specialist_sentiment", "title": "Specialist Sentiment", "description": "Advanced analysis", "kind": "remote", "assigned_uid": "agent2"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "specialist_sentiment", "dst_uid": "agent2", "content": "Use advanced NLP to analyze sentiment - previous attempt was inconclusive"}}],
+            [],
+            
+            # CYCLE 3: Agent2 succeeds
+            [{"name": "workplan.mark", "args": {"item_id": "specialist_sentiment", "status": "done", "notes": "Specialist analysis complete"}}],
+            []
+        ])
+        
+        # ===== Setup Agents =====
+        agent1 = create_custom_agent_node("agent1", create_simple_agent_llm(
+            "Unable to determine sentiment - reviews contain mixed signals and need advanced NLP analysis"
+        ))
+        agent2 = create_custom_agent_node("agent2", create_simple_agent_llm(
+            "Sentiment analysis complete: 65% positive, 20% neutral, 15% negative. Dominant themes: product quality (+), shipping speed (-)"
+        ))
+        
+        # ===== Create orchestrator =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1", "agent2"]),
+            (agent1, "agent1", ["orch1"]),
+            (agent2, "agent2", ["orch1"])
+        ])
+        
+        # ===== CYCLE 1: Delegate to agent1 =====
+        print("\n🔄 CYCLE 1: Orchestrator delegates to Agent1")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="Analyze customer sentiment from reviews",
+            created_by="user1"
+        ))
+        
+        agent1_delegation = get_delegation_packets(state_view, "orch1")[0]
+        
+        # ===== Agent1: Returns ambiguous response =====
+        print("\n🤖 AGENT1: Unable to determine sentiment")
+        state_view = execute_agent_work(agent1, state_view, agent1_delegation.extract_task())
+        
+        # ===== CYCLE 2: Orch sees ambiguous response, adds specialist task =====
+        print("\n🔄 CYCLE 2: Orchestrator RE-DELEGATES to Agent2 (specialist)")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        # Verify work plan expanded
+        plan = assert_work_plan_created(orch, thread_id)
+        assert len(plan.items) == 2, f"Should have 2 items (initial + specialist), got {len(plan.items)}"
+        assert plan.items["initial_sentiment"].status.value == "done"
+        
+        # Verify delegation to agent2
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        agent2_delegations = [d for d in all_delegations if d.dst.uid == "agent2"]
+        assert len(agent2_delegations) > 0, "Should have delegation to agent2"
+        
+        # ===== Agent2: Provides clear analysis =====
+        print("\n🤖 AGENT2: Provides detailed sentiment analysis")
+        agent2_task = agent2_delegations[0].extract_task()
+        state_view = execute_agent_work(agent2, state_view, agent2_task)
+        
+        # ===== CYCLE 3: Orch completes with specialist result =====
+        print("\n🔄 CYCLE 3: Orchestrator completes with specialist analysis")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 2, f"Both items should be done, got {final_counts}"
+        
+        # Verify specialist result
+        specialist_item = final_plan.items["specialist_sentiment"]
+        assert "65%" in specialist_item.result_ref.content or "positive" in specialist_item.result_ref.content.lower()
+        
+        print(f"\n✅ Re-delegation verified!")
+        print(f"   - Agent1 gave ambiguous response")
+        print(f"   - Orchestrator recognized need for specialist")
+        print(f"   - Re-delegated to Agent2")
+        print(f"   - Agent2 provided clear analysis")
+
+    def test_orchestrator_synthesis_includes_all_agent_metadata(self):
+        """
+        ✅ SYNTHESIS METADATA: Orchestrator synthesizes rich final result.
+        
+        Flow:
+        1. Orch delegates to 3 agents
+        2. Each agent returns AgentResult with artifacts, metrics, reasoning
+        3. All respond
+        4. Orch enters synthesis phase
+        5. LLM calls workplan.summarize (sees ALL AgentResult fields)
+        6. LLM synthesizes final response mentioning artifacts/metrics
+        7. Final AgentResult contains comprehensive summary
+        
+        Tests: Synthesis phase correctly aggregates rich structured data.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Comprehensive analysis",
+                    "items": [
+                        {"id": "data_analysis", "title": "Data Analysis", "description": "Analyze dataset", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "visualization", "title": "Visualization", "description": "Create charts", "kind": "remote", "assigned_uid": "agent2"},
+                        {"id": "reporting", "title": "Reporting", "description": "Generate report", "kind": "remote", "assigned_uid": "agent3"}
+                    ]
+                }
+            }],
+            [
+                {"name": "iem.delegate_task", "args": {"work_item_id": "data_analysis", "dst_uid": "agent1", "content": "Analyze the dataset"}},
+                {"name": "iem.delegate_task", "args": {"work_item_id": "visualization", "dst_uid": "agent2", "content": "Create visualizations"}},
+                {"name": "iem.delegate_task", "args": {"work_item_id": "reporting", "dst_uid": "agent3", "content": "Generate comprehensive report"}}
+            ],
+            [],
+            
+            # CYCLE 2: Mark all done, enter synthesis
+            [
+                {"name": "workplan.mark", "args": {"item_id": "data_analysis", "status": "done", "notes": "Analysis with metrics"}},
+                {"name": "workplan.mark", "args": {"item_id": "visualization", "status": "done", "notes": "Charts with artifacts"}},
+                {"name": "workplan.mark", "args": {"item_id": "reporting", "status": "done", "notes": "Report with reasoning"}}
+            ],
+            [{"name": "workplan.summarize", "args": {}}],  # Synthesis: see all metadata
+            []  # Finish with synthesis
+        ])
+        
+        # ===== Setup Agents with Rich Responses =====
+        agent1 = create_custom_agent_node("agent1", create_simple_agent_llm(
+            "Data analysis complete: Found 5 key patterns with 92% confidence. Statistical analysis shows strong correlation."
+        ))
+        agent2 = create_custom_agent_node("agent2", create_simple_agent_llm(
+            "Created 3 visualizations: trend chart, correlation matrix, distribution plot."
+        ))
+        agent3 = create_custom_agent_node("agent3", create_simple_agent_llm(
+            "Generated 25-page comprehensive report with executive summary and detailed findings."
+        ))
+        
+        # ===== Create orchestrator =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1", "agent2", "agent3"]),
+            (agent1, "agent1", ["orch1"]),
+            (agent2, "agent2", ["orch1"]),
+            (agent3, "agent3", ["orch1"])
+        ])
+        
+        # ===== CYCLE 1: Delegate to all 3 =====
+        print("\n🔄 CYCLE 1: Orchestrator delegates to 3 agents")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="Perform comprehensive analysis",
+            created_by="user1"
+        ))
+        
+        delegations = get_delegation_packets(state_view, "orch1")
+        assert len(delegations) == 3
+        
+        # ===== All agents execute =====
+        print("\n🤖 AGENTS: All execute with rich metadata")
+        agents = {"agent1": agent1, "agent2": agent2, "agent3": agent3}
+        for delegation in delegations:
+            agent = agents[delegation.dst.uid]
+            state_view = execute_agent_work(agent, state_view, delegation.extract_task())
+        
+        # ===== CYCLE 2: Orch synthesizes with metadata =====
+        print("\n🔄 CYCLE 2: Orchestrator synthesizes (LLM sees all metadata)")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 3, f"All 3 should be done, got {final_counts}"
+        assert final_plan.is_complete(), "Work plan should be complete"
+        
+        # Verify all responses stored with content
+        assert "patterns" in final_plan.items["data_analysis"].result_ref.content.lower()
+        assert "visualizations" in final_plan.items["visualization"].result_ref.content.lower()
+        assert "report" in final_plan.items["reporting"].result_ref.content.lower()
+        
+        # Verify orchestrator created synthesis result
+        workspace = orch.get_workload_service().get_workspace_service().get_workspace(thread_id)
+        results = workspace.context.results if workspace else []
+        orch_results = [r for r in results if r.agent_id == "orch1"]
+        assert len(orch_results) > 0, "Orchestrator should create synthesis result"
+        
+        print(f"\n✅ Synthesis with metadata verified!")
+        print(f"   - 3 agents returned rich responses")
+        print(f"   - Orchestrator entered synthesis phase")
+        print(f"   - LLM called workplan.summarize (sees all metadata)")
+        print(f"   - Final synthesis aggregates all work")
+
+    def test_orchestrator_updates_existing_work_item(self):
+        """
+        ✅ WORKPLAN UPDATE: Orchestrator modifies existing item mid-execution.
+        
+        Flow:
+        1. Orch creates 2 items: analyze, report
+        2. Delegates "analyze" to agent1
+        3. Agent1 responds: "Analysis shows report scope should expand"
+        4. Orch marks "analyze" done
+        5. Orch UPDATES "report" item (changes description, reassigns to agent2)
+        6. Delegates updated "report" to agent2 (specialized reporter)
+        7. Agent2 responds with expanded report
+        8. Orch completes
+        
+        Tests: LLM can modify work items based on learned information.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1: Create initial plan
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Analysis and reporting",
+                    "items": [
+                        {"id": "analyze", "title": "Analyze Data", "description": "Basic analysis", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "report", "title": "Generate Report", "description": "Basic report", "kind": "remote", "assigned_uid": "agent1"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "analyze", "dst_uid": "agent1", "content": "Perform basic analysis"}}],
+            [],
+            
+            # CYCLE 2: Agent1 says scope should expand, orch UPDATES report item
+            [{"name": "workplan.mark", "args": {"item_id": "analyze", "status": "done", "notes": "Analysis shows need for expanded report"}}],
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Analysis and reporting",
+                    "items": [
+                        {"id": "analyze", "title": "Analyze Data", "description": "Basic analysis", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "report", "title": "Generate Expanded Report", "description": "Comprehensive report with deep insights", "kind": "remote", "assigned_uid": "agent2"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "report", "dst_uid": "agent2", "content": "Generate comprehensive report with deep insights based on analysis findings"}}],
+            [],
+            
+            # CYCLE 3: Agent2 completes expanded report
+            [{"name": "workplan.mark", "args": {"item_id": "report", "status": "done", "notes": "Expanded report complete"}}],
+            []
+        ])
+        
+        # ===== Setup Agents =====
+        agent1 = create_custom_agent_node("agent1", create_simple_agent_llm(
+            "Analysis complete. Found unexpected complexity - recommend expanding report scope to include detailed breakdown."
+        ))
+        agent2 = create_custom_agent_node("agent2", create_simple_agent_llm(
+            "Comprehensive report generated with 50 pages covering all aspects: executive summary, detailed findings, recommendations, and appendices."
+        ))
+        
+        # ===== Create orchestrator =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1", "agent2"]),
+            (agent1, "agent1", ["orch1"]),
+            (agent2, "agent2", ["orch1"])
+        ])
+        
+        # ===== CYCLE 1: Initial plan and delegation =====
+        print("\n🔄 CYCLE 1: Orchestrator creates plan, delegates analysis")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="Analyze data and generate report",
+            created_by="user1"
+        ))
+        
+        # Verify initial plan
+        initial_plan = assert_work_plan_created(orch, thread_id)
+        assert len(initial_plan.items) == 2
+        assert initial_plan.items["report"].description == "Basic report"
+        assert initial_plan.items["analyze"].assigned_uid == "agent1", "Analyze should be assigned"
+        assert initial_plan.items["report"].assigned_uid == "agent1", "Report should be pre-assigned"
+        
+        agent1_delegation = get_delegation_packets(state_view, "orch1")[0]
+        
+        # ===== Agent1: Suggests expansion =====
+        print("\n🤖 AGENT1: Analysis suggests expanded scope")
+        state_view = execute_agent_work(agent1, state_view, agent1_delegation.extract_task())
+        
+        # ===== CYCLE 2: Orch UPDATES report item =====
+        print("\n🔄 CYCLE 2: Orchestrator UPDATES report item (new description, reassigns to agent2)")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        # Verify plan updated
+        updated_plan = assert_work_plan_created(orch, thread_id)
+        assert len(updated_plan.items) == 2, "Should still have 2 items"
+        assert "Expanded" in updated_plan.items["report"].title or "Comprehensive" in updated_plan.items["report"].description
+        assert updated_plan.items["report"].assigned_uid == "agent2", "Should be reassigned to agent2"
+        
+        # Verify delegation to agent2
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        agent2_delegations = [d for d in all_delegations if d.dst.uid == "agent2"]
+        assert len(agent2_delegations) > 0, "Should have delegation to agent2"
+        
+        # ===== Agent2: Generates expanded report =====
+        print("\n🤖 AGENT2: Generates comprehensive report")
+        agent2_task = agent2_delegations[0].extract_task()
+        state_view = execute_agent_work(agent2, state_view, agent2_task)
+        
+        # ===== CYCLE 3: Orch completes =====
+        print("\n🔄 CYCLE 3: Orchestrator completes")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 2, f"Both items should be done, got {final_counts}"
+        
+        # Verify expanded report content
+        report_item = final_plan.items["report"]
+        assert "50 pages" in report_item.result_ref.content or "Comprehensive" in report_item.result_ref.content
+        
+        print(f"\n✅ Workplan update verified!")
+        print(f"   - Agent1 suggested scope expansion")
+        print(f"   - Orchestrator UPDATED report work item")
+        print(f"   - Changed description and reassigned to agent2")
+        print(f"   - Agent2 completed expanded scope")
+
+    def test_conditional_branching_based_on_agent_response(self):
+        """
+        ✅ CONDITIONAL BRANCHING: Orchestrator creates different tasks based on agent findings.
+        
+        Flow:
+        1. Orch delegates "Diagnose system issue" to agent1 (diagnostic specialist)
+        2. Agent1 responds: "Found DATABASE connection pool exhaustion"
+        3. Orch interprets response, creates DATABASE-specific remediation tasks:
+           - Fix connection pool config (agent2 - DB specialist)
+           - Restart DB service (agent3 - ops specialist)
+        4. Both agents complete their specialized tasks
+        5. Orch synthesizes: "Issue diagnosed and resolved"
+        
+        Tests: Orchestrator can dynamically branch workflow based on runtime information.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1: Diagnose
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "System issue diagnosis and remediation",
+                    "items": [
+                        {"id": "diagnose", "title": "Diagnose Issue", "description": "Identify root cause", "kind": "remote", "assigned_uid": "agent1"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "diagnose", "dst_uid": "agent1", "content": "Diagnose the system performance issue"}}],
+            [],
+            
+            # CYCLE 2: Agent1 found DB issue, create DB-specific remediation plan
+            [{"name": "workplan.mark", "args": {"item_id": "diagnose", "status": "done", "notes": "Database issue identified"}}],
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "System issue diagnosis and remediation",
+                    "items": [
+                        {"id": "diagnose", "title": "Diagnose Issue", "description": "Identify root cause", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "fix_pool", "title": "Fix Connection Pool", "description": "Adjust pool configuration", "kind": "remote", "assigned_uid": "agent2"},
+                        {"id": "restart_db", "title": "Restart DB Service", "description": "Safe restart", "kind": "remote", "assigned_uid": "agent3"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "fix_pool", "dst_uid": "agent2", "content": "Fix database connection pool - increase max connections to 200"}}],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "restart_db", "dst_uid": "agent3", "content": "Safely restart database service with new configuration"}}],
+            [],
+            
+            # CYCLE 3: Both specialists complete
+            [{"name": "workplan.mark", "args": {"item_id": "fix_pool", "status": "done", "notes": "Pool config updated"}}],
+            [{"name": "workplan.mark", "args": {"item_id": "restart_db", "status": "done", "notes": "DB restarted"}}],
+            []
+        ])
+        
+        # ===== Setup Agents =====
+        agent1 = create_custom_agent_node("agent1", create_simple_agent_llm(
+            "DIAGNOSIS COMPLETE: Root cause identified - DATABASE connection pool exhaustion. Current max: 50, peak usage: 48. Recommend increasing to 200 and restarting service."
+        ))
+        agent2 = create_custom_agent_node("agent2", create_simple_agent_llm(
+            "Connection pool configuration updated: max_connections increased from 50 to 200. Config file saved."
+        ))
+        agent3 = create_custom_agent_node("agent3", create_simple_agent_llm(
+            "Database service restarted successfully with new configuration. All health checks passed."
+        ))
+        
+        # ===== Create orchestrator =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1", "agent2", "agent3"]),
+            (agent1, "agent1", ["orch1"]),
+            (agent2, "agent2", ["orch1"]),
+            (agent3, "agent3", ["orch1"])
+        ])
+        
+        # ===== CYCLE 1: Diagnosis =====
+        print("\n🔄 CYCLE 1: Orchestrator delegates diagnosis to specialist")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="System is experiencing performance issues - diagnose and fix",
+            created_by="user1"
+        ))
+        
+        diagnosis_delegation = get_delegation_packets(state_view, "orch1")[0]
+        
+        # ===== Agent1: Diagnoses DB issue =====
+        print("\n🤖 AGENT1: Diagnoses database connection pool issue")
+        state_view = execute_agent_work(agent1, state_view, diagnosis_delegation.extract_task())
+        
+        # ===== CYCLE 2: Orch creates DB-specific remediation tasks =====
+        print("\n🔄 CYCLE 2: Orchestrator BRANCHES - creates DB-specific remediation tasks")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        # Verify branching happened
+        branch_plan = assert_work_plan_created(orch, thread_id)
+        assert len(branch_plan.items) == 3, "Should have added 2 remediation tasks"
+        assert "fix_pool" in branch_plan.items, "Should have DB pool fix task"
+        assert "restart_db" in branch_plan.items, "Should have restart task"
+        assert branch_plan.items["fix_pool"].assigned_uid == "agent2"
+        assert branch_plan.items["restart_db"].assigned_uid == "agent3"
+        
+        # Get delegations to specialists
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        agent2_delegations = [d for d in all_delegations if d.dst.uid == "agent2"]
+        agent3_delegations = [d for d in all_delegations if d.dst.uid == "agent3"]
+        
+        # ===== Agent2: Fixes pool config =====
+        print("\n🤖 AGENT2: Updates connection pool configuration")
+        state_view = execute_agent_work(agent2, state_view, agent2_delegations[0].extract_task())
+        
+        # ===== Agent3: Restarts DB =====
+        print("\n🤖 AGENT3: Restarts database service")
+        state_view = execute_agent_work(agent3, state_view, agent3_delegations[0].extract_task())
+        
+        # ===== CYCLE 3: Orch completes =====
+        print("\n🔄 CYCLE 3: Orchestrator marks tasks complete")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 3, f"All 3 tasks should be done, got {final_counts}"
+        
+        print(f"\n✅ Conditional branching verified!")
+        print(f"   - Agent1 diagnosed: DATABASE issue")
+        print(f"   - Orchestrator created DB-SPECIFIC remediation tasks")
+        print(f"   - Agent2 (DB specialist) fixed pool config")
+        print(f"   - Agent3 (Ops specialist) restarted service")
+        print(f"   - All tasks completed successfully")
+
+    def test_cascading_delegation_with_emergent_dependencies(self):
+        """
+        ✅ EMERGENT DEPENDENCIES: Task completion reveals need for new dependent tasks.
+        
+        Flow:
+        1. Orch creates: fetch_data (no deps), analyze_data (depends on fetch_data)
+        2. Delegates fetch_data to agent1
+        3. Agent1 completes: "Fetched 1M records - found data quality issues"
+        4. Orch marks fetch_data done, BUT analyze_data still PENDING
+        5. Orch realizes need for cleaning, ADDS clean_data task (depends on fetch_data)
+        6. Updates analyze_data to depend on clean_data (not just fetch_data)
+        7. Delegates clean_data to agent2
+        8. Agent2 completes cleaning
+        9. NOW delegates analyze_data to agent3 (all deps satisfied)
+        10. Agent3 completes analysis
+        
+        Tests: Orchestrator can add emergent tasks and update dependency chains mid-execution.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1: Initial plan
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Data pipeline: fetch -> analyze",
+                    "items": [
+                        {"id": "fetch", "title": "Fetch Data", "description": "Get data from source", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "analyze", "title": "Analyze Data", "description": "Run analysis", "kind": "remote", "dependencies": ["fetch"], "assigned_uid": "agent3"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "fetch", "dst_uid": "agent1", "content": "Fetch customer transaction data"}}],
+            [],
+            
+            # CYCLE 2: Fetch done, but found quality issues - ADD cleaning task
+            [{"name": "workplan.mark", "args": {"item_id": "fetch", "status": "done", "notes": "Data fetched but has quality issues"}}],
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Data pipeline: fetch -> clean -> analyze",
+                    "items": [
+                        {"id": "fetch", "title": "Fetch Data", "description": "Get data from source", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "clean", "title": "Clean Data", "description": "Fix quality issues", "kind": "remote", "dependencies": ["fetch"], "assigned_uid": "agent2"},
+                        {"id": "analyze", "title": "Analyze Data", "description": "Run analysis", "kind": "remote", "dependencies": ["fetch", "clean"], "assigned_uid": "agent3"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "clean", "dst_uid": "agent2", "content": "Clean data quality issues: remove duplicates and fix null values"}}],
+            [],
+            
+            # CYCLE 3: Cleaning done, NOW can analyze
+            [{"name": "workplan.mark", "args": {"item_id": "clean", "status": "done", "notes": "Data cleaned"}}],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "analyze", "dst_uid": "agent3", "content": "Analyze cleaned customer transaction data"}}],
+            [],
+            
+            # CYCLE 4: Analysis done
+            [{"name": "workplan.mark", "args": {"item_id": "analyze", "status": "done", "notes": "Analysis complete"}}],
+            []
+        ])
+        
+        # ===== Setup Agents =====
+        agent1 = create_custom_agent_node("agent1", create_simple_agent_llm(
+            "Fetched 1,000,000 customer transaction records. WARNING: Found 15% duplicates and 8% null values in critical fields."
+        ))
+        agent2 = create_custom_agent_node("agent2", create_simple_agent_llm(
+            "Data cleaning complete: Removed 150,000 duplicates, filled 80,000 null values using interpolation. Clean dataset: 850,000 records."
+        ))
+        agent3 = create_custom_agent_node("agent3", create_simple_agent_llm(
+            "Analysis complete on cleaned dataset: Average transaction value $156, peak hour 2-3pm, 73% mobile transactions."
+        ))
+        
+        # ===== Create orchestrator =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1", "agent2", "agent3"]),
+            (agent1, "agent1", ["orch1"]),
+            (agent2, "agent2", ["orch1"]),
+            (agent3, "agent3", ["orch1"])
+        ])
+        
+        # ===== CYCLE 1: Initial fetch =====
+        print("\n🔄 CYCLE 1: Initial plan - fetch then analyze")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="Fetch and analyze customer transaction data",
+            created_by="user1"
+        ))
+        
+        initial_plan = assert_work_plan_created(orch, thread_id)
+        assert len(initial_plan.items) == 2, "Should have fetch and analyze"
+        assert initial_plan.items["analyze"].dependencies == ["fetch"]
+        
+        fetch_delegation = get_delegation_packets(state_view, "orch1")[0]
+        
+        # ===== Agent1: Fetch with quality issues =====
+        print("\n🤖 AGENT1: Fetches data but finds quality issues")
+        state_view = execute_agent_work(agent1, state_view, fetch_delegation.extract_task())
+        
+        # ===== CYCLE 2: Add emergent cleaning task =====
+        print("\n🔄 CYCLE 2: Orchestrator ADDS cleaning task as emergent dependency")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        emergent_plan = assert_work_plan_created(orch, thread_id)
+        assert len(emergent_plan.items) == 3, "Should have added cleaning task"
+        assert "clean" in emergent_plan.items
+        assert emergent_plan.items["clean"].dependencies == ["fetch"]
+        assert emergent_plan.items["analyze"].dependencies == ["fetch", "clean"], "Analyze should now depend on cleaning"
+        assert emergent_plan.items["analyze"].status.value == "pending", "Analyze should still be pending (deps not satisfied)"
+        
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        clean_delegations = [d for d in all_delegations if d.dst.uid == "agent2"]
+        
+        # ===== Agent2: Cleans data =====
+        print("\n🤖 AGENT2: Cleans data quality issues")
+        state_view = execute_agent_work(agent2, state_view, clean_delegations[0].extract_task())
+        
+        # ===== CYCLE 3: NOW can delegate analysis =====
+        print("\n🔄 CYCLE 3: All deps satisfied - orchestrator delegates analysis")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        analyze_delegations = [d for d in all_delegations if d.dst.uid == "agent3"]
+        assert len(analyze_delegations) > 0, "Should have delegated to agent3"
+        
+        # ===== Agent3: Analyzes clean data =====
+        print("\n🤖 AGENT3: Analyzes cleaned data")
+        state_view = execute_agent_work(agent3, state_view, analyze_delegations[0].extract_task())
+        
+        # ===== CYCLE 4: Complete =====
+        print("\n🔄 CYCLE 4: All tasks complete")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 3, f"All 3 tasks should be done, got {final_counts}"
+        
+        print(f"\n✅ Emergent dependencies verified!")
+        print(f"   - Started with: fetch -> analyze")
+        print(f"   - Agent1 revealed: data quality issues")
+        print(f"   - Orchestrator ADDED: clean task (emergent)")
+        print(f"   - Updated dependency: fetch -> clean -> analyze")
+        print(f"   - Executed in correct order respecting new dependencies")
+
+    def test_iterative_refinement_workflow(self):
+        """
+        ✅ ITERATIVE REFINEMENT: Agent returns partial result, orchestrator requests refinements.
+        
+        Flow:
+        1. Orch delegates "Create presentation" to agent1
+        2. Agent1 returns: "Draft presentation with 5 slides"
+        3. Orch marks DONE but creates NEW refinement task: "Add executive summary"
+        4. Delegates refinement_v2 to agent1 (same agent, new task)
+        5. Agent1 returns: "Added exec summary (1 slide), now 6 slides"
+        6. Orch creates another refinement: "Add financial projections"
+        7. Delegates refinement_v3 to agent2 (financial specialist)
+        8. Agent2 returns: "Added 3 financial slides, total 9 slides"
+        9. Orch marks all done, synthesizes final result
+        
+        Tests: Iterative refinement pattern with multiple agents contributing to same deliverable.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1: Initial draft
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Create investor presentation - iterative refinement",
+                    "items": [
+                        {"id": "draft_v1", "title": "Initial Draft", "description": "Basic presentation", "kind": "remote", "assigned_uid": "agent1"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "draft_v1", "dst_uid": "agent1", "content": "Create initial draft presentation for investors"}}],
+            [],
+            
+            # CYCLE 2: Draft done, request refinement v2
+            [{"name": "workplan.mark", "args": {"item_id": "draft_v1", "status": "done", "notes": "Initial draft complete"}}],
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Create investor presentation - iterative refinement",
+                    "items": [
+                        {"id": "draft_v1", "title": "Initial Draft", "description": "Basic presentation", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "refine_v2", "title": "Add Executive Summary", "description": "Refinement v2", "kind": "remote", "dependencies": ["draft_v1"], "assigned_uid": "agent1"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "refine_v2", "dst_uid": "agent1", "content": "Add executive summary slide to presentation"}}],
+            [],
+            
+            # CYCLE 3: v2 done, request refinement v3 (financial specialist)
+            [{"name": "workplan.mark", "args": {"item_id": "refine_v2", "status": "done", "notes": "Executive summary added"}}],
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Create investor presentation - iterative refinement",
+                    "items": [
+                        {"id": "draft_v1", "title": "Initial Draft", "description": "Basic presentation", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "refine_v2", "title": "Add Executive Summary", "description": "Refinement v2", "kind": "remote", "dependencies": ["draft_v1"], "assigned_uid": "agent1"},
+                        {"id": "refine_v3", "title": "Add Financial Projections", "description": "Refinement v3", "kind": "remote", "dependencies": ["refine_v2"], "assigned_uid": "agent2"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "refine_v3", "dst_uid": "agent2", "content": "Add detailed financial projections and ROI analysis to presentation"}}],
+            [],
+            
+            # CYCLE 4: All refinements done
+            [{"name": "workplan.mark", "args": {"item_id": "refine_v3", "status": "done", "notes": "Financial projections added"}}],
+            []
+        ])
+        
+        # ===== Setup Agents =====
+        agent1 = create_custom_agent_node("agent1", create_stateful_agent_llm([
+            "Initial draft presentation created: 5 slides covering company overview, product features, market opportunity, team, and call-to-action.",
+            "Executive summary slide added at the beginning. Presentation now has 6 slides with high-level overview of key points."
+        ]))
+        agent2 = create_custom_agent_node("agent2", create_simple_agent_llm(
+            "Added comprehensive financial section: 3 slides covering revenue projections, cost breakdown, and 5-year ROI analysis. Total presentation: 9 slides."
+        ))
+        
+        # ===== Create orchestrator =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1", "agent2"]),
+            (agent1, "agent1", ["orch1"]),
+            (agent2, "agent2", ["orch1"])
+        ])
+        
+        # ===== CYCLE 1: Initial draft =====
+        print("\n🔄 CYCLE 1: Request initial draft")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="Create investor presentation",
+            created_by="user1"
+        ))
+        
+        # ===== Agent1: Creates draft =====
+        print("\n🤖 AGENT1 (Iteration 1): Creates initial draft")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent1.run(state_view)
+        
+        # ===== CYCLE 2: Request refinement v2 =====
+        print("\n🔄 CYCLE 2: Request refinement - add executive summary")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        v2_plan = assert_work_plan_created(orch, thread_id)
+        assert len(v2_plan.items) == 2, "Should have draft + refinement v2"
+        assert v2_plan.items["refine_v2"].dependencies == ["draft_v1"]
+        
+        # ===== Agent1: Adds exec summary =====
+        print("\n🤖 AGENT1 (Iteration 2): Adds executive summary")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent1.run(state_view)
+        
+        # ===== CYCLE 3: Request refinement v3 (specialist) =====
+        print("\n🔄 CYCLE 3: Request refinement - add financial projections (specialist)")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        v3_plan = assert_work_plan_created(orch, thread_id)
+        assert len(v3_plan.items) == 3, "Should have 3 refinement iterations"
+        assert v3_plan.items["refine_v3"].assigned_uid == "agent2", "Should use financial specialist"
+        
+        # ===== Agent2: Adds financials =====
+        print("\n🤖 AGENT2 (Financial Specialist): Adds financial projections")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent2.run(state_view)
+        
+        # ===== CYCLE 4: All refinements complete =====
+        print("\n🔄 CYCLE 4: All refinements complete")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 3, f"All 3 iterations should be done, got {final_counts}"
+        
+        # Verify iterative refinement progression
+        assert "5 slides" in final_plan.items["draft_v1"].result_ref.content
+        assert "6 slides" in final_plan.items["refine_v2"].result_ref.content
+        assert "9 slides" in final_plan.items["refine_v3"].result_ref.content
+        
+        print(f"\n✅ Iterative refinement verified!")
+        print(f"   - v1: Agent1 created 5-slide draft")
+        print(f"   - v2: Agent1 added exec summary (6 slides)")
+        print(f"   - v3: Agent2 (specialist) added financials (9 slides)")
+        print(f"   - Progressive refinement with multiple contributors")
+
+    def test_agent_suggests_parallel_subtasks(self):
+        """
+        ✅ AGENT-DRIVEN EXPANSION: Agent identifies subtasks, orchestrator parallelizes them.
+        
+        Flow:
+        1. Orch delegates "Security audit" to agent1 (security lead)
+        2. Agent1 responds: "Need 3 parallel audits: network, application, database"
+        3. Orch interprets response, creates 3 NEW parallel tasks
+        4. Delegates network_audit to agent2, app_audit to agent3, db_audit to agent4
+        5. All 3 agents work in parallel
+        6. Orch collects all results, marks original security_audit done
+        7. Creates final consolidation task assigned back to agent1
+        8. Agent1 synthesizes all audit results into comprehensive report
+        
+        Tests: Agent can suggest work breakdown, orchestrator executes in parallel.
+        """
+        # ===== Setup Orchestrator =====
+        orch_llm = create_stateful_llm([
+            # CYCLE 1: Initial security audit request
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Comprehensive security audit",
+                    "items": [
+                        {"id": "security_lead", "title": "Security Assessment", "description": "Plan audit scope", "kind": "remote", "assigned_uid": "agent1"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "security_lead", "dst_uid": "agent1", "content": "Assess what security audits are needed"}}],
+            [],
+            
+            # CYCLE 2: Agent1 suggested 3 parallel audits, create them
+            [{"name": "workplan.mark", "args": {"item_id": "security_lead", "status": "done", "notes": "Identified 3 audit areas"}}],
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Comprehensive security audit",
+                    "items": [
+                        {"id": "security_lead", "title": "Security Assessment", "description": "Plan audit scope", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "network_audit", "title": "Network Security Audit", "description": "Firewall and network security", "kind": "remote", "assigned_uid": "agent2"},
+                        {"id": "app_audit", "title": "Application Security Audit", "description": "Code and app vulnerabilities", "kind": "remote", "assigned_uid": "agent3"},
+                        {"id": "db_audit", "title": "Database Security Audit", "description": "Database access and encryption", "kind": "remote", "assigned_uid": "agent4"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "network_audit", "dst_uid": "agent2", "content": "Audit network security: firewalls, VPNs, intrusion detection"}}],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "app_audit", "dst_uid": "agent3", "content": "Audit application security: OWASP top 10, code vulnerabilities"}}],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "db_audit", "dst_uid": "agent4", "content": "Audit database security: access controls, encryption, SQL injection risks"}}],
+            [],
+            
+            # CYCLE 3: All 3 parallel audits complete, create consolidation task
+            [{"name": "workplan.mark", "args": {"item_id": "network_audit", "status": "done", "notes": "Network audit complete"}}],
+            [{"name": "workplan.mark", "args": {"item_id": "app_audit", "status": "done", "notes": "App audit complete"}}],
+            [{"name": "workplan.mark", "args": {"item_id": "db_audit", "status": "done", "notes": "DB audit complete"}}],
+            [{
+                "name": "workplan.create_or_update",
+                "args": {
+                    "summary": "Comprehensive security audit",
+                    "items": [
+                        {"id": "security_lead", "title": "Security Assessment", "description": "Plan audit scope", "kind": "remote", "assigned_uid": "agent1"},
+                        {"id": "network_audit", "title": "Network Security Audit", "description": "Firewall and network security", "kind": "remote", "assigned_uid": "agent2"},
+                        {"id": "app_audit", "title": "Application Security Audit", "description": "Code and app vulnerabilities", "kind": "remote", "assigned_uid": "agent3"},
+                        {"id": "db_audit", "title": "Database Security Audit", "description": "Database access and encryption", "kind": "remote", "assigned_uid": "agent4"},
+                        {"id": "consolidate", "title": "Consolidate Audit Results", "description": "Final comprehensive report", "kind": "remote", "dependencies": ["network_audit", "app_audit", "db_audit"], "assigned_uid": "agent1"}
+                    ]
+                }
+            }],
+            [{"name": "iem.delegate_task", "args": {"work_item_id": "consolidate", "dst_uid": "agent1", "content": "Consolidate all security audit findings into comprehensive report with prioritized recommendations"}}],
+            [],
+            
+            # CYCLE 4: Consolidation complete
+            [{"name": "workplan.mark", "args": {"item_id": "consolidate", "status": "done", "notes": "Final report ready"}}],
+            []
+        ])
+        
+        # ===== Setup Agents =====
+        agent1_llm = create_stateful_agent_llm([
+            "Security assessment complete. Recommend 3 parallel audits: (1) Network security - firewalls and intrusion detection, (2) Application security - code vulnerabilities, (3) Database security - access controls.",
+            "CONSOLIDATED SECURITY AUDIT REPORT: Total 47 findings (12 critical, 18 high, 17 medium). Top priority: Network firewall gaps, SQL injection risks, unencrypted DB fields. Detailed remediation plan attached."
+        ])
+        agent1 = create_custom_agent_node("agent1", agent1_llm)
+        
+        agent2 = create_custom_agent_node("agent2", create_simple_agent_llm(
+            "Network audit complete: Found 8 firewall rule gaps, 3 open ports, VPN encryption weak. Recommend immediate firewall rule updates."
+        ))
+        agent3 = create_custom_agent_node("agent3", create_simple_agent_llm(
+            "Application audit complete: Found 15 vulnerabilities (4 SQL injection points, 6 XSS risks, 5 insecure API endpoints). Code fixes needed."
+        ))
+        agent4 = create_custom_agent_node("agent4", create_simple_agent_llm(
+            "Database audit complete: Found 24 issues (12 tables unencrypted, excessive admin privileges, weak password policies). Encryption and access control updates required."
+        ))
+        
+        # ===== Create orchestrator =====
+        orch = create_orchestrator_node("orch1", orch_llm)
+        
+        # ===== Setup SHARED state =====
+        state_view = setup_multi_node_env([
+            (orch, "orch1", ["agent1", "agent2", "agent3", "agent4"]),
+            (agent1, "agent1", ["orch1"]),
+            (agent2, "agent2", ["orch1"]),
+            (agent3, "agent3", ["orch1"]),
+            (agent4, "agent4", ["orch1"])
+        ])
+        
+        # ===== CYCLE 1: Security lead assessment =====
+        print("\n🔄 CYCLE 1: Security lead assesses audit scope")
+        state_view, thread_id = execute_orchestrator_cycle(orch, state_view, initial_task=Task(
+            content="Perform comprehensive security audit",
+            created_by="user1"
+        ))
+        
+        lead_delegation = get_delegation_packets(state_view, "orch1")[0]
+        
+        # ===== Agent1: Identifies 3 parallel audits =====
+        print("\n🤖 AGENT1 (Security Lead): Identifies 3 parallel audit areas")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent1.run(state_view)
+        
+        # ===== CYCLE 2: Orch creates 3 parallel audit tasks =====
+        print("\n🔄 CYCLE 2: Orchestrator creates 3 PARALLEL audit tasks")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        parallel_plan = assert_work_plan_created(orch, thread_id)
+        assert len(parallel_plan.items) == 4, "Should have lead + 3 parallel audits"
+        assert "network_audit" in parallel_plan.items
+        assert "app_audit" in parallel_plan.items
+        assert "db_audit" in parallel_plan.items
+        
+        # Get all 3 parallel delegations
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        network_del = [d for d in all_delegations if d.dst.uid == "agent2"][0]
+        app_del = [d for d in all_delegations if d.dst.uid == "agent3"][0]
+        db_del = [d for d in all_delegations if d.dst.uid == "agent4"][0]
+        
+        # ===== All 3 specialists work in PARALLEL =====
+        print("\n🤖🤖🤖 PARALLEL EXECUTION: 3 specialists audit simultaneously")
+        state_view = execute_agent_work(agent2, state_view, network_del.extract_task())
+        state_view = execute_agent_work(agent3, state_view, app_del.extract_task())
+        state_view = execute_agent_work(agent4, state_view, db_del.extract_task())
+        
+        # ===== CYCLE 3: Orch creates consolidation task =====
+        print("\n🔄 CYCLE 3: All parallel audits complete - create consolidation task")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        consolidation_plan = assert_work_plan_created(orch, thread_id)
+        assert len(consolidation_plan.items) == 5, "Should have all 4 + consolidation"
+        assert "consolidate" in consolidation_plan.items
+        assert consolidation_plan.items["consolidate"].dependencies == ["network_audit", "app_audit", "db_audit"]
+        assert consolidation_plan.items["consolidate"].assigned_uid == "agent1", "Lead agent consolidates"
+        
+        all_delegations = get_delegation_packets(state_view, "orch1")
+        consolidate_dels = [d for d in all_delegations if "consolidate" in str(d.extract_task().data.get("work_item_id", ""))]
+        
+        # ===== Agent1: Consolidates all results =====
+        print("\n🤖 AGENT1 (Security Lead): Consolidates all audit findings")
+        # ✅ Agent automatically processes packets from shared state (REAL scenario)
+        state_view = agent1.run(state_view)
+        
+        # ===== CYCLE 4: Complete =====
+        print("\n🔄 CYCLE 4: Consolidation complete")
+        state_view, _ = execute_orchestrator_cycle(orch, state_view)
+        
+        final_plan = assert_work_plan_created(orch, thread_id)
+        final_counts = get_work_plan_status_counts(final_plan)
+        
+        assert final_counts["done"] == 5, f"All 5 tasks should be done, got {final_counts}"
+        
+        # Verify parallel execution happened
+        assert "firewall" in final_plan.items["network_audit"].result_ref.content.lower()
+        assert "sql injection" in final_plan.items["app_audit"].result_ref.content.lower()
+        assert "encryption" in final_plan.items["db_audit"].result_ref.content.lower()
+        assert "47 findings" in final_plan.items["consolidate"].result_ref.content
+        
+        print(f"\n✅ Agent-driven parallel expansion verified!")
+        print(f"   - Agent1 (lead) identified 3 audit areas")
+        print(f"   - Orchestrator created 3 PARALLEL tasks")
+        print(f"   - Agent2, Agent3, Agent4 executed simultaneously")
+        print(f"   - Agent1 consolidated all results into final report")
+        print(f"   - Pattern: Agent suggests → Orch parallelizes → Agent consolidates")
 

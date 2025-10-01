@@ -161,17 +161,18 @@ class DelegateTaskTool(BaseTool):
             print(f"✅ [DEBUG] Threads saved successfully")
             
             # Update work item status to WAITING (always done now)
-            print(f"🔄 [DEBUG] Updating work item status to WAITING")
+            print(f"🔄 [DEBUG] Updating work item status to WAITING and assigning to {args.dst_uid}")
             try:
                 owner_uid = self._get_owner_uid()
                 workspace_service = self._get_workspace_service()
                 
-                # Mark item as delegated with correlation task ID
+                # Mark item as delegated with correlation task ID and assigned UID
                 success = workspace_service.mark_work_item_as_delegated(
                     current_thread.thread_id, 
                     owner_uid, 
                     work_item_id, 
-                    task.task_id
+                    task.task_id,
+                    args.dst_uid  # ✅ Pass the assigned node UID
                 )
                 
                 if not success:
@@ -182,7 +183,7 @@ class DelegateTaskTool(BaseTool):
                         "error": error_msg
                     }
                 
-                print(f"✅ [DEBUG] Work item status updated successfully")
+                print(f"✅ [DEBUG] Work item status updated and assigned to {args.dst_uid}")
             except Exception as e:
                 error_msg = f"Exception updating work item status: {e}"
                 print(f"❌ [DEBUG] {error_msg}")

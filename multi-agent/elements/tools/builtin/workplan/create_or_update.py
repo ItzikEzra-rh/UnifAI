@@ -22,9 +22,9 @@ class WorkItemSpec(BaseModel):
         default=WorkItemKind.REMOTE,
         description="LOCAL for tasks you can do yourself, REMOTE for tasks to delegate to other nodes"
     )
-    estimated_duration: Optional[str] = Field(
-        None, 
-        description="Optional time estimate (e.g., '30 minutes', '2 hours')"
+    assigned_uid: Optional[str] = Field(
+        None,
+        description="Optional: Pre-assign to specific node UID (will be set automatically when delegating)"
     )
 
 
@@ -136,9 +136,15 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
                     existing_item.description = item_spec.description
                     existing_item.dependencies = item_spec.dependencies
                     existing_item.kind = item_spec.kind
+                    
+                    # ✅ Allow reassignment if LLM specifies it
+                    if item_spec.assigned_uid is not None:
+                        existing_item.assigned_uid = item_spec.assigned_uid
+                        print(f"📋 [DEBUG] Item {item_spec.id} reassigned to {item_spec.assigned_uid}")
+                    
                     existing_item.mark_updated()
                     
-                    # ✅ Preserved properties: status, result_ref, correlation_task_id, error, assigned_uid
+                    # ✅ Preserved properties: status, result_ref, correlation_task_id, error
                     print(f"📋 [DEBUG] Item {item_spec.id} updated - status={existing_item.status} preserved")
                 else:
                     # ✅ CREATE: New item with defaults
@@ -148,7 +154,8 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
                         title=item_spec.title,
                         description=item_spec.description,
                         dependencies=item_spec.dependencies,
-                        kind=item_spec.kind
+                        kind=item_spec.kind,
+                        assigned_uid=item_spec.assigned_uid  # ✅ Support pre-assignment
                     )
                     plan.items[item_spec.id] = new_item
             

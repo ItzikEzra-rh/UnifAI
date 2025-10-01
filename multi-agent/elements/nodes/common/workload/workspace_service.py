@@ -486,7 +486,8 @@ class IWorkspaceService(ABC):
         thread_id: str, 
         owner_uid: str, 
         item_id: str, 
-        correlation_task_id: str
+        correlation_task_id: str,
+        assigned_uid: str
     ) -> bool:
         """
         Mark work item as delegated (WAITING status) - thread-safe.
@@ -496,6 +497,7 @@ class IWorkspaceService(ABC):
             owner_uid: Owner node UID
             item_id: Work item ID
             correlation_task_id: Correlation task ID for tracking
+            assigned_uid: UID of the node this item is delegated to
             
         Returns:
             True if marked successfully
@@ -1053,11 +1055,13 @@ class WorkspaceService(IWorkspaceService):
         thread_id: str, 
         owner_uid: str, 
         item_id: str, 
-        correlation_task_id: str
+        correlation_task_id: str,
+        assigned_uid: str
     ) -> bool:
         """Mark work item as delegated (WAITING status) - thread-safe."""
         print(f"📤 [DEBUG] WorkspaceService.mark_work_item_as_delegated() - Marking {item_id} as delegated")
         print(f"📤 [DEBUG] correlation_task_id: {correlation_task_id}")
+        print(f"📤 [DEBUG] assigned_uid: {assigned_uid}")
         
         with self._with_work_plan_lock(thread_id, owner_uid):
             plan = self.load_work_plan(thread_id, owner_uid)
@@ -1073,9 +1077,11 @@ class WorkspaceService(IWorkspaceService):
             
             print(f"✅ [DEBUG] Found item: {item.title}")
             print(f"🔄 [DEBUG] Changing status: {item.status} → WAITING")
+            print(f"👤 [DEBUG] Assigning to: {assigned_uid}")
             
             item.status = WorkItemStatus.WAITING
             item.correlation_task_id = correlation_task_id
+            item.assigned_uid = assigned_uid  # ✅ Set the assigned node
             item.mark_updated()
             
             self.save_work_plan(plan)

@@ -76,6 +76,7 @@ from tests.base.flow_test_helpers import (
     # Multi-round orchestration (Priority 2)
     create_stateful_llm,
     create_simple_agent_llm,
+    create_stateful_agent_llm,
     create_multi_round_planning_llm,
     run_orchestration_until_complete,
     create_monitoring_llm,
@@ -160,6 +161,7 @@ __all__ = [
     # Multi-round orchestration (Priority 2)
     'create_stateful_llm',
     'create_simple_agent_llm',
+    'create_stateful_agent_llm',
     'create_multi_round_planning_llm',
     'run_orchestration_until_complete',
     'create_monitoring_llm',

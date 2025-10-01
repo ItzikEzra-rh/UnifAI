@@ -567,6 +567,61 @@ def create_simple_agent_llm(response_content: str):
     return llm
 
 
+def create_stateful_agent_llm(responses: List[str]):
+    """
+    ✅ GENERIC: Create a stateful mock LLM for agents with different text per call.
+    
+    For multi-round agent scenarios where the agent returns different text
+    for each invocation (e.g., clarification requests, then final answer).
+    
+    Useful for: Testing multi-round agent behavior without tools.
+    Works for: ANY agent that needs different responses per call.
+    
+    Args:
+        responses: List of text responses, one per LLM call
+        
+    Returns:
+        Mock LLM that returns different text content on each call
+        
+    Example:
+        # Agent asks for clarification twice, then completes
+        agent_llm = create_stateful_agent_llm([
+            "CLARIFICATION: Which time period?",      # Call 1
+            "CLARIFICATION: Include social media?",   # Call 2
+            "Analysis complete: 65% positive"         # Call 3
+        ])
+        agent = create_custom_agent_node("agent1", agent_llm)
+        
+        # Each execute_agent_work call gets the next response
+        state = execute_agent_work(agent, state, task1)  # Returns response[0]
+        state = execute_agent_work(agent, state, task2)  # Returns response[1]
+        state = execute_agent_work(agent, state, task3)  # Returns response[2]
+    """
+    from elements.llms.common.chat.message import ChatMessage, Role
+    
+    llm = Mock()
+    call_count = [0]  # Mutable counter
+    
+    def chat_handler(messages, **kwargs):
+        if call_count[0] < len(responses):
+            content = responses[call_count[0]]
+            call_count[0] += 1
+        else:
+            # Fallback if called more times than responses provided
+            content = f"Extra call {call_count[0] - len(responses) + 1}"
+            call_count[0] += 1
+        
+        return ChatMessage(
+            role=Role.ASSISTANT,
+            content=content,
+            tool_calls=[]  # No tools = final answer
+        )
+    
+    llm.chat = Mock(side_effect=chat_handler)
+    
+    return llm
+
+
 def create_multi_round_planning_llm(rounds: List[Dict]):
     """
     ✅ GENERIC: Create LLM for multi-round orchestration with different actions per round.
