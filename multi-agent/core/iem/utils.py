@@ -376,6 +376,7 @@ def get_outgoing_targets(state, context) -> set[str]:
                 hasattr(packet.src, 'uid') and packet.src.uid == my_uid and
                 hasattr(packet, 'dst') and packet.dst is not None and
                 hasattr(packet.dst, 'uid') and packet.dst.uid in adjacent_uids and
+                hasattr(packet, 'is_acknowledged') and not packet.is_acknowledged() and
                 hasattr(packet, 'is_expired') and not packet.is_expired):
                 targets.add(packet.dst.uid)
         except (AttributeError, TypeError):

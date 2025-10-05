@@ -5,7 +5,7 @@ Clean, generic packet handling with minimal interface.
 Handles transport layer generically, delegates business logic to packet handlers.
 """
 
-from typing import Optional, Any, TypeVar, Generic, List
+from typing import Any, TypeVar, Generic, List
 from graph.state.state_view import StateView
 from graph.state.graph_state import Channel
 from core.iem.packets import BaseIEMPacket, TaskPacket
@@ -52,23 +52,36 @@ class IEMCapableMixin(Generic[TSupportsState]):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self._iem_ms: Optional[InterMessenger] = None
+
+    def get_messenger(self: TSupportsState) -> InterMessenger:
+        """
+        Get IEM messenger bound to current state.
+        
+        Factory method that creates a fresh messenger with current state.
+        Ensures messenger always works with up-to-date state.
+        
+        Returns:
+            InterMessenger configured for this node
+            
+        Raises:
+            RuntimeError: If called outside of node execution
+        """
+        try:
+            state = self.get_state()
+            context = self.get_context()
+        except RuntimeError:
+            raise RuntimeError("IEM messenger not available outside of run()")
+        
+        return messenger_from_ctx(state, context)
 
     @property
     def ms(self: TSupportsState) -> InterMessenger:
-        """Access to IEM messenger - lazily initialized."""
-        if self._iem_ms is None:
-            try:
-                state = self.get_state()
-                context = self.get_context()
-            except RuntimeError:
-                raise RuntimeError("IEM messenger not available outside of run()")
-            self._iem_ms = messenger_from_ctx(state, context)
-        return self._iem_ms
+        """Access to IEM messenger - creates fresh instance with current state."""
+        return self.get_messenger()
 
     @property
     def messenger(self: TSupportsState) -> InterMessenger:
-        """Access to IEM messenger - alias for ms."""
+        """Alias for ms property."""
         return self.ms
 
     # === GENERIC PACKET OPERATIONS ===

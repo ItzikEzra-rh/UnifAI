@@ -93,6 +93,5 @@ class UserQuestionNode(WorkloadCapableMixin, IEMCapableMixin, BaseNode):
         packet_ids = self.broadcast_task(task)
         
         # Log workflow initiation with enhanced context
-        workspace_summary = self.workspaces.get_summary(thread.thread_id)
         print(f"UserQuestion: Initiated workflow {thread.thread_id}")
 

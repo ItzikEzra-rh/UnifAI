@@ -26,7 +26,7 @@ class OrchestratorNodeConfig(NodeBaseConfig):
         description="Domain specialization message (e.g., 'I specialize in document analysis and Slack integration'). This is separate from orchestrator behavior which is built-in."
     )
     max_rounds: int = Field(
-        20, 
+        100,
         description="Maximum planning/execution rounds per orchestration cycle"
     )
 

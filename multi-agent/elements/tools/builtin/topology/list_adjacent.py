@@ -7,13 +7,16 @@ from pydantic import BaseModel
 from elements.tools.common.base_tool import BaseTool
 from elements.nodes.common.agent.constants import ToolNames
 
+class ListAdjacentNodeArgs(BaseModel):
+    pass
+
 
 class ListAdjacentNodesTool(BaseTool):
     """List all adjacent nodes with their capabilities."""
     
     name = ToolNames.TOPOLOGY_LIST_ADJACENT
     description = "Get a list of all adjacent nodes with their capabilities and skills"
-    args_schema = BaseModel  # No arguments needed
+    args_schema = ListAdjacentNodeArgs  # No arguments needed
     
     def __init__(self, get_adjacent_nodes: Callable[[], Dict[str, Any]]):
         """
