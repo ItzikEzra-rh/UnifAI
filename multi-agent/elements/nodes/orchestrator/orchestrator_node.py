@@ -20,9 +20,11 @@ from elements.nodes.common.capabilities.workload_capable import WorkloadCapableM
 from elements.nodes.common.agent import AgentConfig
 from elements.nodes.common.agent.execution import ExecutionMode
 from elements.nodes.common.agent.constants import StrategyType
+from elements.nodes.common.agent.delegation_policy import DelegationPolicy, PermissiveDelegationPolicy
 from elements.tools.common.execution.models import ExecutorConfig
 from elements.nodes.common.workload import Task, WorkItemStatus, WorkItemKind, AgentResult
 from .orchestrator_phase_provider import OrchestratorPhaseProvider
+from .delegation_policy import OrchestratorDelegationPolicy
 from elements.tools.builtin import (
     CreateOrUpdateWorkPlanTool,
     AssignWorkItemTool,
@@ -351,10 +353,19 @@ class OrchestratorNode(
         # Build domain tools only (provider will build built-ins)
         tools = list(self.base_tools)
 
+        # Apply orchestrator's delegation policy to filter adjacent nodes
+        delegation_policy = self._create_delegation_policy()
+        all_adjacent = self.get_adjacent_nodes()
+        delegable_adjacent = delegation_policy.filter_delegable_nodes(all_adjacent)
+        
+        print(f"🔒 [ORCHESTRATOR] Adjacent nodes: {len(all_adjacent)} total, "
+              f"{len(delegable_adjacent)} delegable after policy")
+
         # Create orchestrator phase provider with clean SOLID dependencies
+        # NOTE: We pass filtered nodes - provider doesn't know about delegation policy
         phase_provider = OrchestratorPhaseProvider(
             domain_tools=tools,  # These are the domain tools this orchestrator can use
-            get_adjacent_nodes=self.get_adjacent_nodes,  # Inject adjacency function
+            get_adjacent_nodes=lambda: delegable_adjacent,  # Pass filtered nodes!
             send_task=self.send_task,  # Inject IEM sender for delegation tool
             node_uid=self.uid,
             thread_id=thread_id,
@@ -471,7 +482,10 @@ class OrchestratorNode(
 
     def _build_adjacency_summary(self) -> str:
         """
-        Build a comprehensive summary of adjacent nodes.
+        Build a comprehensive summary of delegable adjacent nodes.
+        
+        Respects orchestrator's delegation policy - only shows nodes that
+        can receive delegated work (excludes finalization path nodes).
         
         Provides enough detail for informed delegation decisions.
         Shows description and raw skills data without parsing.
@@ -479,24 +493,45 @@ class OrchestratorNode(
         Returns:
             Formatted string with node info and skills
         """
-        adjacent_nodes = self.get_adjacent_nodes()
-        if not adjacent_nodes:
-            return "No adjacent nodes available."
+        try:
+            # Get orchestrator's delegation policy
+            delegation_policy = self._create_delegation_policy()
+            
+            # Get all adjacent nodes and filter by policy
+            all_adjacent = self.get_adjacent_nodes()
+            delegable_nodes = delegation_policy.filter_delegable_nodes(all_adjacent)
+            
+            if not delegable_nodes:
+                return "No delegable nodes available."
 
-        lines = ["Available nodes for delegation:\n"]
-        
-        for uid, card in adjacent_nodes.items():
-            lines.append(f"## {card.name} (uid: {uid})")
-            lines.append(f"   Type: {card.type_key}")
-            lines.append(f"   Description: {card.description}")
+            lines = ["Available nodes for delegation:\n"]
             
-            # Skills - Show raw data as-is
-            if card.skills:
-                lines.append(f"   Skills: {card.skills}")
+            for uid, card in delegable_nodes.items():
+                lines.append(f"## {card.name} (uid: {uid})")
+                lines.append(f"   Type: {card.type_key}")
+                lines.append(f"   Description: {card.description}")
+                
+                # Skills - Show raw data as-is
+                if card.skills:
+                    lines.append(f"   Skills: {card.skills}")
+                
+                lines.append("")  # Blank line between nodes
             
-            lines.append("")  # Blank line between nodes
-        
-        return "\n".join(lines)
+            return "\n".join(lines)
+            
+        except Exception as e:
+            print(f"⚠️ [ORCHESTRATOR] Error building adjacency summary: {e}")
+            # Fallback: show all adjacent nodes
+            adjacent_nodes = self.get_adjacent_nodes()
+            if not adjacent_nodes:
+                return "No adjacent nodes available."
+            
+            lines = ["Available nodes (fallback - all adjacent):\n"]
+            for uid, card in adjacent_nodes.items():
+                lines.append(f"## {card.name} (uid: {uid})")
+                lines.append("")
+            
+            return "\n".join(lines)
 
     def _build_workspace_summary(self, thread_id: str) -> str:
         """
@@ -693,6 +728,39 @@ Key principles:
         else:
             # No specialization provided
             return behavior_msg
+
+    def _create_delegation_policy(self) -> DelegationPolicy:
+        """
+        Create orchestrator's delegation policy.
+        
+        ORCHESTRATOR'S CHOICE: Exclude finalization path nodes from delegation.
+        
+        This is where the orchestrator makes the decision about which nodes
+        can receive delegated work. The policy encapsulates the business rule:
+        "Don't delegate to finalization path nodes because I route to them
+        programmatically when work completes."
+        
+        Returns:
+            OrchestratorDelegationPolicy or fallback to permissive policy
+        """
+        try:
+            # Get context and topology
+            context = self.get_context()
+            topology = context.topology if context else None
+            adjacent_nodes = self.get_adjacent_nodes()
+            
+            # Create orchestrator-specific policy
+            return OrchestratorDelegationPolicy(
+                topology=topology,
+                adjacent_nodes=adjacent_nodes
+            )
+            
+        except Exception as e:
+            print(f"⚠️ [ORCHESTRATOR] Error creating delegation policy: {e}")
+            print(f"⚠️ [ORCHESTRATOR] Falling back to permissive policy (all nodes delegable)")
+            
+            # Fallback: Allow all adjacent nodes
+            return PermissiveDelegationPolicy(self.get_adjacent_nodes())
 
     def _get_original_task(self, thread_id: str) -> Optional[Task]:
         """

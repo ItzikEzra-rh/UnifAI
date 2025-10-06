@@ -65,6 +65,11 @@ class OrchestratorPhaseProvider(PhaseProvider):
     - Orchestration tools are built-in (work plan, delegation, etc.)
     - Phases are defined using enums (no hardcoding)
     - Iteration limits managed via Pydantic models in PhaseDefinition
+    
+    DESIGN NOTE:
+    The phase provider receives already-filtered adjacent nodes from the orchestrator.
+    It does NOT know about delegation policies - that's the orchestrator's responsibility.
+    This ensures clean separation: orchestrator decides WHO is adjacent, provider uses it.
     """
 
     def __init__(
@@ -82,12 +87,17 @@ class OrchestratorPhaseProvider(PhaseProvider):
         
         Args:
             domain_tools: Domain-specific tools that this orchestrator can use
-            get_adjacent_nodes: Function to get adjacent nodes dict
+            get_adjacent_nodes: Function to get adjacent nodes (already filtered by orchestrator)
             send_task: Function to send IEM tasks (dst_uid, task) -> packet_id
             node_uid: Node identifier
             thread_id: Current thread ID for context
             get_workload_service: Function to get workload service
             iteration_limits: Custom iteration limits configuration (optional)
+        
+        Note:
+            get_adjacent_nodes should return nodes that the orchestrator has already
+            filtered according to its delegation policy. The provider doesn't apply
+            any additional filtering - it trusts what the orchestrator gives it.
         """
         self._get_adjacent_nodes = get_adjacent_nodes
         self._send_task = send_task
@@ -154,10 +164,18 @@ class OrchestratorPhaseProvider(PhaseProvider):
         Tool separation:
         - Built-in tools: Initialize here (workplan, delegation, topology, etc.)
         - Domain tools: Already initialized, passed from constructor (execution tools)
+        
+        Adjacent Nodes:
+        - Phase provider receives already-filtered adjacent nodes from orchestrator
+        - No policy logic here - orchestrator has already applied its delegation policy
+        - Provider simply uses the nodes it's given
         """
         # Clean SOLID dependencies
         get_tid = lambda: self._thread_id
         get_uid = lambda: self._node_uid
+
+        # Get adjacent nodes (already filtered by orchestrator)
+        adjacent_nodes = self._get_adjacent_nodes()
 
         # Initialize built-in orchestration tools with clean dependencies
         create_plan_tool = CreateOrUpdateWorkPlanTool(
@@ -180,16 +198,22 @@ class OrchestratorPhaseProvider(PhaseProvider):
             get_owner_uid=get_uid,
             get_workload_service=self._get_workload_service
         )
+        
+        # Tools use the adjacent nodes provided by orchestrator (already filtered)
         delegate_tool = DelegateTaskTool(
             send_task=self._send_task,
             get_owner_uid=get_uid,
             get_current_thread=lambda: self._get_current_thread(),
             get_thread_service=lambda: self._get_workload_service().get_thread_service(),
             get_workspace_service=lambda: self._get_workload_service().get_workspace_service(),
-            check_adjacency=lambda uid: uid in self._get_adjacent_nodes()
+            check_adjacency=lambda uid: uid in adjacent_nodes  # Simple membership check
         )
-        list_nodes_tool = ListAdjacentNodesTool(get_adjacent_nodes=self._get_adjacent_nodes)
-        get_node_card_tool = GetNodeCardTool(get_adjacent_nodes=self._get_adjacent_nodes)
+        list_nodes_tool = ListAdjacentNodesTool(
+            get_adjacent_nodes=self._get_adjacent_nodes  # Uses orchestrator-provided nodes
+        )
+        get_node_card_tool = GetNodeCardTool(
+            get_adjacent_nodes=self._get_adjacent_nodes  # Uses orchestrator-provided nodes
+        )
 
         # Create phase definitions directly in execution order (no interim configs)
         domain_tools_list = list(self._domain_tools)

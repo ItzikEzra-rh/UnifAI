@@ -9,22 +9,22 @@ class RouterDirectCondition(BaseCondition):
     """
     IEM-based router condition that routes to nodes receiving packets.
     """
-    
+
     READS = {Channel.INTER_PACKETS}
 
     def run(self, state: StateView):
         """Route to nodes that have been receiving packets from this node."""
         if not self.context:
-            return ""
-        
+            return None
+
         targets = get_outgoing_targets(state, self.context)
-        
+
         if not targets:
-            return ""
-        
+            return None
+
         if len(targets) == 1:
             return list(targets)[0]
-        
+
         # Return as tuple for multiple targets
         return tuple(sorted(targets))
 
