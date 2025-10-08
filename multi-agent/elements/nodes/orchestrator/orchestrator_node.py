@@ -142,11 +142,16 @@ class OrchestratorNode(
             
             # Re-check status after orchestration
             status_summary = self.workspaces.get_work_plan_status(thread_id, self.uid)
+            final_result = self._get_final_orchestration_result(thread_id)
             
-            # Finalize if work is complete
-            if status_summary.is_complete:
-                final_result = self._get_final_orchestration_result(thread_id)
-                if final_result:
+            # Finalize if orchestrator produced a result AND:
+            # 1. Work is complete (all items DONE/FAILED), OR
+            # 2. Work incomplete but no delegation packets sent (error/partial result case)
+            #
+            # If we have outgoing packets, let the router handle routing to delegated nodes.
+            # The graph will re-invoke us when responses arrive.
+            if final_result:
+                if status_summary.is_complete or not self.has_outgoing_packets():
                     self._finalize_completed_work(thread_id, final_result)
 
     def handle_task_packet(self, packet) -> None:
@@ -542,11 +547,13 @@ class OrchestratorNode(
         Args:
             thread_id: Thread ID
             agent_result: Final orchestration result to route
+        
+        Note:
+            No idempotency check needed - caller (batch processing) already
+            ensures this is called once per thread per batch, and only when
+            status_summary.is_complete is True. Multi-request flows naturally
+            work because the work plan status is checked fresh each time.
         """
-        # Check if already finalized (idempotency)
-        if self.workspaces.get_variable(thread_id, f"finalized_{self.uid}", False):
-            return
-
         # Check if response is required
         original_task = self._get_original_task(thread_id)
 
@@ -554,9 +561,6 @@ class OrchestratorNode(
             self._send_response(thread_id, agent_result, original_task)
         else:
             self._route_to_finalizer(thread_id, agent_result)
-
-        # Mark as finalized
-        self.workspaces.set_variable(thread_id, f"finalized_{self.uid}", True)
 
     def _send_response(self, thread_id: str, agent_result: AgentResult, original_task: Task) -> None:
         """Send response using original task info."""
