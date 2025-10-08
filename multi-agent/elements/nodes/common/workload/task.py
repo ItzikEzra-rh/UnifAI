@@ -95,6 +95,7 @@ class Task(BaseModel):
             should_respond=False,
             correlation_task_id=original_task.task_id,  # Link to original
             thread_id=original_task.thread_id,
+            created_by=processed_by,  # Agent responding is creating this response task
             processed_by=processed_by,
             processed_at=datetime.utcnow()
         )
@@ -116,6 +117,7 @@ class Task(BaseModel):
             should_respond=False,
             correlation_task_id=original_task.task_id,
             thread_id=original_task.thread_id,
+            created_by=processed_by,  # Agent responding is creating this error response task
             processed_by=processed_by,
             processed_at=datetime.utcnow()
         )

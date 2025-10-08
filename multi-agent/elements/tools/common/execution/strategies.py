@@ -23,11 +23,8 @@ class SequentialStrategy(ExecutionStrategy):
         executor_func: Callable[[ToolExecutionRequest], Awaitable[ToolExecutionResponse]]
     ) -> List[ToolExecutionResponse]:
         """Execute tool requests sequentially."""
-        print(f"Executing {len(requests)} tool requests sequentially")
-        
         responses = []
         for i, request in enumerate(requests):
-            print(f"Executing request {i+1}/{len(requests)}: {request.tool_name}")
             try:
                 response = await executor_func(request)
                 responses.append(response)
@@ -52,8 +49,6 @@ class ParallelStrategy(ExecutionStrategy):
         executor_func: Callable[[ToolExecutionRequest], Awaitable[ToolExecutionResponse]]
     ) -> List[ToolExecutionResponse]:
         """Execute tool requests in parallel."""
-        print(f"Executing {len(requests)} tool requests in parallel")
-        
         if not requests:
             return []
         
@@ -88,7 +83,6 @@ class ParallelStrategy(ExecutionStrategy):
             else:
                 processed_responses.append(response)
         
-        print(f"Parallel execution completed: {len(processed_responses)} responses")
         return processed_responses
 
 
@@ -108,8 +102,6 @@ class ConcurrentLimitedStrategy(ExecutionStrategy):
         executor_func: Callable[[ToolExecutionRequest], Awaitable[ToolExecutionResponse]]
     ) -> List[ToolExecutionResponse]:
         """Execute tool requests with concurrency limit."""
-        print(f"Executing {len(requests)} tool requests with max {self.max_concurrent} concurrent")
-        
         if not requests:
             return []
         

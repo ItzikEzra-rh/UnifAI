@@ -13,14 +13,22 @@ class RouterDirectCondition(BaseCondition):
     READS = {Channel.INTER_PACKETS}
 
     def run(self, state: StateView):
-        """Route to nodes that have been receiving packets from this node."""
+        """
+        Route to nodes that have been receiving packets from this node.
+        
+        Returns:
+            - Node UID(s) if targets exist
+            - END if no targets (graceful termination instead of None crash)
+        """
         if not self.context:
-            return None
+            print("⚠️ [ROUTER] No context available - ending graph")
+            return "END"
 
         targets = get_outgoing_targets(state, self.context)
 
         if not targets:
-            return None
+            print("⚠️ [ROUTER] No outgoing targets found - ending graph gracefully")
+            return "END"
 
         if len(targets) == 1:
             return list(targets)[0]

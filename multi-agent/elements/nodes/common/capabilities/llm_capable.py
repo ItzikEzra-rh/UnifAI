@@ -75,8 +75,15 @@ class LlmCapableMixin(Generic[TSupportStream]):
         Returns:
             ChatMessage response from LLM
         """
-        # High-level LLM call logging only
-        print(f"🤖 [LLM] Chat with {len(tools) if tools else 0} tools")
+        # Print compact chat history before LLM call
+        print(f"\n💬 Chat ({len(messages)} messages):")
+        for i, msg in enumerate(messages, 1):
+            role_icon = "👤" if msg.role.value == "user" else "🤖" if msg.role.value == "assistant" else "⚙️"
+            # Show very compact: first 80 chars only
+            content = msg.content.replace('\n', ' ')[:80]
+            if len(msg.content) > 80:
+                content += "..."
+            print(f"   {i}. {role_icon} {content}")
         
         llm_instance = self.llm.bind_tools(tools) if tools else self.llm
 
@@ -118,9 +125,6 @@ class LlmCapableMixin(Generic[TSupportStream]):
         Returns:
             Final ChatMessage from LLM
         """
-        print(f"🔍 DEBUG: _stream_chat called with {len(messages)} messages")
-        print(f"🔍 DEBUG: LLM instance type: {type(llm_instance).__name__}")
-        
         accumulated_text = ""
         final_message: Optional[ChatMessage] = None
 

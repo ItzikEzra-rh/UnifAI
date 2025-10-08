@@ -34,7 +34,6 @@ class LangChainConverter:
             elif m.role == Role.TOOL:
                 # LangChain ToolMessage requires name parameter
                 tool_name = getattr(m, 'name', None) or 'unknown_tool'
-                print(f"🔍 DEBUG: Converting TOOL message - name: {tool_name}, tool_call_id: {m.tool_call_id}")
                 out.append(ToolMessage(content=m.content, tool_call_id=m.tool_call_id, name=tool_name))
 
             else:

@@ -98,11 +98,6 @@ class OrchestratorDelegationPolicy(DelegationPolicy):
         
         # Any node with a distance to finalizer is on a finalization path
         finalization_uids = set(self._topology.finalizer_paths.distances.keys())
-        
-        if finalization_uids:
-            print(f"🔒 [ORCHESTRATOR POLICY] Identified {len(finalization_uids)} "
-                  f"finalization path nodes: {sorted(finalization_uids)}")
-        
         return finalization_uids
     
     def is_delegable(self, node_uid: str) -> bool:
@@ -144,15 +139,6 @@ class OrchestratorDelegationPolicy(DelegationPolicy):
         """
         # Use base class implementation
         delegable = super().filter_delegable_nodes(adjacent_nodes)
-        
-        # Add orchestrator-specific logging
-        filtered_count = len(adjacent_nodes) - len(delegable)
-        if filtered_count > 0:
-            print(f"🔒 [ORCHESTRATOR POLICY] Filtered {filtered_count} "
-                  f"finalization path nodes from {len(adjacent_nodes)} total")
-            print(f"   Delegable nodes: {sorted(delegable.keys())}")
-            print(f"   Filtered nodes: {sorted(self._finalization_path_uids)}")
-        
         return delegable
     
     def get_finalization_path_uids(self) -> Set[str]:

@@ -130,9 +130,9 @@ def complex_work_plan():
         "waiting_item": WorkItem(
             id="waiting_item",
             title="Waiting Item", 
-            description="Item waiting for response",
+            description="Item in progress (remote delegation)",
             dependencies=[],
-            status=WorkItemStatus.WAITING,
+            status=WorkItemStatus.IN_PROGRESS,
             kind=WorkItemKind.REMOTE,
             assigned_uid="remote_node",
             correlation_task_id="task_123"
@@ -636,7 +636,6 @@ def capture_debug_output():
 @pytest.fixture(params=[
     WorkItemStatus.PENDING,
     WorkItemStatus.IN_PROGRESS, 
-    WorkItemStatus.WAITING,
     WorkItemStatus.DONE,
     WorkItemStatus.FAILED
 ])

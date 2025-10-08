@@ -78,7 +78,7 @@ class TestWorkItemModel:
             kind=WorkItemKind.REMOTE,
             title="Test",
             description="Test",
-            status=WorkItemStatus.WAITING
+            status=WorkItemStatus.IN_PROGRESS
         )
         
         # Simulate failures
@@ -157,7 +157,7 @@ class TestWorkPlanModel:
         )
         plan.items["item_2"] = WorkItem(
             id="item_2", kind=WorkItemKind.REMOTE,
-            title="T2", description="D2", status=WorkItemStatus.WAITING
+            title="T2", description="D2", status=WorkItemStatus.IN_PROGRESS
         )
         plan.items["item_3"] = WorkItem(
             id="item_3", kind=WorkItemKind.LOCAL,
@@ -167,7 +167,7 @@ class TestWorkPlanModel:
         counts = plan.get_status_counts()
         
         assert counts.pending == 1
-        assert counts.waiting == 1
+        assert counts.in_progress == 1
         assert counts.done == 1
         assert counts.failed == 0
         assert counts.total == 3

@@ -132,7 +132,6 @@ class OrchestratorPhaseProvider(PhaseProvider):
         self._iteration_state = self._iteration_state.increment(phase_name)
         current = self._iteration_state.get_count(phase_name)
         limit = self._iteration_limits.get_limit(phase_name)
-        print(f"🔢 [ORCHESTRATOR] Phase {phase_name}: {current}/{limit} iterations")
 
     def _is_phase_limit_exceeded(self, phase_name: str) -> bool:
         """
@@ -155,7 +154,6 @@ class OrchestratorPhaseProvider(PhaseProvider):
         """
         old_count = self._iteration_state.get_count(phase_name)
         self._iteration_state = self._iteration_state.reset(phase_name)
-        print(f"🔄 [ORCHESTRATOR] Reset {phase_name}: {old_count} → 0")
 
     def _create_phase_system(self) -> PhaseSystem:
         """
@@ -227,11 +225,45 @@ class OrchestratorPhaseProvider(PhaseProvider):
 
         planning_phase = PhaseDefinition(
             name=OrchestratorPhase.PLANNING.value,
-            description="Create detailed work plan with dependencies and task breakdown",
-            tools=[create_plan_tool, list_nodes_tool, get_node_card_tool],
+            description="Create or update work plan with dependencies and task breakdown",
+            tools=[create_plan_tool, summarize_tool, list_nodes_tool, get_node_card_tool],
             guidance=(
-                "PHASE: PLANNING - Create detailed work plan with dependencies. "
-                "Break down tasks logically. Don't execute or delegate yet."
+                "PHASE: PLANNING - Create or update work plan based on new request.\n\n"
+                "MULTI-REQUEST WORKFLOW (Same Thread):\n"
+                "1. FIRST: Use SummarizeWorkPlanTool to check if work plan already exists\n\n"
+                "2. IF NO PLAN EXISTS:\n"
+                "   Create comprehensive work plan using CreateOrUpdateWorkPlanTool:\n"
+                "   - Break down request into specific, actionable work items\n"
+                "   - Give each item a descriptive snake_case ID (e.g., 'research_trends', 'analyze_data')\n"
+                "   - Write clear title and detailed description for each item\n"
+                "   - Identify dependencies between items (which must complete before others)\n"
+                "   - Determine execution type:\n"
+                "     * LOCAL: Tasks you can execute yourself (with or without domain tools)\n"
+                "     * REMOTE: Tasks requiring specialized agents (check with ListAdjacentNodesTool)\n"
+                "   - Write comprehensive summary describing overall goal\n"
+                "   - Start simple: 3-5 well-defined items better than 20 vague ones\n\n"
+                "3. IF PLAN EXISTS:\n"
+                "   - Review existing items (DONE/IN_PROGRESS/PENDING/FAILED)\n"
+                "   - Understand what work has been completed\n"
+                "   - Determine how new request relates to existing work\n"
+                "   - Update plan accordingly (add new items, update descriptions, adjust dependencies)\n\n"
+                "HANDLING EXISTING WORK PLANS:\n"
+                "- NEW independent work → Add new items to existing plan\n"
+                "- FOLLOW-UP on completed work → Add items that depend on DONE items\n"
+                "- CLARIFICATION → May not need new items, just check existing results\n"
+                "- CONTINUATION → Add items that build on IN_PROGRESS work\n"
+                "- RE-DO failed work → Can reuse failed item IDs with updated approach\n\n"
+                "WORK ITEM BEST PRACTICES:\n"
+                "- Dependencies: Use item IDs in dependencies list (e.g., dependencies: ['research_trends'])\n"
+                "- Specificity: 'Research top 5 AI trends in 2024' > 'Research AI'\n"
+                "- Granularity: Break complex tasks into smaller steps\n"
+                "- Logical order: Arrange items in execution sequence\n\n"
+                "IMPORTANT:\n"
+                "- CreateOrUpdateWorkPlanTool preserves runtime state (status, results, etc.)\n"
+                "- Existing DONE items stay DONE - don't recreate them\n"
+                "- Use dependencies to link new work to completed items\n"
+                "- Summary should reflect cumulative goals, not just new request\n"
+                "- Focus on planning only - execution and delegation happen in later phases"
             ),
             max_iterations=self._iteration_limits.planning
         )
@@ -242,8 +274,42 @@ class OrchestratorPhaseProvider(PhaseProvider):
             description="Assign work items to appropriate nodes and delegate tasks",
             tools=[assign_tool, delegate_tool, list_nodes_tool, get_node_card_tool, create_plan_tool],
             guidance=(
-                "PHASE: ALLOCATION - Assign work items to appropriate nodes. "
-                "Use adjacency info to delegate. Don't execute local work yet."
+                "PHASE: ALLOCATION - Assign REMOTE work items to appropriate agents and delegate tasks.\n\n"
+                "WORKFLOW:\n"
+                "1. Review work plan for PENDING items with kind=REMOTE\n"
+                "2. For each REMOTE item:\n"
+                "   a. Use ListAdjacentNodesTool to see available agents\n"
+                "   b. Use GetNodeCardTool to understand agent capabilities\n"
+                "   c. Choose best agent based on task requirements and capabilities\n"
+                "   d. Use AssignWorkItemTool to assign item to chosen agent\n"
+                "   e. Use DelegateTaskTool to send task (MUST include work_item_id)\n"
+                "3. Skip LOCAL items (handled in EXECUTION phase)\n\n"
+                "ASSIGNMENT STRATEGY:\n"
+                "- Match task requirements to agent specialization\n"
+                "  * Research tasks → research_agent\n"
+                "  * Jira operations → jira_agent\n"
+                "  * Confluence queries → confluence_agent\n"
+                "  * Analysis/reasoning → reasoning_agent\n"
+                "- Check agent is in adjacency list (can't delegate to non-adjacent nodes)\n"
+                "- One work item → One agent (no multi-assignment yet)\n"
+                "- Consider agent capabilities from GetNodeCardTool\n\n"
+                "DELEGATION COORDINATION:\n"
+                "- CRITICAL: Always assign BEFORE delegate\n"
+                "  1. AssignWorkItemTool(item_id, agent_uid) - marks assigned_uid\n"
+                "  2. DelegateTaskTool(dst_uid, content, work_item_id) - creates child thread\n"
+                "- MUST include work_item_id in DelegateTaskTool (enables response tracking)\n"
+                "- Child thread created automatically (context for agent)\n"
+                "- Correlation ID tracked for linking responses back to work item\n\n"
+                "WHAT TO DELEGATE:\n"
+                "- Only REMOTE items (kind=REMOTE)\n"
+                "- Only PENDING or ready items (dependencies satisfied)\n"
+                "- Include clear instructions in task content\n"
+                "- Include context and expected deliverables\n\n"
+                "IMPORTANT:\n"
+                "- Don't execute LOCAL items here - wait for EXECUTION phase\n"
+                "- Don't skip REMOTE items - all must be delegated\n"
+                "- Incomplete delegation → Infinite loop risk (validator catches this)\n"
+                "- Status changes: PENDING → IN_PROGRESS (remote) after delegation"
             ),
             max_iterations=self._iteration_limits.allocation
         )
@@ -252,10 +318,67 @@ class OrchestratorPhaseProvider(PhaseProvider):
         execution_phase = PhaseDefinition(
             name=OrchestratorPhase.EXECUTION.value,
             description="Execute local work items using domain capabilities",
-            tools=[create_plan_tool] + domain_tools_list,
+            tools=[create_plan_tool, mark_status_tool] + domain_tools_list,
             guidance=(
-                "PHASE: EXECUTION - Execute local work items only. "
-                "Don't modify plan structure or delegate new work."
+                "PHASE: EXECUTION - Execute LOCAL work items directly or using domain tools.\n\n"
+                "WORKFLOW:\n"
+                "1. Identify PENDING items with kind=LOCAL\n"
+                "2. Check dependencies are satisfied (all dependencies must be DONE)\n"
+                "3. For each ready LOCAL item:\n"
+                "   a. Review item.description for requirements and deliverables\n"
+                "   b. Determine execution approach:\n"
+                "      * WITH domain tools: Use appropriate tool(s) for the task\n"
+                "      * WITHOUT domain tools: Execute directly using your reasoning/knowledge\n"
+                "   c. Execute the work\n"
+                "   d. Capture results, outputs, or insights\n"
+                "   e. Use MarkWorkItemStatusTool to mark DONE or FAILED\n"
+                "4. Store results for later synthesis\n\n"
+                "EXECUTION STRATEGY:\n"
+                "- Read full item description to understand requirements\n"
+                "- Check if domain tools are available and appropriate\n"
+                "- If tools available → Use them for specialized tasks\n"
+                "- If NO tools available → Execute directly:\n"
+                "  * Use your reasoning and knowledge\n"
+                "  * Perform analysis, synthesis, or planning tasks\n"
+                "  * Generate insights, summaries, or recommendations\n"
+                "  * Create structured outputs based on requirements\n"
+                "- Execute step-by-step if complex task\n"
+                "- Capture all relevant outputs and intermediate results\n"
+                "- Verify work meets requirements before marking DONE\n\n"
+                "MARKING STATUS:\n"
+                "- SUCCESS: MarkWorkItemStatusTool(item_id, status='done', notes='Brief summary of results')\n"
+                "  * Work completed successfully\n"
+                "  * Requirements satisfied\n"
+                "  * Results captured\n"
+                "- FAILURE: MarkWorkItemStatusTool(item_id, status='failed', notes='Error description')\n"
+                "  * Tool errors or exceptions\n"
+                "  * Cannot complete due to missing data/resources\n"
+                "  * Requirements cannot be satisfied\n"
+                "- Store detailed results in notes for synthesis phase\n\n"
+                "RESULT HANDLING:\n"
+                "- Capture outputs: data, calculations, analysis results, insights\n"
+                "- Note artifacts: files created, reports generated\n"
+                "- Document process: steps taken, tools used (or reasoning applied)\n"
+                "- Include enough detail for synthesis to use results\n\n"
+                "EXAMPLES OF LOCAL WORK WITHOUT TOOLS:\n"
+                "- Analyze results from delegated work items\n"
+                "- Synthesize information from multiple sources\n"
+                "- Create structured summaries or reports\n"
+                "- Generate recommendations based on findings\n"
+                "- Identify patterns or insights from data\n"
+                "- Plan next steps or create action items\n"
+                "- Evaluate and compare options\n"
+                "- Make decisions based on available information\n\n"
+                "ERROR HANDLING:\n"
+                "- Tool errors → Mark FAILED with specific error message\n"
+                "- Missing data → Mark FAILED, note what's missing\n"
+                "- Partial success → Decide if acceptable for DONE or needs retry\n"
+                "- Blocked by dependencies → Skip (don't execute yet)\n\n"
+                "IMPORTANT:\n"
+                "- Only execute LOCAL items (kind=LOCAL)\n"
+                "- Respect dependencies - blocked items wait for dependencies\n"
+                "- Always mark status after execution attempt\n"
+                "- Focus on quality - results will be synthesized later"
             ),
             max_iterations=self._iteration_limits.execution
         )
@@ -264,10 +387,31 @@ class OrchestratorPhaseProvider(PhaseProvider):
         monitoring_phase = PhaseDefinition(
             name=OrchestratorPhase.MONITORING.value,
             description="Interpret responses and manage work item lifecycle",
-            tools=[mark_status_tool, delegate_tool, list_nodes_tool, create_plan_tool],
+            tools=[mark_status_tool, delegate_tool, summarize_tool, list_nodes_tool, create_plan_tool],
             guidance=(
-                "PHASE: MONITORING - Interpret responses and decide next steps. "
-                "Respect retry limits. Mark status only when certain about outcome."
+                "PHASE: MONITORING - Interpret responses from delegated agents and decide next steps.\n\n"
+                "DECISION FRAMEWORK:\n"
+                "1. READ responses using SummarizeWorkPlanTool to see 'Waiting for Interpretation' items\n"
+                "2. EVALUATE each response:\n"
+                "   - Is it complete and satisfactory? → Mark 'done'\n"
+                "   - Does it need clarification or more detail? → Re-delegate with follow-up question\n"
+                "   - Is the work truly impossible? → Mark 'failed' (with explanation)\n"
+                "   - Is the response ambiguous? → Re-delegate to ask specific questions\n\n"
+                "RE-DELEGATION (Preferred for Follow-ups):\n"
+                "- Use DelegateTaskTool to continue conversation with the same agent\n"
+                "- Thread context is preserved automatically - agent sees previous conversation\n"
+                "- Examples: 'Please elaborate on X', 'Can you clarify Y?', 'Provide more detail on Z'\n"
+                "- This enables iterative refinement and quality improvement\n\n"
+                "MARKING STATUS (Final Decision Only):\n"
+                "- Use MarkWorkItemStatusTool ONLY when you're certain:\n"
+                "  * 'done': Work is complete, quality is acceptable, requirements met\n"
+                "  * 'failed': Work cannot be completed, retries exhausted, or fundamentally impossible\n"
+                "- Do NOT rush to mark 'done' - asking for clarification is better than accepting incomplete work\n\n"
+                "IMPORTANT:\n"
+                "- Thread reuse: When re-delegating, the agent automatically sees previous responses\n"
+                "- Multi-turn conversations: Feel free to ask multiple follow-ups to get quality results\n"
+                "- Respect retry limits: Check retry_count before marking 'failed'\n"
+                "- Quality over speed: Better to re-delegate than accept poor results"
             ),
             max_iterations=self._iteration_limits.monitoring
         )
@@ -278,8 +422,69 @@ class OrchestratorPhaseProvider(PhaseProvider):
             description="Summarize completed work and produce final deliverables",
             tools=[summarize_tool],  # ✅ ONLY summarize - NO plan modification in Synthesis!
             guidance=(
-                "PHASE: SYNTHESIS - Summarize completed work and produce final deliverables. "
-                "Focus on results and outputs. Work plan is complete - do NOT add new items."
+                "PHASE: SYNTHESIS - Combine all completed work into cohesive final deliverable.\n\n"
+                "PURPOSE:\n"
+                "- Synthesize results from all DONE work items\n"
+                "- Produce final deliverable that answers original request\n"
+                "- Provide context, insights, and actionable conclusions\n"
+                "- Create value from completed work\n\n"
+                "SYNTHESIS WORKFLOW:\n"
+                "1. Use SummarizeWorkPlanTool to review all work items and their results\n"
+                "2. For each DONE item:\n"
+                "   - Extract key findings and results\n"
+                "   - Identify how it contributes to overall objective\n"
+                "   - Note important artifacts or outputs\n"
+                "3. Combine results into coherent narrative\n"
+                "4. Structure synthesis logically (see below)\n"
+                "5. Address original request and objective\n\n"
+                "SYNTHESIS STRUCTURE:\n"
+                "- Overview: Brief summary of what was requested and accomplished\n"
+                "- Key Findings: Main results from each completed work item\n"
+                "  * Present findings logically (by topic, chronology, or priority)\n"
+                "  * Include specific data, insights, or outputs\n"
+                "- Analysis/Insights: Patterns, conclusions, or deeper understanding\n"
+                "  * Connect findings across work items\n"
+                "  * Highlight significant discoveries\n"
+                "- Deliverables: Final outputs, artifacts, or products\n"
+                "  * Reports, data files, analysis results\n"
+                "  * Links, references, or resources\n"
+                "- Limitations: Note any FAILED items or incomplete work (if any)\n"
+                "  * Brief explanation of what couldn't be completed\n"
+                "  * Impact on overall deliverable\n"
+                "- Recommendations: Next steps or follow-up actions (if applicable)\n\n"
+                "HANDLING FAILED ITEMS:\n"
+                "- If all items DONE → Full success synthesis\n"
+                "- If some items FAILED but valuable work completed:\n"
+                "  * Synthesize successful items\n"
+                "  * Mention failures briefly with context\n"
+                "  * Note impact on completeness\n"
+                "- If most/all items FAILED → Report what was attempted and why it failed\n\n"
+                "HANDLING INCOMPLETE WORK (FORCED SYNTHESIS):\n"
+                "- If work items are still PENDING or IN_PROGRESS:\n"
+                "  * Summarize what WAS completed successfully\n"
+                "  * List incomplete items and their current status\n"
+                "  * Explain why work couldn't be fully completed\n"
+                "  * Provide value from partial results if possible\n"
+                "- Example: 'Completed 2 of 4 tasks. Found X and Y. Items Z and W are blocked by...'\n"
+                "- Focus on DELIVERING VALUE from what was accomplished, not apologizing\n\n"
+                "QUALITY CHECKLIST:\n"
+                "✓ Does synthesis answer the original request?\n"
+                "✓ Are all DONE item results included and explained?\n"
+                "✓ Is narrative coherent and well-structured?\n"
+                "✓ Are key insights and takeaways highlighted?\n"
+                "✓ Are deliverables clearly identified?\n"
+                "✓ Is synthesis concise yet comprehensive?\n\n"
+                "SYNTHESIS STYLE:\n"
+                "- Focus on VALUE delivered, not process details\n"
+                "- Be concise but comprehensive\n"
+                "- Highlight achievements and outcomes\n"
+                "- Use clear, professional language\n"
+                "- Structure for easy consumption\n\n"
+                "IMPORTANT:\n"
+                "- Focus on RESULTS, not internal process\n"
+                "- Synthesize for the end user, not internal tracking\n"
+                "- Quality over length - be thorough but concise\n"
+                "- Combine all completed work into unified deliverable"
             ),
             max_iterations=self._iteration_limits.synthesis
         )
@@ -333,7 +538,6 @@ class OrchestratorPhaseProvider(PhaseProvider):
             )
 
         except Exception as e:
-            print(f"Error getting orchestrator phase context: {e}")
             # Return minimal context on error
             return create_phase_state(
                 thread_id=self._thread_id,
@@ -399,8 +603,62 @@ class OrchestratorPhaseProvider(PhaseProvider):
         # Reset iteration if phase changed
         if final_phase != current_phase:
             self._reset_phase_iteration(current_phase)
+            # Print work plan after phase change
+            self._print_work_plan_after_phase(final_phase)
         
         return final_phase
+    
+    def can_finish_now(self, current_phase: str) -> bool:
+        """
+        Determine if orchestrator can finish execution now.
+        
+        SIMPLE, CLEAR LOGIC - Three cases:
+        1. Work is complete (all DONE/FAILED)
+        2. Waiting for delegated responses (router flow)
+        3. In SYNTHESIS phase (terminal)
+        
+        Root causes (cycles, blocked items, phase limits) are handled by
+        phase transition logic, not here. This keeps finish logic simple.
+        
+        Args:
+            current_phase: Current phase name
+            
+        Returns:
+            True if can finish, False if more work needed
+        """
+        try:
+            # Get work plan status
+            context = self.get_phase_context()
+            if not context or not context.work_plan_status:
+                # No work plan - allow finish (defensive)
+                return True
+            
+            status = context.work_plan_status
+            
+            # Case 1: Work complete (all items DONE or FAILED)
+            if status.is_complete:
+                return True
+            
+            # Case 2: Delegated items waiting for responses (router flow)
+            # Allow finish if we have remote items waiting and no other actionable work
+            if status.has_remote_waiting:
+                if not status.has_local_ready and status.pending_items == 0:
+                    return True
+            
+            # Case 3: In SYNTHESIS phase (terminal - always allow finish)
+            try:
+                current_phase_enum = OrchestratorPhase(current_phase)
+                if current_phase_enum == OrchestratorPhase.SYNTHESIS:
+                    return True
+            except ValueError:
+                pass  # Unknown phase, fall through
+            
+            # Otherwise, keep working
+            return False
+            
+        except Exception as e:
+            # On error, allow finish (defensive - don't block forever)
+            return True
     
     def _cascade_to_stable(
         self,
@@ -440,10 +698,10 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 self._log_cascade(transitions, cascade_num, 'invalid')
                 return current
             
-            # Cycle detection
+            # Cycle detection - force to SYNTHESIS
             if next_phase in visited:
                 self._log_cascade(transitions + [next_phase], cascade_num, 'cycle')
-                return current
+                return OrchestratorPhase.SYNTHESIS.value
             
             # Continue cascade
             transitions.append(next_phase)
@@ -472,13 +730,13 @@ class OrchestratorPhaseProvider(PhaseProvider):
         path = " → ".join(transitions)
         
         if reason == 'stable':
-            print(f"🎯 [ORCHESTRATOR] Phase cascade: {path} ({count} steps)")
+            print(f"🔄 Phase Cascade: {path}")
         elif reason == 'cycle':
-            print(f"⚠️ [ORCHESTRATOR] Cycle detected: {path}")
+            print(f"⚠️  Cycle Detected: {path} (forcing SYNTHESIS)")
         elif reason == 'max_transitions':
-            print(f"⚠️ [ORCHESTRATOR] Max transitions ({count}): {path}")
+            print(f"⚠️  Max Transitions: {path}")
         elif reason == 'invalid':
-            print(f"⚠️ [ORCHESTRATOR] Invalid transition: {path}")
+            print(f"⚠️  Invalid Transition: {path}")
 
     def decide_next_phase(
             self,
@@ -492,18 +750,14 @@ class OrchestratorPhaseProvider(PhaseProvider):
         Professional phase transition rules using OrchestratorPhase enum.
         Enforces iteration limits to prevent infinite loops.
         """
-        print(f"📍 [DEBUG] decide_next_phase() - current: {current_phase}")
-        
         # Handle None context gracefully
         if not context or not context.work_plan_status:
             return OrchestratorPhase.PLANNING.value  # No context or work plan, start planning
 
         status = context.work_plan_status
-        print(f"📊 [DEBUG] Work plan status: total={status.total_items if status else 'None'}")
         
         # Check iteration limits first
         if self._is_phase_limit_exceeded(current_phase):
-            print(f"⚠️ [ORCHESTRATOR] Phase {current_phase} exceeded iteration limit")
             return self._handle_phase_limit_exceeded(current_phase, status)
 
         # Convert current_phase to enum for type-safe comparison
@@ -535,8 +789,15 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 return OrchestratorPhase.ALLOCATION.value  # Stay in allocation
 
         elif current_phase_enum == OrchestratorPhase.EXECUTION:
-            # Move to monitoring after execution attempts
-            return OrchestratorPhase.MONITORING.value
+            # Check if work is complete
+            if status.is_complete:
+                return OrchestratorPhase.SYNTHESIS.value
+            # If still have local ready items, stay in execution (LLM may need multiple iterations)
+            elif status.has_local_ready:
+                return OrchestratorPhase.EXECUTION.value
+            # Otherwise move to monitoring
+            else:
+                return OrchestratorPhase.MONITORING.value
 
         elif current_phase_enum == OrchestratorPhase.MONITORING:
             # Check if work is complete
@@ -546,13 +807,25 @@ class OrchestratorPhaseProvider(PhaseProvider):
             # (Process responses BEFORE transitioning to handle new pending work)
             elif status.has_responses:
                 return OrchestratorPhase.MONITORING.value
-            # Go back to allocation if we have pending items (and no responses)
-            elif status.pending_items > 0:
-                return OrchestratorPhase.ALLOCATION.value
+            # Check for all-blocked scenario (no actionable work)
+            # If all remaining items are blocked and we can't make progress, force SYNTHESIS
+            elif (status.blocked_items > 0 and 
+                  status.pending_items == 0 and 
+                  not status.has_local_ready and 
+                  not status.has_remote_waiting):
+                print(f"⚠️  All Items Blocked ({status.blocked_items}) - Forcing SYNTHESIS")
+                return OrchestratorPhase.SYNTHESIS.value
             # Go back to execution if we have local ready items
+            # (Check this BEFORE pending items to prioritize actual work over allocation)
             elif status.has_local_ready:
                 return OrchestratorPhase.EXECUTION.value
+            # Go back to allocation if we have pending items (and no responses)
+            # Note: blocked items (pending=0, blocked>0) will NOT trigger this
+            elif status.pending_items > 0:
+                return OrchestratorPhase.ALLOCATION.value
             else:
+                # No responses, no ready work, no pending work
+                # Either waiting for delegated responses or all items blocked/complete
                 return OrchestratorPhase.MONITORING.value  # Stay in monitoring
 
         elif current_phase_enum == OrchestratorPhase.SYNTHESIS:
@@ -574,7 +847,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
         Returns:
             Next phase to transition to (or synthesis for terminal)
         """
-        print(f"🚨 [ORCHESTRATOR] Phase limit exceeded for {current_phase}")
+        print(f"⚠️  Phase Limit Exceeded: {current_phase}")
         
         try:
             current_phase_enum = OrchestratorPhase(current_phase)
@@ -647,10 +920,98 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 adjacent_nodes=adjacent_nodes
             )
         except Exception as e:
-            print(f"Validation context error: {e}")
             # Return minimal context on error
             return PhaseValidationContext(
                 phase_state=phase_state,
                 thread_id=self._thread_id,
                 node_uid=self._node_uid
             )
+    
+    def _print_work_plan_after_phase(self, phase: str) -> None:
+        """Print work plan status after phase transition."""
+        try:
+            from elements.nodes.common.workload import WorkItemStatus, WorkItemKind
+            
+            workspace_service = self._get_workload_service()
+            plan = workspace_service.load_work_plan(self._thread_id, self._node_uid)
+            
+            if not plan or not plan.items:
+                return
+            
+            status_summary = workspace_service.get_work_plan_status(self._thread_id, self._node_uid)
+            
+            # Compact one-line status
+            status_parts = []
+            if status_summary.pending_items > 0:
+                status_parts.append(f"⏸️ {status_summary.pending_items} Pending")
+            if status_summary.in_progress_items > 0:
+                status_parts.append(f"🔄 {status_summary.in_progress_items} In Progress")
+            if status_summary.done_items > 0:
+                status_parts.append(f"✅ {status_summary.done_items} Done")
+            if status_summary.failed_items > 0:
+                status_parts.append(f"❌ {status_summary.failed_items} Failed")
+            
+            extras = []
+            if status_summary.blocked_items > 0:
+                extras.append(f"🚫 {status_summary.blocked_items} Blocked")
+            if status_summary.waiting_items > 0:
+                extras.append(f"⏳ {status_summary.waiting_items} Waiting")
+            
+            extra_str = f" [{', '.join(extras)}]" if extras else ""
+            
+            # Print header with one-line status
+            print(f"\n{'='*80}")
+            print(f"📋 WORK PLAN after {phase.upper()} ({status_summary.total_items} items)")
+            print(f"={'='*80}")
+            print(f"Status: {' | '.join(status_parts)}{extra_str}")
+            
+            # Show items compactly
+            for status in [WorkItemStatus.PENDING, WorkItemStatus.IN_PROGRESS, WorkItemStatus.DONE, WorkItemStatus.FAILED]:
+                items = plan.get_items_by_status(status)
+                if not items:
+                    continue
+                
+                for item in items:
+                    status_icon = {
+                        WorkItemStatus.PENDING: "⏸️",
+                        WorkItemStatus.IN_PROGRESS: "🔄",
+                        WorkItemStatus.DONE: "✅",
+                        WorkItemStatus.FAILED: "❌"
+                    }.get(status, "❓")
+                    
+                    # Compact one-line per item
+                    kind = "local" if item.kind == WorkItemKind.LOCAL else f"→{item.assigned_uid}"
+                    item_line = f"{status_icon} {item.title[:50]}"
+                    if len(item.title) > 50:
+                        item_line += "..."
+                    item_line += f" ({kind})"
+                    
+                    # Add dependency info
+                    if item.dependencies:
+                        completed_deps = plan.get_completed_item_ids()
+                        dep_status = []
+                        for dep_id in item.dependencies:
+                            dep_item = plan.items.get(dep_id)
+                            if dep_item:
+                                dep_title = dep_item.title[:20] + "..." if len(dep_item.title) > 20 else dep_item.title
+                                if dep_id in completed_deps:
+                                    dep_status.append(f"✓{dep_title}")
+                                else:
+                                    dep_status.append(f"✗{dep_title}")
+                            else:
+                                # Fallback if dependency not found
+                                dep_status.append(f"?{dep_id}")
+                        item_line += f" [depends on: {', '.join(dep_status)}]"
+                    
+                    # Show response if present
+                    if item.result_ref and item.result_ref.has_responses:
+                        latest = item.result_ref.latest_response
+                        if latest:
+                            resp = latest.content[:40].replace('\n', ' ')
+                            item_line += f" - {resp}..."
+                    
+                    print(f"   {item_line}")
+            
+            print(f"{'='*80}\n")
+        except Exception as e:
+            pass

@@ -114,20 +114,16 @@ class PlanAndExecuteStrategy(AgentStrategy):
         Returns:
             List of tools appropriate for this phase
         """
-        print(f"🔧 [DEBUG] get_tools_for_phase() - Requested phase: {phase}")
-        
         # Use phase provider to get tools (phase provider handles string/enum conversion)
         try:
             tools = self._phase_provider.get_tools_for_phase(phase)
-            print(f"🔧 [DEBUG] Provider returned {len(tools)} tools for {phase}: {[t.name for t in tools]}")
             return tools
         except Exception as e:
-            print(f"Error getting phase tools: {e}")
             # Fallback to all tools
+            pass
         
         # Fallback to all tools if no provider or invalid phase
         all_tools = list(self.all_tools.values())
-        print(f"🔧 [DEBUG] Using fallback - returning all {len(all_tools)} tools")
         return all_tools
     
     def think(
@@ -148,7 +144,7 @@ class PlanAndExecuteStrategy(AgentStrategy):
         Returns:
             List of steps to execute
         """
-        print(f"🧠 [STRATEGY] Phase: {self._current_phase} | Observations: {len(observations)}")
+        print(f"📍 Phase: {self._current_phase}")
         
         try:
             # Determine current phase based on context
@@ -156,7 +152,7 @@ class PlanAndExecuteStrategy(AgentStrategy):
             old_phase = self._current_phase
             self._update_phase(observations)
             if old_phase != self._current_phase:
-                print(f"🔀 [PHASE] {old_phase} → {self._current_phase}")
+                print(f"   └─ Phase Transition: {old_phase} → {self._current_phase}")
             
             # Build phase-specific context
             context = self.build_context(messages, observations)
@@ -166,55 +162,46 @@ class PlanAndExecuteStrategy(AgentStrategy):
             
             # If no tools available and phase requires tools, advance
             if not tools and self._phase_provider.requires_tools(self._current_phase):
-                print(f"⚠️ [STRATEGY] Phase {self._current_phase} needs tools but has none, advancing")
                 self._advance_phase()
                 return self.think(messages, observations)
             
             # Get LLM response
-            print(f"🤖 [DEBUG] Calling LLM with {len(tools)} tools")
             response = self.llm_chat(context, tools)
-            print(f"🤖 [DEBUG] LLM response received: {str(response)[:100]}...")
             
             # Parse response
-            print(f"📝 [DEBUG] Parsing LLM response")
             result = self.parser.parse(response)
-            print(f"📝 [DEBUG] Parsed result type: {type(result)}")
             
             # Create steps
             steps = [AgentStep(StepType.PLANNING, response, metadata={
                 "phase": self._current_phase,
                 "iteration": self._phase_iterations
             })]
-            print(f"📋 [DEBUG] Created planning step for phase {self._current_phase}")
             
             # Handle parsed result
             if isinstance(result, list):
                 # Tool calls - create action steps
-                print(f"🔧 [DEBUG] Processing {len(result)} tool calls")
                 for i, action in enumerate(result):
-                    print(f"🔧 [DEBUG] Tool call {i+1}: {getattr(action, 'tool', 'unknown')}")
                     steps.append(AgentStep(
                         StepType.ACTION,
                         action,
                         metadata={"phase": self._current_phase}
                     ))
             elif isinstance(result, AgentFinish):
-                # Finish - but check if we should transition phases instead
-                print(f"🏁 [DEBUG] Agent wants to finish, checking if should transition")
-                if self._should_transition_phase(observations):
-                    print(f"🔄 [DEBUG] Transitioning phase instead of finishing")
-                    self._advance_phase()
-                    # Continue with next phase
+                # Agent wants to finish - ask PROVIDER if we can (SOLID!)
+                can_finish = self._phase_provider.can_finish_now(self._current_phase)
+                
+                if not can_finish:
+                    # Provider handles phase transition logic
+                    self._update_phase(observations)
+                    # Continue with new phase
                     return self.think(messages, observations)
                 else:
-                    # True finish
-                    print(f"🏁 [DEBUG] True finish - adding finish step")
+                    # Provider allows finish
                     steps.append(AgentStep(StepType.FINISH, result))
             
             self.increment_step_count()
             self._phase_iterations += 1
             
-            print(f"📋 [DEBUG] Returning {len(steps)} steps for phase {self._current_phase}")
             return steps
             
         except Exception as e:
@@ -328,10 +315,6 @@ class PlanAndExecuteStrategy(AgentStrategy):
             observations=observations
         )
         
-        # Simple log (no internal details)
-        if old_phase != self._current_phase:
-            print(f"🔀 [STRATEGY] Phase: {old_phase} → {self._current_phase}")
-        
         self._phase_iterations = 0
     
     def _should_transition_phase(self, observations: List[AgentObservation]) -> bool:
@@ -353,11 +336,8 @@ class PlanAndExecuteStrategy(AgentStrategy):
         """
         next_phase = self._phase_provider.get_next_phase_in_sequence(self._current_phase)
         if next_phase:
-            print(f"➡️ [STRATEGY] Advancing: {self._current_phase} → {next_phase}")
             self._current_phase = next_phase
             self._phase_iterations = 0
-        else:
-            print(f"⚠️ [STRATEGY] No next phase after {self._current_phase}, staying")
     
     
     def _build_phase_prompt(self) -> str:
@@ -375,13 +355,12 @@ class PlanAndExecuteStrategy(AgentStrategy):
             if phase_guidance:
                 return f"{base_prompt}\n\n{phase_guidance}"
         except Exception as e:
-            print(f"Error getting enhanced phase guidance: {e}")
             # Fallback to basic guidance
             try:
                 fallback_guidance = self._phase_provider.get_phase_guidance(self._current_phase)
                 if fallback_guidance:
                     return f"{base_prompt}\n\n{fallback_guidance}"
             except Exception as e2:
-                print(f"Error getting fallback guidance: {e2}")
+                pass
         
         return base_prompt

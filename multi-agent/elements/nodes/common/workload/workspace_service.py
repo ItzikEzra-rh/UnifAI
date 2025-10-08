@@ -929,7 +929,6 @@ class WorkspaceService(IWorkspaceService):
             
             if plan_data:
                 plan = WorkPlan(**plan_data)
-                print(f"💾 [PLAN] Loaded: {len(plan.items)} items")
                 return plan
             
             return None
@@ -947,7 +946,6 @@ class WorkspaceService(IWorkspaceService):
                 workspace.context.work_plans[plan.owner_uid] = plan.model_dump()
                 self.update_workspace(workspace)
                 
-                print(f"💾 [PLAN] Saved: {len(plan.items)} items")
                 return True
             except Exception as e:
                 print(f"❌ [PLAN] Save error: {e}")
@@ -969,15 +967,19 @@ class WorkspaceService(IWorkspaceService):
             for item in ready_items
         )
         
-        # Check for remote waiting items
-        has_remote_waiting = any(
-            item.status == WorkItemStatus.WAITING and item.kind == WorkItemKind.REMOTE
-            for item in plan.items.values()
-        )
+        # Calculate remote waiting items (IN_PROGRESS + REMOTE)
+        remote_in_progress_items = [
+            item for item in plan.items.values()
+            if item.status == WorkItemStatus.IN_PROGRESS and item.kind == WorkItemKind.REMOTE
+        ]
         
-        # Check for responses needing interpretation
+        has_remote_waiting = len(remote_in_progress_items) > 0
+        waiting_items_count = len(remote_in_progress_items)
+        
+        # Check for responses needing interpretation (IN_PROGRESS + REMOTE + has result_ref)
         has_responses = any(
-            item.status == WorkItemStatus.WAITING 
+            item.status == WorkItemStatus.IN_PROGRESS 
+            and item.kind == WorkItemKind.REMOTE
             and item.result_ref is not None
             for item in plan.items.values()
         )
@@ -987,7 +989,7 @@ class WorkspaceService(IWorkspaceService):
             total_items=len(plan.items),
             pending_items=counts.pending,
             in_progress_items=counts.in_progress,
-            waiting_items=counts.waiting,
+            waiting_items=waiting_items_count,  # Calculated from IN_PROGRESS + REMOTE
             done_items=counts.done,
             failed_items=counts.failed,
             blocked_items=counts.blocked,
@@ -997,7 +999,6 @@ class WorkspaceService(IWorkspaceService):
             is_complete=plan.is_complete()
         )
         
-        print(f"📊 [DEBUG] Returning status summary: {summary.model_dump()}")
         return summary
     
     def update_work_item_status(
@@ -1010,44 +1011,34 @@ class WorkspaceService(IWorkspaceService):
         correlation_task_id: str = None
     ) -> bool:
         """Update work item status (thread-safe)."""
-        print(f"🔄 [DEBUG] WorkspaceService.update_work_item_status() - Updating {item_id} to {status}")
         
         with self._with_work_plan_lock(thread_id, owner_uid):
             plan = self.load_work_plan(thread_id, owner_uid)
             if not plan:
-                print(f"❌ [DEBUG] No plan found for {owner_uid}")
                 return False
             
             item = plan.items.get(item_id)
             if not item:
-                print(f"❌ [DEBUG] No item found with ID: {item_id}")
-                print(f"📋 [DEBUG] Available item IDs: {list(plan.items.keys())}")
                 return False
             
-            print(f"✅ [DEBUG] Found item: {item.title}")
-            print(f"🔄 [DEBUG] Changing status: {item.status} → {status}")
             
             old_status = item.status
             item.status = status
             
             if error and status == WorkItemStatus.FAILED:
                 item.error = error
-                print(f"❌ [DEBUG] Added error message: {error}")
             
             if correlation_task_id:
                 item.correlation_task_id = correlation_task_id
-                print(f"🔗 [DEBUG] Set correlation_task_id: {correlation_task_id}")
             
             # If marking as DONE, finalize the result
             if status == WorkItemStatus.DONE and item.result_ref:
                 item.result_ref.success = True
                 if item.result_ref.metadata:
                     item.result_ref.metadata.pop("needs_interpretation", None)
-                print(f"✅ [DEBUG] Finalized result as successful")
             
             item.mark_updated()
             self.save_work_plan(plan)
-            print(f"✅ [DEBUG] Item status updated: {old_status} → {status}")
             return True
     
     def mark_work_item_as_delegated(
@@ -1056,36 +1047,41 @@ class WorkspaceService(IWorkspaceService):
         owner_uid: str, 
         item_id: str, 
         correlation_task_id: str,
-        assigned_uid: str
+        assigned_uid: str,
+        child_thread_id: Optional[str] = None
     ) -> bool:
-        """Mark work item as delegated (WAITING status) - thread-safe."""
-        print(f"📤 [DEBUG] WorkspaceService.mark_work_item_as_delegated() - Marking {item_id} as delegated")
-        print(f"📤 [DEBUG] correlation_task_id: {correlation_task_id}")
-        print(f"📤 [DEBUG] assigned_uid: {assigned_uid}")
+        """
+        Mark work item as delegated (IN_PROGRESS status with REMOTE kind) - thread-safe.
         
+        Status transition: PENDING → IN_PROGRESS (with kind=REMOTE)
+        This indicates the item is delegated and waiting for a response.
+        
+        Args:
+            child_thread_id: Optional child thread ID for re-delegation context continuity.
+                            Stored in work item to enable thread reuse on follow-up delegations.
+        """
         with self._with_work_plan_lock(thread_id, owner_uid):
             plan = self.load_work_plan(thread_id, owner_uid)
             if not plan:
-                print(f"❌ [DEBUG] No plan found for {owner_uid}")
                 return False
             
             item = plan.items.get(item_id)
             if not item:
-                print(f"❌ [DEBUG] No item found with ID: {item_id}")
-                print(f"📋 [DEBUG] Available item IDs: {list(plan.items.keys())}")
                 return False
             
-            print(f"✅ [DEBUG] Found item: {item.title}")
-            print(f"🔄 [DEBUG] Changing status: {item.status} → WAITING")
-            print(f"👤 [DEBUG] Assigning to: {assigned_uid}")
             
-            item.status = WorkItemStatus.WAITING
+            item.status = WorkItemStatus.IN_PROGRESS
+            item.kind = WorkItemKind.REMOTE  # ✅ Ensure kind is set to REMOTE
             item.correlation_task_id = correlation_task_id
             item.assigned_uid = assigned_uid  # ✅ Set the assigned node
+            
+            # ✅ Store child_thread_id for re-delegation context continuity
+            if child_thread_id:
+                item.child_thread_id = child_thread_id
+            
             item.mark_updated()
             
             self.save_work_plan(plan)
-            print(f"✅ [DEBUG] Item marked as delegated successfully")
             return True
     
     def store_task_response_for_work_item(
@@ -1097,13 +1093,18 @@ class WorkspaceService(IWorkspaceService):
         from_uid: str,
         result_data: Any = None
     ) -> bool:
-        """Store task response as context without changing status - let LLM interpret."""
-        print(f"💬 [DEBUG] WorkspaceService.store_task_response_for_work_item() - Storing response for LLM interpretation")
-        print(f"💬 [DEBUG] correlation_task_id: {correlation_task_id}, from: {from_uid}")
+        """
+        Store task response in conversation history for LLM interpretation.
+        
+        Supports multi-turn conversations by appending to responses list.
+        Each response is tracked with timestamp, source, and sequence number.
+        
+        Design: Thread workspace contains full conversation context for agents.
+        This method stores structured history for orchestrator reasoning.
+        """
         
         plan = self.load_work_plan(thread_id, owner_uid)
         if not plan:
-            print(f"❌ [DEBUG] No plan found for {owner_uid}")
             return False
         
         # Find item by correlation task ID
@@ -1114,45 +1115,44 @@ class WorkspaceService(IWorkspaceService):
                 break
         
         if not target_item:
-            print(f"❌ [DEBUG] No work item found for correlation task ID: {correlation_task_id}")
             return False
         
-        print(f"💬 [DEBUG] Found target item: {target_item.id} - {target_item.title}")
         
-        # ✅ Extract structured data from result_data
+        # Extract structured data from result_data
         from elements.nodes.common.workload.models import AgentResult
+        from elements.nodes.common.workload.workplan import ResponseRecord
+        
         data_to_store = None
         if isinstance(result_data, AgentResult):
-            # Convert AgentResult (Pydantic model) to dict for storage
-            print(f"💬 [DEBUG] Storing full AgentResult as structured data")
-            data_to_store = result_data.model_dump()  # Pydantic method
+            data_to_store = result_data.model_dump()
         elif isinstance(result_data, dict):
-            # Already a dict, store as-is
-            print(f"💬 [DEBUG] Storing dict as structured data")
             data_to_store = result_data
         
-        # Store response content without changing status
+        # Initialize result_ref if needed
         if not target_item.result_ref:
             target_item.result_ref = WorkItemResult(
                 success=False,  # Not finalized yet
-                content=response_content,
-                data=data_to_store,  # ✅ Store structured data!
-                metadata={"from_uid": from_uid, "needs_interpretation": True}
+                metadata={"needs_interpretation": True}
             )
-        else:
-            # Append to existing content
-            target_item.result_ref.content += f"\n\n--- Response from {from_uid} ---\n{response_content}"
-            # Update data if new structured data is provided
-            if data_to_store and not target_item.result_ref.data:
-                target_item.result_ref.data = data_to_store
-            if target_item.result_ref.metadata:
-                target_item.result_ref.metadata["needs_interpretation"] = True
-            else:
-                target_item.result_ref.metadata = {"from_uid": from_uid, "needs_interpretation": True}
+        
+        # Create response record
+        sequence = len(target_item.result_ref.responses)
+        response_record = ResponseRecord(
+            from_uid=from_uid,
+            content=response_content,
+            data=data_to_store,
+            sequence=sequence,
+            correlation_task_id=correlation_task_id
+        )
+        
+        # Append to conversation history
+        target_item.result_ref.responses.append(response_record)
+        target_item.result_ref.metadata["needs_interpretation"] = True
+        target_item.result_ref.metadata["response_count"] = len(target_item.result_ref.responses)
+        
         
         target_item.mark_updated()
         self.save_work_plan(plan)
-        print(f"💬 [DEBUG] Response stored for LLM interpretation")
         return True
     
     def ingest_task_response_for_work_item(
@@ -1164,14 +1164,10 @@ class WorkspaceService(IWorkspaceService):
         error: str = None
     ) -> bool:
         """Ingest task response and update work item status - only for explicit success/error."""
-        print(f"📥 [DEBUG] WorkspaceService.ingest_task_response_for_work_item() - Processing response")
-        print(f"📥 [DEBUG] correlation_task_id: {correlation_task_id}")
-        print(f"📥 [DEBUG] has_result: {result is not None}, has_error: {error is not None}")
         
         with self._with_work_plan_lock(thread_id, owner_uid):
             plan = self.load_work_plan(thread_id, owner_uid)
             if not plan:
-                print(f"❌ [DEBUG] No plan found for {owner_uid}")
                 return False
             
             # Find item by correlation task ID
@@ -1182,24 +1178,19 @@ class WorkspaceService(IWorkspaceService):
                     break
             
             if not target_item:
-                print(f"❌ [DEBUG] No work item found for correlation task ID: {correlation_task_id}")
-                print(f"📋 [DEBUG] Available correlation IDs: {[item.correlation_task_id for item in plan.items.values() if item.correlation_task_id]}")
                 return False
             
-            print(f"✅ [DEBUG] Found target item: {target_item.id} - {target_item.title}")
             
             # Update item based on response - only for explicit structures
             from elements.nodes.common.workload.models import AgentResult
             
             if error:
-                print(f"❌ [DEBUG] Marking item as FAILED: {error}")
                 target_item.status = WorkItemStatus.FAILED
                 target_item.error = error
                 target_item.retry_count += 1  # Increment retry count on failure
             
             # ✅ Handle AgentResult explicitly
             elif isinstance(result, AgentResult):
-                print(f"✅ [DEBUG] Marking item as DONE with AgentResult")
                 target_item.status = WorkItemStatus.DONE
                 target_item.result_ref = WorkItemResult(
                     success=result.success,
@@ -1210,7 +1201,6 @@ class WorkspaceService(IWorkspaceService):
             # Handle dict with explicit success
             elif result and isinstance(result, dict) and result.get("success") is True:
                 # Only auto-mark DONE for explicit success structures
-                print(f"✅ [DEBUG] Marking item as DONE with explicit success dict")
                 target_item.status = WorkItemStatus.DONE
                 target_item.result_ref = WorkItemResult(
                     success=True,
@@ -1218,12 +1208,10 @@ class WorkspaceService(IWorkspaceService):
                     data=result
                 )
             else:
-                print(f"💬 [DEBUG] Result is not explicit success structure - not auto-marking DONE")
                 return False  # Don't auto-mark, let LLM interpret
             
             target_item.mark_updated()
             self.save_work_plan(plan)
-            print(f"✅ [DEBUG] Task response ingested successfully")
             return True
     
     def atomic_update_work_item(

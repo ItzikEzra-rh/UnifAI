@@ -851,7 +851,7 @@ def get_work_plan_status_counts(plan):
         plan: WorkPlan instance
         
     Returns:
-        Dict with status counts
+        Dict with status counts (waiting calculated as IN_PROGRESS + REMOTE items)
         
     Example:
         counts = get_work_plan_status_counts(plan)
@@ -860,13 +860,23 @@ def get_work_plan_status_counts(plan):
     if not plan:
         return {}
     
+    from elements.nodes.common.workload import WorkItemStatus, WorkItemKind
+    
     status_counts = plan.get_status_counts()
+    
+    # Calculate waiting items (IN_PROGRESS + REMOTE)
+    waiting_count = sum(
+        1 for item in plan.items.values()
+        if item.status == WorkItemStatus.IN_PROGRESS and item.kind == WorkItemKind.REMOTE
+    )
+    
     return {
         "pending": status_counts.pending,
-        "waiting": status_counts.waiting,
+        "waiting": waiting_count,  # Calculated from IN_PROGRESS + REMOTE
         "in_progress": status_counts.in_progress,
         "done": status_counts.done,
         "failed": status_counts.failed,
+        "blocked": status_counts.blocked,
         "total": status_counts.total
     }
 

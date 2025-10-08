@@ -127,8 +127,6 @@ class OrchestratorNode(
         if not packets:
             return
 
-        print(f"📥 [ORCHESTRATOR] Processing {len(packets)} packets")
-
         for i, packet in enumerate(packets):
             try:
                 self.handle_task_packet(packet)
@@ -139,15 +137,15 @@ class OrchestratorNode(
         for thread_id in self._updated_threads:
             status_summary = self.workspaces.get_work_plan_status(thread_id, self.uid)
 
-            # Run orchestration cycle if work is not yet complete
-            if not status_summary.is_complete:
-                self._run_orchestration_cycle(thread_id, "Continuing after batch response processing")
-                # Re-check status - work might have completed during the cycle
-                status_summary = self.workspaces.get_work_plan_status(thread_id, self.uid)
+            # Always run orchestration cycle - even if plan is complete
+            # (Complete plans can receive new requests that add new work items)
+            self._run_orchestration_cycle(thread_id, "Processing after batch")
             
-            # Finalize if work is complete (either was already complete or became complete during cycle)
+            # Re-check status after orchestration
+            status_summary = self.workspaces.get_work_plan_status(thread_id, self.uid)
+            
+            # Finalize if work is complete
             if status_summary.is_complete:
-                print(f"🎉 [DEBUG] Work plan complete for thread {thread_id}")
                 final_result = self._get_final_orchestration_result(thread_id)
                 if final_result:
                     self._finalize_completed_work(thread_id, final_result)
@@ -187,24 +185,18 @@ class OrchestratorNode(
         - Only auto-marks for explicit success/error structures
         Returns thread_id if work plan was updated.
         """
-        print(f"🔄 [DEBUG] _handle_task_response() - Processing response from {task.created_by}")
-
         # Find correlation in task data
         correlation_task_id = task.correlation_task_id
         if not correlation_task_id:
-            print(f"❌ [DEBUG] Received response without correlation ID from {task.created_by}")
             return None
-
-        print(f"🔗 [DEBUG] Found correlation_task_id: {correlation_task_id}")
 
         # Determine which thread to update (parent vs child thread handling)
         target_thread_id = self._resolve_target_thread_for_response(task)
-        print(f"🎯 [DEBUG] Target thread for work plan update: {target_thread_id}")
 
         # Update work plan and workspace context
         service = self.workspaces
 
-        # Store response as workspace fact for LLM context
+        # Extract response content for storage in work item
         response_content = ""
         if task.result:
             # ✅ Handle AgentResult properly (use .content field, not str())
@@ -219,11 +211,9 @@ class OrchestratorNode(
         else:
             response_content = "Empty response"
 
-        # Add to workspace facts for LLM context
-        self.workspaces.add_fact(
-            target_thread_id,
-            f"Response from {task.created_by} for task {correlation_task_id}: {response_content}"
-        )
+        # NOTE: Responses are stored in WorkItem.result_ref.responses[]
+        # They will be shown in the work plan snapshot automatically
+        # No need to duplicate them in facts
 
         success = False
 
@@ -232,15 +222,12 @@ class OrchestratorNode(
         
         if task.error:
             # Case A: Explicit ERROR - Auto-mark FAILED (errors are unambiguous)
-            print(f"❌ [DEBUG] Processing explicit ERROR response: {task.error[:100]}...")
             success = service.ingest_task_response_for_work_item(
                 thread_id=target_thread_id,
                 owner_uid=self.uid,
                 correlation_task_id=correlation_task_id,
                 error=task.error  # Already a string
             )
-            if success:
-                print(f"❌ [DEBUG] Marked item as FAILED for task {correlation_task_id}")
         
         else:
             # Case B: ALL other responses → Store for LLM interpretation
@@ -250,23 +237,31 @@ class OrchestratorNode(
             # - Alignment with requirements
             # - Overall work plan context
             
-            print(f"💬 [DEBUG] Storing response for LLM interpretation: {response_content[:100]}...")
+            # Determine sender: task.created_by (now properly set in Task.respond_success/error)
+            # Fallback to assigned_uid if needed (defensive programming)
+            from_uid = task.created_by
+            if not from_uid:
+                # Defensive fallback: get assigned_uid from work item
+                plan = service.load_work_plan(target_thread_id, self.uid)
+                if plan:
+                    for item in plan.items.values():
+                        if item.correlation_task_id == correlation_task_id:
+                            from_uid = item.assigned_uid or "unknown"
+                            break
+                if not from_uid:
+                    from_uid = "unknown"
+            
             success = service.store_task_response_for_work_item(
                 thread_id=target_thread_id,
                 owner_uid=self.uid,
                 correlation_task_id=correlation_task_id,
                 response_content=response_content,
-                from_uid=task.created_by,
+                from_uid=from_uid,
                 result_data=task.result  # ✅ Preserve all structured data (AgentResult, dict, or None)
             )
-            if success:
-                print(f"💬 [DEBUG] Response stored for LLM interpretation - status stays WAITING")
-                print(f"💬 [DEBUG] LLM will use mark_work_item_status tool to finalize")
 
         # Return thread_id if we updated the work plan
-        result_thread = target_thread_id if success else None
-        print(f"🔄 [DEBUG] _handle_task_response() returning thread_id: {result_thread}")
-        return result_thread
+        return target_thread_id if success else None
 
     def _resolve_target_thread_for_response(self, task: Task) -> str:
         """
@@ -289,15 +284,8 @@ class OrchestratorNode(
         try:
             # Use thread service to find where THIS orchestrator's work plan is
             target_thread_id = self.threads.find_work_plan_owner(response_thread_id, self.uid)
-
-            if target_thread_id != response_thread_id:
-                print(
-                    f"🔗 [DEBUG] Response from nested thread {response_thread_id}, updating work plan in thread {target_thread_id}")
-
             return target_thread_id or response_thread_id
-
         except Exception as e:
-            print(f"⚠️ [DEBUG] Error resolving target thread: {e}, using response thread ID")
             return response_thread_id
 
     def _handle_new_work(self, task: Task) -> None:
@@ -345,7 +333,9 @@ class OrchestratorNode(
         Uses PlanAndExecuteStrategy with orchestration tools.
         Returns AgentResult with the orchestration outcome.
         """
-        print(f"🎯 [ORCHESTRATOR] Starting cycle for thread {thread_id}")
+        print(f"\n{'='*80}")
+        print(f"🎯 ORCHESTRATOR CYCLE START - Thread: {thread_id}")
+        print(f"{'='*80}")
 
         # Build conversation context
         messages = self._build_context_messages(thread_id, content)
@@ -357,9 +347,6 @@ class OrchestratorNode(
         delegation_policy = self._create_delegation_policy()
         all_adjacent = self.get_adjacent_nodes()
         delegable_adjacent = delegation_policy.filter_delegable_nodes(all_adjacent)
-        
-        print(f"🔒 [ORCHESTRATOR] Adjacent nodes: {len(all_adjacent)} total, "
-              f"{len(delegable_adjacent)} delegable after policy")
 
         # Create orchestrator phase provider with clean SOLID dependencies
         # NOTE: We pass filtered nodes - provider doesn't know about delegation policy
@@ -394,8 +381,6 @@ class OrchestratorNode(
             phase_tools = phase_provider.get_tools_for_phase(phase_name)
             all_phase_tools.update(phase_tools)
 
-        print(f"🔧 [TOOLS] Registered {len(all_phase_tools)} orchestration tools")
-
         # Add all phase tools to strategy's tool registry so they're available to executor
         for tool in all_phase_tools:
             strategy.all_tools[tool.name] = tool
@@ -423,10 +408,12 @@ class OrchestratorNode(
         # Add agent result to workspace
         self.workspaces.add_result(thread_id, agent_result)
 
-        if result.get("success"):
-            print(f"✅ [ORCHESTRATOR] Cycle completed for thread {thread_id}")
-        else:
-            print(f"❌ [ORCHESTRATOR] Cycle failed: {result.get('error')}")
+        # Display work plan snapshot
+        self._print_work_plan_snapshot(thread_id)
+
+        print(f"{'='*80}")
+        print(f"✅ ORCHESTRATOR CYCLE END - Thread: {thread_id}")
+        print(f"{'='*80}\n")
 
         return agent_result
 
@@ -579,7 +566,7 @@ class OrchestratorNode(
 
         lines = [
             f"Work Plan: {summary.total_items} items total",
-            f"Status: pending={summary.pending_items}, waiting={summary.waiting_items}, done={summary.done_items}, failed={summary.failed_items}",
+            f"Status: pending={summary.pending_items}, in_progress={summary.in_progress_items} (waiting={summary.waiting_items}), done={summary.done_items}, failed={summary.failed_items}",
             f"Complete: {summary.is_complete}"
         ]
 
@@ -589,7 +576,7 @@ class OrchestratorNode(
             lines.append(f"\nPlan Summary: {plan.summary}")
 
             # Show items by status with more detail
-            for status in [WorkItemStatus.PENDING, WorkItemStatus.WAITING, WorkItemStatus.IN_PROGRESS,
+            for status in [WorkItemStatus.PENDING, WorkItemStatus.IN_PROGRESS,
                            WorkItemStatus.DONE]:
                 items = plan.get_items_by_status(status)
                 if items:
@@ -602,10 +589,22 @@ class OrchestratorNode(
                             status_info += f" [assigned to: {item.assigned_uid}]"
                         if item.retry_count > 0:
                             status_info += f" [retries: {item.retry_count}/{item.max_retries}]"
-                        if item.result_ref and item.result_ref.metadata and item.result_ref.metadata.get(
-                                "needs_interpretation"):
-                            status_info += f" [needs interpretation]"
                         lines.append(status_info)
+                        
+                        # Show responses if present (for interpretation)
+                        if item.result_ref and item.result_ref.has_responses:
+                            response_count = item.result_ref.response_count
+                            if response_count == 1:
+                                # Single response - show full content
+                                latest = item.result_ref.latest_response
+                                lines.append(f"    Response from {latest.from_uid}:")
+                                lines.append(f"      {latest.content}")
+                            else:
+                                # Multi-turn conversation - show all responses with sequence
+                                lines.append(f"    Conversation ({response_count} responses):")
+                                for resp in item.result_ref.responses:
+                                    lines.append(f"      [{resp.sequence}] {resp.from_uid}: {resp.content}")
+                    
                     if len(items) > 5:
                         lines.append(f"    ... and {len(items) - 5} more")
 
@@ -665,9 +664,7 @@ class OrchestratorNode(
         destination = original_task.response_to or original_task.created_by
         if destination:
             self.send_task(destination, response_task)
-            print(f"✅ [ORCHESTRATOR] Response sent to {destination}")
         else:
-            print("⚠️ [ORCHESTRATOR] No response destination found")
             self._route_to_finalizer(thread_id, agent_result)
 
     def _route_to_finalizer(self, thread_id: str, agent_result: AgentResult) -> None:
@@ -675,12 +672,10 @@ class OrchestratorNode(
         try:
             topology = getattr(self.get_context(), "topology", None)
             if not topology or not topology.has_finalizer_path():
-                print("ℹ️ [ORCHESTRATOR] No path to finalizer available")
                 return
 
             next_hop_uid = topology.get_nearest_finalizer_node()
             if not next_hop_uid:
-                print("ℹ️ [ORCHESTRATOR] No next hop to finalizer found")
                 return
 
             # Create task with agent result
@@ -694,10 +689,91 @@ class OrchestratorNode(
             )
 
             self.send_task(next_hop_uid, task)
-            print(f"✅ [ORCHESTRATOR] Result routed to finalizer via {next_hop_uid}")
-
         except Exception as e:
-            print(f"❌ [ORCHESTRATOR] Error routing to finalizer: {e}")
+            pass
+
+    def _print_work_plan_snapshot(self, thread_id: str) -> None:
+        """Print a compact snapshot of the current work plan."""
+        service = self.workspaces
+        plan = service.load_work_plan(thread_id, self.uid)
+        
+        if not plan or not plan.items:
+            return
+        
+        status_summary = service.get_work_plan_status(thread_id, self.uid)
+        
+        print(f"\n{'='*80}")
+        print(f"📋 WORK PLAN FINAL ({status_summary.total_items} items)")
+        print(f"{'='*80}")
+        
+        # Compact status line
+        status_parts = []
+        if status_summary.pending_items > 0:
+            status_parts.append(f"⏸️ {status_summary.pending_items} Pending")
+        if status_summary.in_progress_items > 0:
+            status_parts.append(f"🔄 {status_summary.in_progress_items} In Progress")
+        if status_summary.done_items > 0:
+            status_parts.append(f"✅ {status_summary.done_items} Done")
+        if status_summary.failed_items > 0:
+            status_parts.append(f"❌ {status_summary.failed_items} Failed")
+        print(f"Status: {' | '.join(status_parts)}")
+        
+        if status_summary.blocked_items > 0 or status_summary.waiting_items > 0:
+            extras = []
+            if status_summary.blocked_items > 0:
+                extras.append(f"🚫 {status_summary.blocked_items} Blocked")
+            if status_summary.waiting_items > 0:
+                extras.append(f"⏳ {status_summary.waiting_items} Waiting")
+            print(f"        {' | '.join(extras)}")
+        
+        # Show ALL items compactly
+        for status in [WorkItemStatus.PENDING, WorkItemStatus.IN_PROGRESS, WorkItemStatus.DONE, WorkItemStatus.FAILED]:
+            items = plan.get_items_by_status(status)
+            if not items:
+                continue
+            
+            for item in items:
+                status_icon = {
+                    WorkItemStatus.PENDING: "⏸️",
+                    WorkItemStatus.IN_PROGRESS: "🔄",
+                    WorkItemStatus.DONE: "✅",
+                    WorkItemStatus.FAILED: "❌"
+                }.get(status, "❓")
+                
+                # Compact one-line per item
+                kind = "local" if item.kind == WorkItemKind.LOCAL else f"→{item.assigned_uid}"
+                item_line = f"{status_icon} {item.title[:50]}"
+                if len(item.title) > 50:
+                    item_line += "..."
+                item_line += f" ({kind})"
+                
+                # Add dependency info
+                if item.dependencies:
+                    completed_deps = plan.get_completed_item_ids()
+                    dep_status = []
+                    for dep_id in item.dependencies:
+                        dep_item = plan.items.get(dep_id)
+                        if dep_item:
+                            dep_title = dep_item.title[:20] + "..." if len(dep_item.title) > 20 else dep_item.title
+                            if dep_id in completed_deps:
+                                dep_status.append(f"✓{dep_title}")
+                            else:
+                                dep_status.append(f"✗{dep_title}")
+                        else:
+                            # Fallback if dependency not found
+                            dep_status.append(f"?{dep_id}")
+                    item_line += f" [depends on: {', '.join(dep_status)}]"
+                
+                # Show response if present
+                if item.result_ref and item.result_ref.has_responses:
+                    latest = item.result_ref.latest_response
+                    if latest:
+                        resp = latest.content[:40].replace('\n', ' ')
+                        item_line += f" - {resp}..."
+                
+                print(f"   {item_line}")
+        
+        print(f"{'='*80}")
 
     @staticmethod
     def _get_orchestrator_behavior_message() -> str:
@@ -783,9 +859,8 @@ Key principles:
             original_task_id = self.workspaces.get_variable(thread_id, "original_task_id")
             if original_task_id:
                 # Would need a task registry to lookup by ID, for now return None
-                print(f"⚠️ [DEBUG] Found original_task_id {original_task_id} but no task registry available")
+                pass
 
             return None
         except Exception as e:
-            print(f"⚠️ [DEBUG] Error getting original task: {e}")
             return None

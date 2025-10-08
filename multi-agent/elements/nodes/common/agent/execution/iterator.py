@@ -118,29 +118,24 @@ class AgentIterator:
             StopIteration: When execution is complete
         """
         self._iteration_count += 1
-        print(f"🔍 DEBUG: AgentIterator.__next__() called (iteration {self._iteration_count})")
 
         # First, check if we have queued steps from previous processing
         if self._step_queue:
             step = self._step_queue.pop(0)
-            print(f"🔍 DEBUG: AgentIterator yielding queued step: {step.type}")
             return step
 
         # Check if we've reached the end
         if self._finished:
-            print(f"🔍 DEBUG: AgentIterator finished, raising StopIteration")
             raise StopIteration
 
         # Check if execution handler is ready for next iteration
         if not self.execution_handler.is_ready_for_next_iteration():
-            print(f"🔍 DEBUG: AgentIterator waiting for execution handler to be ready")
             # For guided mode, this means we're waiting for action confirmations
             # We should not proceed to get new steps from strategy
             raise StopIteration
 
         # Check if strategy wants to continue
         if not self.strategy.should_continue(self.history):
-            print(f"🔍 DEBUG: AgentIterator: Strategy says stop")
             self._finished = True
             raise StopIteration
 
@@ -209,7 +204,6 @@ class AgentIterator:
             return self.__next__()
 
         except Exception as e:
-            print(f"🔍 DEBUG: AgentIterator caught exception: {e}")
             # Create error step
             error_step = AgentStep(
                 StepType.ERROR,
@@ -226,7 +220,6 @@ class AgentIterator:
             if step.type == StepType.PLANNING and isinstance(step.data, ChatMessage):
                 if step.data.role == Role.ASSISTANT:
                     self.messages.append(step.data)
-                    print(f"🔍 DEBUG: AgentIterator added assistant message to conversation")
 
     def _emit_step_event(self, step: AgentStep) -> None:
         """Emit step event via stream callback."""
@@ -239,7 +232,7 @@ class AgentIterator:
             }
             self.stream(event)
         except Exception as e:
-            print(f"🔍 DEBUG: AgentIterator: Error emitting step event: {e}")
+            pass
 
     def _serialize_step_data(self, data: Any) -> Dict[str, Any]:
         """Serialize step data for streaming."""

@@ -15,9 +15,18 @@ from collections import defaultdict
 
 
 class WorkItemStatus(str, Enum):
-    """Status of a work item."""
+    """
+    Status of a work item.
+    
+    Status Semantics:
+    - PENDING: Not yet assigned or started
+    - IN_PROGRESS: Being executed (local) or delegated (remote)
+      * For LOCAL items: Currently executing locally
+      * For REMOTE items: Delegated and waiting for response
+    - DONE: Successfully completed
+    - FAILED: Failed after retries
+    """
     PENDING = "pending"
-    WAITING = "waiting"
     IN_PROGRESS = "in_progress"
     DONE = "done"
     FAILED = "failed"
@@ -61,13 +70,112 @@ class ToolArguments(BaseModel):
         return hasattr(self, key)
 
 
+class ResponseRecord(BaseModel):
+    """
+    Single response in a multi-turn conversation with a work item.
+    
+    Tracks one response from a delegated agent, including timing, source,
+    and structured data. Used for re-delegation and iterative refinement.
+    
+    Note: Thread workspace contains full conversation context. This record
+    is primarily for structured storage and analytics.
+    """
+    from_uid: str = Field(..., description="UID of the agent that responded")
+    content: str = Field(..., description="Response content/message")
+    data: Optional[Dict[str, Any]] = Field(None, description="Structured response data (AgentResult, etc.)")
+    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat(), description="When response was received")
+    sequence: int = Field(..., description="Order in conversation (0-indexed)")
+    correlation_task_id: Optional[str] = Field(None, description="Task ID for this specific delegation")
+
+
 class WorkItemResult(BaseModel):
-    """Result of work item execution."""
-    success: bool = Field(default=True, description="Whether the work item succeeded")
-    content: Optional[str] = Field(None, description="Result content or summary")
-    data: Optional[Dict[str, Any]] = Field(None, description="Structured result data")
+    """
+    Complete result of work item execution, including conversation history.
+    
+    Supports multi-turn conversations when orchestrator re-delegates or asks follow-ups.
+    The 'responses' list preserves full conversation history for structured access.
+    
+    Design Note: Thread workspace contains conversation context for agents.
+    This model stores structured history for orchestrator analytics and LLM reasoning.
+    """
+    # Final result (set by LLM via MarkWorkItemStatusTool)
+    success: bool = Field(default=False, description="Final success status (set when marked DONE)")
+    content: Optional[str] = Field(None, description="Final synthesized result or summary")
+    data: Optional[Dict[str, Any]] = Field(None, description="Final structured result data")
+    
+    # Conversation history (for re-delegation and follow-ups)
+    responses: List[ResponseRecord] = Field(
+        default_factory=list, 
+        description="All responses received, in chronological order. Supports multi-turn conversations."
+    )
+    
+    # Metadata
     artifacts: List[str] = Field(default_factory=list, description="List of created artifacts")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Processing metadata (from_uid, needs_interpretation, etc.)")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Processing metadata")
+    
+    @property
+    def has_responses(self) -> bool:
+        """Check if any responses have been received."""
+        return len(self.responses) > 0
+    
+    @property
+    def latest_response(self) -> Optional[ResponseRecord]:
+        """Get the most recent response."""
+        return self.responses[-1] if self.responses else None
+    
+    @property
+    def response_count(self) -> int:
+        """Get total number of responses received."""
+        return len(self.responses)
+    
+    def get_conversation_summary(self, max_turns: int = 5) -> str:
+        """
+        Get a formatted summary of the conversation.
+        
+        Args:
+            max_turns: Maximum number of recent turns to include
+            
+        Returns:
+            Formatted conversation summary
+        """
+        if not self.responses:
+            return "No responses yet"
+        
+        recent = self.responses[-max_turns:] if len(self.responses) > max_turns else self.responses
+        lines = [f"Conversation ({len(self.responses)} turn{'s' if len(self.responses) > 1 else ''}):"]
+        
+        for resp in recent:
+            preview = resp.content[:80] + "..." if len(resp.content) > 80 else resp.content
+            lines.append(f"  [{resp.sequence}] {resp.from_uid}: {preview}")
+        
+        if len(self.responses) > max_turns:
+            lines.insert(1, f"  ... ({len(self.responses) - max_turns} earlier turns)")
+        
+        return "\n".join(lines)
+    
+    @property
+    def content_with_history(self) -> str:
+        """
+        Get content including response history for backward compatibility.
+        
+        If no final content is set, returns latest response or conversation summary.
+        This ensures old code that reads result_ref.content still works.
+        """
+        if self.content:
+            return self.content
+        
+        if not self.responses:
+            return ""
+        
+        # Return latest response for single turn
+        if len(self.responses) == 1:
+            return self.responses[0].content
+        
+        # Synthesize from multiple responses
+        return "\n\n---\n\n".join([
+            f"[Turn {resp.sequence}] {resp.from_uid}:\n{resp.content}"
+            for resp in self.responses
+        ])
 
 
 class WorkItem(BaseModel):
@@ -92,6 +200,7 @@ class WorkItem(BaseModel):
     result_ref: Optional[WorkItemResult] = Field(None, description="Execution result")
     error: Optional[str] = Field(None, description="Error message if failed")
     correlation_task_id: Optional[str] = Field(None, description="Task ID for delegation tracking")
+    child_thread_id: Optional[str] = Field(None, description="Child thread ID for re-delegation context continuity")
     retry_count: int = Field(default=0, description="Number of retry attempts")
     max_retries: int = Field(default=3, description="Maximum retry attempts before marking as failed")
     
@@ -144,9 +253,13 @@ class WorkItem(BaseModel):
 
 
 class WorkItemStatusCounts(BaseModel):
-    """Count of work items by status."""
+    """
+    Count of work items by status.
+    
+    Note: 'waiting' is removed - use in_progress with kind=REMOTE instead.
+    'blocked' is a computed metric (PENDING items with incomplete dependencies).
+    """
     pending: int = 0
-    waiting: int = 0
     in_progress: int = 0
     done: int = 0
     failed: int = 0
@@ -155,22 +268,28 @@ class WorkItemStatusCounts(BaseModel):
     @property
     def total(self) -> int:
         """Total count of all items."""
-        return self.pending + self.waiting + self.in_progress + self.done + self.failed + self.blocked
+        return self.pending + self.in_progress + self.done + self.failed + self.blocked
 
 
 class WorkPlanStatusSummary(BaseModel):
-    """Summary of work plan status."""
+    """
+    Summary of work plan status.
+    
+    Note: waiting_items is kept for backward compatibility but is now
+    calculated as (IN_PROGRESS items where kind=REMOTE). The actual
+    status for these items is IN_PROGRESS.
+    """
     exists: bool = False
     total_items: int = 0
     pending_items: int = 0
     in_progress_items: int = 0
-    waiting_items: int = 0
+    waiting_items: int = 0  # Calculated: IN_PROGRESS + kind=REMOTE
     done_items: int = 0
     failed_items: int = 0
     blocked_items: int = 0
     has_local_ready: bool = False
-    has_remote_waiting: bool = False
-    has_responses: bool = False
+    has_remote_waiting: bool = False  # True if any IN_PROGRESS + kind=REMOTE items exist
+    has_responses: bool = False  # True if any IN_PROGRESS + kind=REMOTE items have result_ref
     is_complete: bool = False
 
 
@@ -195,12 +314,29 @@ class WorkPlan(BaseModel):
         return len(self.items)
     
     def get_completed_item_ids(self) -> Set[str]:
-        """Get IDs of completed items (DONE or FAILED)."""
+        """
+        Get IDs of successfully completed items (DONE only).
+        
+        Note: FAILED items are NOT considered completed for dependency resolution.
+        Items depending on FAILED items will be blocked until the dependency is
+        retried successfully or the dependent item is explicitly marked as FAILED.
+        
+        This prevents cascade cycles where items appear "ready" but actually
+        cannot proceed due to missing dependency results.
+        """
         completed = set()
         for item_id, item in self.items.items():
-            if item.status in [WorkItemStatus.DONE, WorkItemStatus.FAILED]:
+            if item.status == WorkItemStatus.DONE:
                 completed.add(item_id)
         return completed
+    
+    def get_failed_item_ids(self) -> Set[str]:
+        """Get IDs of failed items."""
+        failed = set()
+        for item_id, item in self.items.items():
+            if item.status == WorkItemStatus.FAILED:
+                failed.add(item_id)
+        return failed
     
     def get_ready_items(self) -> List[WorkItem]:
         """Get items that are ready for execution (dependencies satisfied)."""
@@ -224,12 +360,41 @@ class WorkPlan(BaseModel):
         
         return blocked_items
     
+    def get_items_blocked_by_failure(self) -> List[WorkItem]:
+        """
+        Get items that are blocked specifically by failed dependencies.
+        
+        These items are PENDING but cannot proceed because one or more
+        of their dependencies has FAILED. They need special handling:
+        either retry the failed dependency or mark these items as failed too.
+        """
+        completed_ids = self.get_completed_item_ids()
+        failed_ids = self.get_failed_item_ids()
+        blocked_by_failure = []
+        
+        for item in self.items.values():
+            if item.status == WorkItemStatus.PENDING:
+                # Check if any dependencies are failed
+                has_failed_dep = any(dep_id in failed_ids for dep_id in item.dependencies)
+                # And item is blocked (not all deps are DONE)
+                is_blocked = item.is_blocked(completed_ids)
+                
+                if has_failed_dep and is_blocked:
+                    blocked_by_failure.append(item)
+        
+        return blocked_by_failure
+    
     def get_items_by_status(self, status: WorkItemStatus) -> List[WorkItem]:
         """Get all items with the specified status."""
         return [item for item in self.items.values() if item.status == status]
     
     def get_status_counts(self) -> WorkItemStatusCounts:
-        """Get count of items by status."""
+        """
+        Get count of items by status.
+        
+        Note: WAITING status is removed. Items that were WAITING are now IN_PROGRESS
+        with kind=REMOTE. Use get_status_summary() to get waiting_items count.
+        """
         counts = WorkItemStatusCounts()
         completed_ids = self.get_completed_item_ids()
         
@@ -239,8 +404,6 @@ class WorkPlan(BaseModel):
                     counts.blocked += 1
                 else:
                     counts.pending += 1
-            elif item.status == WorkItemStatus.WAITING:
-                counts.waiting += 1
             elif item.status == WorkItemStatus.IN_PROGRESS:
                 counts.in_progress += 1
             elif item.status == WorkItemStatus.DONE:
@@ -353,7 +516,6 @@ class WorkPlanService:
             
             if plan_data:
                 plan = WorkPlan(**plan_data)
-                print(f"💾 [PLAN] Loaded: {len(plan.items)} items")
                 return plan
             
             return None
@@ -392,14 +554,18 @@ class WorkPlanService:
                 workspace.context.work_plans[plan.owner_uid] = plan.model_dump()
                 self._workspace_service.update_workspace(workspace)
                 
-                print(f"💾 [PLAN] Saved: {len(plan.items)} items")
                 return True
             except Exception as e:
                 print(f"❌ [PLAN] Save error: {e}")
                 return False
     
     def get_status_summary(self, thread_id: str, owner_uid: str) -> WorkPlanStatusSummary:
-        """Get status summary for work plan."""
+        """
+        Get status summary for work plan.
+        
+        Calculates waiting_items as IN_PROGRESS + kind=REMOTE items.
+        This maintains backward compatibility while using the new status model.
+        """
         plan = self.load(thread_id, owner_uid)
         
         if not plan:
@@ -414,18 +580,21 @@ class WorkPlanService:
             for item in ready_items
         )
         
-        # Check for remote waiting items
-        has_remote_waiting = any(
-            item.status == WorkItemStatus.WAITING and item.kind == WorkItemKind.REMOTE
-            for item in plan.items.values()
-        )
+        # Calculate remote waiting items (IN_PROGRESS + REMOTE)
+        remote_in_progress_items = [
+            item for item in plan.items.values()
+            if item.status == WorkItemStatus.IN_PROGRESS and item.kind == WorkItemKind.REMOTE
+        ]
+        
+        has_remote_waiting = len(remote_in_progress_items) > 0
+        waiting_items_count = len(remote_in_progress_items)
         
         summary = WorkPlanStatusSummary(
             exists=True,
             total_items=len(plan.items),
             pending_items=counts.pending,
             in_progress_items=counts.in_progress,
-            waiting_items=counts.waiting,
+            waiting_items=waiting_items_count,  # Calculated from IN_PROGRESS + REMOTE
             done_items=counts.done,
             failed_items=counts.failed,
             blocked_items=counts.blocked,
@@ -434,7 +603,6 @@ class WorkPlanService:
             is_complete=plan.is_complete()
         )
         
-        print(f"📊 [DEBUG] Returning status summary: {summary.model_dump()}")
         return summary
     
     def store_task_response(
@@ -446,12 +614,9 @@ class WorkPlanService:
         from_uid: str
     ) -> bool:
         """Store task response as context without changing status - let LLM interpret."""
-        print(f"💬 [DEBUG] WorkPlanService.store_task_response() - Storing response for LLM interpretation")
-        print(f"💬 [DEBUG] correlation_task_id: {correlation_task_id}, from: {from_uid}")
         
         plan = self.load(thread_id, owner_uid)
         if not plan:
-            print(f"❌ [DEBUG] No plan found for {owner_uid}")
             return False
         
         # Find item by correlation task ID
@@ -462,10 +627,8 @@ class WorkPlanService:
                 break
         
         if not target_item:
-            print(f"❌ [DEBUG] No work item found for correlation task ID: {correlation_task_id}")
             return False
         
-        print(f"💬 [DEBUG] Found target item: {target_item.id} - {target_item.title}")
         
         # Store response content without changing status
         if not target_item.result_ref:
@@ -484,7 +647,6 @@ class WorkPlanService:
         
         target_item.mark_updated()
         self.save(plan)
-        print(f"💬 [DEBUG] Response stored for LLM interpretation")
         return True
 
     def ingest_task_response(
@@ -496,14 +658,10 @@ class WorkPlanService:
         error: str = None
     ) -> bool:
         """Ingest task response and update work item status - only for explicit success/error (thread-safe)."""
-        print(f"📥 [DEBUG] WorkPlanService.ingest_task_response() - Processing response")
-        print(f"📥 [DEBUG] correlation_task_id: {correlation_task_id}")
-        print(f"📥 [DEBUG] has_result: {result is not None}, has_error: {error is not None}")
         
         with self.with_lock(thread_id, owner_uid):
             plan = self.load(thread_id, owner_uid)
             if not plan:
-                print(f"❌ [DEBUG] No plan found for {owner_uid}")
                 return False
             
             # Find item by correlation task ID
@@ -514,21 +672,16 @@ class WorkPlanService:
                     break
             
             if not target_item:
-                print(f"❌ [DEBUG] No work item found for correlation task ID: {correlation_task_id}")
-                print(f"📋 [DEBUG] Available correlation IDs: {[item.correlation_task_id for item in plan.items.values() if item.correlation_task_id]}")
                 return False
             
-            print(f"✅ [DEBUG] Found target item: {target_item.id} - {target_item.title}")
             
             # Update item based on response - only for explicit structures
             if error:
-                print(f"❌ [DEBUG] Marking item as FAILED: {error}")
                 target_item.status = WorkItemStatus.FAILED
                 target_item.error = error
                 target_item.retry_count += 1  # Increment retry count on failure
             elif result and isinstance(result, dict) and result.get("success") is True:
                 # Only auto-mark DONE for explicit success structures
-                print(f"✅ [DEBUG] Marking item as DONE with explicit success result")
                 target_item.status = WorkItemStatus.DONE
                 target_item.result_ref = WorkItemResult(
                     success=True,
@@ -536,12 +689,10 @@ class WorkPlanService:
                     data=result
                 )
             else:
-                print(f"💬 [DEBUG] Result is not explicit success structure - not auto-marking DONE")
                 return False  # Don't auto-mark, let LLM interpret
             
             target_item.mark_updated()
             self.save(plan)
-            print(f"✅ [DEBUG] Task response ingested successfully")
             return True
     
     def update_item_status(
@@ -554,72 +705,54 @@ class WorkPlanService:
         correlation_task_id: str = None
     ) -> bool:
         """Update work item status - for LLM-driven status changes (thread-safe)."""
-        print(f"🔄 [DEBUG] WorkPlanService.update_item_status() - Updating {item_id} to {status}")
         
         with self.with_lock(thread_id, owner_uid):
             plan = self.load(thread_id, owner_uid)
             if not plan:
-                print(f"❌ [DEBUG] No plan found for {owner_uid}")
                 return False
             
             item = plan.items.get(item_id)
             if not item:
-                print(f"❌ [DEBUG] No item found with ID: {item_id}")
-                print(f"📋 [DEBUG] Available item IDs: {list(plan.items.keys())}")
                 return False
             
-            print(f"✅ [DEBUG] Found item: {item.title}")
-            print(f"🔄 [DEBUG] Changing status: {item.status} → {status}")
             
             old_status = item.status
             item.status = status
             
             if error and status == WorkItemStatus.FAILED:
                 item.error = error
-                print(f"❌ [DEBUG] Added error message: {error}")
             
             if correlation_task_id:
                 item.correlation_task_id = correlation_task_id
-                print(f"🔗 [DEBUG] Set correlation_task_id: {correlation_task_id}")
             
             # If marking as DONE, finalize the result
             if status == WorkItemStatus.DONE and item.result_ref:
                 item.result_ref.success = True
                 if item.result_ref.metadata:
                     item.result_ref.metadata.pop("needs_interpretation", None)
-                print(f"✅ [DEBUG] Finalized result as successful")
             
             item.mark_updated()
             self.save(plan)
-            print(f"✅ [DEBUG] Item status updated: {old_status} → {status}")
             return True
     
     def mark_item_as_delegated(self, thread_id: str, owner_uid: str, item_id: str, correlation_task_id: str) -> bool:
         """Mark work item as delegated (WAITING status) - thread-safe."""
-        print(f"📤 [DEBUG] WorkPlanService.mark_item_as_delegated() - Marking {item_id} as delegated")
-        print(f"📤 [DEBUG] correlation_task_id: {correlation_task_id}")
         
         with self.with_lock(thread_id, owner_uid):
             plan = self.load(thread_id, owner_uid)
             if not plan:
-                print(f"❌ [DEBUG] No plan found for {owner_uid}")
                 return False
             
             item = plan.items.get(item_id)
             if not item:
-                print(f"❌ [DEBUG] No item found with ID: {item_id}")
-                print(f"📋 [DEBUG] Available item IDs: {list(plan.items.keys())}")
                 return False
             
-            print(f"✅ [DEBUG] Found item: {item.title}")
-            print(f"🔄 [DEBUG] Changing status: {item.status} → WAITING")
             
             item.status = WorkItemStatus.WAITING
             item.correlation_task_id = correlation_task_id
             item.mark_updated()
             
             self.save(plan)
-            print(f"✅ [DEBUG] Item marked as delegated successfully")
             return True
     
     # ========== WORKSPACE WORK PLAN ACCESS ==========

@@ -102,7 +102,6 @@ class AutoExecutionHandler(ExecutionHandler):
         if not actions:
             return
         
-        print(f"🔍 DEBUG: AutoExecutionHandler executing {len(actions)} actions in batch")
         
         # Execute all actions together (efficient batch execution)
         batch_observations = self.action_executor.execute_batch(actions)
@@ -122,7 +121,6 @@ class AutoExecutionHandler(ExecutionHandler):
                     "handler": "auto"
                 }
             )
-            print(f"🔍 DEBUG: AutoExecutionHandler yielding observation for {obs.tool}: success={obs.success}")
             yield obs_step
     
     def is_ready_for_next_iteration(self) -> bool:
@@ -153,7 +151,6 @@ class GuidedExecutionHandler(ExecutionHandler):
         Yields:
             Action steps that need confirmation
         """
-        print(f"🔍 DEBUG: GuidedExecutionHandler queuing {len(actions)} actions for confirmation")
         
         for action in actions:
             self.pending_actions.append(action)
@@ -168,7 +165,6 @@ class GuidedExecutionHandler(ExecutionHandler):
                     "handler": "guided"
                 }
             )
-            print(f"🔍 DEBUG: GuidedExecutionHandler yielding action for confirmation: {action.tool}")
             yield action_step
     
     def confirm_action(self, action_id: str, execute: bool = True) -> Optional[AgentStep]:
@@ -190,14 +186,12 @@ class GuidedExecutionHandler(ExecutionHandler):
                 break
         
         if not action:
-            print(f"🔍 DEBUG: GuidedExecutionHandler: Action {action_id} not found in pending")
             return None
         
         # Mark as confirmed
         self.confirmed_actions[action_id] = execute
         
         if execute:
-            print(f"🔍 DEBUG: GuidedExecutionHandler executing confirmed action: {action.tool}")
             
             # Execute single action
             obs = self.action_executor.execute(action)
@@ -219,7 +213,6 @@ class GuidedExecutionHandler(ExecutionHandler):
                 }
             )
         else:
-            print(f"🔍 DEBUG: GuidedExecutionHandler: Action {action_id} rejected")
             # Remove from pending without executing
             self.pending_actions.remove(action)
             return None

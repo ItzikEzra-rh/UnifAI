@@ -517,11 +517,11 @@ class TestResponseHandlingAndRoundTrip(BaseIntegrationTest):
         
         # Find the work item that was delegated
         delegated_items = [item for item in plan.items.values() 
-                          if item.status in [WorkItemStatus.WAITING, WorkItemStatus.DONE]]
+                          if item.status in [WorkItemStatus.IN_PROGRESS, WorkItemStatus.DONE]]
         assert len(delegated_items) > 0, "No delegated work items found"
     
     def test_work_item_status_transitions(self):
-        """✅ COMPLETE FLOW: Work item transitions PENDING → WAITING → DONE."""
+        """✅ COMPLETE FLOW: Work item transitions PENDING → IN_PROGRESS → DONE."""
         planning_llm = create_planning_and_delegating_llm([
             {"title": "Process data", "kind": "remote", "assigned_uid": "agent1"}
         ])
@@ -535,8 +535,9 @@ class TestResponseHandlingAndRoundTrip(BaseIntegrationTest):
         # ✅ Check initial status (should be WAITING after delegation)
         plan = assert_work_plan_created(orch, thread_id)
         work_item = list(plan.items.values())[0]
-        assert work_item.status == WorkItemStatus.WAITING, \
-            f"Work item should be WAITING after delegation, got {work_item.status}"
+        assert work_item.status == WorkItemStatus.IN_PROGRESS, \
+            f"Work item should be IN_PROGRESS after delegation, got {work_item.status}"
+        assert work_item.kind == WorkItemKind.REMOTE, "Delegated item should be REMOTE kind"
         
         # Get delegation and create response
         from tests.base import get_packets_from_outbox, create_response_task, add_packet_to_inbox, create_task_packet
@@ -591,7 +592,8 @@ class TestResponseHandlingAndRoundTrip(BaseIntegrationTest):
         plan_after_delegation = assert_work_plan_created(orch, thread_id)
         assert len(plan_after_delegation.items) == 1
         work_item = list(plan_after_delegation.items.values())[0]
-        assert work_item.status == WorkItemStatus.WAITING
+        assert work_item.status == WorkItemStatus.IN_PROGRESS
+        assert work_item.kind == WorkItemKind.REMOTE
         
         # STEP 2: Get delegation packet
         from tests.base import get_packets_from_outbox, create_response_task, add_packet_to_inbox, create_task_packet
@@ -673,16 +675,18 @@ class TestResponseHandlingAndRoundTrip(BaseIntegrationTest):
         plan = assert_work_plan_created(orch, thread_id)
         items = list(plan.items.values())
         
-        # One item should have response, one still waiting
+        # One item should have response, one still in progress (remote)
         items_with_response = [item for item in items if item.result_ref is not None]
-        items_waiting = [item for item in items if item.status == WorkItemStatus.WAITING]
+        items_in_progress_remote = [item for item in items 
+                                     if item.status == WorkItemStatus.IN_PROGRESS and 
+                                     item.kind == WorkItemKind.REMOTE]
         
         assert len(items_with_response) >= 1, "At least one item should have response"
-        assert len(items_waiting) >= 1, "At least one item should still be waiting"
+        assert len(items_in_progress_remote) >= 1, "At least one item should still be in progress (remote)"
         
         print(f"✅ Monitoring phase verified!")
         print(f"   - Items with response: {len(items_with_response)}")
-        print(f"   - Items still waiting: {len(items_waiting)}")
+        print(f"   - Items still in progress (remote): {len(items_in_progress_remote)}")
     
     def test_workflow_completion_detection(self):
         """✅ COMPLETE FLOW: Orchestrator detects when workflow is complete."""
@@ -858,9 +862,10 @@ class TestNewArchitectureFeatures(BaseIntegrationTest):
         plan = assert_work_plan_created(orch, thread_id)
         work_item = list(plan.items.values())[0]
         
-        # 1. Status should still be WAITING (NOT auto-marked DONE)
-        assert work_item.status == WorkItemStatus.WAITING, \
-            f"Should stay WAITING for LLM interpretation, got {work_item.status}"
+        # 1. Status should still be IN_PROGRESS (NOT auto-marked DONE)
+        assert work_item.status == WorkItemStatus.IN_PROGRESS, \
+            f"Should stay IN_PROGRESS for LLM interpretation, got {work_item.status}"
+        assert work_item.kind == WorkItemKind.REMOTE, "Should be REMOTE kind"
         
         # 2. Response should be stored in result_ref
         assert work_item.result_ref is not None, "Response should be stored"

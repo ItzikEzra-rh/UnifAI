@@ -125,10 +125,6 @@ class ReActStrategy(AgentStrategy):
         Returns:
             List of steps (planning + action/finish, or error)
         """
-        print(f"🔍 DEBUG: ReActStrategy.think called with {len(messages)} messages, {len(observations)} observations")
-        if observations:
-            print(f"🔍 DEBUG: Latest observation - tool: {observations[-1].tool}, success: {observations[-1].success}")
-        
         try:
             # Build context (includes error feedback if pending)
             context = self.build_context(messages, observations)
@@ -140,13 +136,7 @@ class ReActStrategy(AgentStrategy):
             reasoning_time = time.time() - start_time
 
             # Parse response first to understand what type it is
-            print(f"🔍 DEBUG: Parsing response with tool_calls: {response.tool_calls}")
             result = self.parser.parse(response)
-            print(f"🔍 DEBUG: Parser returned type: {type(result)}")
-            if isinstance(result, list):
-                print(f"🔍 DEBUG: Got {len(result)} actions: {[action.tool for action in result]}")
-            else:
-                print(f"🔍 DEBUG: Got finish: {result}")
             
             # Validate reasoning only for final answers (AgentFinish)
             # Tool calls (List[AgentAction]) don't need reasoning validation
@@ -160,13 +150,11 @@ class ReActStrategy(AgentStrategy):
             steps = self._create_success_steps(response, result, reasoning_time)
 
         except ParseError as e:
-            print(f"🔍 DEBUG: ParseError in ReActStrategy.think: {e}")
             # Store system error for next iteration
             self._pending_system_error = SystemError.from_parse_error(e)
             steps = [self._create_error_step(e, "parse_error")]
 
         except Exception as e:
-            print(f"🔍 DEBUG: Exception in ReActStrategy.think: {e}")
             import traceback
             traceback.print_exc()
             # Store system error for next iteration  
@@ -232,19 +220,9 @@ class ReActStrategy(AgentStrategy):
         Returns:
             Complete context for LLM with proper message roles and order
         """
-        print(f"🔍 DEBUG: build_context called with {len(messages)} messages, {len(observations)} observations")
         context = self._build_base_context(messages)
         context.extend(self._build_observation_context(observations))
-        print(f"🔍 DEBUG: Built context with {len(context)} total messages")
         
-        # Debug: Print the actual context being sent to LLM
-        for i, msg in enumerate(context):
-            print(f"🔍 DEBUG: Context[{i}] - Role: {msg.role}, Content: {msg.content[:100] if msg.content else 'None'}...")
-            if msg.tool_calls:
-                print(f"🔍 DEBUG:   Tool calls: {[(tc.name, tc.tool_call_id) for tc in msg.tool_calls]}")
-            if msg.tool_call_id:
-                print(f"🔍 DEBUG:   Tool call ID: {msg.tool_call_id}, Name: {getattr(msg, 'name', 'None')}")
-
         # Add system error feedback if pending
         if self._pending_system_error:
             error_feedback = self._build_error_feedback()
@@ -320,7 +298,6 @@ class ReActStrategy(AgentStrategy):
 
     def _create_success_steps(self, response: ChatMessage, result, reasoning_time: float) -> List[AgentStep]:
         """Create steps for successful execution."""
-        print(f"🔍 DEBUG: Creating success steps for result type: {type(result)}")
         
         steps = [
             AgentStep(
@@ -336,7 +313,6 @@ class ReActStrategy(AgentStrategy):
         ]
 
         if isinstance(result, list):
-            print(f"🔍 DEBUG: Creating {len(result)} ACTION steps")
             action_steps = [
                 AgentStep(
                     type=StepType.ACTION,
@@ -350,9 +326,7 @@ class ReActStrategy(AgentStrategy):
                 for action in result
             ]
             steps.extend(action_steps)
-            print(f"🔍 DEBUG: Created ACTION steps: {[step.data.tool for step in action_steps]}")
         else:
-            print(f"🔍 DEBUG: Creating FINISH step")
             steps.append(AgentStep(
                 type=StepType.FINISH,
                 data=result,
@@ -363,7 +337,6 @@ class ReActStrategy(AgentStrategy):
                 }
             ))
 
-        print(f"🔍 DEBUG: Returning {len(steps)} total steps: {[step.type for step in steps]}")
         return steps
 
     def _create_error_step(self, error: Exception, error_type: str) -> AgentStep:

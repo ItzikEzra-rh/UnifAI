@@ -5,7 +5,7 @@ Tool for summarizing work plans.
 from typing import Dict, Any, Callable
 from pydantic import BaseModel
 from elements.tools.common.base_tool import BaseTool
-from elements.nodes.common.workload import WorkItemStatus
+from elements.nodes.common.workload import WorkItemStatus, WorkItemKind
 from elements.nodes.common.agent.constants import ToolNames
 
 
@@ -62,7 +62,7 @@ class SummarizeWorkPlanTool(BaseTool):
             for item in completed_items:
                 lines.append(f"  ✅ {item.title}")
                 if item.result_ref and item.result_ref.content:
-                    lines.append(f"     Result: {item.result_ref.content[:100]}...")
+                    lines.append(f"     Result: {item.result_ref.content}")
                 if item.assigned_uid:
                     lines.append(f"     Completed by: {item.assigned_uid}")
                 
@@ -80,32 +80,59 @@ class SummarizeWorkPlanTool(BaseTool):
                     } if item.result_ref else None
                 })
         
-        # Add WAITING items with responses (pending interpretation)
-        waiting_items = plan.get_items_by_status(WorkItemStatus.WAITING)
-        if waiting_items:
-            # Check if any have responses
-            waiting_with_responses = [item for item in waiting_items if item.result_ref]
-            if waiting_with_responses:
-                lines.append(f"\nWaiting for Interpretation ({len(waiting_with_responses)}):")
-                for item in waiting_with_responses:
-                    lines.append(f"  ⏳ {item.title}")
-                    if item.result_ref and item.result_ref.content:
-                        lines.append(f"     Response: {item.result_ref.content[:100]}...")
-                    if item.assigned_uid:
-                        lines.append(f"     From: {item.assigned_uid}")
+        # Add IN_PROGRESS (REMOTE) items with responses (pending interpretation)
+        in_progress_items = plan.get_items_by_status(WorkItemStatus.IN_PROGRESS)
+        if in_progress_items:
+            # Check for REMOTE items with responses needing interpretation
+            remote_with_responses = [
+                item for item in in_progress_items 
+                if item.kind == WorkItemKind.REMOTE and 
+                item.result_ref and 
+                item.result_ref.has_responses
+            ]
+            if remote_with_responses:
+                lines.append(f"\nWaiting for Interpretation ({len(remote_with_responses)}):")
+                for item in remote_with_responses:
+                    response_count = item.result_ref.response_count
+                    latest = item.result_ref.latest_response
                     
-                    # ✅ Add structured data (this is critical for LLM interpretation!)
+                    # Show item with response count
+                    lines.append(f"  ⏳ {item.title} ({response_count} response{'s' if response_count > 1 else ''})")
+                    
+                    if response_count > 1:
+                        # Multi-turn conversation - show all responses (no truncation)
+                        lines.append(f"     Conversation with {item.assigned_uid}:")
+                        for resp in item.result_ref.responses:  # Show all turns
+                            lines.append(f"       [{resp.sequence}] {resp.from_uid}: {resp.content}")
+                    else:
+                        # Single response - show full content (no truncation)
+                        lines.append(f"     Response from {latest.from_uid}:")
+                        lines.append(f"       {latest.content}")
+                    
+                    # ✅ Add structured data for LLM (includes full conversation history)
                     items_data.append({
                         "id": item.id,
                         "title": item.title,
                         "status": item.status.value,
-                        "assigned_to": item.assigned_uid,  # 🎯 Agent/node UID shown here
-                        "result": {
-                            "content": item.result_ref.content,
-                            "data": item.result_ref.data,
-                            "success": item.result_ref.success,
-                            "metadata": item.result_ref.metadata
-                        }
+                        "kind": item.kind.value,
+                        "assigned_to": item.assigned_uid,
+                        "conversation": [
+                            {
+                                "from": resp.from_uid,
+                                "content": resp.content,
+                                "data": resp.data,
+                                "sequence": resp.sequence,
+                                "timestamp": resp.timestamp,
+                                "correlation_task_id": resp.correlation_task_id
+                            }
+                            for resp in item.result_ref.responses
+                        ],
+                        "response_count": response_count,
+                        "latest_response": {
+                            "from": latest.from_uid,
+                            "content": latest.content,
+                            "data": latest.data
+                        } if latest else None
                     })
         
         # Add failed items with errors

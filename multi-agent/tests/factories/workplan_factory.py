@@ -186,9 +186,9 @@ class WorkPlanFactory:
             "waiting_item": WorkPlanFactory.create_work_item(
                 id="waiting_item",
                 title="Waiting Item",
-                description="Item waiting for response",
+                description="Item in progress (remote delegation)",
                 dependencies=[],
-                status=WorkItemStatus.WAITING,
+                status=WorkItemStatus.IN_PROGRESS,
                 kind=WorkItemKind.REMOTE,
                 assigned_uid="worker_2",
                 correlation_task_id="task_123"

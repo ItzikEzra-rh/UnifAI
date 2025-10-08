@@ -1062,7 +1062,8 @@ class TestOrchestratorExecutionPhase:
         # Verify work plan state after execution
         plan = assert_work_plan_created(orch, thread_id)
         assert plan.items["local1"].status == WorkItemStatus.DONE, "Local item should be done after execution"
-        assert plan.items["remote1"].status == WorkItemStatus.WAITING, "Remote item should be waiting"
+        assert plan.items["remote1"].status == WorkItemStatus.IN_PROGRESS, "Remote item should be in progress (delegated)"
+        assert plan.items["remote1"].kind == WorkItemKind.REMOTE, "Remote item should have REMOTE kind"
         
         # Verify delegation happened
         delegations = get_delegation_packets(state_view, "orch1")
@@ -1366,9 +1367,10 @@ class TestOrchestratorSynthesisValidator:
 
         # Verify work delegated but not done yet
         plan = assert_work_plan_created(orch, thread_id)
-        # After delegation, work item transitions from PENDING → WAITING
-        assert plan.items["research"].status in [WorkItemStatus.WAITING, WorkItemStatus.IN_PROGRESS], \
-            f"Work should be waiting or in progress for response, got {plan.items['research'].status}"
+        # After delegation, work item transitions from PENDING → IN_PROGRESS (remote)
+        assert plan.items["research"].status == WorkItemStatus.IN_PROGRESS, \
+            f"Work should be in progress (delegated) for response, got {plan.items['research'].status}"
+        assert plan.items["research"].kind == WorkItemKind.REMOTE, "Delegated item should be REMOTE kind"
 
         # ===== Agent executes =====
         print("\n🤖 AGENT1: Execute research")
@@ -2071,8 +2073,9 @@ class TestOrchestratorComplexCascades:
         
         # Verify work plan shows incomplete work
         plan = assert_work_plan_created(orch, thread_id)
-        assert plan.items["task1"].status in [WorkItemStatus.WAITING, WorkItemStatus.IN_PROGRESS], \
-            f"Task should still be waiting/in_progress (never completed), got {plan.items['task1'].status}"
+        assert plan.items["task1"].status == WorkItemStatus.IN_PROGRESS, \
+            f"Task should still be in progress (never completed), got {plan.items['task1'].status}"
+        assert plan.items["task1"].kind == WorkItemKind.REMOTE, "Delegated item should be REMOTE kind"
         
         # Verify orchestrator eventually completed (forced to SYNTHESIS)
         # Orchestrator should have completed (work plan done, synthesis finished)

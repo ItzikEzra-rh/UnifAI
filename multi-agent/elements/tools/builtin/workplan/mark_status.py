@@ -20,10 +20,11 @@ class MarkStatusArgs(BaseModel):
         description="""New status for the work item. Valid values:
         - 'done': Task completed successfully (use when you've confirmed the work is finished)
         - 'failed': Task failed and cannot be completed (use when errors are unrecoverable)
-        - 'in_progress': Task is actively being worked on
-        - 'blocked': Task cannot proceed due to dependencies or external factors
+        - 'in_progress': Task is actively being worked on (local execution or remote delegation)
         - 'pending': Task is ready to start but not yet begun
-        - 'waiting': Task is delegated and waiting for response"""
+        
+        Note: For delegated items waiting for responses, they're automatically marked as 'in_progress'.
+        Use this tool primarily to mark items as 'done' or 'failed' after reviewing responses."""
     )
     notes: Optional[str] = Field(
         None, 
@@ -39,16 +40,22 @@ class MarkWorkItemStatusTool(BaseTool):
     """Finalize work item status after interpreting responses or completing work."""
     
     name = ToolNames.WORKPLAN_MARK
-    description = """Update work item status based on your interpretation of responses or completion of work.
+    description = """FINAL STATUS DECISION - Use this to mark work item status ONLY when you're certain.
 
-    Use this tool to:
-    - Mark items 'done' when you've confirmed successful completion
-    - Mark items 'failed' when they cannot be completed (with explanation in notes)
-    - Mark items 'blocked' when waiting for external dependencies
-    - Update status during work progression
+    When to use this tool:
+    - 'done': Work is COMPLETE, quality is acceptable, all requirements met
+    - 'failed': Work CANNOT be completed (retries exhausted, fundamentally impossible)
+    - 'in_progress': Starting local execution
+    - 'pending': Reset for re-assignment
     
-    IMPORTANT: Only mark 'done' when you're confident the work is actually complete.
-    For ambiguous responses, consider asking for clarification first."""
+    ⚠️ IMPORTANT - DON'T RUSH TO MARK 'DONE':
+    - If response is incomplete → Use DelegateTaskTool to ask for more
+    - If response is unclear → Use DelegateTaskTool to ask for clarification
+    - If response is partial → Use DelegateTaskTool to request the rest
+    - Only mark 'done' when you're truly satisfied with the result
+    
+    REMEMBER: Thread context is preserved - you can re-delegate multiple times to get quality results.
+    Better to ask follow-up questions than accept incomplete work!"""
     args_schema = MarkStatusArgs
     
     def __init__(
@@ -63,17 +70,12 @@ class MarkWorkItemStatusTool(BaseTool):
     
     def run(self, **kwargs) -> Dict[str, Any]:
         """Mark work item status (thread-safe)."""
-        print(f"🏷️ [DEBUG] MarkWorkItemStatusTool.run() - Starting")
         args = MarkStatusArgs(**kwargs)
-        print(f"🏷️ [DEBUG] Item ID: {args.item_id}")
-        print(f"🏷️ [DEBUG] New status: {args.status}")
-        print(f"🏷️ [DEBUG] Notes: {args.notes}")
         
         thread_id = self._get_thread_id()
         owner_uid = self._get_owner_uid()
         workload_service = self._get_workload_service()
         workspace_service = workload_service.get_workspace_service()
-        print(f"🏷️ [DEBUG] Owner UID: {owner_uid}")
         
         def update_status(item, plan):
             """Update function for atomic status change."""
@@ -86,7 +88,6 @@ class MarkWorkItemStatusTool(BaseTool):
         success = workspace_service.atomic_update_work_item(thread_id, owner_uid, args.item_id, update_status)
         
         if not success:
-            print(f"❌ [DEBUG] Failed to update work item")
             return {"success": False, "error": "Work plan or work item not found"}
         
         result = {
@@ -94,5 +95,4 @@ class MarkWorkItemStatusTool(BaseTool):
             "item_id": args.item_id,
             "new_status": args.status.value
         }
-        print(f"✅ [DEBUG] MarkWorkItemStatusTool completed: {result}")
         return result

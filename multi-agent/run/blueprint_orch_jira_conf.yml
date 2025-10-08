@@ -87,7 +87,7 @@ nodes:
     type: orchestrator_node
     config:
       type: orchestrator_node
-      llm: openai_llm_rid
+      llm: openai_llm_pro_rid
       system_message: ""
 
 

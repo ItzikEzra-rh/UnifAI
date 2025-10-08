@@ -116,11 +116,13 @@ class TestDelegationFlow(BaseUnitTest):
             status=WorkItemStatus.PENDING
         )
         
-        # Mark as delegated (waiting for response)
-        item.status = WorkItemStatus.WAITING
+        # Mark as delegated (in progress - remote)
+        item.status = WorkItemStatus.IN_PROGRESS
+        item.kind = WorkItemKind.REMOTE
         item.correlation_task_id = "corr_123"
         
-        assert item.status == WorkItemStatus.WAITING
+        assert item.status == WorkItemStatus.IN_PROGRESS
+        assert item.kind == WorkItemKind.REMOTE
         assert item.correlation_task_id == "corr_123"
         
         # Response received, mark as done
@@ -145,7 +147,8 @@ class TestDelegationFlow(BaseUnitTest):
         )
         
         # Delegate
-        item.status = WorkItemStatus.WAITING
+        item.status = WorkItemStatus.IN_PROGRESS
+        item.kind = WorkItemKind.REMOTE
         item.correlation_task_id = "corr_123"
         
         # Worker reports failure
@@ -170,7 +173,8 @@ class TestDelegationFlow(BaseUnitTest):
         assert item.correlation_task_id is None
         
         # After delegation, should have correlation ID
-        item.status = WorkItemStatus.WAITING
+        item.status = WorkItemStatus.IN_PROGRESS
+        item.kind = WorkItemKind.REMOTE
         item.correlation_task_id = "unique_corr_id_123"
         
         assert item.correlation_task_id == "unique_corr_id_123"
@@ -340,9 +344,10 @@ class TestWorkPlanCompletion(BaseUnitTest):
         plan = create_work_plan_with_items("thread1", "orch1", num_remote=2, 
                                           remote_workers=["worker1"])
         
-        # Mark as waiting for response
+        # Mark as in progress (remote) for response
         for item in plan.items.values():
-            item.status = WorkItemStatus.WAITING
+            item.status = WorkItemStatus.IN_PROGRESS
+            item.kind = WorkItemKind.REMOTE
         
         assert plan.is_complete() is False
     
@@ -386,15 +391,16 @@ class TestWorkPlanStatusCounts(BaseUnitTest):
         items = list(plan.items.values())
         items[0].status = WorkItemStatus.DONE
         items[1].status = WorkItemStatus.IN_PROGRESS
-        items[2].status = WorkItemStatus.WAITING
+        items[1].kind = WorkItemKind.LOCAL
+        items[2].status = WorkItemStatus.IN_PROGRESS
+        items[2].kind = WorkItemKind.REMOTE
         items[3].status = WorkItemStatus.FAILED
         # items[4] stays PENDING
         
         assert_work_plan_status(
             plan,
             expected_pending=1,
-            expected_in_progress=1,
-            expected_waiting=1,
+            expected_in_progress=2,  # Now includes both LOCAL and REMOTE in progress
             expected_done=1,
             expected_failed=1,
             expected_total=5

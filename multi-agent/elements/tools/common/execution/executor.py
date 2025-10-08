@@ -119,7 +119,6 @@ class ToolExecutorManager:
         effective_mode = mode or self._execution_mode
         
         start_time = time.time()
-        print(f"Starting execution of {len(requests)} tool requests using {effective_mode.value} strategy")
 
         # Get the appropriate strategy based on execution mode
         strategy = self._strategies.get(effective_mode)
@@ -131,7 +130,6 @@ class ToolExecutorManager:
         try:
             response_list = await strategy.execute_requests(requests, self._execute_single_request)
         except Exception as e:
-            print(f"🔍 DEBUG: Strategy execution failed with error: {e}")
             import traceback
             traceback.print_exc()
             raise
@@ -185,6 +183,11 @@ class ToolExecutorManager:
             if self._circuit_breaker:
                 if not self._circuit_breaker.can_execute(tool.name):
                     raise Exception(f"Circuit breaker is open for tool {tool.name}")
+
+            # Log tool execution
+            print(f"🔧 Executing: {tool.name}")
+            if request.args:
+                print(f"   Args: {request.args}")
 
             # Execute the tool with timeout
             result = await self._execute_with_timeout(tool, request.args, self._default_timeout)

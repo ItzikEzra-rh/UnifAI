@@ -181,6 +181,25 @@ class PhaseProvider(ABC):
         """
         pass
     
+    @abstractmethod
+    def can_finish_now(self, current_phase: str) -> bool:
+        """
+        Determine if the agent can finish execution now.
+        
+        SOLID PRINCIPLE: Strategy asks provider "can I finish?", provider decides.
+        Provider has domain knowledge about work completion, phases, etc.
+        Strategy just executes - doesn't know business logic.
+        
+        This prevents premature AgentFinish when work is incomplete.
+        
+        Args:
+            current_phase: Current phase name
+            
+        Returns:
+            True if agent can finish now, False if more work needed
+        """
+        pass
+    
     # =================================================================
     # CONCRETE METHODS - Shared implementation
     # =================================================================

@@ -80,11 +80,8 @@ class OpenAILLM(BaseLLM, SupportsStreaming):
           and, at the very end, yields **one** `ChatMessage` representing
           the full assistant reply with `tool_calls=[…]`.
         """
-        print(f"🔍 DEBUG: OpenAI.stream called with {len(messages)} messages")
-        
         # Translate our domain history → LangChain
         lc_history = LangChainConverter.to_lc(messages)
-        print(f"🔍 DEBUG: Converted to {len(lc_history)} LangChain messages")
 
         aggregated: Any | None = None  # will hold the growing AIMessage
 
@@ -113,8 +110,6 @@ class OpenAILLM(BaseLLM, SupportsStreaming):
         This creates a copy of the current LLM with tools bound to the client,
         ensuring the original LLM instance remains unchanged.
         """
-        print(f"🔍 DEBUG: OpenAI.bind_tools called with {len(tools)} tools: {[tool.name for tool in tools]}")
-        
         # Create a shallow copy of the current instance
         new_llm = copy.copy(self)
         

@@ -84,10 +84,8 @@ class ToolCallParser(BaseOutputParser):
             
             # Check for tool calls
             if hasattr(message, 'tool_calls') and message.tool_calls:
-                print(f"🔍 DEBUG: Parser found {len(message.tool_calls)} tool calls")
                 return self._parse_tool_calls(message)
             else:
-                print(f"🔍 DEBUG: Parser found no tool calls, creating finish")
                 return self._parse_as_finish(message)
                 
         except ParseError:
@@ -201,7 +199,6 @@ class ToolCallParser(BaseOutputParser):
             self._validate_tool_arguments(args, tool_call.name)
         
         # Create action with original tool_call_id
-        print(f"🔍 DEBUG: Creating AgentAction with tool_call_id: {tool_call.tool_call_id}")
         return self._create_safe_action(
             tool=tool_call.name,
             tool_input=args,

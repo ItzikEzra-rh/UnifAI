@@ -77,7 +77,7 @@ class TestOrchestratorBasicWorkflow(BaseIntegrationTest):
             title="Subtask 1",
             description="Do work",
             assigned_uid="worker1",
-            status=WorkItemStatus.WAITING,
+            status=WorkItemStatus.IN_PROGRESS,
             correlation_task_id="corr_123"
         )
         plan.items["item_1"] = item
@@ -174,14 +174,16 @@ class TestOrchestratorDelegation(BaseIntegrationTest):
         workspace_service.save_work_plan(plan)
         
         # Simulate marking as delegated (what happens after send_task)
-        item.status = WorkItemStatus.WAITING
+        item.status = WorkItemStatus.IN_PROGRESS
+        item.kind = WorkItemKind.REMOTE
         item.correlation_task_id = "corr_123"
         workspace_service.save_work_plan(plan)
         
         # Verify status
         updated_plan = workspace_service.load_work_plan(thread.thread_id, "orch1")
         updated_item = updated_plan.items["item_1"]
-        assert updated_item.status == WorkItemStatus.WAITING
+        assert updated_item.status == WorkItemStatus.IN_PROGRESS
+        assert updated_item.kind == WorkItemKind.REMOTE
         assert updated_item.correlation_task_id == "corr_123"
 
 

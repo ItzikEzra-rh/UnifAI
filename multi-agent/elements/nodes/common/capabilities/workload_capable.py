@@ -97,11 +97,7 @@ class WorkloadCapableMixin:
                 thread_id, graphstate_messages, limit, strategy
             )
             
-            if synced_count > 0:
-                print(f"📝 [DEBUG] Synced {synced_count} messages from GraphState to workspace")
-            
             return synced_count
                 
         except Exception as e:
-            print(f"⚠️ [DEBUG] Error syncing GraphState messages: {e}")
             return 0

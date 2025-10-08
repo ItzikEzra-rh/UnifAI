@@ -76,9 +76,7 @@ class AgentActionExecutor:
         Returns:
             AgentObservation with execution results
         """
-        print(f"🔍 DEBUG: AgentActionExecutor.execute called for tool: {action.tool}")
         result = self.execute_batch([action])[0]
-        print(f"🔍 DEBUG: AgentActionExecutor.execute returning - success: {result.success}")
         return result
     
     def execute_batch(self, actions: List[AgentAction]) -> List[AgentObservation]:
@@ -91,13 +89,11 @@ class AgentActionExecutor:
         Returns:
             List of AgentObservations in same order as input actions
         """
-        print(f"🔍 DEBUG: AgentActionExecutor.execute_batch called with {len(actions)} actions")
         if not actions:
             return []
         
         with get_async_bridge() as bridge:
             result = bridge.run(self._execute_batch_async(actions))
-            print(f"🔍 DEBUG: AgentActionExecutor.execute_batch returning {len(result)} observations")
             return result
     
     async def _execute_batch_async(self, actions: List[AgentAction]) -> List[AgentObservation]:
@@ -113,21 +109,16 @@ class AgentActionExecutor:
         start_time = time.time()
         
         try:
-            print(f"🔍 DEBUG: _execute_batch_async starting with {len(actions)} actions")
             # Create ToolExecutionRequests and track missing tools
             requests = []
             missing_tools = []
             
             for action in actions:
-                print(f"🔍 DEBUG: Processing action for tool: {action.tool}")
                 # Check if tool exists
                 if not self.tool_executor_manager.has_tool(action.tool):
-                    print(f"🔍 DEBUG: Tool {action.tool} not found in tool_executor_manager")
-                    print(f"🔍 DEBUG: Available tools: {self.tool_executor_manager.get_tool_names()}")
                     missing_tools.append(action)
                     continue
                 
-                print(f"🔍 DEBUG: Tool {action.tool} found, creating request")
                 request = ToolExecutionRequest(
                     tool_name=action.tool,
                     tool_call_id=action.id,
@@ -143,7 +134,6 @@ class AgentActionExecutor:
             # Create observations for missing tools
             observations = []
             for action in missing_tools:
-                print(f"🔍 DEBUG: Creating error observation for missing tool: {action.tool}")
                 observations.append(AgentObservation(
                     action_id=action.id,
                     tool=action.tool,
@@ -154,13 +144,11 @@ class AgentActionExecutor:
                 ))
             
             if requests:
-                print(f"🔍 DEBUG: Executing {len(requests)} requests via ToolExecutorManager")
                 # Execute via ToolExecutorManager (uses configured execution mode)
                 batch_response = await self.tool_executor_manager.execute_requests_async(
                     requests=requests
                     # No mode specified - uses manager's configured execution_mode
                 )
-                print(f"🔍 DEBUG: Batch response received with {len(batch_response.responses)} responses")
                 
                 # Convert responses to observations for successful tools
                 for action in actions:
@@ -172,7 +160,6 @@ class AgentActionExecutor:
                     if response:
                         observation = self._response_to_observation(action, response, start_time)
                     else:
-                        print(f"🔍 DEBUG: No response found for action.id: {action.id} (tool: {action.tool})")
                         # Missing response - shouldn't happen but handle gracefully
                         observation = AgentObservation(
                             action_id=action.id,
@@ -185,7 +172,6 @@ class AgentActionExecutor:
                     
                     observations.append(observation)
             
-            print(f"🔍 DEBUG: Returning {len(observations)} observations")
             
             return observations
             
