@@ -961,9 +961,15 @@ class WorkspaceService(IWorkspaceService):
         counts = plan.get_status_counts()
         ready_items = plan.get_ready_items()
         
-        # Check for local ready items
+        # Check for local ready items (PENDING + LOCAL + dependencies met)
         has_local_ready = any(
             item.kind == WorkItemKind.LOCAL 
+            for item in ready_items
+        )
+        
+        # Check for remote ready items (PENDING + REMOTE + dependencies met)
+        has_remote_ready = any(
+            item.kind == WorkItemKind.REMOTE
             for item in ready_items
         )
         
@@ -976,11 +982,9 @@ class WorkspaceService(IWorkspaceService):
         has_remote_waiting = len(remote_in_progress_items) > 0
         waiting_items_count = len(remote_in_progress_items)
         
-        # Check for responses needing interpretation (IN_PROGRESS + REMOTE + has result_ref)
+        # Check for responses needing interpretation (IN_PROGRESS + REMOTE + unprocessed responses)
         has_responses = any(
-            item.status == WorkItemStatus.IN_PROGRESS 
-            and item.kind == WorkItemKind.REMOTE
-            and item.result_ref is not None
+            item.has_unprocessed_responses()
             for item in plan.items.values()
         )
         
@@ -994,6 +998,7 @@ class WorkspaceService(IWorkspaceService):
             failed_items=counts.failed,
             blocked_items=counts.blocked,
             has_local_ready=has_local_ready,
+            has_remote_ready=has_remote_ready,
             has_remote_waiting=has_remote_waiting,
             has_responses=has_responses,
             is_complete=plan.is_complete()

@@ -144,7 +144,14 @@ class PlanAndExecuteStrategy(AgentStrategy):
         Returns:
             List of steps to execute
         """
-        print(f"📍 Phase: {self._current_phase}")
+        # Visual banner at start of FIRST think call (before phase updates)
+        if self._step_count == 0:
+            print(f"\n{'='*80}")
+            print(f"🧠 LLM INTERACTION #1 - BEGINNING ORCHESTRATION CYCLE")
+            print(f"📍 Starting Phase: {self._current_phase.upper()}")
+            print(f"{'='*80}\n")
+        else:
+            print(f"📍 Phase: {self._current_phase}")
         
         try:
             # Determine current phase based on context
@@ -217,16 +224,16 @@ class PlanAndExecuteStrategy(AgentStrategy):
         observations: List[AgentObservation]
     ) -> List[ChatMessage]:
         """
-        Build context with phase-specific prompting.
+        Build context with phase-specific prompting and dynamic context.
         
         Includes:
-        - Phase-specific system message
-        - Original messages
+        - Phase-specific system message with guidance + validation
+        - Static messages (conversation, adjacency, request)
+        - Dynamic context from provider (fresh workspace + work plan)
         - Tool observations as TOOL messages
-        - Phase transition hints
         
         Args:
-            messages: Original conversation
+            messages: Original conversation (static messages)
             observations: Tool execution results
             
         Returns:
@@ -234,17 +241,27 @@ class PlanAndExecuteStrategy(AgentStrategy):
         """
         context = []
         
-        # System message with phase guidance
+        # [1] System message with phase guidance + validation
         system_content = self._build_phase_prompt()
         if self.system_message:
             system_content = f"{self.system_message}\n\n{system_content}"
         
         context.append(ChatMessage(role=Role.SYSTEM, content=system_content))
         
-        # Original messages
-        context.extend(messages)
+        # [2] Static messages (conversation, adjacency, request)
+        # Filter out old workspace/workplan if provider has dynamic context
+        static_messages = self._filter_static_messages(messages)
+        context.extend(static_messages)
         
-        # Tool observations
+        # [3] Dynamic context from provider (fresh workspace + work plan)
+        # This ensures LLM always sees current state
+        if hasattr(self._phase_provider, 'get_dynamic_context_messages'):
+            dynamic_context = self._phase_provider.get_dynamic_context_messages(
+                self._current_phase
+            )
+            context.extend(dynamic_context)
+        
+        # [4] Tool observations
         for obs in observations:
             context.append(ChatMessage(
                 role=Role.TOOL,
@@ -253,6 +270,34 @@ class PlanAndExecuteStrategy(AgentStrategy):
             ))
         
         return context
+    
+    def _filter_static_messages(self, messages: List[ChatMessage]) -> List[ChatMessage]:
+        """
+        Filter messages to only include truly static ones.
+        
+        If provider has dynamic context, skip workspace/workplan messages
+        from original list (they'll be replaced with fresh ones).
+        
+        Args:
+            messages: Original messages from orchestrator
+            
+        Returns:
+            Filtered list of static messages
+        """
+        if not hasattr(self._phase_provider, 'get_dynamic_context_messages'):
+            # No dynamic context support, return all messages
+            return list(messages)
+        
+        # Skip messages that will be replaced by dynamic context
+        static = []
+        for msg in messages:
+            content = msg.content or ""
+            # Skip if it's workspace or work plan context (will be refreshed)
+            if content.startswith("Current Context:") or content.startswith("Current Work Plan:"):
+                continue
+            static.append(msg)
+        
+        return static
     
     def should_continue(self, history: List[AgentStep]) -> bool:
         """

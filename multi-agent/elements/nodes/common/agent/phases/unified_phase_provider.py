@@ -128,6 +128,30 @@ class PhaseProvider(ABC):
             return f"{base_guidance}\n\n{validation_guidance}"
         return base_guidance
     
+    def get_dynamic_context_messages(self, phase_name: str) -> List["ChatMessage"]:
+        """
+        Get dynamic context messages that should be refreshed before each LLM call.
+        
+        This is an optional extension point for providers that have context
+        that changes during execution (e.g., work plans, workspace state).
+        
+        Default implementation returns empty list (no dynamic context).
+        Subclasses override this to provide fresh context data.
+        
+        Design Pattern: Mirrors get_phase_validation() pattern
+        - Called before each LLM interaction
+        - Provider decides what dynamic data to include
+        - Strategy just assembles pieces
+        - Fails gracefully (no exceptions)
+        
+        Args:
+            phase_name: Current phase name (for phase-specific context if needed)
+            
+        Returns:
+            List of ChatMessage objects with fresh context, empty list if none
+        """
+        return []
+    
     @abstractmethod
     def get_phase_context(self) -> PhaseState:
         """Get current phase context - must be implemented by subclasses."""

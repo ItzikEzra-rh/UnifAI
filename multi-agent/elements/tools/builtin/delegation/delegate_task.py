@@ -185,6 +185,15 @@ class DelegateTaskTool(BaseTool):
                         "error": error_msg
                     }
                 
+                # Mark all existing responses as processed (LLM has acted by delegating/re-delegating)
+                plan = workspace_service.load_work_plan(current_thread.thread_id, owner_uid)
+                if plan and work_item_id in plan.items:
+                    work_item = plan.items[work_item_id]
+                    if work_item.result_ref and work_item.result_ref.responses:
+                        for response in work_item.result_ref.responses:
+                            response.processed = True
+                        workspace_service.save_work_plan(plan)
+                
             except Exception as e:
                 error_msg = f"Exception updating work item status: {e}"
                 return {

@@ -5,7 +5,7 @@ Tool for marking work item status.
 from typing import Dict, Any, Optional, Callable
 from pydantic import BaseModel, Field
 from elements.tools.common.base_tool import BaseTool
-from elements.nodes.common.workload import WorkItemStatus
+from elements.nodes.common.workload import WorkItemStatus, WorkItemKind
 from elements.nodes.common.agent.constants import ToolNames
 
 
@@ -77,6 +77,34 @@ class MarkWorkItemStatusTool(BaseTool):
         workload_service = self._get_workload_service()
         workspace_service = workload_service.get_workspace_service()
         
+        # VALIDATION: Prevent marking DONE if waiting for delegation response
+        if args.status == WorkItemStatus.DONE:
+            # Load the work item to check state
+            plan = workspace_service.load_work_plan(thread_id, owner_uid)
+            if not plan or args.item_id not in plan.items:
+                return {"success": False, "error": "Work item not found"}
+            
+            item = plan.items[args.item_id]
+            
+            # Check if item is actively delegated (IN_PROGRESS + REMOTE + has correlation_task_id)
+            if (item.status == WorkItemStatus.IN_PROGRESS and 
+                item.kind == WorkItemKind.REMOTE and 
+                item.correlation_task_id):
+                
+                # Check if we have a response for the CURRENT active delegation
+                has_response_for_current_task = False
+                if item.result_ref and item.result_ref.responses:
+                    has_response_for_current_task = any(
+                        r.correlation_task_id == item.correlation_task_id
+                        for r in item.result_ref.responses
+                    )
+                
+                if not has_response_for_current_task:
+                    return {
+                        "success": False,
+                        "error": f"Cannot mark '{args.item_id}' as DONE - still waiting for response from delegated agent (task {item.correlation_task_id[:8]}...). Wait for response to arrive, or use status='failed' to give up and move on."
+                    }
+        
         def update_status(item, plan):
             """Update function for atomic status change."""
             item.status = args.status
@@ -84,6 +112,11 @@ class MarkWorkItemStatusTool(BaseTool):
                 item.error = args.notes
             if args.correlation_task_id:
                 item.correlation_task_id = args.correlation_task_id
+            
+            # Mark all responses as processed when changing status (LLM has acted by marking status)
+            if item.result_ref and item.result_ref.responses:
+                for response in item.result_ref.responses:
+                    response.processed = True
         
         success = workspace_service.atomic_update_work_item(thread_id, owner_uid, args.item_id, update_status)
         

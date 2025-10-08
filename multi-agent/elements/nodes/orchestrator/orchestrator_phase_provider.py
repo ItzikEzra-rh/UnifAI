@@ -21,7 +21,7 @@ from .phases.validators import (
 from elements.tools.builtin.workplan.create_or_update import CreateOrUpdateWorkPlanTool
 from elements.tools.builtin.workplan.assign_item import AssignWorkItemTool
 from elements.tools.builtin.workplan.mark_status import MarkWorkItemStatusTool
-from elements.tools.builtin.workplan.summarize import SummarizeWorkPlanTool
+# SummarizeWorkPlanTool removed - work plan now provided via dynamic context
 from elements.tools.builtin.delegation.delegate_task import DelegateTaskTool
 from elements.tools.builtin.topology.list_adjacent import ListAdjacentNodesTool
 from elements.tools.builtin.topology.get_node_card import GetNodeCardTool
@@ -191,11 +191,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
             get_owner_uid=get_uid,
             get_workload_service=self._get_workload_service
         )
-        summarize_tool = SummarizeWorkPlanTool(
-            get_thread_id=get_tid,
-            get_owner_uid=get_uid,
-            get_workload_service=self._get_workload_service
-        )
+        # Note: SummarizeWorkPlanTool removed - work plan is now provided via dynamic context
         
         # Tools use the adjacent nodes provided by orchestrator (already filtered)
         delegate_tool = DelegateTaskTool(
@@ -226,11 +222,11 @@ class OrchestratorPhaseProvider(PhaseProvider):
         planning_phase = PhaseDefinition(
             name=OrchestratorPhase.PLANNING.value,
             description="Create or update work plan with dependencies and task breakdown",
-            tools=[create_plan_tool, summarize_tool, list_nodes_tool, get_node_card_tool],
+            tools=[create_plan_tool, list_nodes_tool, get_node_card_tool],
             guidance=(
                 "PHASE: PLANNING - Create or update work plan based on new request.\n\n"
                 "MULTI-REQUEST WORKFLOW (Same Thread):\n"
-                "1. FIRST: Use SummarizeWorkPlanTool to check if work plan already exists\n\n"
+                "1. FIRST: Check 'Current Work Plan' section above to see if work plan already exists\n\n"
                 "2. IF NO PLAN EXISTS:\n"
                 "   Create comprehensive work plan using CreateOrUpdateWorkPlanTool:\n"
                 "   - Break down request into specific, actionable work items\n"
@@ -387,11 +383,11 @@ class OrchestratorPhaseProvider(PhaseProvider):
         monitoring_phase = PhaseDefinition(
             name=OrchestratorPhase.MONITORING.value,
             description="Interpret responses and manage work item lifecycle",
-            tools=[mark_status_tool, delegate_tool, summarize_tool, list_nodes_tool, create_plan_tool],
+            tools=[mark_status_tool, delegate_tool, list_nodes_tool, create_plan_tool],
             guidance=(
                 "PHASE: MONITORING - Interpret responses from delegated agents and decide next steps.\n\n"
                 "DECISION FRAMEWORK:\n"
-                "1. READ responses using SummarizeWorkPlanTool to see 'Waiting for Interpretation' items\n"
+                "1. REVIEW responses in 'Current Work Plan' section above to see items with responses\n"
                 "2. EVALUATE each response:\n"
                 "   - Is it complete and satisfactory? → Mark 'done'\n"
                 "   - Does it need clarification or more detail? → Re-delegate with follow-up question\n"
@@ -420,7 +416,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
         synthesis_phase = PhaseDefinition(
             name=OrchestratorPhase.SYNTHESIS.value,
             description="Summarize completed work and produce final deliverables",
-            tools=[summarize_tool],  # ✅ ONLY summarize - NO plan modification in Synthesis!
+            tools=domain_tools_list,  # Domain tools for synthesis
             guidance=(
                 "PHASE: SYNTHESIS - Combine all completed work into cohesive final deliverable.\n\n"
                 "PURPOSE:\n"
@@ -429,7 +425,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "- Provide context, insights, and actionable conclusions\n"
                 "- Create value from completed work\n\n"
                 "SYNTHESIS WORKFLOW:\n"
-                "1. Use SummarizeWorkPlanTool to review all work items and their results\n"
+                "1. Review 'Current Work Plan' section above to see all work items and their results\n"
                 "2. For each DONE item:\n"
                 "   - Extract key findings and results\n"
                 "   - Identify how it contributes to overall objective\n"
@@ -612,10 +608,15 @@ class OrchestratorPhaseProvider(PhaseProvider):
         """
         Determine if orchestrator can finish execution now.
         
-        SIMPLE, CLEAR LOGIC - Three cases:
-        1. Work is complete (all DONE/FAILED)
-        2. Waiting for delegated responses (router flow)
-        3. In SYNTHESIS phase (terminal)
+        CLEAR LOGIC - Three cases:
+        1. Work is complete (all DONE/FAILED) → Finish
+        2. Waiting for delegated responses with no actionable work → Finish
+        3. In SYNTHESIS phase (terminal) → Finish
+        
+        Actionable work means:
+        - Local items ready to execute (has_local_ready)
+        - Remote items ready to delegate (has_remote_ready)
+        - Responses that need processing (has_responses)
         
         Root causes (cycles, blocked items, phase limits) are handled by
         phase transition logic, not here. This keeps finish logic simple.
@@ -640,9 +641,18 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 return True
             
             # Case 2: Delegated items waiting for responses (router flow)
-            # Allow finish if we have remote items waiting and no other actionable work
+            # Allow finish if:
+            # - We have remote items waiting (already delegated)
+            # - No responses to process (has_responses=False)
+            # - No local work ready to execute (has_local_ready=False)
+            # - No remote work ready to delegate (has_remote_ready=False)
+            #
+            # This means we've delegated everything we can and are waiting
+            # for the router to re-invoke us when responses arrive.
             if status.has_remote_waiting:
-                if not status.has_local_ready and status.pending_items == 0:
+                if (not status.has_responses 
+                    and not status.has_local_ready 
+                    and not status.has_remote_ready):
                     return True
             
             # Case 3: In SYNTHESIS phase (terminal - always allow finish)
@@ -1003,15 +1013,160 @@ class OrchestratorPhaseProvider(PhaseProvider):
                                 dep_status.append(f"?{dep_id}")
                         item_line += f" [depends on: {', '.join(dep_status)}]"
                     
-                    # Show response if present
-                    if item.result_ref and item.result_ref.has_responses:
-                        latest = item.result_ref.latest_response
-                        if latest:
-                            resp = latest.content[:40].replace('\n', ' ')
-                            item_line += f" - {resp}..."
+                    # Show responses if present with processed status
+                    if item.result_ref and item.result_ref.responses:
+                        response_count = len(item.result_ref.responses)
+                        processed_count = sum(1 for r in item.result_ref.responses if r.processed)
+                        unprocessed_count = response_count - processed_count
+                        
+                        if response_count == 1:
+                            # Single response - show content with status
+                            latest = item.result_ref.latest_response
+                            status_marker = "✓" if latest.processed else "⚡"
+                            resp_preview = latest.content[:100].replace('\n', ' ')
+                            item_line += f"\n      {status_marker} {resp_preview}..."
+                        else:
+                            # Multiple responses - show count summary first
+                            item_line += f"\n      💬 {response_count} responses ({processed_count}✓ processed, {unprocessed_count}⚡ pending)"
+                            # Show ALL responses with their status
+                            for resp in item.result_ref.responses:
+                                status_marker = "✓" if resp.processed else "⚡"
+                                resp_preview = resp.content[:100].replace('\n', ' ')
+                                item_line += f"\n      {status_marker} {resp_preview}..."
                     
                     print(f"   {item_line}")
             
             print(f"{'='*80}\n")
         except Exception as e:
             pass
+    
+    def get_dynamic_context_messages(self, phase_name: str) -> List["ChatMessage"]:
+        """
+        Provide fresh workspace and work plan context before each LLM call.
+        
+        This ensures the LLM always sees the current state of:
+        - Workspace facts and results
+        - Work plan with all items and their responses
+        
+        Called by strategy before each LLM interaction, following the same
+        pattern as get_phase_validation().
+        
+        Args:
+            phase_name: Current phase name (unused, but kept for consistency)
+            
+        Returns:
+            List of ChatMessage with fresh context
+        """
+        from elements.llms.common.chat.message import ChatMessage, Role
+        
+        messages = []
+        
+        try:
+            workspace_service = self._get_workload_service().get_workspace_service()
+            
+            # Fresh workspace context (facts, results, variables)
+            workspace_summary = self._build_workspace_summary_internal(workspace_service)
+            if workspace_summary:
+                messages.append(ChatMessage(
+                    role=Role.USER,
+                    content=f"Current Context:\n{workspace_summary}"
+                ))
+            
+            # Fresh work plan snapshot (with all responses)
+            plan = workspace_service.load_work_plan(self._thread_id, self._node_uid)
+            if plan:
+                plan_snapshot = self._build_plan_snapshot_internal(plan, workspace_service)
+                messages.append(ChatMessage(
+                    role=Role.USER,
+                    content=f"Current Work Plan:\n{plan_snapshot}"
+                ))
+        
+        except Exception as e:
+            # Fail gracefully - don't break execution if context building fails
+            print(f"⚠️  Error building dynamic context: {e}")
+        
+        return messages
+    
+    def _build_workspace_summary_internal(self, workspace_service) -> str:
+        """
+        Build workspace summary (facts, results, variables).
+        
+        Note: Responses are no longer in facts - they're in work items.
+        """
+        lines = []
+
+        # Key facts
+        facts = workspace_service.get_facts(self._thread_id)
+        if facts:
+            lines.append(f"Facts ({len(facts)}):")
+            for fact in facts[:5]:
+                lines.append(f"  - {fact}")
+
+        # Recent results
+        results = workspace_service.get_results(self._thread_id)
+        if results:
+            lines.append(f"\nResults ({len(results)}):")
+            for result in results[-3:]:
+                lines.append(f"  - {result.agent_name}: {result.content[:50]}...")
+
+        # Key variables (optional context)
+        variables = workspace_service.get_all_variables(self._thread_id)
+        if variables:
+            # Only show non-internal variables
+            public_vars = {k: v for k, v in variables.items()
+                           if not k.startswith('_') and k not in ['orchestrator_uid', 'original_task_id']}
+            if public_vars:
+                lines.append(f"\nVariables ({len(public_vars)}):")
+                for key, value in list(public_vars.items())[:3]:
+                    lines.append(f"  - {key}: {str(value)[:30]}...")
+
+        return "\n".join(lines) if lines else ""
+    
+    def _build_plan_snapshot_internal(self, plan, workspace_service) -> str:
+        """Build comprehensive work plan snapshot with responses."""
+        from elements.nodes.common.workload import WorkItemStatus
+        
+        status_summary = workspace_service.get_work_plan_status(self._thread_id, self._node_uid)
+        
+        lines = [
+            f"Work Plan: {status_summary.total_items} items total",
+            f"Status: pending={status_summary.pending_items}, in_progress={status_summary.in_progress_items} (waiting={status_summary.waiting_items}), done={status_summary.done_items}, failed={status_summary.failed_items}",
+            f"Complete: {status_summary.is_complete}"
+        ]
+
+        if plan:
+            lines.append(f"\nPlan Summary: {plan.summary}")
+
+            # Show items by status with full details including responses
+            for status in [WorkItemStatus.PENDING, WorkItemStatus.IN_PROGRESS, WorkItemStatus.DONE]:
+                items = plan.get_items_by_status(status)
+                if items:
+                    lines.append(f"\n{status.value.upper()} ({len(items)}):")
+                    for item in items[:5]:  # Show up to 5 items per status
+                        status_info = f"  - {item.title} (ID: {item.id})"
+                        if item.dependencies:
+                            status_info += f" [depends on: {', '.join(item.dependencies)}]"
+                        if item.assigned_uid:
+                            status_info += f" [assigned to: {item.assigned_uid}]"
+                        if item.retry_count > 0:
+                            status_info += f" [retries: {item.retry_count}/{item.max_retries}]"
+                        lines.append(status_info)
+                        
+                        # Show responses if present (for interpretation)
+                        if item.result_ref and item.result_ref.has_responses:
+                            response_count = item.result_ref.response_count
+                            if response_count == 1:
+                                # Single response - show full content
+                                latest = item.result_ref.latest_response
+                                lines.append(f"    Response from {latest.from_uid}:")
+                                lines.append(f"      {latest.content}")
+                            else:
+                                # Multi-turn conversation - show all responses with sequence
+                                lines.append(f"    Conversation ({response_count} responses):")
+                                for resp in item.result_ref.responses:
+                                    lines.append(f"      [{resp.sequence}] {resp.from_uid}: {resp.content}")
+                    
+                    if len(items) > 5:
+                        lines.append(f"    ... and {len(items) - 5} more")
+
+        return "\n".join(lines)

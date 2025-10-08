@@ -86,6 +86,7 @@ class ResponseRecord(BaseModel):
     timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat(), description="When response was received")
     sequence: int = Field(..., description="Order in conversation (0-indexed)")
     correlation_task_id: Optional[str] = Field(None, description="Task ID for this specific delegation")
+    processed: bool = Field(default=False, description="Whether LLM has acted on this response (re-delegated or marked status)")
 
 
 class WorkItemResult(BaseModel):
@@ -115,8 +116,13 @@ class WorkItemResult(BaseModel):
     
     @property
     def has_responses(self) -> bool:
-        """Check if any responses have been received."""
-        return len(self.responses) > 0
+        """Check if any UNPROCESSED responses exist (need LLM action)."""
+        return any(not r.processed for r in self.responses)
+    
+    @property
+    def has_unprocessed_responses(self) -> bool:
+        """Explicit check for unprocessed responses needing LLM action."""
+        return any(not r.processed for r in self.responses)
     
     @property
     def latest_response(self) -> Optional[ResponseRecord]:
@@ -247,6 +253,25 @@ class WorkItem(BaseModel):
         from .retry_policy import RetryPolicyService
         return RetryPolicyService.increment_retry(self)
     
+    def has_unprocessed_responses(self) -> bool:
+        """
+        Check if this work item has unprocessed responses needing LLM action.
+        
+        Returns True only if:
+        - Item is IN_PROGRESS (actively being worked on)
+        - Item is REMOTE (delegated to another agent)
+        - Item has result_ref with responses
+        - At least one response is unprocessed
+        
+        This is the canonical check for "orchestrator needs to act on this item's responses"
+        """
+        return (
+            self.status == WorkItemStatus.IN_PROGRESS 
+            and self.kind == WorkItemKind.REMOTE
+            and self.result_ref is not None
+            and self.result_ref.has_unprocessed_responses
+        )
+    
     def mark_updated(self) -> None:
         """Update the updated_at timestamp."""
         self.updated_at = datetime.utcnow().isoformat()
@@ -288,6 +313,7 @@ class WorkPlanStatusSummary(BaseModel):
     failed_items: int = 0
     blocked_items: int = 0
     has_local_ready: bool = False
+    has_remote_ready: bool = False  # True if any PENDING + kind=REMOTE items with dependencies met
     has_remote_waiting: bool = False  # True if any IN_PROGRESS + kind=REMOTE items exist
     has_responses: bool = False  # True if any IN_PROGRESS + kind=REMOTE items have result_ref
     is_complete: bool = False
@@ -574,9 +600,15 @@ class WorkPlanService:
         counts = plan.get_status_counts()
         ready_items = plan.get_ready_items()
         
-        # Check for local ready items
+        # Check for local ready items (PENDING + LOCAL + dependencies met)
         has_local_ready = any(
             item.kind == WorkItemKind.LOCAL 
+            for item in ready_items
+        )
+        
+        # Check for remote ready items (PENDING + REMOTE + dependencies met)
+        has_remote_ready = any(
+            item.kind == WorkItemKind.REMOTE
             for item in ready_items
         )
         
@@ -599,6 +631,7 @@ class WorkPlanService:
             failed_items=counts.failed,
             blocked_items=counts.blocked,
             has_local_ready=has_local_ready,
+            has_remote_ready=has_remote_ready,
             has_remote_waiting=has_remote_waiting,
             is_complete=plan.is_complete()
         )

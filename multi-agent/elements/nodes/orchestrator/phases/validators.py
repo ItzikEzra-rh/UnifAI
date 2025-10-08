@@ -304,7 +304,7 @@ class MonitoringValidator:
                 f"⚠️ RESPONSES READY: {len(items_with_responses)} work item(s) have responses waiting for your interpretation."
             )
             guidance_lines.append(
-                "   ACTION: Use SummarizeWorkPlanTool to read responses, then decide:"
+                "   ACTION: Review the responses in 'Current Work Plan' above, then decide:"
             )
             guidance_lines.append(
                 "   - If satisfactory → MarkWorkItemStatusTool(status='done')"
@@ -429,7 +429,7 @@ class SynthesisValidator:
             )
             guidance_lines.append("")
             guidance_lines.append("   SYNTHESIS CHECKLIST:")
-            guidance_lines.append("   ✓ Use SummarizeWorkPlanTool to review all results")
+            guidance_lines.append("   ✓ Review all results in 'Current Work Plan' section above")
             guidance_lines.append("   ✓ Include findings from all DONE items")
             guidance_lines.append("   ✓ Structure synthesis logically (overview → findings → insights → deliverables)")
             guidance_lines.append("   ✓ Address original request/objective")

@@ -29,7 +29,6 @@ from elements.tools.builtin import (
     CreateOrUpdateWorkPlanTool,
     AssignWorkItemTool,
     MarkWorkItemStatusTool,
-    SummarizeWorkPlanTool,
     ListAdjacentNodesTool,
     GetNodeCardTool,
     DelegateTaskTool
@@ -419,23 +418,28 @@ class OrchestratorNode(
 
     def _build_context_messages(self, thread_id: str, content: str) -> List[ChatMessage]:
         """
-        Build conversation context for planning.
+        Build STATIC context messages (set once per orchestration cycle).
         
-        Includes:
-        - Conversation history (actual ChatMessages)
-        - Adjacency summary
-        - Workspace snapshot  
-        - Work plan snapshot
+        Dynamic context (workspace facts, work plan) is now provided by
+        OrchestratorPhaseProvider.get_dynamic_context_messages() which is
+        called before each LLM interaction to ensure fresh data.
+        
+        Static messages include:
+        - Conversation history
+        - Adjacent nodes summary  
         - Current request
+        
+        Returns:
+            List of static ChatMessage objects
         """
         messages = []
 
-        # First: Add conversation history as actual ChatMessages
+        # Conversation history (static - doesn't change during cycle)
         conversation_history = self.workspaces.get_conversation_history(thread_id)
         if conversation_history:
             messages.extend(conversation_history)
 
-        # Add adjacency summary as context
+        # Adjacent nodes summary (static - delegation targets don't change)
         adjacency_summary = self._build_adjacency_summary()
         if adjacency_summary:
             messages.append(ChatMessage(
@@ -443,27 +447,14 @@ class OrchestratorNode(
                 content=f"Adjacent Nodes Available:\n{adjacency_summary}"
             ))
 
-        # Add workspace snapshot (facts, results - NOT conversation)
-        workspace_summary = self._build_workspace_summary(thread_id)
-        if workspace_summary:
-            messages.append(ChatMessage(
-                role=Role.USER,
-                content=f"Current Context:\n{workspace_summary}"
-            ))
-
-        # Add work plan snapshot if exists
-        plan_snapshot = self._build_plan_snapshot(thread_id)
-        if plan_snapshot:
-            messages.append(ChatMessage(
-                role=Role.USER,
-                content=f"Current Work Plan:\n{plan_snapshot}"
-            ))
-
-        # Add current request
+        # Current request (static - the batch trigger)
         messages.append(ChatMessage(
             role=Role.USER,
             content=content
         ))
+
+        # NOTE: Workspace and work plan are now provided dynamically by phase provider
+        # See OrchestratorPhaseProvider.get_dynamic_context_messages()
 
         return messages
 
@@ -520,95 +511,9 @@ class OrchestratorNode(
             
             return "\n".join(lines)
 
-    def _build_workspace_summary(self, thread_id: str) -> str:
-        """
-        Build a summary of workspace-specific context.
-        
-        NOTE: Conversation history is handled separately in _build_context_messages.
-        This focuses on workspace data: facts, results, variables.
-        """
-        lines = []
-
-        # Key facts
-        facts = self.workspaces.get_facts(thread_id)
-        if facts:
-            lines.append(f"Facts ({len(facts)}):")
-            for fact in facts[:5]:
-                lines.append(f"  - {fact}")
-
-        # Recent results
-        results = self.workspaces.get_results(thread_id)
-        if results:
-            lines.append(f"\nResults ({len(results)}):")
-            for result in results[-3:]:
-                lines.append(f"  - {result.agent_name}: {result.content[:50]}...")
-
-        # Key variables (optional context)
-        variables = self.workspaces.get_all_variables(thread_id)
-        if variables:
-            # Only show non-internal variables
-            public_vars = {k: v for k, v in variables.items()
-                           if not k.startswith('_') and k not in ['orchestrator_uid', 'original_task_id']}
-            if public_vars:
-                lines.append(f"\nVariables ({len(public_vars)}):")
-                for key, value in list(public_vars.items())[:3]:
-                    lines.append(f"  - {key}: {str(value)[:30]}...")
-
-        return "\n".join(lines) if lines else ""
-
-    def _build_plan_snapshot(self, thread_id: str) -> str:
-        """Build a comprehensive snapshot of current work plan."""
-        service = self.workspaces
-
-        summary = service.get_work_plan_status(thread_id, self.uid)
-        if not summary.exists:
-            return "No work plan exists yet."
-
-        lines = [
-            f"Work Plan: {summary.total_items} items total",
-            f"Status: pending={summary.pending_items}, in_progress={summary.in_progress_items} (waiting={summary.waiting_items}), done={summary.done_items}, failed={summary.failed_items}",
-            f"Complete: {summary.is_complete}"
-        ]
-
-        # Load plan to get detailed item information
-        plan = service.load_work_plan(thread_id, self.uid)
-        if plan:
-            lines.append(f"\nPlan Summary: {plan.summary}")
-
-            # Show items by status with more detail
-            for status in [WorkItemStatus.PENDING, WorkItemStatus.IN_PROGRESS,
-                           WorkItemStatus.DONE]:
-                items = plan.get_items_by_status(status)
-                if items:
-                    lines.append(f"\n{status.value.upper()} ({len(items)}):")
-                    for item in items[:5]:  # Show up to 5 items per status
-                        status_info = f"  - {item.title} (ID: {item.id})"
-                        if item.dependencies:
-                            status_info += f" [depends on: {', '.join(item.dependencies)}]"
-                        if item.assigned_uid:
-                            status_info += f" [assigned to: {item.assigned_uid}]"
-                        if item.retry_count > 0:
-                            status_info += f" [retries: {item.retry_count}/{item.max_retries}]"
-                        lines.append(status_info)
-                        
-                        # Show responses if present (for interpretation)
-                        if item.result_ref and item.result_ref.has_responses:
-                            response_count = item.result_ref.response_count
-                            if response_count == 1:
-                                # Single response - show full content
-                                latest = item.result_ref.latest_response
-                                lines.append(f"    Response from {latest.from_uid}:")
-                                lines.append(f"      {latest.content}")
-                            else:
-                                # Multi-turn conversation - show all responses with sequence
-                                lines.append(f"    Conversation ({response_count} responses):")
-                                for resp in item.result_ref.responses:
-                                    lines.append(f"      [{resp.sequence}] {resp.from_uid}: {resp.content}")
-                    
-                    if len(items) > 5:
-                        lines.append(f"    ... and {len(items) - 5} more")
-
-        return "\n".join(lines)
+    # NOTE: _build_workspace_summary and _build_plan_snapshot moved to
+    # OrchestratorPhaseProvider as _build_workspace_summary_internal and
+    # _build_plan_snapshot_internal to support dynamic context refresh
 
     def _get_final_orchestration_result(self, thread_id: str) -> Optional[AgentResult]:
         """
@@ -764,12 +669,26 @@ class OrchestratorNode(
                             dep_status.append(f"?{dep_id}")
                     item_line += f" [depends on: {', '.join(dep_status)}]"
                 
-                # Show response if present
-                if item.result_ref and item.result_ref.has_responses:
-                    latest = item.result_ref.latest_response
-                    if latest:
-                        resp = latest.content[:40].replace('\n', ' ')
-                        item_line += f" - {resp}..."
+                # Show responses if present with processed status
+                if item.result_ref and item.result_ref.responses:
+                    response_count = len(item.result_ref.responses)
+                    processed_count = sum(1 for r in item.result_ref.responses if r.processed)
+                    unprocessed_count = response_count - processed_count
+                    
+                    if response_count == 1:
+                        # Single response - show content with status
+                        latest = item.result_ref.latest_response
+                        status_marker = "✓" if latest.processed else "⚡"
+                        resp_preview = latest.content[:100].replace('\n', ' ')
+                        item_line += f"\n      {status_marker} {resp_preview}..."
+                    else:
+                        # Multiple responses - show count summary first
+                        item_line += f"\n      💬 {response_count} responses ({processed_count}✓ processed, {unprocessed_count}⚡ pending)"
+                        # Show ALL responses with their status
+                        for resp in item.result_ref.responses:
+                            status_marker = "✓" if resp.processed else "⚡"
+                            resp_preview = resp.content[:100].replace('\n', ' ')
+                            item_line += f"\n      {status_marker} {resp_preview}..."
                 
                 print(f"   {item_line}")
         
