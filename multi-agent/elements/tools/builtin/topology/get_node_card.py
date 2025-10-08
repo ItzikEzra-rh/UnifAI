@@ -40,7 +40,7 @@ class GetNodeCardTool(BaseTool):
                 "error": f"Node {args.uid} is not adjacent or does not exist"
             }
         
-        card = adjacent_nodes[args.uid]
+        card = adjacent_nodes.get_card(args.uid)
         
         # Extract detailed information
         node_details = {

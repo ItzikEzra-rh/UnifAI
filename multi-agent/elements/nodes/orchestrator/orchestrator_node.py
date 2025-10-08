@@ -138,7 +138,8 @@ class OrchestratorNode(
 
             # Always run orchestration cycle - even if plan is complete
             # (Complete plans can receive new requests that add new work items)
-            self._run_orchestration_cycle(thread_id, "Processing after batch")
+            content = self._resolve_cycle_content(thread_id)
+            self._run_orchestration_cycle(thread_id, content)
             
             # Re-check status after orchestration
             status_summary = self.workspaces.get_work_plan_status(thread_id, self.uid)
@@ -316,13 +317,10 @@ class OrchestratorNode(
         # Record the new task for response tracking
         self.workspaces.add_task(thread_id, task)
 
-        # Add initial context to workspace
-        self.workspaces.add_fact(thread_id, f"Initial request: {task.content}")
+        # Store current request for orchestration cycle (will be used once)
+        self.workspaces.set_variable(thread_id, "_current_request", task.content)
         self.workspaces.set_variable(thread_id, "orchestrator_uid", self.uid)
         self.workspaces.set_variable(thread_id, "original_task_id", task.task_id)
-
-        # Copy any existing conversation to workspace
-        self.copy_graphstate_messages_to_workspace(thread_id)
 
         # ✅ Orchestration will run in the batch processing loop (lines 137-143)
         # This ensures:
@@ -330,12 +328,41 @@ class OrchestratorNode(
         # 2. Better batching: All packets processed before orchestration
         # 3. Correct context: LLM sees all available information
 
+    def _resolve_cycle_content(self, thread_id: str) -> str:
+        """
+        Resolve content for orchestration cycle based on trigger.
+        
+        Determines what message/instruction to give the LLM for this cycle:
+        - If new user request exists: Returns and clears it (one-time use)
+        - Otherwise: Returns guidance for response processing
+        
+        Args:
+            thread_id: Thread ID
+            
+        Returns:
+            Content string (user request or response guidance)
+        """
+        # Check for new user request stored by _handle_new_work
+        new_request = self.workspaces.get_variable(thread_id, "_current_request", None)
+        
+        if new_request:
+            # Clear it (one-time use) and return actual user request
+            self.workspaces.set_variable(thread_id, "_current_request", None)
+            return new_request
+        
+        # No new request - return guidance for response processing
+        return "Review responses from delegated agents and update work plan accordingly."
+
     def _run_orchestration_cycle(self, thread_id: str, content: str) -> AgentResult:
         """
         Run a planning and execution cycle.
         
         Uses PlanAndExecuteStrategy with orchestration tools.
         Returns AgentResult with the orchestration outcome.
+        
+        Args:
+            thread_id: Thread ID for orchestration
+            content: Orchestration content (user request or guidance message)
         """
         print(f"\n{'='*80}")
         print(f"🎯 ORCHESTRATOR CYCLE START - Thread: {thread_id}")

@@ -1065,12 +1065,12 @@ class OrchestratorPhaseProvider(PhaseProvider):
             workspace_service = self._get_workload_service().get_workspace_service()
             
             # Fresh workspace context (facts, results, variables)
-            workspace_summary = self._build_workspace_summary_internal(workspace_service)
-            if workspace_summary:
-                messages.append(ChatMessage(
-                    role=Role.USER,
-                    content=f"Current Context:\n{workspace_summary}"
-                ))
+            # workspace_summary = self._build_workspace_summary_internal(workspace_service)
+            # if workspace_summary:
+            #     messages.append(ChatMessage(
+            #         role=Role.USER,
+            #         content=f"Current Context:\n{workspace_summary}"
+            #     ))
             
             # Fresh work plan snapshot (with all responses)
             plan = workspace_service.load_work_plan(self._thread_id, self._node_uid)
