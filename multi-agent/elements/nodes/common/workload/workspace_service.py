@@ -10,6 +10,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
 from collections import defaultdict
 import threading
+from datetime import datetime
 from .workspace import Workspace
 from .models import AgentResult
 from .workplan import WorkPlan, WorkItemStatus, WorkPlanStatusSummary, WorkItemResult, WorkItemKind
@@ -481,30 +482,6 @@ class IWorkspaceService(ABC):
         pass
     
     @abstractmethod
-    def mark_work_item_as_delegated(
-        self, 
-        thread_id: str, 
-        owner_uid: str, 
-        item_id: str, 
-        correlation_task_id: str,
-        assigned_uid: str
-    ) -> bool:
-        """
-        Mark work item as delegated (WAITING status) - thread-safe.
-        
-        Args:
-            thread_id: Thread ID
-            owner_uid: Owner node UID
-            item_id: Work item ID
-            correlation_task_id: Correlation task ID for tracking
-            assigned_uid: UID of the node this item is delegated to
-            
-        Returns:
-            True if marked successfully
-        """
-        pass
-    
-    @abstractmethod
     def store_task_response_for_work_item(
         self,
         thread_id: str,
@@ -527,30 +504,6 @@ class IWorkspaceService(ABC):
             
         Returns:
             True if stored successfully
-        """
-        pass
-    
-    @abstractmethod
-    def ingest_task_response_for_work_item(
-        self,
-        thread_id: str,
-        owner_uid: str,
-        correlation_task_id: str,
-        result: Any = None,
-        error: str = None
-    ) -> bool:
-        """
-        Ingest task response and update work item status - only for explicit success/error.
-        
-        Args:
-            thread_id: Thread ID
-            owner_uid: Owner node UID
-            correlation_task_id: Correlation task ID
-            result: Optional result data
-            error: Optional error message
-            
-        Returns:
-            True if ingested successfully
         """
         pass
     
@@ -1037,55 +990,12 @@ class WorkspaceService(IWorkspaceService):
                 item.correlation_task_id = correlation_task_id
             
             # If marking as DONE, finalize the result
-            if status == WorkItemStatus.DONE and item.result_ref:
-                item.result_ref.success = True
-                if item.result_ref.metadata:
-                    item.result_ref.metadata.pop("needs_interpretation", None)
+            if status == WorkItemStatus.DONE and item.result:
+                item.result.success = True
+                if item.result.metadata:
+                    item.result.metadata.pop("needs_interpretation", None)
             
             item.mark_updated()
-            self.save_work_plan(plan)
-            return True
-    
-    def mark_work_item_as_delegated(
-        self, 
-        thread_id: str, 
-        owner_uid: str, 
-        item_id: str, 
-        correlation_task_id: str,
-        assigned_uid: str,
-        child_thread_id: Optional[str] = None
-    ) -> bool:
-        """
-        Mark work item as delegated (IN_PROGRESS status with REMOTE kind) - thread-safe.
-        
-        Status transition: PENDING → IN_PROGRESS (with kind=REMOTE)
-        This indicates the item is delegated and waiting for a response.
-        
-        Args:
-            child_thread_id: Optional child thread ID for re-delegation context continuity.
-                            Stored in work item to enable thread reuse on follow-up delegations.
-        """
-        with self._with_work_plan_lock(thread_id, owner_uid):
-            plan = self.load_work_plan(thread_id, owner_uid)
-            if not plan:
-                return False
-            
-            item = plan.items.get(item_id)
-            if not item:
-                return False
-            
-            
-            item.status = WorkItemStatus.IN_PROGRESS
-            item.kind = WorkItemKind.REMOTE  # ✅ Ensure kind is set to REMOTE
-            item.correlation_task_id = correlation_task_id
-            item.assigned_uid = assigned_uid  # ✅ Set the assigned node
-            
-            # ✅ Store child_thread_id for re-delegation context continuity
-            if child_thread_id:
-                item.child_thread_id = child_thread_id
-            
-            item.mark_updated()
-            
             self.save_work_plan(plan)
             return True
     
@@ -1099,125 +1009,52 @@ class WorkspaceService(IWorkspaceService):
         result_data: Any = None
     ) -> bool:
         """
-        Store task response in conversation history for LLM interpretation.
+        Store response by finding and filling pending DelegationExchange.
         
-        Supports multi-turn conversations by appending to responses list.
-        Each response is tracked with timestamp, source, and sequence number.
+        Finds the delegation exchange matching the correlation_task_id and fills in
+        the response fields. This is the core of multi-turn conversation support.
         
-        Design: Thread workspace contains full conversation context for agents.
-        This method stores structured history for orchestrator reasoning.
+        Design: Each delegation creates a DelegationExchange with task_id. When response
+        arrives, we find that exchange and fill it in. No overwriting, clean pairing.
         """
-        
         plan = self.load_work_plan(thread_id, owner_uid)
         if not plan:
             return False
         
-        # Find item by correlation task ID
+        # Find item with delegation exchange matching task_id
         target_item = None
-        for item in plan.items.values():
-            if item.correlation_task_id == correlation_task_id:
-                target_item = item
-                break
+        target_exchange = None
         
-        if not target_item:
+        for item in plan.items.values():
+            if item.result and item.result.delegations:
+                for exchange in item.result.delegations:
+                    if exchange.task_id == correlation_task_id:
+                        target_item = item
+                        target_exchange = exchange
+                        break
+                if target_item:
+                    break
+        
+        if not target_item or not target_exchange:
             return False
         
-        
-        # Extract structured data from result_data
+        # Extract structured data if provided
         from elements.nodes.common.workload.models import AgentResult
-        from elements.nodes.common.workload.workplan import ResponseRecord
-        
         data_to_store = None
         if isinstance(result_data, AgentResult):
             data_to_store = result_data.model_dump()
         elif isinstance(result_data, dict):
             data_to_store = result_data
         
-        # Initialize result_ref if needed
-        if not target_item.result_ref:
-            target_item.result_ref = WorkItemResult(
-                success=False,  # Not finalized yet
-                metadata={"needs_interpretation": True}
-            )
-        
-        # Create response record
-        sequence = len(target_item.result_ref.responses)
-        response_record = ResponseRecord(
-            from_uid=from_uid,
-            content=response_content,
-            data=data_to_store,
-            sequence=sequence,
-            correlation_task_id=correlation_task_id
-        )
-        
-        # Append to conversation history
-        target_item.result_ref.responses.append(response_record)
-        target_item.result_ref.metadata["needs_interpretation"] = True
-        target_item.result_ref.metadata["response_count"] = len(target_item.result_ref.responses)
-        
+        # Fill in response fields
+        target_exchange.response_content = response_content
+        target_exchange.response_data = data_to_store
+        target_exchange.responded_by = from_uid
+        target_exchange.responded_at = datetime.utcnow().isoformat()
+        # processed stays False - LLM needs to interpret
         
         target_item.mark_updated()
-        self.save_work_plan(plan)
-        return True
-    
-    def ingest_task_response_for_work_item(
-        self,
-        thread_id: str,
-        owner_uid: str,
-        correlation_task_id: str,
-        result: Any = None,
-        error: str = None
-    ) -> bool:
-        """Ingest task response and update work item status - only for explicit success/error."""
-        
-        with self._with_work_plan_lock(thread_id, owner_uid):
-            plan = self.load_work_plan(thread_id, owner_uid)
-            if not plan:
-                return False
-            
-            # Find item by correlation task ID
-            target_item = None
-            for item in plan.items.values():
-                if item.correlation_task_id == correlation_task_id:
-                    target_item = item
-                    break
-            
-            if not target_item:
-                return False
-            
-            
-            # Update item based on response - only for explicit structures
-            from elements.nodes.common.workload.models import AgentResult
-            
-            if error:
-                target_item.status = WorkItemStatus.FAILED
-                target_item.error = error
-                target_item.retry_count += 1  # Increment retry count on failure
-            
-            # ✅ Handle AgentResult explicitly
-            elif isinstance(result, AgentResult):
-                target_item.status = WorkItemStatus.DONE
-                target_item.result_ref = WorkItemResult(
-                    success=result.success,
-                    content=result.content,
-                    data=result.model_dump()  # Pydantic method - converts to dict
-                )
-            
-            # Handle dict with explicit success
-            elif result and isinstance(result, dict) and result.get("success") is True:
-                # Only auto-mark DONE for explicit success structures
-                target_item.status = WorkItemStatus.DONE
-                target_item.result_ref = WorkItemResult(
-                    success=True,
-                    content=str(result.get("content", result)),
-                    data=result
-                )
-            else:
-                return False  # Don't auto-mark, let LLM interpret
-            
-            target_item.mark_updated()
-            self.save_work_plan(plan)
-            return True
+        return self.save_work_plan(plan)
     
     def atomic_update_work_item(
         self,

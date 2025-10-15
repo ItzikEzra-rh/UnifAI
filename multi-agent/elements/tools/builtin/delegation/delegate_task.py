@@ -166,16 +166,39 @@ class DelegateTaskTool(BaseTool):
             thread_service.save_thread(current_thread)  # Parent thread with updated children
             thread_service.save_thread(child_thread)    # New child thread
             
-            # Update work item status to IN_PROGRESS (remote) - always done now
+            # Update work item with new DelegationExchange
             try:
-                # Mark item as delegated with correlation task ID, assigned UID, and child thread ID
-                success = workspace_service.mark_work_item_as_delegated(
-                    current_thread.thread_id, 
-                    owner_uid, 
-                    work_item_id, 
-                    task.task_id,
-                    args.dst_uid,  # ✅ Assigned node UID
-                    child_thread.thread_id  # ✅ Store child thread ID for re-delegation
+                from elements.nodes.common.workload import DelegationExchange, WorkItemResult, WorkItemStatus, WorkItemKind
+                
+                def update_for_delegation(item, plan):
+                    """Create delegation exchange and update work item state."""
+                    # Initialize result if needed
+                    if not item.result:
+                        item.result = WorkItemResult()
+                    
+                    # Mark all previous exchanges as processed (LLM has acted by delegating/re-delegating)
+                    for exchange in item.result.delegations:
+                        exchange.processed = True
+                    
+                    # Calculate sequence number
+                    sequence = len(item.result.delegations)
+                    
+                    # Create new delegation exchange
+                    exchange = DelegationExchange(
+                        sequence=sequence,
+                        task_id=task.task_id,
+                        query=args.content or item.description,
+                        delegated_to=args.dst_uid
+                    )
+                    
+                    item.result.delegations.append(exchange)
+                    item.status = WorkItemStatus.IN_PROGRESS
+                    item.kind = WorkItemKind.REMOTE
+                    item.assigned_uid = args.dst_uid
+                    item.child_thread_id = child_thread.thread_id
+                
+                success = workspace_service.atomic_update_work_item(
+                    current_thread.thread_id, owner_uid, work_item_id, update_for_delegation
                 )
                 
                 if not success:
@@ -184,15 +207,6 @@ class DelegateTaskTool(BaseTool):
                         "success": False,
                         "error": error_msg
                     }
-                
-                # Mark all existing responses as processed (LLM has acted by delegating/re-delegating)
-                plan = workspace_service.load_work_plan(current_thread.thread_id, owner_uid)
-                if plan and work_item_id in plan.items:
-                    work_item = plan.items[work_item_id]
-                    if work_item.result_ref and work_item.result_ref.responses:
-                        for response in work_item.result_ref.responses:
-                            response.processed = True
-                        workspace_service.save_work_plan(plan)
                 
             except Exception as e:
                 error_msg = f"Exception updating work item status: {e}"

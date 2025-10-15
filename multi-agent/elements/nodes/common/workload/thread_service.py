@@ -377,24 +377,34 @@ class ThreadService(IThreadService):
         current_id = thread_id
         depth = 0
         
+        print(f"   🔍 [THREAD_SERVICE] Finding work plan owner for owner_uid={owner_uid}")
+        print(f"      Starting from thread: {thread_id[:8]}...")
+        
         while depth < self._max_depth:
             # Check if owner_uid has a work plan in current thread
             try:
                 workspace = self._storage.get_workspace(current_id)
                 if workspace and owner_uid in workspace.context.work_plans:
+                    print(f"      ✅ Found work plan in thread {current_id[:8]}... at depth {depth}")
                     return current_id  # Found it!
+                else:
+                    print(f"      ⏭️ Thread {current_id[:8]}... (depth {depth}): no work plan for {owner_uid}")
             except Exception as e:
                 # Workspace doesn't exist for this thread, continue searching
+                print(f"      ⚠️ Thread {current_id[:8]}... (depth {depth}): workspace error - {e}")
                 pass
             
             # Move up to parent thread
             thread = self._storage.get_thread(current_id)
             if not thread or not thread.parent_thread_id:
+                print(f"      ❌ Reached root thread {current_id[:8]}..., work plan not found")
                 return None  # Reached root, not found
             
+            print(f"      ↑ Moving to parent thread: {thread.parent_thread_id[:8]}...")
             current_id = thread.parent_thread_id
             depth += 1
         
+        print(f"      ❌ Max depth ({self._max_depth}) reached, work plan not found")
         return None  # Max depth reached
     
     def list_threads_by_initiator(self, initiator: str) -> List[Thread]:

@@ -25,7 +25,7 @@ class RouterDirectCondition(BaseCondition):
             return "END"
 
         targets = get_outgoing_targets(state, self.context)
-
+        print(targets)
         if not targets:
             print("⚠️ [ROUTER] No outgoing targets found - ending graph gracefully")
             return "END"

@@ -16,7 +16,8 @@ from .agent_thread import AgentThread
 # Work plan components (WorkPlanService is deprecated - use WorkspaceService instead)
 from .workplan import (
     WorkPlan, WorkItem, WorkItemStatus, WorkItemKind,
-    ToolArguments, WorkItemResult, WorkItemStatusCounts, WorkPlanStatusSummary
+    ToolArguments, WorkItemResult, WorkItemStatusCounts, WorkPlanStatusSummary,
+    LocalExecution, DelegationExchange
 )
 
 # New SOLID services
@@ -47,6 +48,8 @@ __all__ = [
     'WorkItemResult',
     'WorkItemStatusCounts',
     'WorkPlanStatusSummary',
+    'LocalExecution',
+    'DelegationExchange',
     
     # New SOLID services
     'IThreadService',

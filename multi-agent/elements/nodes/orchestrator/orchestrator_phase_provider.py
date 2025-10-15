@@ -114,6 +114,9 @@ class OrchestratorPhaseProvider(PhaseProvider):
         
         # Private: Cascade safety limit
         self._max_cascade_transitions = 10
+        
+        # Orchestrator context (set by orchestrator_node before each cycle)
+        self._current_orch_context = None
 
         super().__init__(domain_tools)  # This calls _create_phase_system()
     
@@ -1013,26 +1016,37 @@ class OrchestratorPhaseProvider(PhaseProvider):
                                 dep_status.append(f"?{dep_id}")
                         item_line += f" [depends on: {', '.join(dep_status)}]"
                     
-                    # Show responses if present with processed status
-                    if item.result_ref and item.result_ref.responses:
-                        response_count = len(item.result_ref.responses)
-                        processed_count = sum(1 for r in item.result_ref.responses if r.processed)
-                        unprocessed_count = response_count - processed_count
+                    # Show delegation conversation if present
+                    if item.result and item.result.delegations:
+                        delegation_count = len(item.result.delegations)
+                        processed_count = sum(1 for d in item.result.delegations if d.processed)
+                        pending_count = sum(1 for d in item.result.delegations if d.is_pending)
+                        unprocessed_count = sum(1 for d in item.result.delegations if d.needs_attention)
                         
-                        if response_count == 1:
-                            # Single response - show content with status
-                            latest = item.result_ref.latest_response
-                            status_marker = "✓" if latest.processed else "⚡"
-                            resp_preview = latest.content[:100].replace('\n', ' ')
-                            item_line += f"\n      {status_marker} {resp_preview}..."
+                        if delegation_count == 1:
+                            # Single delegation - show content with status
+                            latest = item.result.delegations[0]
+                            if latest.is_pending:
+                                item_line += f"\n      ⏳ Waiting for response from {latest.delegated_to}"
+                            elif latest.needs_attention:
+                                resp_preview = latest.response_content[:100].replace('\n', ' ') if latest.response_content else "No content"
+                                item_line += f"\n      ⚡ NEW: {resp_preview}..."
+                            else:
+                                resp_preview = latest.response_content[:100].replace('\n', ' ') if latest.response_content else "No content"
+                                item_line += f"\n      ✓ Processed: {resp_preview}..."
                         else:
-                            # Multiple responses - show count summary first
-                            item_line += f"\n      💬 {response_count} responses ({processed_count}✓ processed, {unprocessed_count}⚡ pending)"
-                            # Show ALL responses with their status
-                            for resp in item.result_ref.responses:
-                                status_marker = "✓" if resp.processed else "⚡"
-                                resp_preview = resp.content[:100].replace('\n', ' ')
-                                item_line += f"\n      {status_marker} {resp_preview}..."
+                            # Multiple delegations - show count summary
+                            item_line += f"\n      💬 {delegation_count} turns ({processed_count}✓ processed, {unprocessed_count}⚡ pending, {pending_count}⏳ waiting)"
+                            # Show latest exchange
+                            latest = item.result.delegations[-1]
+                            if latest.is_pending:
+                                item_line += f"\n      ⏳ Latest: Waiting for {latest.delegated_to}"
+                            elif latest.needs_attention:
+                                resp_preview = latest.response_content[:100].replace('\n', ' ') if latest.response_content else "No content"
+                                item_line += f"\n      ⚡ Latest: {resp_preview}..."
+                            else:
+                                resp_preview = latest.response_content[:100].replace('\n', ' ') if latest.response_content else "No content"
+                                item_line += f"\n      ✓ Latest: {resp_preview}..."
                     
                     print(f"   {item_line}")
             
@@ -1042,20 +1056,24 @@ class OrchestratorPhaseProvider(PhaseProvider):
     
     def get_dynamic_context_messages(self, phase_name: str) -> List["ChatMessage"]:
         """
-        Provide fresh workspace and work plan context before each LLM call.
+        Provide fresh orchestrator context and work plan before each LLM call.
         
-        This ensures the LLM always sees the current state of:
-        - Workspace facts and results
-        - Work plan with all items and their responses
+        This ensures the LLM always sees the current state:
+        - Why this cycle is running (trigger)
+        - User intent classification
+        - Work plan health and progress
+        - Phase history
+        - Complete work plan with all items and responses
         
-        Called by strategy before each LLM interaction, following the same
-        pattern as get_phase_validation().
+        All combined into ONE coherent message for better context.
+        
+        Called by strategy before each LLM interaction.
         
         Args:
             phase_name: Current phase name (unused, but kept for consistency)
             
         Returns:
-            List of ChatMessage with fresh context
+            List of ChatMessage with fresh context (single combined message)
         """
         from elements.llms.common.chat.message import ChatMessage, Role
         
@@ -1063,19 +1081,24 @@ class OrchestratorPhaseProvider(PhaseProvider):
         
         try:
             workspace_service = self._get_workload_service().get_workspace_service()
-            
-            # Fresh workspace context (facts, results, variables)
-            # workspace_summary = self._build_workspace_summary_internal(workspace_service)
-            # if workspace_summary:
-            #     messages.append(ChatMessage(
-            #         role=Role.USER,
-            #         content=f"Current Context:\n{workspace_summary}"
-            #     ))
-            
-            # Fresh work plan snapshot (with all responses)
             plan = workspace_service.load_work_plan(self._thread_id, self._node_uid)
+            
+            # Build work plan snapshot
+            plan_snapshot = ""
             if plan:
                 plan_snapshot = self._build_plan_snapshot_internal(plan, workspace_service)
+            else:
+                plan_snapshot = "No work plan exists yet."
+            
+            # If we have orchestrator context, format it with work plan in ONE message
+            if self._current_orch_context:
+                combined_context = self._current_orch_context.format_context(plan_snapshot)
+                messages.append(ChatMessage(
+                    role=Role.USER,
+                    content=combined_context
+                ))
+            else:
+                # Fallback: just show work plan (backward compatibility)
                 messages.append(ChatMessage(
                     role=Role.USER,
                     content=f"Current Work Plan:\n{plan_snapshot}"
@@ -1124,7 +1147,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
     
     def _build_plan_snapshot_internal(self, plan, workspace_service) -> str:
         """Build comprehensive work plan snapshot with responses."""
-        from elements.nodes.common.workload import WorkItemStatus
+        from elements.nodes.common.workload import WorkItemStatus, WorkItemKind
         
         status_summary = workspace_service.get_work_plan_status(self._thread_id, self._node_uid)
         
@@ -1137,36 +1160,39 @@ class OrchestratorPhaseProvider(PhaseProvider):
         if plan:
             lines.append(f"\nPlan Summary: {plan.summary}")
 
-            # Show items by status with full details including responses
+            # Show ALL items by status - LLM needs full context
             for status in [WorkItemStatus.PENDING, WorkItemStatus.IN_PROGRESS, WorkItemStatus.DONE]:
                 items = plan.get_items_by_status(status)
                 if items:
                     lines.append(f"\n{status.value.upper()} ({len(items)}):")
-                    for item in items[:5]:  # Show up to 5 items per status
+                    for item in items:  # Show all items
                         status_info = f"  - {item.title} (ID: {item.id})"
+                        
+                        # Show dependencies first (important for understanding blockers)
                         if item.dependencies:
-                            status_info += f" [depends on: {', '.join(item.dependencies)}]"
-                        if item.assigned_uid:
-                            status_info += f" [assigned to: {item.assigned_uid}]"
+                            status_info += f"\n    Dependencies: {item.dependencies}"
+                        
+                        # Show assignment type
+                        if item.kind == WorkItemKind.REMOTE:
+                            status_info += f" → {item.assigned_uid}"
+                        else:
+                            status_info += " [LOCAL]"
+                        
                         if item.retry_count > 0:
                             status_info += f" [retries: {item.retry_count}/{item.max_retries}]"
+                        
                         lines.append(status_info)
                         
-                        # Show responses if present (for interpretation)
-                        if item.result_ref and item.result_ref.has_responses:
-                            response_count = item.result_ref.response_count
-                            if response_count == 1:
-                                # Single response - show full content
-                                latest = item.result_ref.latest_response
-                                lines.append(f"    Response from {latest.from_uid}:")
-                                lines.append(f"      {latest.content}")
-                            else:
-                                # Multi-turn conversation - show all responses with sequence
-                                lines.append(f"    Conversation ({response_count} responses):")
-                                for resp in item.result_ref.responses:
-                                    lines.append(f"      [{resp.sequence}] {resp.from_uid}: {resp.content}")
-                    
-                    if len(items) > 5:
-                        lines.append(f"    ... and {len(items) - 5} more")
+                        # Show conversation for REMOTE items with delegation history
+                        if item.result and item.result.delegations:
+                            conv_summary = item.result.conversation_summary
+                            for line in conv_summary.split('\n'):
+                                lines.append(f"    {line}")
+                        
+                        # Show local execution for LOCAL items
+                        elif item.result and item.result.local_execution:
+                            exec_info = item.result.local_execution
+                            if exec_info.outcome:
+                                lines.append(f"    Execution: {exec_info.outcome}")
 
         return "\n".join(lines)

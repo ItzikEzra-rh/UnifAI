@@ -47,7 +47,7 @@ class AllocationValidator:
                         f"Remote item {item.id} has no assigned_uid. "
                         f"Use AssignWorkItemTool to assign it to a specific node."
                     )
-                elif not item.correlation_task_id:
+                elif not item.result or not item.result.delegations:
                     issues.append(
                         f"Remote item {item.id} assigned but not delegated. "
                         f"Use DelegateTaskTool to send it to {item.assigned_uid}. Set work_item_id={item.id}."
@@ -295,8 +295,8 @@ class MonitoringValidator:
             item for item in plan.items.values()
             if item.status == WorkItemStatus.IN_PROGRESS and 
             item.kind == WorkItemKind.REMOTE and 
-            item.result_ref and 
-            item.result_ref.has_responses
+            item.result and 
+            item.result.has_unprocessed_responses
         ]
         
         if items_with_responses:
@@ -322,8 +322,8 @@ class MonitoringValidator:
             item for item in plan.items.values()
             if item.status == WorkItemStatus.IN_PROGRESS and 
             item.kind == WorkItemKind.REMOTE and 
-            item.correlation_task_id and
-            (not item.result_ref or not item.result_ref.has_responses)
+            item.result and
+            item.result.pending_exchange is not None
         ]
         
         if delegated_no_response:
@@ -444,7 +444,7 @@ class SynthesisValidator:
             # Check for items with results
             items_with_results = [
                 item for item in done_items 
-                if item.result_ref and (item.result_ref.content or item.result_ref.has_responses)
+                if item.result and (item.result.final_summary or item.result.delegations or item.result.local_execution)
             ]
             
             if items_with_results:

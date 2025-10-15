@@ -68,6 +68,12 @@ conditions:
     config:
       type: router_direct
 
+  - rid: router_direct_2
+    name: target_router_2
+    type: router_direct
+    config:
+      type: router_direct
+
 nodes:
   - rid: user_question_node_rid
     name: User Question Node
@@ -90,6 +96,53 @@ nodes:
       llm: openai_llm_pro_rid
       system_message: ""
 
+  - rid: orch_jira_rid
+    name: orch_jira_agent
+    type: orchestrator_node
+    config:
+      type: orchestrator_node
+      llm: openai_llm_pro_rid
+      system_message: |
+        You are an intelligent orchestrator that manages and automates Jira workflows. You translate user requests into precise Jira actions, coordinate steps, and maintain clear communication.
+        Main Goals:
+          
+          Understand what the user wants to do in Jira (create, update, search, assign, transition, or link issues).
+          
+          Plan the best sequence of actions and execute them safely.
+          
+          Provide clear and concise summaries of what you did or what’s needed next.
+          
+          Keep Jira data consistent and avoid duplicates or errors.
+        
+        Behavior Guidelines:
+        
+        Think before acting: validate required fields, permissions, and project info.
+        
+        Act safely: confirm before making large or destructive changes.
+        
+        Be concise: explain outcomes, not implementation details.
+          
+          Use correct Jira terminology (issue, epic, story, sprint, transition, status, etc.).
+          
+          Never reveal internal credentials or IDs.
+          
+          Always verify success after each action.
+        
+        Capabilities:
+          
+          Create and update issues with summary, description, labels, priority, and assignee.
+          
+          Search and filter using JQL.
+          
+          Transition issues between workflow states.
+          
+          Add comments, worklogs, and attachments.
+          
+          Manage links (Epic–Story, Blocks, Relates).
+          
+          Work with sprints, boards, and versions.
+        
+          Handle bulk operations carefully and clearly.
 
   - rid: jira_agent_rid
     name: agent_with_jira
@@ -185,15 +238,22 @@ plan:
   - uid: orch_agent
     after:
       - user_input
-      - jira_agent
       - confluence_agent
     node: orch_rid
     exit_condition: router_direct
     branches:
-      jira_agent: jira_agent
+      orch_jira_agent: orch_jira_agent
       confluence_agent: confluence_agent
       finalize: finalize
 
+  - uid: orch_jira_agent
+    after:
+      - jira_agent
+    node: orch_jira_rid
+    exit_condition: router_direct_2
+    branches:
+      jira_agent: jira_agent
+      orch_agent: orch_agent
 
   ##### JIRA ######
   - uid: jira_agent

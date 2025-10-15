@@ -93,6 +93,9 @@ class OrchestratorNode(
         self.max_rounds = max_rounds
         self.base_tools = tools or []
         self._updated_threads = set()  # Track threads updated during batch processing
+        
+        # Context builder for rich orchestration context (lazy init per thread)
+        self._context_builders = {}  # thread_id -> OrchestratorContextBuilder
 
     def run(self, state: StateView) -> StateView:
         """
@@ -171,11 +174,16 @@ class OrchestratorNode(
 
         if task.is_response():
             # This is a response to delegated work
+            print(f"📨 [ORCH:{self.uid}] Processing RESPONSE packet")
             thread_id = self._handle_task_response(task)
             if thread_id:
+                print(f"✅ [ORCH:{self.uid}] Adding thread {thread_id[:8]}... to updated_threads")
                 self._updated_threads.add(thread_id)
+            else:
+                print(f"❌ [ORCH:{self.uid}] Response handling returned None - thread NOT added to updated_threads")
         else:
             # This is a new work request
+            print(f"📬 [ORCH:{self.uid}] Processing NEW WORK packet")
             self._handle_new_work(task)
             if task.thread_id:
                 self._updated_threads.add(task.thread_id)
@@ -193,10 +201,17 @@ class OrchestratorNode(
         # Find correlation in task data
         correlation_task_id = task.correlation_task_id
         if not correlation_task_id:
+            print(f"⚠️ [ORCH:{self.uid}] Response has no correlation_task_id - skipping")
             return None
+
+        print(f"\n🔍 [ORCH:{self.uid}] Handling response:")
+        print(f"   - correlation_task_id: {correlation_task_id}")
+        print(f"   - from thread: {task.thread_id}")
+        print(f"   - created_by: {task.created_by}")
 
         # Determine which thread to update (parent vs child thread handling)
         target_thread_id = self._resolve_target_thread_for_response(task)
+        print(f"   - target_thread_id (resolved): {target_thread_id}")
 
         # Update work plan and workspace context
         service = self.workspaces
@@ -216,54 +231,43 @@ class OrchestratorNode(
         else:
             response_content = "Empty response"
 
-        # NOTE: Responses are stored in WorkItem.result_ref.responses[]
+        # NOTE: Responses are stored in DelegationExchange within WorkItem.result
         # They will be shown in the work plan snapshot automatically
         # No need to duplicate them in facts
 
-        success = False
-
-        # ✅ ARCHITECTURE: LLM always interprets responses (except explicit errors)
-        # The LLM will use mark_work_item_status tool to finalize status
-        
-        if task.error:
-            # Case A: Explicit ERROR - Auto-mark FAILED (errors are unambiguous)
-            success = service.ingest_task_response_for_work_item(
-                thread_id=target_thread_id,
-                owner_uid=self.uid,
-                correlation_task_id=correlation_task_id,
-                error=task.error  # Already a string
-            )
-        
-        else:
-            # Case B: ALL other responses → Store for LLM interpretation
-            # LLM will decide if work is truly done based on:
-            # - Quality of response
-            # - Completeness
-            # - Alignment with requirements
-            # - Overall work plan context
-            
-            # Determine sender: task.created_by (now properly set in Task.respond_success/error)
-            # Fallback to assigned_uid if needed (defensive programming)
-            from_uid = task.created_by
-            if not from_uid:
-                # Defensive fallback: get assigned_uid from work item
-                plan = service.load_work_plan(target_thread_id, self.uid)
-                if plan:
-                    for item in plan.items.values():
-                        if item.correlation_task_id == correlation_task_id:
-                            from_uid = item.assigned_uid or "unknown"
+        # Determine sender: task.created_by (properly set in Task.respond_success/error)
+        # Fallback to assigned_uid if needed (defensive programming)
+        from_uid = task.created_by
+        if not from_uid:
+            # Defensive fallback: find work item by delegation exchange
+            plan = service.load_work_plan(target_thread_id, self.uid)
+            if plan:
+                for item in plan.items.values():
+                    if item.result and item.result.delegations:
+                        for exchange in item.result.delegations:
+                            if exchange.task_id == correlation_task_id:
+                                from_uid = item.assigned_uid or "unknown"
+                                break
+                        if from_uid and from_uid != "unknown":
                             break
-                if not from_uid:
-                    from_uid = "unknown"
-            
-            success = service.store_task_response_for_work_item(
-                thread_id=target_thread_id,
-                owner_uid=self.uid,
-                correlation_task_id=correlation_task_id,
-                response_content=response_content,
-                from_uid=from_uid,
-                result_data=task.result  # ✅ Preserve all structured data (AgentResult, dict, or None)
-            )
+            if not from_uid:
+                from_uid = "unknown"
+        
+        # Store response in delegation exchange
+        success = service.store_task_response_for_work_item(
+            thread_id=target_thread_id,
+            owner_uid=self.uid,
+            correlation_task_id=correlation_task_id,
+            response_content=response_content,
+            from_uid=from_uid,
+            result_data=task.result
+        )
+        
+        if success:
+            print(f"✅ [ORCH:{self.uid}] Response stored successfully - will trigger orchestration cycle")
+        else:
+            print(f"❌ [ORCH:{self.uid}] Failed to store response - NO orchestration cycle will run!")
+            print(f"   This means delegation exchange not found")
 
         # Return thread_id if we updated the work plan
         return target_thread_id if success else None
@@ -284,13 +288,23 @@ class OrchestratorNode(
         response_thread_id = task.thread_id
         if not response_thread_id:
             # No thread context, use current orchestrator thread
+            print(f"⚠️ [ORCH:{self.uid}] No thread_id in response - using default")
             return getattr(self, '_current_thread_id', None) or 'default'
 
         try:
             # Use thread service to find where THIS orchestrator's work plan is
+            print(f"🔍 [ORCH:{self.uid}] Resolving work plan owner for thread {response_thread_id[:8]}...")
             target_thread_id = self.threads.find_work_plan_owner(response_thread_id, self.uid)
+            if target_thread_id:
+                if target_thread_id != response_thread_id:
+                    print(f"   ↪️ Found in parent thread: {target_thread_id[:8]}...")
+                else:
+                    print(f"   ✓ Found in same thread: {target_thread_id[:8]}...")
+            else:
+                print(f"   ⚠️ Not found, falling back to response thread")
             return target_thread_id or response_thread_id
         except Exception as e:
+            print(f"   ❌ Error during resolution: {e}")
             return response_thread_id
 
     def _handle_new_work(self, task: Task) -> None:
@@ -390,6 +404,26 @@ class OrchestratorNode(
             get_workload_service=self.get_workload_service  # Clean dependency injection
             # Uses default PhaseIterationLimits (all phases = 10 iterations)
         )
+        
+        # Build rich orchestrator context
+        from .context import CycleTrigger, CycleTriggerReason
+        
+        # Determine trigger reason based on what initiated this cycle
+        # For now, default to NEW_REQUEST (can be enhanced to detect response arrivals)
+        trigger = CycleTrigger(
+            reason=CycleTriggerReason.NEW_REQUEST,
+            description="Orchestration cycle",
+            new_user_message=content if content else None
+        )
+        
+        context_builder = self._get_or_create_context_builder(thread_id)
+        orch_context = context_builder.build_context(
+            trigger=trigger,
+            phase_state=phase_provider.get_phase_context()
+        )
+        
+        # Store context for phase provider to access via dynamic context messages
+        phase_provider._current_orch_context = orch_context
 
         # Create strategy with unified provider
         strategy = self.create_strategy(
@@ -700,26 +734,41 @@ class OrchestratorNode(
                             dep_status.append(f"?{dep_id}")
                     item_line += f" [depends on: {', '.join(dep_status)}]"
                 
-                # Show responses if present with processed status
-                if item.result_ref and item.result_ref.responses:
-                    response_count = len(item.result_ref.responses)
-                    processed_count = sum(1 for r in item.result_ref.responses if r.processed)
-                    unprocessed_count = response_count - processed_count
+                # Show delegation history if present
+                if item.result and item.result.delegations:
+                    delegation_count = len(item.result.delegations)
+                    pending_count = sum(1 for ex in item.result.delegations if ex.is_pending)
+                    unprocessed_count = sum(1 for ex in item.result.delegations if ex.needs_attention)
                     
-                    if response_count == 1:
-                        # Single response - show content with status
-                        latest = item.result_ref.latest_response
-                        status_marker = "✓" if latest.processed else "⚡"
-                        resp_preview = latest.content[:100].replace('\n', ' ')
-                        item_line += f"\n      {status_marker} {resp_preview}..."
+                    if delegation_count == 1:
+                        # Single exchange - show query and response
+                        ex = item.result.delegations[0]
+                        query_preview = ex.query[:80].replace('\n', ' ')
+                        item_line += f"\n      📤 Q: {query_preview}{'...' if len(ex.query) > 80 else ''}"
+                        
+                        if ex.is_pending:
+                            item_line += f"\n      ⏳ Waiting for response from {ex.delegated_to}"
+                        elif ex.needs_attention:
+                            resp_preview = ex.response_content[:100].replace('\n', ' ')
+                            item_line += f"\n      🔔 A: {resp_preview}{'...' if len(ex.response_content) > 100 else ''}"
+                        else:
+                            resp_preview = ex.response_content[:100].replace('\n', ' ')
+                            item_line += f"\n      ✓ A: {resp_preview}{'...' if len(ex.response_content) > 100 else ''}"
                     else:
-                        # Multiple responses - show count summary first
-                        item_line += f"\n      💬 {response_count} responses ({processed_count}✓ processed, {unprocessed_count}⚡ pending)"
-                        # Show ALL responses with their status
-                        for resp in item.result_ref.responses:
-                            status_marker = "✓" if resp.processed else "⚡"
-                            resp_preview = resp.content[:100].replace('\n', ' ')
-                            item_line += f"\n      {status_marker} {resp_preview}..."
+                        # Multiple exchanges - show summary and each turn
+                        item_line += f"\n      💬 {delegation_count} turns ({unprocessed_count}🔔 need attention, {pending_count}⏳ pending)"
+                        for i, ex in enumerate(item.result.delegations):
+                            query_preview = ex.query[:60].replace('\n', ' ')
+                            item_line += f"\n      [{i}] Q: {query_preview}{'...' if len(ex.query) > 60 else ''}"
+                            
+                            if ex.is_pending:
+                                item_line += f"\n          ⏳ Waiting for {ex.delegated_to}"
+                            elif ex.needs_attention:
+                                resp_preview = ex.response_content[:80].replace('\n', ' ')
+                                item_line += f"\n          🔔 A: {resp_preview}{'...' if len(ex.response_content) > 80 else ''}"
+                            else:
+                                resp_preview = ex.response_content[:80].replace('\n', ' ')
+                                item_line += f"\n          ✓ A: {resp_preview}{'...' if len(ex.response_content) > 80 else ''}"
                 
                 print(f"   {item_line}")
         
@@ -754,6 +803,28 @@ Key principles:
         else:
             # No specialization provided
             return behavior_msg
+    
+    def _get_or_create_context_builder(self, thread_id: str):
+        """
+        Lazy initialization of context builder per thread.
+        
+        Context builder maintains state (progress tracking, history) across cycles,
+        so we create one per thread and reuse it.
+        
+        Args:
+            thread_id: Thread identifier
+        
+        Returns:
+            OrchestratorContextBuilder for this thread
+        """
+        if thread_id not in self._context_builders:
+            from .context import OrchestratorContextBuilder
+            self._context_builders[thread_id] = OrchestratorContextBuilder(
+                get_workload_service=lambda: self.workspaces,
+                node_uid=self.uid,
+                thread_id=thread_id
+            )
+        return self._context_builders[thread_id]
 
     def _create_delegation_policy(self) -> DelegationPolicy:
         """

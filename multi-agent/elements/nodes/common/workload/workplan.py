@@ -70,118 +70,144 @@ class ToolArguments(BaseModel):
         return hasattr(self, key)
 
 
-class ResponseRecord(BaseModel):
+class LocalExecution(BaseModel):
     """
-    Single response in a multi-turn conversation with a work item.
+    Local work execution record (for LOCAL work items).
     
-    Tracks one response from a delegated agent, including timing, source,
-    and structured data. Used for re-delegation and iterative refinement.
-    
-    Note: Thread workspace contains full conversation context. This record
-    is primarily for structured storage and analytics.
+    Captures what the orchestrator did directly without delegation.
+    Includes reasoning, actions taken, and outcome.
     """
-    from_uid: str = Field(..., description="UID of the agent that responded")
-    content: str = Field(..., description="Response content/message")
-    data: Optional[Dict[str, Any]] = Field(None, description="Structured response data (AgentResult, etc.)")
-    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat(), description="When response was received")
-    sequence: int = Field(..., description="Order in conversation (0-indexed)")
-    correlation_task_id: Optional[str] = Field(None, description="Task ID for this specific delegation")
+    reasoning: Optional[str] = Field(None, description="Why this approach was taken")
+    actions_taken: Optional[str] = Field(None, description="What was done (tools used, analysis performed)")
+    outcome: Optional[str] = Field(None, description="Result of the execution")
+    tools_used: List[str] = Field(default_factory=list, description="Tools invoked during execution")
+    executed_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat(), description="When execution completed")
+
+
+class DelegationExchange(BaseModel):
+    """
+    Complete request-response exchange in a delegation conversation.
+    
+    Represents one complete turn: orchestrator asks → agent responds.
+    Multiple exchanges form a multi-turn conversation.
+    """
+    # Ordering and identification
+    sequence: int = Field(..., description="Turn number in conversation (0=first, 1=second, etc.)")
+    task_id: str = Field(..., description="Unique task ID for this delegation")
+    
+    # Request side (what orchestrator asked)
+    query: str = Field(..., description="What was specifically asked/delegated")
+    delegated_to: str = Field(..., description="UID of agent this was delegated to")
+    delegated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat(), description="When delegation was sent")
+    
+    # Response side (what agent answered)
+    response_content: Optional[str] = Field(None, description="Agent's response text")
+    response_data: Optional[Dict[str, Any]] = Field(None, description="Structured data (AgentResult, etc.)")
+    responded_by: Optional[str] = Field(None, description="Who responded (usually same as delegated_to)")
+    responded_at: Optional[str] = Field(None, description="When response was received")
+    
+    # State tracking
     processed: bool = Field(default=False, description="Whether LLM has acted on this response (re-delegated or marked status)")
+    
+    @property
+    def is_pending(self) -> bool:
+        """Check if waiting for response."""
+        return self.response_content is None
+    
+    @property
+    def needs_attention(self) -> bool:
+        """Check if has response but LLM hasn't acted on it yet."""
+        return self.response_content is not None and not self.processed
 
 
 class WorkItemResult(BaseModel):
     """
-    Complete result of work item execution, including conversation history.
+    Complete result container for both LOCAL and REMOTE work items.
     
-    Supports multi-turn conversations when orchestrator re-delegates or asks follow-ups.
-    The 'responses' list preserves full conversation history for structured access.
+    Design: Unified model that adapts based on work item kind.
+    - REMOTE items: Use 'delegations' list to track conversation history
+    - LOCAL items: Use 'local_execution' to record direct execution
     
-    Design Note: Thread workspace contains conversation context for agents.
-    This model stores structured history for orchestrator analytics and LLM reasoning.
+    This follows SOLID principles: single model, different fields populated.
     """
-    # Final result (set by LLM via MarkWorkItemStatusTool)
-    success: bool = Field(default=False, description="Final success status (set when marked DONE)")
-    content: Optional[str] = Field(None, description="Final synthesized result or summary")
-    data: Optional[Dict[str, Any]] = Field(None, description="Final structured result data")
-    
-    # Conversation history (for re-delegation and follow-ups)
-    responses: List[ResponseRecord] = Field(
-        default_factory=list, 
-        description="All responses received, in chronological order. Supports multi-turn conversations."
+    # For REMOTE items: delegation conversation history
+    delegations: List[DelegationExchange] = Field(
+        default_factory=list,
+        description="Delegation conversation history (REMOTE items only). Empty for LOCAL items."
     )
     
-    # Metadata
+    # For LOCAL items: execution record
+    local_execution: Optional[LocalExecution] = Field(
+        None, 
+        description="Local execution details (LOCAL items only). None for REMOTE items."
+    )
+    
+    # Common fields (both LOCAL and REMOTE)
+    success: bool = Field(default=False, description="Final success status (set when marked DONE)")
+    final_summary: Optional[str] = Field(None, description="Final synthesized result or conclusion")
+    data: Optional[Dict[str, Any]] = Field(None, description="Structured result data")
+    metadata: Dict[str, Any] = Field(default_factory=dict, description="Additional metadata")
     artifacts: List[str] = Field(default_factory=list, description="List of created artifacts")
-    metadata: Dict[str, Any] = Field(default_factory=dict, description="Processing metadata")
     
     @property
-    def has_responses(self) -> bool:
-        """Check if any UNPROCESSED responses exist (need LLM action)."""
-        return any(not r.processed for r in self.responses)
+    def pending_exchange(self) -> Optional[DelegationExchange]:
+        """Get the currently pending delegation exchange (waiting for response), if any."""
+        for ex in reversed(self.delegations):  # Check most recent first
+            if ex.is_pending:
+                return ex
+        return None
+    
+    @property
+    def latest_exchange(self) -> Optional[DelegationExchange]:
+        """Get the most recent delegation exchange."""
+        return self.delegations[-1] if self.delegations else None
     
     @property
     def has_unprocessed_responses(self) -> bool:
-        """Explicit check for unprocessed responses needing LLM action."""
-        return any(not r.processed for r in self.responses)
+        """Check if any delegation responses need LLM interpretation."""
+        return any(ex.needs_attention for ex in self.delegations)
     
     @property
-    def latest_response(self) -> Optional[ResponseRecord]:
-        """Get the most recent response."""
-        return self.responses[-1] if self.responses else None
-    
-    @property
-    def response_count(self) -> int:
-        """Get total number of responses received."""
-        return len(self.responses)
-    
-    def get_conversation_summary(self, max_turns: int = 5) -> str:
+    def conversation_summary(self) -> str:
         """
-        Get a formatted summary of the conversation.
+        Format delegation history with state indicators for LLM interpretation.
         
-        Args:
-            max_turns: Maximum number of recent turns to include
-            
+        Shows clear indicators of what needs attention vs what's been handled.
+        Helps LLM understand conversation state and decide next actions.
+        
         Returns:
-            Formatted conversation summary
+            Formatted string with conversation history and state indicators
         """
-        if not self.responses:
-            return "No responses yet"
-        
-        recent = self.responses[-max_turns:] if len(self.responses) > max_turns else self.responses
-        lines = [f"Conversation ({len(self.responses)} turn{'s' if len(self.responses) > 1 else ''}):"]
-        
-        for resp in recent:
-            preview = resp.content[:80] + "..." if len(resp.content) > 80 else resp.content
-            lines.append(f"  [{resp.sequence}] {resp.from_uid}: {preview}")
-        
-        if len(self.responses) > max_turns:
-            lines.insert(1, f"  ... ({len(self.responses) - max_turns} earlier turns)")
-        
-        return "\n".join(lines)
-    
-    @property
-    def content_with_history(self) -> str:
-        """
-        Get content including response history for backward compatibility.
-        
-        If no final content is set, returns latest response or conversation summary.
-        This ensures old code that reads result_ref.content still works.
-        """
-        if self.content:
-            return self.content
-        
-        if not self.responses:
+        if not self.delegations:
             return ""
         
-        # Return latest response for single turn
-        if len(self.responses) == 1:
-            return self.responses[0].content
+        # Single exchange: simple format
+        if len(self.delegations) == 1:
+            ex = self.delegations[0]
+            if ex.is_pending:
+                return f"⏳ WAITING for response from {ex.delegated_to}"
+            elif ex.needs_attention:
+                return f"🔔 NEW RESPONSE from {ex.responded_by} (needs your interpretation):\n  {ex.response_content}"
+            else:
+                return f"✓ Response from {ex.responded_by} (processed):\n  {ex.response_content}"
         
-        # Synthesize from multiple responses
-        return "\n\n---\n\n".join([
-            f"[Turn {resp.sequence}] {resp.from_uid}:\n{resp.content}"
-            for resp in self.responses
-        ])
+        # Multi-turn conversation: detailed format
+        lines = [f"Conversation History ({len(self.delegations)} turns):"]
+        for ex in self.delegations:
+            if ex.is_pending:
+                lines.append(f"  [{ex.sequence}] ⏳ WAITING: Query sent to {ex.delegated_to}")
+                lines.append(f"      Query: {ex.query}")
+            elif ex.needs_attention:
+                lines.append(f"  [{ex.sequence}] 🔔 NEW: Response from {ex.responded_by} (needs interpretation)")
+                lines.append(f"      Query: {ex.query}")
+                preview = ex.response_content[:100] + "..." if len(ex.response_content) > 100 else ex.response_content
+                lines.append(f"      Response: {preview}")
+            else:
+                lines.append(f"  [{ex.sequence}] ✓ PROCESSED: {ex.responded_by}")
+                preview = ex.response_content[:80] + "..." if len(ex.response_content) > 80 else ex.response_content
+                lines.append(f"      Response: {preview}")
+        
+        return "\n".join(lines)
 
 
 class WorkItem(BaseModel):
@@ -203,9 +229,8 @@ class WorkItem(BaseModel):
     args: ToolArguments = Field(default_factory=ToolArguments, description="Tool arguments")
     
     # Results and tracking
-    result_ref: Optional[WorkItemResult] = Field(None, description="Execution result")
+    result: Optional[WorkItemResult] = Field(None, description="Execution result")
     error: Optional[str] = Field(None, description="Error message if failed")
-    correlation_task_id: Optional[str] = Field(None, description="Task ID for delegation tracking")
     child_thread_id: Optional[str] = Field(None, description="Child thread ID for re-delegation context continuity")
     retry_count: int = Field(default=0, description="Number of retry attempts")
     max_retries: int = Field(default=3, description="Maximum retry attempts before marking as failed")
@@ -260,16 +285,16 @@ class WorkItem(BaseModel):
         Returns True only if:
         - Item is IN_PROGRESS (actively being worked on)
         - Item is REMOTE (delegated to another agent)
-        - Item has result_ref with responses
-        - At least one response is unprocessed
+        - Item has result with delegations
+        - At least one delegation response is unprocessed
         
         This is the canonical check for "orchestrator needs to act on this item's responses"
         """
         return (
             self.status == WorkItemStatus.IN_PROGRESS 
             and self.kind == WorkItemKind.REMOTE
-            and self.result_ref is not None
-            and self.result_ref.has_unprocessed_responses
+            and self.result is not None
+            and self.result.has_unprocessed_responses
         )
     
     def mark_updated(self) -> None:
@@ -315,7 +340,7 @@ class WorkPlanStatusSummary(BaseModel):
     has_local_ready: bool = False
     has_remote_ready: bool = False  # True if any PENDING + kind=REMOTE items with dependencies met
     has_remote_waiting: bool = False  # True if any IN_PROGRESS + kind=REMOTE items exist
-    has_responses: bool = False  # True if any IN_PROGRESS + kind=REMOTE items have result_ref
+    has_responses: bool = False  # True if any IN_PROGRESS + kind=REMOTE items have result with delegations
     is_complete: bool = False
 
 
@@ -496,35 +521,6 @@ class WorkPlanService:
         """Context manager for thread-safe workplan operations."""
         return self._get_lock(thread_id, owner_uid)
     
-    def atomic_update_item(
-        self, 
-        thread_id: str, 
-        owner_uid: str, 
-        item_id: str, 
-        update_func: callable
-    ) -> bool:
-        """
-        Atomically update a work item using the provided function.
-        
-        Args:
-            thread_id: Thread identifier
-            owner_uid: Owner node identifier
-            item_id: Work item identifier
-            update_func: Function that takes (item, plan) and modifies the item
-            
-        Returns:
-            True if update succeeded, False otherwise
-        """
-        with self.with_lock(thread_id, owner_uid):
-            plan = self.load(thread_id, owner_uid)
-            if not plan or item_id not in plan.items:
-                return False
-            
-            item = plan.items[item_id]
-            update_func(item, plan)
-            item.mark_updated()
-            return self.save(plan)
-    
     def create(self, thread_id: str, owner_uid: str) -> WorkPlan:
         """Create a new work plan."""
         plan = WorkPlan(
@@ -637,172 +633,3 @@ class WorkPlanService:
         )
         
         return summary
-    
-    def store_task_response(
-        self,
-        thread_id: str,
-        owner_uid: str,
-        correlation_task_id: str,
-        response_content: str,
-        from_uid: str
-    ) -> bool:
-        """Store task response as context without changing status - let LLM interpret."""
-        
-        plan = self.load(thread_id, owner_uid)
-        if not plan:
-            return False
-        
-        # Find item by correlation task ID
-        target_item = None
-        for item in plan.items.values():
-            if item.correlation_task_id == correlation_task_id:
-                target_item = item
-                break
-        
-        if not target_item:
-            return False
-        
-        
-        # Store response content without changing status
-        if not target_item.result_ref:
-            target_item.result_ref = WorkItemResult(
-                success=False,  # Not finalized yet
-                content=response_content,
-                metadata={"from_uid": from_uid, "needs_interpretation": True}
-            )
-        else:
-            # Append to existing content
-            target_item.result_ref.content += f"\n\n--- Response from {from_uid} ---\n{response_content}"
-            if target_item.result_ref.metadata:
-                target_item.result_ref.metadata["needs_interpretation"] = True
-            else:
-                target_item.result_ref.metadata = {"from_uid": from_uid, "needs_interpretation": True}
-        
-        target_item.mark_updated()
-        self.save(plan)
-        return True
-
-    def ingest_task_response(
-        self, 
-        thread_id: str,
-        owner_uid: str, 
-        correlation_task_id: str, 
-        result: Any = None, 
-        error: str = None
-    ) -> bool:
-        """Ingest task response and update work item status - only for explicit success/error (thread-safe)."""
-        
-        with self.with_lock(thread_id, owner_uid):
-            plan = self.load(thread_id, owner_uid)
-            if not plan:
-                return False
-            
-            # Find item by correlation task ID
-            target_item = None
-            for item in plan.items.values():
-                if item.correlation_task_id == correlation_task_id:
-                    target_item = item
-                    break
-            
-            if not target_item:
-                return False
-            
-            
-            # Update item based on response - only for explicit structures
-            if error:
-                target_item.status = WorkItemStatus.FAILED
-                target_item.error = error
-                target_item.retry_count += 1  # Increment retry count on failure
-            elif result and isinstance(result, dict) and result.get("success") is True:
-                # Only auto-mark DONE for explicit success structures
-                target_item.status = WorkItemStatus.DONE
-                target_item.result_ref = WorkItemResult(
-                    success=True,
-                    content=str(result.get("content", result)),
-                    data=result
-                )
-            else:
-                return False  # Don't auto-mark, let LLM interpret
-            
-            target_item.mark_updated()
-            self.save(plan)
-            return True
-    
-    def update_item_status(
-        self,
-        thread_id: str,
-        owner_uid: str,
-        item_id: str,
-        status: WorkItemStatus,
-        error: str = None,
-        correlation_task_id: str = None
-    ) -> bool:
-        """Update work item status - for LLM-driven status changes (thread-safe)."""
-        
-        with self.with_lock(thread_id, owner_uid):
-            plan = self.load(thread_id, owner_uid)
-            if not plan:
-                return False
-            
-            item = plan.items.get(item_id)
-            if not item:
-                return False
-            
-            
-            old_status = item.status
-            item.status = status
-            
-            if error and status == WorkItemStatus.FAILED:
-                item.error = error
-            
-            if correlation_task_id:
-                item.correlation_task_id = correlation_task_id
-            
-            # If marking as DONE, finalize the result
-            if status == WorkItemStatus.DONE and item.result_ref:
-                item.result_ref.success = True
-                if item.result_ref.metadata:
-                    item.result_ref.metadata.pop("needs_interpretation", None)
-            
-            item.mark_updated()
-            self.save(plan)
-            return True
-    
-    def mark_item_as_delegated(self, thread_id: str, owner_uid: str, item_id: str, correlation_task_id: str) -> bool:
-        """Mark work item as delegated (WAITING status) - thread-safe."""
-        
-        with self.with_lock(thread_id, owner_uid):
-            plan = self.load(thread_id, owner_uid)
-            if not plan:
-                return False
-            
-            item = plan.items.get(item_id)
-            if not item:
-                return False
-            
-            
-            item.status = WorkItemStatus.WAITING
-            item.correlation_task_id = correlation_task_id
-            item.mark_updated()
-            
-            self.save(plan)
-            return True
-    
-    # ========== WORKSPACE WORK PLAN ACCESS ==========
-    
-    def get_work_plans(self, thread_id: str) -> Dict[str, Dict[str, Any]]:
-        """Get all work plans in workspace."""
-        workspace = self._workspace_service.get_workspace(thread_id)
-        return workspace.context.work_plans.copy()
-    
-    def remove_work_plan(self, thread_id: str, owner_uid: str) -> None:
-        """Remove work plan for specific owner."""
-        workspace = self._workspace_service.get_workspace(thread_id)
-        if owner_uid in workspace.context.work_plans:
-            del workspace.context.work_plans[owner_uid]
-            self._workspace_service.update_workspace(workspace)
-    
-    def work_plan_exists(self, thread_id: str, owner_uid: str) -> bool:
-        """Check if work plan exists for specific owner."""
-        workspace = self._workspace_service.get_workspace(thread_id)
-        return owner_uid in workspace.context.work_plans

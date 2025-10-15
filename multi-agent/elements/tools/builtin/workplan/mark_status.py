@@ -30,10 +30,6 @@ class MarkStatusArgs(BaseModel):
         None, 
         description="Detailed explanation of why you're changing the status. REQUIRED for 'failed' status to explain what went wrong and retry history. Helpful for 'done' to summarize what was accomplished."
     )
-    correlation_task_id: Optional[str] = Field(
-        None, 
-        description="Only needed if this status change relates to a specific delegated task ID"
-    )
 
 
 class MarkWorkItemStatusTool(BaseTool):
@@ -86,37 +82,53 @@ class MarkWorkItemStatusTool(BaseTool):
             
             item = plan.items[args.item_id]
             
-            # Check if item is actively delegated (IN_PROGRESS + REMOTE + has correlation_task_id)
-            if (item.status == WorkItemStatus.IN_PROGRESS and 
-                item.kind == WorkItemKind.REMOTE and 
-                item.correlation_task_id):
-                
-                # Check if we have a response for the CURRENT active delegation
-                has_response_for_current_task = False
-                if item.result_ref and item.result_ref.responses:
-                    has_response_for_current_task = any(
-                        r.correlation_task_id == item.correlation_task_id
-                        for r in item.result_ref.responses
-                    )
-                
-                if not has_response_for_current_task:
+            # Validate state transitions
+            
+            # 1. Prevent marking REMOTE item as IN_PROGRESS without delegation
+            if (args.status == WorkItemStatus.IN_PROGRESS and 
+                item.kind == WorkItemKind.REMOTE):
+                # A REMOTE item must have at least one delegation to be IN_PROGRESS
+                if not item.result or not item.result.delegations:
                     return {
                         "success": False,
-                        "error": f"Cannot mark '{args.item_id}' as DONE - still waiting for response from delegated agent (task {item.correlation_task_id[:8]}...). Wait for response to arrive, or use status='failed' to give up and move on."
+                        "error": f"Cannot mark REMOTE item '{args.item_id}' as IN_PROGRESS - must delegate using iem.delegate_task first"
                     }
+            
+            # 2. Check if trying to mark DONE while still waiting for response
+            if (args.status == WorkItemStatus.DONE and
+                item.status == WorkItemStatus.IN_PROGRESS and 
+                item.kind == WorkItemKind.REMOTE):
+                
+                # Check if we have pending delegation (waiting for response)
+                if item.result and item.result.pending_exchange:
+                    pending_ex = item.result.pending_exchange
+                    return {
+                        "success": False,
+                        "error": f"Cannot mark '{args.item_id}' as DONE - still waiting for response from {pending_ex.delegated_to}. DO NOT RETRY - the response will arrive in a future cycle. Either wait (finish this cycle) or use status='failed' to give up."
+                    }
+                
+                # Check for unprocessed responses (responses that need LLM interpretation)
+                # This is OK - LLM is marking DONE after interpreting the responses
+                # The processed flag will be set below when status changes
         
         def update_status(item, plan):
             """Update function for atomic status change."""
             item.status = args.status
             if args.status == WorkItemStatus.FAILED and args.notes:
                 item.error = args.notes
-            if args.correlation_task_id:
-                item.correlation_task_id = args.correlation_task_id
             
-            # Mark all responses as processed when changing status (LLM has acted by marking status)
-            if item.result_ref and item.result_ref.responses:
-                for response in item.result_ref.responses:
-                    response.processed = True
+            # Mark all delegation exchanges as processed (LLM has acted by marking status)
+            if item.result and item.result.delegations:
+                for exchange in item.result.delegations:
+                    exchange.processed = True
+            
+            # Store final summary if provided
+            if args.notes and item.result:
+                item.result.final_summary = args.notes
+            
+            # Mark success flag when marking DONE
+            if args.status == WorkItemStatus.DONE and item.result:
+                item.result.success = True
         
         success = workspace_service.atomic_update_work_item(thread_id, owner_uid, args.item_id, update_status)
         

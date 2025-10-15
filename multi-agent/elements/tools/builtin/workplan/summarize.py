@@ -61,8 +61,8 @@ class SummarizeWorkPlanTool(BaseTool):
             lines.append(f"\nCompleted Work ({len(completed_items)}):")
             for item in completed_items:
                 lines.append(f"  ✅ {item.title}")
-                if item.result_ref and item.result_ref.content:
-                    lines.append(f"     Result: {item.result_ref.content}")
+                if item.result and item.result.final_summary:
+                    lines.append(f"     Result: {item.result.final_summary}")
                 if item.assigned_uid:
                     lines.append(f"     Completed by: {item.assigned_uid}")
                 
@@ -71,43 +71,45 @@ class SummarizeWorkPlanTool(BaseTool):
                     "id": item.id,
                     "title": item.title,
                     "status": item.status.value,
-                    "assigned_to": item.assigned_uid,  # 🎯 Agent/node UID shown here
+                    "assigned_to": item.assigned_uid,
                     "result": {
-                        "content": item.result_ref.content if item.result_ref else None,
-                        "data": item.result_ref.data if item.result_ref else None,
-                        "success": item.result_ref.success if item.result_ref else None,
-                        "metadata": item.result_ref.metadata if item.result_ref else None
-                    } if item.result_ref else None
+                        "summary": item.result.final_summary if item.result else None,
+                        "data": item.result.data if item.result else None,
+                        "success": item.result.success if item.result else None,
+                        "metadata": item.result.metadata if item.result else None
+                    } if item.result else None
                 })
         
         # Add IN_PROGRESS (REMOTE) items with responses (pending interpretation)
         in_progress_items = plan.get_items_by_status(WorkItemStatus.IN_PROGRESS)
         if in_progress_items:
-            # Check for REMOTE items with responses needing interpretation
+            # Check for REMOTE items with delegation history
             remote_with_responses = [
                 item for item in in_progress_items 
                 if item.kind == WorkItemKind.REMOTE and 
-                item.result_ref and 
-                item.result_ref.has_responses
+                item.result and 
+                item.result.has_unprocessed_responses
             ]
             if remote_with_responses:
                 lines.append(f"\nWaiting for Interpretation ({len(remote_with_responses)}):")
                 for item in remote_with_responses:
-                    response_count = item.result_ref.response_count
-                    latest = item.result_ref.latest_response
+                    delegation_count = len(item.result.delegations)
+                    latest = item.result.latest_exchange
                     
-                    # Show item with response count
-                    lines.append(f"  ⏳ {item.title} ({response_count} response{'s' if response_count > 1 else ''})")
+                    # Show item with delegation count
+                    lines.append(f"  ⏳ {item.title} ({delegation_count} delegation{'s' if delegation_count > 1 else ''})")
                     
-                    if response_count > 1:
-                        # Multi-turn conversation - show all responses (no truncation)
+                    if delegation_count > 1:
+                        # Multi-turn conversation - show all exchanges
                         lines.append(f"     Conversation with {item.assigned_uid}:")
-                        for resp in item.result_ref.responses:  # Show all turns
-                            lines.append(f"       [{resp.sequence}] {resp.from_uid}: {resp.content}")
+                        for ex in item.result.delegations:
+                            if ex.response_content:
+                                lines.append(f"       [{ex.sequence}] {ex.responded_by}: {ex.response_content}")
                     else:
-                        # Single response - show full content (no truncation)
-                        lines.append(f"     Response from {latest.from_uid}:")
-                        lines.append(f"       {latest.content}")
+                        # Single exchange - show full content
+                        if latest and latest.response_content:
+                            lines.append(f"     Response from {latest.responded_by}:")
+                            lines.append(f"       {latest.response_content}")
                     
                     # ✅ Add structured data for LLM (includes full conversation history)
                     items_data.append({
@@ -118,21 +120,25 @@ class SummarizeWorkPlanTool(BaseTool):
                         "assigned_to": item.assigned_uid,
                         "conversation": [
                             {
-                                "from": resp.from_uid,
-                                "content": resp.content,
-                                "data": resp.data,
-                                "sequence": resp.sequence,
-                                "timestamp": resp.timestamp,
-                                "correlation_task_id": resp.correlation_task_id
+                                "query": ex.query,
+                                "response": ex.response_content,
+                                "from": ex.responded_by,
+                                "data": ex.response_data,
+                                "sequence": ex.sequence,
+                                "task_id": ex.task_id,
+                                "delegated_at": ex.delegated_at,
+                                "responded_at": ex.responded_at
                             }
-                            for resp in item.result_ref.responses
+                            for ex in item.result.delegations
+                            if ex.response_content
                         ],
-                        "response_count": response_count,
-                        "latest_response": {
-                            "from": latest.from_uid,
-                            "content": latest.content,
-                            "data": latest.data
-                        } if latest else None
+                        "delegation_count": delegation_count,
+                        "latest_exchange": {
+                            "query": latest.query,
+                            "response": latest.response_content,
+                            "from": latest.responded_by,
+                            "data": latest.response_data
+                        } if latest and latest.response_content else None
                     })
         
         # Add failed items with errors

@@ -118,7 +118,7 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
             for i, item_spec in enumerate(args.items):
                 
                 if item_spec.id in plan.items:
-                    # ✅ UPDATE: Preserve runtime state (status, result_ref, error, etc.)
+                    # ✅ UPDATE: Preserve runtime state (status, result, error, etc.)
                     existing_item = plan.items[item_spec.id]
                     
                     # Only update fields from LLM spec, preserve all runtime state
@@ -133,7 +133,7 @@ class CreateOrUpdateWorkPlanTool(BaseTool):
                     
                     existing_item.mark_updated()
                     
-                    # ✅ Preserved properties: status, result_ref, correlation_task_id, error
+                    # ✅ Preserved properties: status, result, child_thread_id, error, delegations
                 else:
                     # ✅ CREATE: New item with defaults
                     new_item = WorkItem(
