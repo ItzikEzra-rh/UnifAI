@@ -25,6 +25,7 @@ from elements.tools.common.execution.models import ExecutorConfig
 from elements.nodes.common.workload import Task, WorkItemStatus, WorkItemKind, AgentResult
 from .orchestrator_phase_provider import OrchestratorPhaseProvider
 from .delegation_policy import OrchestratorDelegationPolicy
+from .context import PendingCycle, CycleTrigger, CycleTriggerReason, OrchestratorContextBuilder
 from elements.tools.builtin import (
     CreateOrUpdateWorkPlanTool,
     AssignWorkItemTool,
@@ -92,10 +93,12 @@ class OrchestratorNode(
         )
         self.max_rounds = max_rounds
         self.base_tools = tools or []
-        self._updated_threads = set()  # Track threads updated during batch processing
+        
+        # Pending orchestration cycles with trigger information
+        self._pending_cycles: List[PendingCycle] = []
         
         # Context builder for rich orchestration context (lazy init per thread)
-        self._context_builders = {}  # thread_id -> OrchestratorContextBuilder
+        self._context_builders: Dict[str, OrchestratorContextBuilder] = {}
 
     def run(self, state: StateView) -> StateView:
         """
@@ -120,8 +123,8 @@ class OrchestratorNode(
         2. Run orchestration cycle once per thread - reduces redundant cycles
         3. Better resource utilization and lower latency
         """
-        # Clear updated threads from previous batch
-        self._updated_threads.clear()
+        # Clear pending cycles from previous batch
+        self._pending_cycles.clear()
 
         # Process all packets first (ingest phase)
         packets = list(self.inbox_packets())
@@ -135,18 +138,18 @@ class OrchestratorNode(
             finally:
                 self.acknowledge(packet.id)
 
-        # Run orchestration cycles for updated threads
-        for thread_id in self._updated_threads:
-            status_summary = self.workspaces.get_work_plan_status(thread_id, self.uid)
+        # Run orchestration cycles for pending cycles
+        for cycle in self._pending_cycles:
+            status_summary = self.workspaces.get_work_plan_status(cycle.thread_id, self.uid)
 
             # Always run orchestration cycle - even if plan is complete
             # (Complete plans can receive new requests that add new work items)
-            content = self._resolve_cycle_content(thread_id)
-            self._run_orchestration_cycle(thread_id, content)
+            content = self._resolve_cycle_content(cycle.thread_id)
+            self._run_orchestration_cycle(cycle, content)
             
             # Re-check status after orchestration
-            status_summary = self.workspaces.get_work_plan_status(thread_id, self.uid)
-            final_result = self._get_final_orchestration_result(thread_id)
+            status_summary = self.workspaces.get_work_plan_status(cycle.thread_id, self.uid)
+            final_result = self._get_final_orchestration_result(cycle.thread_id)
             
             # Finalize if orchestrator produced a result AND:
             # 1. Work is complete (all items DONE/FAILED), OR
@@ -156,7 +159,7 @@ class OrchestratorNode(
             # The graph will re-invoke us when responses arrive.
             if final_result:
                 if status_summary.is_complete or not self.has_outgoing_packets():
-                    self._finalize_completed_work(thread_id, final_result)
+                    self._finalize_completed_work(cycle.thread_id, final_result)
 
     def handle_task_packet(self, packet) -> None:
         """
@@ -164,7 +167,7 @@ class OrchestratorNode(
         
         This method is called by process_packets_batched() for each packet.
         It extracts and processes the task, updating the work plan as needed.
-        Updated threads are tracked in self._updated_threads for later orchestration.
+        Pending cycles are tracked in self._pending_cycles for later orchestration.
         
         Args:
             packet: Task packet to handle
@@ -175,18 +178,11 @@ class OrchestratorNode(
         if task.is_response():
             # This is a response to delegated work
             print(f"📨 [ORCH:{self.uid}] Processing RESPONSE packet")
-            thread_id = self._handle_task_response(task)
-            if thread_id:
-                print(f"✅ [ORCH:{self.uid}] Adding thread {thread_id[:8]}... to updated_threads")
-                self._updated_threads.add(thread_id)
-            else:
-                print(f"❌ [ORCH:{self.uid}] Response handling returned None - thread NOT added to updated_threads")
+            self._handle_task_response(task)
         else:
             # This is a new work request
             print(f"📬 [ORCH:{self.uid}] Processing NEW WORK packet")
             self._handle_new_work(task)
-            if task.thread_id:
-                self._updated_threads.add(task.thread_id)
 
     def _handle_task_response(self, task: Task) -> Optional[str]:
         """
@@ -265,6 +261,18 @@ class OrchestratorNode(
         
         if success:
             print(f"✅ [ORCH:{self.uid}] Response stored successfully - will trigger orchestration cycle")
+            
+            # Find which work items got responses
+            changed_item_ids = self._find_items_for_task(target_thread_id, correlation_task_id)
+            
+            # Add pending cycle with RESPONSE_ARRIVED trigger
+            from .context import PendingCycle, CycleTriggerReason
+            self._pending_cycles.append(PendingCycle(
+                thread_id=target_thread_id,
+                reason=CycleTriggerReason.RESPONSE_ARRIVED,
+                changed_items=changed_item_ids
+            ))
+            print(f"✅ [ORCH:{self.uid}] Added pending cycle for thread {target_thread_id[:8]}...")
         else:
             print(f"❌ [ORCH:{self.uid}] Failed to store response - NO orchestration cycle will run!")
             print(f"   This means delegation exchange not found")
@@ -307,6 +315,30 @@ class OrchestratorNode(
             print(f"   ❌ Error during resolution: {e}")
             return response_thread_id
 
+    def _find_items_for_task(self, thread_id: str, correlation_task_id: str) -> List[str]:
+        """
+        Find work item IDs that match the given correlation task ID.
+        
+        Args:
+            thread_id: Thread containing the work plan
+            correlation_task_id: Task ID to search for
+        
+        Returns:
+            List of work item IDs that have delegations matching the task ID
+        """
+        changed_item_ids = []
+        plan = self.workspaces.load_work_plan(thread_id, self.uid)
+        
+        if plan:
+            for item in plan.items.values():
+                if item.result and item.result.delegations:
+                    for exchange in item.result.delegations:
+                        if exchange.task_id == correlation_task_id:
+                            changed_item_ids.append(item.id)
+                            break  # Found match, move to next item
+        
+        return changed_item_ids
+
     def _handle_new_work(self, task: Task) -> None:
         """
         Handle new work request.
@@ -336,7 +368,15 @@ class OrchestratorNode(
         self.workspaces.set_variable(thread_id, "orchestrator_uid", self.uid)
         self.workspaces.set_variable(thread_id, "original_task_id", task.task_id)
 
-        # ✅ Orchestration will run in the batch processing loop (lines 137-143)
+        # Add pending cycle with NEW_REQUEST trigger
+        from .context import PendingCycle, CycleTriggerReason
+        self._pending_cycles.append(PendingCycle(
+            thread_id=thread_id,
+            reason=CycleTriggerReason.NEW_REQUEST,
+            changed_items=[]  # No specific items for new requests
+        ))
+
+        # ✅ Orchestration will run in the batch processing loop
         # This ensures:
         # 1. Consistent behavior: 1 cycle per thread (new work OR responses)
         # 2. Better batching: All packets processed before orchestration
@@ -367,7 +407,7 @@ class OrchestratorNode(
         # No new request - return guidance for response processing
         return "Review responses from delegated agents and update work plan accordingly."
 
-    def _run_orchestration_cycle(self, thread_id: str, content: str) -> AgentResult:
+    def _run_orchestration_cycle(self, cycle: PendingCycle, content: str) -> AgentResult:
         """
         Run a planning and execution cycle.
         
@@ -375,15 +415,18 @@ class OrchestratorNode(
         Returns AgentResult with the orchestration outcome.
         
         Args:
-            thread_id: Thread ID for orchestration
+            cycle: PendingCycle containing thread_id, reason, and changed_items
             content: Orchestration content (user request or guidance message)
         """
         print(f"\n{'='*80}")
-        print(f"🎯 ORCHESTRATOR CYCLE START - Thread: {thread_id}")
+        print(f"🎯 ORCHESTRATOR CYCLE START - Thread: {cycle.thread_id}")
+        print(f"   Trigger: {cycle.reason.value}")
+        if cycle.changed_items:
+            print(f"   Changed items: {', '.join(cycle.changed_items)}")
         print(f"{'='*80}")
 
         # Build conversation context
-        messages = self._build_context_messages(thread_id, content)
+        messages = self._build_context_messages(cycle.thread_id, content)
 
         # Build domain tools only (provider will build built-ins)
         tools = list(self.base_tools)
@@ -393,6 +436,9 @@ class OrchestratorNode(
         all_adjacent = self.get_adjacent_nodes()
         delegable_adjacent = delegation_policy.filter_delegable_nodes(all_adjacent)
 
+        # Get or create context builder (needed by phase provider for recording transitions)
+        context_builder = self._get_or_create_context_builder(cycle.thread_id)
+
         # Create orchestrator phase provider with clean SOLID dependencies
         # NOTE: We pass filtered nodes - provider doesn't know about delegation policy
         phase_provider = OrchestratorPhaseProvider(
@@ -400,23 +446,20 @@ class OrchestratorNode(
             get_adjacent_nodes=lambda: delegable_adjacent,  # Pass filtered nodes!
             send_task=self.send_task,  # Inject IEM sender for delegation tool
             node_uid=self.uid,
-            thread_id=thread_id,
-            get_workload_service=self.get_workload_service  # Clean dependency injection
+            thread_id=cycle.thread_id,
+            get_workload_service=self.get_workload_service,  # Clean dependency injection
+            context_builder=context_builder  # For recording phase transitions
             # Uses default PhaseIterationLimits (all phases = 10 iterations)
         )
         
-        # Build rich orchestrator context
-        from .context import CycleTrigger, CycleTriggerReason
-        
-        # Determine trigger reason based on what initiated this cycle
-        # For now, default to NEW_REQUEST (can be enhanced to detect response arrivals)
+        # Build rich orchestrator context with trigger information
         trigger = CycleTrigger(
-            reason=CycleTriggerReason.NEW_REQUEST,
-            description="Orchestration cycle",
-            new_user_message=content if content else None
+            reason=cycle.reason,
+            description=f"Orchestration cycle: {cycle.reason.value}",
+            new_user_message=content if cycle.reason == CycleTriggerReason.NEW_REQUEST else None,
+            response_task_ids=[],  # Task IDs not needed currently
+            changed_items=cycle.changed_items
         )
-        
-        context_builder = self._get_or_create_context_builder(thread_id)
         orch_context = context_builder.build_context(
             trigger=trigger,
             phase_state=phase_provider.get_phase_context()
@@ -471,13 +514,13 @@ class OrchestratorNode(
         )
 
         # Add agent result to workspace
-        self.workspaces.add_result(thread_id, agent_result)
+        self.workspaces.add_result(cycle.thread_id, agent_result)
 
         # Display work plan snapshot
-        self._print_work_plan_snapshot(thread_id)
+        self._print_work_plan_snapshot(cycle.thread_id)
 
         print(f"{'='*80}")
-        print(f"✅ ORCHESTRATOR CYCLE END - Thread: {thread_id}")
+        print(f"✅ ORCHESTRATOR CYCLE END - Thread: {cycle.thread_id}")
         print(f"{'='*80}\n")
 
         return agent_result
@@ -804,7 +847,7 @@ Key principles:
             # No specialization provided
             return behavior_msg
     
-    def _get_or_create_context_builder(self, thread_id: str):
+    def _get_or_create_context_builder(self, thread_id: str) -> OrchestratorContextBuilder:
         """
         Lazy initialization of context builder per thread.
         
@@ -818,7 +861,6 @@ Key principles:
             OrchestratorContextBuilder for this thread
         """
         if thread_id not in self._context_builders:
-            from .context import OrchestratorContextBuilder
             self._context_builders[thread_id] = OrchestratorContextBuilder(
                 get_workload_service=lambda: self.workspaces,
                 node_uid=self.uid,

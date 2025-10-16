@@ -12,17 +12,16 @@ Provides specialized analyzers and models for understanding:
 from .models import (
     CycleTriggerReason,
     CycleTrigger,
+    PendingCycle,
     FutilityIndicator,
     ProgressMetrics,
     WorkPlanHealth,
-    RequestIntent,
     PhaseTransition,
     PhaseHistory,
     OrchestratorContext
 )
 
 from .analyzers import (
-    IntentClassifier,
     HealthAnalyzer,
     ProgressTracker
 )
@@ -35,16 +34,15 @@ __all__ = [
     
     # Models
     'CycleTrigger',
+    'PendingCycle',
     'FutilityIndicator',
     'ProgressMetrics',
     'WorkPlanHealth',
-    'RequestIntent',
     'PhaseTransition',
     'PhaseHistory',
     'OrchestratorContext',
     
     # Analyzers
-    'IntentClassifier',
     'HealthAnalyzer',
     'ProgressTracker',
     

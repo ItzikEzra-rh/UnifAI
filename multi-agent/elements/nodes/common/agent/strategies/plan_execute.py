@@ -360,7 +360,10 @@ class PlanAndExecuteStrategy(AgentStrategy):
             observations=observations
         )
         
-        self._phase_iterations = 0
+        # Only reset iteration count if phase actually changed
+        # This allows terminal phase safety check (line 335) to trigger
+        if self._current_phase != old_phase:
+            self._phase_iterations = 0
     
     def _should_transition_phase(self, observations: List[AgentObservation]) -> bool:
         """

@@ -12,12 +12,24 @@ from pydantic import BaseModel, Field
 
 class CycleTriggerReason(Enum):
     """Why an orchestration cycle was triggered."""
-    NEW_REQUEST = "new_request"
-    RESPONSE_ARRIVED = "response_arrived"
-    FOLLOW_UP_REQUEST = "follow_up_request"
-    RETRY = "retry"
-    PHASE_TRANSITION = "phase_transition"
-    MANUAL = "manual"
+    NEW_REQUEST = "new_request"           # User sent a message (new or follow-up)
+    RESPONSE_ARRIVED = "response_arrived" # Agent(s) responded to delegated work
+    
+    # Reserved for future use
+    RETRY = "retry"                       # Automatic retry after failure
+    MANUAL = "manual"                     # Manual trigger for testing/debugging
+
+
+class PendingCycle(BaseModel):
+    """
+    Information about a pending orchestration cycle.
+    
+    Used to track cycles that need to be executed with their trigger information.
+    Follows SOLID principles: single responsibility, explicit data structure.
+    """
+    thread_id: str = Field(..., description="Thread that needs orchestration")
+    reason: CycleTriggerReason = Field(..., description="Why this cycle is triggered")
+    changed_items: List[str] = Field(default_factory=list, description="Work item IDs that were affected (for RESPONSE_ARRIVED)")
 
 
 class CycleTrigger(BaseModel):
@@ -26,25 +38,25 @@ class CycleTrigger(BaseModel):
     description: str = Field(..., description="Human-readable explanation")
     
     # Context-specific details
-    new_user_message: Optional[str] = Field(None, description="For NEW_REQUEST, FOLLOW_UP_REQUEST")
-    response_task_ids: List[str] = Field(default_factory=list, description="For RESPONSE_ARRIVED")
-    changed_items: List[str] = Field(default_factory=list, description="Items affected")
+    new_user_message: Optional[str] = Field(None, description="For NEW_REQUEST")
+    response_task_ids: List[str] = Field(default_factory=list, description="Task IDs for RESPONSE_ARRIVED")
+    changed_items: List[str] = Field(default_factory=list, description="Work item IDs affected")
     
     def to_summary(self) -> str:
         """Format trigger as string for context display."""
         if self.reason == CycleTriggerReason.NEW_REQUEST:
             return f"🆕 NEW REQUEST: {self.new_user_message}"
         elif self.reason == CycleTriggerReason.RESPONSE_ARRIVED:
-            count = len(self.response_task_ids)
+            count = len(self.changed_items)
+            if count == 0:
+                return "📥 RESPONSES ARRIVED"
             items = ', '.join(self.changed_items[:3])
-            more = f" (+{len(self.changed_items) - 3} more)" if len(self.changed_items) > 3 else ""
-            return f"📥 RESPONSES ARRIVED: {count} response(s) for items: {items}{more}"
-        elif self.reason == CycleTriggerReason.FOLLOW_UP_REQUEST:
-            return f"🔄 FOLLOW-UP: {self.new_user_message}"
+            more = f" (+{count - 3} more)" if count > 3 else ""
+            return f"📥 RESPONSES ARRIVED for: {items}{more}"
         elif self.reason == CycleTriggerReason.RETRY:
             return f"🔁 RETRY: {self.description}"
-        elif self.reason == CycleTriggerReason.PHASE_TRANSITION:
-            return f"⚡ PHASE TRANSITION: {self.description}"
+        elif self.reason == CycleTriggerReason.MANUAL:
+            return f"🔧 MANUAL: {self.description}"
         else:
             return f"🔔 {self.reason.value.upper()}: {self.description}"
 
@@ -123,46 +135,6 @@ class WorkPlanHealth(BaseModel):
         return "\n".join(lines) if lines else "✅ No health issues detected"
 
 
-class RequestIntent(BaseModel):
-    """Classification of user request intent."""
-    is_new_task: bool = True
-    is_follow_up: bool = False
-    is_clarification: bool = False
-    is_refinement: bool = False
-    is_expansion: bool = False
-    
-    # Relationships
-    relates_to_items: List[str] = Field(
-        default_factory=list,
-        description="Which work items are related"
-    )
-    replaces_item: Optional[str] = Field(None, description="Replaces/supersedes this item")
-    depends_on_items: List[str] = Field(
-        default_factory=list,
-        description="Requires these to be done first"
-    )
-    
-    # Context
-    original_query: str
-    interpreted_intent: str = Field(..., description="Interpreted meaning")
-    
-    def to_summary(self) -> str:
-        """Format intent as string."""
-        if self.is_new_task and not self.is_follow_up:
-            return f"🆕 NEW TASK: {self.interpreted_intent}"
-        elif self.is_follow_up:
-            items = ', '.join(self.relates_to_items[:2])
-            more = f" (+{len(self.relates_to_items) - 2} more)" if len(self.relates_to_items) > 2 else ""
-            return f"🔄 FOLLOW-UP on [{items}{more}]: {self.interpreted_intent}"
-        elif self.is_refinement:
-            item = self.relates_to_items[0] if self.relates_to_items else "unknown"
-            return f"🔧 REFINEMENT of [{item}]: {self.interpreted_intent}"
-        elif self.is_expansion:
-            return f"📈 EXPANSION: {self.interpreted_intent}"
-        else:
-            return f"💬 CLARIFICATION: {self.interpreted_intent}"
-
-
 class PhaseTransition(BaseModel):
     """Record of a phase transition."""
     from_phase: str
@@ -208,9 +180,6 @@ class OrchestratorContext(BaseModel):
     # Why are we running?
     trigger: CycleTrigger
     
-    # What does user want?
-    request_intent: Optional[RequestIntent] = None
-    
     # How's the work plan doing?
     health: WorkPlanHealth
     
@@ -240,17 +209,7 @@ class OrchestratorContext(BaseModel):
             "",
             "🎯 WHY THIS CYCLE:",
             self.trigger.to_summary(),
-            ""
-        ]
-        
-        if self.request_intent:
-            sections.extend([
-                "💭 REQUEST INTENT:",
-                self.request_intent.to_summary(),
-                ""
-            ])
-        
-        sections.extend([
+            "",
             "🏥 WORK PLAN HEALTH:",
             self.health.to_summary(),
             "",
@@ -263,7 +222,7 @@ class OrchestratorContext(BaseModel):
             work_plan_snapshot,
             "",
             "="*80
-        ])
+        ]
         
         return "\n".join(sections)
 

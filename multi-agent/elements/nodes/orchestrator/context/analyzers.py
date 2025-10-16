@@ -12,63 +12,8 @@ from elements.nodes.common.workload import WorkPlan, WorkItem, WorkItemStatus, W
 from .models import (
     WorkPlanHealth,
     FutilityIndicator,
-    ProgressMetrics,
-    RequestIntent
+    ProgressMetrics
 )
-
-
-class IntentClassifier:
-    """Classifies user request intent using heuristics."""
-    
-    def classify(
-        self, 
-        user_message: str, 
-        plan: Optional[WorkPlan]
-    ) -> RequestIntent:
-        """
-        Classify user request intent based on existing work plan.
-        
-        Uses simple heuristics:
-        - If no plan exists → new task
-        - If plan exists → likely follow-up
-        - Keyword matching to find related items (checks DONE items)
-        
-        Args:
-            user_message: User's request text
-            plan: Current work plan (if exists)
-        
-        Returns:
-            RequestIntent with classification
-        """
-        # Check if plan exists (convert to bool explicitly)
-        is_follow_up = bool(plan is not None and plan.items)
-        
-        relates_to_items = []
-        if is_follow_up and plan:
-            # Simple keyword matching to find related items
-            for item in plan.items.values():
-                if item.status == WorkItemStatus.DONE:
-                    # Check if message references completed work
-                    # Use first 3 words of title as keywords
-                    keywords = item.title.split()[:3]
-                    if any(word.lower() in user_message.lower() 
-                           for word in keywords if len(word) > 3):  # Skip short words
-                        relates_to_items.append(item.id)
-        
-        # Determine intent type
-        is_refinement = is_follow_up and len(relates_to_items) > 0
-        is_expansion = is_follow_up and len(relates_to_items) == 0
-        
-        return RequestIntent(
-            is_new_task=not is_follow_up,
-            is_follow_up=is_follow_up,
-            is_clarification=False,  # Could enhance with keyword detection ("what", "explain", etc.)
-            is_refinement=is_refinement,
-            is_expansion=is_expansion,
-            relates_to_items=relates_to_items,
-            original_query=user_message,
-            interpreted_intent=user_message[:100]  # Truncate for display
-        )
 
 
 class HealthAnalyzer:
@@ -126,16 +71,26 @@ class HealthAnalyzer:
                 if blocked_by:
                     # Get titles of blocking items for clarity
                     blocker_titles = []
+                    truly_blocking = []
                     for dep in blocked_by:
                         dep_item = plan.items.get(dep)
                         if dep_item:
+                            # If dependency has unprocessed responses, it's not truly blocking
+                            # (the response is here, LLM will process it this cycle)
+                            if dep_item.result and dep_item.result.has_unprocessed_responses:
+                                # Not truly blocking - response available for processing
+                                continue
                             blocker_titles.append(f"{dep} ({dep_item.status.value})")
+                            truly_blocking.append(dep)
                         else:
                             blocker_titles.append(dep)
+                            truly_blocking.append(dep)
                     
-                    blocked_analysis.append(
-                        f"{item.id} blocked by: {', '.join(blocker_titles)}"
-                    )
+                    # Only report as blocked if there are truly blocking dependencies
+                    if truly_blocking:
+                        blocked_analysis.append(
+                            f"{item.id} blocked by: {', '.join(blocker_titles)}"
+                        )
         
         # Basic progress metrics (will be enriched by ProgressTracker)
         total = len(plan.items)

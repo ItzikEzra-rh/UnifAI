@@ -16,6 +16,7 @@ from .phases.validators import (
     AllocationValidator, PlanningValidator, ExecutionValidator, 
     MonitoringValidator, SynthesisValidator
 )
+from .context import OrchestratorContextBuilder
 
 # Built-in orchestration tools
 from elements.tools.builtin.workplan.create_or_update import CreateOrUpdateWorkPlanTool
@@ -80,6 +81,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
             node_uid: str,
             thread_id: str,
             get_workload_service: Callable[[], Any],
+            context_builder: Optional[OrchestratorContextBuilder] = None,
             iteration_limits: Optional[PhaseIterationLimits] = None
     ):
         """
@@ -92,6 +94,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
             node_uid: Node identifier
             thread_id: Current thread ID for context
             get_workload_service: Function to get workload service
+            context_builder: OrchestratorContextBuilder for recording phase transitions (optional)
             iteration_limits: Custom iteration limits configuration (optional)
         
         Note:
@@ -105,6 +108,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
         self._thread_id = thread_id
         self._domain_tools = domain_tools
         self._get_workload_service = get_workload_service
+        self._context_builder = context_builder
         
         # Configure iteration limits using Pydantic model
         self._iteration_limits = iteration_limits or PhaseIterationLimits()
@@ -719,6 +723,15 @@ class OrchestratorPhaseProvider(PhaseProvider):
             # Continue cascade
             transitions.append(next_phase)
             visited.add(next_phase)
+            
+            # Record phase transition in context builder if available
+            if self._context_builder:
+                self._context_builder.record_phase_transition(
+                    from_phase=current,
+                    to_phase=next_phase,
+                    reason=f"Cascade transition (started from {transitions[0]})"
+                )
+            
             current = next_phase
             
             # Refresh context for next iteration
@@ -1093,15 +1106,32 @@ class OrchestratorPhaseProvider(PhaseProvider):
             # If we have orchestrator context, format it with work plan in ONE message
             if self._current_orch_context:
                 combined_context = self._current_orch_context.format_context(plan_snapshot)
+                
+                # Print dynamic context for debugging
+                print(f"\n{'='*80}")
+                print(f"📤 DYNAMIC CONTEXT PROVIDED TO LLM - Phase: {phase_name.upper()}")
+                print(f"{'='*80}")
+                print(combined_context)
+                print(f"{'='*80}\n")
+                
                 messages.append(ChatMessage(
                     role=Role.USER,
                     content=combined_context
                 ))
             else:
                 # Fallback: just show work plan (backward compatibility)
+                fallback_context = f"Current Work Plan:\n{plan_snapshot}"
+                
+                # Print fallback context for debugging
+                print(f"\n{'='*80}")
+                print(f"📤 DYNAMIC CONTEXT PROVIDED TO LLM - Phase: {phase_name.upper()} (FALLBACK)")
+                print(f"{'='*80}")
+                print(fallback_context)
+                print(f"{'='*80}\n")
+                
                 messages.append(ChatMessage(
                     role=Role.USER,
-                    content=f"Current Work Plan:\n{plan_snapshot}"
+                    content=fallback_context
                 ))
         
         except Exception as e:

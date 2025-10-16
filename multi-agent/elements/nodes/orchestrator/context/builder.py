@@ -17,7 +17,7 @@ from .models import (
     PhaseHistory,
     PhaseTransition
 )
-from .analyzers import IntentClassifier, HealthAnalyzer, ProgressTracker
+from .analyzers import HealthAnalyzer, ProgressTracker
 
 
 class OrchestratorContextBuilder:
@@ -36,7 +36,6 @@ class OrchestratorContextBuilder:
         get_workload_service: Callable,
         node_uid: str,
         thread_id: str,
-        intent_classifier: Optional[IntentClassifier] = None,
         health_analyzer: Optional[HealthAnalyzer] = None,
         progress_tracker: Optional[ProgressTracker] = None
     ):
@@ -47,7 +46,6 @@ class OrchestratorContextBuilder:
             get_workload_service: Function to get workload service
             node_uid: Node identifier
             thread_id: Thread identifier
-            intent_classifier: Optional custom intent classifier (defaults to heuristic)
             health_analyzer: Optional custom health analyzer
             progress_tracker: Optional custom progress tracker
         """
@@ -56,7 +54,6 @@ class OrchestratorContextBuilder:
         self._thread_id = thread_id
         
         # Inject or use defaults
-        self._intent_classifier = intent_classifier or IntentClassifier()
         self._health_analyzer = health_analyzer or HealthAnalyzer()
         self._progress_tracker = progress_tracker or ProgressTracker()
         
@@ -89,15 +86,6 @@ class OrchestratorContextBuilder:
         # Delegate to specialists
         health = self._health_analyzer.analyze(plan)
         
-        # Classify intent only for user messages
-        request_intent = None
-        if trigger.reason in [CycleTriggerReason.NEW_REQUEST, CycleTriggerReason.FOLLOW_UP_REQUEST]:
-            if trigger.new_user_message:
-                request_intent = self._intent_classifier.classify(
-                    trigger.new_user_message, 
-                    plan
-                )
-        
         # Update progress metrics
         progress = self._progress_tracker.update(plan)
         health.progress_metrics = progress  # Enrich health with progress
@@ -108,7 +96,6 @@ class OrchestratorContextBuilder:
         # Compose final context
         return OrchestratorContext(
             trigger=trigger,
-            request_intent=request_intent,
             health=health,
             history=history,
             phase_state=phase_state
@@ -118,7 +105,7 @@ class OrchestratorContextBuilder:
         self, 
         from_phase: str, 
         to_phase: str, 
-        actions: List[str]
+        reason: str = ""
     ):
         """
         Record a phase transition for history tracking.
@@ -126,14 +113,14 @@ class OrchestratorContextBuilder:
         Args:
             from_phase: Phase transitioning from
             to_phase: Phase transitioning to
-            actions: List of actions taken in the phase
+            reason: Reason for the transition
         """
         transition = PhaseTransition(
             from_phase=from_phase,
             to_phase=to_phase,
             timestamp=datetime.utcnow().isoformat(),
-            reason="",  # Could be enhanced with reason tracking
-            actions_taken=actions
+            reason=reason,
+            actions_taken=[]
         )
         
         self._history.current_cycle_transitions.append(transition)
