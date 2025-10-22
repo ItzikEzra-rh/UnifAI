@@ -75,13 +75,16 @@ class LocalExecution(BaseModel):
     Local work execution record (for LOCAL work items).
     
     Captures what the orchestrator did directly without delegation.
-    Includes reasoning, actions taken, and outcome.
+    Simple narrative format - LLM describes execution naturally.
     """
-    reasoning: Optional[str] = Field(None, description="Why this approach was taken")
-    actions_taken: Optional[str] = Field(None, description="What was done (tools used, analysis performed)")
-    outcome: Optional[str] = Field(None, description="Result of the execution")
-    tools_used: List[str] = Field(default_factory=list, description="Tools invoked during execution")
-    executed_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat(), description="When execution completed")
+    outcome: str = Field(
+        ..., 
+        description="Complete execution result: what was done, how it was done, and what was achieved. Natural narrative format."
+    )
+    executed_at: str = Field(
+        default_factory=lambda: datetime.utcnow().isoformat(),
+        description="When execution completed"
+    )
 
 
 class DelegationExchange(BaseModel):
@@ -167,13 +170,16 @@ class WorkItemResult(BaseModel):
         """Check if any delegation responses need LLM interpretation."""
         return any(ex.needs_attention for ex in self.delegations)
     
-    @property
-    def conversation_summary(self) -> str:
+    def conversation_summary(self, truncate: bool = False, max_chars: int = 250) -> str:
         """
         Format delegation history with state indicators for LLM interpretation.
         
         Shows clear indicators of what needs attention vs what's been handled.
         Helps LLM understand conversation state and decide next actions.
+        
+        Args:
+            truncate: If True, truncate long responses for console display
+            max_chars: Maximum characters for truncated responses
         
         Returns:
             Formatted string with conversation history and state indicators
@@ -181,15 +187,23 @@ class WorkItemResult(BaseModel):
         if not self.delegations:
             return ""
         
+        # Helper to truncate content
+        def _truncate_if_needed(content: str) -> str:
+            if truncate and len(content) > max_chars:
+                return content[:max_chars] + "..."
+            return content
+        
         # Single exchange: simple format
         if len(self.delegations) == 1:
             ex = self.delegations[0]
             if ex.is_pending:
                 return f"⏳ WAITING for response from {ex.delegated_to}"
             elif ex.needs_attention:
-                return f"🔔 NEW RESPONSE from {ex.responded_by} (needs your interpretation):\n  {ex.response_content}"
+                content = _truncate_if_needed(ex.response_content)
+                return f"🔔 NEW RESPONSE from {ex.responded_by} (needs your interpretation):\n  {content}"
             else:
-                return f"✓ Response from {ex.responded_by} (processed):\n  {ex.response_content}"
+                content = _truncate_if_needed(ex.response_content)
+                return f"✓ Response from {ex.responded_by} (processed):\n  {content}"
         
         # Multi-turn conversation: detailed format
         lines = [f"Conversation History ({len(self.delegations)} turns):"]
@@ -200,12 +214,12 @@ class WorkItemResult(BaseModel):
             elif ex.needs_attention:
                 lines.append(f"  [{ex.sequence}] 🔔 NEW: Response from {ex.responded_by} (needs interpretation)")
                 lines.append(f"      Query: {ex.query}")
-                preview = ex.response_content[:100] + "..." if len(ex.response_content) > 100 else ex.response_content
-                lines.append(f"      Response: {preview}")
+                content = _truncate_if_needed(ex.response_content)
+                lines.append(f"      Response: {content}")
             else:
                 lines.append(f"  [{ex.sequence}] ✓ PROCESSED: {ex.responded_by}")
-                preview = ex.response_content[:80] + "..." if len(ex.response_content) > 80 else ex.response_content
-                lines.append(f"      Response: {preview}")
+                content = _truncate_if_needed(ex.response_content)
+                lines.append(f"      Response: {content}")
         
         return "\n".join(lines)
 
@@ -321,9 +335,12 @@ class WorkItemStatusCounts(BaseModel):
         return self.pending + self.in_progress + self.done + self.failed + self.blocked
 
 
-class WorkPlanStatusSummary(BaseModel):
+class WorkPlanStatus(BaseModel):
     """
-    Summary of work plan status.
+    Complete status snapshot of a work plan.
+    
+    Single source of truth for work plan status across the system.
+    Used by both service layer and phase decision logic.
     
     Note: waiting_items is kept for backward compatibility but is now
     calculated as (IN_PROGRESS items where kind=REMOTE). The actual
@@ -581,9 +598,9 @@ class WorkPlanService:
                 print(f"❌ [PLAN] Save error: {e}")
                 return False
     
-    def get_status_summary(self, thread_id: str, owner_uid: str) -> WorkPlanStatusSummary:
+    def get_status(self, thread_id: str, owner_uid: str) -> WorkPlanStatus:
         """
-        Get status summary for work plan.
+        Get status for work plan.
         
         Calculates waiting_items as IN_PROGRESS + kind=REMOTE items.
         This maintains backward compatibility while using the new status model.
@@ -591,7 +608,7 @@ class WorkPlanService:
         plan = self.load(thread_id, owner_uid)
         
         if not plan:
-            return WorkPlanStatusSummary(exists=False)
+            return WorkPlanStatus(exists=False)
         
         counts = plan.get_status_counts()
         ready_items = plan.get_ready_items()
@@ -617,7 +634,7 @@ class WorkPlanService:
         has_remote_waiting = len(remote_in_progress_items) > 0
         waiting_items_count = len(remote_in_progress_items)
         
-        summary = WorkPlanStatusSummary(
+        status = WorkPlanStatus(
             exists=True,
             total_items=len(plan.items),
             pending_items=counts.pending,
@@ -632,4 +649,4 @@ class WorkPlanService:
             is_complete=plan.is_complete()
         )
         
-        return summary
+        return status

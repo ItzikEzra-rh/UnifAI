@@ -20,6 +20,9 @@ from elements.tools.common.base_tool import BaseTool
 # Import ExecutionPhase for stronger typing
 from ..constants import ExecutionPhase
 
+# Import WorkPlanStatus from workload layer (single source of truth)
+from elements.nodes.common.workload import WorkPlanStatus
+
 # Forward declaration for AgentObservation
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -29,22 +32,7 @@ if TYPE_CHECKING:
 # =============================================================================
 # PHASE STATE MODELS
 # =============================================================================
-
-@dataclass(frozen=True)
-class WorkPlanStatus:
-    """Immutable snapshot of work plan status."""
-    total_items: int
-    pending_items: int
-    in_progress_items: int
-    waiting_items: int
-    done_items: int
-    failed_items: int
-    blocked_items: int
-    has_local_ready: bool
-    has_remote_waiting: bool
-    has_responses: bool
-    is_complete: bool
-
+# Note: WorkPlanStatus is now imported from workload layer (single source of truth)
 
 @dataclass(frozen=True)
 class PhaseState:
@@ -145,41 +133,7 @@ class PhaseTransitionPolicy(Protocol):
 # =============================================================================
 # HELPER FUNCTIONS
 # =============================================================================
-
-def create_work_plan_status(
-    *,
-    total_items: int = 0,
-    pending_items: int = 0,
-    in_progress_items: int = 0,
-    waiting_items: int = 0,
-    done_items: int = 0,
-    failed_items: int = 0,
-    blocked_items: int = 0,
-    has_local_ready: bool = False,
-    has_remote_waiting: bool = False,
-    has_responses: bool = False,
-    is_complete: bool = False
-) -> WorkPlanStatus:
-    """
-    Create a WorkPlanStatus with explicit parameters.
-    
-    This function provides a clean way to create status objects
-    with clear parameter names and validation.
-    """
-    return WorkPlanStatus(
-        total_items=total_items,
-        pending_items=pending_items,
-        in_progress_items=in_progress_items,
-        waiting_items=waiting_items,
-        done_items=done_items,
-        failed_items=failed_items,
-        blocked_items=blocked_items,
-        has_local_ready=has_local_ready,
-        has_remote_waiting=has_remote_waiting,
-        has_responses=has_responses,
-        is_complete=is_complete
-    )
-
+# Note: create_work_plan_status() removed - use WorkPlanStatus() directly from workload layer
 
 def create_phase_state(
     work_plan_status: Optional[WorkPlanStatus] = None,

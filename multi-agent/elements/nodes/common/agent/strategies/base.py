@@ -91,19 +91,19 @@ class AgentStrategy(ABC):
     @abstractmethod
     def think(
         self, 
-        messages: List[ChatMessage],
-        observations: List[AgentObservation]
+        messages: List[ChatMessage]
     ) -> List[AgentStep]:
         """
         Generate next steps based on current state.
         
         This is the core method that implements the strategy's decision-making
-        logic. Based on the conversation history and previous observations,
-        determine what the agent should do next.
+        logic. Based on the conversation history, determine what the agent 
+        should do next.
         
         Args:
-            messages: Conversation history (user messages, system prompts, etc.)
-            observations: History of actions taken and their results
+            messages: Mutable conversation history including USER, ASSISTANT, TOOL, 
+                     and SYSTEM messages. Strategy may modify this list as needed 
+                     (e.g., clearing on phase transitions, adding error feedback).
             
         Returns:
             List of steps to execute (planning, actions, finish, etc.)
@@ -170,22 +170,21 @@ class AgentStrategy(ABC):
     @abstractmethod
     def build_context(
         self,
-        messages: List[ChatMessage],
-        observations: List[AgentObservation]
+        messages: List[ChatMessage]
     ) -> List[ChatMessage]:
         """
-        Build complete context for LLM including observations.
+        Build complete context for LLM from conversation history.
         
         Each strategy implements its own context building approach based on
-        its specific requirements (e.g., ReAct uses TOOL messages, others might
-        use SYSTEM messages with formatted text).
+        its specific requirements. Messages already include TOOL messages
+        in correct order (added by iterator after execution).
         
         Args:
-            messages: Original conversation messages
-            observations: Previous action observations
+            messages: Complete conversation history including USER, ASSISTANT,
+                     TOOL, and SYSTEM messages
             
         Returns:
-            Complete message list for LLM
+            Complete message list for LLM (may add system prompts, filter, etc.)
         """
         ...
     

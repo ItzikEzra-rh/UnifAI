@@ -16,7 +16,7 @@ from enum import Enum
 from elements.llms.common.chat.message import ChatMessage, Role
 from elements.tools.common.base_tool import BaseTool
 from ..primitives import AgentStep, StepType, AgentFinish, AgentObservation
-from ..parsers import OutputParser
+from ..parsers import OutputParser, ParseError
 from .base import AgentStrategy
 from ..constants import (
     StrategyDefaults, StrategyType, SystemPrompts, ExecutionPhase
@@ -128,8 +128,7 @@ class PlanAndExecuteStrategy(AgentStrategy):
     
     def think(
         self,
-        messages: List[ChatMessage],
-        observations: List[AgentObservation]
+        messages: List[ChatMessage]
     ) -> List[AgentStep]:
         """
         Generate next steps based on current phase and state.
@@ -138,13 +137,13 @@ class PlanAndExecuteStrategy(AgentStrategy):
         Each phase may iterate multiple times before transitioning.
         
         Args:
-            messages: Conversation history
-            observations: Previous tool execution results
+            messages: Mutable conversation history. Strategy may modify this list
+                     (e.g., clearing on phase transitions, adding error feedback).
             
         Returns:
             List of steps to execute
         """
-        # Visual banner at start of FIRST think call (before phase updates)
+        # Visual banner at start of FIRST think call
         if self._step_count == 0:
             print(f"\n{'='*80}")
             print(f"🧠 LLM INTERACTION #1 - BEGINNING ORCHESTRATION CYCLE")
@@ -155,24 +154,22 @@ class PlanAndExecuteStrategy(AgentStrategy):
         
         try:
             # Determine current phase based on context
-            # _update_phase now handles cascading transitions internally
             old_phase = self._current_phase
-            self._update_phase(observations)
+            self._update_phase()
+            
+            # Phase transition detected
             if old_phase != self._current_phase:
                 print(f"   └─ Phase Transition: {old_phase} → {self._current_phase}")
+                # Note: Messages NOT cleared - full history preserved across phases
             
             # Build phase-specific context
-            context = self.build_context(messages, observations)
+            context = self.build_context(messages)
             
             # Get phase-appropriate tools
             tools = self.get_tools_for_phase(self._current_phase)
             
-            # If no tools available and phase requires tools, advance
-            if not tools and self._phase_provider.requires_tools(self._current_phase):
-                self._advance_phase()
-                return self.think(messages, observations)
-            
             # Get LLM response
+            print(f"🧠 [STRATEGY] Thinking in phase {self._current_phase}")
             response = self.llm_chat(context, tools)
             
             # Parse response
@@ -187,54 +184,88 @@ class PlanAndExecuteStrategy(AgentStrategy):
             # Handle parsed result
             if isinstance(result, list):
                 # Tool calls - create action steps
-                for i, action in enumerate(result):
+                for action in result:
                     steps.append(AgentStep(
                         StepType.ACTION,
                         action,
                         metadata={"phase": self._current_phase}
                     ))
             elif isinstance(result, AgentFinish):
-                # Agent wants to finish - ask PROVIDER if we can (SOLID!)
+                # Agent wants to finish - ask provider if we can
                 can_finish = self._phase_provider.can_finish_now(self._current_phase)
                 
                 if not can_finish:
-                    # Provider handles phase transition logic
-                    self._update_phase(observations)
-                    # Continue with new phase
-                    return self.think(messages, observations)
+                    # Provider says can't finish - continue (will trigger phase update)
+                    # Recursive call will run _update_phase() which cascades to next phase
+                    return self.think(messages)
                 else:
                     # Provider allows finish
                     steps.append(AgentStep(StepType.FINISH, result))
             
+            # Success - reset error count
+            self._error_count = 0
             self.increment_step_count()
             self._phase_iterations += 1
             
             return steps
             
-        except Exception as e:
+        except ParseError as e:
+            # Add error feedback to messages for next iteration
+            print(f"⚠️  [STRATEGY] Parse error in phase {self._current_phase}: {e}")
+            
+            from ..constants import ErrorMessages
+            error_feedback = ChatMessage(
+                role=Role.SYSTEM,
+                content=ErrorMessages.get_parse_error_guidance(e)
+            )
+            messages.append(error_feedback)
+            
+            # Return ERROR step - iterator will retry automatically
             return [AgentStep(
                 StepType.ERROR,
                 e,
-                metadata={"phase": self._current_phase}
+                metadata={
+                    "phase": self._current_phase,
+                    "error_type": "parse_error"
+                }
+            )]
+        
+        except Exception as e:
+            # Fatal strategy error
+            print(f"❌ [STRATEGY] Fatal error in phase {self._current_phase}: {e}")
+            
+            error_feedback = ChatMessage(
+                role=Role.SYSTEM,
+                content=f"System error: {e}. Please try a different approach."
+            )
+            messages.append(error_feedback)
+            
+            return [AgentStep(
+                StepType.ERROR,
+                e,
+                metadata={
+                    "phase": self._current_phase,
+                    "error_type": "strategy_error"
+                }
             )]
     
     def build_context(
         self,
-        messages: List[ChatMessage],
-        observations: List[AgentObservation]
+        messages: List[ChatMessage]
     ) -> List[ChatMessage]:
         """
         Build context with phase-specific prompting and dynamic context.
+        
+        Messages already include TOOL messages in correct order (added by iterator).
         
         Includes:
         - Phase-specific system message with guidance + validation
         - Static messages (conversation, adjacency, request)
         - Dynamic context from provider (fresh workspace + work plan)
-        - Tool observations as TOOL messages
         
         Args:
-            messages: Original conversation (static messages)
-            observations: Tool execution results
+            messages: Complete conversation history including USER, ASSISTANT,
+                     TOOL, and SYSTEM messages
             
         Returns:
             Complete context for LLM
@@ -251,7 +282,8 @@ class PlanAndExecuteStrategy(AgentStrategy):
         # [2] Static messages (conversation, adjacency, request)
         # Filter out old workspace/workplan if provider has dynamic context
         static_messages = self._filter_static_messages(messages)
-        context.extend(static_messages)
+        if context:
+            context.extend(static_messages)
         
         # [3] Dynamic context from provider (fresh workspace + work plan)
         # This ensures LLM always sees current state
@@ -261,13 +293,8 @@ class PlanAndExecuteStrategy(AgentStrategy):
             )
             context.extend(dynamic_context)
         
-        # [4] Tool observations
-        for obs in observations:
-            context.append(ChatMessage(
-                role=Role.TOOL,
-                content=str(obs.output) if obs.success else f"Error: {obs.error}",
-                tool_call_id=obs.action_id
-            ))
+        # [4] Messages already include TOOL messages in correct order!
+        # No need to re-process observations
         
         return context
     
@@ -307,7 +334,7 @@ class PlanAndExecuteStrategy(AgentStrategy):
         - Maximum steps reached
         - Terminal step encountered
         - No progress for multiple iterations
-        - All phases complete
+        - Provider says we can finish (e.g., waiting for responses, work complete)
         
         Args:
             history: Execution history
@@ -327,17 +354,17 @@ class PlanAndExecuteStrategy(AgentStrategy):
         if self._no_progress_count > 3:
             return False
         
-        # Check if in terminal phase (ask provider, don't hardcode)
-        # Terminal phases (like SYNTHESIS) need at least 2 iterations:
-        # 1. Call synthesis tool (e.g., workplan.summarize)
-        # 2. See results, return AgentFinish with summary
-        if self._phase_provider.is_terminal_phase(self._current_phase):
-            if self._phase_iterations > 1:  # ✅ Allow tool call + finish
-                return False
+        # Ask provider if we can finish (handles all orchestrator-specific logic)
+        # This covers:
+        # - Work complete (all items DONE/FAILED)
+        # - Waiting for responses with no actionable work
+        # - Terminal phases (SYNTHESIS)
+        if self._phase_provider.can_finish_now(self._current_phase):
+            return False
         
         return True
     
-    def _update_phase(self, observations: List[AgentObservation]) -> None:
+    def _update_phase(self) -> None:
         """
         Update phase using provider.
         
@@ -348,20 +375,16 @@ class PlanAndExecuteStrategy(AgentStrategy):
         - Any other internal logic
         
         Just: "I'm in phase X" → Provider → "Now in phase Y"
-        
-        Args:
-            observations: Recent observations from tool execution
         """
         old_phase = self._current_phase
         
         # Provider returns new phase (all logic internal)
         self._current_phase = self._phase_provider.update_phase(
             current_phase=self._current_phase,
-            observations=observations
+            observations=[]  # Not used by provider
         )
         
         # Only reset iteration count if phase actually changed
-        # This allows terminal phase safety check (line 335) to trigger
         if self._current_phase != old_phase:
             self._phase_iterations = 0
     
@@ -376,16 +399,24 @@ class PlanAndExecuteStrategy(AgentStrategy):
         # based on work plan state, not iteration counting
         return False
     
-    def _advance_phase(self) -> None:
+    def _clear_phase_messages(self, messages: List[ChatMessage]) -> None:
         """
-        Advance to next phase in sequence.
+        Clear phase-specific messages.
         
-        Delegates to provider - NO hardcoded phase knowledge.
+        Strategy logic: Keep USER messages (original request context),
+        clear ASSISTANT/TOOL/error-SYSTEM (previous phase execution).
+        
+        Args:
+            messages: Mutable conversation history to modify
         """
-        next_phase = self._phase_provider.get_next_phase_in_sequence(self._current_phase)
-        if next_phase:
-            self._current_phase = next_phase
-            self._phase_iterations = 0
+        # Filter what to keep - only USER messages
+        user_messages = [msg for msg in messages if msg.role == Role.USER]
+        
+        # Modify the list in place (affects iterator.messages)
+        messages.clear()
+        messages.extend(user_messages)
+        
+        print(f"🧹 [STRATEGY] Cleared phase messages (kept {len(user_messages)} USER messages)")
     
     
     def _build_phase_prompt(self) -> str:

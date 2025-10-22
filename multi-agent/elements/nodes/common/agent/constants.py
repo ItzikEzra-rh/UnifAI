@@ -418,6 +418,7 @@ class ToolNames:
     WORKPLAN_CREATE_OR_UPDATE = "workplan.create_or_update"
     WORKPLAN_ASSIGN = "workplan.assign"
     WORKPLAN_MARK = "workplan.mark"
+    WORKPLAN_RECORD_EXECUTION = "workplan.record_execution"
     WORKPLAN_INGEST_RESULTS = "workplan.ingest_results"
     WORKPLAN_IS_COMPLETE = "workplan.is_complete"
     WORKPLAN_SUMMARIZE = "workplan.summarize"

@@ -6,8 +6,9 @@ cycle triggers, intent classification, health metrics, and history tracking.
 """
 
 from enum import Enum
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Set
 from pydantic import BaseModel, Field
+from datetime import datetime
 
 
 class CycleTriggerReason(Enum):
@@ -24,12 +25,167 @@ class PendingCycle(BaseModel):
     """
     Information about a pending orchestration cycle.
     
-    Used to track cycles that need to be executed with their trigger information.
-    Follows SOLID principles: single responsibility, explicit data structure.
+    DEPRECATED: Use OrchestratorCycle instead for better multi-trigger support.
+    Kept for backward compatibility with existing code.
     """
     thread_id: str = Field(..., description="Thread that needs orchestration")
     reason: CycleTriggerReason = Field(..., description="Why this cycle is triggered")
     changed_items: List[str] = Field(default_factory=list, description="Work item IDs that were affected (for RESPONSE_ARRIVED)")
+
+
+class TriggerEvent(BaseModel):
+    """
+    A single trigger event that occurred for an orchestration cycle.
+    
+    Each event represents one reason why orchestration was triggered
+    (e.g., one response arrival, one new request).
+    """
+    reason: CycleTriggerReason = Field(..., description="Why this trigger occurred")
+    changed_items: List[str] = Field(default_factory=list, description="Work items affected by this trigger")
+    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    
+    def to_summary(self) -> str:
+        """Format this trigger event as a string."""
+        if self.reason == CycleTriggerReason.RESPONSE_ARRIVED:
+            if self.changed_items:
+                items = ', '.join(self.changed_items[:2])
+                if len(self.changed_items) > 2:
+                    items += f" (+{len(self.changed_items) - 2} more)"
+                return f"Response arrived for: {items}"
+            return "Response arrived"
+        elif self.reason == CycleTriggerReason.NEW_REQUEST:
+            return "New user request"
+        elif self.reason == CycleTriggerReason.RETRY:
+            return "Retry requested"
+        elif self.reason == CycleTriggerReason.MANUAL:
+            return "Manual trigger"
+        return self.reason.value
+
+
+class OrchestratorCycle(BaseModel):
+    """
+    Represents an orchestration cycle for a single thread.
+    
+    Created once per thread, accumulates all trigger events that occur
+    during packet processing. When executed, the LLM sees ALL triggers
+    for complete context awareness.
+    
+    Design:
+    - One cycle per thread (enforced by dict key in OrchestratorNode)
+    - Accumulates multiple trigger events
+    - Preserves all information for LLM context
+    - No prioritization - LLM decides what to do
+    """
+    thread_id: str = Field(..., description="Thread being orchestrated")
+    triggers: List[TriggerEvent] = Field(default_factory=list, description="All trigger events")
+    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    
+    def add_trigger(
+        self, 
+        reason: CycleTriggerReason, 
+        changed_items: List[str] = None
+    ) -> None:
+        """
+        Add a trigger event to this cycle.
+        
+        Args:
+            reason: Why this trigger occurred
+            changed_items: Work items affected by this trigger
+        """
+        event = TriggerEvent(
+            reason=reason,
+            changed_items=changed_items or []
+        )
+        self.triggers.append(event)
+    
+    @property
+    def all_changed_items(self) -> Set[str]:
+        """Get all unique work items affected across all triggers."""
+        items = set()
+        for trigger in self.triggers:
+            items.update(trigger.changed_items)
+        return items
+    
+    @property
+    def has_new_requests(self) -> bool:
+        """Check if any trigger is a new user request."""
+        return any(t.reason == CycleTriggerReason.NEW_REQUEST for t in self.triggers)
+    
+    @property
+    def has_responses(self) -> bool:
+        """Check if any trigger is a response arrival."""
+        return any(t.reason == CycleTriggerReason.RESPONSE_ARRIVED for t in self.triggers)
+    
+    @property
+    def response_count(self) -> int:
+        """Count how many response events occurred."""
+        return sum(1 for t in self.triggers if t.reason == CycleTriggerReason.RESPONSE_ARRIVED)
+    
+    def get_trigger_summary(self) -> str:
+        """
+        Format all triggers as a clear summary for LLM context.
+        
+        Examples:
+        - "2 responses arrived for: jira_search, confluence_search"
+        - "New request + 1 response arrived for: data_fetch"
+        - "3 responses arrived"
+        """
+        if not self.triggers:
+            return "Cycle triggered"
+        
+        # Group by reason
+        by_reason: Dict[CycleTriggerReason, List[str]] = {}
+        for trigger in self.triggers:
+            if trigger.reason not in by_reason:
+                by_reason[trigger.reason] = []
+            by_reason[trigger.reason].extend(trigger.changed_items)
+        
+        parts = []
+        
+        # Format each reason group
+        if CycleTriggerReason.NEW_REQUEST in by_reason:
+            parts.append("New request")
+        
+        if CycleTriggerReason.RESPONSE_ARRIVED in by_reason:
+            response_items = by_reason[CycleTriggerReason.RESPONSE_ARRIVED]
+            count = self.response_count
+            if count == 1:
+                if response_items:
+                    parts.append(f"Response arrived for: {', '.join(response_items[:3])}")
+                else:
+                    parts.append("Response arrived")
+            else:
+                # Multiple responses
+                unique_items = set(response_items)
+                if unique_items:
+                    items_str = ', '.join(list(unique_items)[:3])
+                    if len(unique_items) > 3:
+                        items_str += f" (+{len(unique_items) - 3} more)"
+                    parts.append(f"{count} responses arrived for: {items_str}")
+                else:
+                    parts.append(f"{count} responses arrived")
+        
+        if CycleTriggerReason.RETRY in by_reason:
+            parts.append("Retry requested")
+        
+        if CycleTriggerReason.MANUAL in by_reason:
+            parts.append("Manual trigger")
+        
+        return " + ".join(parts) if parts else "Multiple triggers"
+    
+    def to_pending_cycle(self) -> 'PendingCycle':
+        """
+        Convert to PendingCycle for backward compatibility.
+        
+        Uses the FIRST trigger's reason as primary, includes all changed items.
+        """
+        primary_reason = self.triggers[0].reason if self.triggers else CycleTriggerReason.NEW_REQUEST
+        
+        return PendingCycle(
+            thread_id=self.thread_id,
+            reason=primary_reason,
+            changed_items=list(self.all_changed_items)
+        )
 
 
 class CycleTrigger(BaseModel):

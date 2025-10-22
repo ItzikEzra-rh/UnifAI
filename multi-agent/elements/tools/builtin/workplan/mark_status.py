@@ -2,7 +2,7 @@
 Tool for marking work item status.
 """
 
-from typing import Dict, Any, Optional, Callable
+from typing import Dict, Any, Optional, Callable, Literal
 from pydantic import BaseModel, Field
 from elements.tools.common.base_tool import BaseTool
 from elements.nodes.common.workload import WorkItemStatus, WorkItemKind
@@ -15,34 +15,39 @@ class MarkStatusArgs(BaseModel):
         ..., 
         description="ID of the work item to update (get from work plan context)"
     )
-    status: WorkItemStatus = Field(
+    status: Literal['done', 'failed'] = Field(
         ..., 
-        description="""New status for the work item. Valid values:
-        - 'done': Task completed successfully (use when you've confirmed the work is finished)
-        - 'failed': Task failed and cannot be completed (use when errors are unrecoverable)
-        - 'in_progress': Task is actively being worked on (local execution or remote delegation)
-        - 'pending': Task is ready to start but not yet begun
+        description="""Final status for the work item. Only two valid values:
+        - 'done': Task completed successfully
+        - 'failed': Task failed and cannot be completed
         
-        Note: For delegated items waiting for responses, they're automatically marked as 'in_progress'.
-        Use this tool primarily to mark items as 'done' or 'failed' after reviewing responses."""
+        Note: 
+        - IN_PROGRESS is set automatically by DelegateTaskTool (not manual)
+        - PENDING is the initial state (not set via this tool)
+        - LOCAL items use RecordLocalExecutionTool (auto-marks DONE)"""
     )
     notes: Optional[str] = Field(
         None, 
-        description="Detailed explanation of why you're changing the status. REQUIRED for 'failed' status to explain what went wrong and retry history. Helpful for 'done' to summarize what was accomplished."
+        description="Explanation of the status change. REQUIRED for 'failed' to explain what went wrong. Helpful for 'done' to summarize accomplishments."
     )
 
 
 class MarkWorkItemStatusTool(BaseTool):
-    """Finalize work item status after interpreting responses or completing work."""
+    """Mark work item as DONE or FAILED after completion."""
     
     name = ToolNames.WORKPLAN_MARK
-    description = """FINAL STATUS DECISION - Use this to mark work item status ONLY when you're certain.
+    description = """Mark work item status as DONE or FAILED.
 
-    When to use this tool:
-    - 'done': Work is COMPLETE, quality is acceptable, all requirements met
-    - 'failed': Work CANNOT be completed (retries exhausted, fundamentally impossible)
-    - 'in_progress': Starting local execution
-    - 'pending': Reset for re-assignment
+    Use this when:
+    - 'done': Work is complete, requirements met, quality acceptable
+    - 'failed': Work cannot be completed (retries exhausted, fundamentally impossible)
+    
+    DO NOT use this for:
+    - Setting IN_PROGRESS (DelegateTaskTool does this automatically)
+    - Setting PENDING (initial state only)
+    
+    For REMOTE items: Review responses first, then mark done/failed
+    For LOCAL items: RecordLocalExecutionTool auto-marks DONE (rarely need this tool)
     
     ⚠️ IMPORTANT - DON'T RUSH TO MARK 'DONE':
     - If response is incomplete → Use DelegateTaskTool to ask for more
@@ -73,8 +78,8 @@ class MarkWorkItemStatusTool(BaseTool):
         workload_service = self._get_workload_service()
         workspace_service = workload_service.get_workspace_service()
         
-        # VALIDATION: Prevent marking DONE if waiting for delegation response
-        if args.status == WorkItemStatus.DONE:
+        # VALIDATION: Check constraints before marking status
+        if args.status in [WorkItemStatus.DONE, WorkItemStatus.FAILED]:
             # Load the work item to check state
             plan = workspace_service.load_work_plan(thread_id, owner_uid)
             if not plan or args.item_id not in plan.items:
@@ -84,18 +89,22 @@ class MarkWorkItemStatusTool(BaseTool):
             
             # Validate state transitions
             
-            # 1. Prevent marking REMOTE item as IN_PROGRESS without delegation
-            if (args.status == WorkItemStatus.IN_PROGRESS and 
-                item.kind == WorkItemKind.REMOTE):
-                # A REMOTE item must have at least one delegation to be IN_PROGRESS
-                if not item.result or not item.result.delegations:
+            # 1. LOCAL items must record execution before marking DONE
+            #    (FAILED is allowed without recording, for cases where execution wasn't attempted)
+            if item.kind == WorkItemKind.LOCAL and args.status == 'done':
+                # Check if execution has been recorded
+                if not item.result or not item.result.local_execution:
                     return {
                         "success": False,
-                        "error": f"Cannot mark REMOTE item '{args.item_id}' as IN_PROGRESS - must delegate using iem.delegate_task first"
+                        "error": (
+                            f"Cannot mark LOCAL item '{args.item_id}' as DONE without recording execution first. "
+                            f"This validation should not trigger since RecordLocalExecutionTool automatically marks as DONE. "
+                            f"If you see this error, there's a bug in the workflow."
+                        )
                     }
             
             # 2. Check if trying to mark DONE while still waiting for response
-            if (args.status == WorkItemStatus.DONE and
+            if (args.status == 'done' and
                 item.status == WorkItemStatus.IN_PROGRESS and 
                 item.kind == WorkItemKind.REMOTE):
                 
@@ -113,8 +122,10 @@ class MarkWorkItemStatusTool(BaseTool):
         
         def update_status(item, plan):
             """Update function for atomic status change."""
-            item.status = args.status
-            if args.status == WorkItemStatus.FAILED and args.notes:
+            # Convert string literal to WorkItemStatus enum
+            item.status = WorkItemStatus.DONE if args.status == 'done' else WorkItemStatus.FAILED
+            
+            if args.status == 'failed' and args.notes:
                 item.error = args.notes
             
             # Mark all delegation exchanges as processed (LLM has acted by marking status)
@@ -127,7 +138,7 @@ class MarkWorkItemStatusTool(BaseTool):
                 item.result.final_summary = args.notes
             
             # Mark success flag when marking DONE
-            if args.status == WorkItemStatus.DONE and item.result:
+            if args.status == 'done' and item.result:
                 item.result.success = True
         
         success = workspace_service.atomic_update_work_item(thread_id, owner_uid, args.item_id, update_status)
@@ -138,6 +149,6 @@ class MarkWorkItemStatusTool(BaseTool):
         result = {
             "success": True,
             "item_id": args.item_id,
-            "new_status": args.status.value
+            "new_status": args.status  # Already a string literal ('done' or 'failed')
         }
         return result

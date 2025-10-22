@@ -13,7 +13,7 @@ import threading
 from datetime import datetime
 from .workspace import Workspace
 from .models import AgentResult
-from .workplan import WorkPlan, WorkItemStatus, WorkPlanStatusSummary, WorkItemResult, WorkItemKind
+from .workplan import WorkPlan, WorkItemStatus, WorkPlanStatus, WorkItemResult, WorkItemKind
 from elements.llms.common.chat.message import ChatMessage
 
 
@@ -442,16 +442,16 @@ class IWorkspaceService(ABC):
         pass
     
     @abstractmethod
-    def get_work_plan_status(self, thread_id: str, owner_uid: str) -> WorkPlanStatusSummary:
+    def get_work_plan_status(self, thread_id: str, owner_uid: str) -> WorkPlanStatus:
         """
-        Get work plan status summary.
+        Get work plan status.
         
         Args:
             thread_id: Thread ID
             owner_uid: Owner node UID
             
         Returns:
-            WorkPlanStatusSummary with status information
+            WorkPlanStatus with status information
         """
         pass
     
@@ -904,12 +904,12 @@ class WorkspaceService(IWorkspaceService):
                 print(f"❌ [PLAN] Save error: {e}")
                 return False
     
-    def get_work_plan_status(self, thread_id: str, owner_uid: str) -> WorkPlanStatusSummary:
-        """Get work plan status summary."""
+    def get_work_plan_status(self, thread_id: str, owner_uid: str) -> WorkPlanStatus:
+        """Get work plan status."""
         plan = self.load_work_plan(thread_id, owner_uid)
         
         if not plan:
-            return WorkPlanStatusSummary(exists=False)
+            return WorkPlanStatus(exists=False)
         
         counts = plan.get_status_counts()
         ready_items = plan.get_ready_items()
@@ -941,7 +941,7 @@ class WorkspaceService(IWorkspaceService):
             for item in plan.items.values()
         )
         
-        summary = WorkPlanStatusSummary(
+        status = WorkPlanStatus(
             exists=True,
             total_items=len(plan.items),
             pending_items=counts.pending,
@@ -957,7 +957,7 @@ class WorkspaceService(IWorkspaceService):
             is_complete=plan.is_complete()
         )
         
-        return summary
+        return status
     
     def update_work_item_status(
         self,

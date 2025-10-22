@@ -13,6 +13,8 @@ from .models import (
     CycleTriggerReason,
     CycleTrigger,
     PendingCycle,
+    TriggerEvent,
+    OrchestratorCycle,
     FutilityIndicator,
     ProgressMetrics,
     WorkPlanHealth,
@@ -35,6 +37,8 @@ __all__ = [
     # Models
     'CycleTrigger',
     'PendingCycle',
+    'TriggerEvent',
+    'OrchestratorCycle',
     'FutilityIndicator',
     'ProgressMetrics',
     'WorkPlanHealth',

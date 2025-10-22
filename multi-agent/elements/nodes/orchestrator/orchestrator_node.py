@@ -25,7 +25,7 @@ from elements.tools.common.execution.models import ExecutorConfig
 from elements.nodes.common.workload import Task, WorkItemStatus, WorkItemKind, AgentResult
 from .orchestrator_phase_provider import OrchestratorPhaseProvider
 from .delegation_policy import OrchestratorDelegationPolicy
-from .context import PendingCycle, CycleTrigger, CycleTriggerReason, OrchestratorContextBuilder
+from .context import PendingCycle, CycleTrigger, CycleTriggerReason, OrchestratorContextBuilder, OrchestratorCycle
 from elements.tools.builtin import (
     CreateOrUpdateWorkPlanTool,
     AssignWorkItemTool,
@@ -94,8 +94,8 @@ class OrchestratorNode(
         self.max_rounds = max_rounds
         self.base_tools = tools or []
         
-        # Pending orchestration cycles with trigger information
-        self._pending_cycles: List[PendingCycle] = []
+        # Orchestration cycles (one per thread, accumulates triggers)
+        self._orchestration_cycles: Dict[str, OrchestratorCycle] = {}
         
         # Context builder for rich orchestration context (lazy init per thread)
         self._context_builders: Dict[str, OrchestratorContextBuilder] = {}
@@ -120,13 +120,17 @@ class OrchestratorNode(
         
         Benefits of batching:
         1. Ingest all responses before planning - better decision making
-        2. Run orchestration cycle once per thread - reduces redundant cycles
-        3. Better resource utilization and lower latency
+        2. Accumulate all triggers per thread into one cycle
+        3. Run orchestration cycle once per thread - reduces redundant cycles
+        4. Better resource utilization and lower latency
+        
+        Key improvement: Multiple events for same thread automatically merge
+        into one cycle via dict key uniqueness. LLM sees ALL triggers.
         """
-        # Clear pending cycles from previous batch
-        self._pending_cycles.clear()
+        # Clear orchestration cycles from previous batch
+        self._orchestration_cycles.clear()
 
-        # Process all packets first (ingest phase)
+        # Process all packets first (ingest phase - accumulates triggers)
         packets = list(self.inbox_packets())
 
         if not packets:
@@ -138,28 +142,9 @@ class OrchestratorNode(
             finally:
                 self.acknowledge(packet.id)
 
-        # Run orchestration cycles for pending cycles
-        for cycle in self._pending_cycles:
-            status_summary = self.workspaces.get_work_plan_status(cycle.thread_id, self.uid)
-
-            # Always run orchestration cycle - even if plan is complete
-            # (Complete plans can receive new requests that add new work items)
-            content = self._resolve_cycle_content(cycle.thread_id)
-            self._run_orchestration_cycle(cycle, content)
-            
-            # Re-check status after orchestration
-            status_summary = self.workspaces.get_work_plan_status(cycle.thread_id, self.uid)
-            final_result = self._get_final_orchestration_result(cycle.thread_id)
-            
-            # Finalize if orchestrator produced a result AND:
-            # 1. Work is complete (all items DONE/FAILED), OR
-            # 2. Work incomplete but no delegation packets sent (error/partial result case)
-            #
-            # If we have outgoing packets, let the router handle routing to delegated nodes.
-            # The graph will re-invoke us when responses arrive.
-            if final_result:
-                if status_summary.is_complete or not self.has_outgoing_packets():
-                    self._finalize_completed_work(cycle.thread_id, final_result)
+        # Execute one cycle per thread (handles all accumulated triggers)
+        for cycle in self._orchestration_cycles.values():
+            self._execute_cycle(cycle)
 
     def handle_task_packet(self, packet) -> None:
         """
@@ -167,7 +152,7 @@ class OrchestratorNode(
         
         This method is called by process_packets_batched() for each packet.
         It extracts and processes the task, updating the work plan as needed.
-        Pending cycles are tracked in self._pending_cycles for later orchestration.
+        Orchestration cycles are accumulated in self._orchestration_cycles.
         
         Args:
             packet: Task packet to handle
@@ -183,6 +168,94 @@ class OrchestratorNode(
             # This is a new work request
             print(f"📬 [ORCH:{self.uid}] Processing NEW WORK packet")
             self._handle_new_work(task)
+
+    def _record_trigger(
+        self,
+        thread_id: str,
+        reason: CycleTriggerReason,
+        changed_items: List[str] = None
+    ) -> None:
+        """
+        Record a trigger event for a thread's orchestration cycle.
+        
+        Automatically creates cycle if it doesn't exist. This is the clean
+        high-level API - callers don't need to think about cycle management.
+        
+        Design:
+        - One cycle per thread (dict key ensures uniqueness)
+        - Multiple triggers accumulate into same cycle
+        - LLM sees all triggers for complete context awareness
+        - No prioritization - LLM decides what matters
+        
+        Args:
+            thread_id: Thread that needs orchestration
+            reason: Why orchestration is needed
+            changed_items: Work items affected by this trigger (optional)
+        
+        Example:
+            # Two responses arrive for same thread in one batch:
+            self._record_trigger(tid, RESPONSE_ARRIVED, ["jira_search"])
+            self._record_trigger(tid, RESPONSE_ARRIVED, ["confluence_search"])
+            # Result: One cycle with summary "2 responses arrived for: jira_search, confluence_search"
+        """
+        # Create cycle if doesn't exist (dict key ensures one per thread)
+        if thread_id not in self._orchestration_cycles:
+            self._orchestration_cycles[thread_id] = OrchestratorCycle(thread_id=thread_id)
+        
+        # Add this trigger event
+        self._orchestration_cycles[thread_id].add_trigger(reason, changed_items)
+
+    def _execute_cycle(self, cycle: OrchestratorCycle) -> None:
+        """
+        Execute one orchestration cycle.
+        
+        The cycle contains all accumulated triggers. The LLM sees
+        complete context: "2 responses arrived + new request".
+        
+        Design:
+        - Converts OrchestratorCycle to PendingCycle for backward compatibility
+        - Prints clear summary of all triggers for debugging
+        - Runs orchestration with full trigger context
+        - Finalizes work if complete
+        
+        Args:
+            cycle: OrchestratorCycle with accumulated triggers
+        """
+        print(f"\n{'='*80}")
+        print(f"🎯 ORCHESTRATOR CYCLE START - Thread: {cycle.thread_id}")
+        print(f"   Triggers: {cycle.get_trigger_summary()}")
+        if cycle.all_changed_items:
+            items_str = ', '.join(list(cycle.all_changed_items)[:5])
+            if len(cycle.all_changed_items) > 5:
+                items_str += f" (+{len(cycle.all_changed_items) - 5} more)"
+            print(f"   Changed Items: {items_str}")
+        print(f"{'='*80}\n")
+        
+        # Get current status
+        status = self.workspaces.get_work_plan_status(cycle.thread_id, self.uid)
+        
+        # Resolve content for cycle (user message or guidance)
+        content = self._resolve_cycle_content(cycle.thread_id)
+        
+        # Convert to PendingCycle for backward compatibility with strategy
+        pending_cycle = cycle.to_pending_cycle()
+        
+        # Run orchestration (uses PendingCycle internally for now)
+        self._run_orchestration_cycle(pending_cycle, content)
+        
+        # Re-check status after orchestration
+        status = self.workspaces.get_work_plan_status(cycle.thread_id, self.uid)
+        final_result = self._get_final_orchestration_result(cycle.thread_id)
+        
+        # Finalize if orchestrator produced a result AND:
+        # 1. Work is complete (all items DONE/FAILED), OR
+        # 2. Work incomplete but no delegation packets sent (error/partial result case)
+        #
+        # If we have outgoing packets, let the router handle routing to delegated nodes.
+        # The graph will re-invoke us when responses arrive.
+        if final_result:
+            if status.is_complete or not self.has_outgoing_packets():
+                self._finalize_completed_work(cycle.thread_id, final_result)
 
     def _handle_task_response(self, task: Task) -> Optional[str]:
         """
@@ -265,14 +338,13 @@ class OrchestratorNode(
             # Find which work items got responses
             changed_item_ids = self._find_items_for_task(target_thread_id, correlation_task_id)
             
-            # Add pending cycle with RESPONSE_ARRIVED trigger
-            from .context import PendingCycle, CycleTriggerReason
-            self._pending_cycles.append(PendingCycle(
+            # Record trigger (automatically accumulates into existing cycle if one exists)
+            self._record_trigger(
                 thread_id=target_thread_id,
                 reason=CycleTriggerReason.RESPONSE_ARRIVED,
                 changed_items=changed_item_ids
-            ))
-            print(f"✅ [ORCH:{self.uid}] Added pending cycle for thread {target_thread_id[:8]}...")
+            )
+            print(f"✅ [ORCH:{self.uid}] Recorded response trigger for thread {target_thread_id[:8]}...")
         else:
             print(f"❌ [ORCH:{self.uid}] Failed to store response - NO orchestration cycle will run!")
             print(f"   This means delegation exchange not found")
@@ -368,19 +440,19 @@ class OrchestratorNode(
         self.workspaces.set_variable(thread_id, "orchestrator_uid", self.uid)
         self.workspaces.set_variable(thread_id, "original_task_id", task.task_id)
 
-        # Add pending cycle with NEW_REQUEST trigger
-        from .context import PendingCycle, CycleTriggerReason
-        self._pending_cycles.append(PendingCycle(
+        # Record trigger (automatically accumulates into existing cycle if one exists)
+        self._record_trigger(
             thread_id=thread_id,
             reason=CycleTriggerReason.NEW_REQUEST,
             changed_items=[]  # No specific items for new requests
-        ))
+        )
 
         # ✅ Orchestration will run in the batch processing loop
         # This ensures:
         # 1. Consistent behavior: 1 cycle per thread (new work OR responses)
         # 2. Better batching: All packets processed before orchestration
         # 3. Correct context: LLM sees all available information
+        # 4. Trigger accumulation: Multiple events for same thread merge into one cycle
 
     def _resolve_cycle_content(self, thread_id: str) -> str:
         """
@@ -655,7 +727,7 @@ class OrchestratorNode(
         Note:
             No idempotency check needed - caller (batch processing) already
             ensures this is called once per thread per batch, and only when
-            status_summary.is_complete is True. Multi-request flows naturally
+            status.is_complete is True. Multi-request flows naturally
             work because the work plan status is checked fresh each time.
         """
         # Check if response is required
@@ -713,30 +785,30 @@ class OrchestratorNode(
         if not plan or not plan.items:
             return
         
-        status_summary = service.get_work_plan_status(thread_id, self.uid)
+        status = service.get_work_plan_status(thread_id, self.uid)
         
         print(f"\n{'='*80}")
-        print(f"📋 WORK PLAN FINAL ({status_summary.total_items} items)")
+        print(f"📋 WORK PLAN FINAL ({status.total_items} items)")
         print(f"{'='*80}")
         
         # Compact status line
         status_parts = []
-        if status_summary.pending_items > 0:
-            status_parts.append(f"⏸️ {status_summary.pending_items} Pending")
-        if status_summary.in_progress_items > 0:
-            status_parts.append(f"🔄 {status_summary.in_progress_items} In Progress")
-        if status_summary.done_items > 0:
-            status_parts.append(f"✅ {status_summary.done_items} Done")
-        if status_summary.failed_items > 0:
-            status_parts.append(f"❌ {status_summary.failed_items} Failed")
+        if status.pending_items > 0:
+            status_parts.append(f"⏸️ {status.pending_items} Pending")
+        if status.in_progress_items > 0:
+            status_parts.append(f"🔄 {status.in_progress_items} In Progress")
+        if status.done_items > 0:
+            status_parts.append(f"✅ {status.done_items} Done")
+        if status.failed_items > 0:
+            status_parts.append(f"❌ {status.failed_items} Failed")
         print(f"Status: {' | '.join(status_parts)}")
         
-        if status_summary.blocked_items > 0 or status_summary.waiting_items > 0:
+        if status.blocked_items > 0 or status.waiting_items > 0:
             extras = []
-            if status_summary.blocked_items > 0:
-                extras.append(f"🚫 {status_summary.blocked_items} Blocked")
-            if status_summary.waiting_items > 0:
-                extras.append(f"⏳ {status_summary.waiting_items} Waiting")
+            if status.blocked_items > 0:
+                extras.append(f"🚫 {status.blocked_items} Blocked")
+            if status.waiting_items > 0:
+                extras.append(f"⏳ {status.waiting_items} Waiting")
             print(f"        {' | '.join(extras)}")
         
         # Show ALL items compactly

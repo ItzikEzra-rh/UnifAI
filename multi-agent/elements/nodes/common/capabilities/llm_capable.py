@@ -85,7 +85,7 @@ class LlmCapableMixin(Generic[TSupportStream]):
                 content += "..."
             print(f"   {i}. {role_icon} {content}")
         
-        llm_instance = self.llm.bind_tools(tools) if tools else self.llm
+        llm_instance = self.llm.bind_tools(tools)
 
         if self.is_streaming():
             return self._stream_chat(messages, llm_instance)

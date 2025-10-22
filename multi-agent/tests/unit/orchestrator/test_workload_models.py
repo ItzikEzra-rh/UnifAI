@@ -14,7 +14,7 @@ from datetime import datetime
 from elements.nodes.common.workload import (
     WorkPlan, WorkItem, WorkItemStatus, WorkItemKind,
     UnifiedWorkloadService, InMemoryStorage,
-    WorkItemResult, WorkPlanStatusSummary
+    WorkItemResult, WorkPlanStatus
 )
 
 

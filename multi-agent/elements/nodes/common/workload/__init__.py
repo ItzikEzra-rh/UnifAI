@@ -16,7 +16,7 @@ from .agent_thread import AgentThread
 # Work plan components (WorkPlanService is deprecated - use WorkspaceService instead)
 from .workplan import (
     WorkPlan, WorkItem, WorkItemStatus, WorkItemKind,
-    ToolArguments, WorkItemResult, WorkItemStatusCounts, WorkPlanStatusSummary,
+    ToolArguments, WorkItemResult, WorkItemStatusCounts, WorkPlanStatus,
     LocalExecution, DelegationExchange
 )
 
@@ -47,7 +47,7 @@ __all__ = [
     'ToolArguments',
     'WorkItemResult',
     'WorkItemStatusCounts',
-    'WorkPlanStatusSummary',
+    'WorkPlanStatus',
     'LocalExecution',
     'DelegationExchange',
     

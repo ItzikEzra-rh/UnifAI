@@ -183,9 +183,10 @@ class ExecutionValidator:
         Validate execution phase state with actionable guidance.
         
         Checks for execution issues:
-        - Local items stuck in pending state
         - Local items ready for execution (dependencies satisfied)
         - Local items blocked by dependencies
+        - ⚠️  Local items marked DONE/FAILED without execution record (DATA INTEGRITY)
+        - ⚠️  Local items with execution record but not marked (INCOMPLETE WORKFLOW)
         
         Args:
             context: Validation context with work plan
@@ -229,21 +230,19 @@ class ExecutionValidator:
                 "   1. Review item description for requirements"
             )
             guidance_lines.append(
-                "   2. Select appropriate domain tools"
+                "   2. Execute the work (use domain tools OR direct reasoning)"
             )
             guidance_lines.append(
-                "   3. Execute the work"
+                "   3. RecordLocalExecutionTool(item_id='...', outcome='what you did and achieved')"
             )
             guidance_lines.append(
-                "   4. Use MarkWorkItemStatusTool(status='done' or 'failed') with results in notes"
+                "      → This automatically marks the item as DONE"
             )
             guidance_lines.append("")
             
-            # List ready items
-            for item in ready_local_items[:3]:  # Show first 3
+            # Show ALL items (no truncation)
+            for item in ready_local_items:
                 guidance_lines.append(f"   - {item.id}: {item.title}")
-            if len(ready_local_items) > 3:
-                guidance_lines.append(f"   ... and {len(ready_local_items) - 3} more")
             guidance_lines.append("")
         
         if blocked_local_items:
@@ -251,15 +250,11 @@ class ExecutionValidator:
                 f"⏸️  BLOCKED: {len(blocked_local_items)} LOCAL item(s) waiting for dependencies."
             )
             guidance_lines.append(
-                "   ACTION: Skip these for now - they'll become ready after dependencies complete."
+                "   These items will become ready once their dependencies complete."
             )
             guidance_lines.append("")
         
-        if guidance_lines:
-            return "EXECUTION GUIDANCE:\n" + "\n".join(guidance_lines)
-        
-        # No issues - all local items handled
-        return ""
+        return "\n".join(guidance_lines) if guidance_lines else ""
 
 
 class MonitoringValidator:

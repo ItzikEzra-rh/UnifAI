@@ -141,7 +141,7 @@ class AgentIterator:
 
         try:
             # Get next steps from strategy
-            steps = self.strategy.think(self.messages, self.execution_handler.get_observations())
+            steps = self.strategy.think(self.messages)
             print(f"⚡ [AGENT] Processing {len(steps)} steps: {[step.type.value for step in steps]}")
 
             # Update conversation messages with assistant responses
@@ -194,6 +194,17 @@ class AgentIterator:
                     self.history.append(result_step)
                     self._emit_step_event(result_step)
                     self._step_queue.append(result_step)
+                    
+                    # Append TOOL message to conversation immediately for correct ordering
+                    if result_step.type == StepType.OBSERVATION:
+                        from elements.llms.common.chat.message import ChatMessage, Role
+                        obs = result_step.data  # AgentObservation
+                        tool_message = ChatMessage(
+                            role=Role.TOOL,
+                            content=str(obs.output) if obs.success else f"Error: {obs.error}",
+                            tool_call_id=obs.action_id
+                        )
+                        self.messages.append(tool_message)
 
             # Return next queued step if available
             if self._step_queue:

@@ -84,7 +84,6 @@ class ReActStrategy(AgentStrategy):
         )
         self.min_reasoning_length = min_reasoning_length
         self.system_prompt_template = system_prompt_template or SystemPrompts.REACT_DEFAULT
-        self._pending_system_error: Optional['SystemError'] = None  # Single error state
 
     @property
     def strategy_name(self) -> str:
@@ -106,28 +105,27 @@ class ReActStrategy(AgentStrategy):
 
     def think(
             self,
-            messages: List[ChatMessage],
-            observations: List[AgentObservation]
+            messages: List[ChatMessage]
     ) -> List[AgentStep]:
         """
-        Clean thinking with minimal error handling.
+        ReAct thinking with error handling.
         
         Process:
-        1. Build context (includes error feedback if pending)
+        1. Build context from conversation history
         2. Get LLM response and parse
-        3. On success: clear errors and return steps
-        4. On error: store for next iteration and return error step
+        3. On success: return steps
+        4. On error: append feedback to messages and return error step
         
         Args:
-            messages: Conversation history
-            observations: Previous action-observation pairs
+            messages: Mutable conversation history. Strategy may modify this list
+                     (e.g., adding error feedback).
             
         Returns:
             List of steps (planning + action/finish, or error)
         """
         try:
-            # Build context (includes error feedback if pending)
-            context = self.build_context(messages, observations)
+            # Build context
+            context = self.build_context(messages)
             tools = self.get_tools_for_phase(StrategyType.REACT.value)
 
             # Get LLM response
@@ -135,7 +133,7 @@ class ReActStrategy(AgentStrategy):
             response = self.llm_chat(context, tools)
             reasoning_time = time.time() - start_time
 
-            # Parse response first to understand what type it is
+            # Parse response
             result = self.parser.parse(response)
             
             # Validate reasoning only for final answers (AgentFinish)
@@ -143,22 +141,34 @@ class ReActStrategy(AgentStrategy):
             if isinstance(result, AgentFinish):
                 self._validate_reasoning(response)
 
-            # SUCCESS - Clear any pending error
-            self._pending_system_error = None
+            # Success - reset error count
+            self._error_count = 0
 
             # Return appropriate steps
             steps = self._create_success_steps(response, result, reasoning_time)
 
         except ParseError as e:
-            # Store system error for next iteration
-            self._pending_system_error = SystemError.from_parse_error(e)
+            # Add error feedback to messages
+            from ..constants import ErrorMessages
+            error_feedback = ChatMessage(
+                role=Role.SYSTEM,
+                content=ErrorMessages.get_parse_error_guidance(e)
+            )
+            messages.append(error_feedback)
+            
             steps = [self._create_error_step(e, "parse_error")]
 
         except Exception as e:
             import traceback
             traceback.print_exc()
-            # Store system error for next iteration  
-            self._pending_system_error = SystemError.from_exception(e, "strategy_error")
+            
+            # Add error feedback to messages
+            error_feedback = ChatMessage(
+                role=Role.SYSTEM,
+                content=f"System error: {e}. Try a different approach."
+            )
+            messages.append(error_feedback)
+            
             steps = [self._create_error_step(e, "strategy_error")]
 
         self.increment_step_count()
@@ -202,33 +212,22 @@ class ReActStrategy(AgentStrategy):
 
     def build_context(
             self,
-            messages: List[ChatMessage],
-            observations: List[AgentObservation]
+            messages: List[ChatMessage]
     ) -> List[ChatMessage]:
         """
-        Build context with clean error feedback.
+        Build context for ReAct strategy.
         
-        Process:
-        1. Build base context with system message
-        2. Add tool observations as TOOL messages
-        3. Add system error feedback if pending
+        Messages already include TOOL messages in correct order (added by iterator).
         
         Args:
-            messages: Original messages
-            observations: Previous observations from tool executions
+            messages: Complete conversation history including USER, ASSISTANT,
+                     TOOL, and SYSTEM messages
             
         Returns:
-            Complete context for LLM with proper message roles and order
+            Complete context for LLM
         """
         context = self._build_base_context(messages)
-        context.extend(self._build_observation_context(observations))
-        
-        # Add system error feedback if pending
-        if self._pending_system_error:
-            error_feedback = self._build_error_feedback()
-            if error_feedback:
-                context.append(error_feedback)
-
+        # Messages already include TOOL messages - no need to re-process
         return context
 
     def _validate_reasoning(self, response: ChatMessage) -> None:
@@ -275,26 +274,6 @@ class ReActStrategy(AgentStrategy):
 
         return context
 
-    def _build_observation_context(self, observations: List[AgentObservation]) -> List[ChatMessage]:
-        """Build observation context (tool results only)."""
-        return [
-            ChatMessage(
-                role=Role.TOOL,
-                content=obs.output if obs.success else f"Error: {obs.error or 'Unknown error'}",
-                tool_call_id=obs.action_id,
-            )
-            for obs in observations
-        ]
-
-    def _build_error_feedback(self) -> Optional[ChatMessage]:
-        """Build clean error feedback message."""
-        if not self._pending_system_error:
-            return None
-
-        return ChatMessage(
-            role=Role.SYSTEM,
-            content=self._pending_system_error.guidance or f"Previous attempt failed: {self._pending_system_error.message}"
-        )
 
     def _create_success_steps(self, response: ChatMessage, result, reasoning_time: float) -> List[AgentStep]:
         """Create steps for successful execution."""

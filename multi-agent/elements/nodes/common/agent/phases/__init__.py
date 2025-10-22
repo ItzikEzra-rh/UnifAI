@@ -24,13 +24,14 @@ from .phase_definition import (
 
 from .phase_protocols import (
     PhaseState,
-    WorkPlanStatus,
     PhaseContextProvider,
     PhaseToolProvider,
     PhaseTransitionPolicy,
-    create_phase_state,
-    create_work_plan_status
+    create_phase_state
 )
+
+# Re-export WorkPlanStatus from workload layer (single source of truth)
+from elements.nodes.common.workload import WorkPlanStatus
 
 # Phase providers
 from .unified_phase_provider import (
@@ -66,12 +67,11 @@ __all__ = [
     
     # Phase protocols
     "PhaseState",
-    "WorkPlanStatus", 
+    "WorkPlanStatus",  # Re-exported from workload layer
     "PhaseContextProvider",
     "PhaseToolProvider",
     "PhaseTransitionPolicy",
     "create_phase_state",
-    "create_work_plan_status",
     
     # Phase providers
     "PhaseProvider",

@@ -5,7 +5,13 @@ Tool for delegating tasks to other nodes.
 from typing import Dict, Any, Callable, Optional
 from pydantic import BaseModel, Field
 from elements.tools.common.base_tool import BaseTool
-from elements.nodes.common.workload import Task, WorkItemStatus
+from elements.nodes.common.workload import (
+    Task,
+    WorkItemStatus,
+    WorkItemKind,
+    DelegationExchange,
+    WorkItemResult
+)
 from elements.nodes.common.agent.constants import ToolNames
 
 
@@ -123,6 +129,18 @@ class DelegateTaskTool(BaseTool):
         plan = workspace_service.load_work_plan(current_thread.thread_id, owner_uid)
         target_item = plan.items.get(work_item_id) if plan else None
         
+        # ✅ Validate that LOCAL items cannot be delegated (must be executed locally)
+        if target_item and target_item.kind == WorkItemKind.LOCAL:
+            error_msg = (
+                f"Cannot delegate LOCAL work item '{work_item_id}'. "
+                f"LOCAL items must be executed by the orchestrator, not delegated. "
+                f"Only REMOTE items can be delegated to other agents."
+            )
+            return {
+                "success": False,
+                "error": error_msg
+            }
+        
         # ✅ Reuse existing child thread or create new one
         child_thread = None
         if target_item and target_item.child_thread_id:
@@ -168,8 +186,6 @@ class DelegateTaskTool(BaseTool):
             
             # Update work item with new DelegationExchange
             try:
-                from elements.nodes.common.workload import DelegationExchange, WorkItemResult, WorkItemStatus, WorkItemKind
-                
                 def update_for_delegation(item, plan):
                     """Create delegation exchange and update work item state."""
                     # Initialize result if needed
