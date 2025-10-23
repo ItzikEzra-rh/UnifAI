@@ -56,8 +56,12 @@ class BaseNode(SupportsStreaming, SupportsStateContext, ABC):
         self.run(wrapped_state)
         result = wrapped_state.backing_state
 
-        self._stream({"type": "complete",
-                      "state": result})
+        # Stream only streamable fields to reduce payload size
+        streamable_state = result.get_streamable_state()
+        self._stream({
+            "type": "complete",
+            "state": streamable_state
+        })
 
         return result
 
@@ -87,6 +91,24 @@ class BaseNode(SupportsStreaming, SupportsStateContext, ABC):
         Check if the node is streaming.
         """
         return self._is_streaming
+
+    def _stream_field(self, field_name: str, value: Any = None) -> None:
+        """
+        Stream a specific state field during execution.
+        Useful for streaming field updates mid-execution.
+        
+        Args:
+            field_name: Name of the field to stream
+            value: Value to stream (if None, fetches from current state)
+        """
+        if value is None and hasattr(self, '_state'):
+            value = self._state.backing_state.get(field_name)
+        
+        self._stream({
+            "type": "field_update",
+            "field": field_name,
+            "value": value
+        })
 
     def set_context(self, step_ctx: StepContext) -> None:
         """
