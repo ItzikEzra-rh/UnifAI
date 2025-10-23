@@ -60,7 +60,7 @@ class BaseNode(SupportsStreaming, SupportsStateContext, ABC):
         streamable_state = result.get_streamable_state()
         self._stream({
             "type": "complete",
-            "state": streamable_state
+            "state": result
         })
 
         return result
