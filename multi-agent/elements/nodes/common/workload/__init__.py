@@ -6,25 +6,34 @@ Provides focused interfaces and implementations for workload orchestration.
 """
 
 # Core models
-from .models import AgentResult
+from .models import (
+    AgentResult,
+    WorkPlan,
+    WorkItem,
+    WorkItemStatus,
+    WorkItemKind,
+    ToolArguments,
+    WorkItemResult,
+    WorkItemStatusCounts,
+    WorkPlanStatus,
+    LocalExecution,
+    DelegationExchange,
+)
 from .task import Task
 from .context import WorkspaceContext
 from .thread import Thread, ThreadStatus
 from .workspace import Workspace, ArtifactRef
 from .agent_thread import AgentThread
 
-# Work plan components (WorkPlanService is deprecated - use WorkspaceService instead)
-from .workplan import (
-    WorkPlan, WorkItem, WorkItemStatus, WorkItemKind,
-    ToolArguments, WorkItemResult, WorkItemStatusCounts, WorkPlanStatus,
-    LocalExecution, DelegationExchange
-)
-
 # New SOLID services
 from .thread_service import IThreadService, ThreadService
 from .workspace_service import IWorkspaceService, WorkspaceService
 from .storage import IWorkloadStorage, InMemoryStorage, StateBoundStorage
 from .unified_service import IWorkloadService, UnifiedWorkloadService
+
+# Hooks
+from .hooks import WorkPlanHook, BaseWorkPlanHook, WorkPlanHookPoint
+from .streaming_hook import WorkPlanStreamingHook
 
 # Legacy components can be imported from storage and unified_service if needed
 
@@ -62,4 +71,9 @@ __all__ = [
     'IWorkloadService',
     'UnifiedWorkloadService',
     
+    # Hooks
+    'WorkPlanHook',
+    'BaseWorkPlanHook',
+    'WorkPlanHookPoint',
+    'WorkPlanStreamingHook',
 ]

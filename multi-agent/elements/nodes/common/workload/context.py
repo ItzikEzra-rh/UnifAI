@@ -6,13 +6,10 @@ Separated from task.py to maintain single responsibility principle.
 """
 
 from pydantic import BaseModel, Field
-from typing import Dict, Any, List, TYPE_CHECKING
-from .models import AgentResult
+from typing import Dict, Any, List
+from .models import AgentResult, WorkPlan
 from .task import Task
 from elements.llms.common.chat.message import ChatMessage
-
-if TYPE_CHECKING:
-    from .workplan import WorkPlan
 
 
 class WorkspaceContext(BaseModel):

@@ -1,5 +1,5 @@
 """
-Common Models for Node Elements
+Common models for workload operations.
 
 Shared data structures used across different node types.
 """
@@ -26,7 +26,6 @@ class AgentResult(BaseModel):
     execution_metadata: Dict[str, Any] = Field(default_factory=dict, description="Execution metadata")
 
 
-
 class ArtifactRef(BaseModel):
     """Reference to an artifact with metadata."""
     name: str
@@ -36,5 +35,3 @@ class ArtifactRef(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     metadata: Dict[str, Any] = Field(default_factory=dict)
 
-
-# WorkspaceContext moved to task.py to avoid circular imports

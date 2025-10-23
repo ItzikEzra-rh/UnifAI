@@ -12,8 +12,15 @@ from collections import defaultdict
 import threading
 from datetime import datetime
 from .workspace import Workspace
-from .models import AgentResult
-from .workplan import WorkPlan, WorkItemStatus, WorkPlanStatus, WorkItemResult, WorkItemKind
+from .models import (
+    AgentResult,
+    WorkPlan,
+    WorkItemStatus,
+    WorkPlanStatus,
+    WorkItemResult,
+    WorkItemKind,
+)
+from .hooks import WorkPlanHook, WorkPlanHookPoint
 from elements.llms.common.chat.message import ChatMessage
 
 
@@ -614,6 +621,7 @@ class WorkspaceService(IWorkspaceService):
             storage: Storage implementation (StateBoundStorage or InMemoryStorage)
         """
         self._storage = storage
+        self._workplan_hooks: List[WorkPlanHook] = []
     
     def get_workspace(self, thread_id: str) -> Workspace:
         """Get workspace for thread."""
@@ -622,6 +630,40 @@ class WorkspaceService(IWorkspaceService):
     def update_workspace(self, workspace: Workspace) -> Workspace:
         """Update workspace in storage."""
         return self._storage.update_workspace(workspace)
+    
+    # ========== WORKPLAN HOOKS MANAGEMENT ==========
+    
+    def add_workplan_hook(self, hook: WorkPlanHook) -> None:
+        """Register a lifecycle hook for workplan operations."""
+        self._workplan_hooks.append(hook)
+    
+    def remove_workplan_hook(self, hook: WorkPlanHook) -> None:
+        """Unregister a workplan hook."""
+        if hook in self._workplan_hooks:
+            self._workplan_hooks.remove(hook)
+    
+    def clear_workplan_hooks(self) -> None:
+        """Remove all workplan hooks."""
+        self._workplan_hooks.clear()
+    
+    def get_workplan_hooks(self) -> List[WorkPlanHook]:
+        """Get list of registered workplan hooks."""
+        return list(self._workplan_hooks)
+    
+    def _execute_workplan_hooks(self, hook_point: WorkPlanHookPoint, *args, **kwargs) -> None:
+        """Execute all registered workplan hooks for a lifecycle point."""
+        if not self._workplan_hooks:
+            return
+        
+        method_name = hook_point.value
+        
+        for hook in self._workplan_hooks:
+            try:
+                method = getattr(hook, method_name)
+                method(*args, **kwargs)
+            except Exception as e:
+                hook_name = hook.__class__.__name__
+                print(f"⚠️ [WORKPLAN-HOOK] Error in {hook_name}.{method_name}: {e}")
     
     # ========== FACTS MANAGEMENT ==========
     
@@ -880,11 +922,20 @@ class WorkspaceService(IWorkspaceService):
             workspace = self.get_workspace(thread_id)
             plan_data = workspace.context.work_plans.get(owner_uid)
             
+            plan = None
             if plan_data:
                 plan = WorkPlan(**plan_data)
-                return plan
             
-            return None
+            # POST-LOAD HOOK
+            context = {
+                "thread_id": thread_id,
+                "owner_uid": owner_uid,
+                "operation": "load",
+                "found": plan is not None
+            }
+            self._execute_workplan_hooks(WorkPlanHookPoint.POST_LOAD, plan, context)
+            
+            return plan
         except Exception as e:
             print(f"❌ [PLAN] Error loading: {e}")
             return None
@@ -898,6 +949,15 @@ class WorkspaceService(IWorkspaceService):
                 workspace = self.get_workspace(plan.thread_id)
                 workspace.context.work_plans[plan.owner_uid] = plan.model_dump()
                 self.update_workspace(workspace)
+                
+                # POST-SAVE HOOK
+                context = {
+                    "thread_id": plan.thread_id,
+                    "owner_uid": plan.owner_uid,
+                    "operation": "save",
+                    "success": True
+                }
+                self._execute_workplan_hooks(WorkPlanHookPoint.POST_SAVE, plan, context)
                 
                 return True
             except Exception as e:

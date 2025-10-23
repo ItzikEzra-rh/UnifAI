@@ -5,12 +5,13 @@ SOLID design providing focused service access without 250+ helper methods.
 Uses new unified service architecture.
 """
 
-from typing import ClassVar
+from typing import ClassVar, Optional
 from graph.state.graph_state import Channel
 from ..workload.unified_service import IWorkloadService, UnifiedWorkloadService
 from ..workload.thread_service import IThreadService
 from ..workload.workspace_service import IWorkspaceService
 from ..workload.thread import Thread
+from ..workload.streaming_hook import WorkPlanStreamingHook
 
 
 class WorkloadCapableMixin:
@@ -33,45 +34,53 @@ class WorkloadCapableMixin:
         """
         Get unified workload service bound to current state.
         
+        Caches service and sets up streaming hooks on first access.
+        
         Returns:
             IWorkloadService instance providing access to all workload services
         """
         state = self.get_state()
-        return UnifiedWorkloadService.create_state_bound(state)
+        workload_service = UnifiedWorkloadService.create_state_bound(state)
+        # Setup streaming hooks if node supports streaming
+        if self._should_stream_workplan():
+            workload_service = self._setup_workplan_streaming_hook(workload_service)
+
+        return workload_service
 
     # ========== SERVICE ACCESS PROPERTIES ==========
-    
+
     @property
     def threads(self) -> IThreadService:
         """Access thread service."""
         return self.get_workload_service().get_thread_service()
-    
-    @property  
+
+    @property
     def workspaces(self) -> IWorkspaceService:
         """Access workspace service (includes work plan operations)."""
         return self.get_workload_service().get_workspace_service()
-    
+
     # ========== COMMON OPERATIONS (Optional convenience) ==========
-    
+
     def create_child_thread(self, parent: Thread, title: str, objective: str) -> Thread:
         """Convenience: Create child thread."""
         return self.threads.create_child_thread(parent, title, objective, self.uid)
-    
+
     def add_fact_to_workspace(self, thread_id: str, fact: str) -> None:
         """Convenience: Add fact to workspace."""
         self.workspaces.add_fact(thread_id, fact)
-    
+
     def set_workspace_variable(self, thread_id: str, key: str, value) -> None:
         """Convenience: Set workspace variable."""
         self.workspaces.set_variable(thread_id, key, value)
-    
+
     def get_workspace_variable(self, thread_id: str, key: str, default=None):
         """Convenience: Get workspace variable."""
         return self.workspaces.get_variable(thread_id, key, default)
-    
+
     # ========== GRAPHSTATE INTEGRATION HELPER ==========
-    
-    def copy_graphstate_messages_to_workspace(self, thread_id: str, limit: int = 10, strategy: str = "conversation") -> int:
+
+    def copy_graphstate_messages_to_workspace(self, thread_id: str, limit: int = 10,
+                                              strategy: str = "conversation") -> int:
         """
         Copy recent GraphState messages to workspace.
         
@@ -91,13 +100,35 @@ class WorkloadCapableMixin:
             state = self.get_state()
             from graph.state.graph_state import Channel
             graphstate_messages = state.get(Channel.MESSAGES, [])
-            
+
             # Delegate to workspace service (SOLID delegation)
             synced_count = self.workspaces.sync_from_graphstate(
                 thread_id, graphstate_messages, limit, strategy
             )
-            
+
             return synced_count
-                
+
         except Exception as e:
             return 0
+
+    # ========== WORKPLAN STREAMING SETUP ==========
+
+    def _should_stream_workplan(self) -> bool:
+        """Check if workplan streaming should be enabled."""
+        return (
+                hasattr(self, 'is_streaming') and
+                hasattr(self, '_stream') and
+                self.is_streaming()
+        )
+
+    def _setup_workplan_streaming_hook(self, workload_service) -> IWorkloadService:
+        """Register streaming hook for workplan operations."""
+
+        def stream_callback(data: dict) -> None:
+            if self.is_streaming():
+                self._stream(data)
+
+        streaming_hook = WorkPlanStreamingHook(stream_callback)
+        workspace_service = workload_service.get_workspace_service()
+        workspace_service.add_workplan_hook(streaming_hook)
+        return workload_service

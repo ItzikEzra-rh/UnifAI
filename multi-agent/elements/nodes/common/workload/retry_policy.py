@@ -5,7 +5,7 @@ Handles retry logic enforcement and validation following SOLID principles.
 """
 
 from typing import Optional
-from .workplan import WorkItem
+from .models import WorkItem
 
 
 class RetryPolicyService:
