@@ -5,7 +5,22 @@ Clean, extensible Pydantic models for topology information using composition.
 """
 
 from typing import Dict, Optional, List
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, computed_field
+
+
+class CycleInfo(BaseModel):
+    """Information about a detected cycle in the graph."""
+    
+    cycle_path: List[str] = Field(..., description="Ordered list of node UIDs forming the cycle")
+    
+    @computed_field
+    @property
+    def cycle_length(self) -> int:
+        """Length of the cycle path."""
+        return len(self.cycle_path)
+    
+    class Config:
+        frozen = True
 
 
 class FinalizerDistance(BaseModel):

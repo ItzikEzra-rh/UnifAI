@@ -1,7 +1,7 @@
 from typing import List, Tuple
 from graph.graph_plan import GraphPlan
 from ..models import ValidationMessage, MessageSeverity, MessageCode
-from .models import CycleInfo
+from ...topology.models import CycleInfo
 from ...topology.cycle_algorithms import CycleDetector as TopologyCycleDetector
 
 

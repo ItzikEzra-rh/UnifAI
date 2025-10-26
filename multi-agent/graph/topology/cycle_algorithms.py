@@ -7,18 +7,7 @@ Clean OOP design for cycle analysis.
 from typing import Dict, Set, List, Tuple
 from collections import deque
 from .graph_builder import EdgeType, GraphAnalyzer
-
-
-class CycleInfo:
-    """Information about a detected cycle."""
-    
-    def __init__(self, cycle_path: List[str]):
-        self.cycle_path = cycle_path
-    
-    @property
-    def cycle_length(self) -> int:
-        """Length of the cycle path."""
-        return len(self.cycle_path)
+from .models import CycleInfo
 
 
 class CycleDetector:
@@ -81,6 +70,14 @@ class CycleDetector:
     def is_dangerous_cycle(self, cycle: CycleInfo) -> bool:
         """
         Determine if a cycle is dangerous (inescapable or unconditional).
+        
+        A cycle is DANGEROUS if:
+        1. ALL edges in cycle are AFTER (pure unconditional loop), OR
+        2. No structural escape path to terminal nodes exists
+        
+        A cycle is SAFE if:
+        - Has at least one BRANCH edge AND
+        - At least one node in cycle has a path to a terminal node
         """
         # Normalize cycle path (last element duplicates the first)
         path = cycle.cycle_path
@@ -88,29 +85,51 @@ class CycleDetector:
             path = path[:-1]
 
         cycle_nodes = set(path)
-
-        # Rule 1: unconditional edge inside cycle?
+        
+        # Collect all edges in the cycle
+        cycle_edges = []
         for u, v in zip(path, path[1:] + [path[0]]):
-            if self.analyzer.edge_types.get((u, v)) == EdgeType.AFTER:
-                return True  # unconditional loop -> dangerous
-
-        # Rule 2: all edges are branch; check for exit path
+            edge_type = self.analyzer.edge_types.get((u, v))
+            if edge_type:
+                cycle_edges.append(edge_type)
+        
+        # Rule 1: ALL edges are AFTER → guaranteed infinite loop
+        if cycle_edges and all(edge == EdgeType.AFTER for edge in cycle_edges):
+            return True  # 100% dangerous - pure unconditional cycle
+        
+        # Rule 2: Has at least one BRANCH → check for structural escape
+        # BFS from cycle nodes to find if ANY can reach a terminal node
         return not self._cycle_has_exit(cycle_nodes)
     
     def _cycle_has_exit(self, cycle_nodes: Set[str]) -> bool:
-        """Check if a cycle has an exit path to any terminal node."""
+        """
+        Check if cycle has a structural escape path to terminal nodes.
+        
+        Uses BFS from all cycle nodes to find if ANY path leads to
+        a terminal node (node with no outgoing edges).
+        
+        Note: This checks STRUCTURAL escape, not runtime behavior.
+        A BRANCH edge means escape is POSSIBLE, even if not guaranteed.
+        """
         terminal_nodes = self.analyzer.get_terminal_nodes()
+        
+        # Special case: if any cycle node IS a terminal, cycle can exit
+        if cycle_nodes & terminal_nodes:
+            return True
+        
         queue = deque(cycle_nodes)
-        visited = set(cycle_nodes)
+        visited = set(cycle_nodes)  # Start with cycle nodes as visited
 
         while queue:
             node = queue.popleft()
             for neighbor in self.analyzer.adjacency.get(node, set()):
                 if neighbor in visited:
-                    continue
+                    continue  # Already checked this path
+                    
                 if neighbor in terminal_nodes:
-                    return True  # Found an exit path
+                    return True  # Found escape path!
+                
                 visited.add(neighbor)
                 queue.append(neighbor)
 
-        return False  # No exits found
+        return False  # No escape path found

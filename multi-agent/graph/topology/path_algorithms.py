@@ -36,6 +36,13 @@ class PathEnumerator:
         paths: Dict[str, List[str]]
     ) -> None:
         """DFS traversal to enumerate paths."""
+        # Check for cycle in current path
+        if current in path:
+            # Found cycle - record cyclic path and stop recursion
+            path_id = f"path_{len(paths) + 1}_cyclic"
+            paths[path_id] = path + [current]
+            return
+        
         current_path = path + [current]
         successors = self.analyzer.adjacency.get(current, set())
 
