@@ -4,7 +4,8 @@ Topology models for graph analysis.
 Clean, extensible Pydantic models for topology information using composition.
 """
 
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Set
+from enum import Enum
 from pydantic import BaseModel, Field, computed_field
 
 
@@ -93,6 +94,129 @@ class FinalizerPathInfo(BaseModel):
         return self.distances.get(adjacent_node_uid)
 
 
+class EdgeRelation(str, Enum):
+    """
+    Types of edge relationships to consider for hierarchy analysis.
+    
+    Allows flexible hierarchy computation based on different relationship types.
+    """
+    AFTER = "after"
+    BRANCH = "branch"
+    BOTH = "both"
+
+
+class HierarchyInfo(BaseModel):
+    """
+    Generic hierarchy information for a node in the graph.
+    
+    NOT specific to any node type - can be used for orchestrators, agents, tools, etc.
+    Provides parent-child relationships based on configurable edge types.
+    """
+    
+    node_uid: str = Field(..., description="UID of the node")
+    
+    parent_nodes: List[str] = Field(
+        default_factory=list,
+        description="UIDs of nodes that point to this node (according to edge_relation filter)"
+    )
+    
+    child_nodes: List[str] = Field(
+        default_factory=list,
+        description="UIDs of nodes this node points to (according to edge_relation filter)"
+    )
+    
+    depth: int = Field(
+        default=0,
+        ge=0,
+        description="Depth in hierarchy (0 = root/top-level)"
+    )
+    
+    is_root: bool = Field(
+        default=False,
+        description="True if node has no parents (top-level in hierarchy)"
+    )
+    
+    is_leaf: bool = Field(
+        default=False,
+        description="True if node has no children (bottom-level in hierarchy)"
+    )
+    
+    class Config:
+        frozen = True
+
+
+class GraphHierarchy(BaseModel):
+    """
+    Complete hierarchy analysis for a subset of nodes in the graph.
+    
+    Generic and reusable: works with any node types and edge relationships.
+    Provides rich API for querying hierarchical relationships.
+    """
+    
+    hierarchies: Dict[str, HierarchyInfo] = Field(
+        default_factory=dict,
+        description="Map of node UID to its hierarchy information"
+    )
+    
+    edge_relation: EdgeRelation = Field(
+        default=EdgeRelation.BOTH,
+        description="Which edge types were considered for this hierarchy"
+    )
+    
+    root_nodes: List[str] = Field(
+        default_factory=list,
+        description="UIDs of all root nodes (depth=0, no parents)"
+    )
+    
+    max_depth: int = Field(
+        default=0,
+        ge=0,
+        description="Maximum depth in the hierarchy"
+    )
+    
+    class Config:
+        frozen = True
+    
+    def get_hierarchy(self, node_uid: str) -> Optional[HierarchyInfo]:
+        """Get hierarchy info for a specific node."""
+        return self.hierarchies.get(node_uid)
+    
+    def get_nodes_at_depth(self, depth: int) -> List[str]:
+        """Get all nodes at a specific depth level."""
+        return [
+            uid for uid, info in self.hierarchies.items()
+            if info.depth == depth
+        ]
+    
+    def is_ancestor_of(self, ancestor_uid: str, descendant_uid: str) -> bool:
+        """
+        Check if ancestor_uid is an ancestor of descendant_uid in the hierarchy.
+        
+        Uses BFS to traverse up the parent chain from descendant.
+        """
+        descendant = self.hierarchies.get(descendant_uid)
+        if not descendant:
+            return False
+        
+        visited: Set[str] = set()
+        queue: List[str] = list(descendant.parent_nodes)
+        
+        while queue:
+            current = queue.pop(0)
+            if current == ancestor_uid:
+                return True
+            
+            if current in visited:
+                continue
+            
+            visited.add(current)
+            current_info = self.hierarchies.get(current)
+            if current_info:
+                queue.extend(current_info.parent_nodes)
+        
+        return False
+
+
 class StepTopology(BaseModel):
     """
     Generic topology information for a specific step in the graph.
@@ -149,6 +273,3 @@ class StepTopology(BaseModel):
         if self.finalizer_paths is None:
             return None
         return self.finalizer_paths.get_distance(adjacent_node_uid)
-
-
-# No backward compatibility - use StepTopology with FinalizerPathInfo composition
