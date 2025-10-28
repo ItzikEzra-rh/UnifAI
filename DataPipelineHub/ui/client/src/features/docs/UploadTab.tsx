@@ -86,6 +86,19 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         }
         
         if (validFiles.length > 0) {
+            const currentFileCount = selectedFiles.length;
+            const totalAfterAdd = currentFileCount + validFiles.length;
+            
+            if (totalAfterAdd > 5) {
+                const remainingSlots = 5 - currentFileCount;
+                if (remainingSlots <= 0) {
+                    setError("Maximum of 5 documents allowed. Please remove some files before adding new ones.");
+                } else {
+                    setError(`Maximum of 5 documents allowed. You can add ${remainingSlots} more document${remainingSlots === 1 ? '' : 's'}.`);
+                }
+                return;
+            }
+            
             setSelectedFiles((prev) => [...prev, ...validFiles]);
             setError(""); // Clear any previous errors
         }
@@ -167,12 +180,18 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                     </div>
 
                     <div
-                        className={`max-h-[400px] overflow-y-auto border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer transition-colors ${isDragging ? "border-primary bg-primary bg-opacity-5" : "border-gray-700 hover:border-gray-600"}`}
-                        onDragEnter={handleDragEnter}
-                        onDragLeave={handleDragLeave}
-                        onDragOver={handleDragOver}
-                        onDrop={handleDrop}
-                        onClick={() =>document.getElementById("file-upload")?.click()}
+                        className={`max-h-[400px] overflow-y-auto border-2 border-dashed rounded-lg flex flex-col items-center justify-center transition-colors ${
+                            selectedFiles.length >= 5 
+                                ? "border-gray-500 cursor-not-allowed opacity-50" 
+                                : isDragging 
+                                    ? "border-primary bg-primary bg-opacity-5 cursor-pointer" 
+                                    : "border-gray-700 hover:border-gray-600 cursor-pointer"
+                        }`}
+                        onDragEnter={selectedFiles.length < 5 ? handleDragEnter : undefined}
+                        onDragLeave={selectedFiles.length < 5 ? handleDragLeave : undefined}
+                        onDragOver={selectedFiles.length < 5 ? handleDragOver : undefined}
+                        onDrop={selectedFiles.length < 5 ? handleDrop : undefined}
+                        onClick={selectedFiles.length < 5 ? () => document.getElementById("file-upload")?.click() : undefined}
                     >
                         {!isUploading ? (
                             <>
@@ -180,10 +199,10 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                                     <FaUpload className="text-accent text-xl" />
                                 </div>
                                 <p className="font-semibold mb-1">
-                                    Drag and drop files here
+                                    {selectedFiles.length >= 5 ? "Maximum files reached" : "Drag and drop files here"}
                                 </p>
                                 <p className="text-sm text-gray-400">
-                                    or click to browse files
+                                    {selectedFiles.length >= 5 ? "Remove files to add more" : "or click to browse files"}
                                 </p>
                                 <p className="text-xs text-gray-500 mt-4">
                                     Supported formats: {supportedExtensions.map(ext => ext.toUpperCase().substring(1)).join(', ')}
@@ -214,25 +233,32 @@ export const UploadTab: React.FC<UploadTabProps> = ({
 
                         {/* File list after upload */}
                         {selectedFiles.length > 0 && (
-                            <ul className="mt-4 space-y-2">
-                                {selectedFiles.map((file, idx) => (
-                                    <li key={idx} className="flex items-center justify-between text-gray-300 bg-background-surface px-3 py-2 rounded">
-                                        <span className="truncate max-w-[80%]">{file.name}</span>
-                                        <button
-                                            onClick={(e) => {
-                                                e.stopPropagation(); 
-                                                setSelectedFiles((prev) =>
-                                                    prev.filter((_, i) => i !== idx)
-                                                );
-                                            }}
-                                            className="text-gray-400 hover:text-red-500 transition-colors"
-                                            title="Remove file"
-                                        >
-                                            <FaTimes className="w-4 h-4" />
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
+                            <div className="mt-4 w-full">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-sm text-gray-400">
+                                        {selectedFiles.length} of 5 documents selected
+                                    </span>
+                                </div>
+                                <ul className="space-y-2">
+                                    {selectedFiles.map((file, idx) => (
+                                        <li key={idx} className="flex items-center justify-between text-gray-300 bg-background-surface px-3 py-2 rounded">
+                                            <span className="truncate max-w-[80%]">{file.name}</span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation(); 
+                                                    setSelectedFiles((prev) =>
+                                                        prev.filter((_, i) => i !== idx)
+                                                    );
+                                                }}
+                                                className="text-gray-400 hover:text-red-500 transition-colors"
+                                                title="Remove file"
+                                            >
+                                                <FaTimes className="w-4 h-4" />
+                                            </button>
+                                        </li>
+                                    ))}
+                                </ul>
+                            </div>
                         )}
                         {error && <p className="text-red-500 mt-4">{error}</p>}
                     </div>
