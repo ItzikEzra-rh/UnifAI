@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FaFileAlt, FaUpload, FaTimes } from "react-icons/fa";
 import { Progress } from "@/components/ui/progress";
 import { ProcessingOptions } from "./ProcessingOptions";
-import { embedDocs, uploadDocs } from "@/api/docs";
+import { embedDocs, uploadDocs, getSupportedFileExtensions } from "@/api/docs";
 
 interface UploadTabProps {
     setShowUploadModal: (showUploadModal: boolean) => void;
@@ -19,6 +19,40 @@ export const UploadTab: React.FC<UploadTabProps> = ({
     const [isUploading, setIsUploading] = useState(false);
     const [uploadProgress, setUploadProgress] = useState(0);
     const [error, setError] = useState<string>("");
+    const [supportedExtensions, setSupportedExtensions] = useState<string[]>([]);
+    
+    useEffect(() => {
+        const loadSupportedExtensions = async () => {
+            try {
+                const extensions = await getSupportedFileExtensions();
+                setSupportedExtensions(extensions);
+            } catch (err) {
+                console.error("Failed to load supported extensions:", err);
+                setSupportedExtensions([".pdf", ".docx", ".txt"]);
+            }
+        };
+        loadSupportedExtensions();
+    }, []);
+    
+    const isFileExtensionSupported = (fileName: string): boolean => {
+        const extension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
+        return supportedExtensions.includes(extension);
+    };
+    
+    const validateFiles = (files: FileList): { validFiles: File[], invalidFiles: string[] } => {
+        const validFiles: File[] = [];
+        const invalidFiles: string[] = [];
+        
+        Array.from(files).forEach(file => {
+            if (isFileExtensionSupported(file.name)) {
+                validFiles.push(file);
+            } else {
+                invalidFiles.push(file.name);
+            }
+        });
+        
+        return { validFiles, invalidFiles };
+    };
     
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
@@ -41,7 +75,20 @@ export const UploadTab: React.FC<UploadTabProps> = ({
     };
 
     const handleFiles = (files: FileList) => {
-        setSelectedFiles((prev) => [...prev, ...Array.from(files)]);
+        const { validFiles, invalidFiles } = validateFiles(files);
+        
+        if (invalidFiles.length > 0) {
+            const invalidExtensions = Array.from(new Set(invalidFiles.map(file => 
+                file.substring(file.lastIndexOf('.')).toLowerCase()
+            )));
+            setError(`The following file extensions are not supported: ${invalidExtensions.join(', ')}. Please try uploading another document.`);
+            return;
+        }
+        
+        if (validFiles.length > 0) {
+            setSelectedFiles((prev) => [...prev, ...validFiles]);
+            setError(""); // Clear any previous errors
+        }
     };
 
     const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,7 +186,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                                     or click to browse files
                                 </p>
                                 <p className="text-xs text-gray-500 mt-4">
-                                    Supported formats: PDF, DOCX, TXT
+                                    Supported formats: {supportedExtensions.map(ext => ext.toUpperCase().substring(1)).join(', ')}
                                 </p>
                                 <input id="file-upload" type="file" multiple className="hidden" onChange={handleFileSelect}/>
                             </>

@@ -56,20 +56,28 @@ class PipelineExecutor:
         self.pipeline.clean_orchestration()
 
     def run(self) -> Any:
-        self._run_orchestration()
-        
-        collected   = self._run_collect()          
-        processed   = self._run_process(collected)   
-        embeddings  = self._run_chunk_and_embed(processed)
-        stored      = self._run_store(embeddings)
-        
-        self._run_clean_orchestration()
-        self.repo.update_pipeline_status(
-            pipeline=self.pipeline,
-            new_status=PipelineStatus.DONE.value
-        )
-        self.repo.register_data_source(
-            pipeline=self.pipeline,
-            summary=self.pipeline.summary()
-        )
-        return stored
+        try:
+            self._run_orchestration()
+            
+            collected   = self._run_collect()          
+            processed   = self._run_process(collected)   
+            embeddings  = self._run_chunk_and_embed(processed)
+            stored      = self._run_store(embeddings)
+            
+            self._run_clean_orchestration()
+            self.repo.update_pipeline_status(
+                pipeline=self.pipeline,
+                new_status=PipelineStatus.DONE.value
+            )
+            self.repo.register_data_source(
+                pipeline=self.pipeline,
+                summary=self.pipeline.summary()
+            )
+            return stored
+        except Exception as e:
+            # Update pipeline status to FAILED when any exception occurs
+            self.repo.update_pipeline_status(
+                pipeline=self.pipeline,
+                new_status=PipelineStatus.FAILED.value
+            )
+            raise
