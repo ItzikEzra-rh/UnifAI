@@ -16,7 +16,7 @@ from shared.logger import logger
 from config.constants import DataSource, PipelineStatus
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from utils.file_hash import compute_file_md5
-from validator.validator import build_doc_validators, ValidatorRunner
+from validator.validator import build_doc_validators, Validator
 from services.documents.duplicate_checker import DocumentDuplicateChecker
 
 app_config = AppConfig.get_instance()
@@ -89,7 +89,7 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
                 file_md5 = compute_file_md5(doc_path)
                 
                 doc_validators = build_doc_validators()
-                validator = ValidatorRunner(doc_validators)
+                validator = Validator(doc_validators)
                 duplicate_checker = DocumentDuplicateChecker(mongo_storage)
                 context = {"duplicate_checker": duplicate_checker}
 

@@ -3,7 +3,7 @@ from common.interfaces import DataSourceValidator, ValidationIssue
 from .doc_validators import build_doc_validators
 
 
-class ValidatorRunner:
+class Validator:
     """Runs a list of validators with optional fail-fast behavior."""
 
     def __init__(self, validators: List[DataSourceValidator], fail_fast: bool = True) -> None:
@@ -23,5 +23,5 @@ class ValidatorRunner:
                     errors.append(f"{issue.get('validator_name')}: {issue.get('message')}")
 
         if errors:
-            return False, {"issue_key": "ValidationError", "message": "; ".join(errors), "validator_name": "ValidatorRunner"}
+            return False, {"issue_key": "ValidationError", "message": "; ".join(errors), "validator_name": "Validator"}
         return True, None
