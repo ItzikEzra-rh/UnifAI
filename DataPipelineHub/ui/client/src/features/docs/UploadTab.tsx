@@ -98,11 +98,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                     if (message) descParts.push(message);
                     const description = descParts.join(" — ");
 
-                    const isDuplicate =
-                        issueType.toLowerCase().includes("dup") ||
-                        message.toLowerCase().includes("duplicate") ||
-                        message.toLowerCase().includes("already exists") ||
-                        message.toLowerCase().includes("exists");
+                    const isDuplicate = issueType.toLowerCase().includes("dup")
                     const title: React.ReactNode = (
                         <span className="inline-flex items-center gap-2">
                             {isDuplicate && (
