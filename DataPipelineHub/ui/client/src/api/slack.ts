@@ -118,7 +118,10 @@ export async function fetchEmbeddedSlackChannels(): Promise<EmbedChannel[]> {
     created: formatDate(item.created_at || ''),
     is_private: item.type_data?.is_private || false,
     communityPrivacy: item.type_data?.communityPrivacy || 'public',
-    initialTimestamp: item.type_data?.start_timestamp ? formatDate(item.type_data.start_timestamp) : undefined,
+    // For UI: if dateRange is 'all', mark initialTimestamp as 'all' to customize label
+    initialTimestamp: item.type_data?.dateRange === 'all'
+      ? 'all'
+      : (item.type_data?.start_timestamp ? formatDate(item.type_data.start_timestamp) : undefined),
   }));
 };
 

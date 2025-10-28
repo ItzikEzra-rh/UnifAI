@@ -58,7 +58,9 @@ export function getColumns(
             </div>
             {channel.initialTimestamp && (
               <span className="text-xs text-muted-foreground mt-1 ml-5">
-                Messages starting from: {channel.initialTimestamp}
+                {channel.initialTimestamp === 'all'
+                  ? 'Messages from all time'
+                  : `Messages starting from: ${channel.initialTimestamp}`}
               </span>
             )}
           </div>

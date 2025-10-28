@@ -1,6 +1,6 @@
 import React, { FC, useState, useMemo, useCallback, forwardRef, useImperativeHandle, useEffect, useRef } from 'react';
 import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
-import { FaSearch, FaSpinner } from 'react-icons/fa';
+import { FaSearch, FaSpinner, FaSync } from 'react-icons/fa';
 import { HiOutlineLockClosed } from 'react-icons/hi';
 
 import { fetchAvailableSlackChannels, fetchEmbeddedSlackChannels, PaginatedChannelsResponse } from '@/api/slack';
@@ -12,6 +12,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { ChannelSettings, ChannelSettingsData, defaultChannelSettings } from './ChannelSettings';
+import { useToast } from '@/hooks/use-toast';
 
 const CHANNELS_PER_PAGE = 50;
 const SEARCH_DEBOUNCE_DELAY = 2000; // 2 seconds
@@ -71,6 +72,7 @@ const parseChannelUniqueId = (uniqueId: string) => {
 
 const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProps>(({ onSave, onCancel, isSubmitting }, ref) => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const [scope, setScope] = useState<Scope>(SCOPE.ALL);
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState<string>('');
@@ -81,6 +83,29 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
   const [lastSelectedChannel, setLastSelectedChannel] = useState<string | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+  // Refresh channels function
+  const handleRefresh = useCallback(async () => {
+    setIsRefreshing(true);
+    try {
+      // Invalidate and refetch the channels query
+      await queryClient.invalidateQueries({ queryKey: [CACHE_KEY] });
+      
+      toast({
+        title: "Channels refreshed",
+        description: "Successfully refreshed channels from database",
+      });
+    } catch (error) {
+      toast({
+        title: "Refresh failed",
+        description: "Failed to refresh channels",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRefreshing(false);
+    }
+  }, [queryClient, toast]);
 
   // Debounced search effect
   useEffect(() => {
@@ -426,6 +451,20 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
                 )}
               </div>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className="border-border text-foreground hover:bg-muted"
+              title="Refresh channels from database"
+            >
+              {isRefreshing ? (
+                <FaSpinner className="animate-spin" />
+              ) : (
+                <FaSync />
+              )}
+            </Button>
           </div>
           <div className="flex space-x-3">
             <Button 

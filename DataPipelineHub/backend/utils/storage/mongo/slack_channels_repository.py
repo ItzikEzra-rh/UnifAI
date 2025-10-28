@@ -117,3 +117,32 @@ class SlackChannelsRepository:
             'is_app_member': bool(is_app_member) if is_app_member is not None else bool(channel.get('is_member')),
             'last_updated': time.time()
         }
+
+    def find_by_channel_id(self, channel_id: str) -> Optional[Dict[str, Any]]:
+        """Find a single channel document by channel_id."""
+        try:
+            return self.col.find_one({"channel_id": channel_id})
+        except Exception as e:
+            logger.error(f"Error finding channel {channel_id}: {e}")
+            return None
+
+    def update_membership(self, channel_id: str, is_member: bool, timestamp: float) -> bool:
+        """Update membership flag and timestamp on a channel document by channel_id."""
+        try:
+            result = self.col.update_one(
+                {"channel_id": channel_id},
+                {"$set": {"is_app_member": is_member, "last_updated": timestamp}}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            logger.error(f"Error updating membership for channel {channel_id}: {e}")
+            return False
+
+    def insert_channel(self, channel_doc: Dict[str, Any]) -> bool:
+        """Insert a new channel document."""
+        try:
+            self.col.insert_one(channel_doc)
+            return True
+        except Exception as e:
+            logger.error(f"Error inserting channel {channel_doc.get('channel_id', 'unknown')}: {e}")
+            return False
