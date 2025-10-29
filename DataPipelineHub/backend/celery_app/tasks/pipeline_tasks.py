@@ -1,29 +1,15 @@
-import os
-import asyncio
-from datetime import datetime
-import uuid
+from registration.factory import RegistrationFactory
 from pipeline.pipeline_repository import PipelineRepository
-from global_utils.helpers.helpers import calculate_date_range
-from config.app_config import AppConfig
 from global_utils.celery_app import CeleryApp
 from pipeline.pipeline_factory import PipelineFactory
 from pipeline.pipeline_executor import PipelineExecutor
 from shared.source_types import (
-    SlackMetadata, DocumentMetadata, SlackTypeData, DocumentTypeData,
-    RegisteredSource, RegistrationResponse, PipelineExecutionResult
+    SlackMetadata, DocumentMetadata,
+    RegistrationResponse, PipelineExecutionResult
 )
 from shared.logger import logger
-from config.constants import DataSource, PipelineStatus
+from config.constants import DataSource
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
-from utils.file_hash import compute_file_md5
-from validator.validator import build_doc_validators, Validator
-from services.documents.duplicate_checker import DocumentDuplicateChecker
-
-app_config = AppConfig.get_instance()
-upload_folder = app_config.upload_folder
-
-# Initialize mongo storage for registration
-mongo_storage = get_mongo_storage()
 
 @CeleryApp().app.task(bind=True, max_retries=3, default_retry_delay=30)
 def register_sources_task(self, data_list: list, source_type: str, upload_by: str = "default"):
@@ -45,125 +31,25 @@ def register_sources_task(self, data_list: list, source_type: str, upload_by: st
     """
     try:
         logger.info(f"Starting registration for {len(data_list)} {source_type} sources by user {upload_by}")
-        
+
+        mongo_storage = get_mongo_storage()
+        factory = RegistrationFactory(mongo_storage=mongo_storage)
+
         registered_sources = []
         issues: list[dict] = []
-        
         for instance in data_list:
-            # Extract optional user-defined metadata from frontend
-            user_metadata = instance.get("metadata", {})
-            if user_metadata:
-                logger.info(f"Processing user metadata: {user_metadata}")
-            
-            # Generate source_id and pipeline_id based on source type
-            if source_type.upper() == DataSource.SLACK.upper_name:
-                source_id = instance.get("channel_id", "")
-                source_name = instance.get("channel_name", "")
-                pipeline_id = f"{DataSource.SLACK.value}_{source_id}"
-                
-                # Create metadata object
-                metadata = SlackMetadata(
-                    channel_id=source_id,
-                    channel_name=source_name,
-                    is_private=instance.get("is_private", False),
-                    upload_by=upload_by
-                )
-                
-                date_range = user_metadata.get("dateRange")
-                start_datetime, end_datetime = calculate_date_range(date_range)
-                
-                # Create type_data for Slack using Pydantic model
-                slack_type_data = SlackTypeData(
-                    is_private=instance.get("is_private", False),
-                    start_timestamp=start_datetime,
-                    end_timestamp=end_datetime,
-                    **user_metadata  # Unpack user metadata into the model
-                )
-                type_data = slack_type_data.model_dump()
-                
-            elif source_type.upper() == DataSource.DOCUMENT.upper_name:
-                source_id = str(uuid.uuid4())
-                source_name = instance.get("source_name", "")
-                doc_path = os.path.join(upload_folder, source_name)
-                pipeline_id = f"{DataSource.DOCUMENT.value}_{source_id}"
-                file_md5 = compute_file_md5(doc_path)
-                
-                doc_validators = build_doc_validators()
-                validator = Validator(doc_validators)
-                duplicate_checker = DocumentDuplicateChecker(mongo_storage)
-                context = {"duplicate_checker": duplicate_checker}
-
-                is_valid, issue = asyncio.run(validator.validate({
-                    "doc_path": doc_path,
-                    "source_name": source_name,
-                    "md5": file_md5,
-                }, context))
-
-                if not is_valid:
-                    # Consume structured ValidationIssue
-                    issue_key = (issue or {}).get("issue_key", "ValidationError")
-                    message = (issue or {}).get("message", "Validation error")
-                    validator_name = (issue or {}).get("validator_name", "Validator")
-                    issues.append({
-                        "doc_name": source_name,
-                        "issue_type": issue_key,
-                        "message": message,
-                        "validator": validator_name,
-                    })
-                    continue
-
-                metadata = DocumentMetadata(
-                    doc_id=source_id,
-                    doc_name=source_name,
-                    doc_path=doc_path,
-                    upload_by=upload_by
-                )
-                
-                # Create type_data for Document using Pydantic model
-                doc_type_data = DocumentTypeData(
-                    file_type=source_name.rsplit(".", 1)[-1].lower(),
-                    doc_path=doc_path,
-                    page_count=0,
-                    full_text="",
-                    file_size=0,
-                    md5=file_md5,
-                    **user_metadata  # Unpack user metadata into the model
-                )
-                type_data = doc_type_data.model_dump()
-                
-            else:
-                logger.error(f"Unsupported source type: {source_type}")
+            registrar = factory.create(source_type=source_type, upload_by=upload_by, instance=instance)
+            registered, issue = registrar.run_registration()
+            if issue is not None:
+                issues.append(issue)
                 continue
+            if registered is not None:
+                registered_sources.append(registered)
 
-            # Register source using upsert_source_summary (only type_data now)
-            mongo_storage.upsert_source_summary(
-                source_id=source_id,
-                source_name=source_name,
-                source_type=source_type.upper(),
-                upload_by=upload_by,
-                pipeline_id=pipeline_id,
-                type_data=type_data
-            )
-            
-            # Return only essential data needed for pipeline execution
-            registered_source = RegisteredSource(
-                pipeline_id=pipeline_id,
-                metadata=metadata.__dict__, 
-                source_type=source_type.upper(),
-                upload_by=upload_by,
-                type_data=type_data
-            )
-            
-            registered_sources.append(registered_source.model_dump())
-            metadata_info = f" with user settings: {user_metadata}" if user_metadata else ""
-            logger.info(f"Registered {source_type} source: {source_name} with pipeline_id: {pipeline_id}{metadata_info}")
-        
-        logger.info(f"Successfully registered {len(registered_sources)} {source_type} sources with pipeline IDs")
-        
         return RegistrationResponse(
             status="registration_complete",
             registered_sources=registered_sources,
-            issues=issues
+            issues=issues,
         ).model_dump()
         
     except Exception as e:
