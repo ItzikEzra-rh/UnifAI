@@ -5,6 +5,7 @@ import { FaFileAlt, FaUpload, FaTimes } from "react-icons/fa";
 import { Progress } from "@/components/ui/progress";
 import { ProcessingOptions } from "./ProcessingOptions";
 import { embedDocs, uploadDocs, getSupportedFileExtensions } from "@/api/docs";
+import { useAuth } from '@/contexts/AuthContext';
 
 interface UploadTabProps {
     setShowUploadModal: (showUploadModal: boolean) => void;
@@ -14,6 +15,7 @@ interface UploadTabProps {
 export const UploadTab: React.FC<UploadTabProps> = ({
     setShowUploadModal, fetchDocuments
 }) => {
+    const { user } = useAuth();
     const [isDragging, setIsDragging] = useState(false);
     const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
     const [isUploading, setIsUploading] = useState(false);
@@ -142,7 +144,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
 
     const startPipeline = async (docs: {source_name: string}[]) => {
         try {
-            await embedDocs(docs)
+            await embedDocs(docs, user?.username || 'default')
             console.log("API submission successful!");
         } catch (error) {
             console.error(error);

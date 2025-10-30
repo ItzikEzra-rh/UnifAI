@@ -580,3 +580,4 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
 });
 
 export default AddSourceSection;
+export type { AddSourceSectionHandle };

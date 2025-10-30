@@ -11,8 +11,9 @@ pipelines_bp = Blueprint("pipelines", __name__)
 @from_body({
     "data": fields.List(fields.Dict(), required=True),
     "type": fields.Str(required=True),
+    "user": fields.Str(required=True),
 })
-def start_pipeline(data, type):
+def start_pipeline(data, type, user):
     """
     Trigger the embedding pipeline for registered data sources.
     First calls registration task, waits for completion, then calls pipeline execution tasks.
@@ -20,13 +21,14 @@ def start_pipeline(data, type):
     Args:
         data: List of data sources to register and process
         type: Type of data source (SLACK, DOCUMENT, etc.)
+        user: Username of the current user
         
     Returns:
         JSON response indicating task submission status
     """
     try:
         pipeline_celery_service = PipelineCeleryService()
-        response_data, status_code = pipeline_celery_service.execute_pipeline_workflow_with_registration(data, type)
+        response_data, status_code = pipeline_celery_service.execute_pipeline_workflow_with_registration(data, type, user)
         return jsonify(response_data), status_code
         
     except Exception as e:

@@ -22,12 +22,13 @@ export async function uploadDocs(files: {name: string, content: string}[]): Prom
       );
 }
 
-export async function embedDocs(docs: {source_name: string}[]): Promise<any> {
+export async function embedDocs(docs: {source_name: string}[], user: string): Promise<any> {
     const embedded = await api.put<any>(
         'pipelines/embed',
         { 
             data: docs,
-            type: 'document'
+            type: 'document',
+            user
         }
       );
 }

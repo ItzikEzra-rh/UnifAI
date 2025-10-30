@@ -1,5 +1,4 @@
 from typing import List, Dict, Any, Tuple
-from flask import session
 from shared.logger import logger
 from global_utils.celery_app.helpers import send_task
 from global_utils.celery_app import CeleryApp
@@ -14,7 +13,7 @@ class PipelineCeleryService:
     def __init__(self):
         self.celery_app = CeleryApp().app
     
-    def execute_pipeline_workflow_with_registration(self, data: List[Dict[str, Any]], source_type: str) -> Tuple[Dict[str, Any], int]:
+    def execute_pipeline_workflow_with_registration(self, data: List[Dict[str, Any]], source_type: str, user: str) -> Tuple[Dict[str, Any], int]:
         """
         Execute a complete pipeline workflow using Celery workers with source registration.
         First dispatches registration tasks to workers, waits for completion, then submits 
@@ -23,6 +22,7 @@ class PipelineCeleryService:
         Args:
             data: List of data sources to register and process via Celery workers
             source_type: Type of data source (SLACK, DOCUMENT, etc.) for worker queue routing
+            user: Username of the current user
             
         Returns:
             Tuple of (response_data, status_code)
@@ -31,8 +31,7 @@ class PipelineCeleryService:
             Exception: If Celery task registration or worker task submission fails
         """
         try:
-            current_user = session.get('user', {}).get('username', 'default')
-            registered_sources = self._execute_registration_tasks_sync(data, source_type, current_user)
+            registered_sources = self._execute_registration_tasks_sync(data, source_type, user)
             pipeline_worker_tasks_submitted = self._dispatch_pipeline_worker_tasks(registered_sources, source_type)
             
             response_data = {
@@ -48,7 +47,7 @@ class PipelineCeleryService:
             logger.error(f"Failed to execute Celery pipeline workflow with registration: {str(e)}")
             raise e
     
-    def _execute_registration_tasks_sync(self, data: List[Dict[str, Any]], source_type: str, current_user: str) -> List[Dict[str, Any]]:
+    def _execute_registration_tasks_sync(self, data: List[Dict[str, Any]], source_type: str, user: str) -> List[Dict[str, Any]]:
         """
         Execute source registration tasks synchronously via Celery workers and return registered sources.
         Waits for Celery worker completion before proceeding to next workflow step.
@@ -56,7 +55,7 @@ class PipelineCeleryService:
         Args:
             data: List of data sources to register via Celery workers
             source_type: Type of data source for worker queue routing
-            current_user: Username of the current user for worker task context
+            user: Username of the current user for worker task context
             
         Returns:
             List of registered sources from Celery worker results
@@ -69,7 +68,7 @@ class PipelineCeleryService:
             kwargs={
                 "data_list": data,
                 "source_type": source_type.upper(),
-                "upload_by": current_user
+                "upload_by": user
             },
             queue="registration_queue"  
         )
