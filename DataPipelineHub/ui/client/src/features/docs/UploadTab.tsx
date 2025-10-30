@@ -81,8 +81,9 @@ export const UploadTab: React.FC<UploadTabProps> = ({
             const invalidExtensions = Array.from(new Set(invalidFiles.map(file => 
                 file.substring(file.lastIndexOf('.')).toLowerCase()
             )));
-            setError(`The following file extensions are not supported: ${invalidExtensions.join(', ')}. Please try uploading another document.`);
-            return;
+            setError(`The following file extensions are not supported: ${invalidExtensions.join(', ')}. These files will be ignored.`);
+        } else {
+            setError(""); // Clear any previous errors if no invalid files
         }
         
         if (validFiles.length > 0) {
@@ -100,7 +101,6 @@ export const UploadTab: React.FC<UploadTabProps> = ({
             }
             
             setSelectedFiles((prev) => [...prev, ...validFiles]);
-            setError(""); // Clear any previous errors
         }
     };
 
