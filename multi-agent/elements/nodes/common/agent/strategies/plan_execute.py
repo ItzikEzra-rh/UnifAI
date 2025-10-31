@@ -94,6 +94,10 @@ class PlanAndExecuteStrategy(AgentStrategy):
         
         # Get initial phase from provider (NOT hardcoded)
         self._current_phase = self._phase_provider.get_initial_phase()
+        
+        # Track phase transitions for filtering logic
+        self._previous_phase = None  # Track last phase for comparison
+        self._phase_changed = False  # Flag indicating phase transition
     
     @property
     def strategy_name(self) -> str:
@@ -153,14 +157,19 @@ class PlanAndExecuteStrategy(AgentStrategy):
             print(f"📍 Phase: {self._current_phase}")
         
         try:
-            # Determine current phase based on context
+            # Store current phase before update
             old_phase = self._current_phase
+            
+            # Determine current phase based on context
             self._update_phase()
             
+            # Detect phase transition
+            self._phase_changed = (old_phase != self._current_phase)
+            
             # Phase transition detected
-            if old_phase != self._current_phase:
+            if self._phase_changed:
                 print(f"   └─ Phase Transition: {old_phase} → {self._current_phase}")
-                # Note: Messages NOT cleared - full history preserved across phases
+                # Note: Messages will be filtered to clean slate in build_context()
             
             # Build phase-specific context
             context = self.build_context(messages)
@@ -258,9 +267,13 @@ class PlanAndExecuteStrategy(AgentStrategy):
         
         Messages already include TOOL messages in correct order (added by iterator).
         
+        Filtering logic:
+        - If phase changed: Filter to clean slate (USER messages only)
+        - If same phase: Keep all messages (including TOOL calls for continuity)
+        
         Includes:
         - Phase-specific system message with guidance + validation
-        - Static messages (conversation, adjacency, request)
+        - Static messages (filtered based on phase transition)
         - Dynamic context from provider (fresh workspace + work plan)
         
         Args:
@@ -279,10 +292,10 @@ class PlanAndExecuteStrategy(AgentStrategy):
         
         context.append(ChatMessage(role=Role.SYSTEM, content=system_content))
         
-        # [2] Static messages (conversation, adjacency, request)
-        # Filter out old workspace/workplan if provider has dynamic context
-        static_messages = self._filter_static_messages(messages)
-        if context:
+        # [2] Static messages (filtered based on phase transition)
+        # Pass phase_changed flag to control tool message filtering
+        static_messages = self._filter_static_messages(messages, filter_tools=self._phase_changed)
+        if static_messages:
             context.extend(static_messages)
         
         # [3] Dynamic context from provider (fresh workspace + work plan)
@@ -298,15 +311,34 @@ class PlanAndExecuteStrategy(AgentStrategy):
         
         return context
     
-    def _filter_static_messages(self, messages: List[ChatMessage]) -> List[ChatMessage]:
+    def _filter_static_messages(
+        self, 
+        messages: List[ChatMessage],
+        filter_tools: bool = True
+    ) -> List[ChatMessage]:
         """
         Filter messages to only include truly static ones.
         
-        If provider has dynamic context, skip workspace/workplan messages
-        from original list (they'll be replaced with fresh ones).
+        Filtering behavior controlled by filter_tools parameter:
+        
+        When filter_tools=True (phase transition):
+            Filters out:
+            1. Workspace/workplan messages (replaced by dynamic context)
+            2. TOOL messages (tool execution results from previous phase)
+            3. ASSISTANT messages with tool_calls (internal planning from previous phase)
+            
+            Keeps:
+            - USER messages (public conversation)
+            - ASSISTANT messages without tool_calls (final text responses)
+            - SYSTEM messages (if any in history)
+        
+        When filter_tools=False (same phase continuation):
+            Only filters workspace/workplan messages (replaced by dynamic context)
+            Keeps all other messages including TOOL calls for continuity
         
         Args:
             messages: Original messages from orchestrator
+            filter_tools: Whether to filter tool messages (True on phase transition)
             
         Returns:
             Filtered list of static messages
@@ -315,13 +347,25 @@ class PlanAndExecuteStrategy(AgentStrategy):
             # No dynamic context support, return all messages
             return list(messages)
         
-        # Skip messages that will be replaced by dynamic context
         static = []
         for msg in messages:
             content = msg.content or ""
-            # Skip if it's workspace or work plan context (will be refreshed)
+            
+            # Always skip workspace/workplan messages (will be refreshed)
             if content.startswith("Current Context:") or content.startswith("Current Work Plan:"):
                 continue
+            
+            # Conditional: Only filter tools on phase transitions
+            if filter_tools:
+                # Skip TOOL messages (tool execution results from previous phase)
+                if msg.role == Role.TOOL:
+                    continue
+                
+                # Skip ASSISTANT messages with tool_calls (internal tool planning from previous phase)
+                if msg.role == Role.ASSISTANT and msg.tool_calls:
+                    continue
+            
+            # Keep this message
             static.append(msg)
         
         return static
