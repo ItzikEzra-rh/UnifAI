@@ -1655,85 +1655,145 @@ class OrchestratorPhaseProvider(PhaseProvider):
         return "Review and create/update the work plan as needed."
     
     def _focused_prompt_allocation(self, context, plan, status, phase_changed: bool) -> str:
-        """Allocation phase prompts for ALL scenarios."""
-        from elements.nodes.common.workload import WorkItemKind
+        """Allocation phase prompts with detailed assignment/delegation tracking."""
+        from elements.nodes.common.workload import WorkItemKind, WorkItemStatus
         
         if not plan:
             return "Delegate pending REMOTE work items to appropriate agents."
         
-        # Use WorkPlan helper methods for clean, consistent logic
+        # Get all REMOTE items
+        all_remote = [item for item in plan.items.values() if item.kind == WorkItemKind.REMOTE]
+        total_remote = len(all_remote)
+        
+        if total_remote == 0:
+            return "✅ No REMOTE items in work plan. Finish to proceed to next phase."
+        
+        # ========== CATEGORIZE BY STATE ==========
+        # State 1: Unassigned (need both assign + delegate)
+        unassigned = [
+            item for item in all_remote
+            if item.status == WorkItemStatus.PENDING and not item.assigned_uid
+        ]
+        
+        # State 2: Assigned but not delegated (need delegate only)
+        assigned_not_delegated = [
+            item for item in all_remote
+            if item.status == WorkItemStatus.PENDING 
+            and item.assigned_uid
+            and (not item.result or not item.result.delegations)
+        ]
+        
+        # State 3: Delegated (in progress)
+        delegated = [
+            item for item in all_remote
+            if item.status == WorkItemStatus.IN_PROGRESS
+        ]
+        
+        # State 4: Completed (done or failed)
+        completed = [
+            item for item in all_remote
+            if item.status in [WorkItemStatus.DONE, WorkItemStatus.FAILED]
+        ]
+        
+        # State 5: Blocked by dependencies
         ready_items = plan.get_ready_items()
         blocked_items = plan.get_blocked_items()
         
-        # Filter by kind
-        pending_remote = [item for item in ready_items if item.kind == WorkItemKind.REMOTE]
-        blocked_remote = [item for item in blocked_items if item.kind == WorkItemKind.REMOTE]
+        unassigned_ready = [item for item in unassigned if item in ready_items]
+        unassigned_blocked = [item for item in unassigned if item in blocked_items]
+        assigned_ready = [item for item in assigned_not_delegated if item in ready_items]
+        assigned_blocked = [item for item in assigned_not_delegated if item in blocked_items]
         
-        # Calculate progress
-        total_remote = len([
-            item for item in plan.items.values()
-            if item.kind == WorkItemKind.REMOTE
-        ])
-        delegated = total_remote - len(pending_remote) - len(blocked_remote)
+        # Total actionable items (ready for assign or delegate)
+        actionable = len(unassigned_ready) + len(assigned_ready)
         
-        # Scenario 1: First iteration with items to delegate
-        if phase_changed and pending_remote:
-            item_names = ", ".join([f"'{item.id}'" for item in pending_remote[:3]])
-            if len(pending_remote) > 3:
-                item_names += f" (+{len(pending_remote) - 3} more)"
+        # ========== BUILD PROMPT BASED ON STATE ==========
+        
+        # Scenario 1: First iteration, items need action
+        if phase_changed and actionable > 0:
+            lines = [f"🎯 **ALLOCATE {total_remote} REMOTE ITEM(S)**\n"]
             
-            return (
-                f"🎯 **DELEGATE {len(pending_remote)} REMOTE ITEM(S)**\n\n"
-                f"Items ready to delegate: {item_names}\n\n"
-                "**For EACH pending REMOTE item:**\n"
-                "1. Choose appropriate agent (check Available Agents above)\n"
-                "2. `AssignWorkItemTool(item_id, agent_uid)`\n"
-                "3. `DelegateTaskTool(dst_uid, content, work_item_id)`\n"
-                "   ⚠️ Must include work_item_id for response tracking\n\n"
-                "**Tips:**\n"
-                "• Use `GetNodeCardTool(uid)` to check agent capabilities\n"
-                "• Include clear instructions and context in delegation content"
-            )
-        
-        # Scenario 2: First iteration but nothing to delegate
-        elif phase_changed and not pending_remote and not blocked_remote:
-            return (
-                "✅ **NO REMOTE ITEMS TO DELEGATE**\n\n"
-                f"All {total_remote} REMOTE items are already delegated.\n\n"
-                "**Your task:** Finish to proceed to next phase."
-            )
-        
-        # Scenario 3: First iteration with blocked items
-        elif phase_changed and blocked_remote and not pending_remote:
-            blocked_names = ", ".join([f"'{item.id}'" for item in blocked_remote[:3]])
-            if len(blocked_remote) > 3:
-                blocked_names += f" (+{len(blocked_remote) - 3} more)"
+            # Show detailed breakdown
+            lines.append("**Current Status:**")
+            lines.append(f"  • Unassigned: {len(unassigned)} ({len(unassigned_ready)} ready, {len(unassigned_blocked)} blocked)")
+            lines.append(f"  • Assigned (not delegated): {len(assigned_not_delegated)} ({len(assigned_ready)} ready, {len(assigned_blocked)} blocked)")
+            lines.append(f"  • Delegated: {len(delegated)}")
+            lines.append(f"  • Completed: {len(completed)}")
+            lines.append("")
             
-            return (
-                "🚫 **REMOTE ITEMS BLOCKED**\n\n"
-                f"{len(blocked_remote)} REMOTE items are blocked by dependencies: {blocked_names}\n\n"
-                "These items cannot be delegated until their dependencies complete.\n\n"
-                "**Your task:** Finish to proceed (will return when dependencies resolve)."
-            )
+            # Case A: Items need assignment
+            if unassigned_ready:
+                lines.append(f"**STEP 1: ASSIGN {len(unassigned_ready)} ITEM(S)**")
+                item_list = ", ".join([f"'{item.id}'" for item in unassigned_ready[:3]])
+                if len(unassigned_ready) > 3:
+                    item_list += f" (+{len(unassigned_ready) - 3} more)"
+                lines.append(f"Items: {item_list}")
+                lines.append("• Use AssignWorkItemTool to assign each item to an agent")
+                lines.append("")
+            
+            # Case B: Items need delegation
+            if assigned_ready:
+                lines.append(f"**STEP 2: DELEGATE {len(assigned_ready)} ITEM(S)**")
+                item_list = ", ".join([f"'{item.id}' → {item.assigned_uid}" for item in assigned_ready[:3]])
+                if len(assigned_ready) > 3:
+                    item_list += f" (+{len(assigned_ready) - 3} more)"
+                lines.append(f"Items: {item_list}")
+                lines.append("• Use DelegateTaskTool to send task to assigned agent")
+                lines.append("  ⚠️ Must include work_item_id for response tracking")
+                lines.append("")
+            
+            lines.append("**Tips:**")
+            lines.append("• Use ListAdjacentNodesTool to see available agents")
+            lines.append("• Use GetNodeCardTool to check agent capabilities")
+            lines.append("• Match task to agent specialization")
+            lines.append("• Include clear instructions in delegation content")
+            
+            return "\n".join(lines)
         
-        # Scenario 4: Continuation with items remaining
-        elif not phase_changed and pending_remote:
-            return (
-                f"⏭️ **CONTINUE DELEGATION** ({len(pending_remote)} remaining)\n\n"
-                f"Progress: {delegated}/{total_remote} items delegated.\n\n"
-                "Continue delegating pending REMOTE items."
-            )
+        # Scenario 2: First iteration, nothing actionable
+        elif phase_changed and actionable == 0:
+            if len(delegated) + len(completed) == total_remote:
+                return (
+                    "✅ **ALL REMOTE ITEMS ALLOCATED**\n\n"
+                    f"Status: {len(delegated)} delegated, {len(completed)} completed.\n\n"
+                    "Finish to proceed to next phase."
+                )
+            else:
+                blocked_count = len(unassigned_blocked) + len(assigned_blocked)
+                return (
+                    f"🚫 **{blocked_count} REMOTE ITEMS BLOCKED**\n\n"
+                    "All REMOTE items are blocked by dependencies.\n\n"
+                    "Finish to proceed (will return when dependencies resolve)."
+                )
         
-        # Scenario 5: Continuation, all done
-        elif not phase_changed and not pending_remote:
+        # Scenario 3: Continuation, items still need action
+        elif not phase_changed and actionable > 0:
+            lines = [f"⏭️ **CONTINUE ALLOCATION** ({actionable} items need action)\n"]
+            lines.append("**Progress:**")
+            lines.append(f"  • {len(unassigned_ready)} need assignment")
+            lines.append(f"  • {len(assigned_ready)} need delegation")
+            lines.append(f"  • {len(delegated)} delegated (in progress)")
+            lines.append(f"  • {len(completed)} completed")
+            lines.append("")
+            
+            if unassigned_ready:
+                lines.append(f"**NEXT: Assign {len(unassigned_ready)} item(s) using AssignWorkItemTool**")
+            elif assigned_ready:
+                lines.append(f"**NEXT: Delegate {len(assigned_ready)} item(s) using DelegateTaskTool**")
+            
+            return "\n".join(lines)
+        
+        # Scenario 4: Continuation, all done
+        elif not phase_changed and actionable == 0:
             return (
-                "✅ **DELEGATION COMPLETE**\n\n"
-                f"All {total_remote} REMOTE items delegated.\n\n"
+                "✅ **ALLOCATION COMPLETE**\n\n"
+                f"All {total_remote} REMOTE items allocated.\n\n"
+                f"Status: {len(delegated)} in progress, {len(completed)} completed.\n\n"
                 "Finish to proceed to next phase."
             )
         
         # Fallback
-        return "Delegate pending REMOTE work items."
+        return "Allocate pending REMOTE work items to appropriate agents."
     
     def _focused_prompt_execution(self, context, plan, status, phase_changed: bool) -> str:
         """Execution phase prompts for ALL scenarios."""
