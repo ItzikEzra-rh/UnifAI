@@ -456,28 +456,19 @@ class OrchestratorNode(
 
     def _resolve_cycle_content(self, thread_id: str) -> str:
         """
-        Resolve content for orchestration cycle based on trigger.
+        Get the original user request for reference across all cycles.
         
-        Determines what message/instruction to give the LLM for this cycle:
-        - If new user request exists: Returns and clears it (one-time use)
-        - Otherwise: Returns guidance for response processing
+        With focused prompts now handling cycle-specific instructions,
+        this method preserves the original request for context.
         
         Args:
             thread_id: Thread ID
             
         Returns:
-            Content string (user request or response guidance)
+            Original user request or empty string
         """
-        # Check for new user request stored by _handle_new_work
-        new_request = self.workspaces.get_variable(thread_id, "_current_request", None)
-        
-        if new_request:
-            # Clear it (one-time use) and return actual user request
-            self.workspaces.set_variable(thread_id, "_current_request", None)
-            return new_request
-        
-        # No new request - return guidance for response processing
-        return "Review responses from delegated agents and update work plan accordingly."
+        # Return the original request (don't clear it - keep for all cycles)
+        return self.workspaces.get_variable(thread_id, "_current_request", "") or ""
 
     def _run_orchestration_cycle(self, cycle: PendingCycle, content: str) -> AgentResult:
         """
@@ -539,6 +530,9 @@ class OrchestratorNode(
         
         # Store context for phase provider to access via dynamic context messages
         phase_provider._current_orch_context = orch_context
+        
+        # Store user request for focused prompts
+        phase_provider.set_current_user_request(content)
 
         # Create strategy with unified provider
         strategy = self.create_strategy(
@@ -601,41 +595,31 @@ class OrchestratorNode(
         """
         Build STATIC context messages (set once per orchestration cycle).
         
-        Dynamic context (workspace facts, work plan) is now provided by
-        OrchestratorPhaseProvider.get_dynamic_context_messages() which is
-        called before each LLM interaction to ensure fresh data.
+        With the focused prompt system, this now provides minimal static context:
+        - Conversation history: Public user messages from graph state
+        - Original user request: For reference across all cycles
         
-        Static messages include:
-        - Conversation history
-        - Adjacent nodes summary  
-        - Current request
+        Phase-specific context is now handled by the phase provider:
+        - Adjacent nodes: Added per phase by get_phase_static_context()
+        - Work plan: Added dynamically by get_dynamic_context_messages()
+        - Focused prompts: Added by build_focused_prompt()
         
         Returns:
             List of static ChatMessage objects
         """
         messages = []
 
-        # Conversation history (static - doesn't change during cycle)
+        # Conversation history (public messages from graph state)
         conversation_history = self.workspaces.get_conversation_history(thread_id)
         if conversation_history:
             messages.extend(conversation_history)
 
-        # Adjacent nodes summary (static - delegation targets don't change)
-        adjacency_summary = self._build_adjacency_summary()
-        if adjacency_summary:
+        # Original user request (if exists) - preserved for all cycles
+        if content:
             messages.append(ChatMessage(
-                role=Role.SYSTEM,
-                content=f"Adjacent Nodes Available:\n{adjacency_summary}"
+                role=Role.USER,
+                content=content
             ))
-
-        # Current request (static - the batch trigger)
-        messages.append(ChatMessage(
-            role=Role.USER,
-            content=content
-        ))
-
-        # NOTE: Workspace and work plan are now provided dynamically by phase provider
-        # See OrchestratorPhaseProvider.get_dynamic_context_messages()
 
         return messages
 

@@ -7,6 +7,7 @@ Uses clean Pydantic models and enums to define orchestrator phases professionall
 from enum import Enum
 from typing import List, Callable, Any, Optional
 from elements.tools.common.base_tool import BaseTool
+from elements.llms.common.chat.message import ChatMessage
 from elements.nodes.common.agent.phases.unified_phase_provider import PhaseProvider
 from elements.nodes.common.agent.phases.phase_definition import PhaseSystem, PhaseDefinition
 from elements.nodes.common.agent.phases.phase_protocols import PhaseState, create_phase_state
@@ -123,6 +124,9 @@ class OrchestratorPhaseProvider(PhaseProvider):
 
         # Orchestrator context (set by orchestrator_node before each cycle)
         self._current_orch_context = None
+        
+        # Track current user request for focused prompts
+        self._current_user_request: Optional[str] = None
 
         super().__init__(domain_tools)  # This calls _create_phase_system()
 
@@ -130,6 +134,10 @@ class OrchestratorPhaseProvider(PhaseProvider):
         """Get current thread for delegation context."""
         workload_service = self._get_workload_service()
         return workload_service.get_thread(self._thread_id)
+    
+    def set_current_user_request(self, request: str) -> None:
+        """Set the current user request for building focused prompts."""
+        self._current_user_request = request
 
     def _increment_phase_iteration(self, phase_name: str) -> None:
         """
@@ -1451,3 +1459,565 @@ class OrchestratorPhaseProvider(PhaseProvider):
                                 lines.append(f"    Execution: {outcome_text}")
 
         return "\n".join(lines)
+    
+    def get_phase_static_context(self, phase_name: str) -> List[ChatMessage]:
+        """
+        Get phase-specific static context (reference material).
+        
+        Returns SYSTEM messages with stable reference information
+        that doesn't change during the cycle.
+        
+        Different phases need different static context:
+        - PLANNING: Optional adjacent nodes for capability checking
+        - ALLOCATION: Required adjacent nodes for delegation
+        - EXECUTION: None (executes locally)
+        - MONITORING: Required adjacent nodes for re-delegation
+        - SYNTHESIS: None (read-only)
+        
+        Args:
+            phase_name: Current phase name
+        
+        Returns:
+            List of SYSTEM ChatMessage with phase-specific context
+        """
+        from elements.llms.common.chat.message import Role
+        
+        try:
+            phase_enum = OrchestratorPhase(phase_name)
+        except ValueError:
+            return []
+        
+        messages = []
+        
+        # Phases that need adjacent nodes information
+        if phase_enum in [
+            OrchestratorPhase.PLANNING,    # Optional - for checking capabilities
+            OrchestratorPhase.ALLOCATION,  # Required - for delegation
+            OrchestratorPhase.MONITORING   # Required - for re-delegation
+        ]:
+            adjacent_nodes = self._build_adjacent_nodes_context()
+            if adjacent_nodes:
+                messages.append(ChatMessage(
+                    role=Role.SYSTEM,
+                    content=adjacent_nodes
+                ))
+        
+        return messages
+    
+    def _build_adjacent_nodes_context(self) -> Optional[str]:
+        """Build adjacent nodes reference context."""
+        try:
+            adjacent_nodes = self._get_adjacent_nodes()
+            if not adjacent_nodes:
+                return None
+            
+            lines = ["## Available Agents for Delegation\n"]
+            
+            for uid, card in adjacent_nodes.items():
+                lines.append(f"**{card.name}** (uid: `{uid}`)")
+                lines.append(f"  • Type: {card.type_key}")
+                lines.append(f"  • Description: {card.description}")
+                
+                if card.skills:
+                    lines.append(f"  • Skills: {card.skills}")
+                
+                lines.append("")
+            
+            return "\n".join(lines)
+        except Exception:
+            return None
+    
+    def build_focused_prompt(self, phase: str, phase_changed: bool) -> str:
+        """
+        Build comprehensive focused prompt for ALL scenarios.
+        
+        Handles every possible situation in each phase:
+        - Different triggers (NEW_REQUEST, RESPONSE_ARRIVED, etc.)
+        - Phase transitions vs continuations
+        - Work plan states (empty, partial, complete)
+        - Item states (pending, blocked, waiting, etc.)
+        
+        Returns clear, actionable instruction for THIS specific situation.
+        
+        Args:
+            phase: Current phase name
+            phase_changed: Whether we just transitioned to this phase
+        
+        Returns:
+            Focused prompt string
+        """
+        try:
+            phase_enum = OrchestratorPhase(phase)
+        except ValueError:
+            return ""
+        
+        # Get current context and state
+        context = self._current_orch_context
+        workspace_service = self._get_workload_service().get_workspace_service()
+        plan = workspace_service.load_work_plan(self._thread_id, self._node_uid)
+        status = workspace_service.get_work_plan_status(self._thread_id, self._node_uid)
+        
+        # Dispatch to phase-specific builder
+        if phase_enum == OrchestratorPhase.PLANNING:
+            return self._focused_prompt_planning(context, plan, status, phase_changed)
+        elif phase_enum == OrchestratorPhase.ALLOCATION:
+            return self._focused_prompt_allocation(context, plan, status, phase_changed)
+        elif phase_enum == OrchestratorPhase.EXECUTION:
+            return self._focused_prompt_execution(context, plan, status, phase_changed)
+        elif phase_enum == OrchestratorPhase.MONITORING:
+            return self._focused_prompt_monitoring(context, plan, status, phase_changed)
+        elif phase_enum == OrchestratorPhase.SYNTHESIS:
+            return self._focused_prompt_synthesis(context, plan, status, phase_changed)
+        
+        return ""
+    
+    def _focused_prompt_planning(self, context, plan, status, phase_changed: bool) -> str:
+        """Planning phase prompts for ALL scenarios."""
+        from .context.models import CycleTriggerReason
+        
+        trigger_reason = context.trigger.reason if context else None
+        user_request = self._current_user_request or "the request"
+        
+        # Scenario 1: Brand new request, no plan
+        if trigger_reason == CycleTriggerReason.NEW_REQUEST and status.total_items == 0:
+            return (
+                "🆕 **NEW REQUEST - CREATE WORK PLAN**\n\n"
+                f"User asked: \"{user_request}\"\n\n"
+                "**Your task:** Create a comprehensive work plan.\n\n"
+                "**Steps:**\n"
+                "1. Break down request into specific work items\n"
+                "2. For each item, determine:\n"
+                "   • Type: LOCAL (you execute) or REMOTE (delegate to agent)\n"
+                "   • Dependencies: Which items must complete first\n"
+                "   • Assignment: For REMOTE items, which agent (check Available Agents above)\n"
+                "3. Use `CreateOrUpdateWorkPlanTool` with all items\n\n"
+                "**Remember:** Create the structure now, delegation happens in ALLOCATION phase."
+            )
+        
+        # Scenario 2: Follow-up request with completed plan
+        elif trigger_reason == CycleTriggerReason.NEW_REQUEST and status.is_complete:
+            return (
+                "🆕 **FOLLOW-UP REQUEST - EXTEND PLAN**\n\n"
+                f"User's follow-up: \"{user_request}\"\n\n"
+                f"**Context:** Existing plan has {status.total_items} items (all complete).\n\n"
+                "**Your task:** Add new work items to address this follow-up.\n\n"
+                "**Steps:**\n"
+                "1. Review what was already done (check DONE items above)\n"
+                "2. Determine what new work is needed\n"
+                "3. Add new items that build on or extend previous work\n"
+                "4. Set dependencies on completed items if needed\n"
+                "5. Use `CreateOrUpdateWorkPlanTool` with updated plan"
+            )
+        
+        # Scenario 3: Follow-up request with in-progress plan
+        elif trigger_reason == CycleTriggerReason.NEW_REQUEST and status.total_items > 0:
+            in_progress_count = status.in_progress_items + status.pending_items + status.waiting_items
+            return (
+                "🆕 **FOLLOW-UP REQUEST - UPDATE PLAN**\n\n"
+                f"User's follow-up: \"{user_request}\"\n\n"
+                f"**Context:** Plan has {status.total_items} items "
+                f"({status.done_items} done, {in_progress_count} in-progress, {status.failed_items} failed).\n\n"
+                "**Your task:** Update plan to incorporate new request.\n\n"
+                "**Steps:**\n"
+                "1. Review current plan status (above)\n"
+                "2. Determine if new request:\n"
+                "   • Adds new independent work → Add new items\n"
+                "   • Clarifies existing work → Update descriptions\n"
+                "   • Depends on in-progress work → Add items with dependencies\n"
+                "3. Use `CreateOrUpdateWorkPlanTool` with updated plan"
+            )
+        
+        # Scenario 4: Responses arrived (replanning needed?)
+        elif trigger_reason == CycleTriggerReason.RESPONSE_ARRIVED:
+            return (
+                "📥 **RESPONSES ARRIVED - REVIEW PLAN**\n\n"
+                "New responses have been received. You're in PLANNING phase, which means\n"
+                "the system detected that the plan might need updates.\n\n"
+                "**Your task:** Review the plan and decide:\n"
+                "• Are new work items needed based on responses?\n"
+                "• Should failed items be retried with different approach?\n"
+                "• Is the plan still appropriate?\n\n"
+                "Update plan if needed, or finish to proceed to next phase."
+            )
+        
+        # Scenario 5: Continuation (refining)
+        elif not phase_changed:
+            return (
+                "⏭️ **CONTINUE PLANNING**\n\n"
+                "You're still in PLANNING phase.\n\n"
+                "**Options:**\n"
+                "• Refine work items if needed\n"
+                "• Update dependencies or assignments\n"
+                "• Finish to proceed to ALLOCATION phase"
+            )
+        
+        # Fallback
+        return "Review and create/update the work plan as needed."
+    
+    def _focused_prompt_allocation(self, context, plan, status, phase_changed: bool) -> str:
+        """Allocation phase prompts for ALL scenarios."""
+        from elements.nodes.common.workload import WorkItemKind
+        
+        if not plan:
+            return "Delegate pending REMOTE work items to appropriate agents."
+        
+        # Use WorkPlan helper methods for clean, consistent logic
+        ready_items = plan.get_ready_items()
+        blocked_items = plan.get_blocked_items()
+        
+        # Filter by kind
+        pending_remote = [item for item in ready_items if item.kind == WorkItemKind.REMOTE]
+        blocked_remote = [item for item in blocked_items if item.kind == WorkItemKind.REMOTE]
+        
+        # Calculate progress
+        total_remote = len([
+            item for item in plan.items.values()
+            if item.kind == WorkItemKind.REMOTE
+        ])
+        delegated = total_remote - len(pending_remote) - len(blocked_remote)
+        
+        # Scenario 1: First iteration with items to delegate
+        if phase_changed and pending_remote:
+            item_names = ", ".join([f"'{item.id}'" for item in pending_remote[:3]])
+            if len(pending_remote) > 3:
+                item_names += f" (+{len(pending_remote) - 3} more)"
+            
+            return (
+                f"🎯 **DELEGATE {len(pending_remote)} REMOTE ITEM(S)**\n\n"
+                f"Items ready to delegate: {item_names}\n\n"
+                "**For EACH pending REMOTE item:**\n"
+                "1. Choose appropriate agent (check Available Agents above)\n"
+                "2. `AssignWorkItemTool(item_id, agent_uid)`\n"
+                "3. `DelegateTaskTool(dst_uid, content, work_item_id)`\n"
+                "   ⚠️ Must include work_item_id for response tracking\n\n"
+                "**Tips:**\n"
+                "• Use `GetNodeCardTool(uid)` to check agent capabilities\n"
+                "• Include clear instructions and context in delegation content"
+            )
+        
+        # Scenario 2: First iteration but nothing to delegate
+        elif phase_changed and not pending_remote and not blocked_remote:
+            return (
+                "✅ **NO REMOTE ITEMS TO DELEGATE**\n\n"
+                f"All {total_remote} REMOTE items are already delegated.\n\n"
+                "**Your task:** Finish to proceed to next phase."
+            )
+        
+        # Scenario 3: First iteration with blocked items
+        elif phase_changed and blocked_remote and not pending_remote:
+            blocked_names = ", ".join([f"'{item.id}'" for item in blocked_remote[:3]])
+            if len(blocked_remote) > 3:
+                blocked_names += f" (+{len(blocked_remote) - 3} more)"
+            
+            return (
+                "🚫 **REMOTE ITEMS BLOCKED**\n\n"
+                f"{len(blocked_remote)} REMOTE items are blocked by dependencies: {blocked_names}\n\n"
+                "These items cannot be delegated until their dependencies complete.\n\n"
+                "**Your task:** Finish to proceed (will return when dependencies resolve)."
+            )
+        
+        # Scenario 4: Continuation with items remaining
+        elif not phase_changed and pending_remote:
+            return (
+                f"⏭️ **CONTINUE DELEGATION** ({len(pending_remote)} remaining)\n\n"
+                f"Progress: {delegated}/{total_remote} items delegated.\n\n"
+                "Continue delegating pending REMOTE items."
+            )
+        
+        # Scenario 5: Continuation, all done
+        elif not phase_changed and not pending_remote:
+            return (
+                "✅ **DELEGATION COMPLETE**\n\n"
+                f"All {total_remote} REMOTE items delegated.\n\n"
+                "Finish to proceed to next phase."
+            )
+        
+        # Fallback
+        return "Delegate pending REMOTE work items."
+    
+    def _focused_prompt_execution(self, context, plan, status, phase_changed: bool) -> str:
+        """Execution phase prompts for ALL scenarios."""
+        from elements.nodes.common.workload import WorkItemKind
+        
+        if not plan:
+            return "Execute pending LOCAL work items."
+        
+        # Use WorkPlan helper methods for clean, consistent logic
+        ready_items = plan.get_ready_items()
+        blocked_items = plan.get_blocked_items()
+        
+        # Filter by kind
+        pending_local = [item for item in ready_items if item.kind == WorkItemKind.LOCAL]
+        blocked_local = [item for item in blocked_items if item.kind == WorkItemKind.LOCAL]
+        
+        total_local = len([
+            item for item in plan.items.values()
+            if item.kind == WorkItemKind.LOCAL
+        ])
+        
+        # Scenario 1: First iteration with items to execute
+        if phase_changed and pending_local:
+            item_details = []
+            for item in pending_local[:3]:
+                item_details.append(f"  • `{item.id}`: {item.title}")
+            if len(pending_local) > 3:
+                item_details.append(f"  • (+{len(pending_local) - 3} more items)")
+            
+            items_str = "\n".join(item_details)
+            
+            return (
+                f"⚡ **EXECUTE {len(pending_local)} LOCAL ITEM(S)**\n\n"
+                f"Items ready to execute:\n{items_str}\n\n"
+                "**For EACH item:**\n"
+                "1. Read the item description carefully\n"
+                "2. Execute using your capabilities and available tools\n"
+                "3. `RecordLocalExecutionTool(item_id, outcome)`\n"
+                "   → This automatically marks the item as DONE\n\n"
+                "**Outcome format:** Describe what you did and the results."
+            )
+        
+        # Scenario 2: First iteration, nothing to execute
+        elif phase_changed and not pending_local and not blocked_local:
+            if total_local == 0:
+                reason = "No LOCAL items in plan."
+            else:
+                reason = "All LOCAL items already executed."
+            
+            return (
+                "✅ **NO LOCAL ITEMS TO EXECUTE**\n\n"
+                f"{reason}\n\n"
+                "**Your task:** Finish to proceed to next phase."
+            )
+        
+        # Scenario 3: First iteration with blocked items
+        elif phase_changed and blocked_local and not pending_local:
+            blocked_names = ", ".join([f"'{item.id}'" for item in blocked_local[:2]])
+            if len(blocked_local) > 2:
+                blocked_names += f" (+{len(blocked_local) - 2} more)"
+            
+            return (
+                "🚫 **LOCAL ITEMS BLOCKED**\n\n"
+                f"{len(blocked_local)} items blocked by dependencies: {blocked_names}\n\n"
+                "Cannot execute until dependencies complete.\n\n"
+                "**Your task:** Finish to proceed (will return when unblocked)."
+            )
+        
+        # Scenario 4: Continuation with items remaining
+        elif not phase_changed and pending_local:
+            return (
+                f"⏭️ **CONTINUE EXECUTION** ({len(pending_local)} remaining)\n\n"
+                "Continue executing pending LOCAL items."
+            )
+        
+        # Scenario 5: Continuation, all done
+        elif not phase_changed and not pending_local:
+            return (
+                "✅ **EXECUTION COMPLETE**\n\n"
+                "All LOCAL items executed.\n\n"
+                "Finish to proceed to next phase."
+            )
+        
+        # Fallback
+        return "Execute pending LOCAL work items."
+    
+    def _focused_prompt_monitoring(self, context, plan, status, phase_changed: bool) -> str:
+        """Monitoring phase prompts for ALL scenarios."""
+        from .context.models import CycleTriggerReason
+        
+        trigger_reason = context.trigger.reason if context else None
+        changed_items = context.trigger.changed_items if context else []
+        
+        if not plan:
+            return "Review work plan and update item statuses."
+        
+        # Find items with unprocessed responses
+        items_need_attention = []
+        items_waiting = []
+        
+        for item in plan.items.values():
+            if item.result and item.result.delegations:
+                for exchange in item.result.delegations:
+                    if exchange.needs_attention:
+                        items_need_attention.append(item)
+                        break
+                    elif exchange.is_pending:
+                        items_waiting.append(item)
+                        break
+        
+        # Scenario 1: Single response just arrived
+        if trigger_reason == CycleTriggerReason.RESPONSE_ARRIVED and len(changed_items) == 1:
+            item_id = changed_items[0]
+            return (
+                "📥 **RESPONSE RECEIVED**\n\n"
+                f"Agent responded to work item: `{item_id}`\n\n"
+                "**Your task:** Review the response (marked 🔔 or ⚡ in work plan).\n\n"
+                "**Decision:**\n"
+                f"• **Acceptable?** → `MarkWorkItemStatusTool('{item_id}', 'done')`\n"
+                f"• **Needs follow-up?** → `DelegateTaskTool(same agent, clarification, work_item_id)`\n"
+                "  ↳ Use same work_item_id to continue conversation\n"
+                f"• **Failed/impossible?** → `MarkWorkItemStatusTool('{item_id}', 'failed')`\n\n"
+                "**Quality bar:** Mark DONE only if response truly addresses the requirement."
+            )
+        
+        # Scenario 2: Multiple responses arrived
+        elif trigger_reason == CycleTriggerReason.RESPONSE_ARRIVED and len(changed_items) > 1:
+            items_list = ", ".join([f"`{item}`" for item in changed_items[:4]])
+            if len(changed_items) > 4:
+                items_list += f" (+{len(changed_items) - 4} more)"
+            
+            return (
+                f"📥 **{len(changed_items)} RESPONSES RECEIVED**\n\n"
+                f"Items: {items_list}\n\n"
+                "**Your task:** Process ALL responses in this iteration.\n\n"
+                "**For each response:**\n"
+                "1. Review quality and completeness\n"
+                "2. Decide: Mark DONE, request follow-up, or mark FAILED\n"
+                "3. Use appropriate tool for each decision\n\n"
+                "Responses marked 🔔 or ⚡ in work plan above."
+            )
+        
+        # Scenario 3: Entered from EXECUTION (checking state)
+        elif phase_changed and trigger_reason != CycleTriggerReason.RESPONSE_ARRIVED:
+            if items_need_attention:
+                return (
+                    f"🔍 **REVIEW {len(items_need_attention)} RESPONSE(S)**\n\n"
+                    "Local execution complete. Now review responses from delegated work.\n\n"
+                    "Process items marked 🔔 or ⚡ in the work plan above."
+                )
+            elif items_waiting:
+                return (
+                    f"⏳ **WAITING FOR {len(items_waiting)} RESPONSE(S)**\n\n"
+                    "All actionable work complete. Waiting for agents to respond.\n\n"
+                    "**Your task:** Finish to pause (will resume when responses arrive)."
+                )
+            else:
+                # All work complete or ready to synthesize
+                return (
+                    "✅ **NO PENDING RESPONSES**\n\n"
+                    "All work items processed.\n\n"
+                    "**Your task:** Finish to proceed to SYNTHESIS."
+                )
+        
+        # Scenario 4: Continuation with unprocessed responses
+        elif not phase_changed and items_need_attention:
+            return (
+                f"⏭️ **CONTINUE MONITORING** ({len(items_need_attention)} items need attention)\n\n"
+                "Continue processing remaining responses."
+            )
+        
+        # Scenario 5: Continuation, all processed
+        elif not phase_changed and not items_need_attention:
+            if items_waiting:
+                return (
+                    f"⏳ **WAITING FOR RESPONSES** ({len(items_waiting)} items)\n\n"
+                    "All available responses processed.\n\n"
+                    "Finish to pause until more responses arrive."
+                )
+            else:
+                return (
+                    "✅ **MONITORING COMPLETE**\n\n"
+                    "All work items reviewed and processed.\n\n"
+                    "Finish to proceed to SYNTHESIS."
+                )
+        
+        # Fallback
+        return "Review responses and update work item statuses."
+    
+    def _focused_prompt_synthesis(self, context, plan, status, phase_changed: bool) -> str:
+        """Synthesis phase prompts for ALL scenarios."""
+        from .context.models import CycleTriggerReason
+        
+        trigger_reason = context.trigger.reason if context else None
+        user_request = self._current_user_request or "the request"
+        
+        # Calculate work stats for context
+        total_items = status.total_items
+        done_items = status.done_items
+        failed_items = status.failed_items
+        
+        # Scenario 1: All work complete, first synthesis
+        if phase_changed and status.is_complete and failed_items == 0:
+            return (
+                "✨ **SYNTHESIZE COMPLETE RESULTS**\n\n"
+                f"All {total_items} work items completed successfully!\n\n"
+                f"Original request: \"{user_request}\"\n\n"
+                "**Your task:** Create comprehensive final response.\n\n"
+                "**Include:**\n"
+                "1. Direct answer to user's request\n"
+                "2. Summary of what was accomplished\n"
+                "3. Key findings or results from work items\n"
+                "4. Any important details or context\n\n"
+                "**Then:** Finish to return response to user."
+            )
+        
+        # Scenario 2: Partial completion with failures
+        elif phase_changed and (done_items > 0 or failed_items > 0):
+            return (
+                "⚠️ **SYNTHESIZE PARTIAL RESULTS**\n\n"
+                f"Work summary: {done_items}/{total_items} done, {failed_items} failed.\n\n"
+                f"Original request: \"{user_request}\"\n\n"
+                "**Your task:** Create honest, transparent response.\n\n"
+                "**Include:**\n"
+                "1. What was successfully accomplished (from DONE items)\n"
+                "2. What couldn't be completed and why (from FAILED items)\n"
+                "3. Whether partial results answer the request\n"
+                "4. Suggestions for next steps if applicable\n\n"
+                "**Be transparent about limitations.**\n\n"
+                "**Then:** Finish to return response to user."
+            )
+        
+        # Scenario 3: No work completed (edge case)
+        elif phase_changed and done_items == 0 and total_items > 0:
+            if failed_items == total_items:
+                return (
+                    "❌ **SYNTHESIZE FAILURE RESULTS**\n\n"
+                    f"Unable to complete any of {total_items} work items.\n\n"
+                    f"Original request: \"{user_request}\"\n\n"
+                    "**Your task:** Explain what went wrong.\n\n"
+                    "**Include:**\n"
+                    "1. Clear explanation of why work couldn't be completed\n"
+                    "2. What was attempted\n"
+                    "3. Suggestions for alternative approaches\n\n"
+                    "**Then:** Finish to return response to user."
+                )
+            else:
+                # All items still in progress/waiting (shouldn't normally happen)
+                return (
+                    "🔄 **EARLY SYNTHESIS**\n\n"
+                    "Entered SYNTHESIS but work is still in progress.\n\n"
+                    "**Options:**\n"
+                    "• Provide interim update if user needs it now\n"
+                    "• Explain current status and what's pending\n\n"
+                    "**Then:** Finish to return response."
+                )
+        
+        # Scenario 4: Follow-up request during synthesis
+        elif trigger_reason == CycleTriggerReason.NEW_REQUEST:
+            return (
+                "🆕 **USER FOLLOW-UP IN SYNTHESIS**\n\n"
+                f"User asked: \"{user_request}\"\n\n"
+                "You're in SYNTHESIS phase (typically read-only).\n\n"
+                "**Options:**\n"
+                "• If follow-up is clarification → Answer directly and finish\n"
+                "• If follow-up needs new work → Suggest returning to PLANNING\n"
+                "  (Note: Phase will transition automatically if needed)\n\n"
+                "Respond to the follow-up appropriately."
+            )
+        
+        # Scenario 5: Continuation in synthesis
+        elif not phase_changed:
+            return (
+                "⏭️ **CONTINUE SYNTHESIS**\n\n"
+                "You're still in SYNTHESIS phase.\n\n"
+                "**Options:**\n"
+                "• Refine your response\n"
+                "• Add more context or details\n"
+                "• Finish when response is complete\n\n"
+                f"Original request: \"{user_request}\""
+            )
+        
+        # Fallback
+        return (
+            "Synthesize results and create final response for the user. "
+            "Review completed work items and formulate a comprehensive answer."
+        )

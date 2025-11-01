@@ -241,7 +241,9 @@ class PlanAndExecuteStrategy(AgentStrategy):
         
         except Exception as e:
             # Fatal strategy error
+            import traceback
             print(f"❌ [STRATEGY] Fatal error in phase {self._current_phase}: {e}")
+            print(f"📍 Traceback:\n{traceback.format_exc()}")
             
             error_feedback = ChatMessage(
                 role=Role.SYSTEM,
@@ -263,18 +265,21 @@ class PlanAndExecuteStrategy(AgentStrategy):
         messages: List[ChatMessage]
     ) -> List[ChatMessage]:
         """
-        Build context with phase-specific prompting and dynamic context.
+        Build context with optimal message ordering for LLM performance.
         
-        Messages already include TOOL messages in correct order (added by iterator).
+        Strategy is PHASE-AGNOSTIC - delegates all phase-specific decisions
+        to the PhaseProvider.
         
         Filtering logic:
         - If phase changed: Filter to clean slate (USER messages only)
         - If same phase: Keep all messages (including TOOL calls for continuity)
         
-        Includes:
-        - Phase-specific system message with guidance + validation
-        - Static messages (filtered based on phase transition)
-        - Dynamic context from provider (fresh workspace + work plan)
+        Order optimized for LLM attention patterns:
+        1. System instructions (role + phase guidance)
+        2. Phase-specific static context (e.g., adjacent nodes)
+        3. Conversation history (chronological, filtered)
+        4. Current state (dynamic work plan + cycle context)
+        5. Focused prompt (contextual based on trigger/phase/state)
         
         Args:
             messages: Complete conversation history including USER, ASSISTANT,
@@ -285,31 +290,72 @@ class PlanAndExecuteStrategy(AgentStrategy):
         """
         context = []
         
-        # [1] System message with phase guidance + validation
+        # [1] SYSTEM: Core role + phase guidance
         system_content = self._build_phase_prompt()
         if self.system_message:
             system_content = f"{self.system_message}\n\n{system_content}"
         
         context.append(ChatMessage(role=Role.SYSTEM, content=system_content))
         
-        # [2] Static messages (filtered based on phase transition)
-        # Pass phase_changed flag to control tool message filtering
+        # [2] SYSTEM: Phase-specific static context (adjacent nodes, etc.)
+        # Provider decides what static context is needed for this phase
+        static_context = self._get_phase_static_context()
+        if static_context:
+            context.extend(static_context)
+        
+        # [3] USER: Conversation history (filtered based on phase transition)
         static_messages = self._filter_static_messages(messages, filter_tools=self._phase_changed)
         if static_messages:
             context.extend(static_messages)
         
-        # [3] Dynamic context from provider (fresh workspace + work plan)
-        # This ensures LLM always sees current state
+        # [4] USER: Current state (dynamic work plan + cycle context)
         if hasattr(self._phase_provider, 'get_dynamic_context_messages'):
             dynamic_context = self._phase_provider.get_dynamic_context_messages(
                 self._current_phase
             )
             context.extend(dynamic_context)
         
-        # [4] Messages already include TOOL messages in correct order!
-        # No need to re-process observations
+        # [5] USER: Focused prompt (contextual based on situation)
+        # Provider knows what the LLM should focus on for THIS phase iteration
+        focused_prompt = self._get_focused_prompt()
+        if focused_prompt:
+            context.append(ChatMessage(
+                role=Role.USER,
+                content=focused_prompt
+            ))
         
         return context
+    
+    def _get_phase_static_context(self) -> List[ChatMessage]:
+        """
+        Get phase-specific static context from provider.
+        
+        Strategy doesn't know what context each phase needs.
+        Provider decides (e.g., adjacent nodes for ALLOCATION/MONITORING).
+        
+        Returns:
+            List of SYSTEM messages with static reference material
+        """
+        if hasattr(self._phase_provider, 'get_phase_static_context'):
+            return self._phase_provider.get_phase_static_context(self._current_phase)
+        return []
+    
+    def _get_focused_prompt(self) -> Optional[str]:
+        """
+        Get focused prompt from provider.
+        
+        Provider knows the current situation (trigger, phase, state)
+        and can build appropriate prompt.
+        
+        Returns:
+            Focused prompt string or None
+        """
+        if hasattr(self._phase_provider, 'build_focused_prompt'):
+            return self._phase_provider.build_focused_prompt(
+                phase=self._current_phase,
+                phase_changed=self._phase_changed
+            )
+        return None
     
     def _filter_static_messages(
         self, 
