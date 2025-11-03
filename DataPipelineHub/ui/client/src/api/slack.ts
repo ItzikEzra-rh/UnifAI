@@ -2,6 +2,8 @@ import { formatDate } from '@/features/helpers';
 import { api } from '@/http/queryClient';
 import type { Channel, EmbedChannel } from '@/types';
 import { timeAgo } from '@/utils';
+import { useAuth } from '@/contexts/AuthContext';
+
 export interface SystemStats {
   id: number;
   totalChannels: number;
@@ -95,6 +97,13 @@ export async function submitSlackChannels(
   
   return data;
 };
+
+export function useSubmitSlackChannels() {
+  const { user } = useAuth();
+  
+  return (channels: ChannelWithSettings[]) => 
+    submitSlackChannels(channels, user?.username || 'default');
+}
 
 export async function fetchEmbeddedSlackChannels(): Promise<EmbedChannel[]> {
   // Call the new backend endpoint for available data sources with source_type='slack'

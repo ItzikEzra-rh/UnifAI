@@ -1,6 +1,6 @@
 import React, { useRef, useCallback } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { submitSlackChannels, ChannelWithSettings } from '@/api/slack';
+import { useSubmitSlackChannels, ChannelWithSettings } from '@/api/slack';
 import AddSourceSection, { AddSourceSectionHandle } from './AddSourceSection';
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
@@ -9,13 +9,12 @@ import { motion } from 'framer-motion';
 import { useLocation } from 'wouter';
 import { useToast } from "@/hooks/use-toast";
 import { SlackSetupInfo } from './SlackSetupInfo';
-import { useAuth } from '@/contexts/AuthContext';
 
 export default function SlackAddSourcePage() {
     const [, navigate] = useLocation();
     const queryClient = useQueryClient();
     const { toast } = useToast();
-    const { user } = useAuth();
+    const submitSlackChannels = useSubmitSlackChannels();
 
     const {
         mutate: addChannels,
@@ -23,7 +22,7 @@ export default function SlackAddSourcePage() {
         isError,
         error,
     } = useMutation({
-        mutationFn: (channels: ChannelWithSettings[]) => submitSlackChannels(channels, user?.username || 'default'),
+        mutationFn: submitSlackChannels,
         onSuccess: (data, variables) => {
             queryClient.invalidateQueries({ queryKey: ['slackChannels'] });
             queryClient.invalidateQueries({ queryKey: ['embeddedSlackChannels'] });
