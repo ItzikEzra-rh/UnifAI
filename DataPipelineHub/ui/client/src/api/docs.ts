@@ -28,7 +28,7 @@ export async function embedDocs(docs: {source_name: string}[], user: string): Pr
         { 
             data: docs,
             type: 'document',
-            user
+            user: user
         }
       );
 }
