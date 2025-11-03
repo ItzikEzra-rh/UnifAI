@@ -4,17 +4,23 @@ import os
 import uuid
 from typing import Any, Dict, Tuple
 from functools import cached_property
+from dataclasses import dataclass
 from config.app_config import AppConfig
 from config.constants import DataSource
 from services.documents.duplicate_checker import DocumentDuplicateChecker
 from shared.source_types import DocumentMetadata, DocumentTypeData
 from utils.file_hash import compute_file_md5
 from validator.validator import Validator, build_doc_validators
-from .base import RegistrationBase
+from .base import RegistrationBase, BaseSourceData
 
 app_config = AppConfig.get_instance()
 upload_folder = app_config.upload_folder
 
+@dataclass(frozen=True)
+class DocumentSourceData(BaseSourceData):
+    doc_path: str
+    md5: str
+    
 class DocumentRegistration(RegistrationBase):
     """Registration flow for Document sources."""
     DATA_SOURCE_TYPE = DataSource.DOCUMENT.upper_name
@@ -26,28 +32,29 @@ class DocumentRegistration(RegistrationBase):
         self._duplicate_checker = DocumentDuplicateChecker(self.mongo_storage)
 
     @cached_property
-    def doc_path(self) -> str:
-        return os.path.join(self.upload_folder, self.source_name)
-
-    @cached_property
-    def md5(self) -> str:
-        return compute_file_md5(self.doc_path)
-
-    @cached_property
-    def source_id(self) -> str:
-        return str(uuid.uuid4())
-
-    @cached_property
-    def pipeline_id(self) -> str:
-        return f"{DataSource.DOCUMENT.value}_{self.source_id}"
+    def source_data(self) -> DocumentSourceData:
+        name = self.instance.get("source_name", "")
+        path = os.path.join(self.upload_folder, name)
+        md5 = compute_file_md5(path)
+        sid = str(uuid.uuid4())
+        pid = f"{DataSource.DOCUMENT.value}_{sid}"
+        form_data = self.instance.get("metadata", {})
+        return DocumentSourceData(
+            source_name=name,
+            source_id=sid,
+            pipeline_id=pid,
+            doc_path=path,
+            md5=md5,
+            form_data=form_data,
+        )
 
     def run_validator(self) -> Tuple[bool, Dict[str, Any] | None]:
         context = {"duplicate_checker": self._duplicate_checker}
 
         validation_args = {
-            "doc_path": self.doc_path,
-            "source_name": self.source_name,
-            "md5": self.md5
+            "doc_path": self.source_data.doc_path,
+            "source_name": self.source_data.source_name,
+            "md5": self.source_data.md5
         }
         is_valid, issue = self._validator.validate(validation_args, context)
 
@@ -56,7 +63,7 @@ class DocumentRegistration(RegistrationBase):
             message = (issue or {}).get("message", "Validation error")
             validator_name = (issue or {}).get("validator_name", "Validator")
             return False, {
-                "doc_name": self.source_name,
+                "doc_name": self.source_data.source_name,
                 "issue_type": issue_key,
                 "message": message,
                 "validator": validator_name,
@@ -66,20 +73,20 @@ class DocumentRegistration(RegistrationBase):
 
     def _build_metadata(self) -> DocumentMetadata:
         return DocumentMetadata(
-            doc_id=self.source_id,
-            doc_name=self.source_name,
-            doc_path=self.doc_path,
+            doc_id=self.source_data.source_id,
+            doc_name=self.source_data.source_name,
+            doc_path=self.source_data.doc_path,
             upload_by=self.upload_by,
         )
 
     def _build_type_data(self) -> Dict[str, Any]:
         doc_type_data = DocumentTypeData(
-            file_type=self.source_name.rsplit(".", 1)[-1].lower(),
-            doc_path=self.doc_path,
+            file_type=self.source_data.source_name.rsplit(".", 1)[-1].lower(),
+            doc_path=self.source_data.doc_path,
             page_count=0,
             full_text="",
             file_size=0,
-            md5=self.md5,
-            **self.form_data,
+            md5=self.source_data.md5,
+            **self.source_data.form_data,
         )
         return doc_type_data.model_dump()

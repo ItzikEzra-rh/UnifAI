@@ -2,9 +2,16 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Tuple
+from dataclasses import dataclass
 from shared.logger import logger
 from shared.source_types import RegisteredSource
 
+@dataclass(frozen=True)
+class BaseSourceData:
+    source_name: str
+    source_id: str
+    pipeline_id: str
+    form_data: Dict[str, Any]
 
 class RegistrationBase(ABC):
     """
@@ -18,8 +25,6 @@ class RegistrationBase(ABC):
         self.mongo_storage = mongo_storage
         self.upload_by = upload_by
         self.instance = instance
-        self.source_name = self.instance.get("source_name", "")
-        self.form_data = self._extract_form_data()
         
     def run_registration(self) -> Tuple[Dict[str, Any] | None, Dict[str, Any] | None]:
         """
@@ -33,6 +38,12 @@ class RegistrationBase(ABC):
             return None, issue
         return self.register()
 
+    @property
+    @abstractmethod
+    def source_data(self) -> BaseSourceData:
+        """Aggregated, immutable source data object (id, name, pipeline_id, form_data, etc.)."""
+        raise NotImplementedError
+
     def register(self) -> Tuple[Dict[str, Any] | None, Dict[str, Any] | None]:
         """
         Register a single instance. Returns (registered_source_dict, issue_dict).
@@ -40,24 +51,25 @@ class RegistrationBase(ABC):
         registered_source_dict should be None and issue_dict should contain structured info.
         """
         metadata = self._build_metadata()
+        type_data = self._build_type_data()
         self._persist_common(
-            source_id=self.source_id,
-            source_name=self.source_name,
+            source_id=self.source_data.source_id,
+            source_name=self.source_data.source_name,
             source_type_upper=self.DATA_SOURCE_TYPE,
-            pipeline_id=self.pipeline_id,
-            type_data=self.type_data,
+            pipeline_id=self.source_data.pipeline_id,
+            type_data=type_data,
         )
         registered_source = self._build_registered_source_common(
-            pipeline_id=self.pipeline_id,
+            pipeline_id=self.source_data.pipeline_id,
             metadata=metadata,
             source_type_upper=self.DATA_SOURCE_TYPE,
-            type_data=self.type_data,
+            type_data=type_data,
         )
         self._log_registered_common(
             source_type_upper=self.DATA_SOURCE_TYPE,
-            source_name=self.source_name,
-            pipeline_id=self.pipeline_id,
-            form_data=self.form_data,
+            source_name=self.source_data.source_name,
+            pipeline_id=self.source_data.pipeline_id,
+            form_data=self.source_data.form_data,
         )
         return registered_source, None
 
@@ -65,12 +77,6 @@ class RegistrationBase(ABC):
     def run_validator(self) -> Tuple[bool, Dict[str, Any] | None]:
         """Run source-specific validation for a single instance and return (is_valid, issue)."""
         raise NotImplementedError
-
-    def _extract_form_data(self) -> Dict[str, Any]:
-        form_data = self.instance.get("metadata", {})
-        if form_data:
-            logger.info(f"Processing form data: {form_data}")
-        return form_data
 
     def _persist_common(
         self,
