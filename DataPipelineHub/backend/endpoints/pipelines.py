@@ -34,8 +34,18 @@ def start_pipeline(data, type):
             upload_by=current_user,
         )
 
-        pipeline_celery_service = PipelineCeleryService()
-        response_data, status_code = pipeline_celery_service.execute_pipeline(registration_response.get("registered_sources", []), type)
+        registered_sources = registration_response.get("registered_sources", [])
+        if registered_sources:
+            pipeline_celery_service = PipelineCeleryService()
+            response_data, status_code = pipeline_celery_service.execute_pipeline(registered_sources, type)
+        else:
+            response_data, status_code = {
+                "status": "no_registered_sources",
+                "message": "No sources registered; skipping pipeline execution",
+                "pipeline_worker_tasks_submitted": 0,
+                "source_count": 0,
+            }, 200
+
         result = {
             "registration_completed": True,
             "registration": registration_response,
