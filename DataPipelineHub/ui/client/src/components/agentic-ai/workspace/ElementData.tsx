@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Badge } from "@/components/ui/badge";
 import { FileText } from 'lucide-react';
 import { ElementInstance, ElementType } from '../../../types/workspace';
+import { maskSecretFieldsInConfig } from '../../../utils/maskSecretFields';
 
 interface ElementDataProps {
   element: ElementInstance | null;
@@ -81,7 +82,7 @@ export const ElementData: React.FC<ElementDataProps> = ({
                 <label className="text-sm font-medium text-gray-400">Full Configuration</label>
                 <div className="mt-2 bg-gray-900 p-4 rounded-md">
                   <pre className="text-xs text-gray-300 whitespace-pre-wrap overflow-x-auto">
-                    {JSON.stringify(element.config, null, 2)}
+                    {JSON.stringify(maskSecretFieldsInConfig(element.config), null, 2)}
                   </pre>
                 </div>
               </div>

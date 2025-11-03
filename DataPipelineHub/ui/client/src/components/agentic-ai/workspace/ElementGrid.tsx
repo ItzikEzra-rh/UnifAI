@@ -17,6 +17,7 @@ import SimpleTooltip from '@/components/shared/SimpleTooltip';
 import { useShared } from '@/contexts/SharedContext';
 import { ElementInstance, ElementType } from '../../../types/workspace';
 import { ElementData } from './ElementData';
+import { formatConfigValue } from '../../../utils/maskSecretFields';
 
 interface ElementGridProps {
   elements: ElementInstance[];
@@ -148,11 +149,7 @@ export const ElementGrid: React.FC<ElementGridProps> = ({
                         <div key={key} className="flex justify-between">
                           <span className="truncate">{key}:</span>
                           <span className="text-gray-400 ml-2 truncate max-w-24">
-                            {typeof element.config[key] === 'string' 
-                              ? element.config[key].slice(0, 15) + (element.config[key].length > 15 ? '...' : '')
-                              : typeof element.config[key] === 'object'
-                              ? '[Object]'
-                              : String(element.config[key])}
+                            {formatConfigValue(element.config[key], key)}
                           </span>
                         </div>
                       ))}

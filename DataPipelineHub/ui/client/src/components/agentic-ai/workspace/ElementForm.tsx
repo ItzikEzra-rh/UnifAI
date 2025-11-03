@@ -595,6 +595,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     const value = formData[fieldName] || "";
     const validationHint = fieldSchema.hints?.action?.hint_type === 'validate' ? fieldSchema.hints.action : null;
     const populateHint = fieldSchema.hints?.action?.hint_type === 'populate' ? fieldSchema.hints.action : null;
+    const isSecret = fieldSchema.secret === true;
 
     // Handle array fields with $ref items (multi-select dropdown)
     if (isArrayWithRefItems(fieldSchema)) {
@@ -881,6 +882,63 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       fieldName.includes("prompt") ||
       fieldName.includes("description")
     ) {
+      // For secret fields, use password input instead of textarea
+      if (isSecret) {
+        return (
+          <div key={fieldName} className="space-y-2">
+            <Label htmlFor={fieldName}>
+              {fieldName} {isRequired && <span className="text-red-400">*</span>}
+              <Badge variant="outline" className="ml-2 text-xs">
+                secret
+              </Badge>
+              {validationHint && (
+                <Badge variant="outline" className="ml-2 text-xs">
+                  validation
+                </Badge>
+              )}
+              {populateHint && (
+                <Badge variant="outline" className="ml-2 text-xs">
+                  populate
+                </Badge>
+              )}
+            </Label>
+            <Input
+              id={fieldName}
+              type="password"
+              value={value}
+              onChange={(e) => handleInputChange(fieldName, e.target.value)}
+              className="bg-background-dark"
+              placeholder={fieldSchema.description}
+              readOnly={!!populateHint}
+              disabled={!!populateHint}
+            />
+            {validationHint && (
+              <FieldValidation
+                fieldName={fieldName}
+                fieldValue={value}
+                validationHint={validationHint}
+                elementActions={elementActions}
+                selectedElementType={elementType}
+                onValidationChange={handleValidationChange}
+              />
+            )}
+            {populateHint && (
+              <FieldPopulation
+                fieldName={fieldName}
+                populateHint={populateHint}
+                elementActions={elementActions}
+                selectedElementType={elementType}
+                formData={formData}
+                onPopulateResult={handlePopulateResult}
+              />
+            )}
+            {fieldSchema.description && (
+              <p className="text-xs text-gray-400">{fieldSchema.description}</p>
+            )}
+          </div>
+        );
+      }
+
       return (
         <div key={fieldName} className="space-y-2">
           <Label htmlFor={fieldName}>
@@ -938,6 +996,11 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       <div key={fieldName} className="space-y-2">
         <Label htmlFor={fieldName}>
           {fieldName} {isRequired && <span className="text-red-400">*</span>}
+          {isSecret && (
+            <Badge variant="outline" className="ml-2 text-xs">
+              secret
+            </Badge>
+          )}
           {validationHint && (
             <Badge variant="outline" className="ml-2 text-xs">
               validation
@@ -951,6 +1014,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         </Label>
         <Input
           id={fieldName}
+          type={isSecret ? "password" : "text"}
           value={value}
           onChange={(e) => handleInputChange(fieldName, e.target.value)}
           className="bg-background-dark"
