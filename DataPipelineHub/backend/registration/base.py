@@ -18,6 +18,8 @@ class RegistrationBase(ABC):
         self.mongo_storage = mongo_storage
         self.upload_by = upload_by
         self.instance = instance
+        self.source_name = self.instance.get("source_name", "")
+        self.form_data = self._extract_form_data()
         
     def run_registration(self) -> Tuple[Dict[str, Any] | None, Dict[str, Any] | None]:
         """
@@ -31,25 +33,44 @@ class RegistrationBase(ABC):
             return None, issue
         return self.register()
 
-    @abstractmethod
     def register(self) -> Tuple[Dict[str, Any] | None, Dict[str, Any] | None]:
         """
         Register a single instance. Returns (registered_source_dict, issue_dict).
         If registration is successful, issue_dict should be None. If validation fails,
         registered_source_dict should be None and issue_dict should contain structured info.
         """
-        raise NotImplementedError
+        metadata = self._build_metadata()
+        self._persist_common(
+            source_id=self.source_id,
+            source_name=self.source_name,
+            source_type_upper=self.DATA_SOURCE_TYPE,
+            pipeline_id=self.pipeline_id,
+            type_data=self.type_data,
+        )
+        registered_source = self._build_registered_source_common(
+            pipeline_id=self.pipeline_id,
+            metadata=metadata,
+            source_type_upper=self.DATA_SOURCE_TYPE,
+            type_data=self.type_data,
+        )
+        self._log_registered_common(
+            source_type_upper=self.DATA_SOURCE_TYPE,
+            source_name=self.source_name,
+            pipeline_id=self.pipeline_id,
+            form_data=self.form_data,
+        )
+        return registered_source, None
 
     @abstractmethod
     def run_validator(self) -> Tuple[bool, Dict[str, Any] | None]:
         """Run source-specific validation for a single instance and return (is_valid, issue)."""
         raise NotImplementedError
 
-    def _extract_user_metadata(self) -> Dict[str, Any]:
-        user_metadata = self.instance.get("metadata", {})
-        if user_metadata:
-            logger.info(f"Processing user metadata: {user_metadata}")
-        return user_metadata
+    def _extract_form_data(self) -> Dict[str, Any]:
+        form_data = self.instance.get("metadata", {})
+        if form_data:
+            logger.info(f"Processing form data: {form_data}")
+        return form_data
 
     def _persist_common(
         self,
@@ -92,9 +113,9 @@ class RegistrationBase(ABC):
         source_type_upper: str,
         source_name: str,
         pipeline_id: str,
-        user_metadata: Dict[str, Any],
+        form_data: Dict[str, Any],
     ) -> None:
-        metadata_info = f" with user settings: {user_metadata}" if user_metadata else ""
+        metadata_info = f" with form data: {form_data}" if form_data else ""
         logger.info(
             f"Registered {source_type_upper} source: {source_name} with pipeline_id: {pipeline_id}{metadata_info}"
         )

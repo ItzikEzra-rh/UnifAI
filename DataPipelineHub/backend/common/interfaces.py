@@ -16,7 +16,7 @@ class DataSourceValidator:
     error_message: str = ""
     error_message_key: str = ""
 
-    async def validate(
+    def validate(
         self,
         args: Dict[str, Any],
         context: Optional[Dict[str, Any]] = None,

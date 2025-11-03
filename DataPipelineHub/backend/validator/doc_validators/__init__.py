@@ -7,7 +7,7 @@ class DuplicateValidator(DataSourceValidator):
     error_message = "This file appears to be a duplicate from an existing file and was not added. File: {source_name}"
     error_message_key = "File duplicated error"
 
-    async def validate(self, args: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Tuple[bool, Optional[ValidationIssue]]:
+    def validate(self, args: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Tuple[bool, Optional[ValidationIssue]]:
         if not context:
             return True, None
 

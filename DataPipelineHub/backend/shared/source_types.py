@@ -95,8 +95,7 @@ class RegistrationResponse(BaseModel):
     """
     Pydantic model for registration task response.
     
-    This model represents the response returned by the register_sources_task
-    containing the status and list of registered sources.
+    This model represents containing the status and list of registered sources.
     """
     status: str = Field(..., description="Registration status")
     registered_sources: List[RegisteredSource] = Field(..., description="List of successfully registered sources")

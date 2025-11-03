@@ -1,15 +1,13 @@
-from registration.factory import RegistrationFactory
 from pipeline.pipeline_repository import PipelineRepository
 from global_utils.celery_app import CeleryApp
 from pipeline.pipeline_factory import PipelineFactory
 from pipeline.pipeline_executor import PipelineExecutor
 from shared.source_types import (
     SlackMetadata, DocumentMetadata,
-    RegistrationResponse, PipelineExecutionResult
+    PipelineExecutionResult
 )
 from shared.logger import logger
 from config.constants import DataSource
-from utils.storage.mongo.mongo_helpers import get_mongo_storage
 
 @CeleryApp().app.task(bind=True)
 def execute_pipeline_task(self, source_type: str, source_data: dict):

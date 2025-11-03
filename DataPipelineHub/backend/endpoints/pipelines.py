@@ -28,23 +28,23 @@ def start_pipeline(data, type):
     try:
         current_user = session.get('user', {}).get('username', 'default')
 
-        registration_service = RegistrationService()
-        registration_response = registration_service.register_sources(
+        registration_response = RegistrationService().register_sources(
             data_list=data,
             source_type=type.upper(),
             upload_by=current_user,
         )
-        registered_sources = registration_response.get("registered_sources", [])
 
         pipeline_celery_service = PipelineCeleryService()
-        response_data, status_code = pipeline_celery_service.execute_pipeline(registered_sources, type)
-
-        # Preserve previous response shape including registration details
-        response_data.update({
+        response_data, status_code = pipeline_celery_service.execute_pipeline(registration_response.get("registered_sources", []), type)
+        result = {
             "registration_completed": True,
             "registration": registration_response,
-        })
-        return jsonify(response_data), status_code
+            "pipeline_execution": {
+                "data": response_data,
+                "status_code": status_code,
+            },
+        }
+        return jsonify(result), status_code
         
     except Exception as e:
         logger.error(f"Failed to start pipeline: {str(e)}")

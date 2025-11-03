@@ -16,7 +16,7 @@ def pipeline_step(status: str):
                     error_message=str(e)
                 )
                 self.repo.update_pipeline_status(self.pipeline, PipelineStatus.FAILED.value)
-                self.repo.register_data_source(
+                self.repo.upsert_source(
                     pipeline=self.pipeline,
                     summary={
                         "last_error": str(e),
