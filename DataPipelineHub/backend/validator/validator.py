@@ -10,11 +10,11 @@ class Validator:
         self.validators = validators
         self.fail_fast = fail_fast
 
-    def validate(self, args: Dict[str, Any], context: Optional[Dict[str, Any]] = None) -> Tuple[bool, Optional[ValidationIssue]]:
+    def validate(self, **kwargs: Any) -> Tuple[bool, Optional[ValidationIssue]]:
         errors: List[str] = []
 
         for validator in self.validators:
-            is_valid, issue = validator.validate(args, context)
+            is_valid, issue = validator.validate(**kwargs)
             if not is_valid:
                 if self.fail_fast:
                     return False, issue

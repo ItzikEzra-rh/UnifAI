@@ -16,12 +16,11 @@ class DataSourceValidator:
     error_message: str = ""
     error_message_key: str = ""
 
-    def validate(
-        self,
-        args: Dict[str, Any],
-        context: Optional[Dict[str, Any]] = None,
-    ) -> Tuple[bool, Optional[ValidationIssue]]:
-        """Validate before execution. Return (True, None) if valid, otherwise (False, ValidationIssue)."""
+    def validate(self, **kwargs: Any) -> Tuple[bool, Optional[ValidationIssue]]:
+        """Validate before execution using keyword arguments.
+
+        Return (True, None) if valid, otherwise (False, ValidationIssue).
+        """
         ...
     def build_issue(self, message: Optional[str] = None) -> ValidationIssue:
         """Helper for implementations to build a structured ValidationIssue."""

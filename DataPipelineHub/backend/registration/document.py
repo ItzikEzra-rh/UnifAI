@@ -5,13 +5,13 @@ import uuid
 from typing import Any, Dict, Tuple
 from functools import cached_property
 from dataclasses import dataclass
+from backend.registration.base import BaseSourceData
+from backend.registration.base import RegistrationBase
 from config.app_config import AppConfig
 from config.constants import DataSource
-from services.documents.duplicate_checker import DocumentDuplicateChecker
 from shared.source_types import DocumentMetadata, DocumentTypeData
 from utils.file_hash import compute_file_md5
 from validator.validator import Validator, build_doc_validators
-from .base import RegistrationBase, BaseSourceData
 
 app_config = AppConfig.get_instance()
 upload_folder = app_config.upload_folder
@@ -28,8 +28,7 @@ class DocumentRegistration(RegistrationBase):
     def __init__(self, mongo_storage: Any, upload_by: str, instance: Dict[str, Any]) -> None:
         super().__init__(mongo_storage, upload_by, instance)
         self.upload_folder = upload_folder
-        self._validator = Validator(build_doc_validators())
-        self._duplicate_checker = DocumentDuplicateChecker(self.mongo_storage)
+        self._validator = Validator(build_doc_validators(self.mongo_storage))
 
     @cached_property
     def source_data(self) -> DocumentSourceData:
@@ -49,14 +48,12 @@ class DocumentRegistration(RegistrationBase):
         )
 
     def run_validator(self) -> Tuple[bool, Dict[str, Any] | None]:
-        context = {"duplicate_checker": self._duplicate_checker}
-
         validation_args = {
             "doc_path": self.source_data.doc_path,
             "source_name": self.source_data.source_name,
             "md5": self.source_data.md5
         }
-        is_valid, issue = self._validator.validate(validation_args, context)
+        is_valid, issue = self._validator.validate(**validation_args)
 
         if not is_valid:
             issue_key = (issue or {}).get("issue_key", "ValidationError")
