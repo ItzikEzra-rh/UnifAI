@@ -34,7 +34,7 @@ from elements.tools.builtin.topology.get_node_card import GetNodeCardTool
 class OrchestratorPhase(Enum):
     """
     Orchestrator execution phases.
-    
+
     Defines the complete orchestrator workflow in execution order.
     """
     PLANNING = "planning"
@@ -63,13 +63,13 @@ class OrchestratorPhase(Enum):
 class OrchestratorPhaseProvider(PhaseProvider):
     """
     Professional orchestrator phase provider using clean Pydantic models and enums.
-    
+
     Defines orchestrator phases with proper separation of concerns:
     - Domain tools come from init parameter (orchestrator's capabilities)
     - Orchestration tools are built-in (work plan, delegation, etc.)
     - Phases are defined using enums (no hardcoding)
     - Iteration limits managed via Pydantic models in PhaseDefinition
-    
+
     DESIGN NOTE:
     The phase provider receives already-filtered adjacent nodes from the orchestrator.
     It does NOT know about delegation policies - that's the orchestrator's responsibility.
@@ -89,7 +89,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
     ):
         """
         Initialize orchestrator phase provider.
-        
+
         Args:
             domain_tools: Domain-specific tools that this orchestrator can use
             get_adjacent_nodes: Function to get adjacent nodes (already filtered by orchestrator)
@@ -99,7 +99,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
             get_workload_service: Function to get workload service
             context_builder: OrchestratorContextBuilder for recording phase transitions (optional)
             iteration_limits: Custom iteration limits configuration (optional)
-        
+
         Note:
             get_adjacent_nodes should return nodes that the orchestrator has already
             filtered according to its delegation policy. The provider doesn't apply
@@ -124,7 +124,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
 
         # Orchestrator context (set by orchestrator_node before each cycle)
         self._current_orch_context = None
-        
+
         # Track current user request for focused prompts
         self._current_user_request: Optional[str] = None
 
@@ -134,7 +134,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
         """Get current thread for delegation context."""
         workload_service = self._get_workload_service()
         return workload_service.get_thread(self._thread_id)
-    
+
     def set_current_user_request(self, request: str) -> None:
         """Set the current user request for building focused prompts."""
         self._current_user_request = request
@@ -142,7 +142,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def _increment_phase_iteration(self, phase_name: str) -> None:
         """
         Private: Increment iteration count for the given phase.
-        
+
         Args:
             phase_name: Name of the phase to increment
         """
@@ -153,10 +153,10 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def _is_phase_limit_exceeded(self, phase_name: str) -> bool:
         """
         Private: Check if phase iteration limit is exceeded.
-        
+
         Args:
             phase_name: Name of the phase to check
-            
+
         Returns:
             True if limit exceeded, False otherwise
         """
@@ -165,7 +165,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def _reset_phase_iteration(self, phase_name: str) -> None:
         """
         Private: Reset iteration count for the given phase.
-        
+
         Args:
             phase_name: Name of the phase to reset
         """
@@ -175,11 +175,11 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def _create_phase_system(self) -> PhaseSystem:
         """
         Create the orchestrator phase system.
-        
+
         Tool separation:
         - Built-in tools: Initialize here (workplan, delegation, topology, etc.)
         - Domain tools: Already initialized, passed from constructor (execution tools)
-        
+
         Adjacent Nodes:
         - Phase provider receives already-filtered adjacent nodes from orchestrator
         - No policy logic here - orchestrator has already applied its delegation policy
@@ -284,6 +284,15 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "- Granularity: Break complex tasks into smaller steps\n"
                 "- Logical order: Arrange items in execution sequence\n\n"
 
+                "WORK ITEM STRATEGY:\n"
+                "- Consider information completeness requirements:\n"
+                "  * If comprehensive coverage is valuable: Create work items for multiple agents\n"
+                "  * Each agent searches their respective data domain in parallel\n"
+                "  * Aggregate results to ensure no relevant information is missed\n"
+                "- Consider specificity of target:\n"
+                "  * If action requires specific capability: Create focused work item for that agent\n"
+                "  * If information could exist in multiple sources: Query broadly\n\n"
+
                 "PHASE SEPARATION (IMPORTANT):\n"
                 "- PLANNING phase (you are here): Create work plan structure only\n"
                 "- ALLOCATION phase (next): Delegate REMOTE items to agents\n"
@@ -310,21 +319,21 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "WORKFLOW:\n"
                 "1. Review work plan for PENDING items with kind=REMOTE\n"
                 "2. For each REMOTE item:\n"
-                "   a. Use ListAdjacentNodesTool to see available agents\n"
-                "   b. Use GetNodeCardTool to understand agent capabilities\n"
-                "   c. Choose best agent based on task requirements and capabilities\n"
-                "   d. Use AssignWorkItemTool to assign item to chosen agent\n"
-                "   e. Use DelegateTaskTool to send task (MUST include work_item_id)\n"
+                "   a. Review 'Available Agents' section to see agent capabilities\n"
+                "   b. Choose best agent based on task requirements and capabilities\n"
+                "   c. Use AssignWorkItemTool to assign item to chosen agent\n"
+                "   d. Use DelegateTaskTool to send task (MUST include work_item_id)\n"
                 "3. Skip LOCAL items (handled in EXECUTION phase)\n\n"
-                "ASSIGNMENT STRATEGY:\n"
-                "- Match task requirements to agent specialization\n"
-                "  * Research tasks → research_agent\n"
-                "  * Jira operations → jira_agent\n"
-                "  * Confluence queries → confluence_agent\n"
-                "  * Analysis/reasoning → reasoning_agent\n"
+                "ALLOCATION STRATEGY:\n"
+                "- Review 'Available Agents for Delegation' section above\n"
+                "- Use GetNodeCardTool only if you need more detailed capabilities\n"
+                "- Match work item requirements to agent capabilities\n"
+                "- For information gathering: Parallel delegation across relevant agents\n"
+                "- For specific actions: Direct delegation to capable agent\n\n"
+                "BEST PRACTICES:\n"
+                "- All agents can be queried in parallel - leverage this for comprehensive results\n"
                 "- Check agent is in adjacency list (can't delegate to non-adjacent nodes)\n"
-                "- One work item → One agent (no multi-assignment yet)\n"
-                "- Consider agent capabilities from GetNodeCardTool\n\n"
+                "- One work item → One agent (no multi-assignment yet)\n\n"
                 "DELEGATION COORDINATION:\n"
                 "- CRITICAL: Always assign BEFORE delegate\n"
                 "  1. AssignWorkItemTool(item_id, agent_uid) - marks assigned_uid\n"
@@ -488,12 +497,12 @@ class OrchestratorPhaseProvider(PhaseProvider):
             tools=[],  # NO TOOLS - synthesis only produces text responses
             guidance=(
                 "PHASE: SYNTHESIS - Answer user's question using ALL available information.\n\n"
-                
+
                 "⚠️  HOW TO DELIVER YOUR ANSWER:\n"
                 "Your response must be DIRECT TEXT - no tool calls, no actions.\n"
                 "You are in read-only analysis mode. Just think and write your answer.\n"
                 "Your text response IS the final answer delivered to the user.\n\n"
-                
+
                 "YOUR MISSION:\n"
                 "Extract value from EVERY work item regardless of status.\n"
                 "Provide the most complete answer possible based on what was learned.\n\n"
@@ -559,7 +568,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def get_phase_context(self) -> PhaseState:
         """
         Get orchestrator-specific phase context.
-        
+
         Provides rich context including work plan status and node information.
         """
         try:
@@ -584,7 +593,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def get_initial_phase(self) -> str:
         """
         Get the initial phase for orchestration.
-        
+
         Orchestrator always starts with planning.
         """
         return OrchestratorPhase.PLANNING.value
@@ -592,14 +601,14 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def is_terminal_phase(self, phase_name: str) -> bool:
         """
         Check if phase is terminal.
-        
+
         SYNTHESIS is the only terminal phase - represents workflow completion.
         Other phases may stay in themselves temporarily (processing, waiting)
         but will eventually transition.
-        
+
         Args:
             phase_name: Phase name to check
-            
+
         Returns:
             True if terminal (SYNTHESIS), False otherwise
         """
@@ -612,19 +621,19 @@ class OrchestratorPhaseProvider(PhaseProvider):
     ) -> str:
         """
         Update phase with orchestrator's internal cascade logic.
-        
+
         PRIVATE IMPLEMENTATION:
         - Increment iteration
         - Cascade until stable
         - Reset iteration on transition
         - Safety limits and cycle detection
-        
+
         Strategy doesn't see any of this - just gets final phase.
-        
+
         Args:
             current_phase: Current phase name
             observations: Recent observations from execution
-            
+
         Returns:
             Final stable phase name
         """
@@ -648,21 +657,21 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def can_finish_now(self, current_phase: str) -> bool:
         """
         Determine if orchestrator should finish THIS CYCLE now.
-        
+
         Clean separation of concerns:
         - This method handles CYCLE finishing (waiting for external events)
         - Phase transitions handle moving between phases (EXECUTION → SYNTHESIS)
-        
+
         Return True only when:
         1. In SYNTHESIS phase (terminal, work done)
         2. Waiting for responses with no actionable work (pause until responses arrive)
-        
+
         Do NOT return True just because work is complete - let phase transition
         logic handle EXECUTION → SYNTHESIS. Only finish cycle when in SYNTHESIS.
-        
+
         Args:
             current_phase: Current phase name
-            
+
         Returns:
             True if should finish cycle, False if more work needed
         """
@@ -713,15 +722,15 @@ class OrchestratorPhaseProvider(PhaseProvider):
     ) -> str:
         """
         Private: Cascade transitions until reaching stable phase.
-        
+
         Keeps calling decide_next_phase() until phase is stable.
         Includes safety mechanisms: max transitions, cycle detection, validation.
-        
+
         Args:
             current_phase: Starting phase
             context: Current phase state
             observations: Recent observations
-            
+
         Returns:
             Final stable phase
         """
@@ -772,7 +781,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def _log_cascade(self, transitions: List[str], count: int, reason: str) -> None:
         """
         Private: Log cascade results.
-        
+
         Args:
             transitions: List of phases visited
             count: Number of transitions
@@ -800,7 +809,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
     ) -> str:
         """
         Decide next phase based on orchestrator-specific logic using enums.
-        
+
         Professional phase transition rules using OrchestratorPhase enum.
         Enforces iteration limits to prevent infinite loops.
         """
@@ -1053,11 +1062,11 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def _handle_phase_limit_exceeded(self, current_phase: str, status) -> str:
         """
         Private: Handle when a phase exceeds its iteration limit.
-        
+
         Args:
             current_phase: Phase that exceeded limit
             status: Current work plan status
-            
+
         Returns:
             Next phase to transition to (or synthesis for terminal)
         """
@@ -1101,14 +1110,14 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def _build_validation_context(self, phase_name: str) -> PhaseValidationContext:
         """
         Build orchestrator-specific validation context.
-        
+
         Extends base context with orchestrator-specific data:
         - Work plan for validation
         - Adjacent nodes for assignment validation
-        
+
         Args:
             phase_name: Name of the phase to validate
-            
+
         Returns:
             PhaseValidationContext with orchestrator-specific data
         """
@@ -1263,21 +1272,21 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def get_dynamic_context_messages(self, phase_name: str) -> List["ChatMessage"]:
         """
         Provide fresh orchestrator context and work plan before each LLM call.
-        
+
         This ensures the LLM always sees the current state:
         - Why this cycle is running (trigger)
         - User intent classification
         - Work plan health and progress
         - Phase history
         - Complete work plan with all items and responses
-        
+
         All combined into ONE coherent message for better context.
-        
+
         Called by strategy before each LLM interaction.
-        
+
         Args:
             phase_name: Current phase name (unused, but kept for consistency)
-            
+
         Returns:
             List of ChatMessage with fresh context (single combined message)
         """
@@ -1354,7 +1363,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
     def _build_workspace_summary_internal(self, workspace_service) -> str:
         """
         Build workspace summary (facts, results, variables).
-        
+
         Note: Responses are no longer in facts - they're in work items.
         """
         lines = []
@@ -1455,40 +1464,40 @@ class OrchestratorPhaseProvider(PhaseProvider):
                                     else:
                                         # If short, still flatten to single line for console
                                         outcome_text = ' '.join(outcome_lines)
-                                
+
                                 lines.append(f"    Execution: {outcome_text}")
 
         return "\n".join(lines)
-    
+
     def get_phase_static_context(self, phase_name: str) -> List[ChatMessage]:
         """
         Get phase-specific static context (reference material).
-        
+
         Returns SYSTEM messages with stable reference information
         that doesn't change during the cycle.
-        
+
         Different phases need different static context:
         - PLANNING: Optional adjacent nodes for capability checking
         - ALLOCATION: Required adjacent nodes for delegation
         - EXECUTION: None (executes locally)
         - MONITORING: Required adjacent nodes for re-delegation
         - SYNTHESIS: None (read-only)
-        
+
         Args:
             phase_name: Current phase name
-        
+
         Returns:
             List of SYSTEM ChatMessage with phase-specific context
         """
         from elements.llms.common.chat.message import Role
-        
+
         try:
             phase_enum = OrchestratorPhase(phase_name)
         except ValueError:
             return []
-        
+
         messages = []
-        
+
         # Phases that need adjacent nodes information
         if phase_enum in [
             OrchestratorPhase.PLANNING,    # Optional - for checking capabilities
@@ -1501,48 +1510,48 @@ class OrchestratorPhaseProvider(PhaseProvider):
                     role=Role.SYSTEM,
                     content=adjacent_nodes
                 ))
-        
+
         return messages
-    
+
     def _build_adjacent_nodes_context(self) -> Optional[str]:
         """Build adjacent nodes reference context."""
         try:
             adjacent_nodes = self._get_adjacent_nodes()
             if not adjacent_nodes:
                 return None
-            
+
             lines = ["## Available Agents for Delegation\n"]
-            
+
             for uid, card in adjacent_nodes.items():
                 lines.append(f"**{card.name}** (uid: `{uid}`)")
                 lines.append(f"  • Type: {card.type_key}")
                 lines.append(f"  • Description: {card.description}")
-                
+
                 if card.skills:
                     lines.append(f"  • Skills: {card.skills}")
-                
+
                 lines.append("")
-            
+
             return "\n".join(lines)
         except Exception:
             return None
-    
+
     def build_focused_prompt(self, phase: str, phase_changed: bool) -> str:
         """
         Build comprehensive focused prompt for ALL scenarios.
-        
+
         Handles every possible situation in each phase:
         - Different triggers (NEW_REQUEST, RESPONSE_ARRIVED, etc.)
         - Phase transitions vs continuations
         - Work plan states (empty, partial, complete)
         - Item states (pending, blocked, waiting, etc.)
-        
+
         Returns clear, actionable instruction for THIS specific situation.
-        
+
         Args:
             phase: Current phase name
             phase_changed: Whether we just transitioned to this phase
-        
+
         Returns:
             Focused prompt string
         """
@@ -1550,13 +1559,13 @@ class OrchestratorPhaseProvider(PhaseProvider):
             phase_enum = OrchestratorPhase(phase)
         except ValueError:
             return ""
-        
+
         # Get current context and state
         context = self._current_orch_context
         workspace_service = self._get_workload_service().get_workspace_service()
         plan = workspace_service.load_work_plan(self._thread_id, self._node_uid)
         status = workspace_service.get_work_plan_status(self._thread_id, self._node_uid)
-        
+
         # Dispatch to phase-specific builder
         if phase_enum == OrchestratorPhase.PLANNING:
             return self._focused_prompt_planning(context, plan, status, phase_changed)
@@ -1568,16 +1577,16 @@ class OrchestratorPhaseProvider(PhaseProvider):
             return self._focused_prompt_monitoring(context, plan, status, phase_changed)
         elif phase_enum == OrchestratorPhase.SYNTHESIS:
             return self._focused_prompt_synthesis(context, plan, status, phase_changed)
-        
+
         return ""
-    
+
     def _focused_prompt_planning(self, context, plan, status, phase_changed: bool) -> str:
         """Planning phase prompts for ALL scenarios."""
         from .context.models import CycleTriggerReason
-        
+
         trigger_reason = context.trigger.reason if context else None
         user_request = self._current_user_request or "the request"
-        
+
         # Scenario 1: Brand new request, no plan
         if trigger_reason == CycleTriggerReason.NEW_REQUEST and status.total_items == 0:
             return (
@@ -1585,15 +1594,19 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 f"User asked: \"{user_request}\"\n\n"
                 "**Your task:** Create a comprehensive work plan.\n\n"
                 "**Steps:**\n"
-                "1. Break down request into specific work items\n"
-                "2. For each item, determine:\n"
+                "1. Analyze the request to understand information needs\n"
+                "2. Review 'Available Agents' section above to see agent capabilities\n"
+                "3. For each work item, determine:\n"
                 "   • Type: LOCAL (you execute) or REMOTE (delegate to agent)\n"
                 "   • Dependencies: Which items must complete first\n"
-                "   • Assignment: For REMOTE items, which agent (check Available Agents above)\n"
-                "3. Use `CreateOrUpdateWorkPlanTool` with all items\n\n"
+                "   • Assignment: For REMOTE items, which agent based on their capabilities\n"
+                "4. **COMPREHENSIVE COVERAGE:** When information completeness is important,\n"
+                "   create work items for multiple agents rather than assuming which source\n"
+                "   is best. Information is often distributed across multiple data sources.\n"
+                "5. Use `CreateOrUpdateWorkPlanTool` with all items\n\n"
                 "**Remember:** Create the structure now, delegation happens in ALLOCATION phase."
             )
-        
+
         # Scenario 2: Follow-up request with completed plan
         elif trigger_reason == CycleTriggerReason.NEW_REQUEST and status.is_complete:
             return (
@@ -1608,7 +1621,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "4. Set dependencies on completed items if needed\n"
                 "5. Use `CreateOrUpdateWorkPlanTool` with updated plan"
             )
-        
+
         # Scenario 3: Follow-up request with in-progress plan
         elif trigger_reason == CycleTriggerReason.NEW_REQUEST and status.total_items > 0:
             in_progress_count = status.in_progress_items + status.pending_items + status.waiting_items
@@ -1626,7 +1639,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "   • Depends on in-progress work → Add items with dependencies\n"
                 "3. Use `CreateOrUpdateWorkPlanTool` with updated plan"
             )
-        
+
         # Scenario 4: Responses arrived (replanning needed?)
         elif trigger_reason == CycleTriggerReason.RESPONSE_ARRIVED:
             return (
@@ -1639,7 +1652,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "• Is the plan still appropriate?\n\n"
                 "Update plan if needed, or finish to proceed to next phase."
             )
-        
+
         # Scenario 5: Continuation (refining)
         elif not phase_changed:
             return (
@@ -1650,69 +1663,69 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "• Update dependencies or assignments\n"
                 "• Finish to proceed to ALLOCATION phase"
             )
-        
+
         # Fallback
         return "Review and create/update the work plan as needed."
-    
+
     def _focused_prompt_allocation(self, context, plan, status, phase_changed: bool) -> str:
         """Allocation phase prompts with detailed assignment/delegation tracking."""
         from elements.nodes.common.workload import WorkItemKind, WorkItemStatus
-        
+
         if not plan:
             return "Delegate pending REMOTE work items to appropriate agents."
-        
+
         # Get all REMOTE items
         all_remote = [item for item in plan.items.values() if item.kind == WorkItemKind.REMOTE]
         total_remote = len(all_remote)
-        
+
         if total_remote == 0:
             return "✅ No REMOTE items in work plan. Finish to proceed to next phase."
-        
+
         # ========== CATEGORIZE BY STATE ==========
         # State 1: Unassigned (need both assign + delegate)
         unassigned = [
             item for item in all_remote
             if item.status == WorkItemStatus.PENDING and not item.assigned_uid
         ]
-        
+
         # State 2: Assigned but not delegated (need delegate only)
         assigned_not_delegated = [
             item for item in all_remote
-            if item.status == WorkItemStatus.PENDING 
-            and item.assigned_uid
-            and (not item.result or not item.result.delegations)
+            if item.status == WorkItemStatus.PENDING
+               and item.assigned_uid
+               and (not item.result or not item.result.delegations)
         ]
-        
+
         # State 3: Delegated (in progress)
         delegated = [
             item for item in all_remote
             if item.status == WorkItemStatus.IN_PROGRESS
         ]
-        
+
         # State 4: Completed (done or failed)
         completed = [
             item for item in all_remote
             if item.status in [WorkItemStatus.DONE, WorkItemStatus.FAILED]
         ]
-        
+
         # State 5: Blocked by dependencies
         ready_items = plan.get_ready_items()
         blocked_items = plan.get_blocked_items()
-        
+
         unassigned_ready = [item for item in unassigned if item in ready_items]
         unassigned_blocked = [item for item in unassigned if item in blocked_items]
         assigned_ready = [item for item in assigned_not_delegated if item in ready_items]
         assigned_blocked = [item for item in assigned_not_delegated if item in blocked_items]
-        
+
         # Total actionable items (ready for assign or delegate)
         actionable = len(unassigned_ready) + len(assigned_ready)
-        
+
         # ========== BUILD PROMPT BASED ON STATE ==========
-        
+
         # Scenario 1: First iteration, items need action
         if phase_changed and actionable > 0:
             lines = [f"🎯 **ALLOCATE {total_remote} REMOTE ITEM(S)**\n"]
-            
+
             # Show detailed breakdown
             lines.append("**Current Status:**")
             lines.append(f"  • Unassigned: {len(unassigned)} ({len(unassigned_ready)} ready, {len(unassigned_blocked)} blocked)")
@@ -1720,7 +1733,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
             lines.append(f"  • Delegated: {len(delegated)}")
             lines.append(f"  • Completed: {len(completed)}")
             lines.append("")
-            
+
             # Case A: Items need assignment
             if unassigned_ready:
                 lines.append(f"**STEP 1: ASSIGN {len(unassigned_ready)} ITEM(S)**")
@@ -1730,7 +1743,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 lines.append(f"Items: {item_list}")
                 lines.append("• Use AssignWorkItemTool to assign each item to an agent")
                 lines.append("")
-            
+
             # Case B: Items need delegation
             if assigned_ready:
                 lines.append(f"**STEP 2: DELEGATE {len(assigned_ready)} ITEM(S)**")
@@ -1741,15 +1754,16 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 lines.append("• Use DelegateTaskTool to send task to assigned agent")
                 lines.append("  ⚠️ Must include work_item_id for response tracking")
                 lines.append("")
-            
+
             lines.append("**Tips:**")
-            lines.append("• Use ListAdjacentNodesTool to see available agents")
-            lines.append("• Use GetNodeCardTool to check agent capabilities")
-            lines.append("• Match task to agent specialization")
-            lines.append("• Include clear instructions in delegation content")
-            
+            lines.append("• Review capabilities of all agents shown in 'Available Agents' section above")
+            lines.append("• Use GetNodeCardTool only if you need more details about an agent")
+            lines.append("• Match task intent to agent domain expertise")
+            lines.append("• Parallel delegation enables comprehensive coverage across data sources")
+            lines.append("• Provide clear, specific instructions in each delegation")
+
             return "\n".join(lines)
-        
+
         # Scenario 2: First iteration, nothing actionable
         elif phase_changed and actionable == 0:
             if len(delegated) + len(completed) == total_remote:
@@ -1765,7 +1779,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                     "All REMOTE items are blocked by dependencies.\n\n"
                     "Finish to proceed (will return when dependencies resolve)."
                 )
-        
+
         # Scenario 3: Continuation, items still need action
         elif not phase_changed and actionable > 0:
             lines = [f"⏭️ **CONTINUE ALLOCATION** ({actionable} items need action)\n"]
@@ -1775,14 +1789,14 @@ class OrchestratorPhaseProvider(PhaseProvider):
             lines.append(f"  • {len(delegated)} delegated (in progress)")
             lines.append(f"  • {len(completed)} completed")
             lines.append("")
-            
+
             if unassigned_ready:
                 lines.append(f"**NEXT: Assign {len(unassigned_ready)} item(s) using AssignWorkItemTool**")
             elif assigned_ready:
                 lines.append(f"**NEXT: Delegate {len(assigned_ready)} item(s) using DelegateTaskTool**")
-            
+
             return "\n".join(lines)
-        
+
         # Scenario 4: Continuation, all done
         elif not phase_changed and actionable == 0:
             return (
@@ -1791,30 +1805,30 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 f"Status: {len(delegated)} in progress, {len(completed)} completed.\n\n"
                 "Finish to proceed to next phase."
             )
-        
+
         # Fallback
         return "Allocate pending REMOTE work items to appropriate agents."
-    
+
     def _focused_prompt_execution(self, context, plan, status, phase_changed: bool) -> str:
         """Execution phase prompts for ALL scenarios."""
         from elements.nodes.common.workload import WorkItemKind
-        
+
         if not plan:
             return "Execute pending LOCAL work items."
-        
+
         # Use WorkPlan helper methods for clean, consistent logic
         ready_items = plan.get_ready_items()
         blocked_items = plan.get_blocked_items()
-        
+
         # Filter by kind
         pending_local = [item for item in ready_items if item.kind == WorkItemKind.LOCAL]
         blocked_local = [item for item in blocked_items if item.kind == WorkItemKind.LOCAL]
-        
+
         total_local = len([
             item for item in plan.items.values()
             if item.kind == WorkItemKind.LOCAL
         ])
-        
+
         # Scenario 1: First iteration with items to execute
         if phase_changed and pending_local:
             item_details = []
@@ -1822,9 +1836,9 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 item_details.append(f"  • `{item.id}`: {item.title}")
             if len(pending_local) > 3:
                 item_details.append(f"  • (+{len(pending_local) - 3} more items)")
-            
+
             items_str = "\n".join(item_details)
-            
+
             return (
                 f"⚡ **EXECUTE {len(pending_local)} LOCAL ITEM(S)**\n\n"
                 f"Items ready to execute:\n{items_str}\n\n"
@@ -1835,40 +1849,40 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "   → This automatically marks the item as DONE\n\n"
                 "**Outcome format:** Describe what you did and the results."
             )
-        
+
         # Scenario 2: First iteration, nothing to execute
         elif phase_changed and not pending_local and not blocked_local:
             if total_local == 0:
                 reason = "No LOCAL items in plan."
             else:
                 reason = "All LOCAL items already executed."
-            
+
             return (
                 "✅ **NO LOCAL ITEMS TO EXECUTE**\n\n"
                 f"{reason}\n\n"
                 "**Your task:** Finish to proceed to next phase."
             )
-        
+
         # Scenario 3: First iteration with blocked items
         elif phase_changed and blocked_local and not pending_local:
             blocked_names = ", ".join([f"'{item.id}'" for item in blocked_local[:2]])
             if len(blocked_local) > 2:
                 blocked_names += f" (+{len(blocked_local) - 2} more)"
-            
+
             return (
                 "🚫 **LOCAL ITEMS BLOCKED**\n\n"
                 f"{len(blocked_local)} items blocked by dependencies: {blocked_names}\n\n"
                 "Cannot execute until dependencies complete.\n\n"
                 "**Your task:** Finish to proceed (will return when unblocked)."
             )
-        
+
         # Scenario 4: Continuation with items remaining
         elif not phase_changed and pending_local:
             return (
                 f"⏭️ **CONTINUE EXECUTION** ({len(pending_local)} remaining)\n\n"
                 "Continue executing pending LOCAL items."
             )
-        
+
         # Scenario 5: Continuation, all done
         elif not phase_changed and not pending_local:
             return (
@@ -1876,24 +1890,24 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "All LOCAL items executed.\n\n"
                 "Finish to proceed to next phase."
             )
-        
+
         # Fallback
         return "Execute pending LOCAL work items."
-    
+
     def _focused_prompt_monitoring(self, context, plan, status, phase_changed: bool) -> str:
         """Monitoring phase prompts for ALL scenarios."""
         from .context.models import CycleTriggerReason
-        
+
         trigger_reason = context.trigger.reason if context else None
         changed_items = context.trigger.changed_items if context else []
-        
+
         if not plan:
             return "Review work plan and update item statuses."
-        
+
         # Find items with unprocessed responses
         items_need_attention = []
         items_waiting = []
-        
+
         for item in plan.items.values():
             if item.result and item.result.delegations:
                 for exchange in item.result.delegations:
@@ -1903,7 +1917,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                     elif exchange.is_pending:
                         items_waiting.append(item)
                         break
-        
+
         # Scenario 1: Single response just arrived
         if trigger_reason == CycleTriggerReason.RESPONSE_ARRIVED and len(changed_items) == 1:
             item_id = changed_items[0]
@@ -1918,13 +1932,13 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 f"• **Failed/impossible?** → `MarkWorkItemStatusTool('{item_id}', 'failed')`\n\n"
                 "**Quality bar:** Mark DONE only if response truly addresses the requirement."
             )
-        
+
         # Scenario 2: Multiple responses arrived
         elif trigger_reason == CycleTriggerReason.RESPONSE_ARRIVED and len(changed_items) > 1:
             items_list = ", ".join([f"`{item}`" for item in changed_items[:4]])
             if len(changed_items) > 4:
                 items_list += f" (+{len(changed_items) - 4} more)"
-            
+
             return (
                 f"📥 **{len(changed_items)} RESPONSES RECEIVED**\n\n"
                 f"Items: {items_list}\n\n"
@@ -1935,7 +1949,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "3. Use appropriate tool for each decision\n\n"
                 "Responses marked 🔔 or ⚡ in work plan above."
             )
-        
+
         # Scenario 3: Entered from EXECUTION (checking state)
         elif phase_changed and trigger_reason != CycleTriggerReason.RESPONSE_ARRIVED:
             if items_need_attention:
@@ -1957,14 +1971,14 @@ class OrchestratorPhaseProvider(PhaseProvider):
                     "All work items processed.\n\n"
                     "**Your task:** Finish to proceed to SYNTHESIS."
                 )
-        
+
         # Scenario 4: Continuation with unprocessed responses
         elif not phase_changed and items_need_attention:
             return (
                 f"⏭️ **CONTINUE MONITORING** ({len(items_need_attention)} items need attention)\n\n"
                 "Continue processing remaining responses."
             )
-        
+
         # Scenario 5: Continuation, all processed
         elif not phase_changed and not items_need_attention:
             if items_waiting:
@@ -1979,22 +1993,22 @@ class OrchestratorPhaseProvider(PhaseProvider):
                     "All work items reviewed and processed.\n\n"
                     "Finish to proceed to SYNTHESIS."
                 )
-        
+
         # Fallback
         return "Review responses and update work item statuses."
-    
+
     def _focused_prompt_synthesis(self, context, plan, status, phase_changed: bool) -> str:
         """Synthesis phase prompts for ALL scenarios."""
         from .context.models import CycleTriggerReason
-        
+
         trigger_reason = context.trigger.reason if context else None
         user_request = self._current_user_request or "the request"
-        
+
         # Calculate work stats for context
         total_items = status.total_items
         done_items = status.done_items
         failed_items = status.failed_items
-        
+
         # Scenario 1: All work complete, first synthesis
         if phase_changed and status.is_complete and failed_items == 0:
             return (
@@ -2009,7 +2023,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "4. Any important details or context\n\n"
                 "**Then:** Finish to return response to user."
             )
-        
+
         # Scenario 2: Partial completion with failures
         elif phase_changed and (done_items > 0 or failed_items > 0):
             return (
@@ -2025,7 +2039,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "**Be transparent about limitations.**\n\n"
                 "**Then:** Finish to return response to user."
             )
-        
+
         # Scenario 3: No work completed (edge case)
         elif phase_changed and done_items == 0 and total_items > 0:
             if failed_items == total_items:
@@ -2050,7 +2064,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                     "• Explain current status and what's pending\n\n"
                     "**Then:** Finish to return response."
                 )
-        
+
         # Scenario 4: Follow-up request during synthesis
         elif trigger_reason == CycleTriggerReason.NEW_REQUEST:
             return (
@@ -2063,7 +2077,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "  (Note: Phase will transition automatically if needed)\n\n"
                 "Respond to the follow-up appropriately."
             )
-        
+
         # Scenario 5: Continuation in synthesis
         elif not phase_changed:
             return (
@@ -2075,7 +2089,7 @@ class OrchestratorPhaseProvider(PhaseProvider):
                 "• Finish when response is complete\n\n"
                 f"Original request: \"{user_request}\""
             )
-        
+
         # Fallback
         return (
             "Synthesize results and create final response for the user. "
