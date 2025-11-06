@@ -147,7 +147,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
 
     const startPipeline = async (docs: {source_name: string}[]) => {
         try {
-            const res = await embedDocs(docs);
+            const res = await embedDocs(docs, user?.username || 'default');
             const issues = res?.registration?.issues || [];
 
             if (issues.length > 0) {

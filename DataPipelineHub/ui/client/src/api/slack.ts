@@ -87,7 +87,8 @@ export interface PipelineEmbedResponse {
 }
 
 export async function submitSlackChannels(
-  channels: ChannelWithSettings[]
+  channels: ChannelWithSettings[],
+  user: string
 ): Promise<PipelineEmbedResponse> {
   // Transform channels to include settings as metadata
   const enrichedChannels = channels.map(channel => ({
