@@ -72,10 +72,23 @@ export interface ChannelWithSettings extends Channel {
   };
 }
 
+export interface PipelineEmbedResponse {
+  registration_completed: boolean;
+  registration: any;
+  pipeline_execution: {
+    data: {
+      status: string;
+      message: string;
+      pipeline_worker_tasks_submitted: number;
+      source_count: number;
+    };
+    status_code: number;
+  };
+}
+
 export async function submitSlackChannels(
-  channels: ChannelWithSettings[],
-  user: string
-): Promise<{ status: string }> {
+  channels: ChannelWithSettings[]
+): Promise<PipelineEmbedResponse> {
   // Transform channels to include settings as metadata
   const enrichedChannels = channels.map(channel => ({
     channel_name: channel.channel_name,
@@ -90,7 +103,7 @@ export async function submitSlackChannels(
     }
   }));
 
-  const { data } = await api.put<{ status: string }>(
+  const { data } = await api.put<PipelineEmbedResponse>(
     'pipelines/embed',
     { data: enrichedChannels, type: 'slack', user: user }
   );
