@@ -11,16 +11,37 @@ const SECRET_FIELD_NAMES = ['api_key', 'password', 'secret', 'token', 'access_to
  * @returns true if the field should be masked
  */
 export const isSecretField = (fieldName: string, fieldSchema?: any): boolean => {
-  // Check if schema explicitly marks it as secret
+  // Check if schema explicitly marks it as secret using hints.secret.hint_type === "secret"
+  // This follows the same pattern as HIDDEN: fieldSchema?.hints?.hidden?.hint_type === "hidden"
+  if (fieldSchema?.hints?.secret?.hint_type === "secret") {
+    return true;
+  }
+  
+  // Fallback: Check if schema has the old secret field (for backward compatibility)
   if (fieldSchema?.secret === true) {
     return true;
   }
   
-  // Check if field name matches secret patterns
+  // Fallback: Only use name-based detection if schema is not available
+  // This prevents false positives like "max_tokens" being treated as secret
+  if (fieldSchema !== undefined) {
+    // Schema is available, so we should only trust explicit secret hints
+    return false;
+  }
+  
+  // Fallback: Check if field name matches secret patterns (only when schema is unavailable)
+  // Use word boundaries to avoid false positives (e.g., "max_tokens" shouldn't match "token")
   const lowerFieldName = fieldName.toLowerCase();
-  return SECRET_FIELD_NAMES.some(secretField => 
-    lowerFieldName.includes(secretField.toLowerCase())
-  );
+  return SECRET_FIELD_NAMES.some(secretField => {
+    const lowerSecretField = secretField.toLowerCase();
+    // Check for exact match or field name that starts/ends with the secret field name
+    // This prevents "max_tokens" from matching "token"
+    return lowerFieldName === lowerSecretField ||
+           lowerFieldName.startsWith(lowerSecretField + '_') ||
+           lowerFieldName.endsWith('_' + lowerSecretField) ||
+           lowerFieldName === lowerSecretField + 's' || // plural form
+           lowerFieldName === lowerSecretField + 'es'; // plural form with es
+  });
 };
 
 /**
@@ -35,25 +56,28 @@ export const maskSecretValue = (value: any, fieldName: string, fieldSchema?: any
     return typeof value === 'string' ? value : String(value);
   }
   
-  // Mask the value with dots
+  // Get the mask character from the hint, defaulting to "•"
+  const maskChar = fieldSchema?.hints?.secret?.mask_char || "•";
+  
+  // Mask the value with the specified character
   if (typeof value === 'string' && value.length > 0) {
     // If it's a $ref value, keep the prefix visible
     if (value.startsWith('$ref:')) {
-      return '$ref:••••••••';
+      return `$ref:${maskChar.repeat(8)}`;
     }
-    // Otherwise, mask with dots based on approximate length
+    // Otherwise, mask with the specified character based on approximate length
     const length = value.length;
     if (length <= 8) {
-      return '••••';
+      return maskChar.repeat(4);
     } else if (length <= 16) {
-      return '••••••••';
+      return maskChar.repeat(8);
     } else {
-      return '••••••••••••';
+      return maskChar.repeat(12);
     }
   }
   
   // For non-string values, return a generic mask
-  return '••••••••';
+  return maskChar.repeat(8);
 };
 
 /**

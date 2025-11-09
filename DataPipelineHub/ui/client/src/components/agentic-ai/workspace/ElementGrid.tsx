@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import SimpleTooltip from '@/components/shared/SimpleTooltip';
 import { useShared } from '@/contexts/SharedContext';
-import { ElementInstance, ElementType } from '../../../types/workspace';
+import { ElementInstance, ElementType, ElementSchema } from '../../../types/workspace';
 import { ElementData } from './ElementData';
 import { formatConfigValue } from '../../../utils/maskSecretFields';
 
@@ -25,6 +25,7 @@ interface ElementGridProps {
   isLoading: boolean;
   onEditElement: (element: ElementInstance) => void;
   onDeleteElement: (rid: string) => void;
+  elementSchema?: ElementSchema | null;
 }
 
 export const ElementGrid: React.FC<ElementGridProps> = ({
@@ -32,7 +33,8 @@ export const ElementGrid: React.FC<ElementGridProps> = ({
   elementType,
   isLoading,
   onEditElement,
-  onDeleteElement
+  onDeleteElement,
+  elementSchema
 }) => {
   const [selectedElement, setSelectedElement] = useState<ElementInstance | null>(null);
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
@@ -145,14 +147,17 @@ export const ElementGrid: React.FC<ElementGridProps> = ({
                   <div className="mt-3">
                     <span className="text-xs text-gray-500">Configuration:</span>
                     <div className="text-xs text-gray-300 mt-1 space-y-1">
-                      {Object.keys(element.config).slice(0, 3).map((key) => (
-                        <div key={key} className="flex justify-between">
-                          <span className="truncate">{key}:</span>
-                          <span className="text-gray-400 ml-2 truncate max-w-24">
-                            {formatConfigValue(element.config[key], key)}
-                          </span>
-                        </div>
-                      ))}
+                      {Object.keys(element.config).slice(0, 3).map((key) => {
+                        const fieldSchema = elementSchema?.config_schema?.properties?.[key];
+                        return (
+                          <div key={key} className="flex justify-between">
+                            <span className="truncate">{key}:</span>
+                            <span className="text-gray-400 ml-2 truncate max-w-24">
+                              {formatConfigValue(element.config[key], key, fieldSchema)}
+                            </span>
+                          </div>
+                        );
+                      })}
                       {Object.keys(element.config).length > 3 && (
                         <div className="text-gray-500 text-center">
                           +{Object.keys(element.config).length - 3} more...
@@ -196,6 +201,7 @@ export const ElementGrid: React.FC<ElementGridProps> = ({
         elementType={elementType}
         isOpen={isDetailsModalOpen}
         onOpenChange={setIsDetailsModalOpen}
+        elementSchema={elementSchema}
       />
     </div>
   );

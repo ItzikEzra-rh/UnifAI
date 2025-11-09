@@ -2,7 +2,7 @@ import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { FileText } from 'lucide-react';
-import { ElementInstance, ElementType } from '../../../types/workspace';
+import { ElementInstance, ElementType, ElementSchema } from '../../../types/workspace';
 import { maskSecretFieldsInConfig } from '../../../utils/maskSecretFields';
 
 interface ElementDataProps {
@@ -10,13 +10,15 @@ interface ElementDataProps {
   elementType: ElementType;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  elementSchema?: ElementSchema | null;
 }
 
 export const ElementData: React.FC<ElementDataProps> = ({
   element,
   elementType,
   isOpen,
-  onOpenChange
+  onOpenChange,
+  elementSchema
 }) => {
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -82,7 +84,7 @@ export const ElementData: React.FC<ElementDataProps> = ({
                 <label className="text-sm font-medium text-gray-400">Full Configuration</label>
                 <div className="mt-2 bg-gray-900 p-4 rounded-md">
                   <pre className="text-xs text-gray-300 whitespace-pre-wrap overflow-x-auto">
-                    {JSON.stringify(maskSecretFieldsInConfig(element.config), null, 2)}
+                    {JSON.stringify(maskSecretFieldsInConfig(element.config, elementSchema?.config_schema), null, 2)}
                   </pre>
                 </div>
               </div>

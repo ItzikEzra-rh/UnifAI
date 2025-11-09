@@ -28,6 +28,7 @@ import {
 import { useWorkspaceData } from "../../../hooks/useWorkspaceData";
 import { FieldValidation } from "./FieldValidation";
 import { FieldPopulation } from "./FieldPopulation";
+import { maskSecretValue } from "../../../utils/maskSecretFields";
 
 interface ElementFormProps {
   isOpen: boolean;
@@ -55,6 +56,10 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   );
   const [fieldValidationStates, setFieldValidationStates] = useState<{ [fieldName: string]: boolean }>({});
   const [populateResults, setPopulateResults] = useState<{ [fieldName: string]: string[] }>({});
+  // Store original secret values to preserve them when saving if user doesn't change them
+  const [originalSecretValues, setOriginalSecretValues] = useState<{ [fieldName: string]: any }>({});
+  // Track which secret fields are being edited (user started typing)
+  const [editingSecretFields, setEditingSecretFields] = useState<{ [fieldName: string]: boolean }>({});
 
   const { fetchResourcesForCategory } = useWorkspaceData();
 
@@ -86,6 +91,9 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   // Initialize form data
   useEffect(() => {
     if (elementSchema && isOpen) {
+      // Reset original secret values and editing state when form opens
+      setOriginalSecretValues({});
+      setEditingSecretFields({});
       const initialData: any = {};
 
       // Set default values from combined schema, excluding hidden fields
@@ -126,6 +134,20 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             
             // Skip hidden fields - don't populate them in edit mode
             if (fieldSchema?.hints?.hidden?.hint_type === "hidden") {
+              return;
+            }
+            
+            // For secret fields, show masked dots instead of the actual value
+            // Store the original value separately so we can preserve it when saving
+            if (fieldSchema?.hints?.secret?.hint_type === "secret") {
+              // Store the original value for later use when saving
+              setOriginalSecretValues(prev => ({
+                ...prev,
+                [key]: value
+              }));
+              // Show masked dots to indicate there's a value
+              const maskedValue = maskSecretValue(value, key, fieldSchema);
+              initialData[key] = maskedValue;
               return;
             }
             
@@ -499,42 +521,77 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           saveData[fieldName] = typeof value === "string" ? value.trim() : value;
         } else if (!systemFields.includes(fieldName)) {
           // This is a config field
-          let processedValue = value;
+          
+          // For secret fields in edit mode: check if user changed the value
+          // If the value is still the masked placeholder, use the original value
+          let actualValue = value;
+          if (fieldSchema?.hints?.secret?.hint_type === "secret" && editingElement) {
+            const originalValue = originalSecretValues[fieldName];
+            if (originalValue !== undefined) {
+              // Check if the current value is the masked placeholder
+              const maskedOriginal = maskSecretValue(originalValue, fieldName, fieldSchema);
+              // If the current value matches the masked original, user didn't change it
+              // Use the original value
+              if (value === maskedOriginal || !value || value === "" || (typeof value === "string" && value.trim() === "")) {
+                actualValue = originalValue;
+              }
+              // Otherwise, user typed something new, use that
+            } else {
+              // No original value stored, check editingElement.config as fallback
+              if (!value || value === "" || (typeof value === "string" && value.trim() === "")) {
+                if (editingElement.config && editingElement.config[fieldName] !== undefined) {
+                  actualValue = editingElement.config[fieldName];
+                } else {
+                  actualValue = "";
+                }
+              }
+            }
+          }
+          
+          let processedValue = actualValue;
 
           // Convert reference fields back to $ref:rid format and handle empty values
           if (fieldSchema) {
             if (
               fieldSchema.$ref &&
-              value &&
-              value !== ""
+              processedValue &&
+              processedValue !== ""
             ) {
-              processedValue = `$ref:${value}`;
+              // Only convert if it's not already in $ref: format (for secret fields preserving existing value)
+              if (typeof processedValue === "string" && !processedValue.startsWith("$ref:")) {
+                processedValue = `$ref:${processedValue}`;
+              }
             }
             // Handle anyOf with $ref
             else if (
               fieldSchema.anyOf &&
               fieldSchema.anyOf.some((option: any) => option.$ref) &&
-              value &&
-              value !== ""
+              processedValue &&
+              processedValue !== ""
             ) {
-              processedValue = `$ref:${value}`;
+              // Only convert if it's not already in $ref: format
+              if (typeof processedValue === "string" && !processedValue.startsWith("$ref:")) {
+                processedValue = `$ref:${processedValue}`;
+              }
             }
             // Handle array fields with $ref items
             else if (
               isArrayWithRefItems(fieldSchema) &&
-              Array.isArray(value)
+              Array.isArray(processedValue)
             ) {
-              processedValue = value.map((rid: string) => `$ref:${rid}`);
+              processedValue = processedValue.map((rid: string) => 
+                typeof rid === "string" && !rid.startsWith("$ref:") ? `$ref:${rid}` : rid
+              );
             }
             // Handle empty values based on field type
             else {
               // For array fields, ensure empty arrays instead of empty strings or null
               if (fieldSchema.type === "array" || 
                   (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.type === "array"))) {
-                if (!value || value === "" || (Array.isArray(value) && value.length === 0)) {
+                if (!processedValue || processedValue === "" || (Array.isArray(processedValue) && processedValue.length === 0)) {
                   processedValue = [];
-                } else if (Array.isArray(value)) {
-                  processedValue = value;
+                } else if (Array.isArray(processedValue)) {
+                  processedValue = processedValue;
                 } else {
                   processedValue = [];
                 }
@@ -542,19 +599,19 @@ export const ElementForm: React.FC<ElementFormProps> = ({
               // For string fields, ensure empty strings instead of null
               else if (fieldSchema.type === "string" || 
                        (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.type === "string"))) {
-                if (value === null || value === undefined) {
+                if (processedValue === null || processedValue === undefined) {
                   processedValue = "";
                 } else {
-                  processedValue = value;
+                  processedValue = processedValue;
                 }
               }
               // For other types, keep the original value but handle null/undefined
               else {
-                if (value === null || value === undefined) {
+                if (processedValue === null || processedValue === undefined) {
                   // Skip this field entirely for null/undefined values in non-string, non-array fields
                   return;
                 }
-                processedValue = value;
+                processedValue = processedValue;
               }
             }
           }
@@ -595,7 +652,9 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     const value = formData[fieldName] || "";
     const validationHint = fieldSchema.hints?.action?.hint_type === 'validate' ? fieldSchema.hints.action : null;
     const populateHint = fieldSchema.hints?.action?.hint_type === 'populate' ? fieldSchema.hints.action : null;
-    const isSecret = fieldSchema.secret === true;
+    // Check if field is secret using the new structure: hints.secret.hint_type === "secret"
+    // This follows the same pattern as HIDDEN: fieldSchema?.hints?.hidden?.hint_type === "hidden"
+    const isSecret = fieldSchema?.hints?.secret?.hint_type === "secret";
 
     // Handle array fields with $ref items (multi-select dropdown)
     if (isArrayWithRefItems(fieldSchema)) {
@@ -904,11 +963,36 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             </Label>
             <Input
               id={fieldName}
-              type="password"
+              type={editingSecretFields[fieldName] ? "password" : "text"}
               value={value}
-              onChange={(e) => handleInputChange(fieldName, e.target.value)}
+              onChange={(e) => {
+                const newValue = e.target.value;
+                // If user is typing in a secret field, mark it as being edited
+                if (!editingSecretFields[fieldName]) {
+                  setEditingSecretFields(prev => ({ ...prev, [fieldName]: true }));
+                }
+                handleInputChange(fieldName, newValue);
+              }}
+              onFocus={(e) => {
+                // If the value is the masked placeholder, clear it when user focuses
+                if (editingElement) {
+                  const originalValue = originalSecretValues[fieldName];
+                  if (originalValue !== undefined) {
+                    const maskedOriginal = maskSecretValue(originalValue, fieldName, fieldSchema);
+                    if (value === maskedOriginal) {
+                      // Clear the masked value so user can type
+                      handleInputChange(fieldName, "");
+                      setEditingSecretFields(prev => ({ ...prev, [fieldName]: true }));
+                    }
+                  }
+                }
+              }}
               className="bg-background-dark"
-              placeholder={fieldSchema.description}
+              placeholder={
+                editingElement && !editingSecretFields[fieldName]
+                  ? "Click to edit"
+                  : fieldSchema.description
+              }
               readOnly={!!populateHint}
               disabled={!!populateHint}
             />
@@ -1014,11 +1098,36 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         </Label>
         <Input
           id={fieldName}
-          type={isSecret ? "password" : "text"}
+          type={isSecret && editingSecretFields[fieldName] ? "password" : "text"}
           value={value}
-          onChange={(e) => handleInputChange(fieldName, e.target.value)}
+          onChange={(e) => {
+            const newValue = e.target.value;
+            // If user is typing in a secret field, mark it as being edited
+            if (isSecret && !editingSecretFields[fieldName]) {
+              setEditingSecretFields(prev => ({ ...prev, [fieldName]: true }));
+            }
+            handleInputChange(fieldName, newValue);
+          }}
+          onFocus={(e) => {
+            // If the value is the masked placeholder, clear it when user focuses
+            if (isSecret && editingElement) {
+              const originalValue = originalSecretValues[fieldName];
+              if (originalValue !== undefined) {
+                const maskedOriginal = maskSecretValue(originalValue, fieldName, fieldSchema);
+                if (value === maskedOriginal) {
+                  // Clear the masked value so user can type
+                  handleInputChange(fieldName, "");
+                  setEditingSecretFields(prev => ({ ...prev, [fieldName]: true }));
+                }
+              }
+            }
+          }}
           className="bg-background-dark"
-          placeholder={fieldSchema.description}
+          placeholder={
+            isSecret && editingElement && !editingSecretFields[fieldName]
+              ? "Click to edit"
+              : fieldSchema.description
+          }
           readOnly={!!populateHint}
           disabled={!!populateHint}
         />
