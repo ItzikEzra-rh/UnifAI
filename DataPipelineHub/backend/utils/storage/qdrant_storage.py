@@ -107,6 +107,7 @@ class QdrantStorage(VectorStorage):
         # Create payload indexes for common metadata fields to speed up filtering
         self._create_payload_index("metadata.source_type", qmodels.PayloadSchemaType.KEYWORD)
         self._create_payload_index("metadata.channel_name", qmodels.PayloadSchemaType.KEYWORD)
+        self._create_payload_index("metadata.source_id", qmodels.PayloadSchemaType.KEYWORD)
         
         logger.info(f"Created collection '{self.collection_name}' with dimension {self.embedding_dim}")
     
@@ -356,23 +357,31 @@ class QdrantStorage(VectorStorage):
             self.delete(filters=filters)
             logger.info(f"Deleted {deleted_count} embeddings from Qdrant for source {source_id}")
             
-            # Verify deletion
+            # Verify deletion (exact count with brief polling)
+            max_wait_seconds = int(os.getenv("QDRANT_DELETE_VERIFY_TIMEOUT_SECONDS", "10"))
+            poll_interval_seconds = 0.5
+            waited = 0.0
             remaining_count = self.count(filters=filters, exact=True)
+            while remaining_count > 0 and waited < max_wait_seconds:
+                time.sleep(poll_interval_seconds)
+                waited += poll_interval_seconds
+                remaining_count = self.count(filters=filters, exact=True)
+
             if remaining_count > 0:
-                logger.error(f"Deletion incomplete: {remaining_count} embeddings still remain for source {source_id}")
+                logger.error(f"Deletion incomplete: {remaining_count} embeddings still remain for source {source_id} after waiting {waited:.1f}s")
                 return {
                     "success": False,
-                    "embeddings_deleted": deleted_count - remaining_count,
+                    "embeddings_deleted": max(0, deleted_count - remaining_count),
                     "remaining_count": remaining_count,
                     "error": f"Deletion incomplete, {remaining_count} embeddings remain"
                 }
-            else:
-                logger.info(f"Successfully verified deletion - no embeddings remain for source {source_id}")
-                return {
-                    "success": True,
-                    "embeddings_deleted": deleted_count,
-                    "message": f"Successfully deleted all embeddings for source {source_id}"
-                }
+            
+            logger.info(f"Successfully verified deletion - no embeddings remain for source {source_id}")
+            return {
+                "success": True,
+                "embeddings_deleted": deleted_count,
+                "message": f"Successfully deleted all embeddings for source {source_id}"
+            }
                 
         except Exception as e:
             logger.error(f"Error deleting source {source_id} from Qdrant: {e}")

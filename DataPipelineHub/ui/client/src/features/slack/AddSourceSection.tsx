@@ -54,7 +54,7 @@ interface AddSourceSectionProps {
   isSubmitting?: boolean;
 }
 
-interface AddSourceSectionHandle {
+export interface AddSourceSectionHandle {
   getSelectedChannels: () => Promise<ChannelWithSettings[]>;
 }
 

@@ -86,6 +86,7 @@ export interface Document {
     file_size: string;
     last_error?: string;
     failed_at?: string;
+    md5?: string;
   };
   upload_by: string;
   pipeline_stats: {
