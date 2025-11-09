@@ -106,7 +106,7 @@ export async function submitSlackChannels(
 
   const { data } = await api.put<PipelineEmbedResponse>(
     'pipelines/embed',
-    { data: enrichedChannels, type: 'slack', user: user }
+    { data: enrichedChannels, source_type: 'slack', logged_in_user: user }
   );
   
   return data;

@@ -41,8 +41,8 @@ export async function embedDocs(docs: {source_name: string}[], user: string): Pr
       'pipelines/embed',
       {
         data: docs,
-        type: 'document',
-        user: user
+        source_type: 'document',
+        logged_in_user: user
       }
     );
     return embedded.data;
