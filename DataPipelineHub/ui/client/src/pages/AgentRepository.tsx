@@ -127,6 +127,7 @@ export default function UserWorkspace() {
                       isLoading={isLoading}
                       onEditElement={handleEditElement}
                       onDeleteElement={handleDeleteElement}
+                      elementSchema={elementSchema}
                     />
                   ) : (
                     <div className="flex items-center justify-center h-full">

@@ -28,6 +28,8 @@ import {
 import { useWorkspaceData } from "../../../hooks/useWorkspaceData";
 import { FieldValidation } from "./FieldValidation";
 import { FieldPopulation } from "./FieldPopulation";
+import { maskSecretValue } from "../../../utils/maskSecretFields";
+import { SecretInput } from "./SecretInput";
 
 interface ElementFormProps {
   isOpen: boolean;
@@ -55,6 +57,8 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   );
   const [fieldValidationStates, setFieldValidationStates] = useState<{ [fieldName: string]: boolean }>({});
   const [populateResults, setPopulateResults] = useState<{ [fieldName: string]: string[] }>({});
+  const [originalSecretValues, setOriginalSecretValues] = useState<{ [fieldName: string]: any }>({});
+  const [editingSecretFields, setEditingSecretFields] = useState<{ [fieldName: string]: boolean }>({});
 
   const { fetchResourcesForCategory } = useWorkspaceData();
 
@@ -86,6 +90,8 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   // Initialize form data
   useEffect(() => {
     if (elementSchema && isOpen) {
+      setOriginalSecretValues({});
+      setEditingSecretFields({});
       const initialData: any = {};
 
       // Set default values from combined schema, excluding hidden fields
@@ -113,11 +119,10 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       // If editing, populate with existing data (override defaults)
       if (editingElement) {
         // Handle first-level fields directly from editingElement
-        Object.keys(editingElement).forEach((field) => {
-          if (field !== 'config' && editingElement[field] !== undefined) {
-            initialData[field] = editingElement[field];
-          }
-        });
+        // Only handle 'name' field explicitly to avoid TypeScript indexing errors
+        if (editingElement.name !== undefined) {
+          initialData.name = editingElement.name;
+        }
 
         // Handle config data, excluding hidden fields
         if (editingElement.config) {
@@ -126,6 +131,15 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             
             // Skip hidden fields - don't populate them in edit mode
             if (fieldSchema?.hints?.hidden?.hint_type === "hidden") {
+              return;
+            }
+            
+            // For secret fields, show masked dots instead of the actual value
+            // Store the original value separately so we can preserve it when saving
+            if (fieldSchema?.hints?.secret?.hint_type === "secret" && fieldSchema) {
+              setOriginalSecretValues(prev => ({...prev,[key]: value}));
+              const maskedValue = maskSecretValue(value, fieldSchema);
+              initialData[key] = maskedValue;
               return;
             }
             
@@ -153,7 +167,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   // Re-apply form data when ref options are loaded (for proper pre-selection)
   useEffect(() => {
     if (editingElement?.config && Object.keys(refOptions).length > 0) {
-      setFormData((prevData) => {
+      setFormData((prevData: any) => {
         const updatedData = { ...prevData };
 
         Object.entries(editingElement.config).forEach(([key, value]) => {
@@ -357,7 +371,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       const loadRefOptions = async () => {
         const options: { [category: string]: any[] } = {};
 
-        for (const category of refCategories) {
+        for (const category of Array.from(refCategories)) {
           try {
             const resources = await fetchResourcesForCategory(category);
             options[category] = resources;
@@ -380,14 +394,14 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   }, [elementSchema, isOpen, fetchResourcesForCategory]);
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
       [field]: value,
     }));
   };
 
   const handleArrayChange = (field: string, index: number, value: any) => {
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
       [field]: prev[field].map((item: any, i: number) =>
         i === index ? value : item,
@@ -396,14 +410,14 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   };
 
   const addArrayItem = (field: string) => {
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
       [field]: [...(prev[field] || []), ""],
     }));
   };
 
   const removeArrayItem = (field: string, index: number) => {
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
       [field]: prev[field].filter((_: any, i: number) => i !== index),
     }));
@@ -499,42 +513,62 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           saveData[fieldName] = typeof value === "string" ? value.trim() : value;
         } else if (!systemFields.includes(fieldName)) {
           // This is a config field
-          let processedValue = value;
+          
+          // For secret fields in edit mode: check if user changed the value
+          // If the value is still the masked placeholder, use the original value
+          let actualValue = value;
+          if (fieldSchema?.hints?.secret?.hint_type === "secret" && editingElement && fieldSchema) {
+            const originalValue = originalSecretValues[fieldName];
+            if (originalValue !== undefined) {
+              const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
+
+              if (value === maskedOriginal || !value || value === "" || (typeof value === "string" && value.trim() === "")) {
+                actualValue = originalValue;
+              }
+            } else {
+              if (!value || value === "" || (typeof value === "string" && value.trim() === "")) {
+                if (editingElement.config && editingElement.config[fieldName] !== undefined) {
+                  actualValue = editingElement.config[fieldName];
+                } else {
+                  actualValue = "";
+                }
+              }
+            }
+          }
+          
+          let processedValue = actualValue;
 
           // Convert reference fields back to $ref:rid format and handle empty values
           if (fieldSchema) {
-            if (
-              fieldSchema.$ref &&
-              value &&
-              value !== ""
-            ) {
-              processedValue = `$ref:${value}`;
+            if (fieldSchema.$ref && processedValue && processedValue !== "") {
+              if (typeof processedValue === "string" && !processedValue.startsWith("$ref:")) {
+                processedValue = `$ref:${processedValue}`;
+              }
             }
             // Handle anyOf with $ref
-            else if (
-              fieldSchema.anyOf &&
-              fieldSchema.anyOf.some((option: any) => option.$ref) &&
-              value &&
-              value !== ""
-            ) {
-              processedValue = `$ref:${value}`;
+            else if (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.$ref) && processedValue && processedValue !== "") {
+              if (typeof processedValue === "string" && !processedValue.startsWith("$ref:")) {
+                processedValue = `$ref:${processedValue}`;
+              }
             }
             // Handle array fields with $ref items
             else if (
               isArrayWithRefItems(fieldSchema) &&
-              Array.isArray(value)
+              Array.isArray(processedValue)
             ) {
-              processedValue = value.map((rid: string) => `$ref:${rid}`);
+              processedValue = processedValue.map((rid: string) => 
+                typeof rid === "string" && !rid.startsWith("$ref:") ? `$ref:${rid}` : rid
+              );
             }
             // Handle empty values based on field type
             else {
               // For array fields, ensure empty arrays instead of empty strings or null
               if (fieldSchema.type === "array" || 
                   (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.type === "array"))) {
-                if (!value || value === "" || (Array.isArray(value) && value.length === 0)) {
+                if (!processedValue || processedValue === "" || (Array.isArray(processedValue) && processedValue.length === 0)) {
                   processedValue = [];
-                } else if (Array.isArray(value)) {
-                  processedValue = value;
+                } else if (Array.isArray(processedValue)) {
+                  processedValue = processedValue;
                 } else {
                   processedValue = [];
                 }
@@ -542,19 +576,19 @@ export const ElementForm: React.FC<ElementFormProps> = ({
               // For string fields, ensure empty strings instead of null
               else if (fieldSchema.type === "string" || 
                        (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.type === "string"))) {
-                if (value === null || value === undefined) {
+                if (processedValue === null || processedValue === undefined) {
                   processedValue = "";
                 } else {
-                  processedValue = value;
+                  processedValue = processedValue;
                 }
               }
               // For other types, keep the original value but handle null/undefined
               else {
-                if (value === null || value === undefined) {
+                if (processedValue === null || processedValue === undefined) {
                   // Skip this field entirely for null/undefined values in non-string, non-array fields
                   return;
                 }
-                processedValue = value;
+                processedValue = processedValue;
               }
             }
           }
@@ -580,7 +614,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       const result = await onSave(saveData);
 
       // Only close the dialog if save was successful (result is not null/false)
-      if (result !== null && result !== false) {
+      if (result !== null) {
         onClose();
       }
     } catch (error) {
@@ -595,6 +629,32 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     const value = formData[fieldName] || "";
     const validationHint = fieldSchema.hints?.action?.hint_type === 'validate' ? fieldSchema.hints.action : null;
     const populateHint = fieldSchema.hints?.action?.hint_type === 'populate' ? fieldSchema.hints.action : null;
+    const isSecret = fieldSchema?.hints?.secret?.hint_type === "secret";
+
+    // Handle secret fields first - they always use SecretInput regardless of field type
+    if (isSecret) {
+      return <SecretInput
+              fieldName={fieldName}
+              fieldSchema={fieldSchema}
+              value={value}
+              isRequired={isRequired}
+              validationHint={validationHint}
+              populateHint={populateHint}
+              editingElement={editingElement}
+              editingSecretFields={editingSecretFields}
+              originalSecretValues={originalSecretValues}
+              elementActions={elementActions}
+              elementType={elementType}
+              formData={formData}
+              onInputChange={handleInputChange}
+              onValidationChange={handleValidationChange}
+              onPopulateResult={handlePopulateResult}
+              onEditingSecretFieldsChange={(fieldName, isEditing) => {
+                setEditingSecretFields(prev => ({ ...prev, [fieldName]: isEditing }));
+              }}
+              maskSecretValue={maskSecretValue}
+            />
+    }
 
     // Handle array fields with $ref items (multi-select dropdown)
     if (isArrayWithRefItems(fieldSchema)) {
@@ -951,6 +1011,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         </Label>
         <Input
           id={fieldName}
+          type="text"
           value={value}
           onChange={(e) => handleInputChange(fieldName, e.target.value)}
           className="bg-background-dark"
@@ -979,8 +1040,8 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           />
         )}
         {fieldSchema.description && (
-            <p className="text-xs text-gray-400">{fieldSchema.description}</p>
-          )}
+          <p className="text-xs text-gray-400">{fieldSchema.description}</p>
+        )}
       </div>
     );
   };
