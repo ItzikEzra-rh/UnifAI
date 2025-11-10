@@ -582,6 +582,18 @@ def pytest_addoption(parser):
         default="http://localhost:8002",
         help="Base URL for API server in stress tests (default: http://localhost:8002)"
     )
+    parser.addoption(
+        "--blueprint-path",
+        action="store",
+        default=None,
+        help="Path to YAML blueprint file for stress testing (e.g., run/blueprint_mcp_agent.yml)"
+    )
+    parser.addoption(
+        "--input-text",
+        action="store",
+        default="What is 2+2?",
+        help="Input text for stress test execution (default: 'What is 2+2?')"
+    )
 
 
 def pytest_configure(config):

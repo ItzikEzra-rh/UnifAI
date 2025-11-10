@@ -43,6 +43,10 @@ class StressTestConfig:
     # User Configuration
     user_id: str = "stress_test_user"
     
+    # Blueprint Configuration
+    blueprint_path: Optional[str] = None  # Path to YAML blueprint file
+    input_text: str = "What is 2+2?"  # Input text for execution
+    
     # Load Configuration
     num_sessions: int = 20  # Total sessions to create
     concurrent_create: int = 5  # Concurrent session creations
@@ -602,6 +606,10 @@ def stress_config(request):
         config.num_sessions = request.config.option.stress_sessions
     if hasattr(request.config.option, 'stress_concurrent'):
         config.concurrent_execute = request.config.option.stress_concurrent
+    if hasattr(request.config.option, 'blueprint_path'):
+        config.blueprint_path = request.config.option.blueprint_path
+    if hasattr(request.config.option, 'input_text'):
+        config.input_text = request.config.option.input_text
     
     return config
 
@@ -613,9 +621,26 @@ def api_client(stress_config):
 
 
 @pytest.fixture
-def test_blueprint():
-    """Test blueprint fixture."""
-    return get_stress_test_blueprint()
+def test_blueprint(stress_config):
+    """Test blueprint fixture - loads from file if path provided."""
+    if stress_config.blueprint_path:
+        # Load from YAML file
+        from pathlib import Path
+        
+        blueprint_file = Path(stress_config.blueprint_path)
+        if not blueprint_file.exists():
+            pytest.skip(f"Blueprint file not found: {stress_config.blueprint_path}")
+        
+        print(f"📄 Loading blueprint from: {stress_config.blueprint_path}")
+        with open(blueprint_file, 'r') as f:
+            blueprint = yaml.safe_load(f)
+        
+        blueprint_name = blueprint.get('name', 'Unknown')
+        print(f"   Blueprint: {blueprint_name}")
+        return blueprint
+    else:
+        # Use default stress test blueprint
+        return get_stress_test_blueprint()
 
 
 @pytest.fixture
@@ -694,7 +719,7 @@ class TestSessionStress:
             
             # ✅ CORRECTED INPUT FORMAT - matches run_test_new_version
             test_inputs = {
-                "user_prompt": "What is 2+2?"
+                "user_prompt": stress_config.input_text
             }
             
             results = stress_runner.run_concurrent_execution(session_ids, test_inputs)
@@ -784,7 +809,7 @@ class TestSessionStress:
             
             num_rapid_sessions = 10
             # ✅ CORRECTED INPUT FORMAT
-            test_inputs = {"user_prompt": "Test"}
+            test_inputs = {"user_prompt": stress_config.input_text}
             
             timings = []
             
@@ -856,26 +881,38 @@ class TestCustomBlueprintStress:
     """Stress tests using your custom blueprint."""
     
     @pytest.fixture
-    def custom_blueprint(self):
+    def custom_blueprint(self, stress_config):
         """
-        Load your custom blueprint here.
+        Load your custom blueprint - from file or default.
         
-        Replace this with your actual blueprint definition or load from file.
+        Uses --blueprint-path CLI option if provided, otherwise uses default.
         """
-        # Option 1: Return blueprint dict directly
-        return get_stress_test_blueprint()
-        
-        # Option 2: Load from file (example)
-        # import yaml
-        # with open("run/blueprint_mcp_agent.yml") as f:
-        #     return yaml.safe_load(f)
+        if stress_config.blueprint_path:
+            # Load from file specified in CLI
+            from pathlib import Path
+            
+            blueprint_file = Path(stress_config.blueprint_path)
+            if not blueprint_file.exists():
+                pytest.skip(f"Blueprint file not found: {stress_config.blueprint_path}")
+            
+            print(f"📄 Loading custom blueprint from: {stress_config.blueprint_path}")
+            with open(blueprint_file, 'r') as f:
+                blueprint = yaml.safe_load(f)
+            
+            blueprint_name = blueprint.get('name', 'Unknown')
+            print(f"   Blueprint: {blueprint_name}")
+            return blueprint
+        else:
+            # Default to stress test blueprint
+            return get_stress_test_blueprint()
     
     @pytest.fixture
-    def custom_inputs(self):
+    def custom_inputs(self, stress_config):
         """Define inputs specific to your blueprint."""
         # ✅ CORRECTED INPUT FORMAT - matches your actual usage
+        # Uses --input-text CLI option if provided
         return {
-            "user_prompt": "What are the latest issues in GENIE project?"
+            "user_prompt": stress_config.input_text
         }
     
     def test_custom_blueprint_stress(
