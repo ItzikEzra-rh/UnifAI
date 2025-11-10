@@ -12,22 +12,10 @@ import { loadGuidesForSection, GuidesByCategory, Guide } from "@/utils/guideLoad
 // Section configuration
 const SECTIONS = [
   {
-    id: 'slack-integration',
-    name: 'Slack Integration',
-    icon: <MessageSquare className="h-5 w-5" />,
-    color: 'text-purple-400'
-  },
-  {
-    id: 'documents',
-    name: 'Documents',
-    icon: <FileText className="h-5 w-5" />,
-    color: 'text-blue-400'
-  },
-  {
     id: 'agentic-inventory',
     name: 'Agentic Inventory',
     icon: <FileText className="h-5 w-5" />,
-    color: 'text-green-400'
+    color: 'text-blue-400'
   },
   {
     id: 'agentic-ai-workflows',
