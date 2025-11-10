@@ -59,24 +59,14 @@ export const maskSecretValue = (value: any, fieldName: string, fieldSchema?: any
   // Get the mask character from the hint, defaulting to "•"
   const maskChar = fieldSchema?.hints?.secret?.mask_char || "•";
   
-  // Mask the value with the specified character
-  if (typeof value === 'string' && value.length > 0) {
-    // If it's a $ref value, keep the prefix visible
-    if (value.startsWith('$ref:')) {
-      return `$ref:${maskChar.repeat(8)}`;
-    }
-    // Otherwise, mask with the specified character based on approximate length
-    const length = value.length;
-    if (length <= 8) {
-      return maskChar.repeat(4);
-    } else if (length <= 16) {
-      return maskChar.repeat(8);
-    } else {
-      return maskChar.repeat(12);
-    }
+  if (typeof value === 'string') {
+    // If it is, return the mask char repeated for the *exact* length.
+    // An empty string (length 0) will correctly return "".
+    return maskChar.repeat(value.length);
   }
-  
-  // For non-string values, return a generic mask
+
+  // 2. Fallback for non-string values (numbers, null, etc.)
+  //    (This matches the fallback from your original code)
   return maskChar.repeat(8);
 };
 
