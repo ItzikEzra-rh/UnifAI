@@ -37,6 +37,7 @@ class StressTestConfig:
     """Configuration for stress test parameters."""
     # API Configuration
     base_url: str = "http://localhost:8002"
+    # base_url: str = "http://unifai-multiagent-be-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
     api_prefix: str = "/api"
     
     # User Configuration
@@ -220,6 +221,32 @@ class SessionAPIClient:
         response.raise_for_status()
         
         return response.json()
+    
+    def delete_blueprint(self, blueprint_id: str) -> bool:
+        """Delete a blueprint."""
+        url = f"{self.base_url}/blueprints/remove.blueprint"
+        params = {"blueprintId": blueprint_id}
+        
+        try:
+            response = self.session.delete(url, params=params)
+            response.raise_for_status()
+            return True
+        except Exception as e:
+            print(f"  ⚠️  Warning: Failed to delete blueprint {blueprint_id[:8]}...: {e}")
+            return False
+    
+    def delete_session(self, session_id: str) -> bool:
+        """Delete a session."""
+        url = f"{self.base_url}/sessions/session.delete"
+        params = {"sessionId": session_id}
+        
+        try:
+            response = self.session.delete(url, params=params)
+            response.raise_for_status()
+            return True
+        except Exception as e:
+            print(f"  ⚠️  Warning: Failed to delete session {session_id[:8]}...: {e}")
+            return False
 
 
 # =============================================================================
@@ -625,82 +652,109 @@ class TestSessionStress:
         3. All sessions complete successfully
         4. Performance meets acceptable thresholds
         """
-        print(f"\n{'=' * 80}")
-        print("🧪 STARTING E2E SESSION STRESS TEST")
-        print(f"{'=' * 80}")
-        print(f"Configuration:")
-        print(f"  • Total Sessions: {stress_config.num_sessions}")
-        print(f"  • Concurrent Creates: {stress_config.concurrent_create}")
-        print(f"  • Concurrent Executes: {stress_config.concurrent_execute}")
-        print(f"  • API: {stress_config.base_url}")
+        blueprint_id = None
+        session_ids = []
         
-        stress_runner.metrics.total_start_time = time.time()
-        
-        # PHASE 1: Create Blueprint
-        print(f"\n{'=' * 80}")
-        print("📋 PHASE 1: Blueprint Setup")
-        print(f"{'=' * 80}")
-        
-        blueprint_id = api_client.create_blueprint(test_blueprint)
-        print(f"✅ Blueprint created: {blueprint_id}")
-        
-        # PHASE 2: Concurrent Session Creation
-        print(f"\n{'=' * 80}")
-        print("📋 PHASE 2: Concurrent Session Creation")
-        print(f"{'=' * 80}")
-        
-        session_ids = stress_runner.run_concurrent_creation(blueprint_id)
-        
-        # Assert creation success
-        assert len(session_ids) > 0, "No sessions were created successfully"
-        creation_success_rate = len(session_ids) / stress_config.num_sessions
-        print(f"\n✅ Created {len(session_ids)}/{stress_config.num_sessions} sessions ({creation_success_rate * 100:.1f}% success)")
-        
-        # PHASE 3: Parallel Session Execution
-        print(f"\n{'=' * 80}")
-        print("📋 PHASE 3: Parallel Session Execution")
-        print(f"{'=' * 80}")
-        
-        # ✅ CORRECTED INPUT FORMAT - matches run_test_new_version
-        test_inputs = {
-            "user_prompt": "What is 2+2?"
-        }
-        
-        results = stress_runner.run_concurrent_execution(session_ids, test_inputs)
-        
-        # Assert execution success
-        assert len(results) > 0, "No sessions executed successfully"
-        execution_success_rate = len(results) / len(session_ids)
-        print(f"\n✅ Executed {len(results)}/{len(session_ids)} sessions ({execution_success_rate * 100:.1f}% success)")
-        
-        stress_runner.metrics.total_end_time = time.time()
-        
-        # PHASE 4: Verification
-        if stress_config.verify_status:
+        try:
             print(f"\n{'=' * 80}")
-            print("📋 PHASE 4: Session Status Verification")
+            print("🧪 STARTING E2E SESSION STRESS TEST")
+            print(f"{'=' * 80}")
+            print(f"Configuration:")
+            print(f"  • Total Sessions: {stress_config.num_sessions}")
+            print(f"  • Concurrent Creates: {stress_config.concurrent_create}")
+            print(f"  • Concurrent Executes: {stress_config.concurrent_execute}")
+            print(f"  • API: {stress_config.base_url}")
+            
+            stress_runner.metrics.total_start_time = time.time()
+            
+            # PHASE 1: Create Blueprint
+            print(f"\n{'=' * 80}")
+            print("📋 PHASE 1: Blueprint Setup")
             print(f"{'=' * 80}")
             
-            completed_count = 0
-            for i, session_id in enumerate(session_ids[:5]):  # Sample first 5
-                try:
-                    status = api_client.get_session_status(session_id)
-                    print(f"  • Session {i + 1}: {status}")
-                    if status == "COMPLETED":
-                        completed_count += 1
-                except Exception as e:
-                    print(f"  • Session {i + 1}: Error getting status - {e}")
-        
-        # PHASE 5: Metrics Report
-        stress_runner.print_metrics_summary()
-        
-        # Final Assertions
-        assert creation_success_rate >= 0.9, f"Creation success rate too low: {creation_success_rate * 100:.1f}%"
-        assert execution_success_rate >= 0.8, f"Execution success rate too low: {execution_success_rate * 100:.1f}%"
-        
-        print("\n" + "=" * 80)
-        print("✅ STRESS TEST PASSED")
-        print("=" * 80 + "\n")
+            blueprint_id = api_client.create_blueprint(test_blueprint)
+            print(f"✅ Blueprint created: {blueprint_id}")
+            
+            # PHASE 2: Concurrent Session Creation
+            print(f"\n{'=' * 80}")
+            print("📋 PHASE 2: Concurrent Session Creation")
+            print(f"{'=' * 80}")
+            
+            session_ids = stress_runner.run_concurrent_creation(blueprint_id)
+            
+            # Assert creation success
+            assert len(session_ids) > 0, "No sessions were created successfully"
+            creation_success_rate = len(session_ids) / stress_config.num_sessions
+            print(f"\n✅ Created {len(session_ids)}/{stress_config.num_sessions} sessions ({creation_success_rate * 100:.1f}% success)")
+            
+            # PHASE 3: Parallel Session Execution
+            print(f"\n{'=' * 80}")
+            print("📋 PHASE 3: Parallel Session Execution")
+            print(f"{'=' * 80}")
+            
+            # ✅ CORRECTED INPUT FORMAT - matches run_test_new_version
+            test_inputs = {
+                "user_prompt": "What is 2+2?"
+            }
+            
+            results = stress_runner.run_concurrent_execution(session_ids, test_inputs)
+            
+            # Assert execution success
+            assert len(results) > 0, "No sessions executed successfully"
+            execution_success_rate = len(results) / len(session_ids)
+            print(f"\n✅ Executed {len(results)}/{len(session_ids)} sessions ({execution_success_rate * 100:.1f}% success)")
+            
+            stress_runner.metrics.total_end_time = time.time()
+            
+            # PHASE 4: Verification
+            if stress_config.verify_status:
+                print(f"\n{'=' * 80}")
+                print("📋 PHASE 4: Session Status Verification")
+                print(f"{'=' * 80}")
+                
+                completed_count = 0
+                for i, session_id in enumerate(session_ids[:5]):  # Sample first 5
+                    try:
+                        status = api_client.get_session_status(session_id)
+                        print(f"  • Session {i + 1}: {status}")
+                        if status == "COMPLETED":
+                            completed_count += 1
+                    except Exception as e:
+                        print(f"  • Session {i + 1}: Error getting status - {e}")
+            
+            # PHASE 5: Metrics Report
+            stress_runner.print_metrics_summary()
+            
+            # Final Assertions
+            assert creation_success_rate >= 0.9, f"Creation success rate too low: {creation_success_rate * 100:.1f}%"
+            assert execution_success_rate >= 0.8, f"Execution success rate too low: {execution_success_rate * 100:.1f}%"
+            
+            print("\n" + "=" * 80)
+            print("✅ STRESS TEST PASSED")
+            print("=" * 80 + "\n")
+            
+        finally:
+            # CLEANUP PHASE
+            print(f"\n{'=' * 80}")
+            print("🧹 CLEANUP PHASE")
+            print(f"{'=' * 80}")
+            
+            # Delete sessions
+            if session_ids:
+                print(f"Deleting {len(session_ids)} sessions...")
+                deleted_count = 0
+                for session_id in session_ids:
+                    if api_client.delete_session(session_id):
+                        deleted_count += 1
+                print(f"  ✅ Deleted {deleted_count}/{len(session_ids)} sessions")
+            
+            # Delete blueprint
+            if blueprint_id:
+                print(f"Deleting blueprint {blueprint_id[:8]}...")
+                if api_client.delete_blueprint(blueprint_id):
+                    print(f"  ✅ Blueprint deleted")
+            
+            print("✅ Cleanup complete\n")
     
     def test_rapid_sequential_sessions(
         self,
@@ -716,51 +770,79 @@ class TestSessionStress:
         - No resource leaks or blocking
         - Maintains performance consistency
         """
-        print(f"\n{'=' * 80}")
-        print("🧪 RAPID SEQUENTIAL SESSION TEST")
-        print(f"{'=' * 80}")
+        blueprint_id = None
+        session_ids = []
         
-        # Create blueprint
-        blueprint_id = api_client.create_blueprint(test_blueprint)
-        print(f"✅ Blueprint created: {blueprint_id}")
-        
-        num_rapid_sessions = 10
-        # ✅ CORRECTED INPUT FORMAT
-        test_inputs = {"user_prompt": "Test"}
-        
-        timings = []
-        
-        print(f"\n🚀 Creating and executing {num_rapid_sessions} sessions rapidly...")
-        
-        for i in range(num_rapid_sessions):
-            start = time.time()
+        try:
+            print(f"\n{'=' * 80}")
+            print("🧪 RAPID SEQUENTIAL SESSION TEST")
+            print(f"{'=' * 80}")
             
-            # Create
-            session_id = api_client.create_session(blueprint_id)
+            # Create blueprint
+            blueprint_id = api_client.create_blueprint(test_blueprint)
+            print(f"✅ Blueprint created: {blueprint_id}")
             
-            # Execute
-            result = api_client.execute_session(session_id, test_inputs)
+            num_rapid_sessions = 10
+            # ✅ CORRECTED INPUT FORMAT
+            test_inputs = {"user_prompt": "Test"}
             
-            duration = time.time() - start
-            timings.append(duration)
+            timings = []
             
-            print(f"  ✅ Session {i + 1}/{num_rapid_sessions}: {duration:.2f}s")
-        
-        avg_time = sum(timings) / len(timings)
-        print(f"\n📊 Average time per session: {avg_time:.2f}s")
-        
-        # Assert performance doesn't degrade significantly
-        first_half_avg = sum(timings[:5]) / 5
-        second_half_avg = sum(timings[5:]) / 5
-        degradation = (second_half_avg - first_half_avg) / first_half_avg if first_half_avg > 0 else 0
-        
-        print(f"  • First half avg: {first_half_avg:.2f}s")
-        print(f"  • Second half avg: {second_half_avg:.2f}s")
-        print(f"  • Degradation: {degradation * 100:.1f}%")
-        
-        assert degradation < 0.5, f"Performance degraded too much: {degradation * 100:.1f}%"
-        
-        print("\n✅ RAPID SEQUENTIAL TEST PASSED\n")
+            print(f"\n🚀 Creating and executing {num_rapid_sessions} sessions rapidly...")
+            
+            for i in range(num_rapid_sessions):
+                start = time.time()
+                
+                # Create
+                session_id = api_client.create_session(blueprint_id)
+                session_ids.append(session_id)
+                
+                # Execute
+                result = api_client.execute_session(session_id, test_inputs)
+                
+                duration = time.time() - start
+                timings.append(duration)
+                
+                print(f"  ✅ Session {i + 1}/{num_rapid_sessions}: {duration:.2f}s")
+            
+            avg_time = sum(timings) / len(timings)
+            print(f"\n📊 Average time per session: {avg_time:.2f}s")
+            
+            # Assert performance doesn't degrade significantly
+            first_half_avg = sum(timings[:5]) / 5
+            second_half_avg = sum(timings[5:]) / 5
+            degradation = (second_half_avg - first_half_avg) / first_half_avg if first_half_avg > 0 else 0
+            
+            print(f"  • First half avg: {first_half_avg:.2f}s")
+            print(f"  • Second half avg: {second_half_avg:.2f}s")
+            print(f"  • Degradation: {degradation * 100:.1f}%")
+            
+            assert degradation < 0.5, f"Performance degraded too much: {degradation * 100:.1f}%"
+            
+            print("\n✅ RAPID SEQUENTIAL TEST PASSED\n")
+            
+        finally:
+            # CLEANUP PHASE
+            print(f"\n{'=' * 80}")
+            print("🧹 CLEANUP PHASE")
+            print(f"{'=' * 80}")
+            
+            # Delete sessions
+            if session_ids:
+                print(f"Deleting {len(session_ids)} sessions...")
+                deleted_count = 0
+                for session_id in session_ids:
+                    if api_client.delete_session(session_id):
+                        deleted_count += 1
+                print(f"  ✅ Deleted {deleted_count}/{len(session_ids)} sessions")
+            
+            # Delete blueprint
+            if blueprint_id:
+                print(f"Deleting blueprint {blueprint_id[:8]}...")
+                if api_client.delete_blueprint(blueprint_id):
+                    print(f"  ✅ Blueprint deleted")
+            
+            print("✅ Cleanup complete\n")
 
 
 # =============================================================================
@@ -809,35 +891,62 @@ class TestCustomBlueprintStress:
         
         Modify this test to match your blueprint's specific needs.
         """
-        print(f"\n{'=' * 80}")
-        print("🧪 CUSTOM BLUEPRINT STRESS TEST")
-        print(f"{'=' * 80}")
+        blueprint_id = None
+        session_ids = []
         
-        stress_runner.metrics.total_start_time = time.time()
-        
-        # Create blueprint
-        blueprint_id = api_client.create_blueprint(custom_blueprint)
-        print(f"✅ Custom blueprint created: {blueprint_id}")
-        
-        # Create sessions concurrently
-        session_ids = stress_runner.run_concurrent_creation(blueprint_id)
-        assert len(session_ids) > 0, "Failed to create sessions"
-        
-        # Execute sessions in parallel
-        results = stress_runner.run_concurrent_execution(session_ids, custom_inputs)
-        assert len(results) > 0, "Failed to execute sessions"
-        
-        stress_runner.metrics.total_end_time = time.time()
-        
-        # Print metrics
-        stress_runner.print_metrics_summary()
-        
-        # Assertions
-        creation_rate = len(session_ids) / stress_config.num_sessions
-        execution_rate = len(results) / len(session_ids)
-        
-        assert creation_rate >= 0.9, f"Creation success rate too low: {creation_rate * 100:.1f}%"
-        assert execution_rate >= 0.8, f"Execution success rate too low: {execution_rate * 100:.1f}%"
-        
-        print("\n✅ CUSTOM BLUEPRINT STRESS TEST PASSED\n")
+        try:
+            print(f"\n{'=' * 80}")
+            print("🧪 CUSTOM BLUEPRINT STRESS TEST")
+            print(f"{'=' * 80}")
+            
+            stress_runner.metrics.total_start_time = time.time()
+            
+            # Create blueprint
+            blueprint_id = api_client.create_blueprint(custom_blueprint)
+            print(f"✅ Custom blueprint created: {blueprint_id}")
+            
+            # Create sessions concurrently
+            session_ids = stress_runner.run_concurrent_creation(blueprint_id)
+            assert len(session_ids) > 0, "Failed to create sessions"
+            
+            # Execute sessions in parallel
+            results = stress_runner.run_concurrent_execution(session_ids, custom_inputs)
+            assert len(results) > 0, "Failed to execute sessions"
+            
+            stress_runner.metrics.total_end_time = time.time()
+            
+            # Print metrics
+            stress_runner.print_metrics_summary()
+            
+            # Assertions
+            creation_rate = len(session_ids) / stress_config.num_sessions
+            execution_rate = len(results) / len(session_ids)
+            
+            assert creation_rate >= 0.9, f"Creation success rate too low: {creation_rate * 100:.1f}%"
+            assert execution_rate >= 0.8, f"Execution success rate too low: {execution_rate * 100:.1f}%"
+            
+            print("\n✅ CUSTOM BLUEPRINT STRESS TEST PASSED\n")
+            
+        finally:
+            # CLEANUP PHASE
+            print(f"\n{'=' * 80}")
+            print("🧹 CLEANUP PHASE")
+            print(f"{'=' * 80}")
+            
+            # Delete sessions
+            if session_ids:
+                print(f"Deleting {len(session_ids)} sessions...")
+                deleted_count = 0
+                for session_id in session_ids:
+                    if api_client.delete_session(session_id):
+                        deleted_count += 1
+                print(f"  ✅ Deleted {deleted_count}/{len(session_ids)} sessions")
+            
+            # Delete blueprint
+            if blueprint_id:
+                print(f"Deleting blueprint {blueprint_id[:8]}...")
+                if api_client.delete_blueprint(blueprint_id):
+                    print(f"  ✅ Blueprint deleted")
+            
+            print("✅ Cleanup complete\n")
 
