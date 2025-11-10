@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ChevronDown, ChevronRight, Copy, Check, Download } from "lucide-react";
+import { Copy, Check, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 
@@ -20,20 +20,7 @@ export const GuideRenderer: React.FC<GuideRendererProps> = ({
   title,
   description,
 }) => {
-  const [expandedSteps, setExpandedSteps] = useState<Set<number>>(new Set());
   const [commandCopied, setCommandCopied] = useState(false);
-
-  const toggleStep = (stepNumber: number) => {
-    setExpandedSteps((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(stepNumber)) {
-        newSet.delete(stepNumber);
-      } else {
-        newSet.add(stepNumber);
-      }
-      return newSet;
-    });
-  };
 
   const copyCommandToClipboard = (command: string) => {
     navigator.clipboard.writeText(command).then(() => {
@@ -147,14 +134,14 @@ export const GuideRenderer: React.FC<GuideRendererProps> = ({
           },
           h2({ node, children, ...props }: any) {
             return (
-              <h2 className="text-lg font-semibold text-foreground mt-4 mb-2" {...props}>
+              <h2 className="text-lg font-semibold text-foreground mt-6 mb-3" {...props}>
                 {children}
               </h2>
             );
           },
           h3({ node, children, ...props }: any) {
             return (
-              <h3 className="text-base font-semibold text-foreground mt-3 mb-2" {...props}>
+              <h3 className="text-base font-semibold text-foreground mt-4 mb-2" {...props}>
                 {children}
               </h3>
             );
@@ -182,7 +169,7 @@ export const GuideRenderer: React.FC<GuideRendererProps> = ({
           },
           p({ node, children, ...props }: any) {
             return (
-              <p className="text-sm text-muted-foreground mb-2" {...props}>
+              <p className="text-sm text-muted-foreground mb-3" {...props}>
                 {children}
               </p>
             );
@@ -202,43 +189,26 @@ export const GuideRenderer: React.FC<GuideRendererProps> = ({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold text-foreground mb-2">{title}</h1>
         {description && (
-          <p className="text-muted-foreground">{description}</p>
+          <p className="text-muted-foreground text-base">{description}</p>
         )}
       </div>
 
-      {steps.map((step) => (
-        <div
-          key={step.step}
-          className="border border-gray-700 rounded-md overflow-hidden"
-        >
-          <button
-            type="button"
-            onClick={() => toggleStep(step.step)}
-            className="w-full flex items-center justify-between p-4 bg-background-dark hover:bg-background-dark/80 transition-colors"
-          >
-            <span className="text-base font-medium text-foreground">
+      <div className="prose prose-invert max-w-none">
+        {steps.map((step, index) => (
+          <div key={step.step} className={index > 0 ? "mt-8" : ""}>
+            <h2 className="text-2xl font-bold text-foreground mb-4">
               Step {step.step}: {step.title}
-            </span>
-            {expandedSteps.has(step.step) ? (
-              <ChevronDown className="w-5 h-5 text-muted-foreground" />
-            ) : (
-              <ChevronRight className="w-5 h-5 text-muted-foreground" />
-            )}
-          </button>
-          {expandedSteps.has(step.step) && (
-            <div className="p-4 bg-background-card border-t border-gray-700">
-              <div className="prose prose-invert max-w-none">
-                {renderMarkdown(step.body)}
-              </div>
+            </h2>
+            <div className="text-base text-muted-foreground">
+              {renderMarkdown(step.body)}
             </div>
-          )}
-        </div>
-      ))}
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
-

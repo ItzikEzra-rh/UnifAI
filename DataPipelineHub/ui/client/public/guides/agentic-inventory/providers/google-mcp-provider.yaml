@@ -1,3 +1,4 @@
+guide_title: "Google MCP Provider Setup"
 title: "Google MCP Provider Setup"
 description: "Complete guide to set up a Google Workspace MCP server for UniFAI"
 category: "providers"
@@ -5,75 +6,140 @@ section: "agentic-inventory"
 order: 1
 steps:
   - step: 1
-    title: "Google Client Setup"
+    title: "Extract OAuth Credentials from Google Console"
     body: |
       ## Create a Google Cloud Project
       
       1. Go to: [Google Cloud Console](https://console.cloud.google.com/)
-      2. Click **Create Project**
-      3. Note your:
-         - **Project Name**
-         - **Project Location** (default is fine)
+      2. Click **Create Project** or select an existing project
+      3. Note your **Project ID** (you'll need this for the script)
       
       ## Configure OAuth Credentials
       
-      1. Go to: **APIs & Services → Credentials**
+      1. Navigate to: **APIs & Services → Credentials**
       2. Click: **Create Credentials → OAuth Client ID**
-      3. Select **Web Application**
-      4. Set the following:
+      3. If prompted, configure the OAuth consent screen first:
+         - Choose **External** (unless you have a Google Workspace account)
+         - Fill in the required app information
+         - Add your email to test users
+      4. Select **Web Application** as the application type
+      5. Set the following:
+         - **Name**: Give it a descriptive name (e.g., "UniFAI MCP Server")
          - **Authorized JavaScript origins:** `http://localhost:8000`
          - **Authorized redirect URIs:** `http://localhost:8000/oauth2callback`
-      5. Click **Create**
-      6. **Download the OAuth JSON file**
+      6. Click **Create**
+      7. **Copy the following values** (you'll need them for the script):
+         - **Client ID**: The full client ID (e.g., `308449168895-ov0tld74abiduu22lq43t2507p4br9p3.apps.googleusercontent.com`)
+         - **Client Secret**: The client secret (e.g., `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`)
       
-      ## Enable Required Google APIs
+      ## Get Your Project ID
       
-      Navigate to: **APIs & Services → Library** and enable the required APIs:
-      - Calendar
-      - Drive
-      - Gmail
-      - Docs
-      - Sheets
-      - Slides
-      - Forms
-      - Tasks
-      - Chat
-      - Search
+      - Your **Project ID** can be found in the project selector at the top of the Google Cloud Console
+      - It's also visible in the project settings
+      - Example: `unifai-testing`
+      
+      ## Get Your User Email
+      
+      - Use the Google account email address you want to use with the MCP server
+      - Example: `your-email@example.com`
 
   - step: 2
-    title: "Download & Run the Script"
+    title: "Download & Run the Setup Script"
     body: |
-      ## Extract OAuth Credentials
+      ## Download the Script
       
-      Open the OAuth JSON file downloaded in Step 1 and extract:
-      - **client_id**: Found in the JSON under `web.client_id`
-      - **client_secret**: Found in the JSON under `web.client_secret`
-      - **user_email**: Your Google account email address
+      Download the setup script: [local_mcp_new.sh](/guides/agentic-inventory/providers/local_mcp_new.sh)
       
-      ## Download & Run Setup Script
+      **Note:** Right-click the link and select "Save As" or "Download Linked File" to download the script.
       
-      **Prerequisites:** Ensure Docker (or Podman) and Docker Compose are installed
+      ## Prerequisites
       
-      After downloading the script, rename it, provide the **client id**, **client secret** and **user email** and run:
+      Before running the script, ensure you have:
+      - **Docker** (or Podman) installed and running
+      - **Docker Compose** (or Podman Compose) installed
+      - **Git** installed
+      - **gcloud CLI** (optional - the script can install it for you)
+      
+      ## Run the Script
+      
+      After downloading the script, navigate to the download location and run it with your credentials:
       
       ```bash
-      cd ~/Downloads
-      mv local_mcp.txt local_mcp.sh
-      chmod +x local_mcp.sh
-      ./local_mcp.sh \\
+      # Make the script executable
+      chmod +x local_mcp_new.sh
+      
+      # Run the script with your credentials
+      ./local_mcp_new.sh \\
         --client_id "YOUR_CLIENT_ID" \\
         --client_secret "YOUR_CLIENT_SECRET" \\
-        --user_email "your-email@example.com"
+        --user_email "your-email@example.com" \\
+        --project_id "your-project-id" \\
+        --enable_services
       ```
       
-      The script will automatically clone the repository, configure the environment, and start the MCP server.
+      **Example command:**
+      ```bash
+      ./local_mcp_new.sh \\
+        --client_id "308449168895-ov0tld74abiduu22lq43t2507p4br9p3.apps.googleusercontent.com" \\
+        --client_secret "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" \\
+        --user_email "yhabushi@redhat.com" \\
+        --project_id "unifai-testing" \\
+        --enable_services
+      ```
       
-      ## Connect UniFAI to Your Local MCP Server
+      ## What the Script Does
       
-      After the script completes successfully, you'll need to provide your machine's public IP address.
+      The script will automatically:
+      1. Check for and optionally install gcloud CLI
+      2. Enable required Google Cloud APIs (if `--enable_services` is used)
+      3. Clone the Google Workspace MCP repository
+      4. Create the `.env` file with your credentials
+      5. Detect your local IP address
+      6. Start the MCP server using Docker Compose
       
-      1. The SSE endpoint format is: `http://YOUR_PUBLIC_IP:8000/mcp`
-      2. Replace `YOUR_PUBLIC_IP` with your machine's actual IP address
-      3. Enter the complete SSE endpoint URL in the field above, and wait for the validation to complete
-      4. Click **Save** to complete the setup
+      ## After the Script Completes
+      
+      The script will display:
+      - Your **SSE Endpoint**: `http://YOUR_LOCAL_IP:8000/mcp`
+      - Your **OAuth Callback URL**: `http://YOUR_LOCAL_IP:8000/oauth2callback`
+      
+      **Important:** Note down the SSE Endpoint URL - you'll need it in the next step!
 
+  - step: 3
+    title: "Connect UniFAI to Your Local MCP Server"
+    body: |
+      After the script completes successfully, you'll need to connect UniFAI to your local MCP server.
+      
+      ## Get Your Machine's IP Address
+      
+      The script will automatically detect and display your local IP address. If you need to find it manually:
+      
+      - **macOS/Linux**: Run `hostname -I` or `ipconfig getifaddr en0` (macOS)
+      - **Windows**: Run `ipconfig` and look for your IPv4 address
+      
+      ## Configure the SSE Endpoint in UniFAI
+      
+      1. In the UniFAI interface, locate the **SSE Endpoint** field
+      2. Enter your SSE endpoint URL in the format: `http://YOUR_IP_ADDRESS:8000/mcp`
+         - Replace `YOUR_IP_ADDRESS` with the IP address shown by the script
+         - Example: `http://192.168.1.100:8000/mcp`
+      3. Wait for the validation to complete (the system will verify the connection)
+      4. Click **Save** to complete the setup
+      
+      ## Verify the Connection
+      
+      Once saved, UniFAI will be able to communicate with your local Google Workspace MCP server. The server will handle OAuth authentication and provide access to your Google Workspace services.
+      
+      ## Troubleshooting
+      
+      If you encounter issues:
+      - **Connection refused**: Make sure the Docker container is running (`docker ps` or `podman ps`)
+      - **Cannot reach server**: Verify your IP address is correct and that port 8000 is not blocked by a firewall
+      - **OAuth errors**: Ensure the redirect URI in Google Console matches: `http://YOUR_IP:8000/oauth2callback`
+      
+      ## Useful Commands
+      
+      - **View server logs**: `docker-compose logs -f` (or `podman-compose logs -f`)
+      - **Stop the server**: `docker-compose down` (or `podman-compose down`)
+      - **Restart the server**: `docker-compose restart` (or `podman-compose restart`)
+      - **Check server status**: `docker-compose ps` (or `podman-compose ps`)

@@ -38,6 +38,7 @@ export default function UserWorkspace() {
   }, [selectedElementType, fetchElementInstances]);
 
   const handleElementTypeSelect = async (category: string, elementType: ElementType) => {
+    // Ensure category is set before element type to avoid race conditions
     setSelectedCategory(category);
     setSelectedElementType(elementType);
     await Promise.all([
@@ -111,7 +112,7 @@ export default function UserWorkspace() {
                       <Button
                         variant="outline"
                         onClick={() => {
-                          const guidesUrl = `/guides?section=agentic-inventory&category=${selectedElementType.category}`;
+                          const guidesUrl = `/guides?section=agentic-inventory`;
                           window.open(guidesUrl, '_blank');
                         }}
                         className="border-gray-700 hover:bg-background-dark"

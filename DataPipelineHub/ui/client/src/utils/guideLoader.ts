@@ -3,6 +3,7 @@
 import yaml from "js-yaml";
 
 export interface Guide {
+  guide_title: string;
   title: string;
   description?: string;
   category: string;
@@ -29,6 +30,7 @@ export const parseYAML = (yamlText: string): Guide | null => {
     }
     
     const guide: Guide = {
+      guide_title: parsed.guide_title || parsed.title || "",
       title: parsed.title || "",
       description: parsed.description,
       category: parsed.category || "",
@@ -42,7 +44,7 @@ export const parseYAML = (yamlText: string): Guide | null => {
     };
     
     // Validate guide structure
-    if (guide.title && guide.category && guide.section && guide.steps.length > 0) {
+    if (guide.guide_title && guide.category && guide.section && guide.steps.length > 0) {
       return guide;
     }
     
