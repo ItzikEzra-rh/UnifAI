@@ -944,22 +944,20 @@ export const ElementForm: React.FC<ElementFormProps> = ({
                 // If user is typing in a secret field, mark it as being edited
                 if (!editingSecretFields[fieldName]) {
                   setEditingSecretFields(prev => ({ ...prev, [fieldName]: true }));
-                }
-                handleInputChange(fieldName, newValue);
-              }}
-              onFocus={(e) => {
-                // If the value is the masked placeholder, clear it when user focuses
-                if (editingElement && fieldSchema) {
-                  const originalValue = originalSecretValues[fieldName];
-                  if (originalValue !== undefined) {
-                    const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
-                    if (value === maskedOriginal) {
-                      // Clear the masked value so user can type
-                      handleInputChange(fieldName, "");
-                      setEditingSecretFields(prev => ({ ...prev, [fieldName]: true }));
+                  // When user starts typing, clear the masked placeholder if it's still showing
+                  if (editingElement && fieldSchema) {
+                    const originalValue = originalSecretValues[fieldName];
+                    if (originalValue !== undefined) {
+                      const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
+                      // If field still shows masked dots, start fresh with what user typed
+                      if (value === maskedOriginal) {
+                        handleInputChange(fieldName, newValue);
+                        return;
+                      }
                     }
                   }
                 }
+                handleInputChange(fieldName, newValue);
               }}
               className="bg-background-dark"
               placeholder={
@@ -1079,22 +1077,20 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             // If user is typing in a secret field, mark it as being edited
             if (isSecret && !editingSecretFields[fieldName]) {
               setEditingSecretFields(prev => ({ ...prev, [fieldName]: true }));
-            }
-            handleInputChange(fieldName, newValue);
-          }}
-          onFocus={(e) => {
-            // If the value is the masked placeholder, clear it when user focuses
-            if (isSecret && editingElement && fieldSchema) {
-              const originalValue = originalSecretValues[fieldName];
-              if (originalValue !== undefined) {
-                const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
-                if (value === maskedOriginal) {
-                  // Clear the masked value so user can type
-                  handleInputChange(fieldName, "");
-                  setEditingSecretFields(prev => ({ ...prev, [fieldName]: true }));
+              // When user starts typing, clear the masked placeholder if it's still showing
+              if (editingElement && fieldSchema) {
+                const originalValue = originalSecretValues[fieldName];
+                if (originalValue !== undefined) {
+                  const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
+                  // If field still shows masked dots, start fresh with what user typed
+                  if (value === maskedOriginal) {
+                    handleInputChange(fieldName, newValue);
+                    return;
+                  }
                 }
               }
             }
+            handleInputChange(fieldName, newValue);
           }}
           className="bg-background-dark"
           placeholder={
