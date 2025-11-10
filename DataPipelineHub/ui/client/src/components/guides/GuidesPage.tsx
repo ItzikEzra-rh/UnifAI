@@ -156,12 +156,12 @@ export const GuidesPage: React.FC = () => {
       <Sidebar />
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header title="How-To Guides" onToggleSidebar={() => {}} />
-        <main className="flex-1 overflow-y-auto p-6 bg-background-dark">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-full">
+        <main className="flex-1 overflow-hidden p-6 bg-background-dark flex flex-col">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
             {/* Left Navigation Panel */}
-            <div className="lg:col-span-3">
-              <Card className="bg-background-card border-gray-800 h-full">
-                <CardContent className="p-4">
+            <div className="lg:col-span-3 flex flex-col">
+              <Card className="bg-background-card border-gray-800 h-full flex flex-col">
+                <CardContent className="p-4 flex flex-col flex-1 overflow-hidden">
                   <h2 className="text-lg font-semibold text-foreground mb-4">Sections</h2>
                   
                   {/* Section Navigation */}
@@ -190,7 +190,7 @@ export const GuidesPage: React.FC = () => {
 
 
                   {/* Guide List */}
-                  <div className="border-t border-gray-700 pt-4">
+                  <div className="border-t border-gray-700 pt-4 flex flex-col flex-1 overflow-hidden">
                     <h3 className="text-sm font-semibold text-foreground mb-3 uppercase tracking-wider text-muted-foreground">
                       Available Guides
                     </h3>
@@ -202,7 +202,7 @@ export const GuidesPage: React.FC = () => {
                         className="bg-background-dark"
                       />
                     </div>
-                    <div className="space-y-1 max-h-[calc(100vh-500px)] overflow-y-auto">
+                    <div className="space-y-1 flex-1 overflow-y-auto">
                       {filteredGuides.length > 0 ? (
                         filteredGuides.map((guide, index) => (
                           <button
@@ -229,10 +229,10 @@ export const GuidesPage: React.FC = () => {
             </div>
 
             {/* Right Content Area */}
-            <div className="lg:col-span-9">
-              {!hasGuides ? (
-                <Card className="bg-background-card border-gray-800 h-full">
-                  <CardContent className="p-12 text-center flex items-center justify-center h-full">
+            <div className="lg:col-span-9 flex flex-col min-h-0">
+              <div className="flex-1 overflow-y-auto rounded-lg bg-background-card/60 backdrop-blur-sm border border-gray-700/50 min-h-0">
+                {!hasGuides ? (
+                  <div className="p-12 text-center flex items-center justify-center min-h-full">
                     <div>
                       <HelpCircle className="h-16 w-16 mx-auto mb-4 text-gray-500" />
                       <h3 className="text-xl font-semibold text-foreground mb-2">
@@ -242,21 +242,17 @@ export const GuidesPage: React.FC = () => {
                         No guides have been created here yet. Feel free to contact us to add guides or check back later.
                       </p>
                     </div>
-                  </CardContent>
-                </Card>
-              ) : selectedGuide ? (
-                <Card className="bg-background-card border-gray-800 h-full">
-                  <CardContent className="p-6">
+                  </div>
+                ) : selectedGuide ? (
+                  <div className="p-6">
                     <GuideRenderer
                       title={selectedGuide.title}
                       description={selectedGuide.description}
                       steps={selectedGuide.steps}
                     />
-                  </CardContent>
-                </Card>
-              ) : (
-                <Card className="bg-background-card border-gray-800 h-full">
-                  <CardContent className="p-12 text-center flex items-center justify-center h-full">
+                  </div>
+                ) : (
+                  <div className="p-12 text-center flex items-center justify-center min-h-full">
                     <div>
                       <BookOpen className="h-16 w-16 mx-auto mb-4 text-gray-500" />
                       <h3 className="text-xl font-semibold text-foreground mb-2">
@@ -266,9 +262,9 @@ export const GuidesPage: React.FC = () => {
                         Choose a guide from the list to view its contents.
                       </p>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </main>
