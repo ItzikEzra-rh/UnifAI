@@ -33,6 +33,20 @@ export default function SlackAddSourcePage() {
                 description: "Your Slack channels have been submitted for processing. You'll see them appear in the integration dashboard as they're processed.",
                 variant: "default",
             });
+
+            // Surface any backend validation issues (e.g., app not installed in channel)
+            const issues = (data as any)?.registration?.issues || [];
+            if (Array.isArray(issues) && issues.length > 0) {
+                issues.forEach((issue: any) => {
+                    const issueType = String(issue?.issue_type || "Validation issue");
+                    const message = String(issue?.message || "");
+                    toast({
+                        title: issueType,
+                        description: message,
+                        variant: "destructive",
+                    });
+                });
+            }
             
             const channelIds = variables.map(channel => channel.channel_id);
             const channelIdsParam = encodeURIComponent(JSON.stringify(channelIds));

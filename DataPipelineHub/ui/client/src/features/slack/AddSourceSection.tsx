@@ -531,9 +531,9 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
               <div 
                 key={uniqueId} 
                 className={`flex items-center justify-between p-3 border-b border-gray-800 ${
-                  (isEmbedded || notMember) ? 'opacity-60 cursor-not-allowed' : 'hover:bg-background-surface cursor-pointer'
+                  (isEmbedded) ? 'opacity-60 cursor-not-allowed' : 'hover:bg-background-surface cursor-pointer'
                 }`}
-                onClick={() => !(isEmbedded || notMember) && handleToggleChannel(c)}
+                onClick={() => !isEmbedded && handleToggleChannel(c)}
               >
                 <div className="flex items-center">
                   <span className="text-gray-400 mr-2">{c.is_private ? <HiOutlineLockClosed className="inline" /> : '#'}</span>
@@ -559,7 +559,7 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
                 >
                   <Switch 
                     checked={isEmbedded || selectedChannels.includes(uniqueId)} 
-                    disabled={isEmbedded || notMember}
+                    disabled={isEmbedded}
                     onCheckedChange={() => handleToggleChannel(c)} 
                   />
                 </div>
