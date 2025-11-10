@@ -29,6 +29,7 @@ import { useWorkspaceData } from "../../../hooks/useWorkspaceData";
 import { FieldValidation } from "./FieldValidation";
 import { FieldPopulation } from "./FieldPopulation";
 import { maskSecretValue } from "../../../utils/maskSecretFields";
+import { SecretInput } from "./SecretInput";
 
 interface ElementFormProps {
   isOpen: boolean;
@@ -623,12 +624,44 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     }
   };
 
+  // Render SecretInput with consistent props
+  const renderSecretInputField = (fieldName: string, fieldSchema: any, value: any, isRequired: boolean, validationHint: any, populateHint: any) => {
+    return (
+      <SecretInput
+        fieldName={fieldName}
+        fieldSchema={fieldSchema}
+        value={value}
+        isRequired={isRequired}
+        validationHint={validationHint}
+        populateHint={populateHint}
+        editingElement={editingElement}
+        editingSecretFields={editingSecretFields}
+        originalSecretValues={originalSecretValues}
+        elementActions={elementActions}
+        elementType={elementType}
+        formData={formData}
+        onInputChange={handleInputChange}
+        onValidationChange={handleValidationChange}
+        onPopulateResult={handlePopulateResult}
+        onEditingSecretFieldsChange={(fieldName, isEditing) => {
+          setEditingSecretFields(prev => ({ ...prev, [fieldName]: isEditing }));
+        }}
+        maskSecretValue={maskSecretValue}
+      />
+    );
+  };
+
   const renderFormField = (fieldName: string, fieldSchema: any) => {
     const isRequired = elementSchema.config_schema.required?.includes(fieldName);
     const value = formData[fieldName] || "";
     const validationHint = fieldSchema.hints?.action?.hint_type === 'validate' ? fieldSchema.hints.action : null;
     const populateHint = fieldSchema.hints?.action?.hint_type === 'populate' ? fieldSchema.hints.action : null;
     const isSecret = fieldSchema?.hints?.secret?.hint_type === "secret";
+
+    // Handle secret fields first - they always use SecretInput regardless of field type
+    if (isSecret) {
+      return renderSecretInputField(fieldName, fieldSchema, value, isRequired, validationHint, populateHint);
+    }
 
     // Handle array fields with $ref items (multi-select dropdown)
     if (isArrayWithRefItems(fieldSchema)) {
@@ -915,86 +948,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       fieldName.includes("prompt") ||
       fieldName.includes("description")
     ) {
-      // For secret fields, use password input instead of textarea
-      if (isSecret) {
-        return (
-          <div key={fieldName} className="space-y-2">
-            <Label htmlFor={fieldName}>
-              {fieldName} {isRequired && <span className="text-red-400">*</span>}
-              <Badge variant="outline" className="ml-2 text-xs">
-                secret
-              </Badge>
-              {validationHint && (
-                <Badge variant="outline" className="ml-2 text-xs">
-                  validation
-                </Badge>
-              )}
-              {populateHint && (
-                <Badge variant="outline" className="ml-2 text-xs">
-                  populate
-                </Badge>
-              )}
-            </Label>
-            <Input
-              id={fieldName}
-              type={editingSecretFields[fieldName] ? "password" : "text"}
-              value={value}
-              onChange={(e) => {
-                const newValue = e.target.value;
-                // If user is typing in a secret field, mark it as being edited
-                if (!editingSecretFields[fieldName]) {
-                  setEditingSecretFields(prev => ({ ...prev, [fieldName]: true }));
-                  // When user starts typing, clear the masked placeholder if it's still showing
-                  if (editingElement && fieldSchema) {
-                    const originalValue = originalSecretValues[fieldName];
-                    if (originalValue !== undefined) {
-                      const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
-                      // If field still shows masked dots, start fresh with what user typed
-                      if (value === maskedOriginal) {
-                        handleInputChange(fieldName, newValue);
-                        return;
-                      }
-                    }
-                  }
-                }
-                handleInputChange(fieldName, newValue);
-              }}
-              className="bg-background-dark"
-              placeholder={
-                editingElement && !editingSecretFields[fieldName]
-                  ? "Click to edit"
-                  : fieldSchema.description
-              }
-              readOnly={!!populateHint}
-              disabled={!!populateHint}
-            />
-            {validationHint && (
-              <FieldValidation
-                fieldName={fieldName}
-                fieldValue={value}
-                validationHint={validationHint}
-                elementActions={elementActions}
-                selectedElementType={elementType}
-                onValidationChange={handleValidationChange}
-              />
-            )}
-            {populateHint && (
-              <FieldPopulation
-                fieldName={fieldName}
-                populateHint={populateHint}
-                elementActions={elementActions}
-                selectedElementType={elementType}
-                formData={formData}
-                onPopulateResult={handlePopulateResult}
-              />
-            )}
-            {fieldSchema.description && (
-              <p className="text-xs text-gray-400">{fieldSchema.description}</p>
-            )}
-          </div>
-        );
-      }
-
       return (
         <div key={fieldName} className="space-y-2">
           <Label htmlFor={fieldName}>
@@ -1052,11 +1005,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       <div key={fieldName} className="space-y-2">
         <Label htmlFor={fieldName}>
           {fieldName} {isRequired && <span className="text-red-400">*</span>}
-          {isSecret && (
-            <Badge variant="outline" className="ml-2 text-xs">
-              secret
-            </Badge>
-          )}
           {validationHint && (
             <Badge variant="outline" className="ml-2 text-xs">
               validation
@@ -1070,34 +1018,11 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         </Label>
         <Input
           id={fieldName}
-          type={isSecret && editingSecretFields[fieldName] ? "password" : "text"}
+          type="text"
           value={value}
-          onChange={(e) => {
-            const newValue = e.target.value;
-            // If user is typing in a secret field, mark it as being edited
-            if (isSecret && !editingSecretFields[fieldName]) {
-              setEditingSecretFields(prev => ({ ...prev, [fieldName]: true }));
-              // When user starts typing, clear the masked placeholder if it's still showing
-              if (editingElement && fieldSchema) {
-                const originalValue = originalSecretValues[fieldName];
-                if (originalValue !== undefined) {
-                  const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
-                  // If field still shows masked dots, start fresh with what user typed
-                  if (value === maskedOriginal) {
-                    handleInputChange(fieldName, newValue);
-                    return;
-                  }
-                }
-              }
-            }
-            handleInputChange(fieldName, newValue);
-          }}
+          onChange={(e) => handleInputChange(fieldName, e.target.value)}
           className="bg-background-dark"
-          placeholder={
-            isSecret && editingElement && !editingSecretFields[fieldName]
-              ? "Click to edit"
-              : fieldSchema.description
-          }
+          placeholder={fieldSchema.description}
           readOnly={!!populateHint}
           disabled={!!populateHint}
         />
@@ -1122,8 +1047,8 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           />
         )}
         {fieldSchema.description && (
-            <p className="text-xs text-gray-400">{fieldSchema.description}</p>
-          )}
+          <p className="text-xs text-gray-400">{fieldSchema.description}</p>
+        )}
       </div>
     );
   };
