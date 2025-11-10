@@ -1,24 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter,AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Plus } from 'lucide-react';
 import { CategorySidebar } from '../components/agentic-ai/workspace/CategorySidebar';
 import { ElementGrid } from '../components/agentic-ai/workspace/ElementGrid';
 import { ElementForm } from '../components/agentic-ai/workspace/ElementForm';
 import { useWorkspaceData } from '../hooks/useWorkspaceData';
-import { ElementCategory, ElementType, ElementInstance } from '../types/workspace';
+import { ElementType, ElementInstance } from '../types/workspace';
 
 export default function UserWorkspace() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -79,7 +69,6 @@ export default function UserWorkspace() {
   };
 
   const handleDeleteElement = (rid: string) => {
-    // Find the element to delete
     const element = elementInstances.find(el => el.rid === rid);
     if (element) {
       setElementToDelete(element);
