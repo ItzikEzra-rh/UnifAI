@@ -624,33 +624,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     }
   };
 
-  // Render SecretInput with consistent props
-  const renderSecretInputField = (fieldName: string, fieldSchema: any, value: any, isRequired: boolean, validationHint: any, populateHint: any) => {
-    return (
-      <SecretInput
-        fieldName={fieldName}
-        fieldSchema={fieldSchema}
-        value={value}
-        isRequired={isRequired}
-        validationHint={validationHint}
-        populateHint={populateHint}
-        editingElement={editingElement}
-        editingSecretFields={editingSecretFields}
-        originalSecretValues={originalSecretValues}
-        elementActions={elementActions}
-        elementType={elementType}
-        formData={formData}
-        onInputChange={handleInputChange}
-        onValidationChange={handleValidationChange}
-        onPopulateResult={handlePopulateResult}
-        onEditingSecretFieldsChange={(fieldName, isEditing) => {
-          setEditingSecretFields(prev => ({ ...prev, [fieldName]: isEditing }));
-        }}
-        maskSecretValue={maskSecretValue}
-      />
-    );
-  };
-
   const renderFormField = (fieldName: string, fieldSchema: any) => {
     const isRequired = elementSchema.config_schema.required?.includes(fieldName);
     const value = formData[fieldName] || "";
@@ -660,7 +633,27 @@ export const ElementForm: React.FC<ElementFormProps> = ({
 
     // Handle secret fields first - they always use SecretInput regardless of field type
     if (isSecret) {
-      return renderSecretInputField(fieldName, fieldSchema, value, isRequired, validationHint, populateHint);
+      return <SecretInput
+              fieldName={fieldName}
+              fieldSchema={fieldSchema}
+              value={value}
+              isRequired={isRequired}
+              validationHint={validationHint}
+              populateHint={populateHint}
+              editingElement={editingElement}
+              editingSecretFields={editingSecretFields}
+              originalSecretValues={originalSecretValues}
+              elementActions={elementActions}
+              elementType={elementType}
+              formData={formData}
+              onInputChange={handleInputChange}
+              onValidationChange={handleValidationChange}
+              onPopulateResult={handlePopulateResult}
+              onEditingSecretFieldsChange={(fieldName, isEditing) => {
+                setEditingSecretFields(prev => ({ ...prev, [fieldName]: isEditing }));
+              }}
+              maskSecretValue={maskSecretValue}
+            />
     }
 
     // Handle array fields with $ref items (multi-select dropdown)
