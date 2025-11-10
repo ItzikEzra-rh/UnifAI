@@ -1,0 +1,79 @@
+title: "Google MCP Provider Setup"
+description: "Complete guide to set up a Google Workspace MCP server for UniFAI"
+category: "providers"
+section: "agentic-inventory"
+order: 1
+steps:
+  - step: 1
+    title: "Google Client Setup"
+    body: |
+      ## Create a Google Cloud Project
+      
+      1. Go to: [Google Cloud Console](https://console.cloud.google.com/)
+      2. Click **Create Project**
+      3. Note your:
+         - **Project Name**
+         - **Project Location** (default is fine)
+      
+      ## Configure OAuth Credentials
+      
+      1. Go to: **APIs & Services → Credentials**
+      2. Click: **Create Credentials → OAuth Client ID**
+      3. Select **Web Application**
+      4. Set the following:
+         - **Authorized JavaScript origins:** `http://localhost:8000`
+         - **Authorized redirect URIs:** `http://localhost:8000/oauth2callback`
+      5. Click **Create**
+      6. **Download the OAuth JSON file**
+      
+      ## Enable Required Google APIs
+      
+      Navigate to: **APIs & Services → Library** and enable the required APIs:
+      - Calendar
+      - Drive
+      - Gmail
+      - Docs
+      - Sheets
+      - Slides
+      - Forms
+      - Tasks
+      - Chat
+      - Search
+
+  - step: 2
+    title: "Download & Run the Script"
+    body: |
+      ## Extract OAuth Credentials
+      
+      Open the OAuth JSON file downloaded in Step 1 and extract:
+      - **client_id**: Found in the JSON under `web.client_id`
+      - **client_secret**: Found in the JSON under `web.client_secret`
+      - **user_email**: Your Google account email address
+      
+      ## Download & Run Setup Script
+      
+      **Prerequisites:** Ensure Docker (or Podman) and Docker Compose are installed
+      
+      After downloading the script, rename it, provide the **client id**, **client secret** and **user email** and run:
+      
+      ```bash
+      cd ~/Downloads
+      mv local_mcp.txt local_mcp.sh
+      chmod +x local_mcp.sh
+      ./local_mcp.sh \\
+        --client_id "YOUR_CLIENT_ID" \\
+        --client_secret "YOUR_CLIENT_SECRET" \\
+        --user_email "your-email@example.com"
+      ```
+      
+      The script will automatically clone the repository, configure the environment, and start the MCP server.
+      
+      ## Connect UniFAI to Your Local MCP Server
+      
+      After the script completes successfully, you'll need to provide your machine's public IP address.
+      
+      1. The SSE endpoint format is: `http://YOUR_PUBLIC_IP:8000/mcp`
+      2. Replace `YOUR_PUBLIC_IP` with your machine's actual IP address
+      3. Enter the complete SSE endpoint URL in the field above, and wait for the validation to complete
+      4. Click **Save** to complete the setup
+

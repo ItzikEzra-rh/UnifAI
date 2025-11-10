@@ -20,6 +20,14 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Info, ExternalLink } from "lucide-react";
 import {
   ElementType,
   ElementSchema,
@@ -936,19 +944,62 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     // Handle regular string fields
     return (
       <div key={fieldName} className="space-y-2">
-        <Label htmlFor={fieldName}>
-          {fieldName} {isRequired && <span className="text-red-400">*</span>}
-          {validationHint && (
-            <Badge variant="outline" className="ml-2 text-xs">
-              validation
-            </Badge>
-          )}
-          {populateHint && (
-            <Badge variant="outline" className="ml-2 text-xs">
-              populate
-            </Badge>
-          )}
-        </Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor={fieldName} className="flex items-center gap-2">
+            {fieldName} {isRequired && <span className="text-red-400">*</span>}
+            {validationHint && (
+              <Badge variant="outline" className="ml-2 text-xs">
+                validation
+              </Badge>
+            )}
+            {populateHint && (
+              <Badge variant="outline" className="ml-2 text-xs">
+                populate
+              </Badge>
+            )}
+          </Label>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-xs text-primary hover:text-primary/80 hover:bg-primary/10"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const guidePath = "/guides/mcp-server-setup-guide.md";
+                      // Try to download the guide file
+                      fetch(guidePath)
+                        .then((response) => {
+                          if (!response.ok) {
+                            throw new Error("File not found");
+                          }
+                          return response.blob();
+                        })
+                        .then((blob) => {
+                          const url = window.URL.createObjectURL(blob);
+                          const link = document.createElement("a");
+                          link.href = url;
+                          link.download = "mcp-server-setup-guide.md";
+                          document.body.appendChild(link);
+                          link.click();
+                          document.body.removeChild(link);
+                          window.URL.revokeObjectURL(url);
+                        })
+                        .catch(() => {
+                          // If download fails, try opening in new tab
+                          window.open(guidePath, "_blank");
+                        });
+                    }}
+                  >
+                    
+                  </Button>
+                </TooltipTrigger>
+              </Tooltip>
+            </TooltipProvider>
+          
+        </div>
         <Input
           id={fieldName}
           value={value}

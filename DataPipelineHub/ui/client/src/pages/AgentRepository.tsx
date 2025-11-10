@@ -3,7 +3,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus } from 'lucide-react';
+import { Plus, Info } from 'lucide-react';
 import { CategorySidebar } from '../components/agentic-ai/workspace/CategorySidebar';
 import { ElementGrid } from '../components/agentic-ai/workspace/ElementGrid';
 import { ElementForm } from '../components/agentic-ai/workspace/ElementForm';
@@ -107,14 +107,28 @@ export default function UserWorkspace() {
                         Manage your {selectedElementType.name.toLowerCase()} configurations
                       </p>
                     </div>
-                    <Button 
-                      onClick={handleCreateNew}
-                      className="bg-primary hover:bg-opacity-80"
-                      disabled={!elementSchema}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Create New
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const guidesUrl = `/guides?section=agentic-inventory&category=${selectedElementType.category}`;
+                          window.open(guidesUrl, '_blank');
+                        }}
+                        className="border-gray-700 hover:bg-background-dark"
+                        title="View guides"
+                      >
+                        <Info className="h-4 w-4 mr-2" />
+                        Guides
+                      </Button>
+                      <Button 
+                        onClick={handleCreateNew}
+                        className="bg-primary hover:bg-opacity-80"
+                        disabled={!elementSchema}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create New
+                      </Button>
+                    </div>
                   </div>
                 )}
 
