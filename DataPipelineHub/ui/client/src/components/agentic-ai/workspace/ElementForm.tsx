@@ -56,9 +56,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   );
   const [fieldValidationStates, setFieldValidationStates] = useState<{ [fieldName: string]: boolean }>({});
   const [populateResults, setPopulateResults] = useState<{ [fieldName: string]: string[] }>({});
-  // Store original secret values to preserve them when saving if user doesn't change them
   const [originalSecretValues, setOriginalSecretValues] = useState<{ [fieldName: string]: any }>({});
-  // Track which secret fields are being edited (user started typing)
   const [editingSecretFields, setEditingSecretFields] = useState<{ [fieldName: string]: boolean }>({});
 
   const { fetchResourcesForCategory } = useWorkspaceData();
@@ -91,7 +89,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   // Initialize form data
   useEffect(() => {
     if (elementSchema && isOpen) {
-      // Reset original secret values and editing state when form opens
       setOriginalSecretValues({});
       setEditingSecretFields({});
       const initialData: any = {};
@@ -139,12 +136,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             // For secret fields, show masked dots instead of the actual value
             // Store the original value separately so we can preserve it when saving
             if (fieldSchema?.hints?.secret?.hint_type === "secret" && fieldSchema) {
-              // Store the original value for later use when saving
-              setOriginalSecretValues(prev => ({
-                ...prev,
-                [key]: value
-              }));
-              // Show masked dots to indicate there's a value
+              setOriginalSecretValues(prev => ({...prev,[key]: value}));
               const maskedValue = maskSecretValue(value, fieldSchema);
               initialData[key] = maskedValue;
               return;
@@ -378,7 +370,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       const loadRefOptions = async () => {
         const options: { [category: string]: any[] } = {};
 
-        for (const category of refCategories) {
+        for (const category of Array.from(refCategories)) {
           try {
             const resources = await fetchResourcesForCategory(category);
             options[category] = resources;
@@ -408,7 +400,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   };
 
   const handleArrayChange = (field: string, index: number, value: any) => {
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
       [field]: prev[field].map((item: any, i: number) =>
         i === index ? value : item,
@@ -417,7 +409,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   };
 
   const addArrayItem = (field: string) => {
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
       [field]: [...(prev[field] || []), ""],
     }));
@@ -527,16 +519,12 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           if (fieldSchema?.hints?.secret?.hint_type === "secret" && editingElement && fieldSchema) {
             const originalValue = originalSecretValues[fieldName];
             if (originalValue !== undefined) {
-              // Check if the current value is the masked placeholder
               const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
-              // If the current value matches the masked original, user didn't change it
-              // Use the original value
+
               if (value === maskedOriginal || !value || value === "" || (typeof value === "string" && value.trim() === "")) {
                 actualValue = originalValue;
               }
-              // Otherwise, user typed something new, use that
             } else {
-              // No original value stored, check editingElement.config as fallback
               if (!value || value === "" || (typeof value === "string" && value.trim() === "")) {
                 if (editingElement.config && editingElement.config[fieldName] !== undefined) {
                   actualValue = editingElement.config[fieldName];
@@ -551,24 +539,13 @@ export const ElementForm: React.FC<ElementFormProps> = ({
 
           // Convert reference fields back to $ref:rid format and handle empty values
           if (fieldSchema) {
-            if (
-              fieldSchema.$ref &&
-              processedValue &&
-              processedValue !== ""
-            ) {
-              // Only convert if it's not already in $ref: format (for secret fields preserving existing value)
+            if (fieldSchema.$ref && processedValue && processedValue !== "") {
               if (typeof processedValue === "string" && !processedValue.startsWith("$ref:")) {
                 processedValue = `$ref:${processedValue}`;
               }
             }
             // Handle anyOf with $ref
-            else if (
-              fieldSchema.anyOf &&
-              fieldSchema.anyOf.some((option: any) => option.$ref) &&
-              processedValue &&
-              processedValue !== ""
-            ) {
-              // Only convert if it's not already in $ref: format
+            else if (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.$ref) && processedValue && processedValue !== "") {
               if (typeof processedValue === "string" && !processedValue.startsWith("$ref:")) {
                 processedValue = `$ref:${processedValue}`;
               }
@@ -636,7 +613,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       const result = await onSave(saveData);
 
       // Only close the dialog if save was successful (result is not null/false)
-      if (result !== null && result !== false) {
+      if (result !== null) {
         onClose();
       }
     } catch (error) {
@@ -651,8 +628,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     const value = formData[fieldName] || "";
     const validationHint = fieldSchema.hints?.action?.hint_type === 'validate' ? fieldSchema.hints.action : null;
     const populateHint = fieldSchema.hints?.action?.hint_type === 'populate' ? fieldSchema.hints.action : null;
-    // Check if field is secret using the new structure: hints.secret.hint_type === "secret"
-    // This follows the same pattern as HIDDEN: fieldSchema?.hints?.hidden?.hint_type === "hidden"
     const isSecret = fieldSchema?.hints?.secret?.hint_type === "secret";
 
     // Handle array fields with $ref items (multi-select dropdown)
