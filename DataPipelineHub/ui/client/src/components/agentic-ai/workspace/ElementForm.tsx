@@ -121,11 +121,10 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       // If editing, populate with existing data (override defaults)
       if (editingElement) {
         // Handle first-level fields directly from editingElement
-        Object.keys(editingElement).forEach((field) => {
-          if (field !== 'config' && editingElement[field] !== undefined) {
-            initialData[field] = editingElement[field];
-          }
-        });
+        // Only handle 'name' field explicitly to avoid TypeScript indexing errors
+        if (editingElement.name !== undefined) {
+          initialData.name = editingElement.name;
+        }
 
         // Handle config data, excluding hidden fields
         if (editingElement.config) {
@@ -139,14 +138,14 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             
             // For secret fields, show masked dots instead of the actual value
             // Store the original value separately so we can preserve it when saving
-            if (fieldSchema?.hints?.secret?.hint_type === "secret") {
+            if (fieldSchema?.hints?.secret?.hint_type === "secret" && fieldSchema) {
               // Store the original value for later use when saving
               setOriginalSecretValues(prev => ({
                 ...prev,
                 [key]: value
               }));
               // Show masked dots to indicate there's a value
-              const maskedValue = maskSecretValue(value, key, fieldSchema);
+              const maskedValue = maskSecretValue(value, fieldSchema);
               initialData[key] = maskedValue;
               return;
             }
@@ -175,7 +174,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   // Re-apply form data when ref options are loaded (for proper pre-selection)
   useEffect(() => {
     if (editingElement?.config && Object.keys(refOptions).length > 0) {
-      setFormData((prevData) => {
+      setFormData((prevData: any) => {
         const updatedData = { ...prevData };
 
         Object.entries(editingElement.config).forEach(([key, value]) => {
@@ -402,7 +401,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   }, [elementSchema, isOpen, fetchResourcesForCategory]);
 
   const handleInputChange = (field: string, value: any) => {
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
       [field]: value,
     }));
@@ -425,7 +424,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   };
 
   const removeArrayItem = (field: string, index: number) => {
-    setFormData((prev) => ({
+    setFormData((prev: any) => ({
       ...prev,
       [field]: prev[field].filter((_: any, i: number) => i !== index),
     }));
@@ -525,11 +524,11 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           // For secret fields in edit mode: check if user changed the value
           // If the value is still the masked placeholder, use the original value
           let actualValue = value;
-          if (fieldSchema?.hints?.secret?.hint_type === "secret" && editingElement) {
+          if (fieldSchema?.hints?.secret?.hint_type === "secret" && editingElement && fieldSchema) {
             const originalValue = originalSecretValues[fieldName];
             if (originalValue !== undefined) {
               // Check if the current value is the masked placeholder
-              const maskedOriginal = maskSecretValue(originalValue, fieldName, fieldSchema);
+              const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
               // If the current value matches the masked original, user didn't change it
               // Use the original value
               if (value === maskedOriginal || !value || value === "" || (typeof value === "string" && value.trim() === "")) {
@@ -975,10 +974,10 @@ export const ElementForm: React.FC<ElementFormProps> = ({
               }}
               onFocus={(e) => {
                 // If the value is the masked placeholder, clear it when user focuses
-                if (editingElement) {
+                if (editingElement && fieldSchema) {
                   const originalValue = originalSecretValues[fieldName];
                   if (originalValue !== undefined) {
-                    const maskedOriginal = maskSecretValue(originalValue, fieldName, fieldSchema);
+                    const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
                     if (value === maskedOriginal) {
                       // Clear the masked value so user can type
                       handleInputChange(fieldName, "");
@@ -1110,10 +1109,10 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           }}
           onFocus={(e) => {
             // If the value is the masked placeholder, clear it when user focuses
-            if (isSecret && editingElement) {
+            if (isSecret && editingElement && fieldSchema) {
               const originalValue = originalSecretValues[fieldName];
               if (originalValue !== undefined) {
-                const maskedOriginal = maskSecretValue(originalValue, fieldName, fieldSchema);
+                const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
                 if (value === maskedOriginal) {
                   // Clear the masked value so user can type
                   handleInputChange(fieldName, "");
