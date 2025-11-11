@@ -29,16 +29,15 @@ print_step() {
 # Function to display usage
 usage() {
     cat << EOF
-Usage: $0 --client_id <CLIENT_ID> --client_secret <CLIENT_SECRET> --user_email <EMAIL> [OPTIONS]
+Usage: $0 <JSON_FILE> [OPTIONS]
 
 Required arguments:
-  --client_id         Google OAuth Client ID
-  --client_secret     Google OAuth Client Secret
+  JSON_FILE           Path to JSON file containing Google OAuth credentials
+                     Expected structure: {"web": {"client_id": "...", "client_secret": "...", "project_id": "..."}}
   --user_email        User's Google email address
 
 Optional arguments:
-  --project_id        Google Cloud Project ID (required for enabling services)
-  --enable_services   Enable Google Cloud APIs (requires --project_id)
+  --enable_services   Enable Google Cloud APIs (requires project_id in JSON)
   --services          Comma-separated list of services to enable
                       Default: gmail,calendar,drive,docs,sheets,slides,tasks,contacts
   --skip_gcloud       Skip gcloud CLI validation and service enablement
@@ -55,16 +54,86 @@ Available services:
   - admin             Admin SDK API
   - meet              Google Meet API
 
-Example:
-  $0 --client_id "123456.apps.googleusercontent.com" \\
-     --client_secret "GOCSPX-abcdef123456" \\
-     --user_email "user@example.com" \\
-     --project_id "my-project-123" \\
-     --enable_services \\
-     --services "gmail,calendar,drive"
+Example JSON file structure:
+  {
+    "web": {
+      "client_id": "123456.apps.googleusercontent.com",
+      "client_secret": "GOCSPX-abcdef123456",
+      "project_id": "my-project-123"
+    }
+  }
+
+Example usage:
+  $0 credentials.json --user_email "user@example.com" --enable_services
+  
+  Note: --user_email is required. All other flags are optional.
 
 EOF
     exit 1
+}
+
+# Function to extract JSON value using available tools
+extract_json_value() {
+    local json_file="$1"
+    local json_path="$2"
+    local result=""
+    
+    # Try jq first (most common and reliable)
+    if command -v jq &> /dev/null; then
+        result=$(jq -r "$json_path" "$json_file" 2>/dev/null)
+        if [ $? -eq 0 ] && [ "$result" != "null" ] && [ -n "$result" ]; then
+            echo "$result"
+            return 0
+        fi
+    fi
+    
+    # Fall back to Python 3 (usually available)
+    if command -v python3 &> /dev/null; then
+        if [ "$json_path" = ".web.client_id" ]; then
+            result=$(python3 -c "import json; data = json.load(open('$json_file')); print(data.get('web', {}).get('client_id', ''))" 2>/dev/null)
+        elif [ "$json_path" = ".web.client_secret" ]; then
+            result=$(python3 -c "import json; data = json.load(open('$json_file')); print(data.get('web', {}).get('client_secret', ''))" 2>/dev/null)
+        elif [ "$json_path" = ".web.project_id" ]; then
+            result=$(python3 -c "import json; data = json.load(open('$json_file')); print(data.get('web', {}).get('project_id', ''))" 2>/dev/null)
+        fi
+        
+        if [ $? -eq 0 ] && [ -n "$result" ]; then
+            echo "$result"
+            return 0
+        fi
+    fi
+    
+    # Fall back to Python 2 (legacy)
+    if command -v python &> /dev/null && ! command -v python3 &> /dev/null; then
+        if [ "$json_path" = ".web.client_id" ]; then
+            result=$(python -c "import json; data = json.load(open('$json_file')); print(data.get('web', {}).get('client_id', ''))" 2>/dev/null)
+        elif [ "$json_path" = ".web.client_secret" ]; then
+            result=$(python -c "import json; data = json.load(open('$json_file')); print(data.get('web', {}).get('client_secret', ''))" 2>/dev/null)
+        elif [ "$json_path" = ".web.project_id" ]; then
+            result=$(python -c "import json; data = json.load(open('$json_file')); print(data.get('web', {}).get('project_id', ''))" 2>/dev/null)
+        fi
+        
+        if [ $? -eq 0 ] && [ -n "$result" ]; then
+            echo "$result"
+            return 0
+        fi
+    fi
+    
+    # Last resort: basic grep/sed (less reliable but works for simple cases)
+    if [ "$json_path" = ".web.client_id" ]; then
+        result=$(grep -o '"client_id"[[:space:]]*:[[:space:]]*"[^"]*"' "$json_file" 2>/dev/null | sed 's/.*"client_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' | head -1)
+    elif [ "$json_path" = ".web.client_secret" ]; then
+        result=$(grep -o '"client_secret"[[:space:]]*:[[:space:]]*"[^"]*"' "$json_file" 2>/dev/null | sed 's/.*"client_secret"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' | head -1)
+    elif [ "$json_path" = ".web.project_id" ]; then
+        result=$(grep -o '"project_id"[[:space:]]*:[[:space:]]*"[^"]*"' "$json_file" 2>/dev/null | sed 's/.*"project_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/' | head -1)
+    fi
+    
+    if [ -n "$result" ]; then
+        echo "$result"
+        return 0
+    fi
+    
+    return 1
 }
 
 # Map service names to Google API identifiers
@@ -107,6 +176,7 @@ get_api_name() {
 }
 
 # Initialize variables
+JSON_FILE=""
 CLIENT_ID=""
 CLIENT_SECRET=""
 USER_EMAIL=""
@@ -116,22 +186,27 @@ SKIP_GCLOUD=false
 SERVICES="gmail,calendar,drive,docs,sheets,slides,tasks,contacts"
 
 # Parse command line arguments
+if [ $# -eq 0 ]; then
+    print_error "No arguments provided"
+    echo ""
+    usage
+fi
+
+# First argument should be the JSON file
+JSON_FILE="$1"
+shift
+
+# Validate JSON file exists
+if [ ! -f "$JSON_FILE" ]; then
+    print_error "JSON file not found: $JSON_FILE"
+    exit 1
+fi
+
+# Parse remaining optional arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --client_id)
-            CLIENT_ID="$2"
-            shift 2
-            ;;
-        --client_secret)
-            CLIENT_SECRET="$2"
-            shift 2
-            ;;
         --user_email)
             USER_EMAIL="$2"
-            shift 2
-            ;;
-        --project_id)
-            PROJECT_ID="$2"
             shift 2
             ;;
         --enable_services)
@@ -156,28 +231,41 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Validate that all required arguments are provided
-MISSING_ARGS=()
+# Extract values from JSON file
+print_step "Reading credentials from JSON file: $JSON_FILE"
 
-if [ -z "$CLIENT_ID" ]; then
-    MISSING_ARGS+=("--client_id")
+CLIENT_ID=$(extract_json_value "$JSON_FILE" ".web.client_id")
+if [ -z "$CLIENT_ID" ] || [ "$CLIENT_ID" = "null" ]; then
+    print_error "Failed to extract client_id from JSON file"
+    print_info "Make sure the JSON file has the structure: {\"web\": {\"client_id\": \"...\"}}"
+    exit 1
 fi
 
-if [ -z "$CLIENT_SECRET" ]; then
-    MISSING_ARGS+=("--client_secret")
+CLIENT_SECRET=$(extract_json_value "$JSON_FILE" ".web.client_secret")
+if [ -z "$CLIENT_SECRET" ] || [ "$CLIENT_SECRET" = "null" ]; then
+    print_error "Failed to extract client_secret from JSON file"
+    print_info "Make sure the JSON file has the structure: {\"web\": {\"client_secret\": \"...\"}}"
+    exit 1
 fi
 
+PROJECT_ID=$(extract_json_value "$JSON_FILE" ".web.project_id")
+if [ -z "$PROJECT_ID" ] || [ "$PROJECT_ID" = "null" ]; then
+    print_info "project_id not found in JSON file (optional, required only for --enable_services)"
+else
+    print_success "Extracted project_id: $PROJECT_ID"
+fi
+
+print_success "Extracted client_id: ${CLIENT_ID:0:20}..."
+print_success "Extracted client_secret: ${CLIENT_SECRET:0:10}..."
+
+# Validate user_email is provided
 if [ -z "$USER_EMAIL" ]; then
-    MISSING_ARGS+=("--user_email")
-fi
-
-if [ ${#MISSING_ARGS[@]} -gt 0 ]; then
-    print_error "Missing required arguments: ${MISSING_ARGS[*]}"
+    print_error "User email is required. Please provide --user_email argument."
     echo ""
     usage
 fi
 
-print_success "All required arguments provided"
+print_success "All required credentials extracted"
 
 # Function to install gcloud CLI
 install_gcloud() {

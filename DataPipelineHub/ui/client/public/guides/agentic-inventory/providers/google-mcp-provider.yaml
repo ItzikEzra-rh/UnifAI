@@ -34,11 +34,13 @@ steps:
          - **Name**: "UnifAI Google MCP Server" (or any name)
          - **Authorized JavaScript origins**: `http://localhost:8000`
          - **Authorized redirect URIs**: `http://localhost:8000/oauth2callback`
-      5. Click **Create** and copy your **Client ID** and **Client Secret**
+      5. Click **Create**
       
-      You'll also need:
-      - **Project ID**: Found in the project selector (e.g., `unifai-testing`)
-      - **User Email**: Your Google account email address
+      ## Download Credentials JSON File
+      
+      1. After creating the OAuth Client ID, you'll see a dialog with your credentials
+      2. Click **Download JSON** to download the credentials file
+      
 
   - step: 2
     title: "Download & Run the Setup Script"
@@ -51,22 +53,38 @@ steps:
       
       Ensure you have **Docker** (or Podman) and **Docker Compose** installed and running. Git is also required.
       
-      ## Run the Script
+      ## Prepare Files
+      
+      1. Make sure both files are in the same folder:
+         - The downloaded script: `google_workspace_mcp_script.sh`
+         - The credentials JSON file from Google Console
+      
+      ## Make Script Executable
       
       ```bash
       chmod +x google_workspace_mcp_script.sh
-      
-      cd Downloads  # or wherever you saved the script
-
-      bash ./google_workspace_mcp_script.sh \\
-        --client_id "YOUR_CLIENT_ID" \\
-        --client_secret "YOUR_CLIENT_SECRET" \\
-        --user_email "your-email@example.com" \\
-        --project_id "your-project-id" \\
-        --enable_services
       ```
       
-      The script will automatically clone the repository, configure the environment, enable Google APIs, and start the MCP server. **Note the SSE Endpoint URL** displayed at the end (e.g., `http://192.168.1.100:8000/mcp`).
+      ## Run the Script
+      
+      ```bash
+      bash ./google_workspace_mcp_script.sh "google-credentials.json" --user_email "your-email@example.com" --enable_services
+      ```
+      
+      **Replace:**
+      - `google-credentials.json` with the actual name of your downloaded JSON file
+      - `your-email@example.com` with your Google account email address
+      
+      The `--enable_services` flag is optional and will automatically enable the required Google Cloud APIs. If you prefer to enable them manually, omit this flag.
+      
+      The script will automatically:
+      - Extract credentials from the JSON file
+      - Clone the Google Workspace MCP repository
+      - Configure the environment
+      - Enable Google APIs (if `--enable_services` is used)
+      - Start the MCP server
+      
+      **Note the SSE Endpoint URL** displayed at the end (e.g., `http://192.168.1.100:8000/mcp`).
 
   - step: 3
     title: "Connect UniFAI to Your Local MCP Server"
