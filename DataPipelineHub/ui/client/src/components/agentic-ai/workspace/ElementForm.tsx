@@ -20,14 +20,6 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import { Info, ExternalLink } from "lucide-react";
 import {
   ElementType,
   ElementSchema,
@@ -944,22 +936,19 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     // Handle regular string fields
     return (
       <div key={fieldName} className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor={fieldName} className="flex items-center gap-2">
-            {fieldName} {isRequired && <span className="text-red-400">*</span>}
-            {validationHint && (
-              <Badge variant="outline" className="ml-2 text-xs">
-                validation
-              </Badge>
-            )}
-            {populateHint && (
-              <Badge variant="outline" className="ml-2 text-xs">
-                populate
-              </Badge>
-            )}
-          </Label>
-          
-        </div>
+        <Label htmlFor={fieldName}>
+          {fieldName} {isRequired && <span className="text-red-400">*</span>}
+          {validationHint && (
+            <Badge variant="outline" className="ml-2 text-xs">
+              validation
+            </Badge>
+          )}
+          {populateHint && (
+            <Badge variant="outline" className="ml-2 text-xs">
+              populate
+            </Badge>
+          )}
+        </Label>
         <Input
           id={fieldName}
           value={value}
