@@ -500,15 +500,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           saveData[fieldName] = typeof value === "string" ? value.trim() : value;
         } else if (!systemFields.includes(fieldName)) {
           // This is a config field
-          
-          // For secret fields in edit mode: if value is empty, use original (user didn't change it)
           let processedValue = value;
-          if (fieldSchema?.hints?.secret?.hint_type === "secret" && editingElement) {
-            const originalValue = editingElement.config?.[fieldName];
-            if (originalValue !== undefined && (!value || value === "")) {
-              processedValue = originalValue;
-            }
-          }
 
           // Convert reference fields back to $ref:rid format and handle empty values
           if (fieldSchema) {

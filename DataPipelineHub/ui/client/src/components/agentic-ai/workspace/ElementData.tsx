@@ -84,7 +84,7 @@ export const ElementData: React.FC<ElementDataProps> = ({
                 <label className="text-sm font-medium text-gray-400">Full Configuration</label>
                 <div className="mt-2 bg-gray-900 p-4 rounded-md">
                   <pre className="text-xs text-gray-300 whitespace-pre-wrap overflow-x-auto">
-                    {JSON.stringify(maskSecretFieldsInConfig(element.config, elementSchema?.config_schema || undefined), null, 2)}
+                    {JSON.stringify(maskSecretFieldsInConfig(element.config, elementSchema?.config_schema), null, 2)}
                   </pre>
                 </div>
               </div>

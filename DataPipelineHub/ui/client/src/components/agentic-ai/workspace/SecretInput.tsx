@@ -60,9 +60,9 @@ export const SecretInput: React.FC<SecretInputProps> = ({
 
   const handleFocus = () => {
     // When user focuses, stop showing masked so they can type
+    // Don't clear the value - let them type over it or keep original if unchanged
     if (showMasked) {
       setShowMasked(false);
-      onInputChange(fieldName, "");
     }
   };
 
