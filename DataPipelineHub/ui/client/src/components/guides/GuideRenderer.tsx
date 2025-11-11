@@ -66,15 +66,15 @@ export const GuideRenderer: React.FC<GuideRendererProps> = ({
       });
   };
 
-  // Find matching download file for a code block
-  const findMatchingDownloadFile = (codeString: string): DownloadFile | null => {
+  // Check if a link points to a downloadable file
+  const isDownloadableFile = (href: string): DownloadFile | null => {
     if (!downloadFiles || downloadFiles.length === 0) {
       return null;
     }
     
-    // Check if any download file has a trigger pattern that matches the code
+    // Check if the href matches any download file path
     for (const downloadFile of downloadFiles) {
-      if (downloadFile.trigger && codeString.includes(downloadFile.trigger)) {
+      if (href === downloadFile.path || href.includes(downloadFile.filename)) {
         return downloadFile;
       }
     }
@@ -92,26 +92,10 @@ export const GuideRenderer: React.FC<GuideRendererProps> = ({
             const codeString = String(children).replace(/\n$/, "");
             
             if (!inline && match) {
-              // Check if there's a matching download file for this code block
-              const matchingDownloadFile = findMatchingDownloadFile(codeString);
-              
+              // Code blocks only have copy button, no download button
               return (
                 <div className="relative">
                   <div className="absolute top-2 right-2 flex gap-2 z-10">
-                    {matchingDownloadFile && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDownloadFile(matchingDownloadFile)}
-                        disabled={downloadingFile === matchingDownloadFile.path}
-                        className="h-7 px-2 text-xs bg-background-dark/80 hover:bg-background-dark"
-                        title={matchingDownloadFile.label || `Download ${matchingDownloadFile.filename}`}
-                      >
-                        <Download className={`w-3 h-3 mr-1 ${downloadingFile === matchingDownloadFile.path ? 'animate-pulse' : ''}`} />
-                        {matchingDownloadFile.label || 'Download'}
-                      </Button>
-                    )}
                     <Button
                       type="button"
                       variant="ghost"
@@ -143,6 +127,25 @@ export const GuideRenderer: React.FC<GuideRendererProps> = ({
             );
           },
           a({ node, href, children, ...props }: any) {
+            // Check if this link points to a downloadable file
+            const downloadableFile = isDownloadableFile(href || "");
+            
+            if (downloadableFile) {
+              return (
+                <a
+                  href="#"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    handleDownloadFile(downloadableFile);
+                  }}
+                  className="text-primary hover:underline cursor-pointer"
+                  {...props}
+                >
+                  {children}
+                </a>
+              );
+            }
+            
             return (
               <a
                 href={href}
