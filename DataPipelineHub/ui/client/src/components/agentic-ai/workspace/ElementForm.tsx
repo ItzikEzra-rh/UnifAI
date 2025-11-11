@@ -57,8 +57,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   );
   const [fieldValidationStates, setFieldValidationStates] = useState<{ [fieldName: string]: boolean }>({});
   const [populateResults, setPopulateResults] = useState<{ [fieldName: string]: string[] }>({});
-  const [originalSecretValues, setOriginalSecretValues] = useState<{ [fieldName: string]: any }>({});
-  const [editingSecretFields, setEditingSecretFields] = useState<{ [fieldName: string]: boolean }>({});
 
   const { fetchResourcesForCategory } = useWorkspaceData();
 
@@ -90,8 +88,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   // Initialize form data
   useEffect(() => {
     if (elementSchema && isOpen) {
-      setOriginalSecretValues({});
-      setEditingSecretFields({});
       const initialData: any = {};
 
       // Set default values from combined schema, excluding hidden fields
@@ -134,10 +130,9 @@ export const ElementForm: React.FC<ElementFormProps> = ({
               return;
             }
             
-            // For secret fields, show masked dots instead of the actual value
-            // Store the original value separately so we can preserve it when saving
+            // For secret fields in edit mode, store the masked value initially
+            // The actual value is preserved in editingElement.config for save logic
             if (fieldSchema?.hints?.secret?.hint_type === "secret" && fieldSchema) {
-              setOriginalSecretValues(prev => ({...prev,[key]: value}));
               const maskedValue = maskSecretValue(value, fieldSchema);
               initialData[key] = maskedValue;
               return;
@@ -514,38 +509,28 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         } else if (!systemFields.includes(fieldName)) {
           // This is a config field
           
-          // For secret fields in edit mode: check if user changed the value
-          // If the value is still the masked placeholder, use the original value
-          let actualValue = value;
+          // For secret fields in edit mode: if value is still masked (unchanged), use original
+          let processedValue = value;
           if (fieldSchema?.hints?.secret?.hint_type === "secret" && editingElement && fieldSchema) {
-            const originalValue = originalSecretValues[fieldName];
+            const originalValue = editingElement.config?.[fieldName];
             if (originalValue !== undefined) {
               const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
-
-              if (value === maskedOriginal || !value || value === "" || (typeof value === "string" && value.trim() === "")) {
-                actualValue = originalValue;
-              }
-            } else {
-              if (!value || value === "" || (typeof value === "string" && value.trim() === "")) {
-                if (editingElement.config && editingElement.config[fieldName] !== undefined) {
-                  actualValue = editingElement.config[fieldName];
-                } else {
-                  actualValue = "";
-                }
+              // If value matches masked version, user didn't change it - use original
+              if (value === maskedOriginal) {
+                processedValue = originalValue;
               }
             }
           }
-          
-          let processedValue = actualValue;
 
           // Convert reference fields back to $ref:rid format and handle empty values
-          if (fieldSchema) {
+          // Note: Secret fields should never be $ref fields, so this logic doesn't apply to them
+          if (fieldSchema && fieldSchema?.hints?.secret?.hint_type !== "secret") {
             if (fieldSchema.$ref && processedValue && processedValue !== "") {
               if (typeof processedValue === "string" && !processedValue.startsWith("$ref:")) {
                 processedValue = `$ref:${processedValue}`;
               }
             }
-            // Handle anyOf with $ref
+            // Handle anyOf with $ref (not applicable to secret fields)
             else if (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.$ref) && processedValue && processedValue !== "") {
               if (typeof processedValue === "string" && !processedValue.startsWith("$ref:")) {
                 processedValue = `$ref:${processedValue}`;
@@ -641,17 +626,12 @@ export const ElementForm: React.FC<ElementFormProps> = ({
               validationHint={validationHint}
               populateHint={populateHint}
               editingElement={editingElement}
-              editingSecretFields={editingSecretFields}
-              originalSecretValues={originalSecretValues}
               elementActions={elementActions}
               elementType={elementType}
               formData={formData}
               onInputChange={handleInputChange}
               onValidationChange={handleValidationChange}
               onPopulateResult={handlePopulateResult}
-              onEditingSecretFieldsChange={(fieldName, isEditing) => {
-                setEditingSecretFields(prev => ({ ...prev, [fieldName]: isEditing }));
-              }}
               maskSecretValue={maskSecretValue}
             />
     }

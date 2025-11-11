@@ -14,15 +14,12 @@ interface SecretInputProps {
   validationHint: any;
   populateHint: any;
   editingElement: any;
-  editingSecretFields: { [fieldName: string]: boolean };
-  originalSecretValues: { [fieldName: string]: any };
   elementActions: any[];
   elementType: ElementType;
   formData: any;
   onInputChange: (field: string, value: any) => void;
   onValidationChange: (fieldName: string, isValid: boolean) => void;
   onPopulateResult: (fieldName: string, results: string[], multiSelect: boolean) => void;
-  onEditingSecretFieldsChange: (fieldName: string, isEditing: boolean) => void;
   maskSecretValue: (value: any, fieldSchema: any) => string;
 }
 
@@ -34,33 +31,39 @@ export const SecretInput: React.FC<SecretInputProps> = ({
   validationHint,
   populateHint,
   editingElement,
-  editingSecretFields,
-  originalSecretValues,
   elementActions,
   elementType,
   formData,
   onInputChange,
   onValidationChange,
   onPopulateResult,
-  onEditingSecretFieldsChange,
   maskSecretValue,
 }) => {
+  // For secret fields: display masked dots if value hasn't changed from original, otherwise show actual
+  const originalValue = editingElement?.config?.[fieldName];
+  const maskedOriginal = originalValue !== undefined ? maskSecretValue(originalValue, fieldSchema) : "";
+  const isUnchanged = editingElement && value === maskedOriginal;
+  
+  // Display: if unchanged, show masked dots; if changed, show actual (password type)
+  const displayValue = isUnchanged ? maskedOriginal : value;
+  const inputType = isUnchanged ? "text" : "password";
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    // If user is typing in a secret field, mark it as being edited
-    if (!editingSecretFields[fieldName]) {
-      onEditingSecretFieldsChange(fieldName, true);
-      if (editingElement && fieldSchema) {
-        const originalValue = originalSecretValues[fieldName];
-        if (originalValue !== undefined) {
-          const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
-          if (value === maskedOriginal) {
-            onInputChange(fieldName, newValue);
-            return;
-          }
-        }
+    let newValue = e.target.value;
+    
+    // If user is typing over masked value, extract just the typed characters
+    // (browser may give us "a•••" when they type "a" over "••••")
+    if (isUnchanged && newValue !== maskedOriginal) {
+      const maskChar = fieldSchema?.hints?.secret?.mask_char || "•";
+      // Check if newValue contains non-mask characters (user is typing)
+      const nonMaskPart = newValue.split(maskChar).filter(part => part.length > 0).join("");
+      if (nonMaskPart.length > 0) {
+        // User is typing - use just the non-mask part (what they actually typed)
+        onInputChange(fieldName, nonMaskPart);
+        return;
       }
     }
+    
     onInputChange(fieldName, newValue);
   };
 
@@ -84,15 +87,11 @@ export const SecretInput: React.FC<SecretInputProps> = ({
       </Label>
       <Input
         id={fieldName}
-        type={editingSecretFields[fieldName] ? "password" : "text"}
-        value={value}
+        type={inputType}
+        value={displayValue}
         onChange={handleChange}
         className="bg-background-dark"
-        placeholder={
-          editingElement && !editingSecretFields[fieldName]
-            ? "Click to edit"
-            : fieldSchema.description
-        }
+        placeholder={fieldSchema.description}
         readOnly={!!populateHint}
         disabled={!!populateHint}
       />
