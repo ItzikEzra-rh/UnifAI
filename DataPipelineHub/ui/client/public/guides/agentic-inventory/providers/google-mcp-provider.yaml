@@ -84,6 +84,7 @@ steps:
       - Enable Google APIs (if `--enable_services` is used)
       - Start the MCP server
       
+      Make sure you follow the instructions printed in the terminal while the script is running.
       **Note the SSE Endpoint URL** displayed at the end (e.g., `http://192.168.1.100:8000/mcp`).
 
   - step: 3
