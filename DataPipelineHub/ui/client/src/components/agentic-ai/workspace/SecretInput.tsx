@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { FieldValidation } from "./FieldValidation";
 import { FieldPopulation } from "./FieldPopulation";
 import { ElementType } from "../../../types/workspace";
+import { maskSecretValue } from "../../../utils/maskSecretFields";
 
 interface SecretInputProps {
   fieldName: string;
@@ -20,7 +21,6 @@ interface SecretInputProps {
   onInputChange: (field: string, value: any) => void;
   onValidationChange: (fieldName: string, isValid: boolean) => void;
   onPopulateResult: (fieldName: string, results: string[], multiSelect: boolean) => void;
-  maskSecretValue: (value: any, fieldSchema: any) => string;
 }
 
 export const SecretInput: React.FC<SecretInputProps> = ({
@@ -37,34 +37,40 @@ export const SecretInput: React.FC<SecretInputProps> = ({
   onInputChange,
   onValidationChange,
   onPopulateResult,
-  maskSecretValue,
 }) => {
-  // For secret fields: display masked dots if value hasn't changed from original, otherwise show actual
-  const originalValue = editingElement?.config?.[fieldName];
-  const maskedOriginal = originalValue !== undefined ? maskSecretValue(originalValue, fieldSchema) : "";
-  const isUnchanged = editingElement && value === maskedOriginal;
+  const [isTyping, setIsTyping] = useState(false);
   
-  // Display: if unchanged, show masked dots; if changed, show actual (password type)
-  const displayValue = isUnchanged ? maskedOriginal : value;
-  const inputType = isUnchanged ? "text" : "password";
+  // Get original value if editing
+  const originalValue = editingElement?.config?.[fieldName];
+  const hasOriginal = editingElement && originalValue !== undefined;
+  
+  // Reset typing state when form opens/closes or editingElement changes
+  useEffect(() => {
+    setIsTyping(false);
+  }, [editingElement, fieldName]);
+  
+  // Determine what to display: show masked if we have original, user hasn't typed, and value matches original
+  const shouldShowMasked = hasOriginal && !isTyping && value === originalValue;
+  const displayValue = shouldShowMasked ? maskSecretValue(originalValue, fieldSchema) : (value || "");
+  const inputType = shouldShowMasked ? "text" : "password";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let newValue = e.target.value;
+    const newValue = e.target.value;
     
-    // If user is typing over masked value, extract just the typed characters
-    // (browser may give us "a•••" when they type "a" over "••••")
-    if (isUnchanged && newValue !== maskedOriginal) {
-      const maskChar = fieldSchema?.hints?.secret?.mask_char || "•";
-      // Check if newValue contains non-mask characters (user is typing)
-      const nonMaskPart = newValue.split(maskChar).filter(part => part.length > 0).join("");
-      if (nonMaskPart.length > 0) {
-        // User is typing - use just the non-mask part (what they actually typed)
-        onInputChange(fieldName, nonMaskPart);
-        return;
-      }
+    // Mark as typing when user starts typing
+    if (!isTyping) {
+      setIsTyping(true);
     }
     
     onInputChange(fieldName, newValue);
+  };
+
+  const handleFocus = () => {
+    // When user focuses on masked field, clear it so they can type fresh
+    if (shouldShowMasked) {
+      setIsTyping(true);
+      onInputChange(fieldName, "");
+    }
   };
 
   return (
@@ -90,6 +96,7 @@ export const SecretInput: React.FC<SecretInputProps> = ({
         type={inputType}
         value={displayValue}
         onChange={handleChange}
+        onFocus={handleFocus}
         className="bg-background-dark"
         placeholder={fieldSchema.description}
         readOnly={!!populateHint}
@@ -121,4 +128,3 @@ export const SecretInput: React.FC<SecretInputProps> = ({
     </div>
   );
 };
-

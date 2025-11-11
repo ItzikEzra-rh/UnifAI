@@ -32,6 +32,7 @@ export default function UserWorkspace() {
 
   // Fetch element instances when element type is selected
   useEffect(() => {
+    console.log(elementSchema)
     if (selectedElementType) {
       fetchElementInstances(selectedElementType.category, selectedElementType.type);
     }

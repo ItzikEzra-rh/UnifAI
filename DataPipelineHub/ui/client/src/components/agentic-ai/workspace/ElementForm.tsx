@@ -28,7 +28,6 @@ import {
 import { useWorkspaceData } from "../../../hooks/useWorkspaceData";
 import { FieldValidation } from "./FieldValidation";
 import { FieldPopulation } from "./FieldPopulation";
-import { maskSecretValue } from "../../../utils/maskSecretFields";
 import { SecretInput } from "./SecretInput";
 
 interface ElementFormProps {
@@ -130,11 +129,10 @@ export const ElementForm: React.FC<ElementFormProps> = ({
               return;
             }
             
-            // For secret fields in edit mode, store the masked value initially
-            // The actual value is preserved in editingElement.config for save logic
-            if (fieldSchema?.hints?.secret?.hint_type === "secret" && fieldSchema) {
-              const maskedValue = maskSecretValue(value, fieldSchema);
-              initialData[key] = maskedValue;
+            // For secret fields in edit mode, store the actual value
+            // SecretInput will handle masking for display
+            if (fieldSchema?.hints?.secret?.hint_type === "secret") {
+              initialData[key] = value;
               return;
             }
             
@@ -509,14 +507,13 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         } else if (!systemFields.includes(fieldName)) {
           // This is a config field
           
-          // For secret fields in edit mode: if value is still masked (unchanged), use original
+          // For secret fields in edit mode: if value is empty or unchanged, use original
           let processedValue = value;
-          if (fieldSchema?.hints?.secret?.hint_type === "secret" && editingElement && fieldSchema) {
+          if (fieldSchema?.hints?.secret?.hint_type === "secret" && editingElement) {
             const originalValue = editingElement.config?.[fieldName];
             if (originalValue !== undefined) {
-              const maskedOriginal = maskSecretValue(originalValue, fieldSchema);
-              // If value matches masked version, user didn't change it - use original
-              if (value === maskedOriginal) {
+              // If value is empty or matches original, user didn't change it - use original
+              if (!value || value === "" || value === originalValue) {
                 processedValue = originalValue;
               }
             }
@@ -632,7 +629,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
               onInputChange={handleInputChange}
               onValidationChange={handleValidationChange}
               onPopulateResult={handlePopulateResult}
-              maskSecretValue={maskSecretValue}
             />
     }
 
