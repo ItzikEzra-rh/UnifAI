@@ -505,9 +505,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
           // Convert reference fields back to $ref:rid format and handle empty values
           if (fieldSchema) {
             if (fieldSchema.$ref && processedValue && processedValue !== "") {
-              if (typeof processedValue === "string" && !processedValue.startsWith("$ref:")) {
-                processedValue = `$ref:${processedValue}`;
-              }
+              processedValue = `$ref:${processedValue}`;
             }
             // Handle anyOf with $ref
             else if (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.$ref) && processedValue && processedValue !== "") {
