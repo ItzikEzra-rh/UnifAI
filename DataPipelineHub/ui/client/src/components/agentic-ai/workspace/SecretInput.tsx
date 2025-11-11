@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -38,37 +38,30 @@ export const SecretInput: React.FC<SecretInputProps> = ({
   onValidationChange,
   onPopulateResult,
 }) => {
-  const [isTyping, setIsTyping] = useState(false);
+  const [showMasked, setShowMasked] = useState(true);
   
-  // Get original value if editing
+  // In edit mode: if value exists and matches original, show masked dots
   const originalValue = editingElement?.config?.[fieldName];
-  const hasOriginal = editingElement && originalValue !== undefined;
+  const isUnchanged = editingElement && value && value === originalValue;
   
-  // Reset typing state when form opens/closes or editingElement changes
-  useEffect(() => {
-    setIsTyping(false);
-  }, [editingElement, fieldName]);
-  
-  // Determine what to display: show masked if we have original, user hasn't typed, and value matches original
-  const shouldShowMasked = hasOriginal && !isTyping && value === originalValue;
-  const displayValue = shouldShowMasked ? maskSecretValue(originalValue, fieldSchema) : (value || "");
-  const inputType = shouldShowMasked ? "text" : "password";
+  // Display: show masked dots if unchanged, otherwise show actual (password type)
+  const displayValue = (isUnchanged && showMasked) 
+    ? maskSecretValue(originalValue, fieldSchema) 
+    : (value || "");
+  const inputType = (isUnchanged && showMasked) ? "text" : "password";
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newValue = e.target.value;
-    
-    // Mark as typing when user starts typing
-    if (!isTyping) {
-      setIsTyping(true);
+    // User started typing - stop showing masked
+    if (showMasked) {
+      setShowMasked(false);
     }
-    
-    onInputChange(fieldName, newValue);
+    onInputChange(fieldName, e.target.value);
   };
 
   const handleFocus = () => {
-    // When user focuses on masked field, clear it so they can type fresh
-    if (shouldShowMasked) {
-      setIsTyping(true);
+    // When user focuses, stop showing masked so they can type
+    if (showMasked) {
+      setShowMasked(false);
       onInputChange(fieldName, "");
     }
   };

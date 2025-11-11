@@ -129,14 +129,8 @@ export const ElementForm: React.FC<ElementFormProps> = ({
               return;
             }
             
-            // For secret fields in edit mode, store the actual value
-            // SecretInput will handle masking for display
-            if (fieldSchema?.hints?.secret?.hint_type === "secret") {
-              initialData[key] = value;
-              return;
-            }
-            
             // Handle $ref values - extract the rid from $ref:rid format
+            // Note: Secret fields are handled like normal fields - SecretInput handles masking for display
             if (typeof value === "string" && value.startsWith("$ref:")) {
               initialData[key] = value.substring(5); // Remove '$ref:' prefix
             } else if (Array.isArray(value)) {
@@ -507,27 +501,23 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         } else if (!systemFields.includes(fieldName)) {
           // This is a config field
           
-          // For secret fields in edit mode: if value is empty or unchanged, use original
+          // For secret fields in edit mode: if value is empty, use original (user didn't change it)
           let processedValue = value;
           if (fieldSchema?.hints?.secret?.hint_type === "secret" && editingElement) {
             const originalValue = editingElement.config?.[fieldName];
-            if (originalValue !== undefined) {
-              // If value is empty or matches original, user didn't change it - use original
-              if (!value || value === "" || value === originalValue) {
-                processedValue = originalValue;
-              }
+            if (originalValue !== undefined && (!value || value === "")) {
+              processedValue = originalValue;
             }
           }
 
           // Convert reference fields back to $ref:rid format and handle empty values
-          // Note: Secret fields should never be $ref fields, so this logic doesn't apply to them
-          if (fieldSchema && fieldSchema?.hints?.secret?.hint_type !== "secret") {
+          if (fieldSchema) {
             if (fieldSchema.$ref && processedValue && processedValue !== "") {
               if (typeof processedValue === "string" && !processedValue.startsWith("$ref:")) {
                 processedValue = `$ref:${processedValue}`;
               }
             }
-            // Handle anyOf with $ref (not applicable to secret fields)
+            // Handle anyOf with $ref
             else if (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.$ref) && processedValue && processedValue !== "") {
               if (typeof processedValue === "string" && !processedValue.startsWith("$ref:")) {
                 processedValue = `$ref:${processedValue}`;
