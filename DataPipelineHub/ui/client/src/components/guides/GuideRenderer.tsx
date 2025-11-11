@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Copy, Check, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
+import { DownloadFile } from "@/utils/guideLoader";
 
 interface Step {
   step: number;
@@ -13,14 +14,17 @@ interface GuideRendererProps {
   steps: Step[];
   title: string;
   description?: string;
+  downloadFiles?: DownloadFile[];
 }
 
 export const GuideRenderer: React.FC<GuideRendererProps> = ({
   steps,
   title,
   description,
+  downloadFiles = [],
 }) => {
   const [commandCopied, setCommandCopied] = useState(false);
+  const [downloadingFile, setDownloadingFile] = useState<string | null>(null);
 
   const copyCommandToClipboard = (command: string) => {
     navigator.clipboard.writeText(command).then(() => {
@@ -31,21 +35,21 @@ export const GuideRenderer: React.FC<GuideRendererProps> = ({
     });
   };
 
-  const handleDownloadScript = () => {
-    const scriptPath = "/guides/local_mcp.sh";
-    fetch(scriptPath)
+  const handleDownloadFile = (downloadFile: DownloadFile) => {
+    setDownloadingFile(downloadFile.path);
+    fetch(downloadFile.path)
       .then((response) => {
         if (!response.ok) {
           throw new Error(`File not found: ${response.status}`);
         }
         return response.text();
       })
-      .then((scriptContent) => {
-        const blob = new Blob([scriptContent], { type: "text/plain" });
+      .then((fileContent) => {
+        const blob = new Blob([fileContent], { type: "text/plain" });
         const url = window.URL.createObjectURL(blob);
         const link = document.createElement("a");
         link.href = url;
-        link.download = "local_mcp.txt";
+        link.download = downloadFile.filename;
         link.style.display = "none";
         document.body.appendChild(link);
         link.click();
@@ -53,11 +57,29 @@ export const GuideRenderer: React.FC<GuideRendererProps> = ({
         setTimeout(() => {
           document.body.removeChild(link);
           window.URL.revokeObjectURL(url);
+          setDownloadingFile(null);
         }, 100);
       })
       .catch((error) => {
         console.error("Download failed:", error);
+        setDownloadingFile(null);
       });
+  };
+
+  // Find matching download file for a code block
+  const findMatchingDownloadFile = (codeString: string): DownloadFile | null => {
+    if (!downloadFiles || downloadFiles.length === 0) {
+      return null;
+    }
+    
+    // Check if any download file has a trigger pattern that matches the code
+    for (const downloadFile of downloadFiles) {
+      if (downloadFile.trigger && codeString.includes(downloadFile.trigger)) {
+        return downloadFile;
+      }
+    }
+    
+    return null;
   };
 
   // Extract code blocks from markdown and handle special actions
@@ -70,23 +92,24 @@ export const GuideRenderer: React.FC<GuideRendererProps> = ({
             const codeString = String(children).replace(/\n$/, "");
             
             if (!inline && match) {
-              // Check if this is a bash script block that should have download button
-              const isBashScript = match[1] === "bash" && codeString.includes("local_mcp.sh");
+              // Check if there's a matching download file for this code block
+              const matchingDownloadFile = findMatchingDownloadFile(codeString);
               
               return (
                 <div className="relative">
                   <div className="absolute top-2 right-2 flex gap-2 z-10">
-                    {isBashScript && (
+                    {matchingDownloadFile && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={handleDownloadScript}
+                        onClick={() => handleDownloadFile(matchingDownloadFile)}
+                        disabled={downloadingFile === matchingDownloadFile.path}
                         className="h-7 px-2 text-xs bg-background-dark/80 hover:bg-background-dark"
-                        title="Download script"
+                        title={matchingDownloadFile.label || `Download ${matchingDownloadFile.filename}`}
                       >
-                        <Download className="w-3 h-3 mr-1" />
-                        Download
+                        <Download className={`w-3 h-3 mr-1 ${downloadingFile === matchingDownloadFile.path ? 'animate-pulse' : ''}`} />
+                        {matchingDownloadFile.label || 'Download'}
                       </Button>
                     )}
                     <Button

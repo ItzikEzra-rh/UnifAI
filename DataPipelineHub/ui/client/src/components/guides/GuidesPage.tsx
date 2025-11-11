@@ -237,6 +237,7 @@ export const GuidesPage: React.FC = () => {
                       title={selectedGuide.title}
                       description={selectedGuide.description}
                       steps={selectedGuide.steps}
+                      downloadFiles={selectedGuide.download_files}
                     />
                   </div>
                 ) : (

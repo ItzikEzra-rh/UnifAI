@@ -4,6 +4,11 @@ description: "Complete guide to set up a Google Workspace MCP server for UnifAI"
 category: "providers"
 section: "agentic-inventory"
 order: 1
+download_files:
+  - path: "/guides/agentic-inventory/providers/google_workspace_mcp_script.sh"
+    filename: "google_workspace_mcp_script.sh"
+    label: "Download Script"
+    trigger: "google_workspace_mcp_script.sh"
 steps:
   - step: 1
     title: "Extract Credentials from Google Console"

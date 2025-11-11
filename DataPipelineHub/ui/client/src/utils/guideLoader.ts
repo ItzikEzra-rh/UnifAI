@@ -2,6 +2,13 @@
 // Loads YAML guide files and converts them to structured data
 import yaml from "js-yaml";
 
+export interface DownloadFile {
+  path: string;
+  filename: string;
+  label?: string;
+  trigger?: string; // Optional: text pattern to match in code blocks to show download button
+}
+
 export interface Guide {
   guide_title: string;
   title: string;
@@ -9,6 +16,7 @@ export interface Guide {
   category: string;
   section: string;
   order: number;
+  download_files?: DownloadFile[]; // Optional: list of downloadable files
   steps: Array<{
     step: number;
     title: string;
@@ -36,6 +44,7 @@ export const parseYAML = (yamlText: string): Guide | null => {
       category: parsed.category || "",
       section: parsed.section || "",
       order: parsed.order || 0,
+      download_files: parsed.download_files || [],
       steps: (parsed.steps || []).map((step: any) => ({
         step: step.step || 0,
         title: step.title || "",
