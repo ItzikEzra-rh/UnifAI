@@ -189,7 +189,7 @@ export default function UserWorkspace() {
             <AlertDialogDescription>
               Are you sure you want to delete "{elementToDelete?.name || `${selectedElementType?.name || 'Element'} Instance`}"?
               <br /><br />
-              <strong>This action cannot be undone.</strong>
+              <strong>Be aware that this action is irreversible.</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
