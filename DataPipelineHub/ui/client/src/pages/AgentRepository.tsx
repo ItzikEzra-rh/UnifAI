@@ -118,8 +118,7 @@ export default function UserWorkspace() {
                         className="border-gray-700 hover:bg-background-dark"
                         title="View guides"
                       >
-                        <Info className="h-4 w-4 mr-2" />
-                        Guides
+                        <Info className="h-4 w-4" />
                       </Button>
                       <Button 
                         onClick={handleCreateNew}

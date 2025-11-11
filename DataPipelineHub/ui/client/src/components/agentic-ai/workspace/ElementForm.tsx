@@ -958,46 +958,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
               </Badge>
             )}
           </Label>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 px-2 text-xs text-primary hover:text-primary/80 hover:bg-primary/10"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      const guidePath = "/guides/mcp-server-setup-guide.md";
-                      // Try to download the guide file
-                      fetch(guidePath)
-                        .then((response) => {
-                          if (!response.ok) {
-                            throw new Error("File not found");
-                          }
-                          return response.blob();
-                        })
-                        .then((blob) => {
-                          const url = window.URL.createObjectURL(blob);
-                          const link = document.createElement("a");
-                          link.href = url;
-                          link.download = "mcp-server-setup-guide.md";
-                          document.body.appendChild(link);
-                          link.click();
-                          document.body.removeChild(link);
-                          window.URL.revokeObjectURL(url);
-                        })
-                        .catch(() => {
-                          // If download fails, try opening in new tab
-                          window.open(guidePath, "_blank");
-                        });
-                    }}
-                  >
-                    
-                  </Button>
-                </TooltipTrigger>
-              </Tooltip>
-            </TooltipProvider>
           
         </div>
         <Input
