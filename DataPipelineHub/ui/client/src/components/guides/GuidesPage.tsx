@@ -71,7 +71,6 @@ export const GuidesPage: React.FC = () => {
     return allGuides.filter(guide => 
       guide.guide_title.toLowerCase().includes(query) ||
       guide.title.toLowerCase().includes(query)
-      // (guide.description && guide.description.toLowerCase().includes(query)) // <-- COMMENT THIS OUT TO TEST
     );
   }, [allGuides, searchQuery]);
 
