@@ -161,12 +161,6 @@ export default function SlackIntegration() {
     setActiveEmbedding(prev => new Set([...Array.from(prev), ...channelIds]));
 
     refetchStats();
-
-    toast({
-      title: "🚀 Embedding Started",
-      description: `Processing ${channelIds.length} channel${channelIds.length > 1 ? 's' : ''}. This may take a few minutes.`,
-      variant: "default",
-    });
   }, [refetchStats, toast]);
 
   const trackEmbeddingComplete = useCallback((channelIds: string[]) => {

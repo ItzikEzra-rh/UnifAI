@@ -1,4 +1,6 @@
 from typing import Optional, Dict, Any, Tuple, List
+import time
+from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from services.slack.channel_bot_installation_checker import ChannelBotInstallationChecker
 from common.interfaces import DataSourceValidator, ValidationIssue
 from shared.logger import logger
@@ -30,17 +32,28 @@ class ChannelBotInstallationValidator(DataSourceValidator):
         try:
             # Always check with Slack API via the checker, regardless of cached is_app_member
             is_member = self._checker.is_bot_installed_in_channel(channel_id)
+            # cache result for follow-up update without re-calling the checker
+            self.update_bot_membership(channel_id, is_member)
             if not is_member:
                 return False, self.build_issue(
                     self.error_message.format(channel_name=channel_name or channel_id)
                 )
 
             return True, None
-
         except Exception as e:
-            # Any unexpected error should not block the flow
             logger.error(f"SlackAppInstalledValidator: unexpected error validating {channel_id}: {e}")
             return True, None
+
+    def update_bot_membership(self, channel_id: str, is_member: bool) -> bool:
+        """
+        Update the bot membership flag in the channels repository using the most recent
+        validation result (if available). Falls back to checking once if no cached value exists.
+        """
+        try:
+            return bool(get_mongo_storage().slack_channels.update_membership(channel_id=channel_id, is_member=is_member, timestamp=time.time()))
+        except Exception as e:
+            logger.warning(f"ChannelBotInstallationValidator: failed to update membership for {channel_id}: {e}")
+            return False
 
 
 def build_slack_validators(_mongo_storage: Any) -> List[DataSourceValidator]:
