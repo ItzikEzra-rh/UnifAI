@@ -215,21 +215,8 @@ class SlackConnector(DataConnector):
             batch_channels = []
             for channel in response.get('channels', []):
                 # Determine membership: prefer value from conversations.list, else query conversations.info
-                is_app_member = None
-                if 'is_member' in channel:
-                    is_app_member = bool(channel.get('is_member'))
-                else:
-                    try:
-                        info_resp = self._make_api_request("conversations.info", {"channel": channel.get('id')})
-                        if info_resp.get('ok'):
-                            is_app_member = bool((info_resp.get('channel') or {}).get('is_member'))
-                        else:
-                            is_app_member = False
-                    except Exception:
-                        # If we fail to fetch info, assume not a member to avoid over-permissioning
-                        is_app_member = False
 
-                channel_data = self._mongo_storage.slack_channels.create_channel_document(channel, self._project_id, is_app_member)
+                channel_data = self._mongo_storage.slack_channels.create_channel_document(channel, self._project_id)
                 channels.append(channel_data)
                 batch_channels.append(channel_data)
             
@@ -362,8 +349,7 @@ class SlackConnector(DataConnector):
             # Process channels from current page
             for channel in response.get('channels', []):
                 # Use membership flag from payload if available
-                is_app_member = channel.get('is_member') if 'is_member' in channel else None
-                channel_data = self._mongo_storage.slack_channels.create_channel_document(channel, self._project_id, is_app_member)
+                channel_data = self._mongo_storage.slack_channels.create_channel_document(channel, self._project_id)
                 channels.append(channel_data)
             
             # Check if there are more pages

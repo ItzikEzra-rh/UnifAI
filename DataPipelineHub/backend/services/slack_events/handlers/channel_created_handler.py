@@ -43,7 +43,6 @@ class ChannelCreatedEventHandler(SlackEventHandler):
             channel_doc = self._repo.create_channel_document(
                 channel_info,
                 "example-project",
-                is_app_member=False,
             )
             channel_doc["last_updated"] = event_time
 

@@ -105,7 +105,7 @@ class SlackChannelsRepository:
         """Check if there are any cached channels for the project."""
         return self.col.count_documents({"project_id": project_id}) > 0
 
-    def create_channel_document(self, channel: Dict[str, Any], project_id: str, is_app_member: Optional[bool] = None) -> Dict[str, Any]:
+    def create_channel_document(self, channel: Dict[str, Any], project_id: str) -> Dict[str, Any]:
         """Create a channel document with standard fields, including membership info if available."""
         return {
             'channel_id': channel.get('id'),
@@ -114,7 +114,7 @@ class SlackChannelsRepository:
             'is_private': channel.get('is_private', False),
             'project_id': project_id,
             # Prefer provided membership, else fall back to Slack payload if present
-            'is_app_member': bool(is_app_member) if is_app_member is not None else bool(channel.get('is_member')),
+            'is_app_member': bool(channel.get('is_member', False)),
             'last_updated': time.time()
         }
 
