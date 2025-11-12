@@ -62,7 +62,7 @@ export const GuidesPage: React.FC = () => {
     return Object.values(guidesByCategory).flat();
   }, [guidesByCategory]);
 
-  // Filter guides by search query
+// Filter guides by search query
   const filteredGuides = useMemo(() => {
     if (!searchQuery.trim()) {
       return allGuides;
@@ -70,8 +70,8 @@ export const GuidesPage: React.FC = () => {
     const query = searchQuery.toLowerCase();
     return allGuides.filter(guide => 
       guide.guide_title.toLowerCase().includes(query) ||
-      guide.title.toLowerCase().includes(query) ||
-      (guide.description && guide.description.toLowerCase().includes(query))
+      guide.title.toLowerCase().includes(query)
+      // (guide.description && guide.description.toLowerCase().includes(query)) // <-- COMMENT THIS OUT TO TEST
     );
   }, [allGuides, searchQuery]);
 
@@ -147,7 +147,7 @@ export const GuidesPage: React.FC = () => {
         <main className="flex-1 overflow-hidden p-6 bg-background-dark flex flex-col">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
             {/* Left Navigation Panel */}
-            <div className="lg:col-span-3 flex flex-col">
+            <div className="lg:col-span-2 flex flex-col">
               <Card className="bg-background-card border-gray-800 h-full flex flex-col">
                 <CardContent className="p-4 flex flex-col flex-1 overflow-hidden">
                   <h2 className="text-lg font-semibold text-foreground mb-4">Sections</h2>
@@ -187,7 +187,7 @@ export const GuidesPage: React.FC = () => {
                         placeholder="Search guides..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="bg-background-dark"
+                        className="bg-background-dark w-full focus-visible:ring-0 focus-visible:border-primary focus-visible:border-2"
                       />
                     </div>
                     <div className="space-y-1 flex-1 overflow-y-auto">
@@ -198,7 +198,7 @@ export const GuidesPage: React.FC = () => {
                             onClick={() => setSelectedGuide(guide)}
                             className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
                               selectedGuide?.guide_title === guide.guide_title
-                                ? "bg-primary text-white"
+                                ? "bg-primary/30 text-white"
                                 : "text-muted-foreground hover:bg-background-dark hover:text-foreground"
                             }`}
                           >
@@ -217,7 +217,7 @@ export const GuidesPage: React.FC = () => {
             </div>
 
             {/* Right Content Area */}
-            <div className="lg:col-span-9 flex flex-col min-h-0">
+            <div className="lg:col-span-10 flex flex-col min-h-0">
               <div className="flex-1 overflow-y-auto rounded-lg bg-background-card/60 backdrop-blur-sm border border-gray-700/50 min-h-0">
                 {!hasGuides ? (
                   <div className="p-12 text-center flex items-center justify-center min-h-full">
