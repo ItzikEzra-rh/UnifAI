@@ -56,7 +56,7 @@ export async function fetchAvailableSlackChannels(
       channel_name: c.channel_name,
       channel_id: c.channel_id,
       is_private: c.is_private,
-      is_app_member: (c as any).is_app_member,
+      is_app_member: c.is_app_member,
     })),
     nextCursor: data.nextCursor,
     hasMore: data.hasMore,
