@@ -255,16 +255,13 @@ class SlackConnector(DataConnector):
             #     return self._fallback_with_pagination(types, cursor, limit)
             
             # Get channels from repository with pagination
-            result = self._mongo_storage.slack_channels.get_channels_with_pagination(
+            return self._mongo_storage.slack_channels.get_channels_with_pagination(
                 project_id=self._project_id,
                 types=types,
                 cursor=cursor,
                 limit=limit,
                 search_regex=search_regex
             )
-            # Ensure API response includes is_app_member flag for UI
-            # Documents already contain 'is_app_member' from cache
-            return result
             
         except Exception as e:
             logger.error(f"Error retrieving channels from cache: {str(e)}")
@@ -348,7 +345,6 @@ class SlackConnector(DataConnector):
             
             # Process channels from current page
             for channel in response.get('channels', []):
-                # Use membership flag from payload if available
                 channel_data = self._mongo_storage.slack_channels.create_channel_document(channel, self._project_id)
                 channels.append(channel_data)
             
