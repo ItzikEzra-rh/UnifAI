@@ -8,27 +8,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Badge } from "@/components/ui/badge";
 import {
   ElementType,
   ElementSchema,
   ElementInstance,
 } from "../../../types/workspace";
 import { useWorkspaceData } from "../../../hooks/useWorkspaceData";
-import { FieldValidation } from "./FieldValidation";
-import { FieldPopulation } from "./FieldPopulation";
-import { SecretInput } from "./SecretInput";
+import { FieldRenderer } from "./FieldRenderer";
 
 interface ElementFormProps {
   isOpen: boolean;
@@ -130,7 +116,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             }
             
             // Handle $ref values - extract the rid from $ref:rid format
-            // Note: Secret fields are handled like normal fields - SecretInput handles masking for display
+            // Note: Secret fields are handled like normal fields - FieldRenderer handles masking for display
             if (typeof value === "string" && value.startsWith("$ref:")) {
               initialData[key] = value.substring(5); // Remove '$ref:' prefix
             } else if (Array.isArray(value)) {
@@ -593,412 +579,30 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     const populateHint = fieldSchema.hints?.action?.hint_type === 'populate' ? fieldSchema.hints.action : null;
     const isSecret = fieldSchema?.hints?.secret?.hint_type === "secret";
 
-    // Handle secret fields first - they always use SecretInput regardless of field type
-    if (isSecret) {
-      return <SecretInput
-              fieldName={fieldName}
-              fieldSchema={fieldSchema}
-              value={value}
-              isRequired={isRequired}
-              validationHint={validationHint}
-              populateHint={populateHint}
-              editingElement={editingElement}
-              elementActions={elementActions}
-              elementType={elementType}
-              formData={formData}
-              onInputChange={handleInputChange}
-              onValidationChange={handleValidationChange}
-              onPopulateResult={handlePopulateResult}
-            />
-    }
-
-    // Handle array fields with $ref items (multi-select dropdown)
-    if (isArrayWithRefItems(fieldSchema)) {
-      const itemsSchema = getArrayItemsSchema(fieldSchema);
-      const category = extractCategoryFromField(fieldSchema);
-
-      if (!category) {
-        console.warn(`No category found for array field ${fieldName}`);
-        return null;
-      }
-
-      const validOptions = (refOptions[category] || []).filter(
-        (option: any) => option.rid && option.rid.trim() !== "",
-      );
-
-      return (
-        <div key={fieldName} className="space-y-2">
-          <Label htmlFor={fieldName}>
-            {fieldName} {isRequired && <span className="text-red-400">*</span>}
-            {category && (
-              <Badge variant="outline" className="ml-2 text-xs">
-                {category}
-              </Badge>
-            )}
-          </Label>
-          <div className="space-y-2">
-            <Select
-              value=""
-              onValueChange={(newValue) => {
-                if (newValue && newValue !== "__no_options_disabled__") {
-                  const currentArray = formData[fieldName] || [];
-                  if (!currentArray.includes(newValue)) {
-                    handleInputChange(fieldName, [...currentArray, newValue]);
-                  }
-                }
-              }}
-            >
-              <SelectTrigger className="bg-background-dark">
-                <SelectValue placeholder={`Add ${category}`} />
-              </SelectTrigger>
-              <SelectContent>
-                {validOptions.map((option: any) => (
-                  <SelectItem key={option.rid} value={option.rid}>
-                    {option.name} ({option.type})
-                  </SelectItem>
-                ))}
-                {validOptions.length === 0 && (
-                  <SelectItem value="__no_options_disabled__" disabled>
-                    No {category} resources available
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-
-            {/* Show selected items */}
-            {value && Array.isArray(value) && value.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {value.map((selectedRid: string, index: number) => {
-                  const selectedOption = validOptions.find(
-                    (opt: any) => opt.rid === selectedRid,
-                  );
-                  return (
-                    <Badge
-                      key={index}
-                      variant="secondary"
-                      className="flex items-center gap-1"
-                    >
-                      {selectedOption
-                        ? `${selectedOption.name} (${selectedOption.type})`
-                        : selectedRid}
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newArray = value.filter(
-                            (_: any, i: number) => i !== index,
-                          );
-                          handleInputChange(fieldName, newArray);
-                        }}
-                        className="ml-1 text-xs hover:text-red-400"
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-          {fieldSchema.description && (
-            <p className="text-xs text-gray-400">{fieldSchema.description}</p>
-          )}
-        </div>
-      );
-    }
-
-    // Handle $ref fields (dropdown selection) - including anyOf with $ref
-    const hasRefField = fieldSchema.$ref || 
-      (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.$ref));
-
-    if (hasRefField) {
-      const category = extractCategoryFromField(fieldSchema);
-
-
-      if (category) {
-        const validOptions = (refOptions[category] || []).filter(
-          (option: any) => option.rid && option.rid.trim() !== "",
-        );
-
-        return (
-          <div key={fieldName} className="space-y-2">
-            <Label htmlFor={fieldName}>
-              {fieldName} {isRequired && <span className="text-red-400">*</span>}
-              {category && (
-                <Badge variant="outline" className="ml-2 text-xs">
-                  {category}
-                </Badge>
-              )}
-            </Label>
-            <Select
-              value={value && value !== "" ? value : undefined}
-              onValueChange={(newValue) => {
-                handleInputChange(fieldName, newValue);
-              }}
-            >
-              <SelectTrigger className="bg-background-dark">
-                <SelectValue placeholder={`Select ${fieldName}`} />
-              </SelectTrigger>
-              <SelectContent>
-                {validOptions.map((option: any) => (
-                  <SelectItem key={option.rid} value={option.rid}>
-                    {option.name} ({option.type})
-                  </SelectItem>
-                ))}
-                {validOptions.length === 0 && (
-                  <SelectItem value="__no_options_disabled__" disabled>
-                    No {category} resources available
-                  </SelectItem>
-                )}
-              </SelectContent>
-            </Select>
-
-            {fieldSchema.description && (
-              <p className="text-xs text-gray-400">{fieldSchema.description}</p>
-            )}
-          </div>
-        );
-      }
-    }
-
-    // Handle object fields (like 'extra')
-    if (fieldSchema.type === "object") {
-      return (
-        <div key={fieldName} className="space-y-2">
-          <Label htmlFor={fieldName}>
-            {fieldName} {isRequired && <span className="text-red-400">*</span>}
-          </Label>
-          <Textarea
-            id={fieldName}
-            value={
-              typeof value === "object" ? JSON.stringify(value, null, 2) : value
-            }
-            onChange={(e) => {
-              try {
-                const parsed = JSON.parse(e.target.value);
-                handleInputChange(fieldName, parsed);
-              } catch (error) {
-                // If invalid JSON, store as string for now
-                handleInputChange(fieldName, e.target.value);
-              }
-            }}
-            rows={6}
-            className="bg-background-dark resize-none font-mono text-sm"
-            placeholder="Enter JSON object (e.g., {})"
-          />
-          {fieldSchema.description && (
-            <p className="text-xs text-gray-400">{fieldSchema.description}</p>
-          )}
-        </div>
-      );
-    }
-
-    // Handle array fields (non-$ref arrays)
-    if (fieldSchema.type === "array") {
-      return (
-        <div key={fieldName} className="space-y-2">
-          <Label>
-            {fieldName} {isRequired && <span className="text-red-400">*</span>}
-          </Label>
-          <div className="space-y-2">
-            {(value || []).map((item: any, index: number) => (
-              <div key={index} className="flex gap-2">
-                <Input
-                  value={item}
-                  onChange={(e) =>
-                    handleArrayChange(fieldName, index, e.target.value)
-                  }
-                  className="bg-background-dark flex-1"
-                  placeholder={`${fieldName} item ${index + 1}`}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => removeArrayItem(fieldName, index)}
-                >
-                  Remove
-                </Button>
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => addArrayItem(fieldName)}
-            >
-              Add {fieldName}
-            </Button>
-          </div>
-          {fieldSchema.description && (
-            <p className="text-xs text-gray-400">{fieldSchema.description}</p>
-          )}
-        </div>
-      );
-    }
-
-    // Handle boolean fields
-    if (fieldSchema.type === "boolean") {
-      return (
-        <div key={fieldName} className="space-y-2">
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id={fieldName}
-              checked={value}
-              onCheckedChange={(checked) =>
-                handleInputChange(fieldName, checked)
-              }
-            />
-            <Label htmlFor={fieldName}>
-              {fieldName}{" "}
-              {isRequired && <span className="text-red-400">*</span>}
-            </Label>
-          </div>
-          {fieldSchema.description && (
-            <p className="text-xs text-gray-400">{fieldSchema.description}</p>
-          )}
-        </div>
-      );
-    }
-
-    // Handle number fields (including anyOf with integer/number types)
-    const isNumberField = fieldSchema.type === "integer" || 
-      fieldSchema.type === "number" ||
-      (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => 
-        option.type === "integer" || option.type === "number"
-      ));
-
-    if (isNumberField) {
-      return (
-        <div key={fieldName} className="space-y-2">
-          <Label htmlFor={fieldName}>
-            {fieldName} {isRequired && <span className="text-red-400">*</span>}
-          </Label>
-          <Input
-            id={fieldName}
-            type="number"
-            value={value || ""}
-            onChange={(e) => {
-              const numValue = e.target.value === "" ? null : parseFloat(e.target.value);
-              handleInputChange(fieldName, numValue);
-            }}
-            className="bg-background-dark"
-            placeholder={fieldSchema.description}
-          />
-          {fieldSchema.description && (
-            <p className="text-xs text-gray-400">{fieldSchema.description}</p>
-          )}
-        </div>
-      );
-    }
-
-    // Handle long text fields
-    if (
-      fieldName.includes("message") ||
-      fieldName.includes("prompt") ||
-      fieldName.includes("description")
-    ) {
-      return (
-        <div key={fieldName} className="space-y-2">
-          <Label htmlFor={fieldName}>
-            {fieldName} {isRequired && <span className="text-red-400">*</span>}
-            {validationHint && (
-              <Badge variant="outline" className="ml-2 text-xs">
-                validation
-              </Badge>
-            )}
-            {populateHint && (
-              <Badge variant="outline" className="ml-2 text-xs">
-                populate
-              </Badge>
-            )}
-          </Label>
-          <Textarea
-            id={fieldName}
-            value={value}
-            onChange={(e) => handleInputChange(fieldName, e.target.value)}
-            rows={4}
-            className="bg-background-dark resize-none"
-            placeholder={fieldSchema.description}
-            readOnly={!!populateHint}
-            disabled={!!populateHint}
-          />
-          {validationHint && (
-            <FieldValidation
-              fieldName={fieldName}
-              fieldValue={value}
-              validationHint={validationHint}
-              elementActions={elementActions}
-              selectedElementType={elementType}
-              onValidationChange={handleValidationChange}
-            />
-          )}
-          {populateHint && (
-            <FieldPopulation
-              fieldName={fieldName}
-              populateHint={populateHint}
-              elementActions={elementActions}
-              selectedElementType={elementType}
-              formData={formData}
-              onPopulateResult={handlePopulateResult}
-            />
-          )}
-          {fieldSchema.description && (
-            <p className="text-xs text-gray-400">{fieldSchema.description}</p>
-          )}
-        </div>
-      );
-    }
-
-    // Handle regular string fields
     return (
-      <div key={fieldName} className="space-y-2">
-        <Label htmlFor={fieldName}>
-          {fieldName} {isRequired && <span className="text-red-400">*</span>}
-          {validationHint && (
-            <Badge variant="outline" className="ml-2 text-xs">
-              validation
-            </Badge>
-          )}
-          {populateHint && (
-            <Badge variant="outline" className="ml-2 text-xs">
-              populate
-            </Badge>
-          )}
-        </Label>
-        <Input
-          id={fieldName}
-          type="text"
-          value={value}
-          onChange={(e) => handleInputChange(fieldName, e.target.value)}
-          className="bg-background-dark"
-          placeholder={fieldSchema.description}
-          readOnly={!!populateHint}
-          disabled={!!populateHint}
-        />
-        {validationHint && (
-          <FieldValidation
-            fieldName={fieldName}
-            fieldValue={value}
-            validationHint={validationHint}
-            elementActions={elementActions}
-            selectedElementType={elementType}
-            onValidationChange={handleValidationChange}
-          />
-        )}
-        {populateHint && (
-          <FieldPopulation
-            fieldName={fieldName}
-            populateHint={populateHint}
-            elementActions={elementActions}
-            selectedElementType={elementType}
-            formData={formData}
-            onPopulateResult={handlePopulateResult}
-          />
-        )}
-        {fieldSchema.description && (
-          <p className="text-xs text-gray-400">{fieldSchema.description}</p>
-        )}
-      </div>
+      <FieldRenderer
+        fieldName={fieldName}
+        fieldSchema={fieldSchema}
+        value={value}
+        isRequired={isRequired}
+        validationHint={validationHint}
+        populateHint={populateHint}
+        editingElement={editingElement}
+        elementActions={elementActions}
+        elementType={elementType}
+        formData={formData}
+        refOptions={refOptions}
+        fieldType={isSecret ? "secret" : "public"}
+        isArrayWithRefItems={isArrayWithRefItems}
+        getArrayItemsSchema={getArrayItemsSchema}
+        extractCategoryFromField={extractCategoryFromField}
+        onInputChange={handleInputChange}
+        onArrayChange={handleArrayChange}
+        onAddArrayItem={addArrayItem}
+        onRemoveArrayItem={removeArrayItem}
+        onValidationChange={handleValidationChange}
+        onPopulateResult={handlePopulateResult}
+      />
     );
   };
 
