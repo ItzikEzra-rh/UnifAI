@@ -73,9 +73,10 @@ class FinalAnswerNode(IEMCapableMixin, BaseNode):
             result = self._collected_results[0]
             content = result.content
             
-            # Check if execution failed and append error if not already in content
+            # Check if execution failed and append error if not already the same as content
             if not result.success and result.error:
-                if result.error.lower() not in content.lower():
+                # Only skip if error exactly equals content (avoid duplication)
+                if result.error.lower().strip() != content.lower().strip():
                     # If content is empty, use error as the main content
                     if not content or content.strip() == "":
                         content = f"ERROR: {result.error}"
@@ -102,7 +103,8 @@ class FinalAnswerNode(IEMCapableMixin, BaseNode):
             else:
                 # Collect error information
                 error_info = content
-                if result.error and result.error.lower() not in content.lower():
+                # Only append error if it's not exactly the same as content
+                if result.error and result.error.lower().strip() != content.lower().strip():
                     error_info = f"{content}\nERROR: {result.error}" if content else f"ERROR: {result.error}"
                 
                 if error_info and error_info not in seen_errors:

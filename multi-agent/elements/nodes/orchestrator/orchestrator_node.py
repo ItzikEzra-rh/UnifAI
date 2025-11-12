@@ -296,10 +296,10 @@ class OrchestratorNode(
                 # Only add error indicator if:
                 # 1. Execution was not successful
                 # 2. Error message exists
-                # 3. Content doesn't already contain the error (avoid duplication)
+                # 3. Error is not exactly the same as content (avoid duplication)
                 if not task.result.success and task.result.error:
-                    # Check if error is not already in content (case insensitive)
-                    if task.result.error.lower() not in response_content.lower():
+                    # Only skip if error exactly equals content (case insensitive with strip)
+                    if task.result.error.lower().strip() != response_content.lower().strip():
                         # If content is empty, use error as content
                         if not response_content or response_content.strip() == "":
                             response_content = f"ERROR: {task.result.error}"
