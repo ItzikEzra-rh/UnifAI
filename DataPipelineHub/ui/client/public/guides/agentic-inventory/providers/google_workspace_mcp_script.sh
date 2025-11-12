@@ -590,24 +590,49 @@ fi
 # Check if docker-compose or podman-compose is installed
 print_step "Checking compose tool..."
 COMPOSE_CMD=""
+COMPOSE_TYPE=""
+
+# Function to execute compose commands (handles both plugin and standalone versions)
+run_compose() {
+    if [ "$COMPOSE_TYPE" = "plugin" ]; then
+        # Plugin version: docker compose or podman compose
+        $CONTAINER_CMD compose "$@"
+    else
+        # Standalone version: docker-compose or podman-compose
+        $COMPOSE_CMD "$@"
+    fi
+}
 
 if [ "$CONTAINER_CMD" = "docker" ]; then
-    if command -v docker-compose &> /dev/null; then
-        COMPOSE_CMD="docker-compose"
-        print_success "docker-compose is installed"
-    elif docker compose version &> /dev/null; then
-        COMPOSE_CMD="docker compose"
+    # Prefer plugin version (docker compose) - modern standard
+    if docker compose version &> /dev/null; then
+        COMPOSE_TYPE="plugin"
+        COMPOSE_CMD="docker"  # Store base command only
         print_success "docker compose (plugin) is installed"
+    elif command -v docker-compose &> /dev/null; then
+        COMPOSE_TYPE="standalone"
+        COMPOSE_CMD="docker-compose"
+        print_success "docker-compose (standalone) is installed"
     else
-        print_error "docker-compose is not installed. Please install it to continue."
+        print_error "docker compose is not installed. Please install it to continue."
+        echo ""
+        echo "Install Docker Compose: https://docs.docker.com/compose/install/"
         exit 1
     fi
 else
-    if command -v podman-compose &> /dev/null; then
+    # Podman: prefer plugin version (podman compose) if available
+    if podman compose version &> /dev/null 2>&1; then
+        COMPOSE_TYPE="plugin"
+        COMPOSE_CMD="podman"  # Store base command only
+        print_success "podman compose (plugin) is installed"
+    elif command -v podman-compose &> /dev/null; then
+        COMPOSE_TYPE="standalone"
         COMPOSE_CMD="podman-compose"
-        print_success "podman-compose is installed"
+        print_success "podman-compose (standalone) is installed"
     else
-        print_error "podman-compose is not installed. Please install it to continue."
+        print_error "podman compose is not installed. Please install it to continue."
+        echo ""
+        echo "Install podman-compose: https://github.com/containers/podman-compose"
         exit 1
     fi
 fi
@@ -702,7 +727,7 @@ echo ""
 print_step "Starting Google Workspace MCP Server..."
 echo ""
 
-if $COMPOSE_CMD up -d; then
+if run_compose up -d; then
     echo ""
     print_success "🚀 Google Workspace MCP Server is now running in the background!"
     echo ""
@@ -711,10 +736,17 @@ if $COMPOSE_CMD up -d; then
     echo "  • OAuth Callback: http://$LOCAL_IP:8000/oauth2callback"
     echo ""
     print_info "Useful Commands:"
-    echo "  • View logs:        $COMPOSE_CMD logs -f"
-    echo "  • Stop server:      $COMPOSE_CMD down"
-    echo "  • Restart server:   $COMPOSE_CMD restart"
-    echo "  • View status:      $COMPOSE_CMD ps"
+    if [ "$COMPOSE_TYPE" = "plugin" ]; then
+        echo "  • View logs:        $CONTAINER_CMD compose logs -f"
+        echo "  • Stop server:      $CONTAINER_CMD compose down"
+        echo "  • Restart server:   $CONTAINER_CMD compose restart"
+        echo "  • View status:      $CONTAINER_CMD compose ps"
+    else
+        echo "  • View logs:        $COMPOSE_CMD logs -f"
+        echo "  • Stop server:      $COMPOSE_CMD down"
+        echo "  • Restart server:   $COMPOSE_CMD restart"
+        echo "  • View status:      $COMPOSE_CMD ps"
+    fi
     echo ""
     
     if [ "$ENABLE_SERVICES" = true ]; then
@@ -722,7 +754,7 @@ if $COMPOSE_CMD up -d; then
         echo ""
     fi
 else
-    print_error "Failed to start the server with $COMPOSE_CMD"
+    print_error "Failed to start the server"
     exit 1
 fi
 
