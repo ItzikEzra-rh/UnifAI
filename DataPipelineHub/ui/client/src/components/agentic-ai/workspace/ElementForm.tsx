@@ -490,33 +490,38 @@ export const ElementForm: React.FC<ElementFormProps> = ({
 
           // Convert reference fields back to $ref:rid format and handle empty values
           if (fieldSchema) {
-            if (fieldSchema.$ref && processedValue && processedValue !== "") {
-              processedValue = `$ref:${processedValue}`;
+            if (
+              fieldSchema.$ref &&
+              value &&
+              value !== ""
+            ) {
+              processedValue = `$ref:${value}`;
             }
             // Handle anyOf with $ref
-            else if (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.$ref) && processedValue && processedValue !== "") {
-              if (typeof processedValue === "string" && !processedValue.startsWith("$ref:")) {
-                processedValue = `$ref:${processedValue}`;
-              }
+            else if (
+              fieldSchema.anyOf &&
+              fieldSchema.anyOf.some((option: any) => option.$ref) &&
+              value &&
+              value !== ""
+            ) {
+              processedValue = `$ref:${value}`;
             }
             // Handle array fields with $ref items
             else if (
               isArrayWithRefItems(fieldSchema) &&
-              Array.isArray(processedValue)
+              Array.isArray(value)
             ) {
-              processedValue = processedValue.map((rid: string) => 
-                typeof rid === "string" && !rid.startsWith("$ref:") ? `$ref:${rid}` : rid
-              );
+              processedValue = value.map((rid: string) => `$ref:${rid}`);
             }
             // Handle empty values based on field type
             else {
               // For array fields, ensure empty arrays instead of empty strings or null
               if (fieldSchema.type === "array" || 
                   (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.type === "array"))) {
-                if (!processedValue || processedValue === "" || (Array.isArray(processedValue) && processedValue.length === 0)) {
+                if (!value || value === "" || (Array.isArray(value) && value.length === 0)) {
                   processedValue = [];
-                } else if (Array.isArray(processedValue)) {
-                  processedValue = processedValue;
+                } else if (Array.isArray(value)) {
+                  processedValue = value;
                 } else {
                   processedValue = [];
                 }
@@ -524,19 +529,19 @@ export const ElementForm: React.FC<ElementFormProps> = ({
               // For string fields, ensure empty strings instead of null
               else if (fieldSchema.type === "string" || 
                        (fieldSchema.anyOf && fieldSchema.anyOf.some((option: any) => option.type === "string"))) {
-                if (processedValue === null || processedValue === undefined) {
+                if (value === null || value === undefined) {
                   processedValue = "";
                 } else {
-                  processedValue = processedValue;
+                  processedValue = value;
                 }
               }
               // For other types, keep the original value but handle null/undefined
               else {
-                if (processedValue === null || processedValue === undefined) {
+                if (value === null || value === undefined) {
                   // Skip this field entirely for null/undefined values in non-string, non-array fields
                   return;
                 }
-                processedValue = processedValue;
+                processedValue = value;
               }
             }
           }
