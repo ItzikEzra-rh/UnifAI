@@ -301,7 +301,7 @@ class OrchestratorNode(
                     # Only skip if error exactly equals content (case insensitive with strip)
                     if task.result.error.lower().strip() != response_content.lower().strip():
                         # If content is empty, use error as content
-                        if not response_content or response_content.strip() == "":
+                        if not response_content.strip():
                             response_content = f"ERROR: {task.result.error}"
                         else:
                             # Append error to existing content
