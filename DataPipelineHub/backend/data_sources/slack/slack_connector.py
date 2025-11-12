@@ -214,8 +214,6 @@ class SlackConnector(DataConnector):
             # Process channels from current page
             batch_channels = []
             for channel in response.get('channels', []):
-                # Determine membership: prefer value from conversations.list, else query conversations.info
-
                 channel_data = self._mongo_storage.slack_channels.create_channel_document(channel, self._project_id)
                 channels.append(channel_data)
                 batch_channels.append(channel_data)
