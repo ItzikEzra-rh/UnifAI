@@ -8,32 +8,34 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Any, Optional
 
-
 @dataclass(frozen=True)
-class EventContext:
+class BaseSlackEvent:
     """
-    Structured representation of a Slack event.
-    
-    Provides a consistent interface for accessing event data regardless of event type.
+    Minimal base for typed Slack events.
     """
-    type: str                           # Event type (e.g., 'member_joined_channel')
-    channel_id: Optional[str]           # Channel where the event occurred
-    user_id: Optional[str]              # User who joined/left (or actor_id fallback)
-    actor_id: Optional[str]             # User who performed the action (if present)
-    event_ts: Optional[str]             # Event timestamp from Slack
-    raw: Dict[str, Any]                 # Raw event data for additional fields
+    type: str
+    event_ts: Optional[str]
 
 
 @dataclass(frozen=True)
-class BotEventInfo:
+class ChannelCreatedEvent(BaseSlackEvent):
     """
-    Information about a bot-related event.
-    
-    Contains the essential information needed to process bot membership changes.
+    Typed model for Slack 'channel_created' event payload.
     """
-    bot_user_id: str                    # Bot user ID from authorizations
-    channel_id: str                     # Channel involved in the event
-    is_member: bool                     # Whether bot is joining (True) or leaving (False)
-    event_time: float                   # Resolved event timestamp
-    event_type: str                     # Original event type
-    actor_id: Optional[str] = None      # User who performed the action (optional)
+    channel_id: str
+    channel_name: str
+    is_private: bool
+    channel_raw: Dict[str, Any]
+
+    @classmethod
+    def from_payload(cls, payload: Dict[str, Any]) -> "ChannelCreatedEvent":
+        e = payload.get("event") or {}
+        ch = e.get("channel") or {}
+        return cls(
+            type=e.get("type"),
+            event_ts=e.get("event_ts"),
+            channel_id=ch.get("id"),
+            channel_name=ch.get("name"),
+            is_private=bool(ch.get("is_private", False)),
+            channel_raw=ch,
+        )

@@ -1,6 +1,6 @@
 from typing import Optional, Tuple
 from shared.logger import logger
-from services.slack_events.slack_channel_service import SlackChannelStorageService
+from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from providers.slack.slack import _get_configured_connector
 
 
@@ -10,7 +10,7 @@ class ChannelBotInstallationChecker:
     """
 
     def __init__(self) -> None:
-        self._channel_service = SlackChannelStorageService()
+        self._repo = get_mongo_storage().slack_channels
 
     def is_bot_installed_in_channel(self, channel_id: str) -> bool:
         """

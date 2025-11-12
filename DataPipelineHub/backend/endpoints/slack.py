@@ -146,16 +146,17 @@ def slack_events():
     """
     try:
         payload = request.get_json()
-        print(payload)
     except Exception as e:
         logger.error(f"Failed to parse Slack event JSON: {e}")
         return jsonify({"error": "Invalid JSON"}), 400
     
+    # this check is only a helath check for the coneciton between slack and this endpoint
     if payload.get('type') == 'url_verification':
         challenge = payload.get('challenge', '')
         logger.info(f"Slack URL verification challenge received")
         return jsonify({"challenge": challenge}), 200
     
+    # this is the main endpoint for the slack events
     if payload.get('type') == 'event_callback':
         try:
             send_task(
@@ -168,32 +169,3 @@ def slack_events():
             logger.error(f"Failed to enqueue Slack event to Celery: {e}")
     
     return jsonify({"status": "ok"}), 200
-
-
-@slack_bp.route("/status", methods=["POST", "GET"])
-def slack_status():
-    """
-    Basic Slack event listener endpoint for connectivity and URL verification.
-    """
-    # Slack sometimes sends a 'challenge' JSON when verifying the URL
-    if request.method == "POST":
-        data = request.get_json(silent=True) or {}
-        print(data)
-        if "challenge" in data:
-            print(data)
-            # Respond with the same challenge so Slack marks it as verified
-            return jsonify({"challenge": data["challenge"]}), 200
-        
-        # Otherwise, just return OK to acknowledge receipt
-        return jsonify({"status": "Slack event received"}), 200
-
-    # For quick GET checks (like health or curl tests)
-    return jsonify({"status": "Slack listener is alive"}), 200
-
-@slack_bp.route("/member_joined_channel")
-def on_joined(event, say):
-    if event.get("user") == "6":
-        # your app was just added to the channel
-        channel = event["channel"]
-        # e.g., seed your DB, enable embedding flow, post a hello, etc.
-        say(channel=channel, text="Thanks for adding me! Ready to help.")

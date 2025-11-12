@@ -14,7 +14,7 @@ services/slack_events/
 ├── slack_event_helpers.py        # Reusable utility functions
 ├── slack_config.py               # Centralized Slack configuration management
 ├── slack_channel_repository.py   # Repository pattern for channel data access
-├── processor.py                  # Event processing and routing (class-based)
+├── slack_events_service.py       # Event dispatch service (instantiate and register handlers)
 ├── README.md                     # This file
 └── HELPERS_README.md             # Documentation for helper functions
 ```
@@ -89,32 +89,28 @@ services/slack_events/
   - Leverages helper functions for consistent processing
   - Clean separation of concerns
 
-### processor.py
-- **Purpose**: Event processing and routing with pluggable handlers
-- **Class**: `SlackEventProcessor`
-- **Methods**:
-  - `register_handler()` - Register custom event handler
-  - `get_handler()` - Get handler for event type
-  - `process_event()` - Main event processing with de-duplication
-- **Functions** (backward compatibility):
-  - `process_event(payload)` - Main entry point
-  - `register_event_handler()` - Register handler
+### slack_events_service.py
+- **Purpose**: Event dispatch and handler registration
+- **API**:
+  - `process_event(payload)` - Dispatch payload to the correct handler
+  - `register_handler(handler_cls)` - Register a handler class
 - **Features**:
-  - Class-based design with dependency injection
-  - Pluggable handler system
-  - Better error handling and return values
-  - Maintains backward compatibility
+  - Singleton service with centralized registry
+  - Clean public API used by tasks/endpoints
 
 ## Usage
 
 ### In Celery Task
 ```python
-from services.slack_events.processor import process_event
+from services.slack_events.slack_events_service import SlackEventService
+from services.slack_events.handlers.channel_created_handler import ChannelCreatedEventHandler
 
 @CeleryApp().app.task(bind=True)
 def process_slack_events_task(self, payload):
+    event_service = SlackEventService()
+    event_service.register_class(ChannelCreatedEventHandler)
     try:
-        process_event(payload)
+        event_service.dispatch(payload)
     except Exception as e:
         raise self.retry(exc=e)
 ```
