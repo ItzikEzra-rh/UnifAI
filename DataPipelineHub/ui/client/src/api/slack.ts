@@ -142,6 +142,10 @@ export async function fetchEmbeddedSlackChannels(): Promise<EmbedChannel[]> {
     created: formatDate(item.created_at || ''),
     is_private: item.type_data?.is_private || false,
     communityPrivacy: item.type_data?.communityPrivacy || 'public',
+    // Surface backend error info so UI tooltips can display it
+    type_data: {
+      last_error: item.type_data?.last_error,
+    },
     // For UI: if dateRange is 'all', mark initialTimestamp as 'all' to customize label
     initialTimestamp: item.type_data?.dateRange === 'all'
       ? 'all'
