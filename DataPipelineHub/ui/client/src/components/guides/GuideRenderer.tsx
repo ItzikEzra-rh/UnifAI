@@ -3,6 +3,7 @@ import { Copy, Check, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import ReactMarkdown from "react-markdown";
 import { DownloadFile } from "@/utils/guideLoader";
+import { handleDownloadFile } from "../shared/helpers";
 
 interface Step {
   step: number;
@@ -35,36 +36,6 @@ export const GuideRenderer: React.FC<GuideRendererProps> = ({
     });
   };
 
-  const handleDownloadFile = (downloadFile: DownloadFile) => {
-    setDownloadingFile(downloadFile.path);
-    fetch(downloadFile.path)
-      .then((response) => {
-        if (!response.ok) {
-          throw new Error(`File not found: ${response.status}`);
-        }
-        return response.text();
-      })
-      .then((fileContent) => {
-        const blob = new Blob([fileContent], { type: "text/plain" });
-        const url = window.URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        link.href = url;
-        link.download = downloadFile.filename;
-        link.style.display = "none";
-        document.body.appendChild(link);
-        link.click();
-        
-        setTimeout(() => {
-          document.body.removeChild(link);
-          window.URL.revokeObjectURL(url);
-          setDownloadingFile(null);
-        }, 100);
-      })
-      .catch((error) => {
-        console.error("Download failed:", error);
-        setDownloadingFile(null);
-      });
-  };
 
   // Check if a link points to a downloadable file
   const isDownloadableFile = (href: string): DownloadFile | null => {
@@ -136,7 +107,7 @@ export const GuideRenderer: React.FC<GuideRendererProps> = ({
                   href="#"
                   onClick={(e) => {
                     e.preventDefault();
-                    handleDownloadFile(downloadableFile);
+                    handleDownloadFile(downloadableFile, setDownloadingFile);
                   }}
                   className="text-primary hover:underline cursor-pointer"
                   {...props}
