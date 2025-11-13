@@ -295,20 +295,7 @@ class PipelineMonitor():
         metrics = {}
         
         # Process based on source type
-        belongs_to_pipeline = True
-        source_id = None
-        if source_type == SourceType.SLACK and pipeline_id:
-            # Derive channel id from pipeline_id convention "slack_<channel_id>"
-            try:
-                source_id = pipeline_id.split("_", 1)[1]
-            except Exception:
-                source_id = None
-            # Only attribute metrics to this pipeline if the log line mentions this channel
-            # This avoids cross-contamination when multiple pipelines attach to the same logger
-            if source_id:
-                belongs_to_pipeline = (source_id in message)
-        
-        if source_type == SourceType.SLACK and belongs_to_pipeline:
+        if source_type == SourceType.SLACK:
             # Count API calls
             api_endpoint = SlackLogParser.extract_api_endpoint(log_line)
             if api_endpoint:
@@ -330,16 +317,6 @@ class PipelineMonitor():
                 metrics["api_calls"] = 1
         
         # Track chunk/embedding counts only if this log line belongs to the pipeline context
-        if belongs_to_pipeline:
-            # Track chunk counts
-            chunk_count = DocLogParser.extract_chunk_count(log_line)
-            if chunk_count:
-                metrics["chunks_generated"] = chunk_count
-            
-            # Track embedding counts
-            embedding_count = DocLogParser.extract_embedding_count(log_line)
-            if embedding_count:
-                metrics["embeddings_created"] = embedding_count
         
         # # Check for document processing status changes
         # status = DocLogParser.extract_processing_status(log_line)
@@ -347,10 +324,9 @@ class PipelineMonitor():
         #     self.update_pipeline_status(pipeline_id, status)
             
         # Track chunk counts (generic) - also scoped to pipeline context
-        if belongs_to_pipeline:
-            chunk_count = LogParser.extract_chunk_count(log_line)
-            if chunk_count:
-                metrics["chunks_generated"] = chunk_count
+        chunk_count = LogParser.extract_chunk_count(log_line)
+        if chunk_count:
+            metrics["chunks_generated"] = chunk_count
         
         # Track embedding counts
         embedding_count = LogParser.extract_embedding_count(log_line)

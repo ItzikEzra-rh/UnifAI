@@ -69,7 +69,7 @@ export interface EmbedChannel {
   channel_id: string;
   created: string;
   is_private: boolean;
-  initialTimestamp?: string;
+  initialTimestamp: string;
 }
 export interface Document {
   _id: string;
