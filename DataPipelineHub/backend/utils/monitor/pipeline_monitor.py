@@ -316,14 +316,23 @@ class PipelineMonitor():
             if api_endpoint:
                 metrics["api_calls"] = 1
         
-        # Track chunk/embedding counts only if this log line belongs to the pipeline context
         
+        # Track chunk counts
+        chunk_count = DocLogParser.extract_chunk_count(log_line)
+        if chunk_count:
+            metrics["chunks_generated"] = chunk_count
+        
+        # Track embedding counts
+        embedding_count = DocLogParser.extract_embedding_count(log_line)
+        if embedding_count:
+            metrics["embeddings_created"] = embedding_count
+
         # # Check for document processing status changes
         # status = DocLogParser.extract_processing_status(log_line)
         # if status:
         #     self.update_pipeline_status(pipeline_id, status)
             
-        # Track chunk counts (generic) - also scoped to pipeline context
+        # Track chunk counts
         chunk_count = LogParser.extract_chunk_count(log_line)
         if chunk_count:
             metrics["chunks_generated"] = chunk_count
