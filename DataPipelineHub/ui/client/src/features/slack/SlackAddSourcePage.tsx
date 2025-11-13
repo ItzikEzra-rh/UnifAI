@@ -64,7 +64,12 @@ export default function SlackAddSourcePage() {
         },
         onError: (err: Error) => {
             toast({
-                title: "❌ Submission Failed",
+                title: (
+                    <span className="inline-flex items-center gap-2">
+                        <XCircle className="h-4 w-4 text-red-600" />
+                        <span>Submission Failed</span>
+                    </span>
+                ),
                 description: `Unable to start embedding process: ${err.message}`,
                 variant: "destructive",
             });
