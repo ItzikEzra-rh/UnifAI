@@ -28,7 +28,7 @@ class DocumentRegistration(RegistrationBase):
     def __init__(self, mongo_storage: Any, upload_by: str, instance: Dict[str, Any]) -> None:
         super().__init__(mongo_storage, upload_by, instance)
         self.upload_folder = upload_folder
-        self._validator = Validator(build_doc_validators(self.mongo_storage))
+        self._validator = Validator(build_doc_validators())
 
     @cached_property
     def source_data(self) -> DocumentSourceData:

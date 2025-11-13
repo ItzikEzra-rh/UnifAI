@@ -1,16 +1,16 @@
 from typing import Optional, Dict, Any, List, Tuple
 from common.interfaces import DataSourceValidator, ValidationIssue
 from services.documents.duplicate_checker import DocumentDuplicateChecker
-
+from utils.storage.mongo.mongo_helpers import get_mongo_storage
 
 class DuplicateValidator(DataSourceValidator):
     name = "DuplicateValidator"
     error_message = "This file appears to be a duplicate from an existing file and was not added. File: {source_name}"
     error_message_key = "File duplicated error"
 
-    def __init__(self, mongo_storage: Any) -> None:
+    def __init__(self) -> None:
         # The validator owns and initializes its dependency
-        self.duplicate_checker = DocumentDuplicateChecker(mongo_storage)
+        self.duplicate_checker = DocumentDuplicateChecker(get_mongo_storage())
 
     def validate(self, **kwargs: Any) -> Tuple[bool, Optional[ValidationIssue]]:
         try:
@@ -24,13 +24,13 @@ class DuplicateValidator(DataSourceValidator):
         return True, None
 
 
-def build_doc_validators(mongo_storage: Any) -> List[DataSourceValidator]:
+def build_doc_validators() -> List[DataSourceValidator]:
     """Return the default list of validators to apply to a single doc.
 
     Keep this minimal and composable; callers can extend/replace as needed.
     """
     return [
-        DuplicateValidator(mongo_storage),
+        DuplicateValidator(),
     ]
 
 

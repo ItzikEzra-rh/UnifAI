@@ -56,7 +56,7 @@ class ChannelBotInstallationValidator(DataSourceValidator):
             return False
 
 
-def build_slack_validators(_mongo_storage: Any) -> List[DataSourceValidator]:
+def build_slack_validators() -> List[DataSourceValidator]:
     """
     Build the list of Slack-specific validators.
     """
