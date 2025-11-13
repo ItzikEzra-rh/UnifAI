@@ -6,6 +6,7 @@ from global_utils.celery_app import CeleryApp
 from shared.logger import logger
 from services.slack_events.slack_events_service import SlackEventService
 from services.slack_events.handlers.channel_created_handler import ChannelCreatedEventHandler
+
 _event_service = SlackEventService()
 _event_service.register_class(ChannelCreatedEventHandler)
 
