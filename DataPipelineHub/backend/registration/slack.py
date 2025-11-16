@@ -6,7 +6,7 @@ from config.constants import DataSource
 from global_utils.helpers.helpers import calculate_date_range
 from shared.source_types import SlackMetadata, SlackTypeData
 from .base import RegistrationBase, BaseSourceData
-from validator.validator import Validator, build_slack_validators
+from validator.validator import Validator, SlackValidators
 
 @dataclass(frozen=True)
 class SlackSourceData(BaseSourceData):
@@ -18,7 +18,7 @@ class SlackRegistration(RegistrationBase):
 
     def __init__(self, mongo_storage: Any, upload_by: str, instance: Dict[str, Any]) -> None:
         super().__init__(mongo_storage, upload_by, instance)
-        self._validator = Validator(build_slack_validators())
+        self._validator = Validator(SlackValidators().create_validators())
 
     @cached_property
     def source_data(self) -> SlackSourceData:

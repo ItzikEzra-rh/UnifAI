@@ -56,12 +56,11 @@ class ChannelBotInstallationValidator(DataSourceValidator):
             return False
 
 
-def build_slack_validators() -> List[DataSourceValidator]:
+class SlackValidators:
     """
-    Build the list of Slack-specific validators.
+    Constructs the Slack validators pipeline.
     """
-    return [
-        ChannelBotInstallationValidator(),
-    ]
-
-
+    def create_validators(self) -> List[DataSourceValidator]:
+        return [
+            ChannelBotInstallationValidator(),
+        ]

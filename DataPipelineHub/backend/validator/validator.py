@@ -2,6 +2,8 @@ from typing import Optional, Dict, Any, List, Tuple
 from common.interfaces import DataSourceValidator, ValidationIssue
 from .doc_validators import build_doc_validators
 from .slack_validators import build_slack_validators
+from .doc_validators import DocValidators
+from .slack_validators import SlackValidators
 
 
 class Validator:

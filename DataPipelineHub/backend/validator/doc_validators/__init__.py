@@ -24,13 +24,12 @@ class DuplicateValidator(DataSourceValidator):
         return True, None
 
 
-def build_doc_validators() -> List[DataSourceValidator]:
-    """Return the default list of validators to apply to a single doc.
-
-    Keep this minimal and composable; callers can extend/replace as needed.
+class DocValidators:
     """
-    return [
-        DuplicateValidator(),
-    ]
-
+    Constructs the document validators pipeline.
+    """
+    def create_validators(self) -> List[DataSourceValidator]:
+        return [
+            DuplicateValidator(),
+        ]
 
