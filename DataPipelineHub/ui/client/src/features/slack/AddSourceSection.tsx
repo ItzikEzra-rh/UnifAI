@@ -385,8 +385,6 @@ const AddSourceSection = forwardRef<AddSourceSectionHandle, AddSourceSectionProp
     };
   }, [scope, totalChannels]);
 
-  // Removed legacy per-channel notice banner in favor of centralized guidance in SlackSetupInfo
-
   return (
     <Card className="bg-background-card shadow-card border-gray-800">
       <CardContent className="p-4 space-y-4">

@@ -47,13 +47,10 @@ export const SlackSetupInfo = ({ className = '' }: SlackSetupInfoProps) => {
 
   const consentNotice = [
     "Please be advised that this channel is now monitored by an AI tool for content analysis.",
-    "",
     "This tool anonymously collects and embeds message content for processing.",
-    "",
     "Your individual messages will not be linked to your identity.",
-    "",
     "If you do not consent to this anonymous data collection, please opt out by leaving the channel."
-  ].join("\n");
+  ].join("\n\n");
 
   const copyConsentNotice = (e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
