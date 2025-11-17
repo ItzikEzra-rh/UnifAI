@@ -70,7 +70,7 @@ export const SlackSetupInfo = ({ className = '' }: SlackSetupInfoProps) => {
   const steps = [
     {
       icon: Settings,
-      title: "Open Channel Settings",
+      title: "Open Channel Details",
       description: "Navigate to your channel and click on the channel name, then select 'Integrations'",
       status: "required"
     },
