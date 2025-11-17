@@ -225,7 +225,7 @@ export const SlackSetupInfo = ({ className = '' }: SlackSetupInfoProps) => {
                     Channel Notice
                   </h5>
                   <p className="text-xs text-red-600 dark:text-red-400 mb-2">
-                    Post this message in the channel after app access is granted:
+                    Past this message in the channel after app access is granted:
                   </p>
                   <pre className="text-xs whitespace-pre-wrap bg-background/60 p-3 rounded-md border border-border/50">
 {consentNotice}
