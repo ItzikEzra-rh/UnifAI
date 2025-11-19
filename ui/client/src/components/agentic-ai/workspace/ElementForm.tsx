@@ -15,6 +15,7 @@ import {
   ElementInstance,
 } from "../../../types/workspace";
 import { FieldRenderer } from "./FieldRenderer";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface ElementFormProps {
   isOpen: boolean;
@@ -63,7 +64,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     handleInputChange(fieldName, multiSelect || typeof results === 'object' ? results : results.length > 0 ? results[0] : "");
   };
 
-
+  const { user } = useAuth();
 
   // Initialize form data
   useEffect(() => {
@@ -689,6 +690,9 @@ export const ElementForm: React.FC<ElementFormProps> = ({
               type="submit"
               className="bg-primary hover:bg-opacity-80"
               disabled={isSaving || !isFormValid()}
+              data-umami-event="agent-repository-save-element-button" 
+              data-umami-event-user-id={user?.username}
+              data-umami-event-element-type={elementType.name}
             >
               {isSaving ? "Saving..." : "Save"}
             </Button>
