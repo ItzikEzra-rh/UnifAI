@@ -8,8 +8,10 @@ import { ChannelSettingsDrawer } from "@/features/slack/ChannelSettingsDrawer";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "wouter";
 import { fetchEmbeddedSlackChannels, fetchSystemStats, deleteSlackChannel } from "@/api/slack";
-import { FaHashtag, FaComments, FaSync, FaDatabase } from "react-icons/fa";
+import { FaHashtag, FaComments, FaSync, FaDatabase, FaTrash } from "react-icons/fa";
 import { useToast } from "@/hooks/use-toast";
+import { RowSelectionState } from "@tanstack/react-table";
+import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,6 +26,7 @@ import { StatsCard, StatsCardProps } from "./StatsCard";
 import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
 import { EmbedChannel } from "@/types";
 import { formatNumber, getLastSyncTime } from "@/utils";
+import { useBulkDelete } from "@/hooks/useBulkDelete";
 
 export interface SlackTypeData {
   message_count: number;
@@ -66,9 +69,28 @@ export default function SlackIntegration() {
   const [deletingChannelId, setDeletingChannelId] = useState<string | null>(null);
   const [channelToDelete, setChannelToDelete] = useState<EmbedChannel | null>(null);
   const [activeEmbedding, setActiveEmbedding] = useState<Set<string>>(new Set());
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [, navigate] = useLocation();
   const queryClient = useQueryClient();
   const { toast } = useToast();
+
+  const {
+    bulkDeleteConfirm,
+    setBulkDeleteConfirm,
+    bulkDeleteLoading,
+    handleDeleteSelected: handleDeleteSelectedBase,
+    confirmBulkDelete: confirmBulkDeleteBase,
+  } = useBulkDelete({
+    deleteFunction: deleteSlackChannel,
+    queryKeys: ["embeddedSlackChannels", "embeddedSlackChannelsStats"],
+    itemName: "channel",
+    onSuccess: () => setRowSelection({}),
+    getError: (error) => {
+      const errorMessage = error instanceof Error ? error.message : "Failed to delete some channels.";
+      const apiError = (error as any)?.response?.data?.error;
+      return apiError || errorMessage;
+    },
+  });
 
   const hasActiveOperations = (channels: EmbedChannel[] | undefined) => {
     if (!channels || !Array.isArray(channels)) return false;
@@ -150,12 +172,27 @@ export default function SlackIntegration() {
     setChannelToDelete(channel);
   };
 
-  const confirmDeleteChannel = () => {
+  const confirmDeleteChannel = async () => {
     if (channelToDelete) {
-      deleteMutation.mutate(channelToDelete.channel_id);
-      setChannelToDelete(null);
+      try {
+        await deleteMutation.mutateAsync(channelToDelete.channel_id);
+        // Only close modal after successful deletion
+        setChannelToDelete(null);
+      } catch (error) {
+        // Keep modal open on error - error is already handled in deleteMutation.onError
+      }
     }
   };
+
+  const handleDeleteSelected = () => {
+    handleDeleteSelectedBase(rowSelection);
+  };
+
+  const confirmBulkDelete = async () => {
+    await confirmBulkDeleteBase(rowSelection);
+  };
+
+  const selectedCount = Object.keys(rowSelection).length;
 
   const trackEmbeddingStart = useCallback((channelIds: string[]) => {
     setActiveEmbedding(prev => new Set([...Array.from(prev), ...channelIds]));
@@ -284,19 +321,21 @@ export default function SlackIntegration() {
 
             <div className="flex items-center justify-between">
               <h3 className="text-lg font-semibold text-foreground">System Statistics</h3>
-              {(() => {
-                const activeCount = Array.isArray(embedChannels)
-                  ? embedChannels.filter((c) => isEmbeddingActivelyProcessing(c)).length
-                  : 0;
-                return activeCount > 0;
-              })() && (
-                <div className="flex items-center space-x-2 px-3 py-1 bg-blue-500/10 border border-blue-400/20 rounded-full">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
-                  <span className="text-sm text-blue-400 font-medium">
-                    {embedChannels.filter((c) => isEmbeddingActivelyProcessing(c)).length} channel{embedChannels.filter((c) => isEmbeddingActivelyProcessing(c)).length > 1 ? 's' : ''} embedding
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center space-x-3">
+                {(() => {
+                  const activeCount = Array.isArray(embedChannels)
+                    ? embedChannels.filter((c) => isEmbeddingActivelyProcessing(c)).length
+                    : 0;
+                  return activeCount > 0;
+                })() && (
+                  <div className="flex items-center space-x-2 px-3 py-1 bg-blue-500/10 border border-blue-400/20 rounded-full">
+                    <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+                    <span className="text-sm text-blue-400 font-medium">
+                      {embedChannels.filter((c) => isEmbeddingActivelyProcessing(c)).length} channel{embedChannels.filter((c) => isEmbeddingActivelyProcessing(c)).length > 1 ? 's' : ''} embedding
+                    </span>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -332,6 +371,11 @@ export default function SlackIntegration() {
                       onRefresh={handleRefresh}
                       deletingChannelId={deletingChannelId || undefined}
                       activeEmbeddingIds={Array.from(activeEmbedding)}
+                      rowSelection={rowSelection}
+                      onRowSelectionChange={setRowSelection}
+                      onBulkDelete={handleDeleteSelected}
+                      bulkDeleteLoading={bulkDeleteLoading}
+                      selectedCount={selectedCount}
                     />
                   </motion.div>
 
@@ -362,7 +406,14 @@ export default function SlackIntegration() {
         <StatusBar />
       </div>
 
-      <AlertDialog open={channelToDelete !== null} onOpenChange={() => setChannelToDelete(null)}>
+      <AlertDialog 
+        open={channelToDelete !== null} 
+        onOpenChange={(open) => {
+          if (!open && !deleteMutation.isPending) {
+            setChannelToDelete(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>🗑️ Delete Channel</AlertDialogTitle>
@@ -380,12 +431,51 @@ export default function SlackIntegration() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={deleteMutation.isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDeleteChannel}
+              disabled={deleteMutation.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete Channel
+              {deleteMutation.isPending ? "Deleting..." : "Delete Channel"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <AlertDialog 
+        open={bulkDeleteConfirm.open} 
+        onOpenChange={(open) => {
+          if (!open && !bulkDeleteLoading) {
+            setBulkDeleteConfirm({ open: false, count: 0 });
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>🗑️ Delete Selected Channels</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{bulkDeleteConfirm.count} selected channel{bulkDeleteConfirm.count > 1 ? 's' : ''}</strong>?
+              <br /><br />
+              This will permanently remove for each channel:
+              <ul className="mt-2 ml-4 list-disc text-sm">
+                <li>All embeddings from vector storage</li>
+                <li>All messages and chunks from database</li>
+                <li>Channel configuration and settings</li>
+              </ul>
+              <br />
+              <strong>This action cannot be undone.</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleteLoading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBulkDelete}
+              disabled={bulkDeleteLoading}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleteLoading ? "Deleting..." : `Delete ${bulkDeleteConfirm.count} Channel${bulkDeleteConfirm.count > 1 ? 's' : ''}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

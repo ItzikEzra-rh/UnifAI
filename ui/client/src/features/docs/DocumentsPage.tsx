@@ -5,13 +5,19 @@ import { Document } from "@/types";
 import { UploadTab } from "./UploadTab";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePaginationStore } from "@/stores/usePaginationStore";
 import { DocumentFilters } from "./DocumentFilters";
 import { DocumentTable } from "./DocumentsTable";
 import { PageLoader } from "@/components/shared/PageLoader";
 import { DocumentGrid } from "./DocumentGrid";
 import { deleteDoc, fetchDocuments } from "@/api/docs";
+import { RowSelectionState } from "@tanstack/react-table";
+import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
+import { useToast } from "@/hooks/use-toast";
+import { isEmbeddingActivelyProcessing } from "@/features/helpers";
+import { BulkDeleteButton } from "@/components/shared/BulkDeleteButton";
+import { useBulkDelete } from "@/hooks/useBulkDelete";
 
 export default function Documents() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -22,24 +28,61 @@ export default function Documents() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [retrying, setRetrying] = useState(false);
+  const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const {
+    bulkDeleteConfirm,
+    setBulkDeleteConfirm,
+    bulkDeleteLoading,
+    handleDeleteSelected: handleDeleteSelectedBase,
+    confirmBulkDelete: confirmBulkDeleteBase,
+  } = useBulkDelete({
+    deleteFunction: deleteDoc,
+    queryKeys: ['documents'],
+    itemName: 'document',
+    onSuccess: () => setRowSelection({}),
+  });
 
   const { currentPage, setPage, resetPage, itemsPerPage, } = usePaginationStore();
 
-  const { data: documents = [], isLoading, isError, error } = useQuery<Document[]>({
+  const hasActiveOperations = (docs: Document[] | undefined) => {
+    if (!docs || !Array.isArray(docs)) return false;
+    return docs.some(doc => isEmbeddingActivelyProcessing(doc));
+  };
+
+  const { data: documents = [], isLoading, isError, error, refetch } = useQuery<Document[]>({
     queryKey: ['documents'],
     queryFn: fetchDocuments,
-    refetchInterval: 10000,
-    refetchOnMount: true, 
-    refetchOnWindowFocus: true, 
+    staleTime: 15 * 1000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    refetchInterval: (query) => {
+      const data = query.state.data as Document[] | undefined;
+      const hasActive = hasActiveOperations(data);
+      return hasActive ? 5000 : false;
+    },
   });
 
   useEffect(() => {
     resetPage();
   }, []);
 
+  // Refetch documents immediately when upload modal closes to show new documents
   useEffect(() => {
-    fetchDocuments();
-  }, [showUploadModal, activeDoc])
+    if (!showUploadModal) {
+      // Force immediate refetch to show newly uploaded documents
+      queryClient.refetchQueries({ queryKey: ['documents'] });
+      // Also switch to list view to show the documents
+      setViewMode("list");
+    }
+  }, [showUploadModal, queryClient]);
+
+  // Clear selection when filters change to avoid confusion
+  useEffect(() => {
+    setRowSelection({});
+  }, [fileTypeFilter, searchQuery]);
 
   const filteredDocuments = documents.filter((doc) => {
     const matchesType = fileTypeFilter === "all" || doc.type_data.file_type === fileTypeFilter;
@@ -92,8 +135,16 @@ export default function Documents() {
     />
   );
 
+  const selectedCount = Object.keys(rowSelection).length;
+
   const viewButtons = (
     <div className="flex items-center space-x-4">
+      <BulkDeleteButton
+        selectedCount={selectedCount}
+        onClick={() => {handleDeleteSelectedBase(rowSelection)}}
+        disabled={bulkDeleteLoading || deleteLoading}
+        itemName="Selected"
+      />
       <Button onClick={() => setShowUploadModal(true)}>Upload Document</Button>
       <div className="flex">
         <Button
@@ -118,12 +169,29 @@ export default function Documents() {
     try {
       setDeleteLoading(true);
       await deleteDoc(source_id);
+      // Invalidate queries to refresh the list after successful deletion
+      queryClient.invalidateQueries({ queryKey: ['documents'] });
+      toast({
+        title: "✅ Document Deleted",
+        description: "The document has been successfully deleted.",
+        variant: "default",
+      });
     } catch (error) {
       console.error("Error deleting document:", error);
+      toast({
+        title: "❌ Deletion Failed",
+        description: error instanceof Error ? error.message : "Failed to delete document.",
+        variant: "destructive",
+      });
+      throw error; // Re-throw to let the modal handle the error state
     } finally {
       setDeleteLoading(false);
       setActiveDoc(null);
     }
+  };
+
+  const confirmBulkDelete = async () => {
+    await confirmBulkDeleteBase(rowSelection);
   };
 
   const handleRetry = async (id: string) => {
@@ -147,7 +215,7 @@ export default function Documents() {
 
         <div className="flex-1 overflow-auto px-6 pb-6">
           {showUploadModal ? (
-            <UploadTab setShowUploadModal={setShowUploadModal} fetchDocuments={fetchDocuments} />
+            <UploadTab setShowUploadModal={setShowUploadModal} fetchDocuments={refetch} />
           ) : (
             <div className="mt-6">
               {isLoading ? (
@@ -173,18 +241,22 @@ export default function Documents() {
                         retrying={retrying}
                         handleRetry={handleRetry}
                         footer={footer}
+                        rowSelection={rowSelection}
+                        onRowSelectionChange={setRowSelection}
                       />
                     ) : (
                       <>
                         <div className="w-full">
                           <DocumentTable
-                            documents={documents}
+                            documents={filteredDocuments}
                             activeDoc={activeDoc}
                             setActiveDoc={setActiveDoc}
                             deleteLoading={deleteLoading}
                             onDeleteConfirmed={onDeleteConfirmed}
                             retrying={retrying}
                             handleRetry={handleRetry}
+                            rowSelection={rowSelection}
+                            onRowSelectionChange={setRowSelection}
                           />
 
                         </div>
@@ -199,6 +271,22 @@ export default function Documents() {
           )}
         </div>
       </div>
+
+      {/* Bulk Delete Confirmation Dialog */}
+      <ConfirmDialog
+        open={bulkDeleteConfirm.open}
+        title="Delete Selected Documents"
+        message={`Are you sure you want to delete ${bulkDeleteConfirm.count} selected document${bulkDeleteConfirm.count > 1 ? 's' : ''}? This action cannot be undone.`}
+        confirmLabel="Yes, Delete"
+        cancelLabel="Cancel"
+        loading={bulkDeleteLoading}
+        onCancel={() => {
+          if (!bulkDeleteLoading) {
+            setBulkDeleteConfirm({ open: false, count: 0 });
+          }
+        }}
+        onConfirm={confirmBulkDelete}
+      />
     </div>
   );
 }

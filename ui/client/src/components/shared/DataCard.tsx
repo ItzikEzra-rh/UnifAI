@@ -1,10 +1,10 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { ConfirmDialog } from "./ConfirmDialog";
 import { PipelineStatus } from "@/constants/pipelineStatus";
 import { StatusBadge } from "./StatusBadge";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export interface CardAction {
   icon: React.ReactNode;
@@ -108,25 +108,43 @@ export const DataCard: React.FC<DataCardProps> = ({
             {footer && <div className="text-gray-400">{footer}</div>}
             {actions.length > 0 && (
               <div className="flex items-center space-x-2">
-                {actions.map((action, idx) => (
-                  <Button
-                    key={idx}
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 w-7 p-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (action.confirm) {
-                        setConfirmAction(action);
-                        setConfirmLoading(false);
-                      } else {
-                        action.onClick();
-                      }
-                    }}
-                  >
-                    {action.icon}
-                  </Button>
-                ))}
+                {actions.map((action, idx) => {
+                  if (action.isCheckbox) {
+                    return (
+                      <div
+                        key={idx}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Checkbox
+                          checked={action.checked || false}
+                          onCheckedChange={(checked) => {
+                            action.onCheckboxChange?.(checked === true);
+                          }}
+                          aria-label="Select card"
+                        />
+                      </div>
+                    );
+                  }
+                  return (
+                    <Button
+                      key={idx}
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 w-7 p-0"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (action.confirm) {
+                          setConfirmAction(action);
+                          setConfirmLoading(false);
+                        } else {
+                          action.onClick();
+                        }
+                      }}
+                    >
+                      {action.icon}
+                    </Button>
+                  );
+                })}
               </div>
             )}
           </div>

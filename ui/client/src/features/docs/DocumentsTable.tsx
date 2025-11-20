@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { FaEye, FaTrash, FaSync } from "react-icons/fa";
+import React, { useState, useEffect } from "react";
+import { FaEye, FaTrash } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
 import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
@@ -9,6 +9,10 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { DocumentData } from "./DocumentData";
 import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { RowSelectionState } from "@tanstack/react-table";
+import { SelectAllCheckbox } from "@/components/shared/SelectAllCheckbox";
+import { RowSelectionCheckbox } from "@/components/shared/RowSelectionCheckbox";
+import { getSupportedFileExtensions } from "@/api/docs";
 
 interface DocumentTableProps {
   documents: Document[];
@@ -18,13 +22,42 @@ interface DocumentTableProps {
   onDeleteConfirmed?: (id: string) => void;
   retrying?: boolean;
   handleRetry?: (id: string) => void;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: (selection: RowSelectionState) => void;
 }
 
-export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDoc, setActiveDoc, deleteLoading, onDeleteConfirmed, retrying, handleRetry}) => {
+export const DocumentTable: React.FC<DocumentTableProps> = ({
+  documents, 
+  activeDoc, 
+  setActiveDoc, 
+  deleteLoading, 
+  onDeleteConfirmed, 
+  retrying, 
+  handleRetry,
+  rowSelection,
+  onRowSelectionChange
+}) => {
   const [confirmDoc, setConfirmDoc] = useState<Document | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
+  const [fileTypeFilterOptions, setFileTypeFilterOptions] = useState<string[]>([]);
 
-  const columns: DataTableColumn<Document>[] = [
+  useEffect(() => {
+    const loadSupportedExtensions = async () => {
+      try {
+        const extensions = await getSupportedFileExtensions();
+        // Transform extensions: remove dot and convert to uppercase (e.g., ".pdf" -> "PDF")
+        const filterOptions = extensions.map(ext => ext.substring(1).toUpperCase());
+        setFileTypeFilterOptions(filterOptions);
+      } catch (err) {
+        console.error("Failed to load supported extensions:", err);
+        // Fallback to common extensions if API fails
+        setFileTypeFilterOptions(["PDF", "DOCX", "PPTX", "MD"]);
+      }
+    };
+    loadSupportedExtensions();
+  }, []);
+
+  const columns: DataTableColumn<Document>[] = React.useMemo(() => [
     {
       accessorKey: "source_name",
       header: "Name",
@@ -81,7 +114,7 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
       meta: {
         align: "center",
         filterType: "select",
-        filterOptions: ["PDF", "DOCX", "TXT", "XLSX", "OTHER"],
+        filterOptions: fileTypeFilterOptions,
       },
     },
     {
@@ -122,7 +155,18 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
     },
     {
       id: "actions",
-      header: "",
+      header: ({ table }) => {
+        if (!onRowSelectionChange || !rowSelection) return "";
+        return (
+          <SelectAllCheckbox
+            table={table}
+            rowSelection={rowSelection}
+            onRowSelectionChange={onRowSelectionChange}
+            getRowId={(doc) => doc.source_id}
+            align="right"
+          />
+        );
+      },
       cell: ({ row }) => {
         const doc = row.original;
         const isActive = activeDoc?.pipeline_id === doc.pipeline_id;
@@ -147,24 +191,20 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
             >
               <FaEye className={isActive ? "text-primary" : ""} />
             </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 p-0"
-              onClick={() => {
-                setConfirmDoc(doc);
-                setConfirmLoading(false);
-              }}
-              disabled={deleteLoading || confirmLoading}
-            >
-              <FaTrash className="h-3 w-3" />
-            </Button>
+            {onRowSelectionChange && rowSelection && (
+              <RowSelectionCheckbox
+                rowId={doc.source_id}
+                rowSelection={rowSelection}
+                onRowSelectionChange={onRowSelectionChange}
+                ariaLabel={`Select document ${doc.source_name}`}
+              />
+            )}
           </div>
         );
       },
       meta: { align: "right" },
     },
-  ];
+  ], [activeDoc, setActiveDoc, rowSelection, onRowSelectionChange, fileTypeFilterOptions]);
 
   return (
     <div className="w-full">
@@ -174,6 +214,8 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({documents, activeDo
         enableGlobalFilter={false}
         enableColumnFilters={true}
         enablePagination={true}
+        enableRowSelection={false}
+        getRowId={(row) => row.source_id}
         initialState={{
           pagination: { pageIndex: 0, pageSize: 15 }
         }}

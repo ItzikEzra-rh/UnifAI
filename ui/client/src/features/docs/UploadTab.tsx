@@ -9,10 +9,12 @@ import { ProcessingOptions } from "./ProcessingOptions";
 import { embedDocs, uploadDocs, getSupportedFileExtensions } from "@/api/docs";
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from "@/hooks/use-toast";
+import { formatExtensionErrors, formatFileSizeErrors, validateFiles } from "@/utils/fileValidation";
+import { formatPipelineError } from "@/utils/errorFormatting";
 
 interface UploadTabProps {
     setShowUploadModal: (showUploadModal: boolean) => void;
-    fetchDocuments: any;
+    fetchDocuments: () => Promise<any>;
 }
 
 export const UploadTab: React.FC<UploadTabProps> = ({
@@ -44,21 +46,6 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         return supportedExtensions.includes(extension);
     };
     
-    const validateFiles = (files: FileList): { validFiles: File[], invalidFiles: string[] } => {
-        const validFiles: File[] = [];
-        const invalidFiles: string[] = [];
-        
-        Array.from(files).forEach(file => {
-            if (isFileExtensionSupported(file.name)) {
-                validFiles.push(file);
-            } else {
-                invalidFiles.push(file.name);
-            }
-        });
-        
-        return { validFiles, invalidFiles };
-    };
-    
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
         setIsDragging(true);
@@ -80,13 +67,18 @@ export const UploadTab: React.FC<UploadTabProps> = ({
     };
 
     const handleFiles = (files: FileList) => {
-        const { validFiles, invalidFiles } = validateFiles(files);
+        const { validFiles, invalidFiles, sizeErrors } = validateFiles(files, isFileExtensionSupported);
+        
+        const errorMessages: string[] = [];
         
         if (invalidFiles.length > 0) {
-            const invalidExtensions = Array.from(new Set(invalidFiles.map(file => 
-                file.substring(file.lastIndexOf('.')).toLowerCase()
-            )));
-            setError(`The following file extensions are not supported: ${invalidExtensions.join(', ')}. These files will be ignored.`);
+            errorMessages.push(formatExtensionErrors(invalidFiles));
+        }
+        if (sizeErrors.length > 0) {
+            errorMessages.push(formatFileSizeErrors(sizeErrors));
+        }
+        if (errorMessages.length > 0) {
+            setError(errorMessages.join('\n'));
         } else {
             setError(""); // Clear any previous errors if no invalid files
         }
@@ -137,6 +129,8 @@ export const UploadTab: React.FC<UploadTabProps> = ({
             }
 
             setIsUploading(false);
+            // Refetch documents immediately after upload to show new documents
+            await fetchDocuments();
             setShowUploadModal(false);
         } catch (err) {
             console.error("Upload failed", err);
@@ -165,19 +159,11 @@ export const UploadTab: React.FC<UploadTabProps> = ({
             if (issues.length > 0) {
                 // Backend provides: { doc_name, issue_type, message }
                 issues.forEach((issue: any) => {
-                    const issueType = String(issue.issue_type || "");
-                    const message = String(issue.message || "");
-                    const titleText = issueType ? issueType.toUpperCase() : "Upload issue";
-                    const descParts = [] as string[];
-                    if (message) descParts.push(message);
-                    const description = descParts.join(" — ");
+                    const { title: titleText, description } = formatPipelineError(issue);
 
-                    const isDuplicate = issueType.toLowerCase().includes("dup")
                     const title: React.ReactNode = (
                         <span className="inline-flex items-center gap-2">
-                            {isDuplicate && (
-                                <CircleX className="h-4 w-4 text-red-500" />
-                            )}
+                            <CircleX className="h-4 w-4 text-red-500" />
                             <span>{titleText}</span>
                         </span>
                     );
@@ -228,17 +214,19 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                     <div className="flex items-center justify-between mb-6">
                         <div className="flex items-center">
                             <FaFileAlt className="text-accent text-2xl mr-3" />
-                            <h3 className="text-lg font-heading font-semibold">
-                                Upload Documents
-                            </h3>
+                            <div>
+                                <h3 className="text-lg font-heading font-semibold">
+                                    Upload Documents
+                                </h3>
+                            </div>
                         </div>
-                        <div className="flex justify-between mb-4">
-                            <Button onClick={() => setShowUploadModal(false)}>Cancel</Button>
-                        </div>
+                        <Button variant="outline" onClick={() => setShowUploadModal(false)}>
+                            Cancel
+                        </Button>
                     </div>
 
                     <div
-                        className={`max-h-[400px] overflow-y-auto border-2 border-dashed rounded-lg flex flex-col items-center justify-center transition-colors ${
+                        className={`border-2 border-dashed rounded-lg transition-colors ${
                             selectedFiles.length >= 5 
                                 ? "border-gray-500 cursor-not-allowed opacity-50" 
                                 : isDragging 
@@ -252,79 +240,99 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                         onClick={selectedFiles.length < 5 ? () => document.getElementById("file-upload")?.click() : undefined}
                     >
                         {!isUploading ? (
-                            <>
-                                <div className="w-16 h-16 bg-background-surface rounded-full flex items-center justify-center mb-4">
-                                    <FaUpload className="text-accent text-xl" />
+                            <div className="p-8">
+                                <div className="flex flex-col items-center justify-center text-center">
+                                    <div className="w-16 h-16 bg-background-surface rounded-full flex items-center justify-center mb-4">
+                                        <FaUpload className="text-accent text-xl" />
+                                    </div>
+                                    <p className="font-semibold text-base mb-1">
+                                        {selectedFiles.length >= 5 ? "Maximum files reached" : "Drag and drop files here"}
+                                    </p>
+                                    <p className="text-sm text-gray-400 mb-4">
+                                        {selectedFiles.length >= 5 ? "Remove files to add more" : "or click to browse files"}
+                                    </p>
+                                    <div className="flex flex-col items-center gap-2 text-xs text-gray-500">
+                                        <p>
+                                            Supported formats: {supportedExtensions.map(ext => ext.toUpperCase().substring(1)).join(', ')}
+                                        </p>
+                                        <p>
+                                            Maximum file size: <span className="font-semibold text-gray-400">50 MB</span> per file
+                                        </p>
+                                        <p>
+                                            Maximum files: <span className="font-semibold text-gray-400">5</span> documents
+                                        </p>
+                                    </div>
                                 </div>
-                                <p className="font-semibold mb-1">
-                                    {selectedFiles.length >= 5 ? "Maximum files reached" : "Drag and drop files here"}
-                                </p>
-                                <p className="text-sm text-gray-400">
-                                    {selectedFiles.length >= 5 ? "Remove files to add more" : "or click to browse files"}
-                                </p>
-                                <p className="text-xs text-gray-500 mt-4">
-                                    Supported formats: {supportedExtensions.map(ext => ext.toUpperCase().substring(1)).join(', ')}
-                                </p>
                                 <input id="file-upload" type="file" multiple className="hidden" onChange={handleFileSelect}/>
-                            </>
+                            </div>
                         ) : (
-                            <div className="w-full px-8">
-                                <div className="flex items-center justify-between mb-2">
-                                    <span className="font-semibold">
+                            <div className="p-8">
+                                <div className="flex items-center justify-between mb-4">
+                                    <span className="font-semibold text-base">
                                         Uploading files...
                                     </span>
                                     <Button variant="ghost" size="sm" onClick={() => setIsUploading(false)}>
                                         <FaTimes className="h-4 w-4" />
                                     </Button>
                                 </div>
-                                <Progress value={(uploadProgress / selectedFiles.length) * 100} className="h-2 mb-2" />
-
-                                <div className="flex justify-between text-xs text-gray-400">
-                                    <span className="text-sm text-gray-300">
-                                        {uploadProgress === selectedFiles.length
-                                            ? "Upload complete!"
-                                            : `Uploading ${uploadProgress} of ${selectedFiles.length} files...`}
-                                    </span>
+                                <Progress value={(uploadProgress / selectedFiles.length) * 100} className="h-2 mb-3" />
+                                <div className="text-sm text-gray-300 text-center">
+                                    {uploadProgress === selectedFiles.length
+                                        ? "Upload complete!"
+                                        : `Uploading ${uploadProgress} of ${selectedFiles.length} files...`}
                                 </div>
                             </div>
                         )}
 
                         {/* File list after upload */}
-                        {selectedFiles.length > 0 && (
-                            <div className="mt-4 w-full">
-                                <div className="flex justify-between items-center mb-2">
-                                    <span className="text-sm text-gray-400">
-                                        {selectedFiles.length} of 5 documents selected
+                        {selectedFiles.length > 0 && !isUploading && (
+                            <div className="border-t border-gray-700 pt-4 px-4 pb-4">
+                                <div className="flex justify-between items-center mb-3">
+                                    <span className="text-sm font-medium text-gray-300">
+                                        Selected Files ({selectedFiles.length} of 5)
                                     </span>
                                 </div>
                                 <ul className="space-y-2">
-                                    {selectedFiles.map((file, idx) => (
-                                        <li key={idx} className="flex items-center justify-between text-gray-300 bg-background-surface px-3 py-2 rounded">
-                                            <span className="truncate max-w-[80%]">{file.name}</span>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.stopPropagation(); 
-                                                    setSelectedFiles((prev) =>
-                                                        prev.filter((_, i) => i !== idx)
-                                                    );
-                                                }}
-                                                className="text-gray-400 hover:text-red-500 transition-colors"
-                                                title="Remove file"
-                                            >
-                                                <FaTimes className="w-4 h-4" />
-                                            </button>
-                                        </li>
-                                    ))}
+                                    {selectedFiles.map((file, idx) => {
+                                        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+                                        return (
+                                            <li key={idx} className="flex items-center justify-between text-gray-300 bg-background-surface px-3 py-2.5 rounded-md border border-gray-700">
+                                                <div className="flex-1 min-w-0 mr-3">
+                                                    <span className="block truncate text-sm font-medium">{file.name}</span>
+                                                    <span className="block text-xs text-gray-500 mt-0.5">{fileSizeMB} MB</span>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation(); 
+                                                        setSelectedFiles((prev) =>
+                                                            prev.filter((_, i) => i !== idx)
+                                                        );
+                                                    }}
+                                                    className="flex-shrink-0 text-gray-400 hover:text-red-500 transition-colors p-1"
+                                                    title="Remove file"
+                                                >
+                                                    <FaTimes className="w-4 h-4" />
+                                                </button>
+                                            </li>
+                                        );
+                                    })}
                                 </ul>
                             </div>
                         )}
-                        {error && <p className="text-red-500 mt-4">{error}</p>}
+                        {error && (
+                            <div className="px-4 pb-4">
+                                <p className="text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2 whitespace-pre-line">{error}</p>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
                 {selectedFiles.length > 0 && !isUploading && (
-                    <div className="flex justify-end p-4">
+                    <div className="flex justify-end items-center gap-3 px-6 py-4 border-t border-gray-700 bg-background-surface/50">
+                        <span className="text-sm text-gray-400">
+                            {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''} ready to upload
+                        </span>
                         <Button disabled={selectedFiles.length === 0} onClick={handleSubmit}>
-                            Submit
+                            Upload {selectedFiles.length} Document{selectedFiles.length > 1 ? 's' : ''}
                         </Button>
                     </div>
                 )}

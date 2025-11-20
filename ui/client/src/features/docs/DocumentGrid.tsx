@@ -1,9 +1,9 @@
-import { FaEye, FaSync, FaTrash } from "react-icons/fa";
+import { FaEye } from "react-icons/fa";
 import { DataCard } from "@/components/shared/DataCard";
 import { fileByColors, getDataToDisplay, getFileIcon, isEmbeddingActivelyProcessing } from "@/features/helpers";
 import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
- 
+ import { RowSelectionState } from "@tanstack/react-table";
 import { DocumentData } from "./DocumentData";
 import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
 
@@ -16,6 +16,8 @@ interface DocumentGridProps {
   retrying: boolean;
   handleRetry: (id: string) => void;
   footer?: React.ReactNode;
+  rowSelection?: RowSelectionState;
+  onRowSelectionChange?: (selection: RowSelectionState) => void;
 }
 
 const getFooterText = (doc: Document) => {
@@ -49,27 +51,47 @@ const getActions = (
   doc: Document,
   activeDoc: Document | null,
   setActiveDoc: (doc: Document | null) => void,
-  deleteLoading: boolean,
-  onDeleteConfirmed: (id: string) => void
-) => [
-  {
-    icon: <FaEye />,
-    onClick: () => setActiveDoc(doc === activeDoc ? null : doc),
-  },
-  {
-    icon: <FaTrash className="h-3 w-3" />,
-    onClick: () => {},
-    confirm: {
-      title: "Delete Document",
-      message: `Are you sure you want to delete "${doc.source_name}"?`,
-      onConfirm: () => onDeleteConfirmed(doc.source_id),
-      loading: deleteLoading,
-      confirmLabel: "Yes, Delete",
+  rowSelection: RowSelectionState,
+  onRowSelectionChange?: (selection: RowSelectionState) => void
+) => {
+  const actions = [
+    {
+      icon: <FaEye />,
+      onClick: () => setActiveDoc(doc === activeDoc ? null : doc),
     },
-  },
 ];
 
-export const DocumentGrid = ({paginatedDocuments, activeDoc, setActiveDoc, deleteLoading, onDeleteConfirmed, retrying, handleRetry, footer}: DocumentGridProps) => {
+// Add checkbox action if selection is enabled
+  if (onRowSelectionChange) {
+    const isSelected = rowSelection[doc.source_id] === true;
+    actions.push({
+      icon: null, // Will be replaced with checkbox
+      onClick: () => {},
+      isCheckbox: true,
+      checked: isSelected,
+      onCheckboxChange: (checked: boolean) => {
+        const newSelection = { ...rowSelection };
+        if (checked) {
+          newSelection[doc.source_id] = true;
+        } else {
+          delete newSelection[doc.source_id];
+        }
+        onRowSelectionChange(newSelection);
+      },
+    } as any);
+  }
+
+  return actions;
+};
+
+export const DocumentGrid = ({
+  paginatedDocuments, 
+  activeDoc, 
+  setActiveDoc, 
+  footer,
+  rowSelection = {},
+  onRowSelectionChange
+  }: DocumentGridProps) => {
   return (
     <>
       <div className="p-6">
@@ -91,7 +113,7 @@ export const DocumentGrid = ({paginatedDocuments, activeDoc, setActiveDoc, delet
                 selected={doc === activeDoc}
                 onClick={() => setActiveDoc(doc === activeDoc ? null : doc)}
                 // extraTopRight={getExtraTopRight(doc, handleRetry, retrying)}
-                actions={getActions(doc, activeDoc, setActiveDoc, deleteLoading, onDeleteConfirmed)}
+                actions={getActions(doc, activeDoc, setActiveDoc, rowSelection, onRowSelectionChange)}
               />
             ))}
           </div>
