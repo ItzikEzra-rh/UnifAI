@@ -85,13 +85,6 @@ http {
            proxy_read_timeout 600s;     # 10 minutes - time to read response from upstream
            send_timeout 600s;            # 10 minutes - time to send response to client
            
-           # Buffer settings to handle large responses
-           proxy_buffering on;
-           proxy_buffer_size 16k;         # Increased from 4k
-           proxy_buffers 32 16k;          # Increased: 32 buffers of 16k = 512KB total
-           proxy_busy_buffers_size 64k;   # Increased from 8k
-           proxy_max_temp_file_size 1024m; # Max size for temp files (1GB)
-           proxy_temp_file_write_size 64k; # Size of data written to temp file at once
 
         }
 
@@ -108,14 +101,6 @@ http {
            proxy_read_timeout 600s;     # 10 minutes - time to read response from upstream
            send_timeout 600s;            # 10 minutes - time to send response to client
            
-           # Buffer settings to handle large responses
-           proxy_buffering on;
-           proxy_buffer_size 16k;         # Increased from 4k
-           proxy_buffers 32 16k;          # Increased: 32 buffers of 16k = 512KB total
-           proxy_busy_buffers_size 64k;   # Increased from 8k
-           proxy_max_temp_file_size 1024m; # Max size for temp files (1GB)
-           proxy_temp_file_write_size 64k; # Size of data written to temp file at once
-
         }
 
         location / {
