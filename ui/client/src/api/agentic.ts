@@ -71,6 +71,12 @@ export async function fetchCatalogElements(): Promise<any> {
   return response.data?.elements || {};
 }
 
+// Fetch resource categories
+export async function fetchResourceCategories(): Promise<string[]> {
+  const response = await axios.get('/catalog/categories.list.get');
+  return response.data?.categories || [];
+}
+
 // Fetch agentic stats summary
 export async function fetchAgenticStats(userId?: string): Promise<AgenticStats> {
   const userIdParam = userId || 'default';
@@ -87,7 +93,11 @@ export async function fetchAgenticStats(userId?: string): Promise<AgenticStats> 
   
   if (Array.isArray(resources)) {
     resources.forEach((resource: any) => {
-      const category = resource.category || 'UNKNOWN';
+      let category = resource.category || 'UNKNOWN';
+      // Map 'nodes' to 'agents' for consistency with UI
+      if (category.toLowerCase() === 'nodes') {
+        category = 'agents';
+      }
       if (!resourcesByCategory[category]) {
         resourcesByCategory[category] = {
           category,

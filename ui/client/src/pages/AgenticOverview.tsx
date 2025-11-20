@@ -3,6 +3,7 @@ import { FaProjectDiagram, FaChartPie, FaPlayCircle, FaBoxes, FaChevronRight } f
 import { useProject } from "@/contexts/ProjectContext";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
+import { generateColorPalette, getPaletteColor } from "@/lib/colorUtils";
 
 // Layout components
 import Sidebar from "@/components/layout/Sidebar";
@@ -12,7 +13,7 @@ import StatusBar from "@/components/layout/StatusBar";
 // Agentic Overview components
 import GlassPanel from "@/components/ui/GlassPanel";
 import { useQuery } from "@tanstack/react-query";
-import { fetchAgenticStats, fetchWorkflows, fetchActiveSessions, fetchAllResources, fetchBlueprintSessionCounts, WorkflowBlueprint } from "@/api/agentic";
+import { fetchAgenticStats, fetchWorkflows, fetchActiveSessions, fetchAllResources, fetchBlueprintSessionCounts, fetchResourceCategories, WorkflowBlueprint } from "@/api/agentic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Workflow, Database, Users, Zap, TrendingUp, Clock, Loader2 } from "lucide-react";
@@ -70,8 +71,40 @@ export default function AgenticOverview() {
     refetchOnWindowFocus: true,
   });
 
-  // Calculate resource distribution
-  const resourceDistribution = agenticStats?.resourcesByCategory || [];
+  // Fetch resource categories from backend
+  const { data: resourceCategories = [], isLoading: isLoadingCategories } = useQuery({
+    queryKey: ['resourceCategories'],
+    queryFn: () => fetchResourceCategories(),
+    refetchInterval: 300000, // Categories don't change often, refetch every 5 minutes
+    refetchOnWindowFocus: false,
+  });
+
+  // Calculate resource distribution - ensure all categories are shown
+  // Map 'nodes' to 'agents' for display, and use categories from backend
+  const allCategories = resourceCategories.length > 0 
+    ? resourceCategories.map(cat => cat.toLowerCase() === 'nodes' ? 'agents' : cat.toLowerCase())
+    : ['conditions', 'llms', 'agents', 'providers', 'retrievers', 'tools']; // Fallback if backend fails
+  const resourceDistributionMap = new Map(
+    (agenticStats?.resourcesByCategory || []).map(cat => {
+      // Map 'nodes' to 'agents' for display
+      const categoryKey = cat.category.toLowerCase() === 'nodes' ? 'agents' : cat.category.toLowerCase();
+      return [categoryKey, { ...cat, category: categoryKey }];
+    })
+  );
+  
+  // Create distribution with all categories, using 0 for missing ones
+  const resourceDistribution = allCategories.map(category => {
+    const existing = resourceDistributionMap.get(category);
+    if (existing) {
+      return existing;
+    }
+    return {
+      category,
+      count: 0,
+      types: {}
+    };
+  });
+  
   const topCategories = resourceDistribution
     .sort((a, b) => b.count - a.count)
     .slice(0, 3);
@@ -153,18 +186,32 @@ export default function AgenticOverview() {
             <GlassPanel className="h-full">
               <Card className="rounded-xl border-0 shadow-none bg-transparent">
                 <div className="relative p-4 border-b border-border">
-                  <div className="absolute top-2 right-4 w-8 h-8 rounded-lg bg-green-500/20 text-green-500 flex items-center justify-center">
-                    <Zap className="w-4 h-4" />
-                  </div>
+                  {(() => {
+                    const sessionsColor = getPaletteColor(primaryHex || "#A60000", 1, 4);
+                    return (
+                      <div 
+                        className="absolute top-2 right-4 w-8 h-8 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: `${sessionsColor}33`, color: sessionsColor }}
+                      >
+                        <Zap className="w-4 h-4" />
+                      </div>
+                    );
+                  })()}
                   <h3 className="text-lg font-semibold text-white flex items-center">
-                    <FaPlayCircle className="text-green-500 mr-3 h-5 w-5" />
+                    {(() => {
+                      const sessionsColor = getPaletteColor(primaryHex || "#A60000", 1, 4);
+                      return <FaPlayCircle className="mr-3 h-5 w-5" style={{ color: sessionsColor }} />;
+                    })()}
                     Active Sessions
                   </h3>
                 </div>
                 <CardContent className="p-4">
                   {isLoadingSessions ? (
                     <div className="flex items-center justify-center h-16">
-                      <Loader2 className="w-6 h-6 animate-spin text-green-500" />
+                      {(() => {
+                        const sessionsColor = getPaletteColor(primaryHex || "#A60000", 1, 4);
+                        return <Loader2 className="w-6 h-6 animate-spin" style={{ color: sessionsColor }} />;
+                      })()}
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -180,18 +227,32 @@ export default function AgenticOverview() {
             <GlassPanel className="h-full">
               <Card className="rounded-xl border-0 shadow-none bg-transparent">
                 <div className="relative p-4 border-b border-border">
-                  <div className="absolute top-2 right-4 w-8 h-8 rounded-lg bg-secondary/20 text-secondary flex items-center justify-center">
-                    <Database className="w-4 h-4" />
-                  </div>
+                  {(() => {
+                    const resourcesColor = getPaletteColor(primaryHex || "#A60000", 2, 4);
+                    return (
+                      <div 
+                        className="absolute top-2 right-4 w-8 h-8 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: `${resourcesColor}33`, color: resourcesColor }}
+                      >
+                        <Database className="w-4 h-4" />
+                      </div>
+                    );
+                  })()}
                   <h3 className="text-lg font-semibold text-white flex items-center">
-                    <FaBoxes className="text-secondary mr-3 h-5 w-5" />
+                    {(() => {
+                      const resourcesColor = getPaletteColor(primaryHex || "#A60000", 2, 4);
+                      return <FaBoxes className="mr-3 h-5 w-5" style={{ color: resourcesColor }} />;
+                    })()}
                     Inventory
                   </h3>
                 </div>
                 <CardContent className="p-4">
                   {isLoadingResources ? (
                     <div className="flex items-center justify-center h-16">
-                      <Loader2 className="w-6 h-6 animate-spin text-secondary" />
+                      {(() => {
+                        const resourcesColor = getPaletteColor(primaryHex || "#A60000", 2, 4);
+                        return <Loader2 className="w-6 h-6 animate-spin" style={{ color: resourcesColor }} />;
+                      })()}
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -207,18 +268,32 @@ export default function AgenticOverview() {
             <GlassPanel className="h-full">
               <Card className="rounded-xl border-0 shadow-none bg-transparent">
                 <div className="relative p-4 border-b border-border">
-                  <div className="absolute top-2 right-4 w-8 h-8 rounded-lg bg-purple-500/20 text-purple-500 flex items-center justify-center">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
+                  {(() => {
+                    const categoriesColor = getPaletteColor(primaryHex || "#A60000", 3, 4);
+                    return (
+                      <div 
+                        className="absolute top-2 right-4 w-8 h-8 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: `${categoriesColor}33`, color: categoriesColor }}
+                      >
+                        <TrendingUp className="w-4 h-4" />
+                      </div>
+                    );
+                  })()}
                   <h3 className="text-lg font-semibold text-white flex items-center">
-                    <FaChartPie className="text-purple-500 mr-3 h-5 w-5" />
+                    {(() => {
+                      const categoriesColor = getPaletteColor(primaryHex || "#A60000", 3, 4);
+                      return <FaChartPie className="mr-3 h-5 w-5" style={{ color: categoriesColor }} />;
+                    })()}
                     Categories
                   </h3>
                 </div>
                 <CardContent className="p-4">
                   {isLoadingStats ? (
                     <div className="flex items-center justify-center h-16">
-                      <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+                      {(() => {
+                        const categoriesColor = getPaletteColor(primaryHex || "#A60000", 3, 4);
+                        return <Loader2 className="w-6 h-6 animate-spin" style={{ color: categoriesColor }} />;
+                      })()}
                     </div>
                   ) : (
                     <div className="space-y-2">
@@ -255,26 +330,29 @@ export default function AgenticOverview() {
                     <div className="flex items-center justify-center h-full">
                       <Loader2 className="w-8 h-8 animate-spin text-primary" />
                     </div>
-                  ) : resourceDistribution.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-gray-400">
-                      No resources configured yet
-                    </div>
                   ) : (
                     <div className="space-y-4 overflow-y-auto flex-1 pr-2 pb-4">
-                      {resourceDistribution
-                        .sort((a, b) => b.count - a.count)
-                        .slice(0, 5)
-                        .map((category, idx) => {
-                          const total = resourceDistribution.reduce((sum, c) => sum + c.count, 0);
-                          const percentage = total > 0 ? Math.round((category.count / total) * 100) : 0;
-                          const colors = [
-                            primaryHex || "#A60000",
-                            "hsl(var(--secondary))",
-                            "#8B5CF6",
-                            "#10B981",
-                            "#F59E0B"
-                          ];
-                          const color = colors[idx % colors.length];
+                      {(() => {
+                        // Use primary color for the first category (highest count)
+                        const primaryColor = primaryHex || "#A60000";
+                        const colorPalette = generateColorPalette(primaryColor, resourceDistribution.length);
+                        
+                        // Create a map to ensure each category gets a unique color
+                        const categoryColorMap = new Map<string, string>();
+                        const sortedCategories = [...resourceDistribution].sort((a, b) => b.count - a.count);
+                        
+                        // Assign colors from palette to categories
+                        sortedCategories.forEach((cat, idx) => {
+                          const colorIndex = Math.min(idx, colorPalette.length - 1);
+                          categoryColorMap.set(cat.category, colorPalette[colorIndex]);
+                        });
+                        
+                        return resourceDistribution
+                          .sort((a, b) => b.count - a.count)
+                          .map((category, idx) => {
+                            const total = resourceDistribution.reduce((sum, c) => sum + c.count, 0);
+                            const percentage = total > 0 ? Math.round((category.count / total) * 100) : 0;
+                            const color = categoryColorMap.get(category.category) || colorPalette[idx % colorPalette.length];
                           
                           // Create tooltip content with type breakdown
                           const typeBreakdown = Object.entries(category.types)
@@ -301,7 +379,8 @@ export default function AgenticOverview() {
                               </div>
                             </SimpleTooltip>
                           );
-                        })}
+                        });
+                      })()}
                     </div>
                   )}
                 </CardContent>
