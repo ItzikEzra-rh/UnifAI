@@ -35,47 +35,41 @@ export default function AgenticOverview() {
   const { data: agenticStats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['agenticStats', userId],
     queryFn: () => fetchAgenticStats(userId),
-    refetchInterval: 30000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch workflows
   const { data: workflows = [], isLoading: isLoadingWorkflows } = useQuery({
     queryKey: ['workflows', userId],
     queryFn: () => fetchWorkflows(userId),
-    refetchInterval: 30000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch active sessions
   const { data: activeSessions = [], isLoading: isLoadingSessions } = useQuery({
     queryKey: ['activeSessions', userId],
     queryFn: () => fetchActiveSessions(userId),
-    refetchInterval: 10000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch session counts by blueprint_id
   const { data: blueprintSessionCounts = {}, isLoading: isLoadingCounts } = useQuery({
     queryKey: ['blueprintSessionCounts', userId],
     queryFn: () => fetchBlueprintSessionCounts(userId),
-    refetchInterval: 10000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch resources
   const { data: resources = [], isLoading: isLoadingResources } = useQuery({
     queryKey: ['allResources', userId],
     queryFn: () => fetchAllResources(userId),
-    refetchInterval: 30000,
-    refetchOnWindowFocus: true,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch resource categories from backend
   const { data: resourceCategories = [], isLoading: isLoadingCategories } = useQuery({
     queryKey: ['resourceCategories'],
     queryFn: () => fetchResourceCategories(),
-    refetchInterval: 300000, // Categories don't change often, refetch every 5 minutes
     refetchOnWindowFocus: false,
   });
 
