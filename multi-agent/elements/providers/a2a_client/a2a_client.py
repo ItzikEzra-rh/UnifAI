@@ -23,6 +23,8 @@ from a2a.types import (
     AgentCard,
     Message,
     Task,
+    TaskStatus,
+    TaskState,
     SendMessageRequest,
     SendMessageResponse,
     SendMessageSuccessResponse,
@@ -35,7 +37,10 @@ from a2a.types import (
     GetTaskSuccessResponse,
     TaskQueryParams,
     TaskStatusUpdateEvent,
+    TaskArtifactUpdateEvent,
+    Artifact,
 )
+from a2a.utils import get_text_parts
 
 logger = logging.getLogger(__name__)
 
@@ -71,8 +76,16 @@ class A2AClient:
     
     async def __aenter__(self):
         """Enter async context - create httpx client and SDK client."""
-        # Create httpx client
-        self._httpx_client = httpx.AsyncClient()
+        # Create httpx client with extended timeout for long-running agent operations
+        # (e.g., travel planning, external API calls, complex processing)
+        self._httpx_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(
+                connect=10.0,    # Connection establishment
+                read=300.0,      # Reading response (5 minutes for agent processing)
+                write=10.0,      # Sending request
+                pool=10.0        # Pool connection acquisition
+            )
+        )
         await self._httpx_client.__aenter__()
         
         # Fetch agent card if not provided
@@ -184,15 +197,49 @@ class A2AClient:
             stream_response = self._sdk_client.send_message_streaming(request)
             
             async for chunk in stream_response:
-                # Extract Task from streaming response
+                # Extract from streaming response
                 if isinstance(chunk.root, SendStreamingMessageSuccessResponse):
-                    # Can be Task or TaskStatusUpdateEvent
-                    if isinstance(chunk.root.result, Task):
-                        yield chunk.root.result
-                    elif isinstance(chunk.root.result, TaskStatusUpdateEvent):
-                        # For status updates, we might need to construct a partial Task
-                        # For now, log and continue
-                        logger.debug(f"Status update: {chunk.root.result.status.state if chunk.root.result.status else 'unknown'}")
+                    result = chunk.root.result
+                    
+                    # Handle different event types
+                    if isinstance(result, Task):
+                        # Complete Task object (usually final chunk)
+                        yield result
+                        
+                    elif isinstance(result, TaskArtifactUpdateEvent):
+                        # Streaming text chunks - THIS IS THE MAIN STREAMING CONTENT
+                        # Extract text from artifact parts and create a partial Task
+                        # Note: Artifact updates don't include status, so we create a "working" status
+                        if result.artifact and result.artifact.parts:
+                            text_parts = get_text_parts(result.artifact.parts)
+                            if text_parts:
+                                # Create a partial Task with the streaming content
+                                # Status is "working" since we're actively streaming
+                                partial_task = Task(
+                                    id=result.task_id,
+                                    context_id=result.context_id,
+                                    artifacts=[result.artifact],
+                                    status=TaskStatus(state=TaskState.working)
+                                )
+                                yield partial_task
+                        
+                    elif isinstance(result, TaskStatusUpdateEvent):
+                        # Status updates (working, completed, etc.)
+                        # TaskStatusUpdateEvent has: task_id, context_id, status, final
+                        # But does NOT have a full Task object
+                        if result.status:
+                            # Only yield if it's a final status (completed/failed)
+                            if result.status.state in (TaskState.completed, TaskState.failed):
+                                # Create minimal Task with status for completion indication
+                                final_task = Task(
+                                    id=result.task_id,
+                                    context_id=result.context_id,
+                                    status=result.status
+                                )
+                                yield final_task
+                            # For non-final status updates (working), just skip
+                        else:
+                            print(f"Status update without status field")
                         continue
                 
         except Exception as e:

@@ -54,7 +54,7 @@ class A2AMessageConverter:
         # Map internal Role enum to A2A Role enum
         role_mapping = {
             Role.USER: A2ARole.user,
-            Role.ASSISTANT: A2ARole.assistant,
+            Role.ASSISTANT: A2ARole.agent,
             Role.SYSTEM: A2ARole.user,  # A2A doesn't have system role
             Role.TOOL: A2ARole.user     # Map tool to user
         }
@@ -113,7 +113,7 @@ class A2AMessageConverter:
         # Last fallback
         return ChatMessage(
             role=Role.ASSISTANT,
-            content="No response"
+            content=""
         )
     
     @staticmethod

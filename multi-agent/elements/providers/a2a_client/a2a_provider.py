@@ -245,8 +245,8 @@ class A2AProvider:
         task_id: Optional[str] = None,
         context_id: Optional[str] = None,
         wait_for_completion: bool = True,
-        poll_interval: float = 0.5,
-        max_poll_attempts: int = 60,
+        poll_interval: float = 0.3,
+        max_poll_attempts: int = 1000,
         **kwargs
     ) -> tuple[ChatMessage, Dict[str, Any]]:
         """
