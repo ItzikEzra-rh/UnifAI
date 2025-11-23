@@ -75,6 +75,19 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
   // Filter only pending notifications for notifications panel
   const pendingNotifications = receivedNotifications?.filter(notification => notification.status === 'pending');
 
+  console.log(pendingNotifications);
+  console.log("Dummy notification that should be in the list");
+  console.log({
+    share_id: '123',
+    item_name: 'Test Item',
+    sender_user_id: 'testuser',
+    item_kind: 'project',
+    created_at: new Date().toISOString(),
+    status: 'pending',
+  });
+
+  console.log("DEBUG message to remove");
+
   if (!isOpen) return null;
 
   return (
