@@ -22,7 +22,7 @@ def buildParams = [
     MainRepoURL        : "github.com",
     MainRepoProject    : "redhat-community-ai-tools/UnifAI",
     MainRepoBranch     : "${params.BRANCH}",
-    CredentialsId      : "github-genie",
+    CredentialsId      : "github-unifai-token",
     CredMainRepoURL    : "gitlab.cee.redhat.com",
     CredMainRepoProject: "ai_tools/genie-cred-data", 
     CredMainRepoBranch : "main",

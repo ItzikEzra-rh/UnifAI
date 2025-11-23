@@ -25,7 +25,7 @@ def buildParams = [
     LogLevel           : "ALL",
     MainRepoURL        : "github.com",
     MainRepoProject    : "redhat-community-ai-tools/UnifAI",
-    CredentialsId      : "github-genie",
+    CredentialsId      : "github-unifai-token",
     NodeToRun          : "tag-slave",
     DevRoot            : "/root/workspace/${env.JOB_NAME}",
     ImageRegistry      : "images.paas.redhat.com",
