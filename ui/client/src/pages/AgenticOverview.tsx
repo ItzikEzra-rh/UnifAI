@@ -1,7 +1,6 @@
 import { useState, useMemo } from "react";
-import { FaProjectDiagram, FaChartPie, FaPlayCircle, FaBoxes, FaChevronRight } from "react-icons/fa";
+import { FaProjectDiagram, FaChartPie, FaPlayCircle, FaBoxes } from "react-icons/fa";
 import { motion } from "framer-motion";
-import { useAuth } from "@/contexts/AuthContext";
 import { getPaletteColor } from "@/lib/colorUtils";
 
 // Layout components
@@ -11,24 +10,37 @@ import StatusBar from "@/components/layout/StatusBar";
 
 // Agentic Overview components
 import GlassPanel from "@/components/ui/GlassPanel";
-import { useQuery } from "@tanstack/react-query";
 import { StatCard } from "@/components/dashboard/StatCard";
 import { ResourceDistributionChart } from "@/components/dashboard/ResourceDistributionChart";
-import { fetchAgenticStats, fetchWorkflows, fetchActiveSessions, fetchAllResources, fetchBlueprintSessionCounts, fetchResourceCategories, WorkflowBlueprint } from "@/api/agentic";
+import { WorkflowList } from "@/components/dashboard/WorkflowList";
+import { WorkflowBlueprint } from "@/api/agentic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Workflow, Database, Zap, TrendingUp, Loader2 } from "lucide-react";
+import { Workflow, Database, Zap, TrendingUp } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ReactFlowGraph from "@/components/agentic-ai/graphs/ReactFlowGraph";
 import { ReactFlowProvider } from "reactflow";
+
+// Custom hooks
+import { useAgenticData } from "@/hooks/useAgenticData";
+import { useWorkflowCalculations } from "@/hooks/useWorkflowCalculations";
+import { useResourceDistribution } from "@/hooks/useResourceDistribution";
 
 export default function AgenticOverview() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowBlueprint | null>(null);
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
   const { primaryHex } = useTheme();
-  const { user } = useAuth();
-  const userId = user?.username || "default";
+
+  // Fetch all agentic data using custom hook
+  const {
+    agenticStats,
+    workflows,
+    activeSessions,
+    blueprintSessionCounts,
+    resources,
+    resourceCategories,
+  } = useAgenticData();
 
   // Calculate theme colors once using useMemo
   const themeColors = useMemo(() => {
@@ -40,100 +52,18 @@ export default function AgenticOverview() {
     };
   }, [primaryHex]);
 
-  // Fetch agentic AI stats
-  const { data: agenticStats, isLoading: isLoadingStats } = useQuery({
-    queryKey: ['agenticStats', userId],
-    queryFn: () => fetchAgenticStats(userId),
-    staleTime: 0,
-  });
-
-  // Fetch workflows
-  const { data: workflows = [], isLoading: isLoadingWorkflows } = useQuery({
-    queryKey: ['workflows', userId],
-    queryFn: () => fetchWorkflows(userId),
-    staleTime: 0,
-  });
-
-  // Fetch active sessions
-  const { data: activeSessions = [], isLoading: isLoadingSessions } = useQuery({
-    queryKey: ['activeSessions', userId],
-    queryFn: () => fetchActiveSessions(userId),
-    staleTime: 0,
-  });
-
-  // Fetch session counts by blueprint_id
-  const { data: blueprintSessionCounts = {}, isLoading: isLoadingCounts } = useQuery({
-    queryKey: ['blueprintSessionCounts', userId],
-    queryFn: () => fetchBlueprintSessionCounts(userId),
-    staleTime: 0,
-  });
-
-  // Fetch resources
-  const { data: resources = [], isLoading: isLoadingResources } = useQuery({
-    queryKey: ['allResources', userId],
-    queryFn: () => fetchAllResources(userId),
-    staleTime: 0,
-  });
-
-  // Fetch resource categories from backend
-  const { data: resourceCategories = [], isLoading: isLoadingCategories } = useQuery({
-    queryKey: ['resourceCategories'],
-    queryFn: () => fetchResourceCategories(),
-    staleTime: 0,
-  });
-
-  // Calculate resource distribution - ensure all categories are shown
-  // Map 'nodes' to 'agents' for display, and use categories from backend
-  const allCategories = resourceCategories.length > 0 
-    ? resourceCategories.map(cat => cat.toLowerCase() === 'nodes' ? 'agents' : cat.toLowerCase())
-    : ['conditions', 'llms', 'agents', 'providers', 'retrievers', 'tools']; // Fallback if backend fails
-  const resourceDistributionMap = new Map(
-    (agenticStats?.resourcesByCategory || []).map(cat => {
-      // Map 'nodes' to 'agents' for display
-      const categoryKey = cat.category.toLowerCase() === 'nodes' ? 'agents' : cat.category.toLowerCase();
-      return [categoryKey, { ...cat, category: categoryKey }];
-    })
-  );
-  
-  // Create distribution with all categories, using 0 for missing ones
-  const resourceDistribution = allCategories.map(category => {
-    const existing = resourceDistributionMap.get(category);
-    if (existing) {
-      return existing;
-    }
-    return {
-      category,
-      count: 0,
-      types: {}
-    };
-  });
-  
-  const topCategories = resourceDistribution
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 3);
-
-  // Filter unused workflows (workflows not in active sessions)
-  const unusedWorkflows = workflows.filter(
-    workflow => !activeSessions.includes(workflow.blueprint_id)
+  // Calculate resource distribution using custom hook
+  const resourceDistribution = useResourceDistribution(
+    resourceCategories.data,
+    agenticStats.data?.resourcesByCategory || []
   );
 
-  // Calculate most used workflows (workflows that have been used - have chat sessions)
-  // Include workflows with session counts OR workflows that are currently active
-  const mostUsedWorkflows = workflows
-    .map(workflow => {
-      const sessionCount = blueprintSessionCounts?.[workflow.blueprint_id] ?? 0;
-      const isCurrentlyActive = Array.isArray(activeSessions) && activeSessions.includes(workflow.blueprint_id);
-      // Use session count if available, otherwise use 1 if currently active
-      const usageCount = sessionCount > 0 ? sessionCount : (isCurrentlyActive ? 1 : 0);
-      return {
-        ...workflow,
-        usageCount,
-        isCurrentlyActive
-      };
-    })
-    .filter(workflow => workflow.usageCount > 0)
-    .sort((a, b) => b.usageCount - a.usageCount)
-    .slice(0, 5);
+  // Calculate workflow statistics using custom hook
+  const { mostUsedWorkflows, unusedWorkflows } = useWorkflowCalculations(
+    workflows.data,
+    activeSessions.data,
+    blueprintSessionCounts.data
+  );
 
   // Handle workflow click
   const handleWorkflowClick = (workflow: WorkflowBlueprint) => {
@@ -176,9 +106,9 @@ export default function AgenticOverview() {
                     Workflows
                   </span>
                 }
-                value={agenticStats?.totalWorkflows || 0}
+                value={agenticStats.data?.totalWorkflows || 0}
                 subtext="Total blueprints available"
-                isLoading={isLoadingStats}
+                isLoading={agenticStats.isLoading}
               />
             </GlassPanel>
 
@@ -192,9 +122,9 @@ export default function AgenticOverview() {
                     Active Sessions
                   </span>
                 }
-                value={agenticStats?.activeSessions || 0}
+                value={agenticStats.data?.activeSessions || 0}
                 subtext="Currently running"
-                isLoading={isLoadingSessions}
+                isLoading={activeSessions.isLoading}
                 iconColor={themeColors.sessions}
                 iconBgColor={`${themeColors.sessions}33`}
               />
@@ -210,9 +140,9 @@ export default function AgenticOverview() {
                     Inventory
                   </span>
                 }
-                value={agenticStats?.totalResources || 0}
+                value={agenticStats.data?.totalResources || 0}
                 subtext="Total resources configured"
-                isLoading={isLoadingResources}
+                isLoading={resources.isLoading}
                 iconColor={themeColors.resources}
                 iconBgColor={`${themeColors.resources}33`}
               />
@@ -230,7 +160,7 @@ export default function AgenticOverview() {
                 }
                 value={resourceDistribution.length}
                 subtext="Resource categories"
-                isLoading={isLoadingStats}
+                isLoading={agenticStats.isLoading}
                 iconColor={themeColors.categories}
                 iconBgColor={`${themeColors.categories}33`}
               />
@@ -259,7 +189,7 @@ export default function AgenticOverview() {
                 <CardContent className="px-6 pb-6 flex-1 overflow-hidden flex flex-col min-h-0">
                   <ResourceDistributionChart
                     data={resourceDistribution}
-                    isLoading={isLoadingStats}
+                    isLoading={agenticStats.isLoading}
                     primaryColor={primaryHex || "#A60000"}
                   />
                 </CardContent>
@@ -276,116 +206,31 @@ export default function AgenticOverview() {
           >
             {/* Most Used Workflows */}
             <GlassPanel style={{ height: 340 }}>
-              <Card className="shadow-card border-gray-800 bg-transparent border-0 flex flex-col h-full">
-                <CardHeader className="py-4 px-6 flex-shrink-0">
-                  <CardTitle className="text-xl flex items-center gap-2">
-                    <FaProjectDiagram className="text-primary" />
-                    Most Used Workflows
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col min-h-0 px-6 pb-6">
-                  {isLoadingWorkflows || isLoadingSessions || isLoadingCounts ? (
-                    <div className="flex items-center justify-center h-full">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    </div>
-                  ) : mostUsedWorkflows.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-                      No workflows currently in use
-                    </div>
-                  ) : (
-                    <div className="space-y-3 pr-2">
-                      {mostUsedWorkflows.map((workflow, idx) => (
-                        <motion.div
-                          key={workflow.blueprint_id}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.1 }}
-                          onClick={() => handleWorkflowClick(workflow)}
-                          className="p-3 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-primary/50 transition-colors cursor-pointer group flex-shrink-0"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0">
-                                <Workflow className="w-4 h-4" />
-                              </div>
-                              <div className="min-w-0 flex-1 overflow-hidden">
-                                <p className="text-sm font-medium text-white truncate">
-                                  {workflow.spec_dict?.name || workflow.blueprint_id}
-                                </p>
-                                <p className="text-xs text-gray-400 truncate">
-                                  {workflow.blueprint_id}
-                                </p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              <span className="text-xs text-gray-400">{workflow.usageCount}x</span>
-                              <FaChevronRight className="w-4 h-4 text-gray-500 group-hover:text-primary transition-colors" />
-                            </div>
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <WorkflowList
+                title="Most Used Workflows"
+                workflows={mostUsedWorkflows}
+                isLoading={workflows.isLoading || activeSessions.isLoading || blueprintSessionCounts.isLoading}
+                onWorkflowClick={handleWorkflowClick}
+                emptyMessage="No workflows currently in use"
+                showUsageCount={true}
+              />
             </GlassPanel>
 
             {/* Unused Available Workflows */}
             <GlassPanel style={{ height: 340 }}>
-              <Card className="shadow-card border-gray-800 bg-transparent border-0 flex flex-col h-full">
-                <CardHeader className="py-4 px-6 flex-shrink-0">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl flex items-center gap-2">
-                      <FaProjectDiagram className="text-primary" />
-                      Unused Available Workflows
-                    </CardTitle>
-                    <span className="text-sm text-gray-400">{unusedWorkflows.length}</span>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1 overflow-y-auto overflow-x-hidden flex flex-col min-h-0 px-6 pb-6">
-                  {isLoadingWorkflows || isLoadingSessions || isLoadingCounts ? (
-                    <div className="flex items-center justify-center h-full">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    </div>
-                  ) : unusedWorkflows.length === 0 ? (
-                    <div className="flex items-center justify-center h-full text-gray-400 text-sm">
-                      {workflows.length === 0 
-                        ? "No workflows available" 
-                        : "All workflows are currently in use"}
-                    </div>
-                  ) : (
-                    <div className="space-y-3 pr-2">
-                      {unusedWorkflows.slice(0, 8).map((workflow, idx) => (
-                        <motion.div
-                          key={workflow.blueprint_id}
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ delay: idx * 0.05 }}
-                          onClick={() => handleWorkflowClick(workflow)}
-                          className="p-3 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-primary/50 transition-colors cursor-pointer group flex-shrink-0"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center shrink-0">
-                                <Workflow className="w-4 h-4" />
-                              </div>
-                              <div className="min-w-0 flex-1 overflow-hidden">
-                                <p className="text-sm font-medium text-white truncate">
-                                  {workflow.spec_dict?.name || workflow.blueprint_id}
-                                </p>
-                                <p className="text-xs text-gray-400 truncate">
-                                  {workflow.blueprint_id}
-                                </p>
-                              </div>
-                            </div>
-                            <FaChevronRight className="w-4 h-4 text-gray-500 group-hover:text-primary transition-colors shrink-0" />
-                          </div>
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+              <WorkflowList
+                title="Unused Available Workflows"
+                workflows={unusedWorkflows}
+                isLoading={workflows.isLoading || activeSessions.isLoading || blueprintSessionCounts.isLoading}
+                onWorkflowClick={handleWorkflowClick}
+                emptyMessage={
+                  workflows.data.length === 0
+                    ? "No workflows available"
+                    : "All workflows are currently in use"
+                }
+                maxItems={8}
+                countBadge={unusedWorkflows.length}
+              />
             </GlassPanel>
           </motion.div>
         </main>
