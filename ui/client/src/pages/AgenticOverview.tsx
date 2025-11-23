@@ -109,6 +109,7 @@ export default function AgenticOverview() {
                 value={agenticStats.data?.totalWorkflows || 0}
                 subtext="Total blueprints available"
                 isLoading={agenticStats.isLoading}
+                error={agenticStats.error}
               />
             </GlassPanel>
 
@@ -125,6 +126,7 @@ export default function AgenticOverview() {
                 value={agenticStats.data?.activeSessions || 0}
                 subtext="Currently running"
                 isLoading={activeSessions.isLoading}
+                error={activeSessions.error}
                 iconColor={themeColors.sessions}
                 iconBgColor={`${themeColors.sessions}33`}
               />
@@ -143,6 +145,7 @@ export default function AgenticOverview() {
                 value={agenticStats.data?.totalResources || 0}
                 subtext="Total resources configured"
                 isLoading={resources.isLoading}
+                error={resources.error}
                 iconColor={themeColors.resources}
                 iconBgColor={`${themeColors.resources}33`}
               />
@@ -161,6 +164,7 @@ export default function AgenticOverview() {
                 value={resourceDistribution.length}
                 subtext="Resource categories"
                 isLoading={agenticStats.isLoading}
+                error={agenticStats.error}
                 iconColor={themeColors.categories}
                 iconBgColor={`${themeColors.categories}33`}
               />

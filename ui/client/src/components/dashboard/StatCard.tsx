@@ -10,6 +10,7 @@ interface StatCardProps {
   isLoading?: boolean;
   iconColor?: string;
   iconBgColor?: string;
+  error?: Error | null;
 }
 
 export function StatCard({
@@ -20,6 +21,7 @@ export function StatCard({
   isLoading = false,
   iconColor,
   iconBgColor,
+  error,
 }: StatCardProps) {
   return (
     <Card className="rounded-xl border-0 shadow-none bg-transparent">
@@ -44,6 +46,11 @@ export function StatCard({
               className="w-6 h-6 animate-spin"
               style={{ color: iconColor }}
             />
+          </div>
+        ) : error ? (
+          <div className="space-y-2">
+            <p className="text-lg font-semibold text-red-400">Error</p>
+            <p className="text-xs text-gray-400">Failed to load data</p>
           </div>
         ) : (
           <div className="space-y-2">
