@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaProjectDiagram, FaChartPie, FaPlayCircle, FaBoxes, FaChevronRight } from "react-icons/fa";
 import { useProject } from "@/contexts/ProjectContext";
 import { motion } from "framer-motion";
@@ -12,7 +12,7 @@ import StatusBar from "@/components/layout/StatusBar";
 
 // Agentic Overview components
 import GlassPanel from "@/components/ui/GlassPanel";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchAgenticStats, fetchWorkflows, fetchActiveSessions, fetchAllResources, fetchBlueprintSessionCounts, fetchResourceCategories, WorkflowBlueprint } from "@/api/agentic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -30,47 +30,70 @@ export default function AgenticOverview() {
   const { primaryHex } = useTheme();
   const { user } = useAuth();
   const userId = user?.username || "default";
+  const queryClient = useQueryClient();
+
+  // Invalidate and refetch all queries when component mounts
+  useEffect(() => {
+    queryClient.invalidateQueries({ queryKey: ['agenticStats', userId] });
+    queryClient.invalidateQueries({ queryKey: ['workflows', userId] });
+    queryClient.invalidateQueries({ queryKey: ['activeSessions', userId] });
+    queryClient.invalidateQueries({ queryKey: ['blueprintSessionCounts', userId] });
+    queryClient.invalidateQueries({ queryKey: ['allResources', userId] });
+    queryClient.invalidateQueries({ queryKey: ['resourceCategories'] });
+  }, [queryClient, userId]);
 
   // Fetch agentic AI stats
   const { data: agenticStats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['agenticStats', userId],
     queryFn: () => fetchAgenticStats(userId),
-    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always consider data stale to force refetch
   });
 
   // Fetch workflows
   const { data: workflows = [], isLoading: isLoadingWorkflows } = useQuery({
     queryKey: ['workflows', userId],
     queryFn: () => fetchWorkflows(userId),
-    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always consider data stale to force refetch
   });
 
   // Fetch active sessions
   const { data: activeSessions = [], isLoading: isLoadingSessions } = useQuery({
     queryKey: ['activeSessions', userId],
     queryFn: () => fetchActiveSessions(userId),
-    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always consider data stale to force refetch
   });
 
   // Fetch session counts by blueprint_id
   const { data: blueprintSessionCounts = {}, isLoading: isLoadingCounts } = useQuery({
     queryKey: ['blueprintSessionCounts', userId],
     queryFn: () => fetchBlueprintSessionCounts(userId),
-    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always consider data stale to force refetch
   });
 
   // Fetch resources
   const { data: resources = [], isLoading: isLoadingResources } = useQuery({
     queryKey: ['allResources', userId],
     queryFn: () => fetchAllResources(userId),
-    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always consider data stale to force refetch
   });
 
   // Fetch resource categories from backend
   const { data: resourceCategories = [], isLoading: isLoadingCategories } = useQuery({
     queryKey: ['resourceCategories'],
     queryFn: () => fetchResourceCategories(),
-    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+    staleTime: 0, // Always consider data stale to force refetch
   });
 
   // Calculate resource distribution - ensure all categories are shown
@@ -108,13 +131,21 @@ export default function AgenticOverview() {
     workflow => !activeSessions.includes(workflow.blueprint_id)
   );
 
-  // Calculate most used workflows (workflows that are currently active)
+  // Calculate most used workflows (workflows that have been used - have chat sessions)
+  // Include workflows with session counts OR workflows that are currently active
   const mostUsedWorkflows = workflows
-    .filter(workflow => (blueprintSessionCounts[workflow.blueprint_id] || 0) > 0)
-    .map(workflow => ({
-      ...workflow,
-      usageCount: blueprintSessionCounts[workflow.blueprint_id] || 0
-    }))
+    .map(workflow => {
+      const sessionCount = blueprintSessionCounts?.[workflow.blueprint_id] ?? 0;
+      const isCurrentlyActive = Array.isArray(activeSessions) && activeSessions.includes(workflow.blueprint_id);
+      // Use session count if available, otherwise use 1 if currently active
+      const usageCount = sessionCount > 0 ? sessionCount : (isCurrentlyActive ? 1 : 0);
+      return {
+        ...workflow,
+        usageCount,
+        isCurrentlyActive
+      };
+    })
+    .filter(workflow => workflow.usageCount > 0)
     .sort((a, b) => b.usageCount - a.usageCount)
     .slice(0, 5);
 
