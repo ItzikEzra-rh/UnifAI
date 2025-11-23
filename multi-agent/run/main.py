@@ -199,7 +199,7 @@ def test_a2a_provider():
     print("=" * 80)
     
     # Create provider for the A2A agent
-    agent_url = "http://10.46.254.131:10001"
+    agent_url = "http://10.46.254.131:8001"
     print(f"\n🔗 Connecting to A2A agent at: {agent_url}")
     
     try:
@@ -217,7 +217,7 @@ def test_a2a_provider():
         # Create message
         user_message = ChatMessage(
             role=Role.USER,
-            content="how to travel from jerusalem to london?"
+            content="give me interesting facts."
         )
         
         print(f"\n📤 Sending message: {user_message.content}")
@@ -257,7 +257,7 @@ def test_a2a_streaming():
     print("=" * 80)
     
     # Create provider for the A2A agent
-    agent_url = "http://10.46.254.131:10000"
+    agent_url = "http://10.46.254.131:8001"
     print(f"\n🔗 Connecting to A2A agent at: {agent_url}")
     
     try:
@@ -275,7 +275,7 @@ def test_a2a_streaming():
         # Create message
         user_message = ChatMessage(
             role=Role.USER,
-            content="Which of these are prime numbers 1, 4, 6, 7"
+            content="give me interesting facts."
         )
         
         print(f"\n📤 Streaming message: {user_message.content}")
@@ -304,10 +304,10 @@ def test_a2a_streaming():
 
 if __name__ == "__main__":
     # Test A2A Provider - Non-Streaming
-    # test_a2a_provider()
+    test_a2a_provider()
     
     # Test A2A Provider - Streaming
-    test_a2a_streaming()
+    # test_a2a_streaming()
     
     # Original main code (commented out)
     # config = AppConfig.get_instance()

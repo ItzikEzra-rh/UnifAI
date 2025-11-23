@@ -12,7 +12,6 @@ Key SDK requirements:
 5. Works with Task Pydantic models
 """
 
-import logging
 from typing import Optional, AsyncIterator
 from uuid import uuid4
 from pydantic import HttpUrl
@@ -41,8 +40,6 @@ from a2a.types import (
     Artifact,
 )
 from a2a.utils import get_text_parts
-
-logger = logging.getLogger(__name__)
 
 
 class A2AConnectionError(Exception):
@@ -96,12 +93,12 @@ class A2AClient:
             )
             try:
                 self._agent_card = await resolver.get_agent_card()
-                logger.info(f"Fetched agent card: {self._agent_card.name}")
+                print(f"A2AClient: Fetched agent card: {self._agent_card.name}")
                 
                 # Log skills
                 if self._agent_card.skills:
                     skill_names = [s.name for s in self._agent_card.skills if s.name]
-                    logger.info(f"Available skills: {skill_names}")
+                    print(f"A2AClient: Available skills: {skill_names}")
                     
             except Exception as e:
                 await self._httpx_client.__aexit__(None, None, None)
@@ -163,7 +160,7 @@ class A2AClient:
             if isinstance(response.root, SendMessageSuccessResponse):
                 if isinstance(response.root.result, Task):
                     task = response.root.result
-                    logger.debug(f"Message sent - Task: {task.id}, Status: {task.status.state if task.status else 'unknown'}")
+                    print(f"A2AClient: Message sent - Task: {task.id}, Status: {task.status.state if task.status else 'unknown'}")
                     return task
                 else:
                     raise A2AConnectionError(f"Unexpected result type: {type(response.root.result)}")
@@ -271,7 +268,7 @@ class A2AClient:
             # Extract Task from response
             if isinstance(response.root, GetTaskSuccessResponse):
                 task = response.root.result
-                logger.debug(f"Task {task_id} status: {task.status.state if task.status else 'unknown'}")
+                print(f"A2AClient: Task {task_id} status: {task.status.state if task.status else 'unknown'}")
                 return task
             else:
                 raise A2AConnectionError(f"Get task failed: {response.root}")

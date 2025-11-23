@@ -8,7 +8,6 @@ No tools, no registry - pure communication layer.
 Uses proper Pydantic models and enums throughout.
 """
 
-import logging
 import asyncio
 from typing import Optional, Dict, Any, AsyncIterator, Iterator
 from pydantic import HttpUrl
@@ -18,8 +17,6 @@ from global_utils.utils.async_bridge import get_async_bridge
 from .a2a_client import A2AClient, A2AConnectionError
 from .message_converter import A2AMessageConverter
 from elements.llms.common.chat.message import ChatMessage
-
-logger = logging.getLogger(__name__)
 
 
 class A2AProvider:
@@ -56,13 +53,13 @@ class A2AProvider:
         
         async with A2AClient(base_url=self.base_url, agent_card=self.agent_card) as client:
             self.agent_card = client.get_agent_card()
-            logger.info(f"Connected to A2A agent: {self.agent_card.name}")
-            logger.info(f"Agent version: {self.agent_card.version}")
+            print(f"A2AProvider: Connected to A2A agent: {self.agent_card.name}")
+            print(f"A2AProvider: Agent version: {self.agent_card.version}")
             
             # Log available skills
             skills = client.get_available_skills()
             if skills:
-                logger.info(f"Available skills: {skills}")
+                print(f"A2AProvider: Available skills: {skills}")
         
         self._initialized = True
     
@@ -102,7 +99,7 @@ class A2AProvider:
                 context_id=context_id
             )
             
-            logger.debug(f"Sending message: {message.content[:50]}...")
+            print(f"A2AProvider: Sending message: {message.content[:50]}...")
             
             # Send message - returns Task Pydantic model
             task: Task = await client.send_message(a2a_message)
@@ -111,11 +108,11 @@ class A2AProvider:
             metadata = self.converter.extract_metadata(task)
             task_state = self.converter.get_task_state(task)
             
-            logger.debug(f"Received response - Task: {metadata['task_id']}, Status: {task_state}")
+            print(f"A2AProvider: Received response - Task: {metadata['task_id']}, Status: {task_state}")
             
             # Poll for completion if task is still working
             if wait_for_completion and task_state == TaskState.working:
-                logger.info(f"Task {metadata['task_id']} is working, polling for completion...")
+                print(f"A2AProvider: Task {metadata['task_id']} is working, polling for completion...")
                 task = await self._poll_for_completion(
                     client=client,
                     task_id=metadata['task_id'],
@@ -124,7 +121,7 @@ class A2AProvider:
                 )
                 # Update metadata with final status
                 metadata = self.converter.extract_metadata(task)
-                logger.debug(f"Task completed - Status: {metadata['status']}")
+                print(f"A2AProvider: Task completed - Status: {metadata['status']}")
             
             # Convert Task to ChatMessage
             chat_response = self.converter.from_a2a_task(task)
@@ -160,22 +157,22 @@ class A2AProvider:
             task: Task = await client.get_task(task_id)
             task_state = task.status.state if task.status else TaskState.submitted
             
-            logger.debug(f"Poll attempt {attempt + 1}/{max_attempts} - Status: {task_state}")
+            print(f"A2AProvider: Poll attempt {attempt + 1}/{max_attempts} - Status: {task_state}")
             
             # Check if task is complete
             if task_state == TaskState.completed:
-                logger.info(f"Task {task_id} completed successfully")
+                print(f"A2AProvider: Task {task_id} completed successfully")
                 return task
             elif task_state == TaskState.failed:
                 error_msg = task.status.message if task.status else "Unknown error"
-                logger.error(f"Task {task_id} failed: {error_msg}")
+                print(f"A2AProvider: Task {task_id} failed: {error_msg}")
                 raise A2AConnectionError(f"Task failed: {error_msg}")
             elif task_state == TaskState.canceled:
-                logger.warning(f"Task {task_id} was canceled")
+                print(f"A2AProvider: Task {task_id} was canceled")
                 raise A2AConnectionError("Task was canceled")
             elif task_state != TaskState.working:
                 # Unexpected status
-                logger.warning(f"Task {task_id} has unexpected status: {task_state}")
+                print(f"A2AProvider: Task {task_id} has unexpected status: {task_state}")
         
         # Timeout
         raise A2AConnectionError(
@@ -211,7 +208,7 @@ class A2AProvider:
                 context_id=context_id
             )
             
-            logger.debug(f"Streaming message: {message.content[:50]}...")
+            print(f"A2AProvider: Streaming message: {message.content[:50]}...")
             
             # Stream via client - yields Task Pydantic models
             async for task in client.stream_message(a2a_message):
@@ -220,7 +217,7 @@ class A2AProvider:
                     chat_chunk = self.converter.from_a2a_task(task)
                     yield chat_chunk
                 except Exception as e:
-                    logger.warning(f"Failed to convert task chunk: {e}")
+                    print(f"A2AProvider: Failed to convert task chunk: {e}")
                     continue
     
     def get_available_skills(self) -> list[str]:
