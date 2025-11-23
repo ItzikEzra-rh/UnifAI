@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { FaProjectDiagram, FaChartPie, FaPlayCircle, FaBoxes, FaChevronRight } from "react-icons/fa";
-import { useProject } from "@/contexts/ProjectContext";
 import { motion } from "framer-motion";
 import { useAuth } from "@/contexts/AuthContext";
-import { generateColorPalette, getPaletteColor } from "@/lib/colorUtils";
+import { getPaletteColor } from "@/lib/colorUtils";
 
 // Layout components
 import Sidebar from "@/components/layout/Sidebar";
@@ -12,88 +11,75 @@ import StatusBar from "@/components/layout/StatusBar";
 
 // Agentic Overview components
 import GlassPanel from "@/components/ui/GlassPanel";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { ResourceDistributionChart } from "@/components/dashboard/ResourceDistributionChart";
 import { fetchAgenticStats, fetchWorkflows, fetchActiveSessions, fetchAllResources, fetchBlueprintSessionCounts, fetchResourceCategories, WorkflowBlueprint } from "@/api/agentic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Workflow, Database, Users, Zap, TrendingUp, Clock, Loader2 } from "lucide-react";
+import { Workflow, Database, Zap, TrendingUp, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import ReactFlowGraph from "@/components/agentic-ai/graphs/ReactFlowGraph";
 import { ReactFlowProvider } from "reactflow";
-import SimpleTooltip from "@/components/shared/SimpleTooltip";
 
 export default function AgenticOverview() {
-  const { projects } = useProject();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedWorkflow, setSelectedWorkflow] = useState<WorkflowBlueprint | null>(null);
   const [isWorkflowModalOpen, setIsWorkflowModalOpen] = useState(false);
   const { primaryHex } = useTheme();
   const { user } = useAuth();
   const userId = user?.username || "default";
-  const queryClient = useQueryClient();
 
-  // Invalidate and refetch all queries when component mounts
-  useEffect(() => {
-    queryClient.invalidateQueries({ queryKey: ['agenticStats', userId] });
-    queryClient.invalidateQueries({ queryKey: ['workflows', userId] });
-    queryClient.invalidateQueries({ queryKey: ['activeSessions', userId] });
-    queryClient.invalidateQueries({ queryKey: ['blueprintSessionCounts', userId] });
-    queryClient.invalidateQueries({ queryKey: ['allResources', userId] });
-    queryClient.invalidateQueries({ queryKey: ['resourceCategories'] });
-  }, [queryClient, userId]);
+  // Calculate theme colors once using useMemo
+  const themeColors = useMemo(() => {
+    const primary = primaryHex || "#A60000";
+    return {
+      sessions: getPaletteColor(primary, 1, 4),
+      resources: getPaletteColor(primary, 2, 4),
+      categories: getPaletteColor(primary, 3, 4),
+    };
+  }, [primaryHex]);
 
   // Fetch agentic AI stats
   const { data: agenticStats, isLoading: isLoadingStats } = useQuery({
     queryKey: ['agenticStats', userId],
     queryFn: () => fetchAgenticStats(userId),
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    staleTime: 0, // Always consider data stale to force refetch
+    staleTime: 0,
   });
 
   // Fetch workflows
   const { data: workflows = [], isLoading: isLoadingWorkflows } = useQuery({
     queryKey: ['workflows', userId],
     queryFn: () => fetchWorkflows(userId),
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    staleTime: 0, // Always consider data stale to force refetch
+    staleTime: 0,
   });
 
   // Fetch active sessions
   const { data: activeSessions = [], isLoading: isLoadingSessions } = useQuery({
     queryKey: ['activeSessions', userId],
     queryFn: () => fetchActiveSessions(userId),
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    staleTime: 0, // Always consider data stale to force refetch
+    staleTime: 0,
   });
 
   // Fetch session counts by blueprint_id
   const { data: blueprintSessionCounts = {}, isLoading: isLoadingCounts } = useQuery({
     queryKey: ['blueprintSessionCounts', userId],
     queryFn: () => fetchBlueprintSessionCounts(userId),
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    staleTime: 0, // Always consider data stale to force refetch
+    staleTime: 0,
   });
 
   // Fetch resources
   const { data: resources = [], isLoading: isLoadingResources } = useQuery({
     queryKey: ['allResources', userId],
     queryFn: () => fetchAllResources(userId),
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    staleTime: 0, // Always consider data stale to force refetch
+    staleTime: 0,
   });
 
   // Fetch resource categories from backend
   const { data: resourceCategories = [], isLoading: isLoadingCategories } = useQuery({
     queryKey: ['resourceCategories'],
     queryFn: () => fetchResourceCategories(),
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
-    staleTime: 0, // Always consider data stale to force refetch
+    staleTime: 0,
   });
 
   // Calculate resource distribution - ensure all categories are shown
@@ -182,152 +168,72 @@ export default function AgenticOverview() {
           >
             {/* Total Workflows */}
             <GlassPanel className="h-full">
-              <Card className="rounded-xl border-0 shadow-none bg-transparent">
-                <div className="relative p-4 border-b border-border">
-                  <div className="absolute top-2 right-4 w-8 h-8 rounded-lg bg-primary/20 text-primary flex items-center justify-center">
-                    <Workflow className="w-4 h-4" />
-                  </div>
-                  <h3 className="text-lg font-semibold text-white flex items-center">
+              <StatCard
+                icon={<Workflow className="w-4 h-4" />}
+                title={
+                  <span className="flex items-center">
                     <FaProjectDiagram className="text-primary mr-3 h-5 w-5" />
                     Workflows
-                  </h3>
-                </div>
-                <CardContent className="p-4">
-                  {isLoadingStats ? (
-                    <div className="flex items-center justify-center h-16">
-                      <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-3xl font-bold text-white">{agenticStats?.totalWorkflows || 0}</p>
-                      <p className="text-xs text-gray-400">Total blueprints available</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </span>
+                }
+                value={agenticStats?.totalWorkflows || 0}
+                subtext="Total blueprints available"
+                isLoading={isLoadingStats}
+              />
             </GlassPanel>
 
             {/* Active Sessions */}
             <GlassPanel className="h-full">
-              <Card className="rounded-xl border-0 shadow-none bg-transparent">
-                <div className="relative p-4 border-b border-border">
-                  {(() => {
-                    const sessionsColor = getPaletteColor(primaryHex || "#A60000", 1, 4);
-                    return (
-                      <div 
-                        className="absolute top-2 right-4 w-8 h-8 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: `${sessionsColor}33`, color: sessionsColor }}
-                      >
-                        <Zap className="w-4 h-4" />
-                      </div>
-                    );
-                  })()}
-                  <h3 className="text-lg font-semibold text-white flex items-center">
-                    {(() => {
-                      const sessionsColor = getPaletteColor(primaryHex || "#A60000", 1, 4);
-                      return <FaPlayCircle className="mr-3 h-5 w-5" style={{ color: sessionsColor }} />;
-                    })()}
+              <StatCard
+                icon={<Zap className="w-4 h-4" />}
+                title={
+                  <span className="flex items-center">
+                    <FaPlayCircle className="mr-3 h-5 w-5" style={{ color: themeColors.sessions }} />
                     Active Sessions
-                  </h3>
-                </div>
-                <CardContent className="p-4">
-                  {isLoadingSessions ? (
-                    <div className="flex items-center justify-center h-16">
-                      {(() => {
-                        const sessionsColor = getPaletteColor(primaryHex || "#A60000", 1, 4);
-                        return <Loader2 className="w-6 h-6 animate-spin" style={{ color: sessionsColor }} />;
-                      })()}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-3xl font-bold text-white">{agenticStats?.activeSessions || 0}</p>
-                      <p className="text-xs text-gray-400">Currently running</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </span>
+                }
+                value={agenticStats?.activeSessions || 0}
+                subtext="Currently running"
+                isLoading={isLoadingSessions}
+                iconColor={themeColors.sessions}
+                iconBgColor={`${themeColors.sessions}33`}
+              />
             </GlassPanel>
 
             {/* Total Resources */}
             <GlassPanel className="h-full">
-              <Card className="rounded-xl border-0 shadow-none bg-transparent">
-                <div className="relative p-4 border-b border-border">
-                  {(() => {
-                    const resourcesColor = getPaletteColor(primaryHex || "#A60000", 2, 4);
-                    return (
-                      <div 
-                        className="absolute top-2 right-4 w-8 h-8 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: `${resourcesColor}33`, color: resourcesColor }}
-                      >
-                        <Database className="w-4 h-4" />
-                      </div>
-                    );
-                  })()}
-                  <h3 className="text-lg font-semibold text-white flex items-center">
-                    {(() => {
-                      const resourcesColor = getPaletteColor(primaryHex || "#A60000", 2, 4);
-                      return <FaBoxes className="mr-3 h-5 w-5" style={{ color: resourcesColor }} />;
-                    })()}
+              <StatCard
+                icon={<Database className="w-4 h-4" />}
+                title={
+                  <span className="flex items-center">
+                    <FaBoxes className="mr-3 h-5 w-5" style={{ color: themeColors.resources }} />
                     Inventory
-                  </h3>
-                </div>
-                <CardContent className="p-4">
-                  {isLoadingResources ? (
-                    <div className="flex items-center justify-center h-16">
-                      {(() => {
-                        const resourcesColor = getPaletteColor(primaryHex || "#A60000", 2, 4);
-                        return <Loader2 className="w-6 h-6 animate-spin" style={{ color: resourcesColor }} />;
-                      })()}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-3xl font-bold text-white">{agenticStats?.totalResources || 0}</p>
-                      <p className="text-xs text-gray-400">Total resources configured</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </span>
+                }
+                value={agenticStats?.totalResources || 0}
+                subtext="Total resources configured"
+                isLoading={isLoadingResources}
+                iconColor={themeColors.resources}
+                iconBgColor={`${themeColors.resources}33`}
+              />
             </GlassPanel>
 
             {/* Resource Categories */}
             <GlassPanel className="h-full">
-              <Card className="rounded-xl border-0 shadow-none bg-transparent">
-                <div className="relative p-4 border-b border-border">
-                  {(() => {
-                    const categoriesColor = getPaletteColor(primaryHex || "#A60000", 3, 4);
-                    return (
-                      <div 
-                        className="absolute top-2 right-4 w-8 h-8 rounded-lg flex items-center justify-center"
-                        style={{ backgroundColor: `${categoriesColor}33`, color: categoriesColor }}
-                      >
-                        <TrendingUp className="w-4 h-4" />
-                      </div>
-                    );
-                  })()}
-                  <h3 className="text-lg font-semibold text-white flex items-center">
-                    {(() => {
-                      const categoriesColor = getPaletteColor(primaryHex || "#A60000", 3, 4);
-                      return <FaChartPie className="mr-3 h-5 w-5" style={{ color: categoriesColor }} />;
-                    })()}
+              <StatCard
+                icon={<TrendingUp className="w-4 h-4" />}
+                title={
+                  <span className="flex items-center">
+                    <FaChartPie className="mr-3 h-5 w-5" style={{ color: themeColors.categories }} />
                     Categories
-                  </h3>
-                </div>
-                <CardContent className="p-4">
-                  {isLoadingStats ? (
-                    <div className="flex items-center justify-center h-16">
-                      {(() => {
-                        const categoriesColor = getPaletteColor(primaryHex || "#A60000", 3, 4);
-                        return <Loader2 className="w-6 h-6 animate-spin" style={{ color: categoriesColor }} />;
-                      })()}
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      <p className="text-3xl font-bold text-white">{resourceDistribution.length}</p>
-                      <p className="text-xs text-gray-400">Resource categories</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
+                  </span>
+                }
+                value={resourceDistribution.length}
+                subtext="Resource categories"
+                isLoading={isLoadingStats}
+                iconColor={themeColors.categories}
+                iconBgColor={`${themeColors.categories}33`}
+              />
             </GlassPanel>
           </motion.div>
 
@@ -351,63 +257,11 @@ export default function AgenticOverview() {
                   </div>
                 </CardHeader>
                 <CardContent className="px-6 pb-6 flex-1 overflow-hidden flex flex-col min-h-0">
-                  {isLoadingStats ? (
-                    <div className="flex items-center justify-center h-full">
-                      <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                    </div>
-                  ) : (
-                    <div className="space-y-4 overflow-y-auto flex-1 pr-2 pb-4">
-                      {(() => {
-                        // Use primary color for the first category (highest count)
-                        const primaryColor = primaryHex || "#A60000";
-                        const colorPalette = generateColorPalette(primaryColor, resourceDistribution.length);
-                        
-                        // Create a map to ensure each category gets a unique color
-                        const categoryColorMap = new Map<string, string>();
-                        const sortedCategories = [...resourceDistribution].sort((a, b) => b.count - a.count);
-                        
-                        // Assign colors from palette to categories
-                        sortedCategories.forEach((cat, idx) => {
-                          const colorIndex = Math.min(idx, colorPalette.length - 1);
-                          categoryColorMap.set(cat.category, colorPalette[colorIndex]);
-                        });
-                        
-                        return resourceDistribution
-                          .sort((a, b) => b.count - a.count)
-                          .map((category, idx) => {
-                            const total = resourceDistribution.reduce((sum, c) => sum + c.count, 0);
-                            const percentage = total > 0 ? Math.round((category.count / total) * 100) : 0;
-                            const color = categoryColorMap.get(category.category) || colorPalette[idx % colorPalette.length];
-                          
-                          // Create tooltip content with type breakdown
-                          const typeBreakdown = Object.entries(category.types)
-                            .map(([type, count]) => `${count} ${type}`)
-                            .join(', ');
-                          const tooltipContent = typeBreakdown || 'No sub-types';
-
-                          return (
-                            <SimpleTooltip content={<div className="text-sm">{tooltipContent}</div>}>
-                              <div key={category.category} className="space-y-2 max-h-24 overflow-hidden flex flex-col cursor-help">
-                                <div className="flex items-center justify-between text-sm flex-shrink-0">
-                                  <span className="text-gray-300 font-medium">{category.category}</span>
-                                  <span className="text-gray-400">{category.count} ({percentage}%)</span>
-                                </div>
-                                <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden flex-shrink-0">
-                                  <motion.div
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${percentage}%` }}
-                                    transition={{ duration: 0.8, delay: idx * 0.1 }}
-                                    className="h-full rounded-full"
-                                    style={{ backgroundColor: color }}
-                                  />
-                                </div>
-                              </div>
-                            </SimpleTooltip>
-                          );
-                        });
-                      })()}
-                    </div>
-                  )}
+                  <ResourceDistributionChart
+                    data={resourceDistribution}
+                    isLoading={isLoadingStats}
+                    primaryColor={primaryHex || "#A60000"}
+                  />
                 </CardContent>
               </Card>
             </GlassPanel>
