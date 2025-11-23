@@ -5,14 +5,13 @@ import google.generativeai as genai
 from load_context import load_context
 
 def get_pr_diff(pr_number):
-    """
-    Get the diff between the PR branch (HEAD) and the base branch.
-    """
-    # GitHub Actions automatically sets "github.event.pull_request.base.ref"
-    base_branch = os.getenv("GITHUB_BASE_REF", "main")
+    base = os.getenv("GITHUB_BASE_REF", "main")
+
+    # Ensure the base branch exists
+    subprocess.run(["git", "fetch", "origin", base], check=True)
 
     diff = subprocess.check_output(
-        ["git", "diff", f"origin/{base_branch}...HEAD"],
+        ["git", "diff", f"origin/{base}...HEAD"],
         text=True
     )
     return diff
