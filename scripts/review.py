@@ -11,7 +11,7 @@ def get_pr_diff(pr_number):
     subprocess.run(["git", "fetch", "origin", base], check=True)
 
     diff = subprocess.check_output(
-        ["git", "diff", f"origin/{base}...HEAD"],
+        ["git", "diff", f"{base}...HEAD"],
         text=True
     )
     return diff
