@@ -111,7 +111,7 @@ ui/
 │   │   │   ├── use-graph-logic.ts   # ⭐ Graph builder logic
 │   │   │   ├── use-mobile.tsx       # Mobile detection
 │   │   │   ├── use-toast.ts         # Toast notifications
-│   │   │   └── useWorkspaceData.ts  # ⭐ Workspace data management
+│   │   │   └── use-workspace-data.ts  # ⭐ Workspace data management
 │   │   ├── http/                    # HTTP clients
 │   │   │   ├── authClient.ts        # API3 (SSO) client
 │   │   │   ├── axiosAgentConfig.ts  # API2 (Multi-Agent) client
@@ -508,7 +508,7 @@ const reader = new EnhancedStreamReader(
 
 #### 4. **Workspace Resource Management**
 
-**Hook: `useWorkspaceData.ts`** (~410 lines)
+**Hook: `use-workspace-data.ts`** (~410 lines)
 
 Manages all workspace resources (nodes, conditions, LLMs, tools, etc.):
 
@@ -1124,7 +1124,7 @@ const { currentPage, setCurrentPage } = usePaginationStore();
 **Major custom hooks:**
 
 1. **`use-graph-logic.ts`** - Graph builder state machine (~1250 lines)
-2. **`useWorkspaceData.ts`** - Workspace resource management (~410 lines)
+2. **`use-workspace-data.ts`** - Workspace resource management (~410 lines)
 3. **`use-toast.ts`** - Toast notification system
 4. **`use-mobile.tsx`** - Mobile detection
 
