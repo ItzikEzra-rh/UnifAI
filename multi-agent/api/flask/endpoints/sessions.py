@@ -18,11 +18,9 @@ sessions_bp = Blueprint("sessions", __name__)
 })
 def create_user_session(blueprint_id, user_id, metadata, from_shared_link):
     try:
-        # Add from_shared_link flag to metadata if provided
         if from_shared_link:
             metadata['from_shared_link'] = True
         
-        # Create metadata from dict
         session_meta = SessionMeta.from_dict(metadata)
         
         session_svc = current_app.container.session_service
