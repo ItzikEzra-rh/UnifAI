@@ -116,37 +116,37 @@ class BlueprintService:
 
 # ────────── Public Chat Sharing ──────────
     def enable_public_chat(self, blueprint_id: str, user_id: str) -> bool:
-        """Enable public chat sharing for a blueprint."""
+        """Enable public chat sharing for a blueprint by setting shared=True."""
         doc = self._repo.load(blueprint_id)
         if doc.get("user_id") != user_id:
             raise ValueError(f"Blueprint {blueprint_id} not owned by user {user_id}")
         
-        # Update the blueprint document to enable public chat
+        # Update the blueprint document to set shared=True
         if hasattr(self._repo, '_col'):  # MongoDB repository
             self._repo._col.update_one(
                 {"blueprint_id": blueprint_id},
-                {"$set": {"public_chat_enabled": True}}
+                {"$set": {"shared": True}}
             )
         return True
     
     def disable_public_chat(self, blueprint_id: str, user_id: str) -> bool:
-        """Disable public chat sharing for a blueprint."""
+        """Disable public chat sharing for a blueprint by setting shared=False."""
         doc = self._repo.load(blueprint_id)
         if doc.get("user_id") != user_id:
             raise ValueError(f"Blueprint {blueprint_id} not owned by user {user_id}")
         
-        # Update the blueprint document to disable public chat
+        # Update the blueprint document to set shared=False
         if hasattr(self._repo, '_col'):  # MongoDB repository
             self._repo._col.update_one(
                 {"blueprint_id": blueprint_id},
-                {"$set": {"public_chat_enabled": False}}
+                {"$set": {"shared": False}}
             )
         return True
     
     def is_public_chat_enabled(self, blueprint_id: str) -> bool:
-        """Check if public chat is enabled for a blueprint."""
+        """Check if public chat is enabled for a blueprint (shared == True)."""
         try:
             doc = self._repo.load(blueprint_id)
-            return doc.get("public_chat_enabled", False)
+            return doc.get("shared") is True
         except KeyError:
             return False

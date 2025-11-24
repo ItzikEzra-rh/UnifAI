@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Send, Trash2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -598,6 +598,26 @@ export default function ChatInterface({
     [],
   );
 
+  // Loader for chat-only mode (simpler, cleaner loader)
+  const ChatOnlyLoader = useMemo(
+    () => (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex justify-start"
+      >
+        <div className="bg-background-dark border border-gray-800 rounded-2xl rounded-tl-none p-4 max-w-[80%]">
+          <div className="flex items-center space-x-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm text-gray-400">Processing your request...</span>
+          </div>
+        </div>
+      </motion.div>
+    ),
+    [],
+  );
+
   // Component for rendering message content with markdown support
   const MessageContent = ({ message }: { message: Message }) => {
     // Get stream logs and workplans from separate states
@@ -731,7 +751,7 @@ export default function ChatInterface({
                 </div>
               </motion.div>
             ))}
-            {isTyping && TypingIndicator}
+            {isTyping && (isChatOnlyMode ? ChatOnlyLoader : TypingIndicator)}
           </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>

@@ -117,6 +117,7 @@ export default function ExecutionTab({
   const [selectedFlowForModal, setSelectedFlowForModal] = useState<FlowObject | null>(null);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isLoadingFlowsForModal, setIsLoadingFlowsForModal] = useState(false);
+  const [sharedLinkBlueprintName, setSharedLinkBlueprintName] = useState<string>("");
   // Three panel widths: Available Chats, ChatInterface, Blueprint Graph
   const [chatSidebarWidth, setChatSidebarWidth] = useState(20);
   const [chatInterfaceWidth, setChatInterfaceWidth] = useState(50);
@@ -345,6 +346,23 @@ export default function ExecutionTab({
   // Handle session selection
   const handleSessionSelect = async (session: ChatSession) => {
     setSelectedSession(session);
+    
+    // Fetch the blueprint name from database using blueprint_id from session (same as we do for the graph)
+    if (session.blueprintId) {
+      try {
+        const response = await axios.get(`/blueprints/blueprint.info.get?blueprintId=${session.blueprintId}`);
+        if (response.data && response.data.blueprint_name) {
+          setSharedLinkBlueprintName(response.data.blueprint_name);
+        } else {
+          setSharedLinkBlueprintName("Unnamed Workflow");
+        }
+      } catch (error: any) {
+        console.error('Error fetching blueprint name:', error);
+        setSharedLinkBlueprintName("Unnamed Workflow");
+      }
+    } else {
+      setSharedLinkBlueprintName("");
+    }
     
     // If messages are already loaded for this session, use them
     if (session.messages && session.messages.length > 0) {
@@ -869,6 +887,11 @@ export default function ExecutionTab({
               {selectedSession?.fromSharedLink ? (
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm flex-col">
                   <p className="mb-2">This session was created from a shared chat link</p>
+                  {sharedLinkBlueprintName && (
+                    <p className="text-xs text-gray-500 mb-1">
+                      Workflow: <span className="font-medium text-gray-300">{sharedLinkBlueprintName}</span>
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500">Workflow details are not available in shared link sessions</p>
                 </div>
               ) : selectedSession?.blueprintId ? (
