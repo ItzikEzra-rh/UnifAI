@@ -6,8 +6,7 @@ import axios from "@/http/axiosAgentConfig";
 import ChatInterface from "@/components/agentic-ai/chat/ChatInterface";
 import { SessionPayload } from "@/components/agentic-ai/ExecutionTab";
 import { StreamingDataProvider } from "@/components/agentic-ai/StreamingDataContext";
-import { Loader2, MessageSquare, Clock, Plus, Trash2 } from "lucide-react";
-import { FaSignOutAlt } from "react-icons/fa";
+import { Loader2, MessageSquare, Clock, Plus, Trash2, LogOut } from "lucide-react";
 import { motion } from "framer-motion";
 import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -23,12 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-
-// Backend message format
-interface BackendChatMessage {
-  content: string;
-  role: "user" | "assistant";
-}
+import { ChatSession, BackendChatMessage } from "@/types/session";
 
 interface ChatSessionData {
   metadata: Record<string, any>;
@@ -43,19 +37,7 @@ interface SessionStateData {
   messages: BackendChatMessage[];
 }
 
-interface ChatSession {
-  id: string;
-  blueprintId: string;
-  title: string;
-  lastActive: string;
-  timestamp: Date;
-  preview: string;
-  messages: BackendChatMessage[];
-  blueprintExists: boolean;
-  fromSharedLink?: boolean;
-}
-
-export default function ChatOnlyPage() {
+export default function PublicChat() {
   const [, params] = useRoute("/chat/:token");
   const token = params?.token;
   const { user, isAuthenticated, isLoading: authLoading, logout } = useAuth();
@@ -647,7 +629,7 @@ export default function ChatOnlyPage() {
                   onClick={logout}
                   className="mt-2 text-gray-400 hover:text-white transition-colors"
                 >
-                  <FaSignOutAlt />
+                  <LogOut className="h-4 w-4" />
                 </button>
               </SimpleTooltip>
             </motion.div>

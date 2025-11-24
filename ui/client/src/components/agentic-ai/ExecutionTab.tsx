@@ -34,12 +34,9 @@ import {
 } from "@/components/ui/dialog";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 
-// Types for the API response
-interface ChatMessage {
-  content: string;
-  role: 'user' | 'assistant';
-}
+import { ChatSession, BackendChatMessage } from "@/types/session";
 
+// Types for the API response
 interface ChatSessionData {
   metadata: Record<string, any>;
   blueprint_id: string;
@@ -50,20 +47,7 @@ interface ChatSessionData {
 
 interface SessionStateData {
   final_output: string;
-  messages: ChatMessage[];
-}
-
-interface ChatSession {
-  id: string;
-  blueprintId: string;
-  title: string;
-  lastActive: string;
-  timestamp: Date;
-  preview: string;
-  messages: ChatMessage[];
-  blueprintExists: boolean;
-  fromSharedLink?: boolean;
-  isSharingDisabled?: boolean; // Track if sharing is disabled for this session
+  messages: BackendChatMessage[];
 }
 
 export type SessionPayload = {
@@ -104,7 +88,7 @@ export default function ExecutionTab({
 }: ExecutionTabProps): React.ReactElement {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
-  const [currentSessionMessages, setCurrentSessionMessages] = useState<ChatMessage[]>([]);
+  const [currentSessionMessages, setCurrentSessionMessages] = useState<BackendChatMessage[]>([]);
   const [showExecutionStream, setShowExecutionStream] = useState(false);
   const [isActiveChatSession, setIsActiveChatSession] = useState(true);
   const [isLiveRequest, setIsLiveRequest] = useState(false);
@@ -253,7 +237,7 @@ export default function ExecutionTab({
     setGlobalScope(prevScope => prevScope === 'public' ? 'private' : 'public');
   };
 
-  const getPreviewText = (messages: ChatMessage[]): string => {
+  const getPreviewText = (messages: BackendChatMessage[]): string => {
     const userMessage = messages.find(msg => msg.role === 'user');
     if (userMessage && userMessage.content) {
       return userMessage.content.length > 50
