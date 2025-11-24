@@ -260,7 +260,7 @@ export default function AgenticOverview() {
                     showControls={true}
                     showMiniMap={true}
                     showBackground={true}
-                    interactive={true}
+                    interactive={false}
                     isLiveRequest={false}
                   />
                 </div>
