@@ -81,31 +81,34 @@ export default function PublicChat() {
 
     const validateToken = async () => {
       try {
-        const response = await axios.get(
-          `/shares/public-chat.validate?blueprintId=${token}`
-        );
+        // Get blueprint info
+        const blueprintInfoResponse = await axios.get(`/blueprints/blueprint.info.get?blueprintId=${token}`);
+        setBlueprintId(token);
+        setBlueprintName(blueprintInfoResponse.data.blueprint_name || "Unnamed Workflow");
+        setBlueprintOwner(blueprintInfoResponse.data.owner_user_id || "");
         
-        if (response.data.valid) {
-          setBlueprintId(token);
-          setBlueprintName(response.data.blueprint_name || "Unnamed Workflow");
-          setBlueprintOwner(response.data.owner_user_id || "");
-          
-          // Check sharing status immediately after validation
-          await checkSharingStatus(token);
+        // Check sharing status
+        const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${token}`);
+        if (!statusResponse.data.enabled) {
+          setValidationError("Sorry, this workflow is not available for chats");
+          setIsSharingDisabled(true);
         } else {
-          const errorMsg = response.data.error || "This chat link is no longer valid or has been disabled";
-          setValidationError(errorMsg);
+          await checkSharingStatus(token);
         }
       } catch (error: any) {
-        const errorMsg = error.response?.data?.error || "Failed to validate chat link";
-        setValidationError(errorMsg);
+        if (error.response?.status === 404) {
+          const errorMsg = error.response?.data?.error || "This workflow doesn't exist";
+          setValidationError(errorMsg);
+        } else {
+          setValidationError("Failed to validate chat link");
+        }
       } finally {
         setIsValidating(false);
       }
     };
 
     validateToken();
-  }, [token, toast, checkSharingStatus]);
+  }, [token, checkSharingStatus]);
 
   // Helper function to format timestamp
   const formatTimestamp = (timestamp: string): string => {
