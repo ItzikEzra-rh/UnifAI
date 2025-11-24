@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useRoute } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
@@ -77,6 +77,18 @@ export default function ChatOnlyPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<ChatSession | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSharingDisabled, setIsSharingDisabled] = useState<boolean>(false);
+
+  // Check sharing status for the blueprint
+  const checkSharingStatus = useCallback(async (blueprintId: string) => {
+    try {
+      const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${blueprintId}`);
+      setIsSharingDisabled(!statusResponse.data.enabled);
+    } catch (error: any) {
+      // If status check fails, assume sharing is disabled
+      setIsSharingDisabled(true);
+    }
+  }, []);
 
   // Validate token and get blueprint info
   useEffect(() => {
@@ -115,6 +127,9 @@ export default function ChatOnlyPage() {
               setBlueprintOwner(response.data.owner_user_id);
             }
           }
+          
+          // Check sharing status immediately after validation
+          await checkSharingStatus(token);
         } else {
           const errorMsg = response.data.error || "This chat link is no longer valid or has been disabled";
           setValidationError(errorMsg);
@@ -128,7 +143,7 @@ export default function ChatOnlyPage() {
     };
 
     validateToken();
-  }, [token, toast]);
+  }, [token, toast, checkSharingStatus]);
 
   // Helper function to format timestamp
   const formatTimestamp = (timestamp: string): string => {
@@ -447,14 +462,38 @@ export default function ChatOnlyPage() {
   useEffect(() => {
     if (isAuthenticated && user && blueprintId) {
       fetchChatSessions();
+      // Check sharing status initially and periodically (every 30 seconds)
+      checkSharingStatus(blueprintId);
+      const interval = setInterval(() => {
+        checkSharingStatus(blueprintId);
+      }, 30000); // Check every 30 seconds
+      
+      return () => clearInterval(interval);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, user, blueprintId]);
-
+  }, [isAuthenticated, user, blueprintId, checkSharingStatus]);
 
   const triggerExecution = async (sessionPayload: SessionPayload): Promise<string> => {
     if (!runId) {
       throw new Error("No session available");
+    }
+
+    // Check sharing status before allowing execution (fresh check each time)
+    if (blueprintId) {
+      try {
+        const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${blueprintId}`);
+        const sharingDisabled = !statusResponse.data.enabled;
+        setIsSharingDisabled(sharingDisabled);
+        if (sharingDisabled) {
+          throw new Error("This workflow's chat sharing has been disabled and can no longer be continued.");
+        }
+      } catch (error: any) {
+        // If status check fails or sharing is disabled, prevent execution
+        setIsSharingDisabled(true);
+        if (error.message && error.message.includes("disabled")) {
+          throw error; // Re-throw the disabled error
+        }
+        throw new Error("This workflow's chat sharing has been disabled and can no longer be continued.");
+      }
     }
 
     try {
@@ -721,6 +760,7 @@ export default function ChatOnlyPage() {
                 triggerExecution={triggerExecution}
                 initialMessages={chatHistory}
                 blueprintExists={true}
+                isSharingDisabled={isSharingDisabled}
                 isBlueprintGraphHidden={true}
                 isChatOnlyMode={true}
               />
