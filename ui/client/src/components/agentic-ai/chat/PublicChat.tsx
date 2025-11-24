@@ -88,27 +88,7 @@ export default function PublicChat() {
         if (response.data.valid) {
           setBlueprintId(token);
           setBlueprintName(response.data.blueprint_name || "Unnamed Workflow");
-          
-          // Always fetch blueprint info to get owner from blueprints collection
-          try {
-            const blueprintInfoResponse = await axios.get(`/blueprints/blueprint.info.get?blueprintId=${token}`);
-            if (blueprintInfoResponse.data) {
-              // Update blueprint name from blueprint info (most accurate)
-              if (blueprintInfoResponse.data.blueprint_name) {
-                setBlueprintName(blueprintInfoResponse.data.blueprint_name);
-              }
-              // Get owner from blueprint document
-              if (blueprintInfoResponse.data.owner_user_id) {
-                setBlueprintOwner(blueprintInfoResponse.data.owner_user_id);
-              }
-            }
-          } catch (error) {
-            console.error('Error fetching blueprint info:', error);
-            // Fallback to validation response owner if available
-            if (response.data.owner_user_id) {
-              setBlueprintOwner(response.data.owner_user_id);
-            }
-          }
+          setBlueprintOwner(response.data.owner_user_id || "");
           
           // Check sharing status immediately after validation
           await checkSharingStatus(token);
