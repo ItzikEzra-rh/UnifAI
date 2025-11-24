@@ -69,8 +69,7 @@ class AuthManager:
         # Register auth routes
         self._register_auth_routes()
         
-        # Set up session configuration (for user session after authentication)
-        is_production = config.backend_env == "production"
+        # Set up session configuration
         app.config.update({
             'SESSION_COOKIE_SECURE': True,  # Required for SameSite=None
             'SESSION_COOKIE_HTTPONLY': True,

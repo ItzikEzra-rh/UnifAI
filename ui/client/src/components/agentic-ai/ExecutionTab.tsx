@@ -389,15 +389,10 @@ export default function ExecutionTab({
         const response = await axios.get(`/blueprints/blueprint.info.get?blueprintId=${session.blueprintId}`);
         if (response.data && response.data.blueprint_name) {
           setSharedLinkBlueprintName(response.data.blueprint_name);
-        } else {
-          setSharedLinkBlueprintName("");
         }
       } catch (error: any) {
         console.error('Error fetching blueprint name:', error);
-        setSharedLinkBlueprintName("");
       }
-    } else {
-      setSharedLinkBlueprintName("");
     }
     
     // If messages are already loaded for this session, use them
