@@ -1,4 +1,5 @@
 import axios from '../http/axiosAgentConfig';
+import { normalizeCategory } from '@/constants/resources';
 
 export interface WorkflowBlueprint {
   blueprint_id: string;
@@ -93,11 +94,7 @@ export async function fetchAgenticStats(userId?: string): Promise<AgenticStats> 
   
   if (Array.isArray(resources)) {
     resources.forEach((resource: any) => {
-      let category = resource.category || 'UNKNOWN';
-      // Map 'nodes' to 'agents' for consistency with UI
-      if (category.toLowerCase() === 'nodes') {
-        category = 'agents';
-      }
+      const category = normalizeCategory(resource.category || 'UNKNOWN');
       if (!resourcesByCategory[category]) {
         resourcesByCategory[category] = {
           category,

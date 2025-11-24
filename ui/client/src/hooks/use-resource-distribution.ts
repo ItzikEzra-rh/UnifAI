@@ -1,19 +1,11 @@
 import { useMemo } from "react";
+import { normalizeCategory, FALLBACK_CATEGORIES } from "@/constants/resources";
 
 interface ResourceCategory {
   category: string;
   count: number;
   types: { [type: string]: number };
 }
-
-const FALLBACK_CATEGORIES = [
-  "conditions",
-  "llms",
-  "agents",
-  "providers",
-  "retrievers",
-  "tools",
-];
 
 export function useResourceDistribution(
   resourceCategories: string[],
@@ -22,17 +14,12 @@ export function useResourceDistribution(
   const resourceDistribution = useMemo(() => {
     const allCategories =
       resourceCategories.length > 0
-        ? resourceCategories.map((cat) =>
-            cat.toLowerCase() === "nodes" ? "agents" : cat.toLowerCase()
-          )
+        ? resourceCategories.map((cat) => normalizeCategory(cat))
         : FALLBACK_CATEGORIES;
 
     const resourceDistributionMap = new Map(
       (resourcesByCategory || []).map((cat) => {
-        const categoryKey =
-          cat.category.toLowerCase() === "nodes"
-            ? "agents"
-            : cat.category.toLowerCase();
+        const categoryKey = normalizeCategory(cat.category);
         return [categoryKey, { ...cat, category: categoryKey }];
       })
     );
