@@ -3,7 +3,7 @@ from pydantic import HttpUrl
 from actions.common.base_action import BaseAction
 from actions.common.action_models import BaseActionInput, BaseActionOutput, ActionType
 from elements.providers.a2a_client.a2a_client import A2AClient
-from elements.providers.a2a_client.identifiers import Identifier
+from elements.nodes.a2a_agent.identifiers import Identifier
 from core.enums import ResourceCategory
 from a2a.types import AgentCard
 
@@ -38,7 +38,7 @@ class GetAgentCardAction(BaseAction):
     output_schema = GetAgentCardOutput
     version = "1.0.0"
     tags = {"a2a", "discovery", "agent-card", "skills"}
-    elements = {(ResourceCategory.PROVIDER.value, Identifier.TYPE)}
+    elements = {(ResourceCategory.NODE.value, Identifier.TYPE)}
     
     async def execute(self, input_data: GetAgentCardInput, 
                      context: Optional[Dict[str, Any]] = None) -> GetAgentCardOutput:

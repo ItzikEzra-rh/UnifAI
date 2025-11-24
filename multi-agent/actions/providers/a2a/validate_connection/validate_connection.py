@@ -5,7 +5,7 @@ from pydantic import HttpUrl
 from actions.common.base_action import BaseAction
 from actions.common.action_models import BaseActionInput, BaseActionOutput, ActionType
 from elements.providers.a2a_client.a2a_client import A2AClient
-from elements.providers.a2a_client.identifiers import Identifier
+from elements.nodes.a2a_agent.identifiers import Identifier
 from core.enums import ResourceCategory
 
 
@@ -39,7 +39,7 @@ class ValidateConnectionAction(BaseAction):
     output_schema = ValidateConnectionOutput
     version = "1.0.0"
     tags = {"a2a", "validation", "connectivity"}
-    elements = {(ResourceCategory.PROVIDER.value, Identifier.TYPE)}
+    elements = {(ResourceCategory.NODE.value, Identifier.TYPE)}
     
     async def execute(self, input_data: ValidateConnectionInput, 
                      context: Optional[Dict[str, Any]] = None) -> ValidateConnectionOutput:
