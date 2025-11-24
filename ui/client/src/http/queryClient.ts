@@ -36,8 +36,11 @@ api.interceptors.response.use(
       const isAuthEndpoint = error.config?.url?.includes('/auth');
       
       if (!isAuthEndpoint) {
+        // Preserve the current pathname so we can redirect back after authentication
+        const currentPath = window.location.pathname;
+        const redirectParam = currentPath && currentPath !== '/' ? `?redirect=${encodeURIComponent(currentPath)}` : '';
         // Redirect to login for non-auth endpoints
-        window.location.href = `${api.defaults.baseURL}/auth/login`;
+        window.location.href = `${api.defaults.baseURL}/auth/login${redirectParam}`;
         return Promise.reject(new Error("Authentication required"));
       }
     }

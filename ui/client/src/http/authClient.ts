@@ -1,6 +1,10 @@
 // import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import axios, { AxiosError } from 'axios';
 
+interface APIErrorResponse {
+  error?: string; // Mark `error` as optional since it may not always exist
+}
+
 export const api = axios.create({
     baseURL: '/api3',
     // baseURL: '/',
@@ -31,8 +35,11 @@ export const api = axios.create({
         const isAuthEndpoint = error.config?.url?.includes('/auth');
         
         if (!isAuthEndpoint) {
+          // Preserve the current pathname so we can redirect back after authentication
+          const currentPath = window.location.pathname;
+          const redirectParam = currentPath && currentPath !== '/' ? `?redirect=${encodeURIComponent(currentPath)}` : '';
           // Redirect to login for non-auth endpoints
-          window.location.href = `${api.defaults.baseURL}/auth/login`;
+          window.location.href = `${api.defaults.baseURL}/auth/login${redirectParam}`;
           return Promise.reject(new Error("Authentication required"));
         }
       }

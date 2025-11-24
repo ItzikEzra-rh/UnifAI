@@ -51,7 +51,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Initiate login by redirecting to backend auth endpoint
   const login = () => {
-    window.location.href = `${api.defaults.baseURL}/auth/login`;
+    // Preserve the current pathname so we can redirect back after authentication
+    const currentPath = window.location.pathname;
+    const redirectParam = currentPath && currentPath !== '/' ? `?redirect=${encodeURIComponent(currentPath)}` : '';
+    window.location.href = `${api.defaults.baseURL}/auth/login${redirectParam}`;
   };
 
   // Logout user
@@ -72,6 +75,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const authStatus = urlParams.get('auth');
+    const redirectParam = urlParams.get('redirect');
     
     if (authStatus === 'success') {
       // Remove auth params from URL
@@ -79,6 +83,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       // Check auth status after successful login
       checkAuthStatus();
     } else if (authStatus === 'error') {
+      // If there's a redirect parameter, preserve it and retry login
+      if (redirectParam) {
+        const decodedRedirect = decodeURIComponent(redirectParam);
+        console.log('Authentication failed, retrying with preserved redirect:', decodedRedirect);
+        // Retry login with the preserved redirect path
+        const redirectQuery = `?redirect=${encodeURIComponent(decodedRedirect)}`;
+        window.location.href = `${api.defaults.baseURL}/auth/login${redirectQuery}`;
+        return; // Don't set loading to false yet, we're redirecting
+      }
       // Remove auth params from URL
       window.history.replaceState({}, document.title, window.location.pathname);
       setIsLoading(false);
