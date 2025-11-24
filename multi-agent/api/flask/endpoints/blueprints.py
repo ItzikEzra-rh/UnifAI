@@ -101,14 +101,8 @@ def get_blueprint_info(blueprint_id):
             }), 404
         
         bp_doc = svc.get_blueprint_draft_doc(blueprint_id)
-        bp_name = bp_doc.get("spec_dict", {}).get("name", "Unnamed Workflow")
+        bp_name = bp_doc.get("spec_dict", {}).get("name", "Unknown")
         owner_user_id = bp_doc.get("user_id", "")
-        
-        # Debug: log the blueprint document structure
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Blueprint doc keys: {list(bp_doc.keys())}")
-        logger.info(f"Blueprint user_id: {owner_user_id}")
         
         return jsonify({
             "blueprint_id": blueprint_id,

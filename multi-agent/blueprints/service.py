@@ -115,12 +115,8 @@ class BlueprintService:
         return BlueprintDraft.model_json_schema()
 
 # ────────── Public Chat Sharing ──────────
-    def enable_public_chat(self, blueprint_id: str, user_id: str) -> bool:
+    def enable_public_chat(self, blueprint_id: str) -> bool:
         """Enable public chat sharing for a blueprint by setting shared=True."""
-        doc = self._repo.load(blueprint_id)
-        if doc.get("user_id") != user_id:
-            raise ValueError(f"Blueprint {blueprint_id} not owned by user {user_id}")
-        
         # Update the blueprint document to set shared=True
         if hasattr(self._repo, '_col'):  # MongoDB repository
             self._repo._col.update_one(
@@ -129,12 +125,8 @@ class BlueprintService:
             )
         return True
     
-    def disable_public_chat(self, blueprint_id: str, user_id: str) -> bool:
+    def disable_public_chat(self, blueprint_id: str) -> bool:
         """Disable public chat sharing for a blueprint by setting shared=False."""
-        doc = self._repo.load(blueprint_id)
-        if doc.get("user_id") != user_id:
-            raise ValueError(f"Blueprint {blueprint_id} not owned by user {user_id}")
-        
         # Update the blueprint document to set shared=False
         if hasattr(self._repo, '_col'):  # MongoDB repository
             self._repo._col.update_one(

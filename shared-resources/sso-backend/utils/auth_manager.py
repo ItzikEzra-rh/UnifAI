@@ -72,11 +72,10 @@ class AuthManager:
         # Set up session configuration (for user session after authentication)
         is_production = config.backend_env == "production"
         app.config.update({
-            'SESSION_COOKIE_SECURE': is_production,
+            'SESSION_COOKIE_SECURE': True,  # Required for SameSite=None
             'SESSION_COOKIE_HTTPONLY': True,
-            'SESSION_COOKIE_SAMESITE': 'None' if is_production else 'Lax',
-            'SESSION_COOKIE_PATH': '/',
-            'PERMANENT_SESSION_LIFETIME': timedelta(hours=10)
+            'SESSION_COOKIE_SAMESITE': 'None',  # Must be 'None' for cross-origin
+            'PERMANENT_SESSION_LIFETIME': timedelta(hours=10)  # 10 hour sessions to match OIDC
         })
     
     def _store_redirect_path(self, state: str, redirect_path: str):

@@ -17,7 +17,7 @@ import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import SlackIntegration from "./features/slack/SlackIntegration";
 import SlackAddSourcePage from "./features/slack/SlackAddSourcePage";
 import GuidesPage from "./components/guides/GuidesPage";
-import ChatOnlyPage from "./components/agentic-ai/chat/ChatOnlyPage";
+import PublicChat from "./components/agentic-ai/chat/PublicChat";
 
 function App() {
   // Set document title
@@ -40,7 +40,7 @@ function App() {
                   <Route path="/inventory" component={AgentRepository} />
                   <Route path="/agentic-ai" component={AgenticAI} />
                   <Route path="/agentic-chats" component={AgenticChats} />
-                  <Route path="/chat/:token" component={ChatOnlyPage} />
+                  <Route path="/chat/:token" component={PublicChat} />
                   <Route path="/slack/add-source" component={SlackAddSourcePage} />
                   <Route path="/configuration" component={Configuration} />
                   <Route path="/guides" component={GuidesPage} />
