@@ -84,6 +84,41 @@ def save_blueprint(blueprint_raw=None, user_id="alice"):
         }), 500
 
 
+@blueprints_bp.route("/blueprint.info.get", methods=["GET"])
+@from_query({
+    "blueprint_id": fields.Str(data_key="blueprintId", required=True)
+})
+def get_blueprint_info(blueprint_id):
+    """
+    Get blueprint information including name and owner.
+    """
+    try:
+        svc = current_app.container.blueprint_service
+        
+        if not svc.exists(blueprint_id):
+            return jsonify({
+                "error": "Blueprint not found"
+            }), 404
+        
+        bp_doc = svc.get_blueprint_draft_doc(blueprint_id)
+        bp_name = bp_doc.get("spec_dict", {}).get("name", "Unnamed Workflow")
+        owner_user_id = bp_doc.get("user_id", "")
+        
+        # Debug: log the blueprint document structure
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"Blueprint doc keys: {list(bp_doc.keys())}")
+        logger.info(f"Blueprint user_id: {owner_user_id}")
+        
+        return jsonify({
+            "blueprint_id": blueprint_id,
+            "blueprint_name": bp_name,
+            "owner_user_id": owner_user_id
+        }), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @blueprints_bp.route("/blueprint.draft.schema.get", methods=["GET"])
 def blueprint_draft_schema_get():
     """

@@ -887,11 +887,9 @@ export default function ExecutionTab({
               {selectedSession?.fromSharedLink ? (
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm flex-col">
                   <p className="mb-2">This session was created from a shared chat link</p>
-                  {sharedLinkBlueprintName && (
-                    <p className="text-xs text-gray-500 mb-1">
-                      Workflow: <span className="font-medium text-gray-300">{sharedLinkBlueprintName}</span>
-                    </p>
-                  )}
+                  <p className="text-xs text-gray-500 mb-1">
+                    Workflow: <span className="font-medium text-gray-300">{sharedLinkBlueprintName || "Loading..."}</span>
+                  </p>
                   <p className="text-xs text-gray-500">Workflow details are not available in shared link sessions</p>
                 </div>
               ) : selectedSession?.blueprintId ? (
