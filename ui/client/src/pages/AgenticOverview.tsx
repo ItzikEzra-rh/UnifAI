@@ -22,9 +22,9 @@ import ReactFlowGraph from "@/components/agentic-ai/graphs/ReactFlowGraph";
 import { ReactFlowProvider } from "reactflow";
 
 // Custom hooks
-import { useAgenticData } from "@/hooks/useAgenticData";
-import { useWorkflowCalculations } from "@/hooks/useWorkflowCalculations";
-import { useResourceDistribution } from "@/hooks/useResourceDistribution";
+import { useAgenticData } from "@/hooks/use-agentic-data";
+import { useWorkflowCalculations } from "@/hooks/use-workflow-calculations";
+import { useResourceDistribution } from "@/hooks/use-resource-distribution";
 
 export default function AgenticOverview() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -120,7 +120,7 @@ export default function AgenticOverview() {
                 title={
                   <span className="flex items-center">
                     <FaPlayCircle className="mr-3 h-5 w-5" style={{ color: themeColors.sessions }} />
-                    Active Sessions
+                    Active Workflows
                   </span>
                 }
                 value={agenticStats.data?.activeSessions || 0}
