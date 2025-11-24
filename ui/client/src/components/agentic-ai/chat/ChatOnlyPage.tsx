@@ -220,8 +220,72 @@ export default function ChatOnlyPage() {
       
       setChatSessions(transformedSessions);
       
-      // Auto-select the first session if available and no session is selected
-      if (transformedSessions.length > 0 && !selectedSession) {
+      // If no sessions exist, automatically create a new chat
+      if (transformedSessions.length === 0 && !selectedSession && !runId) {
+        // Auto-create a new chat session - do this synchronously without loading states
+        try {
+          const createResponse = await axios.post("/sessions/user.session.create", {
+            blueprintId: blueprintId,
+            userId: user.username,
+            metadata: {},
+            fromSharedLink: true,
+          });
+          
+          const newSessionId = createResponse.data;
+          
+          // Validate that we got a session ID
+          if (!newSessionId || typeof newSessionId !== 'string') {
+            throw new Error('Invalid session ID received from server');
+          }
+          
+          // Set runId immediately so the chat interface shows right away
+          setRunId(newSessionId);
+          setChatHistory([]);
+          
+          // Create a temporary session object for the new session
+          const tempSession: ChatSession = {
+            id: newSessionId,
+            blueprintId: blueprintId,
+            title: "New Chat",
+            lastActive: "Just now",
+            timestamp: new Date(),
+            preview: "New conversation",
+            messages: [],
+            blueprintExists: true,
+            fromSharedLink: true,
+          };
+          
+          // Select the new session immediately
+          setSelectedSession(tempSession);
+          
+          // Refresh sessions list to get proper data (do this in background, don't wait)
+          axios.get(`/sessions/session.user.chat.get?userId=${user.username}`)
+            .then((refreshResponse) => {
+              const refreshSessions: ChatSessionData[] = refreshResponse.data;
+              const refreshBlueprintSessions = refreshSessions.filter(
+                (session) => session.blueprint_id === blueprintId && session.blueprint_exists
+              );
+              const refreshTransformedSessions = transformApiDataToSessions(refreshBlueprintSessions);
+              refreshTransformedSessions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+              
+              setChatSessions(refreshTransformedSessions);
+              
+              // Find the new session in the updated list and select it
+              const newSession = refreshTransformedSessions.find(s => s.id === newSessionId);
+              if (newSession) {
+                setSelectedSession(newSession);
+              }
+            })
+            .catch((refreshError) => {
+              // If refresh fails, that's okay - we already have the session selected
+              console.error('Error refreshing sessions list:', refreshError);
+            });
+        } catch (createError: any) {
+          console.error('Error auto-creating new chat:', createError);
+          // Don't show toast for auto-creation errors, just log
+        }
+      } else if (transformedSessions.length > 0 && !selectedSession) {
+        // Auto-select the first session if available and no session is selected
         const firstSession = transformedSessions[0];
         await handleSessionSelect(firstSession);
       }
@@ -635,12 +699,21 @@ export default function ChatOnlyPage() {
         {/* Chat Interface */}
         <div className="flex-1 overflow-hidden">
           {!runId ? (
-            <div className="flex items-center justify-center h-full bg-background-dark">
-              <div className="text-center">
-                <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
-                <p className="text-gray-400">Select a chat session or start a new one</p>
+            isLoadingSessions ? (
+              <div className="flex items-center justify-center h-full bg-background-dark">
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
+                  <p className="text-gray-400">Loading chat sessions...</p>
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="flex items-center justify-center h-full bg-background-dark">
+                <div className="text-center">
+                  <MessageSquare className="h-12 w-12 mx-auto mb-4 text-gray-400" />
+                  <p className="text-gray-400">Select a chat session or start a new one</p>
+                </div>
+              </div>
+            )
           ) : (
             <StreamingDataProvider>
               <ChatInterface

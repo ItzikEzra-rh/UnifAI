@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { Copy, Check, Share2 } from "lucide-react";
+import { Copy, Check, Share2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import axios from "../../http/axiosAgentConfig";
 import { useAuth } from "@/contexts/AuthContext";
@@ -55,7 +55,7 @@ export default function ShareWorkflow({
     setIsLoading(true);
     try {
       if (checked) {
-        // Enable sharing
+        // Enable sharing - validate workflow first (same as loading workflow)
         const response = await axios.post("/shares/public-chat.enable", {
           blueprintId,
           userId: user.username,
@@ -80,11 +80,18 @@ export default function ShareWorkflow({
         });
       }
     } catch (error: any) {
+      // Show the same error message format as "Load Workflow"
+      const errorMessage = error.response?.data?.error || "Failed to update sharing settings";
       toast({
-        title: "Error",
-        description: error.response?.data?.error || "Failed to update sharing settings",
+        title: checked ? "Failed to load current workflow" : "Error",
+        description: `Error: ${errorMessage}`,
         variant: "destructive",
       });
+      // Don't toggle the switch if enabling failed
+      if (checked) {
+        // Keep the switch in the off position since enabling failed
+        setEnabled(false);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -110,9 +117,16 @@ export default function ShareWorkflow({
     <div className={`space-y-4 ${className}`}>
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-2">
-          <Share2 className="h-4 w-4 text-gray-400" />
+          {isLoading ? (
+            <Loader2 className="h-4 w-4 text-gray-400 animate-spin" />
+          ) : (
+            <Share2 className="h-4 w-4 text-gray-400" />
+          )}
           <Label htmlFor="share-toggle" className="text-sm font-medium">
-            Enable Public Chat Sharing
+            {isLoading 
+              ? (enabled ? "Disabling..." : "Validating workflow...")
+              : "Enable Public Chat Sharing"
+            }
           </Label>
         </div>
         <Switch

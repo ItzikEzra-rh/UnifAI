@@ -63,6 +63,7 @@ interface ChatSession {
   messages: ChatMessage[];
   blueprintExists: boolean;
   fromSharedLink?: boolean;
+  isSharingDisabled?: boolean; // Track if sharing is disabled for this session
 }
 
 export type SessionPayload = {
@@ -118,6 +119,7 @@ export default function ExecutionTab({
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isLoadingFlowsForModal, setIsLoadingFlowsForModal] = useState(false);
   const [sharedLinkBlueprintName, setSharedLinkBlueprintName] = useState<string>("");
+  const [isSharingDisabled, setIsSharingDisabled] = useState<boolean>(false);
   // Three panel widths: Available Chats, ChatInterface, Blueprint Graph
   const [chatSidebarWidth, setChatSidebarWidth] = useState(20);
   const [chatInterfaceWidth, setChatInterfaceWidth] = useState(50);
@@ -261,29 +263,47 @@ export default function ExecutionTab({
     return 'No message content available';
   };
 
-  const transformApiDataToSessions = (apiData: ChatSessionData[]): ChatSession[] => {
-    return apiData.map((sessionData, index) => {
-      const title = sessionData.metadata?.title || generateRandomTitle(index);
-      const id = sessionData.session_id || generateRandomId();
-      const blueprintId = sessionData.blueprint_id;
-      const blueprintExists = sessionData.blueprint_exists;
-      const fromSharedLink = sessionData.metadata?.from_shared_link || false;
-      const timestamp = new Date(sessionData.started_at);
-      const lastActive = formatTimestamp(sessionData.started_at);
-      const preview = fromSharedLink ? 'From chat experience' : 'Click to load messages...';
-      
-      return {
-        id,
-        blueprintId,
-        title: fromSharedLink ? `${title} (Shared Link)` : title,
-        lastActive,
-        timestamp,
-        preview,
-        messages: [], // Messages will be loaded separately when session is selected
-        blueprintExists,
-        fromSharedLink,
-      };
-    });
+  const transformApiDataToSessions = async (apiData: ChatSessionData[]): Promise<ChatSession[]> => {
+    // Check sharing status for all shared link sessions in parallel
+    const sessionsWithSharingStatus = await Promise.all(
+      apiData.map(async (sessionData, index) => {
+        const title = sessionData.metadata?.title || generateRandomTitle(index);
+        const id = sessionData.session_id || generateRandomId();
+        const blueprintId = sessionData.blueprint_id;
+        const blueprintExists = sessionData.blueprint_exists;
+        const fromSharedLink = sessionData.metadata?.from_shared_link || false;
+        const timestamp = new Date(sessionData.started_at);
+        const lastActive = formatTimestamp(sessionData.started_at);
+        const preview = fromSharedLink ? 'From chat experience' : 'Click to load messages...';
+        
+        // Check sharing status for shared link sessions if blueprint exists
+        let isSharingDisabled = false;
+        if (blueprintExists && fromSharedLink && blueprintId) {
+          try {
+            const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${blueprintId}`);
+            isSharingDisabled = !statusResponse.data.enabled;
+          } catch (error) {
+            // If status check fails, assume sharing is disabled
+            isSharingDisabled = true;
+          }
+        }
+        
+        return {
+          id,
+          blueprintId,
+          title: fromSharedLink ? `${title} (Shared Link)` : title,
+          lastActive,
+          timestamp,
+          preview,
+          messages: [], // Messages will be loaded separately when session is selected
+          blueprintExists,
+          fromSharedLink,
+          isSharingDisabled,
+        };
+      })
+    );
+    
+    return sessionsWithSharingStatus;
   };
 
   // Fetch session state (messages) for a specific session
@@ -305,7 +325,7 @@ export default function ExecutionTab({
 
       const userId = user?.username || "default";
       const response = await axios.get(`/sessions/session.user.chat.get?userId=${userId}`);
-      const transformedSessions = transformApiDataToSessions(response.data);
+      const transformedSessions = await transformApiDataToSessions(response.data);
 
       // sort chat sessions based on the latest date
       const sortedSessions = transformedSessions.sort((firstSession, secondSession) => secondSession.timestamp.getTime() - firstSession.timestamp.getTime());
@@ -347,18 +367,50 @@ export default function ExecutionTab({
   const handleSessionSelect = async (session: ChatSession) => {
     setSelectedSession(session);
     
-    // Fetch the blueprint name from database using blueprint_id from session (same as we do for the graph)
+    // Check sharing status immediately (before fetching other data) to avoid flash
+    // But only if the blueprint still exists
+    if (!session.blueprintExists) {
+      // If workflow is deleted, reset sharing disabled state (deleted message will show instead)
+      setIsSharingDisabled(false);
+    } else if (session.fromSharedLink && session.blueprintId) {
+      // Use cached status if available, otherwise fetch
+      if (session.isSharingDisabled !== undefined) {
+        setIsSharingDisabled(session.isSharingDisabled);
+      } else {
+        try {
+          const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${session.blueprintId}`);
+          // If sharing is not enabled, disable the chat
+          const disabled = !statusResponse.data.enabled;
+          setIsSharingDisabled(disabled);
+          // Update the session with the sharing status for future use
+          setChatSessions(prev => prev.map(s => 
+            s.id === session.id ? { ...s, isSharingDisabled: disabled } : s
+          ));
+        } catch (statusError: any) {
+          // If status check fails (e.g., blueprint doesn't exist), assume sharing is disabled
+          setIsSharingDisabled(true);
+          setChatSessions(prev => prev.map(s => 
+            s.id === session.id ? { ...s, isSharingDisabled: true } : s
+          ));
+        }
+      }
+    } else {
+      // For non-shared-link sessions, sharing status doesn't matter
+      setIsSharingDisabled(false);
+    }
+    
+    // Fetch the blueprint name from database using blueprint_id from session
     if (session.blueprintId) {
       try {
         const response = await axios.get(`/blueprints/blueprint.info.get?blueprintId=${session.blueprintId}`);
         if (response.data && response.data.blueprint_name) {
           setSharedLinkBlueprintName(response.data.blueprint_name);
         } else {
-          setSharedLinkBlueprintName("Unnamed Workflow");
+          setSharedLinkBlueprintName("");
         }
       } catch (error: any) {
         console.error('Error fetching blueprint name:', error);
-        setSharedLinkBlueprintName("Unnamed Workflow");
+        setSharedLinkBlueprintName("");
       }
     } else {
       setSharedLinkBlueprintName("");
@@ -775,7 +827,7 @@ export default function ExecutionTab({
                           ? "border-[hsl(var(--primary))] bg-primary/20"
                           : "border-transparent hover:bg-background-surface"
                       } ${
-                        !session.blueprintExists 
+                        !session.blueprintExists || session.isSharingDisabled
                           ? "opacity-50 bg-gray-800/30" 
                           : ""
                       }`}
@@ -834,6 +886,7 @@ export default function ExecutionTab({
               triggerExecution={triggerExecution}
               initialMessages={currentSessionMessages}
               blueprintExists={selectedSession?.blueprintExists ?? true}
+              isSharingDisabled={isSharingDisabled}
               onToggleBlueprintGraph={toggleBlueprintGraph}
               isBlueprintGraphHidden={isBlueprintGraphHidden}
             />
@@ -884,11 +937,11 @@ export default function ExecutionTab({
               )}
             </CardHeader> */}
             <CardContent className="p-0 flex-grow">
-              {selectedSession?.fromSharedLink ? (
+              {selectedSession?.fromSharedLink? (
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm flex-col">
                   <p className="mb-2">This session was created from a shared chat link</p>
                   <p className="text-xs text-gray-500 mb-1">
-                    Workflow: <span className="font-medium text-gray-300">{sharedLinkBlueprintName || "Loading..."}</span>
+                    Workflow: <span className="font-medium text-gray-300">{sharedLinkBlueprintName || "Unknown"}</span>
                   </p>
                   <p className="text-xs text-gray-500">Workflow details are not available in shared link sessions</p>
                 </div>

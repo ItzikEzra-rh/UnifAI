@@ -178,7 +178,38 @@ def get_share(share_id, user_id="alice"):
 })
 def enable_public_chat(blueprint_id, user_id):
     """Enable public chat sharing for a blueprint."""
+    # First, validate the blueprint by trying to create a session (same validation as Load Workflow)
+    # This ensures the blueprint can actually be used before enabling sharing
+    session_svc = current_app.container.session_service
+    test_session = None
     try:
+        # Try to create a test session to validate the blueprint
+        # This will fail with the same errors as "Load Workflow" if the blueprint is invalid
+        test_session = session_svc.create(
+            user_id=user_id,
+            blueprint_id=blueprint_id,
+            metadata=None
+        )
+    except Exception as validation_error:
+        # If session creation fails, the blueprint is invalid
+        # Return the same error format as Load Workflow
+        from session.exceptions import BlueprintNotFoundError
+        if isinstance(validation_error, BlueprintNotFoundError):
+            return jsonify({
+                "error": str(validation_error),
+                "error_type": "BLUEPRINT_NOT_FOUND",
+                "blueprint_id": validation_error.blueprint_id
+            }), 404
+        else:
+            # Any other error during session creation (invalid blueprint structure, etc.)
+            return jsonify({"error": str(validation_error)}), 500
+    
+    # If validation passed, clean up the test session and enable sharing
+    try:
+        if test_session:
+            session_svc.delete(test_session.get_run_id())
+        
+        # Enable sharing
         bp_service = current_app.container.blueprint_service
         bp_service.enable_public_chat(blueprint_id, user_id)
         
@@ -193,11 +224,14 @@ def enable_public_chat(blueprint_id, user_id):
             "share_link": share_link,
             "blueprint_id": blueprint_id
         }), 200
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
     except KeyError as e:
-        return jsonify({"error": f"Blueprint not found: {blueprint_id}"}), 404
+        # Blueprint not found - same error format as session creation
+        return jsonify({"error": f"Blueprint {blueprint_id} not found"}), 404
+    except ValueError as e:
+        # Invalid blueprint or ownership error - same error format as session creation
+        return jsonify({"error": str(e)}), 400
     except Exception as e:
+        # Any other error (e.g., blueprint resolution failure)
         return jsonify({"error": str(e)}), 500
 
 
