@@ -18,6 +18,13 @@ class BlueprintRepository(ABC):
         Replace an existing draft.  Return True if a document was modified.
         """
 
+    @abstractmethod
+    def update_shared_field(self, *, blueprint_id: str, shared: bool) -> bool:
+        """
+        Update the shared field of a blueprint document.
+        Return True if a document was modified.
+        """
+
     # ────────────────────────────── Reads by ID ─────────────────────────
     @abstractmethod
     def load(self, blueprint_id: str) -> Mapping[str, Any]:

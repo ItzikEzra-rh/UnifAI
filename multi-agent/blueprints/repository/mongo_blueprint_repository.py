@@ -52,6 +52,14 @@ class MongoBlueprintRepository(BlueprintRepository):
 
         return res.modified_count == 1
 
+    def update_shared_field(self, *, blueprint_id: str, shared: bool) -> bool:
+        """Update the shared field of a blueprint document."""
+        res = self._col.update_one(
+            {"blueprint_id": blueprint_id},
+            {"$set": {"shared": shared, "updated_at": datetime.utcnow()}}
+        )
+        return res.modified_count == 1
+
     def load(self, blueprint_id: str) -> Mapping[str, Any]:
         doc = self._col.find_one({"blueprint_id": blueprint_id})
         if not doc:

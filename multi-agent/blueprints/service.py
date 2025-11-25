@@ -117,23 +117,11 @@ class BlueprintService:
 # ────────── Public Chat Sharing ──────────
     def enable_public_chat(self, blueprint_id: str) -> bool:
         """Enable public chat sharing for a blueprint by setting shared=True."""
-        # Update the blueprint document to set shared=True
-        if hasattr(self._repo, '_col'):  # MongoDB repository
-            self._repo._col.update_one(
-                {"blueprint_id": blueprint_id},
-                {"$set": {"shared": True}}
-            )
-        return True
+        return self._repo.update_shared_field(blueprint_id=blueprint_id, shared=True)
     
     def disable_public_chat(self, blueprint_id: str) -> bool:
         """Disable public chat sharing for a blueprint by setting shared=False."""
-        # Update the blueprint document to set shared=False
-        if hasattr(self._repo, '_col'):  # MongoDB repository
-            self._repo._col.update_one(
-                {"blueprint_id": blueprint_id},
-                {"$set": {"shared": False}}
-            )
-        return True
+        return self._repo.update_shared_field(blueprint_id=blueprint_id, shared=False)
     
     def is_public_chat_enabled(self, blueprint_id: str) -> bool:
         """Check if public chat is enabled for a blueprint (shared == True)."""
