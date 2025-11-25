@@ -23,6 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { ChatSession, BackendChatMessage, ChatSessionData, SessionStateData } from "@/types/session";
+import { formatRelativeTimestamp } from "@/utils";
 
 export default function PublicChat() {
   const [, params] = useRoute("/chat/:token");
@@ -97,21 +98,6 @@ export default function PublicChat() {
     validateToken();
   }, [token, checkSharingStatus]);
 
-  // Helper function to format timestamp
-  const formatTimestamp = (timestamp: string): string => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffMins = Math.floor(diffMs / 60000);
-    const diffHours = Math.floor(diffMs / 3600000);
-    const diffDays = Math.floor(diffMs / 86400000);
-
-    if (diffMins < 1) return "Just now";
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
-    return date.toLocaleDateString();
-  };
 
   // Helper function to generate random title
   const generateRandomTitle = (index: number): string => {
@@ -140,7 +126,7 @@ export default function PublicChat() {
         ? !(sessionData.public_chat_enabled ?? false)
         : false;
       const timestamp = new Date(sessionData.started_at);
-      const lastActive = formatTimestamp(sessionData.started_at);
+      const lastActive = formatRelativeTimestamp(sessionData.started_at);
       const preview = "Click to load messages...";
       
       return {

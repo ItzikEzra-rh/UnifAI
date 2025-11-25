@@ -35,6 +35,7 @@ import {
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 
 import { ChatSession, BackendChatMessage, ChatSessionData, SessionStateData } from "@/types/session";
+import { formatRelativeTimestamp } from "@/utils";
 
 
 export type SessionPayload = {
@@ -201,24 +202,6 @@ export default function ExecutionTab({
     return `Chat ${index + 1}`;
   };
 
-  const formatTimestamp = (timestamp: string): string => {
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffInMs = now.getTime() - date.getTime();
-    const diffInMinutes = Math.floor(diffInMs / (1000 * 60));
-    const diffInHours = Math.floor(diffInMinutes / 60);
-    const diffInDays = Math.floor(diffInHours / 24);
-
-    if (diffInMinutes < 60) {
-      return `${diffInMinutes} min ago`;
-    } else if (diffInHours < 24) {
-      return `${diffInHours} hour${diffInHours > 1 ? 's' : ''} ago`;
-    } else if (diffInDays < 7) {
-      return `${diffInDays} day${diffInDays > 1 ? 's' : ''} ago`;
-    } else {
-      return date.toLocaleDateString();
-    }
-  };
 
   const handleGlobalScopeToggle = () => {
     setGlobalScope(prevScope => prevScope === 'public' ? 'private' : 'public');
@@ -243,7 +226,7 @@ export default function ExecutionTab({
       const blueprintExists = sessionData.blueprint_exists;
       const fromSharedLink = sessionData.metadata?.from_shared_link || false;
       const timestamp = new Date(sessionData.started_at);
-      const lastActive = formatTimestamp(sessionData.started_at);
+      const lastActive = formatRelativeTimestamp(sessionData.started_at);
       const preview = fromSharedLink ? 'From chat experience' : 'Click to load messages...';
       
       // Use public chat status from API response (only relevant for shared link sessions)
