@@ -4,43 +4,8 @@ from webargs import fields
 from sharing.models import ShareItemKind, ShareStatus
 from config.app_config import AppConfig
 from session.exceptions import BlueprintNotFoundError
-from typing import Tuple, Optional
 
 shares_bp = Blueprint("shares", __name__)
-
-
-def validate_blueprint(blueprint_id: str, user_id: str) -> Tuple[Optional[Exception], Optional[dict]]:
-    """
-    Validate a blueprint by creating a test session and immediately deleting it.
-    Returns (error, error_response) tuple. If validation passes, both are None.
-    """
-    session_svc = current_app.container.session_service
-    test_session = None
-    
-    try:
-        test_session = session_svc.create(
-            user_id=user_id,
-            blueprint_id=blueprint_id,
-            metadata=None
-        )
-    except BlueprintNotFoundError as e:
-        return (e, {
-            "error": str(e),
-            "error_type": "BLUEPRINT_NOT_FOUND",
-            "blueprint_id": e.blueprint_id
-        })
-    except Exception as e:
-        return (e, {"error": str(e)})
-    
-    # If validation passed, clean up the test session
-    try:
-        if test_session:
-            session_svc.delete(test_session.get_run_id())
-    except Exception as cleanup_error:
-        # Log but don't fail validation if cleanup fails
-        pass
-    
-    return (None, None)
 
 
 @shares_bp.route("/share.create", methods=["POST"])
@@ -214,13 +179,12 @@ def get_share(share_id, user_id="alice"):
 })
 def enable_public_chat(blueprint_id, user_id):
     """Enable public chat sharing for a blueprint."""
-    validation_error, error_response = validate_blueprint(blueprint_id, user_id)
-    
-    if validation_error:
-        status_code = 404 if isinstance(validation_error, BlueprintNotFoundError) else 500
-        return jsonify(error_response), status_code
-    
     try:
+        session_svc = current_app.container.session_service
+        
+        # Validate blueprint can be used in a session
+        session_svc.validate_blueprint(user_id=user_id, blueprint_id=blueprint_id)
+        
         bp_service = current_app.container.blueprint_service
         bp_service.enable_public_chat(blueprint_id)
         
@@ -234,10 +198,12 @@ def enable_public_chat(blueprint_id, user_id):
             "share_link": share_link,
             "blueprint_id": blueprint_id
         }), 200
-    except KeyError as e:
-        return jsonify({"error": f"Blueprint {blueprint_id} not found"}), 404
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
+    except BlueprintNotFoundError as e:
+        return jsonify({
+            "error": str(e),
+            "error_type": "BLUEPRINT_NOT_FOUND",
+            "blueprint_id": e.blueprint_id
+        }), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -257,10 +223,12 @@ def disable_public_chat(blueprint_id, user_id):
             "status": "success",
             "enabled": False
         }), 200
-    except ValueError as e:
-        return jsonify({"error": str(e)}), 400
     except KeyError as e:
-        return jsonify({"error": f"Blueprint not found: {blueprint_id}"}), 404
+        return jsonify({
+            "error": str(e),
+            "error_type": "BLUEPRINT_NOT_FOUND",
+            "blueprint_id": blueprint_id
+        }), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
