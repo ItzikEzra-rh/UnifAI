@@ -25,6 +25,23 @@ class BlueprintService:
         """Get blueprint document with metadata for sharing operations."""
         return self._repo.load(blueprint_id)
 
+    def get_blueprint_info(self, blueprint_id: str) -> Dict[str, Any]:
+        """
+        Get blueprint information including name and owner.
+        
+        :param blueprint_id: The blueprint ID
+        :return: Dictionary with blueprint_id, blueprint_name, and owner_user_id
+        :raises KeyError: If blueprint doesn't exist
+        """
+        draft = self.load_draft(blueprint_id)
+        doc = self.get_blueprint_draft_doc(blueprint_id)
+        
+        return {
+            "blueprint_id": blueprint_id,
+            "blueprint_name": draft.name,
+            "owner_user_id": doc.get("user_id", "")
+        }
+
     def update_draft(self, *, blueprint_id: str, draft_dict: dict) -> bool:  # NEW
         draft = BlueprintDraft(**draft_dict)
         rid_refs = list(RefWalker.external_rids(draft))
