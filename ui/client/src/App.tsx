@@ -28,10 +28,10 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <AgenticAIProvider>
-          <NotificationProvider>
-            <SharedProvider>
-              <ProjectProvider>
+        <SharedProvider>
+          <ProjectProvider>
+            <AgenticAIProvider>
+              <NotificationProvider>
                 <ProtectedRoute>
                   <Switch>
                     <Route path="/" component={AgenticAI} />
@@ -47,10 +47,10 @@ function App() {
                     <Route component={NotFound} />
                   </Switch>
                 </ProtectedRoute>
-              </ProjectProvider>
-            </SharedProvider>
-          </NotificationProvider>
-        </AgenticAIProvider>
+              </NotificationProvider>
+            </AgenticAIProvider>
+          </ProjectProvider>
+        </SharedProvider>
       </AuthProvider>
     </ThemeProvider>
   );
