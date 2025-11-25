@@ -247,7 +247,7 @@ export default function ExecutionTab({
       const preview = fromSharedLink ? 'From chat experience' : 'Click to load messages...';
       
       // Use public chat status from API response (only relevant for shared link sessions)
-      const isSharingDisabled = fromSharedLink && blueprintExists 
+      const isSharingDisabled = fromSharedLink && blueprintExists
         ? !(sessionData.public_chat_enabled ?? false)
         : false;
       
@@ -291,29 +291,11 @@ export default function ExecutionTab({
       const sortedSessions = transformedSessions.sort((firstSession, secondSession) => secondSession.timestamp.getTime() - firstSession.timestamp.getTime());
       setChatSessions(sortedSessions);
 
-      // Auto-select the first session if available and fetch its state
+      // Auto-select the first session if available - use handleSessionSelect to trigger status checks
       if (sortedSessions.length > 0 && !selectedSession) {
         const firstSession = sortedSessions[0];
-        setSelectedSession(firstSession);
-        
-        // Fetch the state for the first session
-        const stateData = await fetchSessionState(firstSession.id);
-        if (stateData && stateData.messages) {
-          setCurrentSessionMessages(stateData.messages);
-          
-          // Update the session's preview with actual message content
-          const updatedSession = {
-            ...firstSession,
-            messages: stateData.messages,
-            preview: getPreviewText(stateData.messages)
-          };
-          setSelectedSession(updatedSession);
-          
-          // Update the session in the list as well
-          setChatSessions(prevSessions => 
-            prevSessions.map(s => s.id === firstSession.id ? updatedSession : s)
-          );
-        }
+        // Use handleSessionSelect to ensure status checks and other logic run
+        await handleSessionSelect(firstSession);
       }
     } catch (err) {
       console.error('Error fetching chat sessions:', err);
@@ -327,32 +309,30 @@ export default function ExecutionTab({
   const handleSessionSelect = async (session: ChatSession) => {
     setSelectedSession(session);
     
+    // Reset blueprint name when switching sessions
+    setSharedLinkBlueprintName("");
+    
     // Check sharing status immediately (before fetching other data) to avoid flash
     // But only if the blueprint still exists
     if (!session.blueprintExists) {
       // If workflow is deleted, reset sharing disabled state (deleted message will show instead)
       setIsSharingDisabled(false);
     } else if (session.fromSharedLink && session.blueprintId) {
-      // Use cached status if available, otherwise fetch
-      if (session.isSharingDisabled !== undefined) {
-        setIsSharingDisabled(session.isSharingDisabled);
-      } else {
-        try {
-          const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${session.blueprintId}`);
-          // If sharing is not enabled, disable the chat
-          const disabled = !statusResponse.data.enabled;
-          setIsSharingDisabled(disabled);
-          // Update the session with the sharing status for future use
-          setChatSessions(prev => prev.map(s => 
-            s.id === session.id ? { ...s, isSharingDisabled: disabled } : s
-          ));
-        } catch (statusError: any) {
-          // If status check fails (e.g., blueprint doesn't exist), assume sharing is disabled
-          setIsSharingDisabled(true);
-          setChatSessions(prev => prev.map(s => 
-            s.id === session.id ? { ...s, isSharingDisabled: true } : s
-          ));
-        }
+      // Always fetch fresh status to ensure accuracy (backend may have changed since session list was loaded)
+      try {
+        const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${session.blueprintId}`);
+        const disabled = !statusResponse.data.enabled;
+        setIsSharingDisabled(disabled);
+        // Update the session with the current sharing status
+        setChatSessions(prev => prev.map(s => 
+          s.id === session.id ? { ...s, isSharingDisabled: disabled } : s
+        ));
+      } catch (statusError: any) {
+        // If status check fails, assume sharing is disabled for safety
+        setIsSharingDisabled(true);
+        setChatSessions(prev => prev.map(s => 
+          s.id === session.id ? { ...s, isSharingDisabled: true } : s
+        ));
       }
     } else {
       // For non-shared-link sessions, sharing status doesn't matter
@@ -363,11 +343,18 @@ export default function ExecutionTab({
     if (session.blueprintId) {
       try {
         const response = await axios.get(`/blueprints/blueprint.info.get?blueprintId=${session.blueprintId}`);
-        if (response.data && response.data.blueprint_name) {
+        if (response.data?.blueprint_name) {
           setSharedLinkBlueprintName(response.data.blueprint_name);
+        } else {
+          console.warn('Blueprint name not found in response:', response.data);
+          setSharedLinkBlueprintName("Unknown");
         }
       } catch (error: any) {
         console.error('Error fetching blueprint name:', error);
+        // Set to "Unknown" on error so user sees something
+        if (session.fromSharedLink) {
+          setSharedLinkBlueprintName("Unknown");
+        }
       }
     }
     
