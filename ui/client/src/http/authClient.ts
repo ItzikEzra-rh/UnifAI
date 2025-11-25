@@ -27,7 +27,18 @@ export const api = axios.create({
     (response) => response,
     (error: AxiosError) => {
       console.error("API Error:", error);
-  
+
+      if (error.response?.status === 401) {
+        const isAuthEndpoint = error.config?.url?.includes('/auth');
+        
+        if (!isAuthEndpoint) {
+          const currentPath = window.location.pathname;
+          const redirectParam = currentPath && currentPath !== '/' ? `?redirect=${encodeURIComponent(currentPath)}` : '';
+          window.location.href = `${api.defaults.baseURL}/auth/login${redirectParam}`;
+          return Promise.reject(new Error("Authentication required"));
+        }
+      }
+
       let errorMsg = "Failed to fetch data. Please try again.";
       const errorData = error.response?.data as APIErrorResponse;
   

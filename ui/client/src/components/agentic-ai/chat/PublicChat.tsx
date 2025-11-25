@@ -22,20 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ChatSession, BackendChatMessage } from "@/types/session";
-
-interface ChatSessionData {
-  metadata: Record<string, any>;
-  blueprint_id: string;
-  session_id: string;
-  started_at: string;
-  blueprint_exists: boolean;
-}
-
-interface SessionStateData {
-  final_output: string;
-  messages: BackendChatMessage[];
-}
+import { ChatSession, BackendChatMessage, ChatSessionData, SessionStateData } from "@/types/session";
 
 export default function PublicChat() {
   const [, params] = useRoute("/chat/:token");

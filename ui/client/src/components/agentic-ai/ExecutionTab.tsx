@@ -34,21 +34,8 @@ import {
 } from "@/components/ui/dialog";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 
-import { ChatSession, BackendChatMessage } from "@/types/session";
+import { ChatSession, BackendChatMessage, ChatSessionData, SessionStateData } from "@/types/session";
 
-// Types for the API response
-interface ChatSessionData {
-  metadata: Record<string, any>;
-  blueprint_id: string;
-  session_id: string;
-  started_at: string;
-  blueprint_exists: boolean;
-}
-
-interface SessionStateData {
-  final_output: string;
-  messages: BackendChatMessage[];
-}
 
 export type SessionPayload = {
   sessionId: string;
