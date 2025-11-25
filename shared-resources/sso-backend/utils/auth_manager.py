@@ -178,8 +178,7 @@ class AuthManager:
                     self._get_redirect_path(request_state, remove_after_use=True)
                 
                 # Redirect to frontend
-                frontend_url = config.get('frontend_url', 'http://127.0.0.1:5000')
-                final_url = f"{frontend_url}{redirect_path}?auth=success"
+                final_url = f"{config.frontend_url}{redirect_path}?auth=success"
                 return redirect(final_url)
                 
             except AuthlibBaseError as e:
@@ -188,8 +187,7 @@ class AuthManager:
                 request_state = request.args.get('state', '')
                 redirect_path = self._get_redirect_path(request_state, remove_after_use=False) if request_state else '/'
                 
-                frontend_url = config.get('frontend_url', 'http://127.0.0.1:5000')
-                redirect_url = f"{frontend_url}{redirect_path}?auth=error"
+                redirect_url = f"{config.frontend_url}{redirect_path}?auth=error"
                 if redirect_path != '/':
                     redirect_url += f"&redirect={redirect_path.replace('/', '%2F')}"
                 return redirect(redirect_url)
@@ -216,6 +214,7 @@ class AuthManager:
             # Check if access token needs refresh (but session is still valid)
             if self._should_refresh_token():
                 if not self._refresh_access_token():
+                    # Don't clear session - token refresh failure doesn't mean session expired
                     return jsonify({'error': 'Token refresh failed'}), 401
             
             return jsonify({
@@ -259,7 +258,7 @@ class AuthManager:
         """Check if the user session has expired (requires re-authentication)"""
         session_expires_at = session.get('user', {}).get('session_expires_at', 0)
         if not session_expires_at:
-            return True
+            return True # No expiration time means session is invalid
         
         current_time = datetime.now().timestamp()
         is_expired = current_time >= session_expires_at
@@ -273,7 +272,7 @@ class AuthManager:
         """Check if access token should be refreshed (expires in next 5 minutes)"""
         token_expires_at = session.get('token_expires_at', 0)
         if not token_expires_at:
-            return True
+            return True # No token expiration means we should try to refresh
         
         current_time = datetime.now().timestamp()
         
