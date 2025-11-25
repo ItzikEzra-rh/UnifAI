@@ -855,6 +855,7 @@ export default function ExecutionTab({
               isSharingDisabled={isSharingDisabled}
               onToggleBlueprintGraph={toggleBlueprintGraph}
               isBlueprintGraphHidden={isBlueprintGraphHidden}
+              isChatOnlyMode={selectedSession?.fromSharedLink ?? false}
             />
           </div>
           
