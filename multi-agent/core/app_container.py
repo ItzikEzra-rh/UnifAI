@@ -113,7 +113,8 @@ class AppContainer(metaclass=SingletonMeta):
         )
         self.share_service = ShareService(
             share_repository=self.share_repo,
-            cloner=self.share_cloner
+            cloner=self.share_cloner,
+            session_service=self.session_service
         )
 
         self._initialized = True

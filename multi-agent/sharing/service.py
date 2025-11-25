@@ -1,9 +1,10 @@
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime, timedelta
 
 from .models import ShareInvite, ShareResult, ShareStatus, ShareItemKind, ShareCleanupConfig, ShareCleanupResult
 from .repository.base import ShareRepository
 from .cloner import ShareCloner
+from session.service import SessionService
 
 
 class ShareService:
@@ -14,9 +15,11 @@ class ShareService:
     
     def __init__(self, 
                  share_repository: ShareRepository,
-                 cloner: ShareCloner):
+                 cloner: ShareCloner,
+                 session_service: SessionService = None):
         self._repo = share_repository
         self._cloner = cloner
+        self._session_service = session_service
 
     def create_invite(self, *, sender_user_id: str, recipient_user_id: str,
                      item_kind: ShareItemKind, item_id: str,
@@ -215,3 +218,52 @@ class ShareService:
             return True
         
         return False
+
+    # ────────── Public Chat Sharing ──────────
+    def enable_public_chat(self, blueprint_id: str, user_id: str, frontend_url: str = None) -> Dict[str, Any]:
+        """
+        Enable public chat sharing for a blueprint.
+        
+        :param blueprint_id: The blueprint ID
+        :param user_id: The user ID (for validation)
+        :param frontend_url: Optional frontend URL for share link generation
+        :return: Dictionary with status, enabled, share_link, and blueprint_id
+        :raises Exception: If blueprint validation fails or enabling fails
+        """
+        if self._session_service:
+            self._session_service.validate_blueprint(user_id=user_id, blueprint_id=blueprint_id)
+        
+        self._cloner.blueprints.enable_public_chat(blueprint_id)
+        
+        info = self._cloner.blueprints.get_public_chat_info(blueprint_id, frontend_url)
+        
+        return {
+            "status": "success",
+            **info
+        }
+
+    def disable_public_chat(self, blueprint_id: str) -> Dict[str, Any]:
+        """
+        Disable public chat sharing for a blueprint.
+        
+        :param blueprint_id: The blueprint ID
+        :return: Dictionary with status and enabled=False
+        :raises KeyError: If blueprint doesn't exist
+        """
+        self._cloner.blueprints.disable_public_chat(blueprint_id)
+        
+        return {
+            "status": "success",
+            "enabled": False
+        }
+
+    def get_public_chat_status(self, blueprint_id: str, frontend_url: str = None) -> Dict[str, Any]:
+        """
+        Get public chat sharing status for a blueprint.
+        
+        :param blueprint_id: The blueprint ID
+        :param frontend_url: Optional frontend URL for share link generation
+        :return: Dictionary with enabled, share_link, and blueprint_id
+        :raises KeyError: If blueprint doesn't exist
+        """
+        return self._cloner.blueprints.get_public_chat_info(blueprint_id, frontend_url)

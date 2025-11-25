@@ -180,24 +180,13 @@ def get_share(share_id, user_id="alice"):
 def enable_public_chat(blueprint_id, user_id):
     """Enable public chat sharing for a blueprint."""
     try:
-        session_svc = current_app.container.session_service
-        bp_service = current_app.container.blueprint_service
+        svc = current_app.container.share_service
         
-        # Validate blueprint can be used in a session
-        session_svc.validate_blueprint(user_id=user_id, blueprint_id=blueprint_id)
-        
-        # Enable public chat
-        bp_service.enable_public_chat(blueprint_id)
-        
-        # Get public chat info with share link
         config = AppConfig.get_instance()
         frontend_url = config.get('frontend_url', 'http://localhost:5000')
-        info = bp_service.get_public_chat_info(blueprint_id, frontend_url)
         
-        return jsonify({
-            "status": "success",
-            **info
-        }), 200
+        result = svc.enable_public_chat(blueprint_id, user_id, frontend_url)
+        return jsonify(result), 200
     except BlueprintNotFoundError as e:
         return jsonify({
             "error": str(e),
@@ -216,13 +205,9 @@ def enable_public_chat(blueprint_id, user_id):
 def disable_public_chat(blueprint_id, user_id):
     """Disable public chat sharing for a blueprint."""
     try:
-        bp_service = current_app.container.blueprint_service
-        bp_service.disable_public_chat(blueprint_id)
-        
-        return jsonify({
-            "status": "success",
-            "enabled": False
-        }), 200
+        svc = current_app.container.share_service
+        result = svc.disable_public_chat(blueprint_id)
+        return jsonify(result), 200
     except KeyError as e:
         return jsonify({
             "error": str(e),
@@ -240,13 +225,12 @@ def disable_public_chat(blueprint_id, user_id):
 def get_public_chat_status(blueprint_id):
     """Get public chat sharing status for a blueprint."""
     try:
-        bp_service = current_app.container.blueprint_service
+        svc = current_app.container.share_service
         
-        # Get public chat info with share link
         config = AppConfig.get_instance()
         frontend_url = config.get('frontend_url', 'http://localhost:5000')
-        info = bp_service.get_public_chat_info(blueprint_id, frontend_url)
         
+        info = svc.get_public_chat_status(blueprint_id, frontend_url)
         return jsonify(info), 200
     except KeyError:
         return jsonify({
