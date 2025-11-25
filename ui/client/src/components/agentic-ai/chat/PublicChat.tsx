@@ -69,11 +69,11 @@ export default function PublicChat() {
 
     const validateToken = async () => {
       try {
-        // Get blueprint info
+        // Get blueprint draft document
         const blueprintInfoResponse = await axios.get(`/blueprints/blueprint.info.get?blueprintId=${token}`);
         setBlueprintId(token);
-        setBlueprintName(blueprintInfoResponse.data.blueprint_name || "Unnamed Workflow");
-        setBlueprintOwner(blueprintInfoResponse.data.owner_user_id || "");
+        setBlueprintName(blueprintInfoResponse.data?.blueprint_name || "Unnamed Workflow");
+        setBlueprintOwner(blueprintInfoResponse.data?.owner_user_id || "");
         
         // Check sharing status
         const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${token}`);

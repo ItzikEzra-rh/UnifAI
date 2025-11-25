@@ -181,22 +181,22 @@ def enable_public_chat(blueprint_id, user_id):
     """Enable public chat sharing for a blueprint."""
     try:
         session_svc = current_app.container.session_service
+        bp_service = current_app.container.blueprint_service
         
         # Validate blueprint can be used in a session
         session_svc.validate_blueprint(user_id=user_id, blueprint_id=blueprint_id)
         
-        bp_service = current_app.container.blueprint_service
+        # Enable public chat
         bp_service.enable_public_chat(blueprint_id)
         
+        # Get public chat info with share link
         config = AppConfig.get_instance()
         frontend_url = config.get('frontend_url', 'http://localhost:5000')
-        share_link = f"{frontend_url}/chat/{blueprint_id}"
+        info = bp_service.get_public_chat_info(blueprint_id, frontend_url)
         
         return jsonify({
             "status": "success",
-            "enabled": True,
-            "share_link": share_link,
-            "blueprint_id": blueprint_id
+            **info
         }), 200
     except BlueprintNotFoundError as e:
         return jsonify({
@@ -241,22 +241,18 @@ def get_public_chat_status(blueprint_id):
     """Get public chat sharing status for a blueprint."""
     try:
         bp_service = current_app.container.blueprint_service
-        enabled = bp_service.is_public_chat_enabled(blueprint_id)
         
-        # Generate the share link if enabled
+        # Get public chat info with share link
         config = AppConfig.get_instance()
         frontend_url = config.get('frontend_url', 'http://localhost:5000')
-        share_link = f"{frontend_url}/chat/{blueprint_id}" if enabled else None
+        info = bp_service.get_public_chat_info(blueprint_id, frontend_url)
         
+        return jsonify(info), 200
+    except KeyError:
         return jsonify({
-            "enabled": enabled,
-            "share_link": share_link,
+            "error": "Blueprint not found",
+            "error_type": "BLUEPRINT_NOT_FOUND",
             "blueprint_id": blueprint_id
-        }), 200
-    except KeyError as e:
-        return jsonify({
-            "enabled": False,
-            "share_link": None
-        }), 200
+        }), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500

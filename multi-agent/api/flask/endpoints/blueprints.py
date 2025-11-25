@@ -90,25 +90,22 @@ def save_blueprint(blueprint_raw=None, user_id="alice"):
 })
 def get_blueprint_info(blueprint_id):
     """
-    Get blueprint information including name and owner.
+    Get blueprint draft document using get_blueprint_draft_doc.
+    Returns the data in a format compatible with the frontend.
     """
     try:
         svc = current_app.container.blueprint_service
-        
-        if not svc.exists(blueprint_id):
-            return jsonify({
-                "error": "Blueprint not found"
-            }), 404
-        
-        bp_doc = svc.get_blueprint_draft_doc(blueprint_id)
-        bp_name = bp_doc.get("spec_dict", {}).get("name", "Unknown")
-        owner_user_id = bp_doc.get("user_id", "")
+        doc = svc.get_blueprint_draft_doc(blueprint_id)
         
         return jsonify({
             "blueprint_id": blueprint_id,
-            "blueprint_name": bp_name,
-            "owner_user_id": owner_user_id
+            "blueprint_name": doc.get("spec_dict", {}).get("name", "Unknown"),
+            "owner_user_id": doc.get("user_id", ""),
         }), 200
+    except KeyError:
+        return jsonify({
+            "error": "Blueprint not found"
+        }), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

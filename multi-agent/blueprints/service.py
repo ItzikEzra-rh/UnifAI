@@ -130,3 +130,24 @@ class BlueprintService:
             return doc.get("shared") is True
         except KeyError:
             return False
+
+    def get_public_chat_info(self, blueprint_id: str, frontend_url: str = None) -> Dict[str, Any]:
+        """
+        Get public chat information including status and share link.
+        
+        :param blueprint_id: The blueprint ID
+        :param frontend_url: Optional frontend URL for share link generation. 
+                            If not provided, share_link will be None.
+        :return: Dictionary with enabled status, share_link, and blueprint_id
+        :raises KeyError: If blueprint doesn't exist
+        """
+        enabled = self.is_public_chat_enabled(blueprint_id)
+        share_link = None
+        if enabled and frontend_url:
+            share_link = f"{frontend_url}/chat/{blueprint_id}"
+        
+        return {
+            "enabled": enabled,
+            "share_link": share_link,
+            "blueprint_id": blueprint_id
+        }
