@@ -686,6 +686,7 @@ export default function ExecutionTab({
             Interact with your AI assistant and monitor execution details
           </p>
         </div>
+        {/* Commenting the next part out due to Nir's request. If and when commenting back in need to take care of coloring. */}
         {/* <Button
           className={`flex items-center gap-2 ${isActiveChatSession ? "bg-[#03DAC6] hover:bg-opacity-80" : "bg-gray-700 text-gray-300 cursor-not-allowed"}`}
           onClick={() => setShowExecutionStream(!showExecutionStream)}
@@ -706,6 +707,7 @@ export default function ExecutionTab({
                   Available Chats ({chatSessions.length})
                 </CardTitle>
                 <div className="flex items-center gap-1 flex-shrink-0 max-w-fit">
+                  {/* Commenting the next part out since it's related to our RAG system. If and when commenting back in need to take care of coloring. */}
                   {/* Global Scope Toggle */}
                   {/* <Switch.Root
                     className="relative w-20 h-5 rounded-full bg-gray-600 data-[state=checked]:bg-[#03DAC6] transition-colors cursor-pointer flex-shrink-0"
