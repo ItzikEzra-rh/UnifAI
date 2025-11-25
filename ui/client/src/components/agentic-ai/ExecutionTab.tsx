@@ -234,47 +234,36 @@ export default function ExecutionTab({
     return 'No message content available';
   };
 
-  const transformApiDataToSessions = async (apiData: ChatSessionData[]): Promise<ChatSession[]> => {
+  const transformApiDataToSessions = (apiData: ChatSessionData[]): ChatSession[] => {
     // Check sharing status for all shared link sessions in parallel
-    const sessionsWithSharingStatus = await Promise.all(
-      apiData.map(async (sessionData, index) => {
-        const title = sessionData.metadata?.title || generateRandomTitle(index);
-        const id = sessionData.session_id || generateRandomId();
-        const blueprintId = sessionData.blueprint_id;
-        const blueprintExists = sessionData.blueprint_exists;
-        const fromSharedLink = sessionData.metadata?.from_shared_link || false;
-        const timestamp = new Date(sessionData.started_at);
-        const lastActive = formatTimestamp(sessionData.started_at);
-        const preview = fromSharedLink ? 'From chat experience' : 'Click to load messages...';
-        
-        // Check sharing status for shared link sessions if blueprint exists
-        let isSharingDisabled = false;
-        if (blueprintExists && fromSharedLink && blueprintId) {
-          try {
-            const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${blueprintId}`);
-            isSharingDisabled = !statusResponse.data.enabled;
-          } catch (error) {
-            // If status check fails, assume sharing is disabled
-            isSharingDisabled = true;
-          }
-        }
-        
-        return {
-          id,
-          blueprintId,
-          title: fromSharedLink ? `${title} (Shared Link)` : title,
-          lastActive,
-          timestamp,
-          preview,
-          messages: [], // Messages will be loaded separately when session is selected
-          blueprintExists,
-          fromSharedLink,
-          isSharingDisabled,
-        };
-      })
-    );
-    
-    return sessionsWithSharingStatus;
+    return apiData.map((sessionData, index) => {
+      const title = sessionData.metadata?.title || generateRandomTitle(index);
+      const id = sessionData.session_id || generateRandomId();
+      const blueprintId = sessionData.blueprint_id;
+      const blueprintExists = sessionData.blueprint_exists;
+      const fromSharedLink = sessionData.metadata?.from_shared_link || false;
+      const timestamp = new Date(sessionData.started_at);
+      const lastActive = formatTimestamp(sessionData.started_at);
+      const preview = fromSharedLink ? 'From chat experience' : 'Click to load messages...';
+      
+      // Use public chat status from API response (only relevant for shared link sessions)
+      const isSharingDisabled = fromSharedLink && blueprintExists 
+        ? !(sessionData.public_chat_enabled ?? false)
+        : false;
+      
+      return {
+        id,
+        blueprintId,
+        title: fromSharedLink ? `${title} (Shared Link)` : title,
+        lastActive,
+        timestamp,
+        preview,
+        messages: [], // Messages will be loaded separately when session is selected
+        blueprintExists,
+        fromSharedLink,
+        isSharingDisabled,
+      };
+    });
   };
 
   // Fetch session state (messages) for a specific session
@@ -296,7 +285,7 @@ export default function ExecutionTab({
 
       const userId = user?.username || "default";
       const response = await axios.get(`/sessions/session.user.chat.get?userId=${userId}`);
-      const transformedSessions = await transformApiDataToSessions(response.data);
+      const transformedSessions = transformApiDataToSessions(response.data);
 
       // sort chat sessions based on the latest date
       const sortedSessions = transformedSessions.sort((firstSession, secondSession) => secondSession.timestamp.getTime() - firstSession.timestamp.getTime());

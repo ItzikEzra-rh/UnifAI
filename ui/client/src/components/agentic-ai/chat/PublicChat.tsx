@@ -134,6 +134,11 @@ export default function PublicChat() {
       const blueprintId = sessionData.blueprint_id;
       const blueprintExists = sessionData.blueprint_exists;
       const fromSharedLink = sessionData.metadata?.from_shared_link || false;
+      
+      // Use public chat status from API response (only relevant for shared link sessions)
+      const isSharingDisabled = fromSharedLink && blueprintExists 
+        ? !(sessionData.public_chat_enabled ?? false)
+        : false;
       const timestamp = new Date(sessionData.started_at);
       const lastActive = formatTimestamp(sessionData.started_at);
       const preview = "Click to load messages...";
@@ -148,6 +153,7 @@ export default function PublicChat() {
         messages: [],
         blueprintExists,
         fromSharedLink,
+        isSharingDisabled,
       };
     });
   };

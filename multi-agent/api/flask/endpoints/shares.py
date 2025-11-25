@@ -222,7 +222,7 @@ def enable_public_chat(blueprint_id, user_id):
     
     try:
         bp_service = current_app.container.blueprint_service
-        bp_service.enable_public_chat(blueprint_id, user_id)
+        bp_service.enable_public_chat(blueprint_id)
         
         config = AppConfig.get_instance()
         frontend_url = config.get('frontend_url', 'http://localhost:5000')
@@ -251,7 +251,7 @@ def disable_public_chat(blueprint_id, user_id):
     """Disable public chat sharing for a blueprint."""
     try:
         bp_service = current_app.container.blueprint_service
-        bp_service.disable_public_chat(blueprint_id, user_id)
+        bp_service.disable_public_chat(blueprint_id)
         
         return jsonify({
             "status": "success",

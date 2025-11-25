@@ -34,6 +34,13 @@ class AuthManager:
         if not app.secret_key:
             secret_key = config.get('secret_key')
             if not secret_key:
+                # In production, secret_key is required for security
+                if self.backend_env == 'production':
+                    raise ValueError(
+                        "secret_key must be configured in production environment. "
+                        "Set 'secret_key' in your configuration to prevent security vulnerabilities."
+                    )
+                # Development fallback (only allowed in non-production)
                 secret_key = 'dev-secret-key-fixed-for-session-persistence-change-in-production'
                 logger.warning("Using default development secret key - set 'secret_key' in config for production!")
             app.secret_key = secret_key

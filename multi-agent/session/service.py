@@ -97,6 +97,7 @@ class SessionService:
     def get_user_sessions_chat_history(self, user_id: str) -> list:
         """
         Get chat history for all sessions created by a user.
+        Includes sharing status for sessions created from shared links.
         """
         docs = self._manager.list_docs(user_id)
         chat_items = []
@@ -106,7 +107,20 @@ class SessionService:
             # Check if blueprint still exists
             blueprint_exists = self._manager.blueprint_exists(blueprint_id) if blueprint_id else False
             
-            chat_item = ChatHistoryItem.from_doc(doc, blueprint_exists=blueprint_exists)
+            # Check public chat status if this is a shared link session and blueprint exists
+            public_chat_enabled = False
+            if blueprint_exists and blueprint_id:
+                metadata = doc.get("metadata", {})
+                from_shared_link = metadata.get("from_shared_link", False)
+                if from_shared_link:
+                    # Check if public chat is enabled for this blueprint
+                    public_chat_enabled = self._manager._bp_service.is_public_chat_enabled(blueprint_id)
+            
+            chat_item = ChatHistoryItem.from_doc(
+                doc, 
+                blueprint_exists=blueprint_exists,
+                public_chat_enabled=public_chat_enabled
+            )
             chat_items.append(chat_item)
         
         return chat_items

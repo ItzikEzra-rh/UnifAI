@@ -25,6 +25,7 @@ export interface ChatSessionData {
   session_id: string;
   started_at: string;
   blueprint_exists: boolean;
+  public_chat_enabled?: boolean; // Only relevant for sessions from shared links (from_shared_link=true)
 }
 
 export interface SessionStateData {
