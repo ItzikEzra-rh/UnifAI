@@ -114,7 +114,7 @@ class SessionService:
                 from_shared_link = metadata.get("from_shared_link", False)
                 if from_shared_link:
                     # Check if public chat is enabled for this blueprint
-                    public_chat_enabled = self._manager._bp_service.is_public_chat_enabled(blueprint_id)
+                    public_chat_enabled = self._manager.is_public_chat_enabled(blueprint_id)
             
             chat_item = ChatHistoryItem.from_doc(
                 doc, 
