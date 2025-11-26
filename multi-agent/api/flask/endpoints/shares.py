@@ -6,7 +6,8 @@ from config.app_config import AppConfig
 from session.exceptions import BlueprintNotFoundError
 
 shares_bp = Blueprint("shares", __name__)
-
+config = AppConfig.get_instance()
+frontend_url = config.get('frontend_url', 'http://localhost:5000')
 
 @shares_bp.route("/share.create", methods=["POST"])
 @from_body({
@@ -181,10 +182,6 @@ def enable_public_chat(blueprint_id, user_id):
     """Enable public chat sharing for a blueprint."""
     try:
         svc = current_app.container.share_service
-        
-        config = AppConfig.get_instance()
-        frontend_url = config.get('frontend_url', 'http://localhost:5000')
-        
         result = svc.enable_public_chat(blueprint_id, user_id, frontend_url)
         return jsonify(result), 200
     except BlueprintNotFoundError as e:
@@ -226,10 +223,6 @@ def get_public_chat_status(blueprint_id):
     """Get public chat sharing status for a blueprint."""
     try:
         svc = current_app.container.share_service
-        
-        config = AppConfig.get_instance()
-        frontend_url = config.get('frontend_url', 'http://localhost:5000')
-        
         info = svc.get_public_chat_status(blueprint_id, frontend_url)
         return jsonify(info), 200
     except KeyError:

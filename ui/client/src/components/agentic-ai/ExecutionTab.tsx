@@ -91,6 +91,7 @@ export default function ExecutionTab({
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isLoadingFlowsForModal, setIsLoadingFlowsForModal] = useState(false);
   const [sharedLinkBlueprintName, setSharedLinkBlueprintName] = useState<string>("");
+  const [isLoadingBlueprintName, setIsLoadingBlueprintName] = useState<boolean>(false);
   const [isSharingDisabled, setIsSharingDisabled] = useState<boolean>(false);
   // Three panel widths: Available Chats, ChatInterface, Blueprint Graph
   const [chatSidebarWidth, setChatSidebarWidth] = useState(20);
@@ -292,8 +293,9 @@ export default function ExecutionTab({
   const handleSessionSelect = async (session: ChatSession) => {
     setSelectedSession(session);
     
-    // Reset blueprint name when switching sessions
+    // Reset blueprint name and loading state when switching sessions
     setSharedLinkBlueprintName("");
+    setIsLoadingBlueprintName(false);
     
     // Check sharing status immediately (before fetching other data) to avoid flash
     // But only if the blueprint still exists
@@ -324,6 +326,7 @@ export default function ExecutionTab({
     
     // Fetch the blueprint name from database using blueprint_id from session
     if (session.blueprintId) {
+      setIsLoadingBlueprintName(true);
       try {
         const response = await axios.get(`/blueprints/blueprint.info.get?blueprintId=${session.blueprintId}`);
         if (response.data?.blueprint_name) {
@@ -338,6 +341,8 @@ export default function ExecutionTab({
         if (session.fromSharedLink) {
           setSharedLinkBlueprintName("Unknown");
         }
+      } finally {
+        setIsLoadingBlueprintName(false);
       }
     }
     
@@ -867,7 +872,9 @@ export default function ExecutionTab({
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm flex-col">
                   <p className="mb-2">This session was created from a shared chat link</p>
                   <p className="text-xs text-gray-500 mb-1">
-                    Workflow: <span className="font-medium text-gray-300">{sharedLinkBlueprintName || "Unknown"}</span>
+                    Workflow: <span className="font-medium text-gray-300">
+                      {isLoadingBlueprintName ? "Loading..." : (sharedLinkBlueprintName || "Unknown")}
+                    </span>
                   </p>
                   <p className="text-xs text-gray-500">Workflow details are not available in shared link sessions</p>
                 </div>

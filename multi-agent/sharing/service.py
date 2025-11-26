@@ -230,8 +230,7 @@ class ShareService:
         :return: Dictionary with status, enabled, share_link, and blueprint_id
         :raises Exception: If blueprint validation fails or enabling fails
         """
-        if self._session_service:
-            self._session_service.validate_blueprint(user_id=user_id, blueprint_id=blueprint_id)
+        self._session_service.validate_blueprint(user_id=user_id, blueprint_id=blueprint_id)
         
         self._cloner.blueprints.enable_public_chat(blueprint_id)
         
