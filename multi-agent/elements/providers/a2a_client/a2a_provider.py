@@ -11,7 +11,7 @@ Uses proper Pydantic models and enums throughout.
 import asyncio
 from typing import Optional, Dict, Any, AsyncIterator, Iterator
 from pydantic import HttpUrl
-from a2a.types import AgentCard, Task, TaskState
+from a2a.types import AgentCard, Task, TaskState, Message
 from global_utils.utils.async_bridge import get_async_bridge
 
 from .a2a_client import A2AClient, A2AConnectionError
@@ -33,16 +33,23 @@ class A2AProvider:
     - Handle multi-turn conversations
     """
     
-    def __init__(self, base_url: HttpUrl, agent_card: Optional[AgentCard] = None):
+    def __init__(
+        self, 
+        base_url: HttpUrl, 
+        agent_card: Optional[AgentCard] = None,
+        headers: Optional[Dict[str, str]] = None
+    ):
         """
         Initialize A2A provider.
         
         Args:
             base_url: A2A agent URL (e.g., http://localhost:10000)
             agent_card: Optional pre-fetched agent card
+            headers: Optional HTTP headers for authentication
         """
         self.base_url = base_url
         self.agent_card = agent_card
+        self.headers = headers or {}
         self.converter = A2AMessageConverter()
         self._initialized = False
     
@@ -50,8 +57,12 @@ class A2AProvider:
         """Fetch agent card if not already done."""
         if self._initialized:
             return
-        
-        async with A2AClient(base_url=self.base_url, agent_card=self.agent_card) as client:
+
+        async with A2AClient(
+            base_url=self.base_url, 
+            agent_card=self.agent_card,
+            headers=self.headers
+        ) as client:
             self.agent_card = client.get_agent_card()
             print(f"A2AProvider: Connected to A2A agent: {self.agent_card.name}")
             print(f"A2AProvider: Agent version: {self.agent_card.version}")
@@ -91,7 +102,11 @@ class A2AProvider:
         """
         await self._ensure_initialized()
         
-        async with A2AClient(base_url=self.base_url, agent_card=self.agent_card) as client:
+        async with A2AClient(
+            base_url=self.base_url, 
+            agent_card=self.agent_card,
+            headers=self.headers
+        ) as client:
             # Convert ChatMessage to A2A Message Pydantic model
             a2a_message = self.converter.to_a2a_message(
                 message, 
@@ -101,9 +116,19 @@ class A2AProvider:
             
             print(f"A2AProvider: Sending message: {message.content[:50]}...")
             
-            # Send message - returns Task Pydantic model
-            task: Task = await client.send_message(a2a_message)
+            # Send message - returns Task or Message Pydantic model
+            result = await client.send_message(a2a_message)
             
+            # Handle immediate Message response (synchronous agent)
+            if isinstance(result, Message):
+                print(f"A2AProvider: Got immediate Message response")
+                chat_response = self.converter.from_a2a_message(result)
+                metadata = self.converter.extract_message_metadata(result)
+                return chat_response, metadata
+            
+            # Handle Task response (asynchronous agent)
+            task: Task = result
+
             # Extract metadata
             metadata = self.converter.extract_metadata(task)
             task_state = self.converter.get_task_state(task)
@@ -122,7 +147,7 @@ class A2AProvider:
                 # Update metadata with final status
                 metadata = self.converter.extract_metadata(task)
                 print(f"A2AProvider: Task completed - Status: {metadata['status']}")
-            
+
             # Convert Task to ChatMessage
             chat_response = self.converter.from_a2a_task(task)
             
@@ -200,7 +225,11 @@ class A2AProvider:
         """
         await self._ensure_initialized()
         
-        async with A2AClient(base_url=self.base_url, agent_card=self.agent_card) as client:
+        async with A2AClient(
+            base_url=self.base_url, 
+            agent_card=self.agent_card,
+            headers=self.headers
+        ) as client:
             # Convert to A2A Message Pydantic model
             a2a_message = self.converter.to_a2a_message(
                 message,
@@ -316,7 +345,8 @@ class A2AProvider:
     async def create_async(
         cls,
         base_url: HttpUrl,
-        agent_card: Optional[AgentCard] = None
+        agent_card: Optional[AgentCard] = None,
+        headers: Optional[Dict[str, str]] = None
     ) -> "A2AProvider":
         """
         Async factory method - creates fully initialized provider.
@@ -324,11 +354,12 @@ class A2AProvider:
         Args:
             base_url: A2A agent URL
             agent_card: Optional pre-fetched agent card
+            headers: Optional HTTP headers for authentication
             
         Returns:
             Initialized A2AProvider
         """
-        provider = cls(base_url, agent_card)
+        provider = cls(base_url, agent_card, headers)
         await provider._ensure_initialized()
         return provider
     
@@ -336,7 +367,8 @@ class A2AProvider:
     def create_sync(
         cls,
         base_url: HttpUrl,
-        agent_card: Optional[AgentCard] = None
+        agent_card: Optional[AgentCard] = None,
+        headers: Optional[Dict[str, str]] = None
     ) -> "A2AProvider":
         """
         Sync factory method - creates fully initialized provider.
@@ -344,14 +376,14 @@ class A2AProvider:
         Args:
             base_url: A2A agent URL
             agent_card: Optional pre-fetched agent card
+            headers: Optional HTTP headers for authentication
             
         Returns:
             Initialized A2AProvider
         """
         with get_async_bridge() as bridge:
-            return bridge.run(cls.create_async(base_url, agent_card))
+            return bridge.run(cls.create_async(base_url, agent_card, headers))
     
     def __repr__(self) -> str:
         agent_name = self.agent_card.name if self.agent_card else "unknown"
         return f"A2AProvider(agent='{agent_name}', url='{self.base_url}')"
-

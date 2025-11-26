@@ -56,6 +56,7 @@ class A2AAgentNode(
         *,
         base_url: HttpUrl,
         agent_card: Optional[AgentCard] = None,
+        bearer_token: Optional[str] = None,
         retriever: Any = None,
         **kwargs: Any
     ):
@@ -65,6 +66,7 @@ class A2AAgentNode(
         Args:
             base_url: A2A agent endpoint URL
             agent_card: Optional pre-fetched agent card
+            bearer_token: Optional bearer token for authentication
             retriever: Optional retriever for context augmentation
         """
         super().__init__(
@@ -72,10 +74,16 @@ class A2AAgentNode(
             **kwargs
         )
         
+        # Build headers from bearer_token if provided
+        headers = None
+        if bearer_token:
+            headers = {"Authorization": f"Bearer {bearer_token}"}
+        
         # Create A2A provider from config
         self.a2a_provider = A2AProvider.create_sync(
             base_url=base_url,
-            agent_card=agent_card
+            agent_card=agent_card,
+            headers=headers
         )
         
         # Sensible defaults for context and polling

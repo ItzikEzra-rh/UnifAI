@@ -13,6 +13,7 @@ from core.enums import ResourceCategory
 class ValidateConnectionInput(BaseActionInput):
     """Input for A2A connection validation"""
     base_url: HttpUrl
+    # bearer_token: Optional[str] = None
 
 
 class ValidateConnectionOutput(BaseActionOutput):
@@ -47,7 +48,7 @@ class ValidateConnectionAction(BaseAction):
         Execute connection validation with optional context.
         
         Args:
-            input_data: Validated connection input with base_url
+            input_data: Validated connection input with base_url and optional bearer_token
             context: Optional execution context
             
         Returns:
@@ -55,10 +56,18 @@ class ValidateConnectionAction(BaseAction):
         """
         start_time = time.time()
         
+        # Build headers from bearer_token if provided
+        headers = None
+        # if input_data.bearer_token:
+        #     headers = {"Authorization": f"Bearer {input_data.bearer_token}"}
+        
         try:
             # Helper coroutine to test connection
             async def _test_connection():
-                async with A2AClient(base_url=input_data.base_url) as client:
+                async with A2AClient(
+                    base_url=input_data.base_url,
+                    headers=headers
+                ) as client:
                     # Agent card is fetched during __aenter__
                     # Just confirm we can get it (connection successful)
                     client.get_agent_card()
@@ -89,4 +98,3 @@ class ValidateConnectionAction(BaseAction):
                 is_reachable=False,
                 response_time_ms=(time.time() - start_time) * 1000
             )
-

@@ -12,6 +12,7 @@ from a2a.types import AgentCard
 class GetAgentCardInput(BaseActionInput):
     """Input for A2A agent card discovery"""
     base_url: HttpUrl
+    # bearer_token: Optional[str] = None
 
 
 class GetAgentCardOutput(BaseActionOutput):
@@ -46,15 +47,23 @@ class GetAgentCardAction(BaseAction):
         Execute agent card discovery asynchronously.
         
         Args:
-            input_data: Validated discovery input with base_url
+            input_data: Validated discovery input with base_url and optional bearer_token
             context: Optional execution context
             
         Returns:
             Discovery result with complete agent card
         """
+        # Build headers from bearer_token if provided
+        headers = None
+        # if input_data.bearer_token:
+        #     headers = {"Authorization": f"Bearer {input_data.bearer_token}"}
+        
         try:
             # Create A2A client and fetch agent card
-            async with A2AClient(base_url=input_data.base_url) as client:
+            async with A2AClient(
+                base_url=input_data.base_url,
+                headers=headers
+            ) as client:
                 agent_card = client.get_agent_card()
             
             # Return the complete agent card as-is
@@ -70,4 +79,3 @@ class GetAgentCardAction(BaseAction):
                 message=f"Failed to retrieve agent card: {str(e)}",
                 agent_card=None
             )
-

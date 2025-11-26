@@ -62,8 +62,8 @@ class A2AMessageConverter:
         a2a_role = role_mapping.get(chat_message.role, A2ARole.user)
         
         # Create TextPart for the content
-        text_part = TextPart(text=chat_message.content)
-        
+        text_part = TextPart(text=chat_message.content, metadata={"type": "user_message"})
+
         # Wrap in Part (union type wrapper)
         parts = [Part(text_part)]
         
@@ -146,4 +146,51 @@ class A2AMessageConverter:
             TaskState enum
         """
         return task.status.state if task.status else TaskState.submitted
+    
+    @staticmethod
+    def from_a2a_message(message: Message) -> ChatMessage:
+        """
+        Convert A2A Message to ChatMessage.
+        
+        Used when agent responds immediately with a Message (not a Task).
+        
+        Args:
+            message: A2A Message Pydantic model (direct response)
+            
+        Returns:
+            ChatMessage with agent's response
+        """
+        # Extract text from message parts
+        if message.parts:
+            text_parts = get_text_parts(message.parts)
+            if text_parts:
+                return ChatMessage(
+                    role=Role.ASSISTANT,
+                    content='\n'.join(text_parts)
+                )
+        
+        # Fallback to empty response
+        return ChatMessage(
+            role=Role.ASSISTANT,
+            content=""
+        )
+    
+    @staticmethod
+    def extract_message_metadata(message: Message) -> Dict[str, Any]:
+        """
+        Extract metadata from A2A Message (for immediate responses).
+        
+        Args:
+            message: A2A Message Pydantic model
+            
+        Returns:
+            Dict with context_id, message_id, etc.
+        """
+        return {
+            'task_id': message.task_id,  # May be None for immediate responses
+            'context_id': message.context_id,
+            'message_id': message.message_id,
+            'status': 'completed',  # Immediate response is implicitly completed
+            'status_message': None
+        }
 

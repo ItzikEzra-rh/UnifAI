@@ -12,7 +12,7 @@ Key SDK requirements:
 5. Works with Task Pydantic models
 """
 
-from typing import Optional, AsyncIterator
+from typing import Optional, AsyncIterator, Dict, Union
 from uuid import uuid4
 from pydantic import HttpUrl
 import httpx
@@ -58,16 +58,23 @@ class A2AClient:
     - Uses Request objects (SendMessageRequest, etc.)
     """
     
-    def __init__(self, base_url: HttpUrl, agent_card: Optional[AgentCard] = None):
+    def __init__(
+        self, 
+        base_url: HttpUrl, 
+        agent_card: Optional[AgentCard] = None,
+        headers: Optional[Dict[str, str]] = None
+    ):
         """
         Initialize A2A client.
         
         Args:
             base_url: Base URL of A2A agent (e.g., http://localhost:10000)
             agent_card: Optional pre-fetched agent card
+            headers: Optional HTTP headers for authentication
         """
         self.base_url = str(base_url)
         self._agent_card = agent_card
+        self._headers = headers or {}
         self._httpx_client: Optional[httpx.AsyncClient] = None
         self._sdk_client: Optional[SDKA2AClient] = None
     
@@ -76,6 +83,7 @@ class A2AClient:
         # Create httpx client with extended timeout for long-running agent operations
         # (e.g., travel planning, external API calls, complex processing)
         self._httpx_client = httpx.AsyncClient(
+            headers=self._headers,
             timeout=httpx.Timeout(
                 connect=10.0,    # Connection establishment
                 read=300.0,      # Reading response (5 minutes for agent processing)
@@ -133,7 +141,7 @@ class A2AClient:
             raise A2AConnectionError("Agent card not loaded. Use async context manager.")
         return self._agent_card
     
-    async def send_message(self, message: Message) -> Task:
+    async def send_message(self, message: Message) -> Union[Task, Message]:
         """
         Send message (non-streaming).
         
@@ -141,34 +149,38 @@ class A2AClient:
             message: A2A Message Pydantic model
             
         Returns:
-            A2A Task Pydantic model with response
+            A2A Task or Message Pydantic model (depending on agent response style)
+            - Task: When agent creates an async task that needs polling
+            - Message: When agent responds immediately (synchronous)
         """
         if not self._sdk_client:
             raise A2AConnectionError("Client not connected. Use async context manager.")
+
         
-        try:
-            # Create SendMessageRequest with Pydantic message
-            request = SendMessageRequest(
-                id=str(uuid4()),
-                params=MessageSendParams(message=message)
-            )
+        # Create SendMessageRequest with Pydantic message
+        request = SendMessageRequest(
+            id=str(uuid4()),
+            params=MessageSendParams(message=message)
+        )
+
+        # Send via SDK
+        response: SendMessageResponse = await self._sdk_client.send_message(request)
+        
+        # Extract result from response - can be Task OR Message
+        if isinstance(response.root, SendMessageSuccessResponse):
+            result = response.root.result
             
-            # Send via SDK
-            response: SendMessageResponse = await self._sdk_client.send_message(request)
-            
-            # Extract Task from response
-            if isinstance(response.root, SendMessageSuccessResponse):
-                if isinstance(response.root.result, Task):
-                    task = response.root.result
-                    print(f"A2AClient: Message sent - Task: {task.id}, Status: {task.status.state if task.status else 'unknown'}")
-                    return task
-                else:
-                    raise A2AConnectionError(f"Unexpected result type: {type(response.root.result)}")
+            if isinstance(result, Task):
+                print(f"A2AClient: Message sent - Task: {result.id}, Status: {result.status.state if result.status else 'unknown'}")
+                return result
+            elif isinstance(result, Message):
+                # Agent responded immediately with a Message (synchronous response)
+                print(f"A2AClient: Message sent - Got immediate Message response")
+                return result
             else:
-                raise A2AConnectionError(f"Send message failed: {response.root}")
-            
-        except Exception as e:
-            raise A2AConnectionError(f"Failed to send message: {e}")
+                raise A2AConnectionError(f"Unexpected result type: {type(result)}")
+        else:
+            raise A2AConnectionError(f"Send message failed: {response.root}")
     
     async def stream_message(self, message: Message) -> AsyncIterator[Task]:
         """
@@ -287,4 +299,3 @@ class A2AClient:
             return []
         
         return [skill.name for skill in self._agent_card.skills if skill.name]
-

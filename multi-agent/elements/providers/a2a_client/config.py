@@ -2,7 +2,7 @@
 A2A Provider Configuration
 """
 
-from typing import Literal, Optional
+from typing import Literal, Optional, Dict
 from pydantic import Field, HttpUrl
 from elements.providers.common.base_config import ProviderBaseConfig
 from a2a.types import AgentCard
@@ -26,4 +26,8 @@ class A2AProviderConfig(ProviderBaseConfig):
         default=None,
         description="Pre-fetched agent card (optional, will be fetched if not provided)"
     )
-
+    
+    headers: Optional[Dict[str, str]] = Field(
+        default=None,
+        description="Optional HTTP headers for authentication (e.g., {'Authorization': 'Bearer <token>'})"
+    )
