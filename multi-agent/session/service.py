@@ -108,24 +108,21 @@ class SessionService:
             # Check if blueprint still exists
             blueprint_exists = self._manager.blueprint_exists(blueprint_id) if blueprint_id else False
             
-            # Check public status if this is a shared link session and blueprint exists
-            public_enabled = False
+            public_usage_scope = False
             if blueprint_exists and blueprint_id:
-                metadata = doc.get("metadata", {})
-                source = metadata.get("source", "")
+                source = doc.get("metadata", {}).get("source", "")
                 if source == "public_link":
-                    # Check if blueprint is public using get_public_usage_scope
                     try:
                         scope_info = self._manager._bp_service.get_public_usage_scope(blueprint_id)
-                        public_enabled = scope_info.get("public_usage_scope", False)
+                        public_usage_scope = scope_info.get("public_usage_scope", False)
                     except (KeyError, Exception):
                         # If blueprint doesn't exist or error, default to False
-                        public_enabled = False
+                        public_usage_scope = False
             
             chat_item = ChatHistoryItem.from_doc(
                 doc, 
                 blueprint_exists=blueprint_exists,
-                public_chat_enabled=public_enabled
+                public_usage_scope=public_usage_scope
             )
             chat_items.append(chat_item)
         

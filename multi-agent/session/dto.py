@@ -9,10 +9,10 @@ class ChatHistoryItem:
     started_at: str
     blueprint_id: str
     blueprint_exists: bool = True
-    public_chat_enabled: bool = False  # Only relevant for sessions from public links (metadata.source == "public_link")
+    public_usage_scope: bool = False  # Only relevant for sessions from public links (metadata.source == "public_link")
 
     @classmethod
-    def from_doc(cls, doc: Mapping[str, Any], blueprint_exists: bool = True, public_chat_enabled: bool = False) -> "ChatHistoryItem":
+    def from_doc(cls, doc: Mapping[str, Any], blueprint_exists: bool = True, public_usage_scope: bool = False) -> "ChatHistoryItem":
         rc = doc.get("run_context", {})
         return cls(
             session_id=rc.get("run_id"),
@@ -20,7 +20,7 @@ class ChatHistoryItem:
             started_at=rc.get("started_at"),
             blueprint_id=doc.get("blueprint_id", ""),
             blueprint_exists=blueprint_exists,
-            public_chat_enabled=public_chat_enabled
+            public_usage_scope=public_usage_scope
         )
 
     # optional helper

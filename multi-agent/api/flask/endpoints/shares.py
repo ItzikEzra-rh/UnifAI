@@ -5,6 +5,7 @@ from sharing.models import ShareItemKind, ShareStatus
 
 shares_bp = Blueprint("shares", __name__)
 
+
 @shares_bp.route("/share.create", methods=["POST"])
 @from_body({
     "recipient_user_id": fields.Str(data_key="recipientUserId", required=True),

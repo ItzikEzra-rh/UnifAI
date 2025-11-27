@@ -130,7 +130,7 @@ export default function PublicChat() {
           isSharingDisabled = statusResponse.data.public_usage_scope !== true;
         } catch (error) {
           // If status check fails, use the value from API response as fallback
-          isSharingDisabled = !(sessionData.public_chat_enabled ?? false);
+          isSharingDisabled = !(sessionData.public_usage_scope ?? false);
         }
       }
       
