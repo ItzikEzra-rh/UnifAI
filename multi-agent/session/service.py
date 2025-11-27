@@ -122,14 +122,9 @@ class SessionService:
         """
         Get count of sessions by blueprint_id for a user.
         Returns a dictionary mapping blueprint_id to session count.
+        Uses MongoDB aggregation for optimal performance.
         """
-        docs = self._manager.list_docs(user_id)
-        counts: Dict[str, int] = {}
-        for doc in docs:
-            blueprint_id = doc.get("blueprint_id")
-            if blueprint_id:
-                counts[blueprint_id] = counts.get(blueprint_id, 0) + 1
-        return counts
+        return self._manager.get_blueprint_session_counts(user_id)
 
     def delete(self, run_id: str) -> bool:
         """

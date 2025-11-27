@@ -26,7 +26,7 @@ import {
 import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
-import axios from "../../http/axiosAgentConfig";
+import { fetchWorkflows, fetchResolvedWorkflows, fetchActiveSessions } from "@/api/agentic";
 
 // Helper function to convert GraphFlow to FlowObject
 const convertGraphFlowToFlowObject = (
@@ -115,12 +115,9 @@ export default function AvailableFlows({
   const fetchAvailableFlows = async (): Promise<void> => {
     try {
       const userId = user?.username || "default";
-      const endpoint = useResolvedEndpoint 
-        ? `/blueprints/available.blueprints.resolved.get?userId=${userId}`
-        : `/blueprints/available.blueprints.get?userId=${userId}`;
-      
-      const response = await axios.get(endpoint);
-      const blueprints: Array<{ blueprint_id: string; spec_dict: GraphFlow }> = response.data;
+      const blueprints = useResolvedEndpoint 
+        ? await fetchResolvedWorkflows(userId)
+        : await fetchWorkflows(userId);
 
       // Convert the blueprints to the format expected by the component
       const processedFlows = blueprints
@@ -149,10 +146,8 @@ export default function AvailableFlows({
 
     try {
       const userId = user?.username || "default";
-      const response = await axios.get(
-        `/sessions/session.user.blueprints.get?userId=${userId}`
-      );
-      setActiveFlowIds(response.data || []);
+      const activeSessions = await fetchActiveSessions(userId);
+      setActiveFlowIds(activeSessions || []);
     } catch (error) {
       console.error("Error fetching active flows:", error);
       setActiveFlowIds([]);

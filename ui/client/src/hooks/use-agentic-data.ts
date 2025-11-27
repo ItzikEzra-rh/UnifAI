@@ -13,12 +13,14 @@ export function useAgenticData() {
   const { user } = useAuth();
   const userId = user?.username || "default";
 
+  // Use aggregated stats endpoint for optimal performance
   const agenticStats = useQuery({
     queryKey: ["agenticStats", userId],
     queryFn: () => fetchAgenticStats(userId),
     staleTime: 0,
   });
 
+  // Individual queries for granular data when needed by components
   const workflows = useQuery({
     queryKey: ["workflows", userId],
     queryFn: () => fetchWorkflows(userId),
@@ -31,6 +33,8 @@ export function useAgenticData() {
     staleTime: 0,
   });
 
+  // Fetch blueprintSessionCounts separately for components that need it independently
+  // Note: This is also included in agenticStats, but kept separate for granular access
   const blueprintSessionCounts = useQuery({
     queryKey: ["blueprintSessionCounts", userId],
     queryFn: () => fetchBlueprintSessionCounts(userId),
@@ -66,8 +70,9 @@ export function useAgenticData() {
       error: activeSessions.error,
     },
     blueprintSessionCounts: {
-      data: blueprintSessionCounts.data ?? {},
-      isLoading: blueprintSessionCounts.isLoading,
+      // Prefer aggregated stats if available, otherwise use individual query
+      data: agenticStats.data?.blueprintSessionCounts ?? blueprintSessionCounts.data ?? {},
+      isLoading: !agenticStats.data ? blueprintSessionCounts.isLoading : false,
       error: blueprintSessionCounts.error,
     },
     resources: {
@@ -84,7 +89,7 @@ export function useAgenticData() {
       agenticStats.isLoading ||
       workflows.isLoading ||
       activeSessions.isLoading ||
-      blueprintSessionCounts.isLoading ||
+      (!agenticStats.data && blueprintSessionCounts.isLoading) ||
       resources.isLoading ||
       resourceCategories.isLoading,
   };

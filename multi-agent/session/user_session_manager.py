@@ -1,4 +1,4 @@
-from typing import List, Mapping, Any
+from typing import List, Mapping, Any, Dict
 from session.repository.repository import SessionRepository
 from session.workflow_session_factory import WorkflowSessionFactory
 from session.workflow_session import WorkflowSession
@@ -98,3 +98,7 @@ class UserSessionManager:
     def delete_session(self, run_id: str) -> bool:
         """Delete a session by run_id. Returns True if deleted, False if not found."""
         return self._repo.delete(run_id)
+
+    def get_blueprint_session_counts(self, user_id: str) -> Dict[str, int]:
+        """Get count of sessions by blueprint_id for a user using database aggregation."""
+        return self._repo.count_by_blueprint(user_id)

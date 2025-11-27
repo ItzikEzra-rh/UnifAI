@@ -104,3 +104,50 @@ class MongoResourceRepository(ResourceRepository):
 
     def exists(self, rid: str) -> bool:
         return self.col.count_documents({"_id": rid}, limit=1) == 1
+
+    def aggregate_by_category(self, user_id: str) -> List[dict]:
+        """
+        Aggregate resources by category and type using MongoDB aggregation.
+        Returns a list of dictionaries with category, count, and types breakdown.
+        """
+        pipeline = [
+            {"$match": {"user_id": user_id}},
+            {
+                "$group": {
+                    "_id": {"category": "$category", "type": "$type"},
+                    "count": {"$sum": 1}
+                }
+            },
+            {
+                "$group": {
+                    "_id": "$_id.category",
+                    "count": {"$sum": "$count"},
+                    "types": {
+                        "$push": {
+                            "type": "$_id.type",
+                            "count": "$count"
+                        }
+                    }
+                }
+            },
+            {
+                "$project": {
+                    "_id": 0,
+                    "category": "$_id",
+                    "count": 1,
+                    "types": {
+                        "$arrayToObject": {
+                            "$map": {
+                                "input": "$types",
+                                "as": "t",
+                                "in": {
+                                    "k": "$$t.type",
+                                    "v": "$$t.count"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        ]
+        return list(self.col.aggregate(pipeline))

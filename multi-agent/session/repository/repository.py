@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List, Mapping, Any
+from typing import List, Mapping, Any, Dict
 from session.workflow_session import WorkflowSession
 
 
@@ -26,4 +26,9 @@ class SessionRepository(ABC):
     @abstractmethod
     def delete(self, run_id: str) -> bool:
         """Delete a session by run_id. Returns True if deleted, False if not found."""
+        ...
+
+    @abstractmethod
+    def count_by_blueprint(self, user_id: str) -> Dict[str, int]:
+        """Count sessions by blueprint_id for a user using database aggregation."""
         ...

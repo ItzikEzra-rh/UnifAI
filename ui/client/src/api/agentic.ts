@@ -28,6 +28,7 @@ export interface AgenticStats {
   totalWorkflows: number;
   activeSessions: number;
   totalResources: number;
+  blueprintSessionCounts?: Record<string, number>;
   resourcesByCategory: ResourceStats[];
 }
 
@@ -78,41 +79,32 @@ export async function fetchResourceCategories(): Promise<string[]> {
   return response.data?.categories || [];
 }
 
-// Fetch agentic stats summary
+// Fetch agentic stats summary - uses aggregated backend endpoint for optimal performance
 export async function fetchAgenticStats(userId?: string): Promise<AgenticStats> {
   const userIdParam = userId || 'default';
+  const response = await axios.get(`/statistics/stats.get?userId=${userIdParam}`);
+  const data = response.data;
   
-  const [workflows, activeSessions, resources, catalog] = await Promise.all([
-    fetchWorkflows(userIdParam).catch(() => []),
-    fetchActiveSessions(userIdParam).catch(() => []),
-    fetchAllResources(userIdParam).catch(() => []),
-    fetchCatalogElements().catch(() => ({}))
-  ]);
-
-  // Group resources by category
-  const resourcesByCategory: { [key: string]: ResourceStats } = {};
-  
-  if (Array.isArray(resources)) {
-    resources.forEach((resource: any) => {
-      const category = normalizeCategory(resource.category || 'UNKNOWN');
-      if (!resourcesByCategory[category]) {
-        resourcesByCategory[category] = {
-          category,
-          count: 0,
-          types: {}
-        };
-      }
-      resourcesByCategory[category].count++;
-      const type = resource.type || 'unknown';
-      resourcesByCategory[category].types[type] = (resourcesByCategory[category].types[type] || 0) + 1;
-    });
-  }
+  // Normalize categories on frontend (backend returns raw categories)
+  const resourcesByCategory = (data.resourcesByCategory || []).map((item: any) => ({
+    category: normalizeCategory(item.category || 'UNKNOWN'),
+    count: item.count || 0,
+    types: item.types || {}
+  }));
 
   return {
-    totalWorkflows: workflows.length,
-    activeSessions: activeSessions.length,
-    totalResources: resources.length,
-    resourcesByCategory: Object.values(resourcesByCategory)
+    totalWorkflows: data.totalWorkflows || 0,
+    activeSessions: data.activeSessions || 0,
+    totalResources: data.totalResources || 0,
+    blueprintSessionCounts: data.blueprintSessionCounts || {},
+    resourcesByCategory
   };
+}
+
+// Fetch resolved workflows (for AvailableFlows component)
+export async function fetchResolvedWorkflows(userId?: string): Promise<WorkflowBlueprint[]> {
+  const userIdParam = userId || 'default';
+  const response = await axios.get(`/blueprints/available.blueprints.resolved.get?userId=${userIdParam}`);
+  return response.data || [];
 }
 
