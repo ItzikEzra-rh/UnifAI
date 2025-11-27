@@ -106,7 +106,13 @@ export default function ExecutionTab({
   const { user } = useAuth();
 
   // Toggle Blueprint Graph visibility
+  // For shared link sessions, always show the message area (not the graph)
   const toggleBlueprintGraph = () => {
+    // Don't allow toggling for shared link sessions
+    if (selectedSession?.fromSharedLink) {
+      return;
+    }
+    
     if (isBlueprintGraphHidden) {
       // Show the Blueprint Graph - restore to saved width
       const availableWidth = 100 - chatSidebarWidth;
@@ -218,22 +224,29 @@ export default function ExecutionTab({
     return 'No message content available';
   };
 
-  const transformApiDataToSessions = (apiData: ChatSessionData[]): ChatSession[] => {
-    // Check sharing status for all shared link sessions in parallel
-    return apiData.map((sessionData, index) => {
+  const transformApiDataToSessions = async (apiData: ChatSessionData[]): Promise<ChatSession[]> => {
+    // Transform sessions and fetch fresh public_usage_scope status for shared link sessions
+    const sessions = await Promise.all(apiData.map(async (sessionData, index) => {
       const title = sessionData.metadata?.title || generateRandomTitle(index);
       const id = sessionData.session_id || generateRandomId();
       const blueprintId = sessionData.blueprint_id;
       const blueprintExists = sessionData.blueprint_exists;
-      const fromSharedLink = sessionData.metadata?.from_shared_link || false;
+      const fromSharedLink = sessionData.metadata?.source === "public_link";
       const timestamp = new Date(sessionData.started_at);
       const lastActive = formatRelativeTimestamp(sessionData.started_at);
       const preview = fromSharedLink ? 'From chat experience' : 'Click to load messages...';
       
-      // Use public chat status from API response (only relevant for shared link sessions)
-      const isSharingDisabled = fromSharedLink && blueprintExists
-        ? !(sessionData.public_chat_enabled ?? false)
-        : false;
+      // Fetch fresh public_usage_scope status for shared link sessions to ensure accuracy
+      let isSharingDisabled = false;
+      if (fromSharedLink && blueprintExists && blueprintId) {
+        try {
+          const statusResponse = await axios.get(`/blueprints/public_usage_scope?blueprintId=${blueprintId}`);
+          isSharingDisabled = statusResponse.data.public_usage_scope !== true;
+        } catch (error) {
+          // If status check fails, use the value from API response as fallback
+          isSharingDisabled = !(sessionData.public_chat_enabled ?? false);
+        }
+      }
       
       return {
         id,
@@ -247,7 +260,9 @@ export default function ExecutionTab({
         fromSharedLink,
         isSharingDisabled,
       };
-    });
+    }));
+    
+    return sessions;
   };
 
   // Fetch session state (messages) for a specific session
@@ -269,7 +284,7 @@ export default function ExecutionTab({
 
       const userId = user?.username || "default";
       const response = await axios.get(`/sessions/session.user.chat.get?userId=${userId}`);
-      const transformedSessions = transformApiDataToSessions(response.data);
+      const transformedSessions = await transformApiDataToSessions(response.data);
 
       // sort chat sessions based on the latest date
       const sortedSessions = transformedSessions.sort((firstSession, secondSession) => secondSession.timestamp.getTime() - firstSession.timestamp.getTime());
@@ -297,6 +312,15 @@ export default function ExecutionTab({
     setSharedLinkBlueprintName("");
     setIsLoadingBlueprintName(false);
     
+    // For shared link sessions, always show the message area (not the graph)
+    if (session.fromSharedLink) {
+      setIsBlueprintGraphHidden(false); // Show the message area (not the graph)
+      setBlueprintGraphWidth(30); // Set a width for the message area
+      const remainingWidth = 100 - chatSidebarWidth - 30;
+      setChatInterfaceWidth(remainingWidth);
+    }
+    // For regular sessions, keep current graph visibility state
+    
     // Check sharing status immediately (before fetching other data) to avoid flash
     // But only if the blueprint still exists
     if (!session.blueprintExists) {
@@ -305,8 +329,8 @@ export default function ExecutionTab({
     } else if (session.fromSharedLink && session.blueprintId) {
       // Always fetch fresh status to ensure accuracy (backend may have changed since session list was loaded)
       try {
-        const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${session.blueprintId}`);
-        const disabled = !statusResponse.data.enabled;
+        const statusResponse = await axios.get(`/blueprints/public_usage_scope?blueprintId=${session.blueprintId}`);
+        const disabled = statusResponse.data.public_usage_scope !== true;
         setIsSharingDisabled(disabled);
         // Update the session with the current sharing status
         setChatSessions(prev => prev.map(s => 
@@ -834,49 +858,41 @@ export default function ExecutionTab({
           )}
         </div>
 
-        {/* Second Resizable divider - only show when Blueprint Graph is visible */}
-        {!isBlueprintGraphHidden && (
+        {/* Second Resizable divider - only show when Blueprint Graph area is visible */}
+        {(!isBlueprintGraphHidden || selectedSession?.fromSharedLink) && (
           <div
-            className={`w-1 cursor-col-resize transition-colors duration-200 flex-shrink-0 ${
+            className={`w-1 transition-colors duration-200 flex-shrink-0 ${
+              selectedSession?.fromSharedLink ? 'cursor-default' : 'cursor-col-resize'
+            } ${
               isResizing && activeResizer === 'right' ? 'opacity-100' : 'opacity-50'
             }`}
             style={{
               backgroundColor: 'hsl(var(--primary))',
             }}
-            onMouseDown={handleMouseDown('right')}
-            title="Drag to resize panels"
+            onMouseDown={selectedSession?.fromSharedLink ? undefined : handleMouseDown('right')}
+            title={selectedSession?.fromSharedLink ? "Workflow not available for shared link sessions" : "Drag to resize panels"}
           />
         )}
 
-        {/* Blueprint Graph Visualization - Dynamic width */}
-        {!isBlueprintGraphHidden && (
+        {/* Blueprint Graph Visualization or Shared Link Message - Dynamic width */}
+        {(!isBlueprintGraphHidden || selectedSession?.fromSharedLink) && (
           <div className="flex-shrink-0" style={{ width: `${blueprintGraphWidth}%` }}>
             <Card className="bg-background-card shadow-card border-gray-800 h-full flex flex-col ml-0">
-            {/* TODO: Add below general component that gets 'blueprintId' and showing his title and uid - can be called from multiple places */}
-            {/* <CardHeader className="py-3 px-4 border-b border-gray-800">
-              {selectedSession && (
-                  <div className="mb-4 px-4 py-3 bg-[#8A2BE2] bg-opacity-10 border border-[hsl(var(--primary))] rounded-md">
-                    <p className="text-sm">
-                      <span className="font-medium">Active Graph:</span> {''} <span className="text-xs text-gray-400 ml-2">(ID: {selectedSession.blueprintId || 'N/A'})</span>
-                    </p>
-                  </div>
-                )}
-              {selectedSession && (
-                <p className="text-xs text-gray-400 mt-1">
-                  Blueprint ID: {selectedSession.blueprintId || 'N/A'}
-                </p>
-              )}
-            </CardHeader> */}
             <CardContent className="p-0 flex-grow">
-              {selectedSession?.fromSharedLink? (
-                <div className="flex items-center justify-center h-full text-gray-400 text-sm flex-col">
-                  <p className="mb-2">This session was created from a shared chat link</p>
+              {selectedSession?.fromSharedLink ? (
+                <div className="flex items-center justify-center h-full text-gray-400 text-sm flex-col p-6">
+                  <p className="mb-2 text-base">This session was created from a shared chat link</p>
                   <p className="text-xs text-gray-500 mb-1">
                     Workflow: <span className="font-medium text-gray-300">
                       {isLoadingBlueprintName ? "Loading..." : (sharedLinkBlueprintName || "Unknown")}
                     </span>
                   </p>
                   <p className="text-xs text-gray-500">Workflow details are not available in shared link sessions</p>
+                  {isSharingDisabled && (
+                    <div className="mt-4 p-3 bg-red-900/20 border border-red-800 rounded-md">
+                      <p className="text-xs text-red-400">Chat sharing has been disabled for this workflow</p>
+                    </div>
+                  )}
                 </div>
               ) : selectedSession?.blueprintId ? (
                 <ReactFlowProvider key={`main-graph-${selectedSession.blueprintId}`}>

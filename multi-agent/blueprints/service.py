@@ -131,40 +131,71 @@ class BlueprintService:
         """
         return BlueprintDraft.model_json_schema()
 
-# ────────── Public Chat Sharing ──────────
-    def enable_public_chat(self, blueprint_id: str) -> bool:
-        """Enable public chat sharing for a blueprint by setting shared=True."""
-        return self._repo.update_shared_field(blueprint_id=blueprint_id, shared=True)
-    
-    def disable_public_chat(self, blueprint_id: str) -> bool:
-        """Disable public chat sharing for a blueprint by setting shared=False."""
-        return self._repo.update_shared_field(blueprint_id=blueprint_id, shared=False)
-    
-    def is_public_chat_enabled(self, blueprint_id: str) -> bool:
-        """Check if public chat is enabled for a blueprint (shared == True)."""
-        try:
-            doc = self._repo.load(blueprint_id)
-            return doc.get("shared") is True
-        except KeyError:
-            return False
-
-    def get_public_chat_info(self, blueprint_id: str, frontend_url: str = None) -> Dict[str, Any]:
+# ────────── Blueprint Public Usage Scope ──────────
+    def set_public_usage_scope(self, blueprint_id: str, public_usage_scope: bool) -> bool:
         """
-        Get public chat information including status and share link.
+        Set the public_usage_scope (True/False) of a blueprint.
         
         :param blueprint_id: The blueprint ID
-        :param frontend_url: Optional frontend URL for share link generation. 
-                            If not provided, share_link will be None.
-        :return: Dictionary with enabled status, share_link, and blueprint_id
+        :param public_usage_scope: True for public, False for private
+        :return: True if the document was modified
+        :raises KeyError: If blueprint doesn't exist
+        :raises ValueError: If public_usage_scope is not a boolean
+        """
+        if not isinstance(public_usage_scope, bool):
+            raise ValueError(f"public_usage_scope must be a boolean, got: {type(public_usage_scope)}")
+        return self._repo.set_public_usage_scope(blueprint_id=blueprint_id, public_usage_scope=public_usage_scope)
+    
+    def get_public_usage_scope(self, blueprint_id: str) -> Dict[str, Any]:
+        """
+        Get the public_usage_scope of a blueprint.
+        
+        :param blueprint_id: The blueprint ID
+        :return: Dictionary with public_usage_scope and blueprint_id
         :raises KeyError: If blueprint doesn't exist
         """
-        enabled = self.is_public_chat_enabled(blueprint_id)
-        share_link = None
-        if enabled and frontend_url:
-            share_link = f"{frontend_url}/chat/{blueprint_id}"
-        
+        doc = self._repo.load(blueprint_id)
         return {
-            "enabled": enabled,
-            "share_link": share_link,
+            "public_usage_scope": doc.get("public_usage_scope", False),
             "blueprint_id": blueprint_id
         }
+    
+    def validate_blueprint(self, blueprint_id: str) -> Dict[str, Any]:
+        """
+        Validate a blueprint by resolving it and checking if it can be compiled.
+        
+        :param blueprint_id: The blueprint ID
+        :return: Dictionary with validation result, blueprint info, and ownership details
+        :raises KeyError: If blueprint doesn't exist
+        """
+        try:
+            # Try to resolve the blueprint - this validates it can be loaded and resolved
+            resolved = self.load_resolved(blueprint_id)
+            
+            # Get blueprint info
+            info = self.get_blueprint_info(blueprint_id)
+            
+            return {
+                "valid": True,
+                "blueprint_id": blueprint_id,
+                "blueprint_name": info["blueprint_name"],
+                "owner_user_id": info["owner_user_id"]
+            }
+        except Exception as e:
+            # If resolution fails, blueprint is invalid
+            try:
+                info = self.get_blueprint_info(blueprint_id)
+                return {
+                    "valid": False,
+                    "error": str(e),
+                    "blueprint_id": blueprint_id,
+                    "blueprint_name": info.get("blueprint_name", ""),
+                    "owner_user_id": info.get("owner_user_id", "")
+                }
+            except KeyError:
+                # Blueprint doesn't exist
+                return {
+                    "valid": False,
+                    "error": "Blueprint not found",
+                    "blueprint_id": blueprint_id
+                }

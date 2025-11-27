@@ -14,7 +14,7 @@ class RuntimeElement:
 class SessionMeta:
     title: str | None = None
     tags: Dict[str, str] = field(default_factory=dict)
-    from_shared_link: Optional[bool] = None
+    source: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
         return asdict(self)

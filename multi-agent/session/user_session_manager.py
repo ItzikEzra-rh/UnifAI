@@ -30,10 +30,6 @@ class UserSessionManager:
         """Check if blueprint exists without loading it."""
         return self._bp_service.exists(blueprint_id)
 
-    def is_public_chat_enabled(self, blueprint_id: str) -> bool:
-        """Check if public chat is enabled for a blueprint."""
-        return self._bp_service.is_public_chat_enabled(blueprint_id)
-
     def create_session(
             self,
             user_id: str,

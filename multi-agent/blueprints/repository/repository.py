@@ -19,9 +19,9 @@ class BlueprintRepository(ABC):
         """
 
     @abstractmethod
-    def update_shared_field(self, *, blueprint_id: str, shared: bool) -> bool:
+    def set_public_usage_scope(self, *, blueprint_id: str, public_usage_scope: bool) -> bool:
         """
-        Update the shared field of a blueprint document.
+        Set the public_usage_scope (True/False) of a blueprint document.
         Return True if a document was modified.
         """
 

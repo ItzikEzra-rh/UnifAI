@@ -2,12 +2,8 @@ from flask import Blueprint, jsonify, current_app
 from global_utils.helpers.apiargs import from_body, from_query
 from webargs import fields
 from sharing.models import ShareItemKind, ShareStatus
-from config.app_config import AppConfig
-from session.exceptions import BlueprintNotFoundError
 
 shares_bp = Blueprint("shares", __name__)
-config = AppConfig.get_instance()
-frontend_url = config.get('frontend_url', 'http://localhost:5000')
 
 @shares_bp.route("/share.create", methods=["POST"])
 @from_body({
@@ -168,68 +164,5 @@ def get_share(share_id, user_id="alice"):
 
     except KeyError:
         return jsonify({"error": "Share invitation not found"}), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-# ========== Public Chat Sharing Endpoints ==========
-
-@shares_bp.route("/public-chat.enable", methods=["POST"])
-@from_body({
-    "blueprint_id": fields.Str(data_key="blueprintId", required=True),
-    "user_id": fields.Str(data_key="userId", required=True),
-})
-def enable_public_chat(blueprint_id, user_id):
-    """Enable public chat sharing for a blueprint."""
-    try:
-        svc = current_app.container.share_service
-        result = svc.enable_public_chat(blueprint_id, user_id, frontend_url)
-        return jsonify(result), 200
-    except BlueprintNotFoundError as e:
-        return jsonify({
-            "error": str(e),
-            "error_type": "BLUEPRINT_NOT_FOUND",
-            "blueprint_id": e.blueprint_id
-        }), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@shares_bp.route("/public-chat.disable", methods=["POST"])
-@from_body({
-    "blueprint_id": fields.Str(data_key="blueprintId", required=True),
-    "user_id": fields.Str(data_key="userId", required=True),
-})
-def disable_public_chat(blueprint_id, user_id):
-    """Disable public chat sharing for a blueprint."""
-    try:
-        svc = current_app.container.share_service
-        result = svc.disable_public_chat(blueprint_id)
-        return jsonify(result), 200
-    except KeyError as e:
-        return jsonify({
-            "error": str(e),
-            "error_type": "BLUEPRINT_NOT_FOUND",
-            "blueprint_id": blueprint_id
-        }), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@shares_bp.route("/public-chat.status.get", methods=["GET"])
-@from_query({
-    "blueprint_id": fields.Str(data_key="blueprintId", required=True),
-})
-def get_public_chat_status(blueprint_id):
-    """Get public chat sharing status for a blueprint."""
-    try:
-        svc = current_app.container.share_service
-        info = svc.get_public_chat_status(blueprint_id, frontend_url)
-        return jsonify(info), 200
-    except KeyError:
-        return jsonify({
-            "error": "Blueprint not found",
-            "error_type": "BLUEPRINT_NOT_FOUND",
-            "blueprint_id": blueprint_id
-        }), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500

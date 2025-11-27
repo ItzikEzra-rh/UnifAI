@@ -14,13 +14,9 @@ sessions_bp = Blueprint("sessions", __name__)
     "blueprint_id": fields.Str(data_key="blueprintId", required=True),
     "user_id": fields.Str(data_key="userId", required=True),
     "metadata": fields.Dict(data_key="metadata", required=False, load_default=lambda: {}, dump_default=lambda: {}),
-    "from_shared_link": fields.Bool(data_key="fromSharedLink", required=False, load_default=False)
 })
-def create_user_session(blueprint_id, user_id, metadata, from_shared_link):
+def create_user_session(blueprint_id, user_id, metadata):
     try:
-        if from_shared_link:
-            metadata['from_shared_link'] = True
-        
         session_meta = SessionMeta.from_dict(metadata)
         
         session_svc = current_app.container.session_service

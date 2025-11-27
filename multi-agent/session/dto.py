@@ -9,7 +9,7 @@ class ChatHistoryItem:
     started_at: str
     blueprint_id: str
     blueprint_exists: bool = True
-    public_chat_enabled: bool = False  # Only relevant for sessions from shared links (from_shared_link=True)
+    public_chat_enabled: bool = False  # Only relevant for sessions from public links (metadata.source == "public_link")
 
     @classmethod
     def from_doc(cls, doc: Mapping[str, Any], blueprint_exists: bool = True, public_chat_enabled: bool = False) -> "ChatHistoryItem":

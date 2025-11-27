@@ -1,3 +1,4 @@
+from typing import Any, Dict
 from catalog.element_registry import ElementRegistry
 from session.element_builder import SessionElementBuilder
 from engine.builder.graph_builder_factory import GraphBuilderFactory
@@ -48,7 +49,7 @@ class WorkflowSessionFactory:
         ctx = RunContext(
             user_id=user_id,
             engine_name=self._engine_name,
-            metadata=metadata or {}
+            metadata=metadata.to_dict() if metadata else {}
         )
         set_current_context(ctx)
 
@@ -77,7 +78,7 @@ class WorkflowSessionFactory:
             executable_graph=executable_graph,
             builder=_engine_builder,
             run_context=ctx,
-            metadata=metadata or {},
+            metadata=metadata or SessionMeta(),
             graph_state=graph_state,
         )
 

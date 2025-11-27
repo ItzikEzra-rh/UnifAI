@@ -23,19 +23,25 @@ export default function ShareWorkflow({
   const { toast } = useToast();
   const { user } = useAuth();
 
-  // Fetch current sharing status
+  // Construct share link client-side
+  const constructShareLink = (blueprintId: string): string => {
+    return `${window.location.origin}/chat/${blueprintId}`;
+  };
+
+  // Fetch current public_usage_scope status
   useEffect(() => {
     if (!blueprintId) return;
     
     const fetchStatus = async () => {
       try {
         const response = await axios.get(
-          `/shares/public-chat.status.get?blueprintId=${blueprintId}`
+          `/blueprints/public_usage_scope?blueprintId=${blueprintId}`
         );
-        setEnabled(response.data.enabled || false);
-        setShareLink(response.data.share_link || null);
+        const isPublic = response.data.public_usage_scope === true;
+        setEnabled(isPublic);
+        setShareLink(isPublic ? constructShareLink(blueprintId) : null);
       } catch (error) {
-        console.error("Error fetching share status:", error);
+        console.error("Error fetching public_usage_scope status:", error);
       }
     };
 
@@ -54,31 +60,19 @@ export default function ShareWorkflow({
 
     setIsLoading(true);
     try {
-      if (checked) {
-        // Enable sharing - validate workflow first (same as loading workflow)
-        const response = await axios.post("/shares/public-chat.enable", {
-          blueprintId,
-          userId: user.username,
-        });
-        setEnabled(true);
-        setShareLink(response.data.share_link);
-        toast({
-          title: "Sharing Enabled",
-          description: "Your workflow is now accessible via the share link",
-        });
-      } else {
-        // Disable sharing
-        await axios.post("/shares/public-chat.disable", {
-          blueprintId,
-          userId: user.username,
-        });
-        setEnabled(false);
-        setShareLink(null);
-        toast({
-          title: "Sharing Disabled",
-          description: "Your workflow is no longer accessible via the share link",
-        });
-      }
+      await axios.put("/blueprints/public_usage_scope", {
+        blueprintId,
+        public_usage_scope: checked,
+        userId: user.username,
+      });
+      setEnabled(checked);
+      setShareLink(checked ? constructShareLink(blueprintId) : null);
+      toast({
+        title: checked ? "Sharing Enabled" : "Sharing Disabled",
+        description: checked 
+          ? "Your workflow is now accessible via the share link"
+          : "Your workflow is no longer accessible via the share link",
+      });
     } catch (error: any) {
       // Show the same error message format as "Load Workflow"
       const errorMessage = error.response?.data?.error || "Failed to update sharing settings";

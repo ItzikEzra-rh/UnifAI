@@ -52,8 +52,8 @@ export default function PublicChat() {
   // Check sharing status for the blueprint
   const checkSharingStatus = useCallback(async (blueprintId: string) => {
     try {
-      const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${blueprintId}`);
-      setIsSharingDisabled(!statusResponse.data.enabled);
+      const statusResponse = await axios.get(`/blueprints/public_usage_scope?blueprintId=${blueprintId}`);
+      setIsSharingDisabled(statusResponse.data.public_usage_scope !== true);
     } catch (error: any) {
       // If status check fails, assume sharing is disabled
       setIsSharingDisabled(true);
@@ -76,8 +76,8 @@ export default function PublicChat() {
         setBlueprintOwner(blueprintInfoResponse.data?.owner_user_id || "");
         
         // Check sharing status
-        const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${token}`);
-        if (!statusResponse.data.enabled) {
+        const statusResponse = await axios.get(`/blueprints/public_usage_scope?blueprintId=${token}`);
+        if (statusResponse.data.public_usage_scope !== true) {
           setValidationError("Sorry, this workflow is not available for chats");
           setIsSharingDisabled(true);
         } else {
@@ -113,18 +113,27 @@ export default function PublicChat() {
   };
 
   // Transform API data to ChatSession format
-  const transformApiDataToSessions = (apiData: ChatSessionData[]): ChatSession[] => {
-    return apiData.map((sessionData, index) => {
+  const transformApiDataToSessions = async (apiData: ChatSessionData[]): Promise<ChatSession[]> => {
+    // Transform sessions and fetch fresh public_usage_scope status for shared link sessions
+    const sessions = await Promise.all(apiData.map(async (sessionData, index) => {
       const title = sessionData.metadata?.title || generateRandomTitle(index);
       const id = sessionData.session_id;
       const blueprintId = sessionData.blueprint_id;
       const blueprintExists = sessionData.blueprint_exists;
-      const fromSharedLink = sessionData.metadata?.from_shared_link || false;
+      const fromSharedLink = sessionData.metadata?.source === "public_link";
       
-      // Use public chat status from API response (only relevant for shared link sessions)
-      const isSharingDisabled = fromSharedLink && blueprintExists 
-        ? !(sessionData.public_chat_enabled ?? false)
-        : false;
+      // Fetch fresh public_usage_scope status for shared link sessions to ensure accuracy
+      let isSharingDisabled = false;
+      if (fromSharedLink && blueprintExists && blueprintId) {
+        try {
+          const statusResponse = await axios.get(`/blueprints/public_usage_scope?blueprintId=${blueprintId}`);
+          isSharingDisabled = statusResponse.data.public_usage_scope !== true;
+        } catch (error) {
+          // If status check fails, use the value from API response as fallback
+          isSharingDisabled = !(sessionData.public_chat_enabled ?? false);
+        }
+      }
+      
       const timestamp = new Date(sessionData.started_at);
       const lastActive = formatRelativeTimestamp(sessionData.started_at);
       const preview = "Click to load messages...";
@@ -141,7 +150,9 @@ export default function PublicChat() {
         fromSharedLink,
         isSharingDisabled,
       };
-    });
+    }));
+    
+    return sessions;
   };
 
   // Fetch session state (messages) for a specific session
@@ -172,7 +183,7 @@ export default function PublicChat() {
       );
       
       // Transform to ChatSession format
-      const transformedSessions = transformApiDataToSessions(blueprintSessions);
+      const transformedSessions = await transformApiDataToSessions(blueprintSessions);
       
       // Sort by timestamp (most recent first)
       transformedSessions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
@@ -186,8 +197,7 @@ export default function PublicChat() {
           const createResponse = await axios.post("/sessions/user.session.create", {
             blueprintId: blueprintId,
             userId: user.username,
-            metadata: {},
-            fromSharedLink: true,
+            metadata: { source: "public_link" },
           });
           
           const newSessionId = createResponse.data;
@@ -219,12 +229,12 @@ export default function PublicChat() {
           
           // Refresh sessions list to get proper data (do this in background, don't wait)
           axios.get(`/sessions/session.user.chat.get?userId=${user.username}`)
-            .then((refreshResponse) => {
+            .then(async (refreshResponse) => {
               const refreshSessions: ChatSessionData[] = refreshResponse.data;
               const refreshBlueprintSessions = refreshSessions.filter(
                 (session) => session.blueprint_id === blueprintId && session.blueprint_exists
               );
-              const refreshTransformedSessions = transformApiDataToSessions(refreshBlueprintSessions);
+              const refreshTransformedSessions = await transformApiDataToSessions(refreshBlueprintSessions);
               refreshTransformedSessions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
               
               setChatSessions(refreshTransformedSessions);
@@ -350,8 +360,7 @@ export default function PublicChat() {
       const response = await axios.post("/sessions/user.session.create", {
         blueprintId: blueprintId,
         userId: user.username,
-        metadata: {},
-        fromSharedLink: true,
+        metadata: { source: "public_link" },
       });
       
       const newSessionId = response.data;
@@ -380,7 +389,7 @@ export default function PublicChat() {
       const blueprintSessions = sessions.filter(
         (session) => session.blueprint_id === blueprintId && session.blueprint_exists
       );
-      const transformedSessions = transformApiDataToSessions(blueprintSessions);
+      const transformedSessions = await transformApiDataToSessions(blueprintSessions);
       transformedSessions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
       
       // Update sessions list, but keep the selected session if it matches
@@ -424,8 +433,8 @@ export default function PublicChat() {
     // Check sharing status before allowing execution (fresh check each time)
     if (blueprintId) {
       try {
-        const statusResponse = await axios.get(`/shares/public-chat.status.get?blueprintId=${blueprintId}`);
-        const sharingDisabled = !statusResponse.data.enabled;
+        const statusResponse = await axios.get(`/blueprints/public_usage_scope?blueprintId=${blueprintId}`);
+        const sharingDisabled = statusResponse.data.public_usage_scope !== true;
         setIsSharingDisabled(sharingDisabled);
         if (sharingDisabled) {
           throw new Error("This workflow's chat sharing has been disabled and can no longer be continued.");

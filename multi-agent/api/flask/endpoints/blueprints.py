@@ -154,3 +154,98 @@ def remove_blueprint(blueprint_id):
             "status": "error",
             "error": str(e)
         }), 500
+
+
+@blueprints_bp.route("/public_usage_scope", methods=["PUT"])
+@from_body({
+    "blueprint_id": fields.Str(data_key="blueprintId", required=True),
+    "public_usage_scope": fields.Bool(required=True),
+    "user_id": fields.Str(data_key="userId", required=True),
+})
+def set_public_usage_scope(blueprint_id, public_usage_scope, user_id):
+    """
+    Set the public_usage_scope (True/False) of a blueprint.
+    Validates the blueprint can be loaded, resolved, and compiled before enabling public usage.
+    """
+    try:
+        svc = current_app.container.blueprint_service
+        
+        if public_usage_scope:
+            session_svc = current_app.container.session_service
+            session_svc.validate_blueprint(user_id=user_id, blueprint_id=blueprint_id)
+        
+        success = svc.set_public_usage_scope(blueprint_id=blueprint_id, public_usage_scope=public_usage_scope)
+        
+        if not success:
+            return jsonify({
+                "error": "Failed to update public_usage_scope",
+                "error_type": "UPDATE_FAILED",
+                "blueprint_id": blueprint_id
+            }), 500
+        
+        return jsonify({"status": "success"}), 200
+        
+    except KeyError as e:
+        return jsonify({
+            "error": "Blueprint not found",
+            "error_type": "BLUEPRINT_NOT_FOUND",
+            "blueprint_id": blueprint_id
+        }), 404
+    except ValueError as e:
+        return jsonify({
+            "error": str(e),
+            "error_type": "INVALID_PUBLIC_USAGE_SCOPE",
+            "blueprint_id": blueprint_id
+        }), 400
+    except Exception as e:
+        return jsonify({
+            "error": str(e),
+            "error_type": "VALIDATION_ERROR",
+            "blueprint_id": blueprint_id
+        }), 400
+
+
+@blueprints_bp.route("/public_usage_scope", methods=["GET"])
+@from_query({
+    "blueprint_id": fields.Str(data_key="blueprintId", required=True),
+})
+def get_public_usage_scope(blueprint_id):
+    """
+    Get the current public_usage_scope of a blueprint.
+    """
+    try:
+        svc = current_app.container.blueprint_service
+        result = svc.get_public_usage_scope(blueprint_id)
+        return jsonify(result), 200
+    except KeyError:
+        return jsonify({
+            "error": "Blueprint not found",
+            "error_type": "BLUEPRINT_NOT_FOUND",
+            "blueprint_id": blueprint_id
+        }), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@blueprints_bp.route("/validate", methods=["GET"])
+@from_query({
+    "blueprint_id": fields.Str(data_key="blueprintId", required=True),
+})
+def validate_blueprint(blueprint_id):
+    """
+    Validate a blueprint by resolving it and checking if it can be compiled.
+    Returns blueprint information and ownership details.
+    """
+    try:
+        svc = current_app.container.blueprint_service
+        result = svc.validate_blueprint(blueprint_id)
+        
+        if not result.get("valid", False):
+            return jsonify({
+                **result,
+                "error_type": "BLUEPRINT_INVALID" if result.get("error") != "Blueprint not found" else "BLUEPRINT_NOT_FOUND"
+            }), 400
+        
+        return jsonify(result), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

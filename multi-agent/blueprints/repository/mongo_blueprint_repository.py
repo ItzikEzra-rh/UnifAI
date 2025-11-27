@@ -52,11 +52,13 @@ class MongoBlueprintRepository(BlueprintRepository):
 
         return res.modified_count == 1
 
-    def update_shared_field(self, *, blueprint_id: str, shared: bool) -> bool:
-        """Update the shared field of a blueprint document."""
+    def set_public_usage_scope(self, *, blueprint_id: str, public_usage_scope: bool) -> bool:
+        """Set the public_usage_scope (True/False) of a blueprint document."""
+        if not isinstance(public_usage_scope, bool):
+            raise ValueError(f"public_usage_scope must be a boolean, got: {type(public_usage_scope)}")
         res = self._col.update_one(
             {"blueprint_id": blueprint_id},
-            {"$set": {"shared": shared, "updated_at": datetime.utcnow()}}
+            {"$set": {"public_usage_scope": public_usage_scope, "updated_at": datetime.utcnow()}}
         )
         return res.modified_count == 1
 

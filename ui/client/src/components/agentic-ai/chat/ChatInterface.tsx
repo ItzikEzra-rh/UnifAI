@@ -712,7 +712,7 @@ export default function ChatInterface({
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
-              {onToggleBlueprintGraph && (
+              {onToggleBlueprintGraph && !isChatOnlyMode && (
                 <Button
                   variant="ghost"
                   size="sm"
