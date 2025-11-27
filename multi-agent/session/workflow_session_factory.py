@@ -49,7 +49,7 @@ class WorkflowSessionFactory:
         ctx = RunContext(
             user_id=user_id,
             engine_name=self._engine_name,
-            metadata=metadata.to_dict() if metadata else {}
+            metadata=metadata or {}
         )
         set_current_context(ctx)
 
@@ -78,7 +78,7 @@ class WorkflowSessionFactory:
             executable_graph=executable_graph,
             builder=_engine_builder,
             run_context=ctx,
-            metadata=metadata or SessionMeta(),
+            metadata=metadata or {},
             graph_state=graph_state,
         )
 
