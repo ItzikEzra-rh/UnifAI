@@ -13,16 +13,12 @@ Key Features:
 import asyncio
 import threading
 from dataclasses import dataclass
-from typing import Any, Awaitable, Callable, Iterable, Iterator, Optional, Protocol, runtime_checkable
-from typing import TYPE_CHECKING
+from typing import Any, AsyncIterator, Awaitable, Callable, Iterable, Iterator, Optional, Protocol, runtime_checkable
 import anyio
 from anyio.from_thread import BlockingPortal
 import anyio.from_thread
 import logging
 from queue import Queue, Empty
-
-if TYPE_CHECKING:
-    from typing import AsyncIterator
 
 logger = logging.getLogger(__name__)
 
