@@ -13,6 +13,23 @@ releases:
   - name: unifai-dataflow-server
     chart: ./dataflow/unifai-dataflow-server
     wait: true
+    hooks:
+      - events: ["presync"]
+        showlogs: true
+        command: bash
+        args:
+          - "-c"
+          - |
+              set -x
+              echo "Creating Secret from environment variables..."
+              
+              # Create Secret with Slack tokens from environment variables
+              kubectl create secret generic unifai-dataflow-secrets \
+                --from-literal=default_slack_bot_token="${default_slack_bot_token:-}" \
+                --from-literal=default_slack_user_token="${default_slack_user_token:-}" \
+                --dry-run=client -o yaml | kubectl apply -f -
+              
+              echo "Secret created successfully"
     values:
       - {{- toYaml .Values.unifai_dataflow_server | nindent 8 }}
       - ./values/global-config.yaml
@@ -93,11 +110,9 @@ releases:
               DATAFLOW_PORT=$(wait_for_port unifai-dataflow-server)
               DATAFLOW_IP=$(wait_for_service_name unifai-dataflow-server)
               
-              kubectl delete configmap unifai-dataflow-config
+              kubectl delete configmap unifai-dataflow-config --ignore-not-found=true
               kubectl create configmap unifai-dataflow-config \
                 --from-literal=DATAFLOW_ADDR="$DATAFLOW_ADDR" \
                 --from-literal=DATAFLOW_PORT="$DATAFLOW_PORT" \
                 --from-literal=DATAFLOW_IP="$DATAFLOW_IP" \
-                --from-literal=default_slack_bot_token="$default_slack_bot_token" \
-                --from-literal=default_slack_user_token="$default_slack_user_token" \
                 --dry-run=client -o yaml | kubectl apply -f -
