@@ -472,7 +472,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
           <p className="text-xs text-gray-400">{fieldSchema.description}</p>
         )}
 
-        {populateHint.selection_type != 'automatic' && (
+        {populateHint?.selection_type != 'automatic' && (
           <Textarea
             id={fieldName}
             value={value}
