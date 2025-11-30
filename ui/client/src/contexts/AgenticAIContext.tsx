@@ -22,6 +22,9 @@ interface AgenticAIContextType {
   // Recursively resolve all refs in a config object
   resolveRefsInConfig: (config: any) => any;
   refreshMapping: () => Promise<void>;
+  // Incrementally update resource mapping (smart updates)
+  addOrUpdateResource: (resource: ResourceMapping) => void;
+  removeResource: (rid: string) => void;
 }
 
 const AgenticAIContext = createContext<AgenticAIContextType | undefined>(undefined);
@@ -193,6 +196,34 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
     await fetchAllResources();
   }, [fetchAllResources]);
 
+  // Incrementally add or update a single resource in the mapping
+  const addOrUpdateResource = useCallback((resource: ResourceMapping) => {
+    setUuidToNameMap((prevMap) => {
+      const newMap = new Map(prevMap);
+      newMap.set(resource.rid, resource.name);
+      return newMap;
+    });
+    setUuidToResourceMap((prevMap) => {
+      const newMap = new Map(prevMap);
+      newMap.set(resource.rid, resource);
+      return newMap;
+    });
+  }, []);
+
+  // Incrementally remove a resource from the mapping
+  const removeResource = useCallback((rid: string) => {
+    setUuidToNameMap((prevMap) => {
+      const newMap = new Map(prevMap);
+      newMap.delete(rid);
+      return newMap;
+    });
+    setUuidToResourceMap((prevMap) => {
+      const newMap = new Map(prevMap);
+      newMap.delete(rid);
+      return newMap;
+    });
+  }, []);
+
   // Fetch resources when user changes or component mounts
   useEffect(() => {
     if (USER_ID) {
@@ -209,6 +240,8 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
     getResource,
     resolveRefsInConfig,
     refreshMapping,
+    addOrUpdateResource,
+    removeResource,
   };
 
   return (

@@ -10,6 +10,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "./use-toast";
 import { catalogService } from "@/api/catalog";
+import { useAgenticAI } from "@/contexts/AgenticAIContext";
 
 // Types for Resources API responses
 interface ResourceInstance {
@@ -47,6 +48,7 @@ export const useWorkspaceData = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { addOrUpdateResource, removeResource } = useAgenticAI();
 
   const { user } = useAuth();
   const USER_ID = user?.username || "default";
@@ -308,6 +310,17 @@ export const useWorkspaceData = () => {
             config: elementData.cfg_dict,
             name: elementData.name,
           });
+          
+          // Update the resource mapping immediately
+          if (response.data) {
+            addOrUpdateResource({
+              rid: response.data.rid || rid,
+              name: response.data.name || elementData.name,
+              category: response.data.category || category,
+              type: response.data.type || type,
+            });
+          }
+          
           toast({
             title: "Success",
             description: "Element updated successfully",
@@ -328,6 +341,17 @@ export const useWorkspaceData = () => {
             "/resources/resource.save",
             savePayload,
           );
+          
+          // Update the resource mapping immediately
+          if (response.data) {
+            addOrUpdateResource({
+              rid: response.data.rid,
+              name: response.data.name || elementData.name,
+              category: response.data.category || category,
+              type: response.data.type || type,
+            });
+          }
+          
           toast({
             title: "Success",
             description: "Element created successfully",
@@ -349,7 +373,7 @@ export const useWorkspaceData = () => {
         setIsLoading(false);
       }
     },
-    [toast],
+    [toast, addOrUpdateResource, USER_ID],
   );
 
   // Delete element using Resources API
@@ -360,6 +384,9 @@ export const useWorkspaceData = () => {
         setError(null);
 
         await axios.delete(`/resources/resource.delete?resourceId=${rid}`);
+        
+        removeResource(rid);
+        
         toast({
           title: "Success",
           description: "Element deleted successfully",
@@ -380,7 +407,7 @@ export const useWorkspaceData = () => {
         setIsLoading(false);
       }
     },
-    [toast],
+    [toast, removeResource],
   );
 
   // Initialize categories on mount
