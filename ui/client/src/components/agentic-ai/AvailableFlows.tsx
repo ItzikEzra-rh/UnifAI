@@ -116,6 +116,8 @@ export default function AvailableFlows({
   const fetchAvailableFlows = async (): Promise<void> => {
     try {
       const userId = user?.username || "default";
+      // Use resolved endpoint if requested (returns blueprints with all references resolved)
+      // Otherwise use regular endpoint (returns blueprints as stored, may contain unresolved references)
       const blueprints = useResolvedEndpoint 
         ? await fetchResolvedWorkflows(userId)
         : await fetchWorkflows(userId);

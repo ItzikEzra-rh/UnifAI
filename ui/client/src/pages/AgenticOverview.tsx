@@ -10,8 +10,8 @@ import StatusBar from "@/components/layout/StatusBar";
 
 // Agentic Overview components
 import GlassPanel from "@/components/ui/GlassPanel";
-import { StatCard } from "@/components/dashboard/StatCard";
-import { ResourceDistributionChart } from "@/components/dashboard/ResourceDistributionChart";
+import { StatCard } from "@/components/ui/stat-card";
+import { ResourceDistributionChart } from "@/components/ui/resource-distribution-chart";
 import { WorkflowList } from "@/components/dashboard/WorkflowList";
 import { WorkflowBlueprint } from "@/api/agentic";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

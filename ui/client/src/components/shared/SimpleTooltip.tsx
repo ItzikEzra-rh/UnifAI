@@ -30,12 +30,12 @@ export default function SimpleTooltip({
   );
 
   if (skipProvider) {
-    return tooltip;
+    return (
+      <TooltipProvider delayDuration={delayDuration}>
+        {tooltip}
+      </TooltipProvider>
+    );
   }
 
-  return (
-    <TooltipProvider delayDuration={delayDuration}>
-      {tooltip}
-    </TooltipProvider>
-  );
+  return tooltip;
 }
