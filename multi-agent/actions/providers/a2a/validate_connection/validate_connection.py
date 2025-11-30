@@ -4,7 +4,7 @@ from typing import Optional, Dict, Any
 from pydantic import HttpUrl
 from actions.common.base_action import BaseAction
 from actions.common.action_models import BaseActionInput, BaseActionOutput, ActionType
-from elements.providers.a2a_client.a2a_client import A2AClient
+from elements.providers.a2a_client import A2AClient
 from elements.nodes.a2a_agent.identifiers import Identifier
 from core.enums import ResourceCategory
 
@@ -69,8 +69,8 @@ class ValidateConnectionAction(BaseAction):
                     headers=headers
                 ) as client:
                     # Agent card is fetched during __aenter__
-                    # Just confirm we can get it (connection successful)
-                    client.get_agent_card()
+                    # Just confirm we can access it (connection successful)
+                    _ = client.agent_card
             
             # Test connection with timeout
             await asyncio.wait_for(_test_connection(), timeout=10.0)

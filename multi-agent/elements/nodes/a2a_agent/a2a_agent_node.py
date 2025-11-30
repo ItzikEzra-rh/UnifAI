@@ -13,7 +13,7 @@ from elements.nodes.common.capabilities.iem_capable import IEMCapableMixin
 from elements.nodes.common.capabilities.retriever_capable import RetrieverCapableMixin
 from elements.nodes.common.capabilities.workload_capable import WorkloadCapableMixin
 from elements.nodes.common.workload import Task, AgentResult
-from elements.providers.a2a_client.a2a_provider import A2AProvider
+from elements.providers.a2a_client import A2AProvider
 
 
 class A2AAgentNode(
@@ -52,13 +52,13 @@ class A2AAgentNode(
     WRITES: ClassVar[set[str]] = set()
 
     def __init__(
-        self,
-        *,
-        base_url: HttpUrl,
-        agent_card: Optional[AgentCard] = None,
-        bearer_token: Optional[str] = None,
-        retriever: Any = None,
-        **kwargs: Any
+            self,
+            *,
+            base_url: HttpUrl,
+            agent_card: Optional[AgentCard] = None,
+            bearer_token: Optional[str] = None,
+            retriever: Any = None,
+            **kwargs: Any
     ):
         """
         Initialize A2A Agent Node.
@@ -73,19 +73,19 @@ class A2AAgentNode(
             retriever=retriever,
             **kwargs
         )
-        
+
         # Build headers from bearer_token if provided
         headers = None
         if bearer_token:
             headers = {"Authorization": f"Bearer {bearer_token}"}
-        
+
         # Create A2A provider from config
         self.a2a_provider = A2AProvider.create_sync(
             base_url=base_url,
             agent_card=agent_card,
             headers=headers
         )
-        
+
         # Sensible defaults for context and polling
         self._max_context_messages = 20
         self._wait_for_completion = True
@@ -182,7 +182,7 @@ class A2AAgentNode(
         # 1. Get workspace conversation history
         if task.thread_id:
             workspace_messages = self.workspaces.get_recent_messages(
-                task.thread_id, 
+                task.thread_id,
                 self._max_context_messages
             )
             context_messages.extend(deepcopy(workspace_messages))
@@ -225,9 +225,9 @@ class A2AAgentNode(
     # ========== REMOTE AGENT DELEGATION ==========
 
     def _delegate_to_remote_agent(
-        self, 
-        context_messages: List[ChatMessage],
-        task: Task
+            self,
+            context_messages: List[ChatMessage],
+            task: Task
     ) -> tuple[ChatMessage, Dict[str, Any]]:
         """
         Delegate task to remote agent via A2A Provider.
@@ -251,7 +251,7 @@ class A2AAgentNode(
         """
         # Combine context into single message for remote agent
         combined_content = self._combine_context_messages(context_messages)
-        
+
         message_to_send = ChatMessage(
             role=Role.USER,
             content=combined_content
@@ -282,32 +282,33 @@ class A2AAgentNode(
         # Check if node is in streaming mode
         if not self.is_streaming():
             return False
-        
+
         # Check if remote agent supports streaming
         agent_card = self.a2a_provider.agent_card
         if not agent_card:
             # No agent card means we can't verify capabilities
             # Fall back to non-streaming for safety
             return False
-        
+
         # Check capabilities field
         if not hasattr(agent_card, 'capabilities') or not agent_card.capabilities:
             # No capabilities field - assume no streaming support
             return False
-        
+
         # Check streaming capability
         streaming_supported = getattr(agent_card.capabilities, 'streaming', False)
-        
+
         if not streaming_supported:
             # Log that we're falling back to non-streaming
-            print(f"A2AAgent {self.uid}: Node is streaming but remote agent doesn't support streaming. Using non-streaming mode.")
-        
+            print(
+                f"A2AAgent {self.uid}: Node is streaming but remote agent doesn't support streaming. Using non-streaming mode.")
+
         return streaming_supported
 
     def _delegate_without_streaming(
-        self,
-        message: ChatMessage,
-        task: Task
+            self,
+            message: ChatMessage,
+            task: Task
     ) -> tuple[ChatMessage, Dict[str, Any]]:
         """
         Delegate to remote agent without streaming (direct response).
@@ -328,13 +329,13 @@ class A2AAgentNode(
             poll_interval=self._poll_interval,
             max_poll_attempts=self._max_poll_attempts
         )
-        
+
         return response, metadata
 
     def _delegate_with_streaming(
-        self,
-        message: ChatMessage,
-        task: Task
+            self,
+            message: ChatMessage,
+            task: Task
     ) -> tuple[ChatMessage, Dict[str, Any]]:
         """
         Delegate to remote agent with streaming support.
@@ -367,29 +368,29 @@ class A2AAgentNode(
             Tuple of (final ChatMessage, metadata dict)
         """
         accumulated_content = ""
-        
+
         # Stream chunks from remote agent
         for chunk in self.a2a_provider.stream_message_sync(
-            message=message,
-            context_id=task.thread_id
+                message=message,
+                context_id=task.thread_id
         ):
             # Accumulate content from chunk
             if chunk.content:
                 accumulated_content += chunk.content
-                
+
                 # Stream token event (same pattern as LlmCapableMixin)
                 # This allows UI to display tokens in real-time
                 self._stream({
                     "type": "llm_token",
                     "chunk": chunk.content
                 })
-        
+
         # Create final message from accumulated content
         final_message = ChatMessage(
             role=Role.ASSISTANT,
             content=accumulated_content
         )
-        
+
         # Create metadata for streaming response
         # Note: A2A streaming doesn't provide task_id/status in chunks
         # We assume success if streaming completed without error
@@ -399,7 +400,7 @@ class A2AAgentNode(
             "status": "completed",
             "status_message": "Streaming completed successfully"
         }
-        
+
         return final_message, metadata
 
     def _combine_context_messages(self, messages: List[ChatMessage]) -> str:
@@ -418,23 +419,23 @@ class A2AAgentNode(
 
         # Format conversation history
         parts = ["CONVERSATION CONTEXT:\n"]
-        
+
         for i, msg in enumerate(messages[:-1], 1):  # All but last message
             role_label = msg.role.value.upper()
             parts.append(f"[{role_label}]: {msg.content}\n")
-        
+
         # Add current task separately
         parts.append("\nCURRENT TASK:")
         parts.append(messages[-1].content)
-        
+
         return "\n".join(parts)
 
     # ========== RESULT HANDLING ==========
 
     def _create_agent_result(
-        self,
-        response: ChatMessage,
-        metadata: Dict[str, Any]
+            self,
+            response: ChatMessage,
+            metadata: Dict[str, Any]
     ) -> AgentResult:
         """
         Create AgentResult from remote agent response.
@@ -449,7 +450,7 @@ class A2AAgentNode(
         # Check if remote task succeeded
         task_status = metadata.get("status", "unknown")
         success = task_status in ["completed", "success"]
-        
+
         return AgentResult(
             content=response.content,
             agent_id=self.uid,
@@ -471,10 +472,10 @@ class A2AAgentNode(
     # ========== RESPONSE ROUTING ==========
 
     def _route_response(
-        self, 
-        task: Task, 
-        agent_result: AgentResult, 
-        original_packet
+            self,
+            task: Task,
+            agent_result: AgentResult,
+            original_packet
     ) -> None:
         """
         Route response based on task.should_respond.
@@ -504,10 +505,10 @@ class A2AAgentNode(
         return set(adjacent_nodes.keys())
 
     def _execute_direct_response(
-        self, 
-        task: Task, 
-        agent_result: AgentResult, 
-        original_packet
+            self,
+            task: Task,
+            agent_result: AgentResult,
+            original_packet
     ) -> None:
         """Send direct response to requester - finished work."""
         response_task = Task.respond_success(
@@ -518,9 +519,9 @@ class A2AAgentNode(
         self.reply_task(original_packet, response_task)
 
     def _execute_broadcast_with_response(
-        self, 
-        task: Task, 
-        agent_result: AgentResult
+            self,
+            task: Task,
+            agent_result: AgentResult
     ) -> None:
         """Broadcast with response request - finished work."""
         response_task = task.fork(
@@ -535,9 +536,9 @@ class A2AAgentNode(
         self.broadcast_task(response_task)
 
     def _execute_normal_broadcast(
-        self, 
-        task: Task, 
-        agent_result: AgentResult
+            self,
+            task: Task,
+            agent_result: AgentResult
     ) -> None:
         """Normal broadcast - continue work."""
         forked_task = task.fork(
@@ -546,4 +547,3 @@ class A2AAgentNode(
             result=agent_result
         )
         self.broadcast_task(forked_task)
-

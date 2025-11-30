@@ -3,11 +3,12 @@ A2A Provider Factory
 """
 
 from typing import Any
+
 from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
-from .config import A2AProviderConfig
-from .a2a_provider import A2AProvider
-from .identifiers import Identifier
+from elements.providers.a2a_client.config import A2AProviderConfig
+from elements.providers.a2a_client.provider import A2AProvider
+from elements.providers.a2a_client.identifiers import Identifier
 
 
 class A2AProviderFactory(BaseFactory[A2AProviderConfig, A2AProvider]):
@@ -36,12 +37,13 @@ class A2AProviderFactory(BaseFactory[A2AProviderConfig, A2AProvider]):
         try:
             return A2AProvider.create_sync(
                 base_url=cfg.base_url,
-                agent_card=cfg.agent_card
+                agent_card=cfg.agent_card,
+                headers=cfg.headers,
             )
         except Exception as e:
             raise PluginConfigurationError(
                 f"A2AProvider.create() failed: {e}",
-                cfg.dict()
+                cfg.model_dump()
             ) from e
 
     async def create_async(self, cfg: A2AProviderConfig, **kwargs: Any) -> A2AProvider:
@@ -59,13 +61,13 @@ class A2AProviderFactory(BaseFactory[A2AProviderConfig, A2AProvider]):
             PluginConfigurationError: If creation fails
         """
         try:
-            return await A2AProvider.create_async(
+            return await A2AProvider.create(
                 base_url=cfg.base_url,
-                agent_card=cfg.agent_card
+                agent_card=cfg.agent_card,
+                headers=cfg.headers,
             )
         except Exception as e:
             raise PluginConfigurationError(
                 f"A2AProvider.create_async() failed: {e}",
-                cfg.dict()
+                cfg.model_dump()
             ) from e
-

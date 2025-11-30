@@ -2,7 +2,7 @@ from typing import Optional, Dict, Any
 from pydantic import HttpUrl
 from actions.common.base_action import BaseAction
 from actions.common.action_models import BaseActionInput, BaseActionOutput, ActionType
-from elements.providers.a2a_client.a2a_client import A2AClient
+from elements.providers.a2a_client import A2AClient
 from elements.nodes.a2a_agent.identifiers import Identifier
 from core.enums import ResourceCategory
 from a2a.types import AgentCard
@@ -64,7 +64,7 @@ class GetAgentCardAction(BaseAction):
                 base_url=input_data.base_url,
                 headers=headers
             ) as client:
-                agent_card = client.get_agent_card()
+                agent_card = client.agent_card
             
             # Return the complete agent card as-is
             return GetAgentCardOutput(
