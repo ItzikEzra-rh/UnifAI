@@ -4,8 +4,8 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Copy, Check, Share2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import axios from "../../http/axiosAgentConfig";
 import { useAuth } from "@/contexts/AuthContext";
+import { getPublicUsageScope, updatePublicScope } from "@/api/blueprints";
 
 interface ShareWorkflowProps {
   blueprintId: string;
@@ -34,10 +34,8 @@ export default function ShareWorkflow({
     
     const fetchStatus = async () => {
       try {
-        const response = await axios.get(
-          `/blueprints/public_usage_scope?blueprintId=${blueprintId}`
-        );
-        const isPublic = response.data.public_usage_scope === true;
+        const response = await getPublicUsageScope(blueprintId);
+        const isPublic = response.public_usage_scope === true;
         setEnabled(isPublic);
         setShareLink(isPublic ? constructShareLink(blueprintId) : null);
       } catch (error) {
@@ -60,11 +58,7 @@ export default function ShareWorkflow({
 
     setIsLoading(true);
     try {
-      await axios.put("/blueprints/public_usage_scope", {
-        blueprintId,
-        public_usage_scope: checked,
-        userId: user.username,
-      });
+      await updatePublicScope(blueprintId, checked, user.username);
       setEnabled(checked);
       setShareLink(checked ? constructShareLink(blueprintId) : null);
       toast({
