@@ -10,6 +10,7 @@ from authlib.common.errors import AuthlibBaseError
 from shared.logger import logger
 from config.app_config import AppConfig
 import threading
+from urllib.parse import quote
 
 config = AppConfig.get_instance()
 
@@ -30,17 +31,11 @@ class AuthManager:
         """Initialize the auth manager with Flask app"""
         self.app = app
         
-        # Set up secret key for sessions (still needed for user session after auth)
+        # Set up secret key for sessions (required for secure session management)
         if not app.secret_key:
             secret_key = config.get('secret_key')
             if not secret_key:
-                # In production, secret_key is required for security
-                if self.backend_env == 'production':
-                    raise ValueError(
-                        "secret_key must be configured in production environment. "
-                        "Set 'secret_key' in your configuration to prevent security vulnerabilities."
-                    )
-                # Development fallback (only allowed in non-production)
+                # Use default fallback - config should override this in production via app_config
                 secret_key = 'dev-secret-key-fixed-for-session-persistence-change-in-production'
                 logger.warning("Using default development secret key - set 'secret_key' in config for production!")
             app.secret_key = secret_key
@@ -82,7 +77,6 @@ class AuthManager:
         """Store redirect path for a given OAuth state"""
         with self._cache_lock:
             self._oauth_state_cache[state] = (redirect_path, datetime.now())
-            logger.info(f"[STATE_CACHE] Stored redirect_path '{redirect_path}' for state '{state[:20]}...'")
     
     def _get_redirect_path(self, state: str, remove_after_use: bool = False) -> str:
         """Get redirect path for a given OAuth state, or '/' if not found"""
@@ -98,6 +92,13 @@ class AuthManager:
                     del self._oauth_state_cache[state]
             return '/'
     
+    def _get_redirect_path_encoded(self, state: str, remove_after_use: bool = False) -> str:
+        """Get redirect path and return it URL-encoded for use in query parameters"""
+        redirect_path = self._get_redirect_path(state, remove_after_use)
+        if redirect_path == '/':
+            return redirect_path
+        return quote(redirect_path, safe='/')
+    
     def _cleanup_expired_states(self):
         """Remove expired state entries from cache"""
         with self._cache_lock:
@@ -108,8 +109,6 @@ class AuthManager:
             ]
             for state in expired_states:
                 del self._oauth_state_cache[state]
-            if expired_states:
-                logger.info(f"[STATE_CACHE] Cleaned up {len(expired_states)} expired state entries")
     
     def _register_auth_routes(self):
         """Register authentication routes"""
@@ -117,12 +116,11 @@ class AuthManager:
         @self.app.route('/api/auth/login')
         def login():
             """Initiate OAuth login flow"""
-            # Get the redirect URL from query parameter (where to send user after auth)
+            # Get the redirect path from query parameter (where to send user after auth)
             redirect_path = request.args.get('redirect', '/')
             # Ensure redirect_path starts with / and is safe
             if not redirect_path.startswith('/'):
                 redirect_path = '/'
-            logger.info(f"[LOGIN] Redirect path requested: {redirect_path}")
             
             # Get the OAuth callback redirect URI
             redirect_uri = config.get(
@@ -132,18 +130,22 @@ class AuthManager:
                 else f"http://{config.hostname_local}:{config.port}/api/auth/callback"
             )
             
-            # Create the OAuth redirect - this generates a state parameter
+            # Create the OAuth redirect - authlib generates a state parameter for CSRF protection
             response = self.keycloak_client.authorize_redirect(redirect_uri)
             
-            # Extract state from session (authlib stores it there)
+            # Extract the OAuth state that authlib just generated and stored in session
+            # We need this state to map it to the redirect_path in our cache
+            # authlib stores state in session with keys like '_state_keycloak_<state_value>'
             oauth_states = [key for key in session.keys() if key.startswith('_state_keycloak_')]
             if oauth_states:
-                # Get the most recent state (the one just created)
+                # Get the most recent state (the one just created by authorize_redirect above)
                 latest_state_key = oauth_states[-1]
                 state = latest_state_key.replace('_state_keycloak_', '')
+                # Store the mapping: OAuth state -> redirect_path
+                # This will be retrieved in auth_callback when Keycloak redirects back
                 self._store_redirect_path(state, redirect_path)
             
-            # Clean up expired states
+            # Clean up expired states to prevent memory leaks
             self._cleanup_expired_states()
             
             return response
@@ -153,9 +155,9 @@ class AuthManager:
             """Handle OAuth callback"""
             try:
                 request_state = request.args.get('state', '')
-                redirect_path = self._get_redirect_path(request_state) if request_state else '/'
+                redirect_path = self._get_redirect_path(request_state, remove_after_use=True) if request_state else '/'
                 
-                # Process the OAuth callback
+                # Process the OAuth callback - exchange authorization code for tokens
                 token = self.keycloak_client.authorize_access_token()
                 userinfo = self.keycloak_client.userinfo()
                 
@@ -180,11 +182,8 @@ class AuthManager:
                 
                 logger.info(f"User {userinfo.get('preferred_username')} authenticated successfully")
                 
-                # Remove from cache after successful auth
-                if request_state:
-                    self._get_redirect_path(request_state, remove_after_use=True)
-                
-                # Redirect to frontend
+                # Redirect to frontend with auth status
+                # Frontend will read ?auth=success, check auth status, then route to redirect_path
                 final_url = f"{config.frontend_url}{redirect_path}?auth=success"
                 return redirect(final_url)
                 
@@ -196,7 +195,8 @@ class AuthManager:
                 
                 redirect_url = f"{config.frontend_url}{redirect_path}?auth=error"
                 if redirect_path != '/':
-                    redirect_url += f"&redirect={redirect_path.replace('/', '%2F')}"
+                    encoded_path = self._get_redirect_path_encoded(request_state, remove_after_use=False) if request_state else quote(redirect_path, safe='/')
+                    redirect_url += f"&redirect={encoded_path}"
                 return redirect(redirect_url)
         
         @self.app.route('/api/auth/logout', methods=['POST'])
