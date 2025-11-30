@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import axios from '@/http/axiosAgentConfig';
 import { useAuth } from './AuthContext';
+import { catalogService } from '@/api/catalog';
 
 interface ResourceMapping {
   rid: string;
@@ -43,15 +44,8 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
       setIsLoading(true);
       setError(null);
 
-      // Fetch categories from backend
-      let categories: string[] = [];
-      try {
-        const catalogResponse = await axios.get<{elements: { [category: string]: any[] };}>("/catalog/elements.list.get");
-        categories = Object.keys(catalogResponse.data.elements).map(cat => cat.toLowerCase());
-      } catch (err: any) {
-        console.warn("Failed to fetch categories from catalog, using fallback:", err);
-        categories = ['nodes', 'llms', 'tools', 'providers', 'retrievers', 'conditions'];
-      }      
+      // Fetch categories from backend using centralized catalog service
+      const categories = await catalogService.fetchCategories();      
 
       const nameMap = new Map<string, string>();
       const resourceMap = new Map<string, ResourceMapping>();

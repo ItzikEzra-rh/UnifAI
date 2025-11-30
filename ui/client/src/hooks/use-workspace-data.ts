@@ -9,6 +9,7 @@ import {
 } from "../types/workspace";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "./use-toast";
+import { catalogService } from "@/api/catalog";
 
 // Types for Resources API responses
 interface ResourceInstance {
@@ -55,12 +56,10 @@ export const useWorkspaceData = () => {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await axios.get<CatalogResponse>(
-        "/catalog/elements.list.get",
-      );
+      const catalogData = await catalogService.fetchAllElements();
 
       const categoryList: ElementCategory[] = Object.entries(
-        response.data.elements,
+        catalogData.elements,
       ).map(([category, elements]) => ({
         category,
         // Filter out elements with hints array containing hint_type === "hidden"

@@ -21,12 +21,11 @@ export const ElementData: React.FC<ElementDataProps> = ({
   onOpenChange,
   elementSchema
 }) => {
-  const { getResource, resolveRefsInConfig } = useAgenticAI();
+  const { getResourceName, resolveRefsInConfig } = useAgenticAI();
 
   // Resolve refs in nested_refs to show names
   const resolvedNestedRefs = element?.nested_refs?.map((ref) => {
-    const resource = getResource(ref);
-    return resource ? resource.name : ref;
+    return getResourceName(ref);
   });
 
   // Resolve refs in config for display

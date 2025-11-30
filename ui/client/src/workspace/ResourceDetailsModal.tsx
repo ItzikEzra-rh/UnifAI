@@ -20,7 +20,7 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
   element
 }) => {
   const [elementSchema, setElementSchema] = useState<ElementSchema | null>(null);
-  const { getResource, resolveRefsInConfig } = useAgenticAI();
+  const { getResourceName, resolveRefsInConfig } = useAgenticAI();
 
   // Fetch schema when modal opens and element is available
   useEffect(() => {
@@ -93,8 +93,7 @@ const ResourceDetailsModal: React.FC<ResourceDetailsModalProps> = ({
                 <label className="text-sm font-medium text-gray-400">Referenced Resources</label>
                 <div className="mt-1 space-y-1">
                   {element.workspaceData.nested_refs.map((ref, index) => {
-                    const resource = getResource(ref);
-                    const displayText = resource ? resource.name : ref;
+                    const displayText = getResourceName(ref);
                     return (
                       <Badge key={index} variant="outline" className="mr-2">
                         {displayText}
