@@ -98,4 +98,6 @@ releases:
                 --from-literal=DATAFLOW_ADDR="$DATAFLOW_ADDR" \
                 --from-literal=DATAFLOW_PORT="$DATAFLOW_PORT" \
                 --from-literal=DATAFLOW_IP="$DATAFLOW_IP" \
+                --from-literal=default_slack_bot_token="$default_slack_bot_token" \
+                --from-literal=default_slack_user_token="$default_slack_user_token" \
                 --dry-run=client -o yaml | kubectl apply -f -

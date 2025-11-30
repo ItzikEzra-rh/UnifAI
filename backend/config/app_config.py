@@ -17,8 +17,8 @@ class AppConfig(SharedConfig):
     qdrant_port: str = "6333"
 
     # Slack Configuration
-    default_slack_bot_token: str = "xoxb-2253118358-8783454711008-P7XnZRur3OGpo6YIXOELahY1"
-    default_slack_user_token: str = "xoxp-2253118358-5985274029168-9985689955216-3ed225bbc2990579845542a1921563d4"
+    default_slack_bot_token: str = ""
+    default_slack_user_token: str = ""
 
     # Flask Configuration
     # secret_key=your-super-secret-key-change-this-in-production
