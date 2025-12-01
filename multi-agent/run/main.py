@@ -140,7 +140,7 @@ def save_resources(app):
                                            config={
                                                "type": "openai",
                                                "model_name": "gemini-2.0-flash",
-                                               "api_key": "AIzaSyBwuQtKPtwKILBulq_YW16RKjMAVx4gbKQ",
+                                               "api_key": "",
                                                "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"
                                            }).rid
 
