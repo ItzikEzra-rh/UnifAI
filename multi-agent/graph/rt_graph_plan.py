@@ -82,19 +82,6 @@ class RTGraphPlan:
         from .models import AdjacentNodes
         from .topology.finalizer_analyzer import FinalizerAnalyzer
         
-        # Build and print the current step's element card for debugging
-        current_card = self._card_builder.build_card(
-            ResourceCategory.NODE,
-            step.rid,
-            uid=step.uid,
-            metadata=step.meta
-        )
-        print(f"\n{'='*60}")
-        print(f"ELEMENT CARD for: {step.uid}")
-        print(f"{'='*60}")
-        print(current_card)
-        print(f"{'='*60}\n")
-        
         adjacent_nodes_dict = {}
         
         # Find direct connections: steps that have this step in their 'after' list
