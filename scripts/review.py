@@ -5,7 +5,7 @@ import google.generativeai as genai
 from load_context import load_context
 
 def get_changed_files():
-    """Get list of changed files in the PR."""
+    """Get list of changed files in the PR (excluding review system files)."""
     base = os.getenv("GITHUB_BASE_REF", "main")
     
     # Ensure the base branch exists
@@ -18,8 +18,8 @@ def get_changed_files():
         text=True
     ).strip().split('\n')
     
-    # Filter out empty strings
-    return [f for f in changed if f]
+    # Filter out empty strings and review system files
+    return [f for f in changed if f and not f.startswith("scripts/")]
 
 def get_pr_diff(pr_number):
     base = os.getenv("GITHUB_BASE_REF", "main")
@@ -103,7 +103,7 @@ def main():
 
     # Get changed files for smart context loading
     changed_files = get_changed_files()
-    print(f"📝 Changed files ({len(changed_files)}):", file=sys.stderr)
+    print(f"\n📝 Changed files ({len(changed_files)}):", file=sys.stderr)
     for f in changed_files[:10]:  # Show first 10
         print(f"   - {f}", file=sys.stderr)
     if len(changed_files) > 10:
@@ -114,8 +114,23 @@ def main():
     model = genai.GenerativeModel("gemini-3-pro-preview")
 
     # Load context (only relevant domains)
-    context = load_context(changed_files)
-    print(f"📚 Context loaded: {len(context)} characters", file=sys.stderr)
+    context, loaded_domains = load_context(changed_files)
+    
+    # Show which domains were detected and loaded
+    print(f"\n🎯 Detected domains based on file paths:", file=sys.stderr)
+    domain_map = {
+        "UI": "ui/, client/ directories",
+        "CI/CD": "ci/ directory (Groovy pipelines)",
+        "HELM": "helm/ directory (Kubernetes charts)"
+    }
+    all_domains = ["UI", "CI/CD", "HELM"]
+    for domain in all_domains:
+        if domain in loaded_domains:
+            print(f"   ✓ {domain:8} → {domain_map[domain]}", file=sys.stderr)
+        else:
+            print(f"   ✗ {domain:8} → excluded (no changes)", file=sys.stderr)
+    
+    print(f"\n📚 Context loaded: {len(context)} characters ({len(loaded_domains)}/{len(all_domains)} domains)", file=sys.stderr)
 
     # Load PR diff
     diff = get_pr_diff(pr_number)

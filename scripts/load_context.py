@@ -31,6 +31,10 @@ def load_context(changed_files=None):
     else:
         domains_to_load = set()
         for file_path in changed_files:
+            # Skip review system files (don't review the reviewer!)
+            if file_path.startswith("scripts/"):
+                continue
+                
             for domain, config in domains.items():
                 if any(file_path.startswith(path) for path in config["paths"]):
                     domains_to_load.add(domain)
@@ -50,4 +54,4 @@ def load_context(changed_files=None):
                     content.append(f"\n--- FILE: {file_path} ---\n")
                     content.append(f.read())
     
-    return "\n".join(content)
+    return "\n".join(content), domains_to_load
