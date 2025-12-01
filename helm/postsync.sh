@@ -4,6 +4,8 @@ set -x  # Print each command
 set +e  # Disable immediate exit on error
 echo "Starting postsync hook..."
 
+# Should use: kubectl create --dry-run=client -o yaml | kubectl apply -f -
+
 wait_for_port() {
   local svc=$1
   local ip=""

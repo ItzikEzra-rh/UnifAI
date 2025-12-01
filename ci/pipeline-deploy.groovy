@@ -17,7 +17,8 @@ properties([
     ])
 ])
 
-def buildParams = [
+// ❌ BAD: Using snake_case instead of camelCase
+def build_params = [
     LogLevel           : "ALL",
     MainRepoURL        : "github.com",
     MainRepoProject    : "redhat-community-ai-tools/UnifAI",
@@ -34,6 +35,15 @@ def buildParams = [
     ImageRegistryPath  : "unifai",
     ImageRegistryCreds : "images.paas.registry-unifai",
 ]
+
+// ❌ BAD: New function without error handling and exposes credentials
+def deploy_to_cluster(registry_user, registry_pass) {
+    // ❌ SECURITY ISSUE: Exposing credentials in echo
+    echo "Deploying with user: ${registry_user} and password: ${registry_pass}"
+    
+    // ❌ BAD: No error handling
+    sh "helmfile apply"
+}
 
 def updateChartVersions(rootPath, version) {
 
