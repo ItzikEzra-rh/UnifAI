@@ -1,10 +1,4 @@
-import { ProjectProvider } from '@/contexts/ProjectContext';
-import { ThemeProvider } from '@/contexts/ThemeContext';
-import { NotificationProvider } from '@/contexts/NotificationContext';
-import { SharedProvider } from '@/contexts/SharedContext';
-import { AuthProvider } from '@/contexts/AuthContext';
 import { Route, Switch } from "wouter";
-import { useEffect } from "react";  
 import Dashboard from "@/pages/Dashboard";
 import Configuration from "@/pages/Configuration";
 import JiraIntegration from "@/pages/JiraIntegration";
@@ -12,16 +6,22 @@ import AgenticAI from "@/pages/AgenticAI";
 import AgentRepository from "@/pages/AgentRepository";
 import AgenticChats from "@/pages/AgenticChats";
 import NotFound from "@/pages/not-found";
+import { useEffect } from "react";
+import { ProjectProvider } from '@/contexts/ProjectContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { NotificationProvider } from '@/contexts/NotificationContext';
+import { SharedProvider } from '@/contexts/SharedContext';
 import DocumentsPage from "./features/docs/DocumentsPage";
+import { AuthProvider } from '@/contexts/AuthContext';
 import ProtectedRoute from '@/components/auth/ProtectedRoute';
 import SlackIntegration from "./features/slack/SlackIntegration";
 import SlackAddSourcePage from "./features/slack/SlackAddSourcePage";
 import GuidesPage from "./components/guides/GuidesPage";
 
-function App(): any {
+function App() {
+  // Set document title
   useEffect(() => {
     document.title = "UnifAI";
-    fetch('/api/config').then(r => r.json());
   }, []);
 
   return (
