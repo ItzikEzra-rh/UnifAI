@@ -22,6 +22,7 @@ def get_changed_files():
     return [f for f in changed if f and not f.startswith("scripts/")]
 
 def get_pr_diff(pr_number):
+    """Get PR diff, excluding review system files (scripts/)."""
     base = os.getenv("GITHUB_BASE_REF", "main")
 
     # Ensure the base branch exists
@@ -32,7 +33,26 @@ def get_pr_diff(pr_number):
         ["git", "diff", f"{base}...HEAD"],
         text=True
     )
-    return diff
+    
+    # Filter out diff sections for scripts/ files (don't review the reviewer!)
+    lines = diff.splitlines()
+    filtered_lines = []
+    skip_section = False
+    
+    for line in lines:
+        # Detect start of new file section in diff
+        if line.startswith("diff --git"):
+            # Check if this diff is for a scripts/ file
+            if " b/scripts/" in line:
+                skip_section = True
+            else:
+                skip_section = False
+        
+        # Only include lines that aren't part of a scripts/ file diff
+        if not skip_section:
+            filtered_lines.append(line)
+    
+    return "\n".join(filtered_lines)
 
 
 def build_prompt(context, diff):
