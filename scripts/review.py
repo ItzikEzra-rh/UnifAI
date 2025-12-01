@@ -103,9 +103,23 @@ def main():
 
     # Get changed files for smart context loading
     changed_files = get_changed_files()
+    
+    # Map files to domains for display
+    def get_file_domain(file_path):
+        """Determine which domain a file belongs to."""
+        if file_path.startswith("ui/") or file_path.startswith("client/"):
+            return "UI"
+        elif file_path.startswith("ci/"):
+            return "CI/CD"
+        elif file_path.startswith("helm/"):
+            return "HELM"
+        else:
+            return "OTHER"
+    
     print(f"\n📝 Changed files ({len(changed_files)}):", file=sys.stderr)
     for f in changed_files[:10]:  # Show first 10
-        print(f"   - {f}", file=sys.stderr)
+        domain = get_file_domain(f)
+        print(f"   [{domain:6}] {f}", file=sys.stderr)
     if len(changed_files) > 10:
         print(f"   ... and {len(changed_files) - 10} more", file=sys.stderr)
 
@@ -116,21 +130,26 @@ def main():
     # Load context (only relevant domains)
     context, loaded_domains = load_context(changed_files)
     
+    # Convert characters to tokens (rule of thumb: 1 token ≈ 4 chars)
+    context_tokens = len(context) // 4
+    
     # Show which domains were detected and loaded
-    print(f"\n🎯 Detected domains based on file paths:", file=sys.stderr)
+    print(f"\n🎯 Loaded domains ({len(loaded_domains)}):", file=sys.stderr)
     domain_map = {
         "UI": "ui/, client/ directories",
         "CI/CD": "ci/ directory (Groovy pipelines)",
         "HELM": "helm/ directory (Kubernetes charts)"
     }
     all_domains = ["UI", "CI/CD", "HELM"]
-    for domain in all_domains:
-        if domain in loaded_domains:
-            print(f"   ✓ {domain:8} → {domain_map[domain]}", file=sys.stderr)
-        else:
-            print(f"   ✗ {domain:8} → excluded (no changes)", file=sys.stderr)
+    for domain in sorted(loaded_domains):
+        print(f"   ✓ {domain:8} → {domain_map[domain]}", file=sys.stderr)
     
-    print(f"\n📚 Context loaded: {len(context)} characters ({len(loaded_domains)}/{len(all_domains)} domains)", file=sys.stderr)
+    # Calculate full context for comparison
+    full_context_chars = 144000  # Approximate full context size
+    full_context_tokens = full_context_chars // 4
+    savings_pct = int(100 * (1 - len(context) / full_context_chars))
+    
+    print(f"\n📚 Context loaded: ~{context_tokens:,} tokens", file=sys.stderr)
 
     # Load PR diff
     diff = get_pr_diff(pr_number)
