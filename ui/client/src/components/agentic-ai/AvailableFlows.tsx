@@ -1,17 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import {
-  Activity,
-  Database,
-  FileText,
-  Zap,
-  Filter,
-  GitBranch,
-  MessageSquare,
-  BookOpen,
-  Trash2,
-  Users,
-} from "lucide-react";
+import { Trash2, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useShared } from "@/contexts/SharedContext";
 import { Button } from "@/components/ui/button";
@@ -28,43 +17,7 @@ import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
 import axios from "../../http/axiosAgentConfig";
 import ShareWorkflow from "./ShareWorkflow";
-
-// Helper function to convert GraphFlow to FlowObject
-const convertGraphFlowToFlowObject = (
-  graphFlow: GraphFlow,
-  index: number,
-  blueprintId?: string,
-): FlowObject | null => {
-  if (!graphFlow) return null;
-
-  // Extract metadata
-  const name = graphFlow.name || `Flow ${index + 1}`;
-  const description = graphFlow.description || "No description available";
-
-  // Generate a random icon for the flow
-  const iconOptions: React.FC<{ className?: string }>[] = [
-    Activity,
-    Database,
-    FileText,
-    Zap,
-    Filter,
-    GitBranch,
-    MessageSquare,
-    BookOpen,
-  ];
-  const IconComponent = iconOptions[index % iconOptions.length];
-
-  return {
-    id: blueprintId || index.toString(), // Use blueprintId if available
-    name,
-    description,
-    icon: <IconComponent className="h-4 w-4 mr-2" />,
-    flow: {
-      nodes: [],
-      edges: [],
-    },
-  };
-};
+import { convertGraphFlowToFlowObject } from "@/utils/blueprintHelpers";
 
 export interface AvailableFlowsProps {
   selectedFlow: FlowObject | null;

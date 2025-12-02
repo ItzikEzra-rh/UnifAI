@@ -32,10 +32,12 @@ import {
   DialogTitle,
   CustomDialogContent,
 } from "@/components/ui/dialog";
-import { GraphFlow, FlowObject } from "./graphs/interfaces";
+import { FlowObject } from "./graphs/interfaces";
 
 import { ChatSession, BackendChatMessage, ChatSessionData, SessionStateData } from "@/types/session";
-import { formatRelativeTimestamp } from "@/utils";
+import {transformSessionData, sortSessionsByTimestamp} from "@/utils/sessionHelpers";
+import { checkSessionSharingStatus } from "@/hooks/use-sharing-status";
+import { useSessionManagement } from "@/hooks/use-session-management";
 
 
 export type SessionPayload = {
@@ -89,7 +91,6 @@ export default function ExecutionTab({
   const [showAddFlowModal, setShowAddFlowModal] = useState(false);
   const [selectedFlowForModal, setSelectedFlowForModal] = useState<FlowObject | null>(null);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
-  const [isLoadingFlowsForModal, setIsLoadingFlowsForModal] = useState(false);
   const [sharedLinkBlueprintName, setSharedLinkBlueprintName] = useState<string>("");
   const [isLoadingBlueprintName, setIsLoadingBlueprintName] = useState<boolean>(false);
   const [isSharingDisabled, setIsSharingDisabled] = useState<boolean>(false);
@@ -200,80 +201,35 @@ export default function ExecutionTab({
     };
   }, [isResizing, handleMouseMove, handleMouseUp]);
 
-  // Utility functions
-  const generateRandomId = (): string => {
-    return `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-  };
-
-  const generateRandomTitle = (index: number): string => {
-    return `Chat ${index + 1}`;
-  };
-
+  const { currentMessages, loadSessionMessages, clearMessages, setCurrentMessages } =
+    useSessionManagement();
 
   const handleGlobalScopeToggle = () => {
     setGlobalScope(prevScope => prevScope === 'public' ? 'private' : 'public');
   };
 
-  const getPreviewText = (messages: BackendChatMessage[]): string => {
-    const userMessage = messages.find(msg => msg.role === 'user');
-    if (userMessage && userMessage.content) {
-      return userMessage.content.length > 50
-        ? `${userMessage.content.substring(0, 50)}...`
-        : userMessage.content;
-    }
-    return 'No message content available';
-  };
-
   const transformApiDataToSessions = async (apiData: ChatSessionData[]): Promise<ChatSession[]> => {
     // Transform sessions and fetch fresh public_usage_scope status for shared link sessions
-    const sessions = await Promise.all(apiData.map(async (sessionData, index) => {
-      const title = sessionData.metadata?.title || generateRandomTitle(index);
-      const id = sessionData.session_id || generateRandomId();
-      const blueprintId = sessionData.blueprint_id;
-      const blueprintExists = sessionData.blueprint_exists;
-      const fromSharedLink = sessionData.metadata?.source === "public_link";
-      const timestamp = new Date(sessionData.started_at);
-      const lastActive = formatRelativeTimestamp(sessionData.started_at);
-      const preview = fromSharedLink ? 'From chat experience' : 'Click to load messages...';
-      
-      // Fetch fresh public_usage_scope status for shared link sessions to ensure accuracy
-      let isSharingDisabled = false;
-      if (fromSharedLink && blueprintExists && blueprintId) {
-        try {
-          const statusResponse = await axios.get(`/blueprints/public_usage_scope?blueprintId=${blueprintId}`);
-          isSharingDisabled = statusResponse.data.public_usage_scope !== true;
-        } catch (error) {
-          // If status check fails, use the value from API response as fallback
-          isSharingDisabled = !(sessionData.public_usage_scope ?? false);
-        }
-      }
-      
-      return {
-        id,
-        blueprintId,
-        title: fromSharedLink ? `${title} (Shared Link)` : title,
-        lastActive,
-        timestamp,
-        preview,
-        messages: [], // Messages will be loaded separately when session is selected
-        blueprintExists,
-        fromSharedLink,
-        isSharingDisabled,
-      };
-    }));
-    
-    return sessions;
-  };
+    const sessions = await Promise.all(
+      apiData.map(async (sessionData, index) => {
+        const baseSession = transformSessionData(sessionData, index);
 
-  // Fetch session state (messages) for a specific session
-  const fetchSessionState = async (sessionId: string): Promise<SessionStateData | null> => {
-    try {
-      const response = await axios.get(`/sessions/session.state.get?sessionId=${sessionId}`);
-      return response.data;
-    } catch (err) {
-      console.error('Error fetching session state:', err);
-      return null;
-    }
+        // Fetch fresh public_usage_scope status for shared link sessions to ensure accuracy
+        const isSharingDisabled = await checkSessionSharingStatus(
+          baseSession.blueprintId,
+          baseSession.fromSharedLink ?? false,
+          baseSession.blueprintExists,
+          sessionData.public_usage_scope
+        );
+
+        return {
+          ...baseSession,
+          isSharingDisabled,
+        };
+      })
+    );
+
+    return sessions;
   };
 
   // Fetch chat sessions from API
@@ -286,8 +242,8 @@ export default function ExecutionTab({
       const response = await axios.get(`/sessions/session.user.chat.get?userId=${userId}`);
       const transformedSessions = await transformApiDataToSessions(response.data);
 
-      // sort chat sessions based on the latest date
-      const sortedSessions = transformedSessions.sort((firstSession, secondSession) => secondSession.timestamp.getTime() - firstSession.timestamp.getTime());
+      // Sort chat sessions based on the latest date
+      const sortedSessions = sortSessionsByTimestamp(transformedSessions);
       setChatSessions(sortedSessions);
 
       // Auto-select the first session if available - use handleSessionSelect to trigger status checks
@@ -370,28 +326,18 @@ export default function ExecutionTab({
       }
     }
     
-    // If messages are already loaded for this session, use them
-    if (session.messages && session.messages.length > 0) {
-      setCurrentSessionMessages(session.messages);
+    // Load session messages using the shared hook
+    const updatedSession = await loadSessionMessages(session);
+    if (updatedSession) {
+      setSelectedSession(updatedSession);
+      setCurrentSessionMessages(updatedSession.messages);
+
+      // Update the session in the list as well
+      setChatSessions(prevSessions =>
+        prevSessions.map(s => (s.id === session.id ? updatedSession : s))
+      );
     } else {
-      // Otherwise, fetch the session state
-      const stateData = await fetchSessionState(session.id);
-      if (stateData && stateData.messages) {
-        setCurrentSessionMessages(stateData.messages);
-        
-        // Update the session with loaded messages and preview
-        const updatedSession = {
-          ...session,
-          messages: stateData.messages,
-          preview: getPreviewText(stateData.messages)
-        };
-        setSelectedSession(updatedSession);
-        
-        // Update the session in the list as well
-        setChatSessions(prevSessions => 
-          prevSessions.map(s => s.id === session.id ? updatedSession : s)
-        );
-      }
+      setCurrentSessionMessages([]);
     }
   };
 

@@ -2,8 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import axios from '@/http/axiosAgentConfig';
-import { ChatSession, BackendChatMessage, ChatSessionData, SessionStateData } from '@/types/session';
-import { formatRelativeTimestamp } from '@/utils';
+import { ChatSession, BackendChatMessage, ChatSessionData } from '@/types/session';
+import { checkSessionSharingStatus } from '@/hooks/use-sharing-status';
+import {transformSessionData, sortSessionsByTimestamp,} from '@/utils/sessionHelpers';
+import { useSessionManagement } from '@/hooks/use-session-management';
 import { getPublicUsageScope } from '@/api/blueprints';
 
 interface UsePublicChatReturn {
@@ -24,19 +26,6 @@ interface UsePublicChatReturn {
   chatToDelete: ChatSession | null;
 }
 
-// Helper function to generate random title
-const generateRandomTitle = (index: number): string => {
-  const titles = ['Chat Session', 'Conversation', 'Discussion', 'Chat'];
-  return `${titles[index % titles.length]} ${index + 1}`;
-};
-
-// Helper function to get preview text from messages
-const getPreviewText = (messages: BackendChatMessage[]): string => {
-  if (!messages || messages.length === 0) return 'No messages yet';
-  const lastMessage = messages[messages.length - 1];
-  return lastMessage.content.substring(0, 50) + (lastMessage.content.length > 50 ? '...' : '');
-};
-
 export const usePublicChat = (blueprintId: string | null): UsePublicChatReturn => {
   const { user, isAuthenticated } = useAuth();
   const { toast } = useToast();
@@ -51,44 +40,27 @@ export const usePublicChat = (blueprintId: string | null): UsePublicChatReturn =
   const [chatHistory, setChatHistory] = useState<BackendChatMessage[]>([]);
   const [runId, setRunId] = useState<string | null>(null);
 
+  const { currentMessages, loadSessionMessages, clearMessages, setCurrentMessages } =
+    useSessionManagement();
+
   // Transform API data to ChatSession format
   const transformApiDataToSessions = useCallback(
     async (apiData: ChatSessionData[]): Promise<ChatSession[]> => {
       // Transform sessions and fetch fresh public_usage_scope status for shared link sessions
       const transformedSessions = await Promise.all(
         apiData.map(async (sessionData, index) => {
-          const title = sessionData.metadata?.title || generateRandomTitle(index);
-          const id = sessionData.session_id;
-          const sessionBlueprintId = sessionData.blueprint_id;
-          const blueprintExists = sessionData.blueprint_exists;
-          const fromSharedLink = sessionData.metadata?.source === 'public_link';
+          const baseSession = transformSessionData(sessionData, index);
 
           // Fetch fresh public_usage_scope status for shared link sessions to ensure accuracy
-          let isSharingDisabled = false;
-          if (fromSharedLink && blueprintExists && sessionBlueprintId) {
-            try {
-              const statusResponse = await getPublicUsageScope(sessionBlueprintId);
-              isSharingDisabled = statusResponse.public_usage_scope !== true;
-            } catch (error) {
-              // If status check fails, use the value from API response as fallback
-              isSharingDisabled = !(sessionData.public_usage_scope ?? false);
-            }
-          }
-
-          const timestamp = new Date(sessionData.started_at);
-          const lastActive = formatRelativeTimestamp(sessionData.started_at);
-          const preview = 'Click to load messages...';
+          const isSharingDisabled = await checkSessionSharingStatus(
+            baseSession.blueprintId,
+            baseSession.fromSharedLink ?? false,
+            baseSession.blueprintExists,
+            sessionData.public_usage_scope
+          );
 
           return {
-            id,
-            blueprintId: sessionBlueprintId,
-            title: fromSharedLink ? `${title} (Shared Link)` : title,
-            lastActive,
-            timestamp,
-            preview,
-            messages: [], // Messages will be loaded separately when session is selected
-            blueprintExists,
-            fromSharedLink,
+            ...baseSession,
             isSharingDisabled,
           };
         })
@@ -98,17 +70,6 @@ export const usePublicChat = (blueprintId: string | null): UsePublicChatReturn =
     },
     []
   );
-
-  // Fetch session state (messages) for a specific session
-  const fetchSessionState = useCallback(async (sessionId: string): Promise<SessionStateData | null> => {
-    try {
-      const response = await axios.get(`/sessions/session.state.get?sessionId=${sessionId}`);
-      return response.data;
-    } catch (err) {
-      console.error('Error fetching session state:', err);
-      return null;
-    }
-  }, []);
 
   // Load chat sessions for this user and blueprint
   const fetchChatSessions = useCallback(async () => {
@@ -130,12 +91,12 @@ export const usePublicChat = (blueprintId: string | null): UsePublicChatReturn =
       const transformedSessions = await transformApiDataToSessions(blueprintSessions);
 
       // Sort by timestamp (most recent first)
-      transformedSessions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      const sortedSessions = sortSessionsByTimestamp(transformedSessions);
 
-      setSessions(transformedSessions);
+      setSessions(sortedSessions);
 
       // If no sessions exist, automatically create a new chat
-      if (transformedSessions.length === 0 && !selectedSession && !runId) {
+      if (sortedSessions.length === 0 && !selectedSession && !runId) {
         // Auto-create a new chat session - do this synchronously without loading states
         try {
           const createResponse = await axios.post('/sessions/user.session.create', {
@@ -180,12 +141,12 @@ export const usePublicChat = (blueprintId: string | null): UsePublicChatReturn =
                 (session) => session.blueprint_id === blueprintId && session.blueprint_exists
               );
               const refreshTransformedSessions = await transformApiDataToSessions(refreshBlueprintSessions);
-              refreshTransformedSessions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+              const refreshSortedSessions = sortSessionsByTimestamp(refreshTransformedSessions);
 
-              setSessions(refreshTransformedSessions);
+              setSessions(refreshSortedSessions);
 
               // Find the new session in the updated list and select it
-              const newSession = refreshTransformedSessions.find((s) => s.id === newSessionId);
+              const newSession = refreshSortedSessions.find((s) => s.id === newSessionId);
               if (newSession) {
                 setSelectedSession(newSession);
               }
@@ -198,9 +159,9 @@ export const usePublicChat = (blueprintId: string | null): UsePublicChatReturn =
           console.error('Error auto-creating new chat:', createError);
           // Don't show toast for auto-creation errors, just log
         }
-      } else if (transformedSessions.length > 0 && !selectedSession) {
+      } else if (sortedSessions.length > 0 && !selectedSession) {
         // Auto-select the first session if available and no session is selected
-        const firstSession = transformedSessions[0];
+        const firstSession = sortedSessions[0];
         await handleSessionSelect(firstSession);
       }
     } catch (error: any) {
@@ -220,33 +181,22 @@ export const usePublicChat = (blueprintId: string | null): UsePublicChatReturn =
     async (session: ChatSession) => {
       setSelectedSession(session);
 
-      // If messages are already loaded for this session, use them
-      if (session.messages && session.messages.length > 0) {
-        // Pass raw backend messages to ChatInterface - it will handle the transformation
-        setChatHistory(session.messages);
+      const updatedSession = await loadSessionMessages(session);
+      if (updatedSession) {
+        setSelectedSession(updatedSession);
+        setChatHistory(updatedSession.messages);
         setRunId(session.id);
+
+        // Update the session in the list
+        setSessions((prevSessions) =>
+          prevSessions.map((s) => (s.id === session.id ? updatedSession : s))
+        );
       } else {
-        // Otherwise, fetch the session state
-        const stateData = await fetchSessionState(session.id);
-        if (stateData && stateData.messages) {
-          // Update the session with loaded messages
-          const updatedSession = {
-            ...session,
-            messages: stateData.messages,
-            preview: getPreviewText(stateData.messages),
-          };
-          setSelectedSession(updatedSession);
-
-          // Update the session in the list
-          setSessions((prevSessions) => prevSessions.map((s) => (s.id === session.id ? updatedSession : s)));
-
-          // Pass raw backend messages to ChatInterface - it will handle the transformation
-          setChatHistory(stateData.messages);
-          setRunId(session.id);
-        }
+        setChatHistory([]);
+        setRunId(session.id);
       }
     },
-    [fetchSessionState]
+    [loadSessionMessages]
   );
 
   // Handle delete chat
@@ -336,13 +286,13 @@ export const usePublicChat = (blueprintId: string | null): UsePublicChatReturn =
         (session) => session.blueprint_id === blueprintId && session.blueprint_exists
       );
       const transformedSessions = await transformApiDataToSessions(blueprintSessions);
-      transformedSessions.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      const sortedSessions = sortSessionsByTimestamp(transformedSessions);
 
       // Update sessions list, but keep the selected session if it matches
-      setSessions(transformedSessions);
+      setSessions(sortedSessions);
 
       // Find the new session in the updated list and select it
-      const newSession = transformedSessions.find((s) => s.id === newSessionId);
+      const newSession = sortedSessions.find((s) => s.id === newSessionId);
       if (newSession) {
         setSelectedSession(newSession);
       }

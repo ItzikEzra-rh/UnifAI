@@ -6,6 +6,7 @@ import { Copy, Check, Share2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
 import { getPublicUsageScope, updatePublicScope } from "@/api/blueprints";
+import { constructShareLink } from "@/utils/blueprintHelpers";
 
 interface ShareWorkflowProps {
   blueprintId: string;
@@ -22,11 +23,6 @@ export default function ShareWorkflow({
   const [copied, setCopied] = useState(false);
   const { toast } = useToast();
   const { user } = useAuth();
-
-  // Construct share link client-side
-  const constructShareLink = (blueprintId: string): string => {
-    return `${window.location.origin}/chat/${blueprintId}`;
-  };
 
   // Fetch current public_usage_scope status
   useEffect(() => {
