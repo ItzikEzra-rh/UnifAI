@@ -111,11 +111,20 @@ def embed_docs(docs):
     "query": fields.Str(required=True),
     "top_k_results": fields.Int(required=False),
     "scope": fields.Str(required=False, load_default="public"),
-    "logged_in_user": fields.Str(required=False, load_default="default", data_key="loggedInUser")
+    "logged_in_user": fields.Str(required=False, load_default="default", data_key="loggedInUser"),
+    "doc_ids": fields.List(fields.Str(), required=False, load_default=None, data_key="docIds"),
+    "tags": fields.List(fields.Str(), required=False, load_default=None),
 })
-def best_match_results(query, top_k_results, scope, logged_in_user):    
+def best_match_results(query, top_k_results, scope, logged_in_user, doc_ids, tags):    
     try:
-        search_results = get_best_match_results(query, top_k_results, scope, logged_in_user)
+        search_results = get_best_match_results(
+            query=query,
+            top_k_results=top_k_results,
+            scope=scope,
+            logged_in_user=logged_in_user,
+            doc_ids=doc_ids,
+            tags=tags
+        )
         return jsonify({"search_results": search_results}), 200
     except Exception as e:
         logger.error(f"Failed to find best match for user query: {str(e)}")
