@@ -34,9 +34,11 @@ api.interceptors.response.use(
       const isAuthEndpoint = error.config?.url?.includes('/auth');
       
       if (!isAuthEndpoint) {
-        const currentPath = window.location.pathname;
-        const redirectParam = currentPath && currentPath !== '/' ? `?redirect=${encodeURIComponent(currentPath)}` : '';
-        window.location.href = `${api.defaults.baseURL}/auth/login${redirectParam}`;
+        // Capture the original URL to restore after authentication
+        const originalUrl = window.location.pathname + window.location.search;
+        const stateData = { originalUrl: originalUrl || '/' };
+        const encodedState = btoa(JSON.stringify(stateData));
+        window.location.href = `${api.defaults.baseURL}/auth/login?state=${encodeURIComponent(encodedState)}`;
         return Promise.reject(new Error("Authentication required"));
       }
     }

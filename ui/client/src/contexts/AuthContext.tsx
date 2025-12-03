@@ -51,10 +51,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   // Initiate login by redirecting to backend auth endpoint
   const login = () => {
-    // Preserve the current pathname so we can redirect back after authentication
-    const currentPath = window.location.pathname;
-    const redirectParam = currentPath && currentPath !== '/' ? `?redirect=${encodeURIComponent(currentPath)}` : '';
-    window.location.href = `${api.defaults.baseURL}/auth/login${redirectParam}`;
+    // Capture the original URL (pathname + search params) to restore after authentication
+    const originalUrl = window.location.pathname + window.location.search;
+    
+    // Encode the original URL in the OAuth state parameter (base64 encoded JSON)
+    const stateData = { originalUrl: originalUrl || '/' };
+    const encodedState = btoa(JSON.stringify(stateData));
+    
+    // Pass state to backend, which will forward it to Keycloak
+    window.location.href = `${api.defaults.baseURL}/auth/login?state=${encodeURIComponent(encodedState)}`;
   };
 
   // Logout user
@@ -75,22 +80,46 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const authStatus = urlParams.get('auth');
-    const redirectParam = urlParams.get('redirect');
+    const stateParam = urlParams.get('state');
     
     if (authStatus === 'success') {
+      // Extract original URL from state parameter
+      let originalUrl = '/';
+      if (stateParam) {
+        try {
+          const decodedState = JSON.parse(atob(decodeURIComponent(stateParam)));
+          originalUrl = decodedState.originalUrl || '/';
+        } catch (error) {
+          console.error('Failed to decode state parameter:', error);
+        }
+      }
+      
       // Remove auth params from URL
       window.history.replaceState({}, document.title, window.location.pathname);
+      
       // Check auth status after successful login
-      checkAuthStatus();
+      checkAuthStatus().then(() => {
+        // Restore the original URL after authentication is confirmed
+        if (originalUrl && originalUrl !== '/') {
+          window.location.replace(originalUrl);
+        }
+      });
     } else if (authStatus === 'error') {
-      // If there's a redirect parameter, preserve it and retry login
-      if (redirectParam) {
-        const decodedRedirect = decodeURIComponent(redirectParam);
-        console.log('Authentication failed, retrying with preserved redirect:', decodedRedirect);
-        // Retry login with the preserved redirect path
-        const redirectQuery = `?redirect=${encodeURIComponent(decodedRedirect)}`;
-        window.location.href = `${api.defaults.baseURL}/auth/login${redirectQuery}`;
-        return; // Don't set loading to false yet, we're redirecting
+      // On error, try to preserve the original URL from state and retry login
+      if (stateParam) {
+        try {
+          const decodedState = JSON.parse(atob(decodeURIComponent(stateParam)));
+          const originalUrl = decodedState.originalUrl || '/';
+          console.log('Authentication failed, retrying with preserved URL:', originalUrl);
+          
+          // Re-encode state and retry login
+          const stateData = { originalUrl };
+          const encodedState = btoa(JSON.stringify(stateData));
+          window.location.href = `${api.defaults.baseURL}/auth/login?state=${encodeURIComponent(encodedState)}`;
+          return; // Don't set loading to false yet, we're redirecting
+        } catch (error) {
+          console.error('Failed to decode state parameter on error:', error);
+        }
       }
       // Remove auth params from URL
       window.history.replaceState({}, document.title, window.location.pathname);
