@@ -28,7 +28,7 @@ class SessionService:
         return self._manager.create_session(
             user_id=user_id,
             blueprint_id=blueprint_id,
-            metadata=SessionMeta.from_dict(metadata) if isinstance(metadata, dict) else (metadata or SessionMeta())
+            metadata=SessionMeta.model_validate(metadata or {})
         )
 
     def run(self, session: WorkflowSession, inputs: Dict[str, Any], scope: str = "public", logged_in_user="") -> Any:

@@ -22,3 +22,23 @@ class SessionMeta:
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SessionMeta":
         return cls(**data)
+    
+    @classmethod
+    def model_validate(cls, data: Dict[str, Any] | "SessionMeta" | None) -> "SessionMeta":
+        """
+        Validate and create SessionMeta from dict or return existing instance.
+        Mimics Pydantic's model_validate for compatibility with requirements.
+        
+        Args:
+            data: Dict to validate, existing SessionMeta instance, or None
+            
+        Returns:
+            SessionMeta instance
+        """
+        if data is None:
+            return cls()
+        if isinstance(data, cls):
+            return data
+        if isinstance(data, dict):
+            return cls(**data)
+        raise ValueError(f"Cannot validate {type(data)} as SessionMeta")
