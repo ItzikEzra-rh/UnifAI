@@ -107,47 +107,33 @@ class MongoResourceRepository(ResourceRepository):
 
     def aggregate_by_category(self, user_id: str) -> List[dict]:
         """
-        Aggregate resources by category and type using MongoDB aggregation.
-        Returns a list of dictionaries with category, count, and types breakdown.
+        Aggregate resources by category and type.
         """
-        pipeline = [
-            {"$match": {"user_id": user_id}},
-            {
-                "$group": {
-                    "_id": {"category": "$category", "type": "$type"},
-                    "count": {"$sum": 1}
-                }
-            },
-            {
-                "$group": {
-                    "_id": "$_id.category",
-                    "count": {"$sum": "$count"},
-                    "types": {
-                        "$push": {
-                            "type": "$_id.type",
-                            "count": "$count"
-                        }
-                    }
-                }
-            },
-            {
-                "$project": {
-                    "_id": 0,
-                    "category": "$_id",
-                    "count": 1,
-                    "types": {
-                        "$arrayToObject": {
-                            "$map": {
-                                "input": "$types",
-                                "as": "t",
-                                "in": {
-                                    "k": "$$t.type",
-                                    "v": "$$t.count"
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+        # Get only category and type fields (minimal data transfer)
+        cursor = self.col.find(
+            {"user_id": user_id},
+            {"category": 1, "type": 1, "_id": 0}
+        )
+        
+        # Group by category and type in Python
+        results_dict = {}
+        for doc in cursor:
+            category = doc.get("category")
+            type_name = doc.get("type")
+            
+            if not category:
+                continue
+            
+            if category not in results_dict:
+                results_dict[category] = {"count": 0, "types": {}}
+            
+            results_dict[category]["count"] += 1
+            if type_name:
+                results_dict[category]["types"][type_name] = \
+                    results_dict[category]["types"].get(type_name, 0) + 1
+        
+        # Convert to list format
+        return [
+            {"category": cat, "count": data["count"], "types": data["types"]}
+            for cat, data in results_dict.items()
         ]
-        return list(self.col.aggregate(pipeline))

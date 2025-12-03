@@ -47,10 +47,12 @@ export async function fetchActiveSessions(userId?: string): Promise<string[]> {
 }
 
 // Fetch session counts by blueprint_id
+// Note: This data is available from the aggregated stats endpoint for better performance
 export async function fetchBlueprintSessionCounts(userId?: string): Promise<Record<string, number>> {
   const userIdParam = userId || 'default';
-  const response = await axios.get(`/sessions/session.user.blueprint.counts.get?userId=${userIdParam}`);
-  return response.data || {};
+  // Use the aggregated stats endpoint instead of a separate endpoint
+  const stats = await fetchAgenticStats(userIdParam);
+  return stats.blueprintSessionCounts || {};
 }
 
 // Fetch all resources for a user

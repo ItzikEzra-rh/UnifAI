@@ -32,3 +32,8 @@ class SessionRepository(ABC):
     def count(self, user_id: str, filter: Dict[str, Any]) -> int:
         """Count sessions matching filter criteria for a user."""
         ...
+    
+    @abstractmethod
+    def get_distinct_blueprint_ids(self, user_id: str) -> List[str]:
+        """Get distinct blueprint_ids for a user."""
+        ...

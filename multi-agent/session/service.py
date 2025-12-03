@@ -122,7 +122,6 @@ class SessionService:
         """
         Get count of sessions by blueprint_id for a user.
         Returns a dictionary mapping blueprint_id to session count.
-        Uses MongoDB aggregation for optimal performance.
         """
         return self._manager.get_blueprint_session_counts(user_id)
 

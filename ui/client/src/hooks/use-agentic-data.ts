@@ -5,7 +5,6 @@ import {
   fetchBlueprints,
   fetchActiveSessions,
   fetchAllResources,
-  fetchBlueprintSessionCounts,
   fetchResourceCategories,
 } from "@/api/agentic";
 
@@ -33,13 +32,8 @@ export function useAgenticData() {
     staleTime: 0,
   });
 
-  // Fetch blueprintSessionCounts separately for components that need it independently
-  // Note: This is also included in agenticStats, but kept separate for granular access
-  const blueprintSessionCounts = useQuery({
-    queryKey: ["blueprintSessionCounts", userId],
-    queryFn: () => fetchBlueprintSessionCounts(userId),
-    staleTime: 0,
-  });
+  // blueprintSessionCounts is now always sourced from agenticStats
+  // No separate query needed - follows SOLID principles by using aggregated endpoint
 
   const resources = useQuery({
     queryKey: ["allResources", userId],
@@ -70,10 +64,10 @@ export function useAgenticData() {
       error: activeSessions.error,
     },
     blueprintSessionCounts: {
-      // Prefer aggregated stats if available, otherwise use individual query
-      data: agenticStats.data?.blueprintSessionCounts ?? blueprintSessionCounts.data ?? {},
-      isLoading: !agenticStats.data ? blueprintSessionCounts.isLoading : false,
-      error: blueprintSessionCounts.error,
+      // Always use aggregated stats - follows SOLID principles
+      data: agenticStats.data?.blueprintSessionCounts ?? {},
+      isLoading: agenticStats.isLoading,
+      error: agenticStats.error,
     },
     resources: {
       data: resources.data ?? [],
@@ -89,7 +83,6 @@ export function useAgenticData() {
       agenticStats.isLoading ||
       workflows.isLoading ||
       activeSessions.isLoading ||
-      (!agenticStats.data && blueprintSessionCounts.isLoading) ||
       resources.isLoading ||
       resourceCategories.isLoading,
   };

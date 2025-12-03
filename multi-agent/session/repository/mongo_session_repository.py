@@ -73,3 +73,14 @@ class MongoSessionRepository(SessionRepository):
         """Count sessions matching filter criteria for a user."""
         query = {"user_id": user_id, **filter}
         return self._col.count_documents(query)
+    
+    def get_distinct_blueprint_ids(self, user_id: str) -> List[str]:
+        """
+        Get distinct blueprint_ids for a user.
+        Simple MongoDB distinct query - more efficient than fetching all documents.
+        """
+        blueprint_ids = self._col.distinct(
+            "blueprint_id",
+            {"user_id": user_id, "blueprint_id": {"$exists": True, "$nin": [None, ""]}}
+        )
+        return [bid for bid in blueprint_ids if bid]
