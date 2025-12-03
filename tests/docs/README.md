@@ -172,7 +172,7 @@ This stress test suite validates the document upload and embedding pipeline's ab
 ### Install Dependencies
 
 ```bash
-cd ${CURRENT_PATH}/unifai/DataPipelineHub/tests/docs
+cd ${CURRENT_PATH}/unifai/tests/docs
 pip install -r requirements_stress_test.txt
 ```
 
@@ -550,7 +550,7 @@ def monitor_celery_tasks(start_timestamp):
 
 **Solution**:
 ```bash
-cd ${CURRENT_PATH}/unifai/DataPipelineHub/backend
+cd ${CURRENT_PATH}/unifai/backend
 python app.py
 ```
 
@@ -773,7 +773,7 @@ Planned features:
 
 ## 📄 License and Attribution
 
-Part of UnifAI DataPipelineHub project.  
+Part of UnifAI project.  
 For internal use only.
 
 **Version**: 1.0.0  

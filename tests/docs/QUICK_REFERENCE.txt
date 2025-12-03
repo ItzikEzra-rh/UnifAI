@@ -4,13 +4,13 @@
 
 ┌─ LOCATION ─────────────────────────────────────────────────────────────────┐
 │                                                                              │
-│  All test files are in: ${CURRENT_PATH}/unifai/DataPipelineHub/tests/docs │
+│  All test files are in: ${CURRENT_PATH}/unifai/tests/docs │
 │                                                                              │
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ┌─ SETUP ────────────────────────────────────────────────────────────────────┐
 │                                                                              │
-│  Navigate:   cd ${CURRENT_PATH}/unifai/DataPipelineHub/tests/docs │
+│  Navigate:   cd ${CURRENT_PATH}/unifai/tests/docs │
 │  Install:    pip install -r requirements_stress_test.txt                    │
 │  Verify:     python3 verify_setup.py                                        │
 │  Run:        ./run_stress_test.sh                                           │
@@ -121,5 +121,5 @@
 └──────────────────────────────────────────────────────────────────────────────┘
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
-║  Version: 1.0.0  |  Updated: November 2025  |  UnifAI DataPipelineHub      ║
+║  Version: 1.0.0  |  Updated: November 2025  |  UnifAI ║
 ╚══════════════════════════════════════════════════════════════════════════════╝

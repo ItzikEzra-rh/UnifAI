@@ -4,7 +4,7 @@
 
 ### 1. Install Dependencies
 ```bash
-cd ${CURRENT_PATH}/unifai/DataPipelineHub/tests/docs
+cd ${CURRENT_PATH}/unifai/tests/docs
 pip install -r requirements_stress_test.txt
 ```
 
@@ -33,13 +33,13 @@ celery -A celery_app inspect active
 
 **Option A: Using the Runner Script (Recommended)**
 ```bash
-cd ${CURRENT_PATH}/unifai/DataPipelineHub/tests/docs
+cd ${CURRENT_PATH}/unifai/tests/docs
 ./run_stress_test.sh
 ```
 
 **Option B: Direct Python Execution**
 ```bash
-cd ${CURRENT_PATH}/unifai/DataPipelineHub/tests/docs
+cd ${CURRENT_PATH}/unifai/tests/docs
 python3 stress_test_doc_upload.py
 ```
 
@@ -76,13 +76,13 @@ python3 analyze_stress_test_logs.py stress_test_*.log
 
 ### Backend Not Running
 ```bash
-cd ${CURRENT_PATH}/unifai/DataPipelineHub/backend
+cd ${CURRENT_PATH}/unifai/backend
 python app.py
 ```
 
 ### Celery Workers Not Running
 ```bash
-cd ${CURRENT_PATH}/unifai/DataPipelineHub/backend
+cd ${CURRENT_PATH}/unifai/backend
 celery -A celery_app worker --loglevel=info -Q docs_queue
 ```
 
