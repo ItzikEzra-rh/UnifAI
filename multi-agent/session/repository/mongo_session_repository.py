@@ -69,21 +69,7 @@ class MongoSessionRepository(SessionRepository):
         result = self._col.delete_one({"run_id": run_id})
         return result.deleted_count > 0
 
-    def count_by_blueprint(self, user_id: str) -> Dict[str, int]:
-        """
-        Count sessions by blueprint_id for a user using MongoDB aggregation.
-        Returns a dictionary mapping blueprint_id to session count.
-        """
-        pipeline = [
-            {
-                "$match": {
-                    "user_id": user_id,
-                    "blueprint_id": {"$exists": True, "$nin": [None, ""]}
-                }
-            },
-            {"$group": {"_id": "$blueprint_id", "count": {"$sum": 1}}},
-            {"$project": {"_id": 0, "blueprint_id": "$_id", "count": 1}}
-        ]
-        
-        results = list(self._col.aggregate(pipeline))
-        return {item["blueprint_id"]: item["count"] for item in results}
+    def count(self, user_id: str, filter: Dict[str, Any]) -> int:
+        """Count sessions matching filter criteria for a user."""
+        query = {"user_id": user_id, **filter}
+        return self._col.count_documents(query)

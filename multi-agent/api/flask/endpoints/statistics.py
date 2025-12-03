@@ -10,18 +10,18 @@ statistics_bp = Blueprint("statistics", __name__)
 @from_query({
     "user_id": fields.Str(data_key="userId", required=True),
 })
-def get_agentic_stats(user_id):
+def get_all(user_id):
     """
-    Get aggregated statistics for agentic features.
+    Get aggregated statistics for all features.
     Returns all stats in a single response for optimal performance.
     """
     try:
         container = current_app.container
         statistics_service = container.statistics_service
         
-        stats = statistics_service.get_agentic_stats(user_id)
+        stats = statistics_service.get_all(user_id)
         
-        return jsonify(stats), 200
+        return jsonify(stats.model_dump(mode="json")), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

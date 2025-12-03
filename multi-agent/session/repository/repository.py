@@ -29,6 +29,6 @@ class SessionRepository(ABC):
         ...
 
     @abstractmethod
-    def count_by_blueprint(self, user_id: str) -> Dict[str, int]:
-        """Count sessions by blueprint_id for a user using database aggregation."""
+    def count(self, user_id: str, filter: Dict[str, Any]) -> int:
+        """Count sessions matching filter criteria for a user."""
         ...
