@@ -55,6 +55,7 @@ export default function PublicChat() {
     cancelDeleteChat,
     triggerExecution,
     showDeleteModal,
+    setShowDeleteModal,
     chatToDelete,
   } = usePublicChat(blueprintId);
 

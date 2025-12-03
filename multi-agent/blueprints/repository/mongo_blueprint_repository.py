@@ -21,7 +21,7 @@ class MongoBlueprintRepository(BlueprintRepository):
         self._col.create_index([("blueprint_id", pymongo.ASCENDING)], unique=True)
         self._col.create_index("rid_refs")
 
-    def save(self, user_id, spec: BlueprintDraft, rid_refs: list[str]) -> str:
+    def save(self, user_id, spec: BlueprintDraft, rid_refs: list[str], metadata: Dict[str, Any] = None) -> str:
         new_id = str(uuid4())
         doc = {
             "blueprint_id": new_id,
@@ -29,7 +29,8 @@ class MongoBlueprintRepository(BlueprintRepository):
             "created_at": getattr(spec, "created_at", datetime.utcnow()),
             "updated_at": datetime.utcnow(),
             "spec_dict": spec.model_dump(mode="json"),
-            "rid_refs": rid_refs
+            "rid_refs": rid_refs,
+            "metadata": metadata or {}
         }
         self._col.insert_one(doc)
         return new_id
@@ -52,13 +53,13 @@ class MongoBlueprintRepository(BlueprintRepository):
 
         return res.modified_count == 1
 
-    def set_public_usage_scope(self, *, blueprint_id: str, public_usage_scope: bool) -> bool:
-        """Set the public_usage_scope (True/False) of a blueprint document."""
-        if not isinstance(public_usage_scope, bool):
-            raise ValueError(f"public_usage_scope must be a boolean, got: {type(public_usage_scope)}")
+    def set_metadata(self, *, blueprint_id: str, metadata: Dict[str, Any]) -> bool:
+        """Set the metadata dictionary for a blueprint document."""
+        if not isinstance(metadata, dict):
+            raise ValueError(f"metadata must be a dictionary, got: {type(metadata)}")
         res = self._col.update_one(
             {"blueprint_id": blueprint_id},
-            {"$set": {"public_usage_scope": public_usage_scope, "updated_at": datetime.utcnow()}}
+            {"$set": {"metadata": metadata, "updated_at": datetime.utcnow()}}
         )
         return res.modified_count == 1
 
@@ -66,6 +67,9 @@ class MongoBlueprintRepository(BlueprintRepository):
         doc = self._col.find_one({"blueprint_id": blueprint_id})
         if not doc:
             raise KeyError(f"No blueprint with id={blueprint_id}")
+        # Ensure metadata exists (for backward compatibility with old blueprints)
+        if "metadata" not in doc:
+            doc["metadata"] = {}
         return doc
 
     def delete(self, blueprint_id: str) -> bool:

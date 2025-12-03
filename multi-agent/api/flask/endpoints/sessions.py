@@ -4,7 +4,6 @@ from webargs import fields
 import json
 from pydantic.json import pydantic_encoder
 from session.exceptions import BlueprintNotFoundError
-from session.models import SessionMeta
 
 sessions_bp = Blueprint("sessions", __name__)
 
@@ -17,12 +16,10 @@ sessions_bp = Blueprint("sessions", __name__)
 })
 def create_user_session(blueprint_id, user_id, metadata):
     try:
-        session_meta = SessionMeta.from_dict(metadata)
-        
         session_svc = current_app.container.session_service
         session = session_svc.create(user_id=user_id,
                                      blueprint_id=blueprint_id,
-                                     metadata=session_meta)
+                                     metadata=metadata or {})
         return jsonify(session.get_run_id()), 200
     except BlueprintNotFoundError as e:
         return jsonify({

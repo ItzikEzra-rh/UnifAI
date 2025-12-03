@@ -11,10 +11,10 @@ class BlueprintService:
         self._resolver = resolver
 
     # ────────── Write ──────────
-    def save_draft(self, *, user_id: str, draft_dict: dict) -> str:
+    def save_draft(self, *, user_id: str, draft_dict: dict, metadata: Dict[str, Any] = None) -> str:
         draft_bp = BlueprintDraft(**draft_dict)
         rid_refs = list(RefWalker.external_rids(draft_bp))
-        return self._repo.save(user_id=user_id, spec=draft_bp, rid_refs=rid_refs)
+        return self._repo.save(user_id=user_id, spec=draft_bp, rid_refs=rid_refs, metadata=metadata)
 
     # ────────── Single-blueprint reads (ID is globally unique) ──────────
     def load_draft(self, blueprint_id: str) -> BlueprintDraft:
@@ -27,10 +27,10 @@ class BlueprintService:
 
     def get_blueprint_info(self, blueprint_id: str) -> Dict[str, Any]:
         """
-        Get blueprint information including name and owner.
+        Get blueprint information including name, owner, and metadata.
         
         :param blueprint_id: The blueprint ID
-        :return: Dictionary with blueprint_id, blueprint_name, and owner_user_id
+        :return: Dictionary with blueprint_id, blueprint_name, owner_user_id, and metadata
         :raises KeyError: If blueprint doesn't exist
         """
         draft = self.load_draft(blueprint_id)
@@ -39,7 +39,8 @@ class BlueprintService:
         return {
             "blueprint_id": blueprint_id,
             "blueprint_name": draft.name,
-            "owner_user_id": doc.get("user_id", "")
+            "owner_user_id": doc.get("user_id", ""),
+            "metadata": doc.get("metadata", {})
         }
 
     def update_draft(self, *, blueprint_id: str, draft_dict: dict) -> bool:  # NEW
@@ -131,34 +132,20 @@ class BlueprintService:
         """
         return BlueprintDraft.model_json_schema()
 
-# ────────── Blueprint Public Usage Scope ──────────
-    def set_public_usage_scope(self, blueprint_id: str, public_usage_scope: bool) -> bool:
+# ────────── Blueprint Metadata ──────────
+    def set_metadata(self, blueprint_id: str, metadata: Dict[str, Any]) -> bool:
         """
-        Set the public_usage_scope (True/False) of a blueprint.
+        Set the metadata dictionary for a blueprint.
         
         :param blueprint_id: The blueprint ID
-        :param public_usage_scope: True for public, False for private
+        :param metadata: Dictionary of metadata to set
         :return: True if the document was modified
         :raises KeyError: If blueprint doesn't exist
-        :raises ValueError: If public_usage_scope is not a boolean
+        :raises ValueError: If metadata is not a dictionary
         """
-        if not isinstance(public_usage_scope, bool):
-            raise ValueError(f"public_usage_scope must be a boolean, got: {type(public_usage_scope)}")
-        return self._repo.set_public_usage_scope(blueprint_id=blueprint_id, public_usage_scope=public_usage_scope)
-    
-    def get_public_usage_scope(self, blueprint_id: str) -> Dict[str, Any]:
-        """
-        Get the public_usage_scope of a blueprint.
-        
-        :param blueprint_id: The blueprint ID
-        :return: Dictionary with public_usage_scope and blueprint_id
-        :raises KeyError: If blueprint doesn't exist
-        """
-        doc = self._repo.load(blueprint_id)
-        return {
-            "public_usage_scope": doc.get("public_usage_scope", False),
-            "blueprint_id": blueprint_id
-        }
+        if not isinstance(metadata, dict):
+            raise ValueError(f"metadata must be a dictionary, got: {type(metadata)}")
+        return self._repo.set_metadata(blueprint_id=blueprint_id, metadata=metadata)
     
     def validate_blueprint(self, blueprint_id: str) -> Dict[str, Any]:
         """

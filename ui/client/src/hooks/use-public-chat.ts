@@ -23,6 +23,7 @@ interface UsePublicChatReturn {
   cancelDeleteChat: () => void;
   triggerExecution: (sessionPayload: any) => Promise<string>;
   showDeleteModal: boolean;
+  setShowDeleteModal: (open: boolean) => void;
   chatToDelete: ChatSession | null;
 }
 
@@ -406,6 +407,7 @@ export const usePublicChat = (blueprintId: string | null): UsePublicChatReturn =
     cancelDeleteChat,
     triggerExecution,
     showDeleteModal,
+    setShowDeleteModal,
     chatToDelete,
   };
 };

@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List
+from typing import Any, Dict, Iterator, List, Union
 from .user_session_manager import UserSessionManager
 from .session_executor import SessionExecutor
 from .workflow_session import WorkflowSession
@@ -16,15 +16,19 @@ class SessionService:
         self._manager = manager
         self._executor = executor
 
-    def create(self, user_id: str, blueprint_id: str, metadata: SessionMeta = None) -> WorkflowSession:
+    def create(
+        self,
+        user_id: str,
+        blueprint_id: str,
+        metadata: Dict[str, Any] | SessionMeta | None = None
+    ) -> WorkflowSession:
         """
         Create a new session and return its object (with run_id).
         """
-        # TODO, should metadata get from UI? maybe just tags
         return self._manager.create_session(
             user_id=user_id,
             blueprint_id=blueprint_id,
-            metadata=metadata or SessionMeta()
+            metadata=SessionMeta.from_dict(metadata) if isinstance(metadata, dict) else (metadata or SessionMeta())
         )
 
     def run(self, session: WorkflowSession, inputs: Dict[str, Any], scope: str = "public", logged_in_user="") -> Any:
@@ -113,8 +117,10 @@ class SessionService:
                 source = doc.get("metadata", {}).get("source", "")
                 if source == "public_link":
                     try:
-                        scope_info = self._manager._bp_service.get_public_usage_scope(blueprint_id)
-                        public_usage_scope = scope_info.get("public_usage_scope", False)
+                        blueprint_info = self._manager._bp_service.get_blueprint_info(blueprint_id)
+                        metadata = blueprint_info.get("metadata", {})
+                        # Check if usageScope is "public" in metadata
+                        public_usage_scope = metadata.get("usageScope") == "public"
                     except (KeyError, Exception):
                         # If blueprint doesn't exist or error, default to False
                         public_usage_scope = False

@@ -34,9 +34,10 @@ def available_resolved_doc_list(user_id):
 @blueprints_bp.route("/blueprint.save", methods=["POST"])
 @from_body({
     "blueprint_raw": fields.Str(data_key="blueprintRaw", required=False),  # optional for non-JSON/YAML raw
-    "user_id": fields.Str(data_key="userId", required=False, load_default="alice")
+    "user_id": fields.Str(data_key="userId", required=False, load_default="alice"),
+    "metadata": fields.Dict(data_key="metadata", required=False, load_default=lambda: {}, dump_default=lambda: {})
 })
-def save_blueprint(blueprint_raw=None, user_id="alice"):
+def save_blueprint(blueprint_raw=None, user_id="alice", metadata={}):
     try:
         # Case 1: JSON body with field 'blueprintRaw'
         if blueprint_raw:
@@ -70,7 +71,7 @@ def save_blueprint(blueprint_raw=None, user_id="alice"):
 
         # Save using service
         svc = current_app.container.blueprint_service
-        blueprint_id = svc.save_draft(user_id=user_id, draft_dict=parsed)
+        blueprint_id = svc.save_draft(user_id=user_id, draft_dict=parsed, metadata=metadata)
 
         return jsonify({
             "status": "success",
@@ -156,29 +157,30 @@ def remove_blueprint(blueprint_id):
         }), 500
 
 
-@blueprints_bp.route("/public_usage_scope", methods=["PUT"])
+@blueprints_bp.route("/blueprint.metadata.set", methods=["PUT"])
 @from_body({
     "blueprint_id": fields.Str(data_key="blueprintId", required=True),
-    "public_usage_scope": fields.Bool(required=True),
+    "metadata": fields.Dict(required=True),
     "user_id": fields.Str(data_key="userId", required=True),
 })
-def set_public_usage_scope(blueprint_id, public_usage_scope, user_id):
+def set_metadata(blueprint_id, metadata, user_id):
     """
-    Set the public_usage_scope (True/False) of a blueprint.
-    Validates the blueprint can be loaded, resolved, and compiled before enabling public usage.
+    Set the metadata dictionary for a blueprint.
+    Validates the blueprint can be loaded, resolved, and compiled before enabling public usage (if usageScope is "public").
     """
     try:
         svc = current_app.container.blueprint_service
         
-        if public_usage_scope:
+        # If setting usageScope to "public", validate the blueprint
+        if metadata.get("usageScope") == "public":
             session_svc = current_app.container.session_service
             session_svc.validate_blueprint(user_id=user_id, blueprint_id=blueprint_id)
         
-        success = svc.set_public_usage_scope(blueprint_id=blueprint_id, public_usage_scope=public_usage_scope)
+        success = svc.set_metadata(blueprint_id=blueprint_id, metadata=metadata)
         
         if not success:
             return jsonify({
-                "error": "Failed to update public_usage_scope",
+                "error": "Failed to update metadata",
                 "error_type": "UPDATE_FAILED",
                 "blueprint_id": blueprint_id
             }), 500
@@ -194,7 +196,7 @@ def set_public_usage_scope(blueprint_id, public_usage_scope, user_id):
     except ValueError as e:
         return jsonify({
             "error": str(e),
-            "error_type": "INVALID_PUBLIC_USAGE_SCOPE",
+            "error_type": "INVALID_METADATA",
             "blueprint_id": blueprint_id
         }), 400
     except Exception as e:
@@ -203,28 +205,6 @@ def set_public_usage_scope(blueprint_id, public_usage_scope, user_id):
             "error_type": "VALIDATION_ERROR",
             "blueprint_id": blueprint_id
         }), 400
-
-
-@blueprints_bp.route("/public_usage_scope", methods=["GET"])
-@from_query({
-    "blueprint_id": fields.Str(data_key="blueprintId", required=True),
-})
-def get_public_usage_scope(blueprint_id):
-    """
-    Get the current public_usage_scope of a blueprint.
-    """
-    try:
-        svc = current_app.container.blueprint_service
-        result = svc.get_public_usage_scope(blueprint_id)
-        return jsonify(result), 200
-    except KeyError:
-        return jsonify({
-            "error": "Blueprint not found",
-            "error_type": "BLUEPRINT_NOT_FOUND",
-            "blueprint_id": blueprint_id
-        }), 404
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
 
 
 @blueprints_bp.route("/validate", methods=["GET"])

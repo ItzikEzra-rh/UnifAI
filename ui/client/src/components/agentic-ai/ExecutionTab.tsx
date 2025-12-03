@@ -19,6 +19,7 @@ import ExecutionStream from "./ExecutionStream";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
 import { GraphNode } from "../../pages/AgenticAI"
 import axios from '../../http/axiosAgentConfig'
+import { getPublicUsageScope } from '@/api/blueprints'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
@@ -285,8 +286,8 @@ export default function ExecutionTab({
     } else if (session.fromSharedLink && session.blueprintId) {
       // Always fetch fresh status to ensure accuracy (backend may have changed since session list was loaded)
       try {
-        const statusResponse = await axios.get(`/blueprints/public_usage_scope?blueprintId=${session.blueprintId}`);
-        const disabled = statusResponse.data.public_usage_scope !== true;
+        const statusResponse = await getPublicUsageScope(session.blueprintId);
+        const disabled = statusResponse.public_usage_scope !== true;
         setIsSharingDisabled(disabled);
         // Update the session with the current sharing status
         setChatSessions(prev => prev.map(s => 
