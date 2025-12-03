@@ -32,8 +32,8 @@ export interface AgenticStats {
   resourcesByCategory: ResourceStats[];
 }
 
-// Fetch available workflows/blueprints
-export async function fetchWorkflows(userId?: string): Promise<WorkflowBlueprint[]> {
+// Fetch available blueprints
+export async function fetchBlueprints(userId?: string): Promise<WorkflowBlueprint[]> {
   const userIdParam = userId || 'default';
   const response = await axios.get(`/blueprints/available.blueprints.get?userId=${userIdParam}`);
   return response.data || [];
@@ -101,8 +101,8 @@ export async function fetchAgenticStats(userId?: string): Promise<AgenticStats> 
   };
 }
 
-// Fetch resolved workflows (for AvailableFlows component)
-export async function fetchResolvedWorkflows(userId?: string): Promise<WorkflowBlueprint[]> {
+// Fetch resolved blueprints (for AvailableFlows component)
+export async function fetchResolvedBlueprints(userId?: string): Promise<WorkflowBlueprint[]> {
   const userIdParam = userId || 'default';
   const response = await axios.get(`/blueprints/available.blueprints.resolved.get?userId=${userIdParam}`);
   return response.data || [];

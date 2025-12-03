@@ -27,7 +27,7 @@ import {
 import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
-import { fetchWorkflows, fetchResolvedWorkflows, fetchActiveSessions } from "@/api/agentic";
+import { fetchBlueprints, fetchResolvedBlueprints, fetchActiveSessions } from "@/api/agentic";
 
 // Helper function to convert GraphFlow to FlowObject
 const convertGraphFlowToFlowObject = (
@@ -112,15 +112,15 @@ export default function AvailableFlows({
   const { user } = useAuth();
   const { openShareForItem } = useShared();
 
-  // Fetch available workflows from API
+  // Fetch available blueprints from API
   const fetchAvailableFlows = async (): Promise<void> => {
     try {
       const userId = user?.username || "default";
       // Use resolved endpoint if requested (returns blueprints with all references resolved)
       // Otherwise use regular endpoint (returns blueprints as stored, may contain unresolved references)
       const blueprints = useResolvedEndpoint 
-        ? await fetchResolvedWorkflows(userId)
-        : await fetchWorkflows(userId);
+        ? await fetchResolvedBlueprints(userId)
+        : await fetchBlueprints(userId);
 
       // Convert the blueprints to the format expected by the component
       const processedFlows = blueprints
@@ -136,7 +136,7 @@ export default function AvailableFlows({
         onFlowSelect(processedFlows[0]);
       }
     } catch (error) {
-      console.error("Error fetching available workflows:", error);
+      console.error("Error fetching available blueprints:", error);
       throw error;
     } finally {
       setIsLoading(false);

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import {
   fetchAgenticStats,
-  fetchWorkflows,
+  fetchBlueprints,
   fetchActiveSessions,
   fetchAllResources,
   fetchBlueprintSessionCounts,
@@ -22,8 +22,8 @@ export function useAgenticData() {
 
   // Individual queries for granular data when needed by components
   const workflows = useQuery({
-    queryKey: ["workflows", userId],
-    queryFn: () => fetchWorkflows(userId),
+    queryKey: ["blueprints", userId],
+    queryFn: () => fetchBlueprints(userId),
     staleTime: 0,
   });
 
