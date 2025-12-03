@@ -6,7 +6,6 @@ from utils.storage.vector_storage_factory import VectorStorageFactory
 from utils.storage.qdrant_storage import QdrantStorage
 from utils.storage.storage_deletion_manager import SourceDeletionManager
 from shared.config import EmbeddingConfig, StorageConfig
-from typing import Optional, Dict, List, Any
 
 def initialize_embedding_generator():
     """
@@ -134,17 +133,3 @@ def get_data_source_by_id(pipeline_id: str, source_type: str = None):
     except Exception as e:
         logger.error(f"Failed to get data source {pipeline_id}: {str(e)}")
         return None
-
-def update_data_source(source_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Update a data source with provided fields.
-    
-    Args:
-        source_id: The ID of the source to update
-        updates: Dictionary of fields to update
-        
-    Returns:
-        dict: Result of update operation
-    """
-    svc = get_mongo_storage()
-    return svc.update_source(source_id, updates)
