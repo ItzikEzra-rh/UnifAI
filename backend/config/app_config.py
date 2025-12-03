@@ -17,6 +17,7 @@ class AppConfig(SharedConfig):
     qdrant_port: str = "6333"
 
     # Slack Configuration
+    # When running locally, use the default slack tokens ( get it from genie-cred-data and use ENV to set it)
     default_slack_bot_token: str = ""
     default_slack_user_token: str = ""
 
