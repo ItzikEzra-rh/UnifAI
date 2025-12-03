@@ -69,53 +69,6 @@ def get_available_data_sources(source_type: str):
         logger.error(f"Failed to get available data sources for type {source_type}: {str(e)}")
         return []   
 
-def get_available_data_sources_paginated(cursor: Optional[str] = None, limit: int = 50, search_regex: Optional[str] = None, source_type: Optional[str] = None):
-    """
-    Fetches a list of available data sources with pagination.
-    """
-    try:
-        svc = get_mongo_storage()
-        return svc.get_sources_paginated(cursor, limit, search_regex, source_type)
-    except Exception as e:
-        logger.error(f"Failed to get available data sources paginated: {str(e)}")
-        return {
-            "sources": [],
-            "nextCursor": None,
-            "hasMore": False,
-            "total": 0
-        }
-
-def get_available_tags_paginated(cursor: Optional[str] = None, limit: int = 50, search_regex: Optional[str] = None, source_type: Optional[str] = None):
-    """
-    Fetches a list of tags with pagination and search.
-    """
-    try:
-        svc = get_mongo_storage()
-        match_filter = {"source_type": source_type.upper()} if source_type else None
-        result = svc.get_paginated(
-            field_path="tags",
-            cursor=cursor,
-            limit=limit,
-            search_regex=search_regex,
-            match_filter=match_filter,
-            sort_order=1
-        )
-        # Transform response: data -> tags for backward compatibility
-        return {
-            "tags": result.get("data", []),
-            "nextCursor": result.get("nextCursor"),
-            "hasMore": result.get("hasMore", False),
-            "total": result.get("total", 0)
-        }
-    except Exception as e:
-        logger.error(f"Failed to get available tags: {str(e)}")
-        return {
-            "tags": [],
-            "nextCursor": None,
-            "hasMore": False,
-            "total": 0
-        }
-
 def delete_data_source(source_id: str):
     """
     Delete a data source by its pipeline ID.

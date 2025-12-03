@@ -2,7 +2,8 @@ import os
 from urllib import request
 from config.constants import DataSource
 from data_sources.docs.doc_config_manager import DocConfigManager
-from providers.data_sources import get_available_data_sources, get_available_tags_paginated, get_available_data_sources_paginated
+from providers.data_sources import get_available_data_sources
+from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from flask import Blueprint, jsonify, session
 from webargs import fields
 from shared.logger import logger
@@ -43,12 +44,8 @@ def get_supported_extensions():
 })
 def available_doc_list(cursor="", limit=50, search_regex=None):
     try:
-        result = get_available_data_sources_paginated(
-            cursor=cursor, 
-            limit=limit, 
-            search_regex=search_regex, 
-            source_type=DataSource.DOCUMENT.upper_name
-        )
+        svc = get_mongo_storage()
+        result = svc.get_sources_paginated(cursor, limit, search_regex, DataSource.DOCUMENT.upper_name)
         
         return jsonify({
             "docs": result.get("sources", []),
@@ -69,14 +66,17 @@ def available_doc_list(cursor="", limit=50, search_regex=None):
 })
 def available_tags(cursor="", limit=50, search_regex=None):
     try:
-        result = get_available_tags_paginated(
-            cursor=cursor, 
-            limit=limit, 
-            search_regex=search_regex, 
-            source_type=DataSource.DOCUMENT.upper_name
+        svc = get_mongo_storage()
+        result = svc.get_paginated(
+            field_path="tags",
+            cursor=cursor,
+            limit=limit,
+            search_regex=search_regex,
+            match_filter={"source_type": DataSource.DOCUMENT.upper_name},
+            sort_order=1
         )
         
-        tags = result.get("tags", []) 
+        tags = result.get("data", []) 
         return jsonify({
             "options": [{"label": tag, "value": tag} for tag in tags],
             "nextCursor": result.get("nextCursor"),
