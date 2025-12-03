@@ -2,7 +2,7 @@ import os
 from urllib import request
 from config.constants import DataSource
 from data_sources.docs.doc_config_manager import DocConfigManager
-from providers.data_sources import get_available_data_sources
+from providers.data_sources import get_available_data_sources, get_available_tags_paginated, get_available_data_sources_paginated
 from flask import Blueprint, jsonify, session
 from webargs import fields
 from shared.logger import logger
@@ -36,14 +36,58 @@ def get_supported_extensions():
         return jsonify({"error": str(e)}), 500
 
 @docs_bp.route("/available.docs.get", methods=["GET"])
-def available_doc_list():
+@from_query({
+    "cursor": fields.Str(required=False, load_default=""),
+    "limit": fields.Int(required=False, load_default=50),
+    "search_regex": fields.Str(required=False, load_default=None)
+})
+def available_doc_list(cursor="", limit=50, search_regex=None):
     try:
-        docs = get_available_data_sources(source_type=DataSource.DOCUMENT.upper_name)
-        return jsonify({"docs": docs}), 200
+        result = get_available_data_sources_paginated(
+            cursor=cursor, 
+            limit=limit, 
+            search_regex=search_regex, 
+            source_type=DataSource.DOCUMENT.upper_name
+        )
+        
+        return jsonify({
+            "docs": result.get("sources", []),
+            "nextCursor": result.get("nextCursor"),
+            "hasMore": result.get("hasMore"),
+            "total": result.get("total")
+        }), 200
     except Exception as e:
         logger.error(f"Failed to get available docs list: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
+
+@docs_bp.route("/available.tags.get", methods=["GET"])
+@from_query({
+    "cursor": fields.Str(required=False, load_default=""),
+    "limit": fields.Int(required=False, load_default=50),
+    "search_regex": fields.Str(required=False, load_default=None)
+})
+def available_tags(cursor="", limit=50, search_regex=None):
+    try:
+        result = get_available_tags_paginated(
+            cursor=cursor, 
+            limit=limit, 
+            search_regex=search_regex, 
+            source_type=DataSource.DOCUMENT.upper_name
+        )
+        
+        tags = result.get("tags", []) 
+        return jsonify({
+            "options": [{"label": tag, "value": tag} for tag in tags],
+            "nextCursor": result.get("nextCursor"),
+            "hasMore": result.get("hasMore"),
+            "total": result.get("total")
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Failed to get available tags: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 
 @docs_bp.route("/embed.docs", methods=["PUT"])
 @from_body({

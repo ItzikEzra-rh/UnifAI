@@ -68,13 +68,104 @@ class SourcesRepository:
             }
         except Exception as e:
             logger.error(f"Error fetching source by source_id {source_id}: {e}")
-            return {"success": False, "error": str(e)}   
+            return {"success": False, "error": str(e)}
+
+    def get_paginated(
+        self,
+        field_path: Optional[str] = None,
+        cursor: Optional[str] = None,
+        limit: int = 50,
+        search_regex: Optional[str] = None,
+        match_filter: Optional[Dict[str, Any]] = None,
+        sort_by: Optional[str] = None,
+        sort_order: int = -1
+    ) -> Dict[str, Any]:
+        """
+        Generic paginated query for any field or full documents.
+        
+        Args:
+            field_path: Dot-notation path to field (e.g. "tags", "metadata.category"). 
+                        None returns full documents.
+            cursor: Pagination cursor (skip count as string)
+            limit: Number of items to return
+            search_regex: Regex pattern to filter results
+            match_filter: Additional match conditions (e.g. {"source_type": "DOCUMENT"})
+            sort_by: Field to sort by (defaults to "_id" for fields, "created_at" for docs)
+            sort_order: 1 for ascending, -1 for descending
+            
+        Returns:
+            {"data": [...], "nextCursor": str|None, "hasMore": bool, "total": int}
+        """
+        skip = int(cursor) if cursor and cursor.isdigit() else 0
+        pipeline = []
+        
+        # Base match filter
+        if match_filter:
+            pipeline.append({"$match": match_filter})
+        
+        if field_path:
+            # DISTINCT VALUES MODE - extract unique values from a field
+            if search_regex:
+                pipeline.append({"$match": {field_path: {"$regex": search_regex, "$options": "i"}}})
+            
+            pipeline.append({"$unwind": f"${field_path}"})
+            
+            if search_regex:
+                pipeline.append({"$match": {field_path: {"$regex": search_regex, "$options": "i"}}})
+            else:
+                pipeline.append({"$match": {field_path: {"$exists": True, "$ne": None, "$ne": ""}}})
+            
+            pipeline.append({"$group": {"_id": f"${field_path}"}})
+            pipeline.append({"$sort": {"_id": sort_order if sort_order else 1}})
+        else:
+            # FULL DOCUMENTS MODE
+            if search_regex:
+                pipeline.append({"$match": {"source_name": {"$regex": search_regex, "$options": "i"}}})
+            
+            sort_field = sort_by or "created_at"
+            pipeline.append({"$sort": {sort_field: sort_order}})
+        
+        # Facet for pagination
+        pipeline.append({
+            "$facet": {
+                "metadata": [{"$count": "total"}],
+                "data": [{"$skip": skip}, {"$limit": limit}]
+            }
+        })
+        
+        try:
+            result = list(self.col.aggregate(pipeline))
+            
+            total = 0
+            items = []
+            
+            if result and result[0]:
+                facet = result[0]
+                if facet.get("metadata"):
+                    total = facet["metadata"][0]["total"]
+                
+                if field_path:
+                    items = [item["_id"] for item in facet.get("data", [])]
+                else:
+                    items = facet.get("data", [])
+            
+            next_cursor = str(skip + len(items)) if (skip + len(items)) < total else None
+            
+            return {
+                "data": items,
+                "nextCursor": next_cursor,
+                "hasMore": next_cursor is not None,
+                "total": total
+            }
+        except Exception as e:
+            logger.error(f"Error in paginated query (field={field_path}): {e}")
+            return {"data": [], "nextCursor": None, "hasMore": False, "total": 0}
 
     def upsert_summary(self, source_id: str, source_name: str, source_type: str,
-                       upload_by: str, pipeline_id: str, type_data: Optional[Dict[str, Any]] = None):
+                       upload_by: str, pipeline_id: str, type_data: Optional[Dict[str, Any]] = None, tags: List[str] = None):
         """Create or update a source summary."""
         now = datetime.utcnow()
-        update = {"last_sync_at": now}
+        update = {"last_sync_at": now, "tags": tags if tags is not None else []}
         if type_data:
             update["type_data"] = type_data
 
@@ -88,7 +179,7 @@ class SourcesRepository:
                     "source_type": source_type,
                     "upload_by": upload_by,
                     "pipeline_id": pipeline_id,
-                    "created_at": now
+                    "created_at": now,
                 }
             },
             upsert=True
@@ -105,4 +196,18 @@ class SourcesRepository:
             }
         except Exception as e:
             logger.error(f"Error deleting source {source_id}: {e}")
+            return {"success": False, "error": str(e)}
+
+    def update(self, source_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
+        """Update a source by ID with provided fields."""
+        try:
+            result = self.col.update_one(
+                {"source_id": source_id},
+                {"$set": updates}
+            )
+            if result.matched_count == 0:
+                return {"success": False, "message": f"Source {source_id} not found"}
+            return {"success": True, "modified": result.modified_count > 0}
+        except Exception as e:
+            logger.error(f"Error updating source {source_id}: {e}")
             return {"success": False, "error": str(e)} 
