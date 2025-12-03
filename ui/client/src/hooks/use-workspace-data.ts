@@ -373,7 +373,7 @@ export const useWorkspaceData = () => {
         setIsLoading(false);
       }
     },
-    [toast, addOrUpdateResource, USER_ID],
+    [toast, USER_ID],
   );
 
   // Delete element using Resources API
@@ -407,7 +407,7 @@ export const useWorkspaceData = () => {
         setIsLoading(false);
       }
     },
-    [toast, removeResource],
+    [toast],
   );
 
   // Initialize categories on mount
