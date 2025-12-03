@@ -19,10 +19,11 @@ properties([
 
 def buildParams = [
     LogLevel           : "ALL",
-    MainRepoURL        : "gitlab.cee.redhat.com",
-    MainRepoProject    : "ai_tools/unifai",
+    MainRepoURL        : "github.com",
+    MainRepoProject    : "redhat-community-ai-tools/UnifAI",
     MainRepoBranch     : "${params.BRANCH}",
-    CredentialsId      : "gitlab-genie",
+    CredentialsId      : "github-unifai-token",
+    CredMainRepoURL    : "gitlab.cee.redhat.com",
     CredMainRepoProject: "ai_tools/genie-cred-data", 
     CredMainRepoBranch : "main",
     CredCredentialsId  : "gitlab-genie",
@@ -57,7 +58,7 @@ def updateGlobalConfigYaml(String filePath) {
     values.each { sectionName, sectionData ->
 
     if (values?.env) {
-        values.env.FRONTEND_URL = "http://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
+        values.env.FRONTEND_URL = "https://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
         values.env.SSO_BACKEND_HOST = "https://unifai-sso-backend-tag-ai--pipeline.apps.stc-ai-e1-prod.rtc9.p1.openshiftapps.com"
     }
     writeYaml file: filePath, data: values, overwrite: true
@@ -187,7 +188,7 @@ pipeline {
                         submoduleCfg: [],
                         userRemoteConfigs: [[
                             credentialsId: "${buildParams.CredCredentialsId}",
-                            url: "https://${buildParams.MainRepoURL}/${buildParams.CredMainRepoProject}.git"
+                            url: "https://${buildParams.CredMainRepoURL}/${buildParams.CredMainRepoProject}.git"
                         ]]
                     ])
                 }
