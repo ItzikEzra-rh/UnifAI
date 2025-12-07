@@ -78,7 +78,8 @@ class SourcesRepository:
         search_regex: Optional[str] = None,
         match_filter: Optional[Dict[str, Any]] = None,
         sort_by: Optional[str] = None,
-        sort_order: int = -1
+        sort_order: int = -1,
+        normalize_fields: bool = False
     ) -> Dict[str, Any]:
         """
         Generic paginated query for any field or full documents.
@@ -92,6 +93,7 @@ class SourcesRepository:
             match_filter: Additional match conditions (e.g. {"source_type": "DOCUMENT"})
             sort_by: Field to sort by (defaults to "_id" for fields, "created_at" for docs)
             sort_order: 1 for ascending, -1 for descending
+            normalize_fields: If True, renames source_id->id, source_name->name for API responses
             
         Returns:
             {"data": [...], "nextCursor": str|None, "hasMore": bool, "total": int}
@@ -125,11 +127,24 @@ class SourcesRepository:
             sort_field = sort_by or "created_at"
             pipeline.append({"$sort": {sort_field: sort_order}})
         
+        # Build data pipeline stages
+        data_pipeline = [{"$skip": skip}, {"$limit": limit}]
+        
+        # Normalize field names for API consumption (only for full documents mode)
+        if normalize_fields and not field_path:
+            data_pipeline.append({
+                "$project": {
+                    "_id": 0,
+                    "id": "$source_id",
+                    "name": "$source_name"
+                }
+            })
+        
         # Facet for pagination
         pipeline.append({
             "$facet": {
                 "metadata": [{"$count": "total"}],
-                "data": [{"$skip": skip}, {"$limit": limit}]
+                "data": data_pipeline
             }
         })
         

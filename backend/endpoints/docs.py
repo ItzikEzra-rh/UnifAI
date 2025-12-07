@@ -48,7 +48,7 @@ def available_doc_list(cursor="", limit=50, search_regex=None):
         result = svc.get_sources_paginated(cursor, limit, search_regex, DataSource.DOCUMENT.upper_name)
         
         return jsonify({
-            "docs": result.get("sources", []),
+            "documents": result.get("sources", []),
             "nextCursor": result.get("nextCursor"),
             "hasMore": result.get("hasMore"),
             "total": result.get("total")
@@ -87,29 +87,11 @@ def available_tags(cursor="", limit=50, search_regex=None):
     except Exception as e:
         logger.error(f"Failed to get available tags: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
-
-@docs_bp.route("/embed.docs", methods=["PUT"])
-@from_body({
-    "docs": fields.List(fields.Dict(), required=True)
-})
-def embed_docs(docs):
-    try:
-        send_task(
-            task_name="celery_app.tasks.pipeline_tasks.execute_pipeline_task",
-            celery_queue="docs_queue",
-            source_type="DOCUMENT",
-            source_data=docs
-        )
-        return jsonify({"status": "task submitted"}), 202
-    except Exception as e:
-        logger.error(f"Failed to submit docs embedding task: {str(e)}")
-        return jsonify({"error": str(e)}), 500
     
 @docs_bp.route("/query.match", methods=["GET"])
 @from_query({
     "query": fields.Str(required=True),
-    "top_k_results": fields.Int(required=False),
+    "top_k_results": fields.Int(required=False, load_default=5),
     "scope": fields.Str(required=False, load_default="public"),
     "logged_in_user": fields.Str(required=False, load_default="default", data_key="loggedInUser"),
     "doc_ids": fields.List(fields.Str(), required=False, load_default=None, data_key="docIds"),
@@ -125,7 +107,7 @@ def best_match_results(query, top_k_results, scope, logged_in_user, doc_ids, tag
             doc_ids=doc_ids,
             tags=tags
         )
-        return jsonify({"search_results": search_results}), 200
+        return jsonify({"matches": search_results}), 200
     except Exception as e:
         logger.error(f"Failed to find best match for user query: {str(e)}")
         return jsonify({"error": str(e)}), 500

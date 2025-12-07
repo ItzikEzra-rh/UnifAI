@@ -31,7 +31,7 @@ class DocMatchScopeBuilder:
         return self
     
     def filter_by_tags(self, tags: Optional[List[str]]) -> "DocMatchScopeBuilder":
-        """Filter to documents containing ALL specified tags."""
+        """Filter to documents containing ANY of the specified tags."""
         if tags:
             self._tags = tags
         return self
@@ -54,7 +54,7 @@ class DocMatchScopeBuilder:
             conditions.append({"source_id": {"$in": self._doc_ids}})
         
         if self._tags:
-            conditions.append({"tags": {"$all": self._tags}})
+            conditions.append({"tags": {"$in": self._tags}})
         
         query = {
             "source_type": DataSource.DOCUMENT.upper_name,

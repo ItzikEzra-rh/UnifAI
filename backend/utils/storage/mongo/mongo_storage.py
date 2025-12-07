@@ -103,7 +103,8 @@ class MongoStorage:
             cursor=cursor,
             limit=limit,
             search_regex=search_regex,
-            match_filter=match_filter
+            match_filter=match_filter,
+            normalize_fields=True
         )
         sources = result.get("data", [])
         

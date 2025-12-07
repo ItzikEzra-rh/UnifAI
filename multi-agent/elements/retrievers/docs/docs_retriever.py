@@ -28,8 +28,8 @@ class DocsRetriever(BaseRetriever):
         resp = requests.get(self.api_url, params=params)
         resp.raise_for_status()
         data = resp.json()
-        if "search_results" in data:
-            data = data["search_results"]
+        if "matches" in data:
+            data = data["matches"]
         if isinstance(data, list):
             return [item for item in data if item.get("score", 0.0) >= self.threshold]
         return data
