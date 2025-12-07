@@ -3,7 +3,8 @@ from actions.common.base_action import BaseAction
 from actions.common.action_models import BaseActionInput, BaseActionOutput, ActionType
 from elements.providers.dataflow_client.config import DataflowProviderConfig
 from elements.providers.dataflow_client.dataflow_provider_factory import DataflowProviderFactory
-from elements.providers.dataflow_client.identifiers import Identifier
+from elements.providers.dataflow_client.identifiers import Identifier as DataFlowProviderIdentifier
+from elements.retrievers.docs_dataflow.identifiers import Identifier as RetrieverIdentifier
 from core.enums import ResourceCategory
 
 
@@ -35,7 +36,8 @@ class GetAvailableDocsAction(BaseAction):
     output_schema = GetAvailableDocsOutput
     version = "1.0.0"
     tags = {"dataflow", "discovery", "docs", "documents"}
-    elements = {(ResourceCategory.PROVIDER.value, Identifier.TYPE)}
+    elements = {(ResourceCategory.PROVIDER.value, DataFlowProviderIdentifier.TYPE),
+                (ResourceCategory.RETRIEVER.value, RetrieverIdentifier.TYPE)}
 
     def execute(
             self,

@@ -3,7 +3,8 @@ from actions.common.base_action import BaseAction
 from actions.common.action_models import BaseActionInput, BaseActionOutput, ActionType
 from elements.providers.dataflow_client.config import DataflowProviderConfig
 from elements.providers.dataflow_client.dataflow_provider_factory import DataflowProviderFactory
-from elements.providers.dataflow_client.identifiers import Identifier
+from elements.providers.dataflow_client.identifiers import Identifier as DataFlowProviderIdentifier
+from elements.retrievers.docs_dataflow.identifiers import Identifier as RetrieverIdentifier
 from core.enums import ResourceCategory
 
 
@@ -35,12 +36,13 @@ class GetAvailableTagsAction(BaseAction):
     output_schema = GetAvailableTagsOutput
     version = "1.0.0"
     tags = {"dataflow", "discovery", "tags"}
-    elements = {(ResourceCategory.PROVIDER.value, Identifier.TYPE)}
+    elements = {(ResourceCategory.PROVIDER.value, DataFlowProviderIdentifier.TYPE),
+                (ResourceCategory.RETRIEVER.value, RetrieverIdentifier.TYPE)}
 
     def execute(
-        self,
-        input_data: GetAvailableTagsInput,
-        context: Optional[Dict[str, Any]] = None
+            self,
+            input_data: GetAvailableTagsInput,
+            context: Optional[Dict[str, Any]] = None
     ) -> GetAvailableTagsOutput:
         """Execute tags discovery (sync)."""
         try:
@@ -70,4 +72,3 @@ class GetAvailableTagsAction(BaseAction):
                 tags=[],
                 total=0
             )
-
