@@ -13,6 +13,12 @@ releases:
   - name: unifai-dataflow-server
     chart: ./dataflow/unifai-dataflow-server
     wait: true
+    hooks:
+      - events: ["presync"]
+        showlogs: true
+        command: bash
+        args:
+          - "./scripts/dataflow-presync.sh"
     values:
       - {{- toYaml .Values.unifai_dataflow_server | nindent 8 }}
       - ./values/global-config.yaml
@@ -38,4 +44,4 @@ releases:
         showlogs: true
         command: bash
         args:
-        - "./dataflow-postsync.sh"
+        - "./scripts/dataflow-postsync.sh"
