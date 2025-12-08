@@ -80,7 +80,6 @@ class SourcesRepository:
         match_filter: Optional[Dict[str, Any]] = None,
         sort_by: Optional[str] = None,
         sort_order: int = -1,
-        normalize_fields: bool = False
     ) -> Dict[str, Any]:
         """
         Generic paginated query for any field or full documents.
@@ -129,16 +128,6 @@ class SourcesRepository:
         
         # Build data pipeline stages
         data_pipeline = [{"$skip": skip}, {"$limit": limit}]
-        
-        # Normalize field names for API consumption (only for full documents mode)
-        if normalize_fields and not field_path:
-            data_pipeline.append({
-                "$project": {
-                    "_id": 0,
-                    "id": "$source_id",
-                    "name": "$source_name"
-                }
-            })
         
         # Facet for pagination
         pipeline.append({
