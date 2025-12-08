@@ -183,7 +183,7 @@ class SourcesRepository:
                     "source_type": source_type,
                     "upload_by": upload_by,
                     "pipeline_id": pipeline_id,
-                    "created_at": now,
+                    "created_at": now
                 }
             },
             upsert=True
