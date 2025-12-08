@@ -44,14 +44,14 @@ class ValidateConnectionAction(BaseAction):
 
         try:
             with DataflowClient(input_data.base_url, timeout=10.0) as client:
-                client.get_available_tags(limit=1)
+                health = client.health_check()
 
             response_time = (time.time() - start_time) * 1000
 
             return ValidateConnectionOutput(
-                success=True,
-                message="Connection successful",
-                is_reachable=True,
+                success=health.is_healthy,
+                message=health.message,
+                is_reachable=health.is_healthy,
                 response_time_ms=response_time
             )
 
