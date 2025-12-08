@@ -6,7 +6,7 @@ from blueprints.models.blueprint import BlueprintSpec, BlueprintDraft
 class BlueprintRepository(ABC):
     # ────────────────────────────── Writes ──────────────────────────────
     @abstractmethod
-    def save(self, user_id, spec: BlueprintDraft, rid_refs: list[str], metadata: Dict[str, Any] = None) -> str:
+    def save(self, user_id, spec: BlueprintDraft, rid_refs: list[str], metadata: Dict[str, Any]) -> str:
         """
         Persist `spec` for the given user and return the generated blueprint_id.
         """
@@ -17,7 +17,7 @@ class BlueprintRepository(ABC):
         """
         Replace an existing draft.  Return True if a document was modified.
         """
-
+        
     @abstractmethod
     def set_metadata(self, *, blueprint_id: str, metadata: Dict[str, Any]) -> bool:
         """

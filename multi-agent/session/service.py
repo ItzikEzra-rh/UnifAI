@@ -16,12 +16,7 @@ class SessionService:
         self._manager = manager
         self._executor = executor
 
-    def create(
-        self,
-        user_id: str,
-        blueprint_id: str,
-        metadata: Dict[str, Any] | SessionMeta | None = None
-    ) -> WorkflowSession:
+    def create(self, user_id: str, blueprint_id: str, metadata:  Dict[str, Any] | SessionMeta | None = None) -> WorkflowSession:
         """
         Create a new session and return its object (with run_id).
         """
@@ -102,12 +97,6 @@ class SessionService:
     def get_user_sessions_chat_history(self, user_id: str) -> list:
         """
         Get chat history for all sessions created by a user.
-        
-        Note: public_usage_scope is required by the frontend to determine if sessions
-        created from public links are still usable. The frontend checks this to:
-        1. Show/hide the session in chat history
-        2. Enable/disable execution for shared sessions
-        3. Display appropriate messaging when sharing is disabled
         """
         docs = self._manager.list_docs(user_id)
         chat_items = []
@@ -128,11 +117,8 @@ class SessionService:
                     except (KeyError, Exception):
                         public_usage_scope = False
             
-            chat_item = ChatHistoryItem.from_doc(
-                doc, 
-                blueprint_exists=blueprint_exists,
-                public_usage_scope=public_usage_scope
-            )
+            chat_item = ChatHistoryItem.from_doc(doc, blueprint_exists=blueprint_exists, public_usage_scope=public_usage_scope)
+
             chat_items.append(chat_item)
         
         return chat_items
@@ -149,7 +135,7 @@ class SessionService:
         Delete a session by run_id. Returns True if deleted, False if not found.
         """
         return self._manager.delete_session(run_id)
-
+    
     def validate_blueprint(self, user_id: str, blueprint_id: str) -> None:
         """
         Validate that a blueprint can be used in a session by creating a test session
