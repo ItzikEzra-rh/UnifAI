@@ -70,7 +70,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                 setSupportedExtensions(extensions);
             } catch (err) {
                 console.error("Failed to load supported extensions:", err);
-                setSupportedExtensions([".pdf", ".docx", ".txt", ".md"]);
+                setSupportedExtensions([".pdf", ".docx", ".md", ".pptx"]);
             }
         };
         loadSupportedExtensions();
@@ -258,21 +258,38 @@ export const UploadTab: React.FC<UploadTabProps> = ({
     const uploadFiles = async () => {
         let uploadedCount = 0;
         
-        for (const item of selectedFiles) {
-            const base64 = await new Promise<string>((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const result = reader.result as string;
-                    resolve(result.split(",")[1]);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(item.file);
+        try {
+            for (const item of selectedFiles) {
+                const base64 = await new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const result = reader.result as string;
+                        resolve(result.split(",")[1]);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(item.file);
+                });
+                
+                await uploadDocs([{ name: item.file.name, content: base64 }]);
+                
+                uploadedCount++;
+                setUploadProgress(Math.round((uploadedCount / selectedFiles.length) * 50));
+            }
+        } catch (err) {
+            console.error("File upload failed", err);
+            const message = (err as Error)?.message || "Failed to upload files. Please try again.";
+            setError(message);
+            toast({
+                variant: "destructive",
+                title: (
+                    <span className="inline-flex items-center gap-2">
+                        <CircleX className="h-4 w-4 text-red-500" />
+                        <span>Upload failed</span>
+                    </span>
+                ),
+                description: message,
             });
-            
-            await uploadDocs([{ name: item.file.name, content: base64 }]);
-            
-            uploadedCount++;
-            setUploadProgress(Math.round((uploadedCount / selectedFiles.length) * 50));
+            throw err; // Re-throw to prevent pipeline from starting
         }
     };
 

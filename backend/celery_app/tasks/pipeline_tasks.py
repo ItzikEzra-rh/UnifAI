@@ -19,6 +19,8 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
         source_type: Type of source (SLACK, DOCUMENT, etc.)
         source_data: RegisteredSource data from registration task
     """
+    doc_path = None  # Track doc_path for cleanup in finally block
+    
     try:
         logger.info(f"Starting pipeline execution for {source_type} source: {source_data}")
         
@@ -43,6 +45,7 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
             
         elif source_type.upper() == DataSource.DOCUMENT.upper_name:
             metadata = DocumentMetadata(**metadata_dict_copy, pipeline_id=pipeline_id)
+            doc_path = metadata.doc_path  # Store for cleanup
             logger.info(f"Document path: {metadata}")
         else:
             raise ValueError(f"Unsupported source type: {source_type}")
@@ -55,16 +58,6 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
         # Execute the pipeline
         result = executor.run()
         
-        # # Clean up uploaded file after successful embedding (for documents)
-        # if source_type.upper() == DataSource.DOCUMENT.upper_name:
-        #     doc_path = metadata.doc_path
-        #     if doc_path and os.path.exists(doc_path):
-        #         try:
-        #             os.remove(doc_path)
-        #             logger.info(f"Cleaned up uploaded file: {doc_path}")
-        #         except Exception as cleanup_error:
-        #             logger.warning(f"Failed to clean up uploaded file {doc_path}: {cleanup_error}")
-        
         logger.info(f"Pipeline execution completed successfully for {source_type}: {pipeline_id}")
         return PipelineExecutionResult(
             pipeline_id=pipeline_id,
@@ -75,3 +68,13 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
         
     except Exception as e:
         logger.error(f"Pipeline execution failed for {source_type}: {str(e)}", exc_info=True)
+    
+    finally:
+        # Clean up uploaded file after pipeline completes (success or failure) for documents
+        if source_type.upper() == DataSource.DOCUMENT.upper_name and doc_path:
+            if os.path.exists(doc_path):
+                try:
+                    os.remove(doc_path)
+                    logger.info(f"Cleaned up uploaded file: {doc_path}")
+                except Exception as cleanup_error:
+                    logger.warning(f"Failed to clean up uploaded file {doc_path}: {cleanup_error}")

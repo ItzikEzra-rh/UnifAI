@@ -16,10 +16,11 @@ export async function fetchDocuments(): Promise<Document[]> {
 };
 
 export async function uploadDocs(files: {name: string, content: string}[]): Promise<any> {
-    const uploaded = await api.post<any>(
+    const response = await api.post<any>(
         'docs/upload',
         { files: files }
-      );
+    );
+    return response.data;
 }
 
 export interface PipelineEmbedResponse {
