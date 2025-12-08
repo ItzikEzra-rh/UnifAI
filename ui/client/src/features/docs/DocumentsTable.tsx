@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaEye, FaTrash } from "react-icons/fa";
+import { FaEye, FaTrash, FaEdit } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
 import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
@@ -13,6 +13,7 @@ import { RowSelectionState } from "@tanstack/react-table";
 import { SelectAllCheckbox } from "@/components/shared/SelectAllCheckbox";
 import { RowSelectionCheckbox } from "@/components/shared/RowSelectionCheckbox";
 import { getSupportedFileExtensions } from "@/api/docs";
+import { EditDocumentModal } from "./EditDocumentModal";
 
 interface DocumentTableProps {
   documents: Document[];
@@ -24,6 +25,7 @@ interface DocumentTableProps {
   handleRetry?: (id: string) => void;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
+  onRefresh?: () => void;
 }
 
 export const DocumentTable: React.FC<DocumentTableProps> = ({
@@ -35,11 +37,13 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   retrying, 
   handleRetry,
   rowSelection,
-  onRowSelectionChange
+  onRowSelectionChange,
+  onRefresh
 }) => {
   const [confirmDoc, setConfirmDoc] = useState<Document | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [fileTypeFilterOptions, setFileTypeFilterOptions] = useState<string[]>([]);
+  const [editDoc, setEditDoc] = useState<Document | null>(null);
 
   useEffect(() => {
     const loadSupportedExtensions = async () => {
@@ -199,6 +203,26 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
                 ariaLabel={`Select document ${doc.source_name}`}
               />
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 p-0"
+              onClick={() => setEditDoc(doc)}
+            >
+              <FaEdit className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 p-0"
+              onClick={() => {
+                setConfirmDoc(doc);
+                setConfirmLoading(false);
+              }}
+              disabled={deleteLoading || confirmLoading}
+            >
+              <FaTrash className="h-3 w-3" />
+            </Button>
           </div>
         );
       },
@@ -244,6 +268,16 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
               setConfirmLoading(false);
             }
           }}
+        />
+      )}
+
+      {editDoc && (
+        <EditDocumentModal
+          key={editDoc.source_id}
+          document={editDoc}
+          open={true}
+          onClose={() => setEditDoc(null)}
+          onUpdated={() => onRefresh?.()}
         />
       )}
     </div>

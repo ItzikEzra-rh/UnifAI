@@ -257,6 +257,7 @@ export default function Documents() {
                             handleRetry={handleRetry}
                             rowSelection={rowSelection}
                             onRowSelectionChange={setRowSelection}
+                            onRefresh={refetch}
                           />
 
                         </div>
