@@ -2,21 +2,21 @@ import axios from '@/http/axiosAgentConfig';
 
 export interface BlueprintInfoResponse {
   blueprint_id: string;
-  blueprint_name: string;
-  owner_user_id: string;
+  user_id: string;
+  spec_dict: {
+    name: string;
+    [key: string]: any;
+  };
   metadata: {
     usageScope?: "public" | "private";
     [key: string]: any;
   };
 }
 
-export interface SetMetadataRequest {
-  blueprintId: string;
-  metadata: {
-    usageScope?: "public" | "private";
-    [key: string]: any;
-  };
-  userId: string;
+export interface BlueprintValidationResult {
+  valid: boolean;
+  blueprint_id: string;
+  error?: string;
 }
 
 export interface SetMetadataResponse {
@@ -34,8 +34,7 @@ export async function getBlueprintInfo(blueprintId: string): Promise<BlueprintIn
 }
 
 /**
- * Get the public usage scope status of a blueprint (from metadata)
- * @deprecated Use getBlueprintInfo instead and read metadata.usageScope
+ * Check if a blueprint has public sharing enabled
  */
 export async function getPublicUsageScope(blueprintId: string): Promise<{ public_usage_scope: boolean; blueprint_id: string }> {
   const info = await getBlueprintInfo(blueprintId);
@@ -62,18 +61,12 @@ export async function setBlueprintMetadata(
 }
 
 /**
- * Update the public usage scope of a blueprint
- * @deprecated Use setBlueprintMetadata instead
+ * Validate a blueprint by checking if it can be resolved and compiled.
+ * Should be called before enabling public sharing.
  */
-export async function updatePublicScope(
-  blueprintId: string,
-  scope: boolean,
-  userId: string
-): Promise<SetMetadataResponse> {
-  return setBlueprintMetadata(
-    blueprintId,
-    { usageScope: scope ? "public" : "private" },
-    userId
-  );
+export async function validateBlueprint(blueprintId: string): Promise<BlueprintValidationResult> {
+  const { data } = await axios.get<BlueprintValidationResult>('/blueprints/validate', {
+    params: { blueprintId },
+  });
+  return data;
 }
-

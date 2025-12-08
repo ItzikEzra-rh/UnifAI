@@ -2,6 +2,8 @@ from flask import Blueprint, jsonify, current_app, request
 from global_utils.helpers.apiargs import from_body, from_query
 from webargs import fields
 import yaml
+import json
+from bson import json_util
 from werkzeug.exceptions import BadRequest
 
 blueprints_bp = Blueprint("blueprints", __name__)
@@ -35,7 +37,7 @@ def available_resolved_doc_list(user_id):
 @from_body({
     "blueprint_raw": fields.Str(data_key="blueprintRaw", required=False),  # optional for non-JSON/YAML raw
     "user_id": fields.Str(data_key="userId", required=False, load_default="alice"),
-    "metadata": fields.Dict(data_key="metadata", required=False, load_default=lambda: {}, dump_default=lambda: {})
+    "metadata": fields.Dict(data_key="metadata", required=False, load_default=lambda: {})
 })
 def save_blueprint(blueprint_raw=None, user_id="alice", metadata={}):
     try:
@@ -95,12 +97,10 @@ def get_blueprint_info(blueprint_id):
     """
     try:
         svc = current_app.container.blueprint_service
-        info = svc.get_blueprint_info(blueprint_id)
-        return jsonify(info), 200
+        doc = svc.get_blueprint_info(blueprint_id)
+        return json.loads(json_util.dumps(doc)), 200
     except KeyError:
-        return jsonify({
-            "error": "Blueprint not found"
-        }), 404
+        return jsonify({"error": "Blueprint not found"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -161,71 +161,38 @@ def remove_blueprint(blueprint_id):
 @from_body({
     "blueprint_id": fields.Str(data_key="blueprintId", required=True),
     "metadata": fields.Dict(required=True),
-    "user_id": fields.Str(data_key="userId", required=True),
 })
-def set_metadata(blueprint_id, metadata, user_id):
+def set_metadata(blueprint_id, metadata):
     """
     Set the metadata dictionary for a blueprint.
-    Validates the blueprint can be loaded, resolved, and compiled before enabling public usage (if usageScope is "public").
     """
     try:
         svc = current_app.container.blueprint_service
-        
-        # If setting usageScope to "public", validate the blueprint
-        if metadata.get("usageScope") == "public":
-            session_svc = current_app.container.session_service
-            session_svc.validate_blueprint(user_id=user_id, blueprint_id=blueprint_id)
-        
         success = svc.set_metadata(blueprint_id=blueprint_id, metadata=metadata)
         
         if not success:
-            return jsonify({
-                "error": "Failed to update metadata",
-                "error_type": "UPDATE_FAILED",
-                "blueprint_id": blueprint_id
-            }), 500
+            return jsonify({"error": "Failed to update metadata"}), 500
         
         return jsonify({"status": "success"}), 200
-        
-    except KeyError as e:
-        return jsonify({
-            "error": "Blueprint not found",
-            "error_type": "BLUEPRINT_NOT_FOUND",
-            "blueprint_id": blueprint_id
-        }), 404
-    except ValueError as e:
-        return jsonify({
-            "error": str(e),
-            "error_type": "INVALID_METADATA",
-            "blueprint_id": blueprint_id
-        }), 400
     except Exception as e:
-        return jsonify({
-            "error": str(e),
-            "error_type": "VALIDATION_ERROR",
-            "blueprint_id": blueprint_id
-        }), 400
+        return jsonify({"error": str(e)}), 500
 
 
 @blueprints_bp.route("/validate", methods=["GET"])
 @from_query({
     "blueprint_id": fields.Str(data_key="blueprintId", required=True),
+    "user_id": fields.Str(data_key="userId", required=False, load_default="validation_user"),
 })
-def validate_blueprint(blueprint_id):
+def validate_blueprint(blueprint_id, user_id):
     """
-    Validate a blueprint by resolving it and checking if it can be compiled.
-    Returns blueprint information and ownership details.
+    Validate a blueprint by attempting to create a test session.
+    This ensures the blueprint can be fully compiled and executed.
+    Always returns 200 with valid=true/false so frontend can check the result.
     """
     try:
-        svc = current_app.container.blueprint_service
-        result = svc.validate_blueprint(blueprint_id)
-        
-        if not result.get("valid", False):
-            return jsonify({
-                **result,
-                "error_type": "BLUEPRINT_INVALID" if result.get("error") != "Blueprint not found" else "BLUEPRINT_NOT_FOUND"
-            }), 400
-        
-        return jsonify(result), 200
+        # Use session service which actually compiles the graph
+        session_svc = current_app.container.session_service
+        session_svc.validate_blueprint(user_id=user_id, blueprint_id=blueprint_id)
+        return jsonify({"valid": True, "blueprint_id": blueprint_id}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"valid": False, "blueprint_id": blueprint_id, "error": str(e)}), 200

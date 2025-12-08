@@ -82,8 +82,8 @@ export default function PublicChat() {
         // Get blueprint draft document
         const blueprintInfoResponse = await axios.get(`/blueprints/blueprint.info.get?blueprintId=${token}`);
         setBlueprintId(token);
-        setBlueprintName(blueprintInfoResponse.data?.blueprint_name || "Unnamed Workflow");
-        setBlueprintOwner(blueprintInfoResponse.data?.owner_user_id || "");
+        setBlueprintName(blueprintInfoResponse.data?.spec_dict?.name || "Unnamed Workflow");
+        setBlueprintOwner(blueprintInfoResponse.data?.user_id || "");
         
         // Check sharing status
         const statusResponse = await getPublicUsageScope(token);

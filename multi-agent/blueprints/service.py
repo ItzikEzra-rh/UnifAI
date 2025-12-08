@@ -25,23 +25,15 @@ class BlueprintService:
         """Get blueprint document with metadata for sharing operations."""
         return self._repo.load(blueprint_id)
 
-    def get_blueprint_info(self, blueprint_id: str) -> Dict[str, Any]:
+    def get_blueprint_info(self, blueprint_id: str) -> Mapping[str, Any]:
         """
-        Get blueprint information including name, owner, and metadata.
+        Get full blueprint document including spec, owner, and metadata.
         
         :param blueprint_id: The blueprint ID
-        :return: Dictionary with blueprint_id, blueprint_name, owner_user_id, and metadata
+        :return: Full blueprint document from repository
         :raises KeyError: If blueprint doesn't exist
         """
-        draft = self.load_draft(blueprint_id)
-        doc = self.get_blueprint_draft_doc(blueprint_id)
-        
-        return {
-            "blueprint_id": blueprint_id,
-            "blueprint_name": draft.name,
-            "owner_user_id": doc.get("user_id", ""),
-            "metadata": doc.get("metadata", {})
-        }
+        return self.get_blueprint_draft_doc(blueprint_id)
 
     def update_draft(self, *, blueprint_id: str, draft_dict: dict) -> bool:  # NEW
         draft = BlueprintDraft(**draft_dict)
@@ -141,48 +133,5 @@ class BlueprintService:
         :param metadata: Dictionary of metadata to set
         :return: True if the document was modified
         :raises KeyError: If blueprint doesn't exist
-        :raises ValueError: If metadata is not a dictionary
         """
-        if not isinstance(metadata, dict):
-            raise ValueError(f"metadata must be a dictionary, got: {type(metadata)}")
         return self._repo.set_metadata(blueprint_id=blueprint_id, metadata=metadata)
-    
-    def validate_blueprint(self, blueprint_id: str) -> Dict[str, Any]:
-        """
-        Validate a blueprint by resolving it and checking if it can be compiled.
-        
-        :param blueprint_id: The blueprint ID
-        :return: Dictionary with validation result, blueprint info, and ownership details
-        :raises KeyError: If blueprint doesn't exist
-        """
-        try:
-            # Try to resolve the blueprint - this validates it can be loaded and resolved
-            resolved = self.load_resolved(blueprint_id)
-            
-            # Get blueprint info
-            info = self.get_blueprint_info(blueprint_id)
-            
-            return {
-                "valid": True,
-                "blueprint_id": blueprint_id,
-                "blueprint_name": info["blueprint_name"],
-                "owner_user_id": info["owner_user_id"]
-            }
-        except Exception as e:
-            # If resolution fails, blueprint is invalid
-            try:
-                info = self.get_blueprint_info(blueprint_id)
-                return {
-                    "valid": False,
-                    "error": str(e),
-                    "blueprint_id": blueprint_id,
-                    "blueprint_name": info.get("blueprint_name", ""),
-                    "owner_user_id": info.get("owner_user_id", "")
-                }
-            except KeyError:
-                # Blueprint doesn't exist
-                return {
-                    "valid": False,
-                    "error": "Blueprint not found",
-                    "blueprint_id": blueprint_id
-                }

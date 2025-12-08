@@ -310,8 +310,8 @@ export default function ExecutionTab({
       setIsLoadingBlueprintName(true);
       try {
         const response = await axios.get(`/blueprints/blueprint.info.get?blueprintId=${session.blueprintId}`);
-        if (response.data?.blueprint_name) {
-          setSharedLinkBlueprintName(response.data.blueprint_name);
+        if (response.data?.spec_dict?.name) {
+          setSharedLinkBlueprintName(response.data.spec_dict.name);
         } else {
           console.warn('Blueprint name not found in response:', response.data);
           setSharedLinkBlueprintName("Unknown");

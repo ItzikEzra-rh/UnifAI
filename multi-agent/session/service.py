@@ -28,7 +28,7 @@ class SessionService:
         return self._manager.create_session(
             user_id=user_id,
             blueprint_id=blueprint_id,
-            metadata=SessionMeta.model_validate(metadata or {})
+            metadata=SessionMeta.model_validate(metadata)
         )
 
     def run(self, session: WorkflowSession, inputs: Dict[str, Any], scope: str = "public", logged_in_user="") -> Any:
@@ -102,7 +102,12 @@ class SessionService:
     def get_user_sessions_chat_history(self, user_id: str) -> list:
         """
         Get chat history for all sessions created by a user.
-        Includes sharing status for sessions created from shared links.
+        
+        Note: public_usage_scope is required by the frontend to determine if sessions
+        created from public links are still usable. The frontend checks this to:
+        1. Show/hide the session in chat history
+        2. Enable/disable execution for shared sessions
+        3. Display appropriate messaging when sharing is disabled
         """
         docs = self._manager.list_docs(user_id)
         chat_items = []
@@ -117,12 +122,10 @@ class SessionService:
                 source = doc.get("metadata", {}).get("source", "")
                 if source == "public_link":
                     try:
-                        blueprint_info = self._manager._bp_service.get_blueprint_info(blueprint_id)
-                        metadata = blueprint_info.get("metadata", {})
-                        # Check if usageScope is "public" in metadata
-                        public_usage_scope = metadata.get("usageScope") == "public"
+                        blueprint_doc = self._manager._bp_service.get_blueprint_info(blueprint_id)
+                        bp_metadata = blueprint_doc.get("metadata", {})
+                        public_usage_scope = bp_metadata.get("usageScope") == "public"
                     except (KeyError, Exception):
-                        # If blueprint doesn't exist or error, default to False
                         public_usage_scope = False
             
             chat_item = ChatHistoryItem.from_doc(

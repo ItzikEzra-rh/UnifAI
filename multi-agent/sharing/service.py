@@ -4,7 +4,6 @@ from datetime import datetime, timedelta
 from .models import ShareInvite, ShareResult, ShareStatus, ShareItemKind, ShareCleanupConfig, ShareCleanupResult
 from .repository.base import ShareRepository
 from .cloner import ShareCloner
-from session.service import SessionService
 
 
 class ShareService:
@@ -15,11 +14,9 @@ class ShareService:
     
     def __init__(self, 
                  share_repository: ShareRepository,
-                 cloner: ShareCloner,
-                 session_service: SessionService = None):
+                 cloner: ShareCloner):
         self._repo = share_repository
         self._cloner = cloner
-        self._session_service = session_service
 
     def create_invite(self, *, sender_user_id: str, recipient_user_id: str,
                      item_kind: ShareItemKind, item_id: str,

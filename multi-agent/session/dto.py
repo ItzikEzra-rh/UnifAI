@@ -9,7 +9,7 @@ class ChatHistoryItem:
     started_at: str
     blueprint_id: str
     blueprint_exists: bool = True
-    public_usage_scope: bool = False  # Only relevant for sessions from public links (metadata.source == "public_link")
+    public_usage_scope: bool = False
 
     @classmethod
     def from_doc(cls, doc: Mapping[str, Any], blueprint_exists: bool = True, public_usage_scope: bool = False) -> "ChatHistoryItem":
