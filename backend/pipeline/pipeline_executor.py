@@ -80,11 +80,3 @@ class PipelineExecutor:
         finally:
             # Always detach monitoring handler even if any step fails
             self._run_clean_orchestration()
-            # Delete the document file if applicable
-            if doc_path:
-                try:
-                    if os.path.exists(doc_path):
-                        os.remove(doc_path)
-                except Exception as e:
-                    from shared.logger import logger
-                    logger.warning(f"Failed to delete document file {doc_path}: {e}")
