@@ -9,7 +9,7 @@ from webargs import fields
 from shared.logger import logger
 from global_utils.helpers.apiargs import from_query, from_body
 from global_utils.celery_app.helpers import send_task
-from providers.docs import get_best_match_results, upload_docs
+from providers.docs import get_best_match_results, upload_docs, get_available_docs
 
 docs_bp = Blueprint("docs", __name__)
 
@@ -44,15 +44,8 @@ def get_supported_extensions():
 })
 def available_doc_list(cursor="", limit=50, search_regex=None):
     try:
-        svc = get_mongo_storage()
-        result = svc.get_sources_paginated(cursor, limit, search_regex, DataSource.DOCUMENT.upper_name)
-        
-        return jsonify({
-            "documents": result.get("sources", []),
-            "nextCursor": result.get("nextCursor"),
-            "hasMore": result.get("hasMore"),
-            "total": result.get("total")
-        }), 200
+        result = get_available_docs(cursor, limit, search_regex)
+        return jsonify(result), 200
     except Exception as e:
         logger.error(f"Failed to get available docs list: {str(e)}")
         return jsonify({"error": str(e)}), 500

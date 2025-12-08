@@ -1,15 +1,16 @@
 import base64
 import os
 import tempfile
-from typing import List, Optional
+from typing import Dict, List, Optional, Any
 from flask import jsonify
 from config.app_config import AppConfig
 from utils.storage.mongo.mongo_storage import MongoStorage
+from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from shared.logger import logger
 from global_utils.utils.util import get_mongo_url
 from werkzeug.utils import secure_filename
 from providers.data_sources import initialize_embedding_generator, initialize_vector_storage
-from config.constants import SourceType
+from config.constants import SourceType, DataSource, PipelineStatus
 from services.documents.doc_match_scope import DocMatchScopeBuilder
 import pymongo
 
@@ -69,3 +70,49 @@ def get_best_match_results(
         top_k=top_k_results,
         filters=filters if filters else None
     )
+
+
+def get_available_docs(
+    cursor: str = "",
+    limit: int = 50,
+    search_regex: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Get available documents (only DONE status, normalized for API).
+    
+    Args:
+        cursor: Pagination cursor
+        limit: Number of items to return
+        search_regex: Optional regex pattern to filter by name
+        
+    Returns:
+        Dict with documents, nextCursor, hasMore, and total
+    """
+    svc = get_mongo_storage()
+    
+    result = svc.get_sources_paginated(
+        cursor=cursor,
+        limit=limit,
+        search_regex=search_regex,
+        source_type=DataSource.DOCUMENT.upper_name
+    )
+    
+    sources = result.get("sources", [])
+    
+    # Filter to DONE status and normalize fields for API
+    normalized = [
+        {
+            "id": s.get("source_id"),
+            "name": s.get("source_name"),
+            "upload_by": s.get("upload_by")
+        }
+        for s in sources
+        if s.get("status") == PipelineStatus.DONE.value
+    ]
+    
+    return {
+        "documents": normalized,
+        "nextCursor": result.get("nextCursor"),
+        "hasMore": result.get("hasMore"),
+        "total": result.get("total")
+    }
