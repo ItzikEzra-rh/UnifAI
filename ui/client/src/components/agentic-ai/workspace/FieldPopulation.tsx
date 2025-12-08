@@ -68,6 +68,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [shouldKeepOpen, setShouldKeepOpen] = useState(false);
   const [hasAutoTriggered, setHasAutoTriggered] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Track if options were ever loaded
   
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
@@ -253,8 +254,14 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         if (isLoadMore) {
           // Append to existing options
           setPopulatedOptions(prev => [...prev, ...normalizedResults]);
+        } else if (!searchRegex) {
+          // Initial fetch (not search) - replace options and mark as loaded
+          setPopulatedOptions(normalizedResults);
+          if (normalizedResults.length > 0) {
+            setHasLoadedOnce(true);
+          }
         } else {
-          // Replace options (new fetch or search)
+          // Search: update with results (even if empty - will show "No results found")
           setPopulatedOptions(normalizedResults);
         }
       }
@@ -279,10 +286,12 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
       console.error('Population error:', error);
       const errorMessage = error.response?.data?.message || 'Population failed';
       console.warn(`Failed to populate ${fieldName}:`, errorMessage);
-      if (!isLoadMore) {
+      // Only clear options on initial load failure, not on search failure
+      if (!isLoadMore && !searchRegex) {
         setPopulatedOptions([]);
         setPagination({ nextCursor: null, hasMore: false, total: null });
       }
+      // For search errors, keep existing options visible
     } finally {
       if (isLoadMore) {
         setIsLoadingMore(false);
@@ -384,6 +393,13 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         className="w-[--radix-popover-trigger-width] p-0" 
         align="start"
         onOpenAutoFocus={(e) => e.preventDefault()}
+        onInteractOutside={(e) => {
+          // Prevent closing when interacting with elements inside the popover
+          const target = e.target as HTMLElement;
+          if (target.closest('[data-radix-popper-content-wrapper]')) {
+            e.preventDefault();
+          }
+        }}
       >
         <Command shouldFilter={false} loop>
           <CommandInput 
@@ -399,7 +415,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
           )}
           <CommandList>
             <CommandEmpty>
-              {isLoading ? 'Loading...' : 'No options found.'}
+              {isLoading ? 'Loading...' : isSearching ? 'Searching...' : searchTerm ? 'No matching results found.' : 'No options found.'}
             </CommandEmpty>
             <CommandGroup>
               {availableOptions.map((option: OptionItem) => (
@@ -578,8 +594,8 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         )}
       </div>
 
-      {/* Selection Dropdown (only show if we have options) */}
-      {populatedOptions.length > 0 && (
+      {/* Selection Dropdown (show if we have ever loaded options - keeps visible during search) */}
+      {(hasLoadedOnce || populatedOptions.length > 0) && (
         <div className="space-y-2">
           {/* Use searchable dropdown if search is supported, otherwise use standard dropdown */}
           {supportsSearch ? renderSearchableDropdown() : renderStandardDropdown()}
@@ -616,7 +632,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
       )}
 
       {/* Show message when no options populated yet */}
-      {populatedOptions.length === 0 && !isLoading && (
+      {!hasLoadedOnce && populatedOptions.length === 0 && !isLoading && (
         <p className="text-xs text-gray-400">
           Click the button above to populate {populateHint.field_mapping || 'options'}
         </p>
