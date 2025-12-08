@@ -26,8 +26,8 @@ wait_for_port() {
   for i in {1..60}; do
     port=$(kubectl get svc "$svc" -o jsonpath='{.spec.ports[0].port}' 2>/dev/null)
     if [[ -n "$port" ]]; then
-      log_info "$port"
-      return
+      echo "$port"
+      return 0
     fi
     log_info "Waiting for $svc Port..."
     sleep 10
@@ -42,8 +42,8 @@ wait_for_service_name() {
   for i in {1..60}; do
     ip=$(kubectl get svc "$svc" -o jsonpath='{.metadata.name}' 2>/dev/null)
     if [[ -n "$ip" ]]; then
-      log_info "$ip"
-      return
+      echo "$ip"
+      return 0
     fi
     log_info "Waiting for $svc ClusterIP IP..."
     sleep 10
@@ -58,8 +58,8 @@ wait_for_ip() {
   for i in {1..60}; do
     ip=$(kubectl get svc "$svc" -o jsonpath='{.spec.clusterIPs[0]}' 2>/dev/null)
     if [[ -n "$ip" ]]; then
-      log_info "$ip"
-      return
+      echo "$ip"
+      return 0
     fi
     log_info "Waiting for $svc ClusterIP IP..."
     sleep 10
