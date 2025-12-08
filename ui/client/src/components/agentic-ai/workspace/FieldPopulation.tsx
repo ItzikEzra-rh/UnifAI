@@ -275,8 +275,8 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         });
       }
 
-      // Only report to parent on initial load (not load more)
-      if (!isLoadMore) {
+      // Only report to parent on initial load (not load more or search)
+      if (!isLoadMore && !searchRegex) {
         // For backwards compatibility, send values based on the original format
         const resultValues = normalizedResults.map(opt => opt.value);
         onPopulateResult(fieldName, resultValues, populateHint.multi_select || false);
