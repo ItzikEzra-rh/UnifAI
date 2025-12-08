@@ -1,3 +1,4 @@
+import os
 from pipeline.pipeline_repository import PipelineRepository
 from global_utils.celery_app import CeleryApp
 from pipeline.pipeline_factory import PipelineFactory
@@ -53,6 +54,16 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
         
         # Execute the pipeline
         result = executor.run()
+        
+        # # Clean up uploaded file after successful embedding (for documents)
+        # if source_type.upper() == DataSource.DOCUMENT.upper_name:
+        #     doc_path = metadata.doc_path
+        #     if doc_path and os.path.exists(doc_path):
+        #         try:
+        #             os.remove(doc_path)
+        #             logger.info(f"Cleaned up uploaded file: {doc_path}")
+        #         except Exception as cleanup_error:
+        #             logger.warning(f"Failed to clean up uploaded file {doc_path}: {cleanup_error}")
         
         logger.info(f"Pipeline execution completed successfully for {source_type}: {pipeline_id}")
         return PipelineExecutionResult(

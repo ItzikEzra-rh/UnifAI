@@ -1,11 +1,13 @@
-import { FaEye } from "react-icons/fa";
+import { useState } from "react";
+import { FaEye, FaEdit } from "react-icons/fa";
 import { DataCard } from "@/components/shared/DataCard";
 import { fileByColors, getDataToDisplay, getFileIcon, isEmbeddingActivelyProcessing } from "@/features/helpers";
 import { InlineLoader } from "@/components/shared/InlineLoader";
 import { Document } from "@/types";
- import { RowSelectionState } from "@tanstack/react-table";
+import { RowSelectionState } from "@tanstack/react-table";
 import { DocumentData } from "./DocumentData";
 import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
+import { EditDocumentModal } from "./EditDocumentModal";
 
 interface DocumentGridProps {
   paginatedDocuments: Document[];
@@ -18,6 +20,7 @@ interface DocumentGridProps {
   footer?: React.ReactNode;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
+  onRefresh?: () => void;
 }
 
 const getFooterText = (doc: Document) => {
@@ -51,17 +54,22 @@ const getActions = (
   doc: Document,
   activeDoc: Document | null,
   setActiveDoc: (doc: Document | null) => void,
+  setEditDoc: (doc: Document | null) => void,
   rowSelection: RowSelectionState,
   onRowSelectionChange?: (selection: RowSelectionState) => void
 ) => {
-  const actions = [
+  const actions: any[] = [
     {
       icon: <FaEye />,
       onClick: () => setActiveDoc(doc === activeDoc ? null : doc),
     },
-];
+    {
+      icon: <FaEdit className="h-3 w-3" />,
+      onClick: () => setEditDoc(doc),
+    },
+  ];
 
-// Add checkbox action if selection is enabled
+  // Add checkbox action if selection is enabled - always last
   if (onRowSelectionChange) {
     const isSelected = rowSelection[doc.source_id] === true;
     actions.push({
@@ -78,7 +86,7 @@ const getActions = (
         }
         onRowSelectionChange(newSelection);
       },
-    } as any);
+    });
   }
 
   return actions;
@@ -90,8 +98,11 @@ export const DocumentGrid = ({
   setActiveDoc, 
   footer,
   rowSelection = {},
-  onRowSelectionChange
-  }: DocumentGridProps) => {
+  onRowSelectionChange,
+  onRefresh
+}: DocumentGridProps) => {
+  const [editDoc, setEditDoc] = useState<Document | null>(null);
+
   return (
     <>
       <div className="p-6">
@@ -112,8 +123,7 @@ export const DocumentGrid = ({
                 }
                 selected={doc === activeDoc}
                 onClick={() => setActiveDoc(doc === activeDoc ? null : doc)}
-                // extraTopRight={getExtraTopRight(doc, handleRetry, retrying)}
-                actions={getActions(doc, activeDoc, setActiveDoc, rowSelection, onRowSelectionChange)}
+                actions={getActions(doc, activeDoc, setActiveDoc, setEditDoc, rowSelection, onRowSelectionChange)}
               />
             ))}
           </div>
@@ -129,6 +139,16 @@ export const DocumentGrid = ({
         <div className="mt-6">
           <DocumentData doc={activeDoc} />
         </div>
+      )}
+
+      {editDoc && (
+        <EditDocumentModal
+          key={editDoc.source_id}
+          document={editDoc}
+          open={true}
+          onClose={() => setEditDoc(null)}
+          onUpdated={() => onRefresh?.()}
+        />
       )}
     </>
   );

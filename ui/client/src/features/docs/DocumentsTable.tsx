@@ -176,17 +176,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
         const isActive = activeDoc?.pipeline_id === doc.pipeline_id;
         return (
           <div className="flex items-center space-x-2 justify-end">
-            {/* {doc.status === PIPELINE_STATUS.FAILED && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 p-0"
-                onClick={() => handleRetry?.(doc.pipeline_id)}
-                disabled={retrying}
-              >
-                <FaSync />
-              </Button>
-            )} */}
             <Button
               variant="ghost"
               size="icon"
@@ -195,14 +184,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             >
               <FaEye className={isActive ? "text-primary" : ""} />
             </Button>
-            {onRowSelectionChange && rowSelection && (
-              <RowSelectionCheckbox
-                rowId={doc.source_id}
-                rowSelection={rowSelection}
-                onRowSelectionChange={onRowSelectionChange}
-                ariaLabel={`Select document ${doc.source_name}`}
-              />
-            )}
             <Button
               variant="ghost"
               size="icon"
@@ -223,6 +204,14 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
             >
               <FaTrash className="h-3 w-3" />
             </Button>
+            {onRowSelectionChange && rowSelection && (
+              <RowSelectionCheckbox
+                rowId={doc.source_id}
+                rowSelection={rowSelection}
+                onRowSelectionChange={onRowSelectionChange}
+                ariaLabel={`Select document ${doc.source_name}`}
+              />
+            )}
           </div>
         );
       },

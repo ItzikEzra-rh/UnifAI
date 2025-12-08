@@ -47,7 +47,7 @@ export function validateFiles(
  */
 export function formatFileSizeErrors(sizeErrors: string[]): string {
   if (sizeErrors.length === 0) return "";
-  return `The following files exceed the maximum size of ${MAX_FILE_SIZE_MB} MB: ${sizeErrors.join(', ')}. These files will be ignored.`;
+  return `The following files exceed the maximum size of ${MAX_FILE_SIZE_MB} MB: ${sizeErrors.join(', ')}.`;
 }
 
 /**
@@ -58,5 +58,13 @@ export function formatExtensionErrors(invalidFiles: string[]): string {
   const invalidExtensions = Array.from(new Set(invalidFiles.map(file => 
     file.substring(file.lastIndexOf('.')).toLowerCase()
   )));
-  return `The following file extensions are not supported: ${invalidExtensions.join(', ')}. These files will be ignored.`;
+  return `The following file extensions are not supported: ${invalidExtensions.join(', ')}.`;
+}
+
+/**
+ * Combines multiple error messages and adds the "ignored" notice at the end
+ */
+export function combineValidationErrors(errorMessages: string[]): string {
+  if (errorMessages.length === 0) return "";
+  return errorMessages.join('\n') + '\n\nThese files will be ignored.';
 }

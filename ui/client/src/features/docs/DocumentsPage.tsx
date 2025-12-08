@@ -243,6 +243,7 @@ export default function Documents() {
                         footer={footer}
                         rowSelection={rowSelection}
                         onRowSelectionChange={setRowSelection}
+                        onRefresh={refetch}
                       />
                     ) : (
                       <>

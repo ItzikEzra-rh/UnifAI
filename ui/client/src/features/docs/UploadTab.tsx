@@ -11,16 +11,17 @@ import {
   X, 
   CloudUpload,
   Tag,
-  Plus,
   CircleX
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ProcessingOptions } from "./ProcessingOptions";
-import { embedDocs, uploadDocs, getSupportedFileExtensions } from "@/api/docs";
+import { embedDocs, uploadDocs, getSupportedFileExtensions, fetchDocuments } from "@/api/docs";
 import { useAuth } from '@/contexts/AuthContext';
-import { formatExtensionErrors, formatFileSizeErrors, validateFiles } from "@/utils/fileValidation";
+import { formatExtensionErrors, formatFileSizeErrors, validateFiles, combineValidationErrors } from "@/utils/fileValidation";
 import { formatPipelineError } from "@/utils/errorFormatting";
+import { useQuery } from "@tanstack/react-query";
+import type { Document } from "@/types";
 
 interface UploadTabProps {
     setShowUploadModal: (showUploadModal: boolean) => void;
@@ -34,8 +35,16 @@ interface FileWithTags {
     id: string;
 }
 
+/**
+ * Normalizes a file name the same way the backend does:
+ * - Replaces spaces with underscores
+ */
+const normalizeFileName = (fileName: string): string => {
+    return fileName.replace(/ /g, '_');
+};
+
 export const UploadTab: React.FC<UploadTabProps> = ({
-    setShowUploadModal, fetchDocuments
+    setShowUploadModal, fetchDocuments: refetchDocuments
 }) => {
     const { user } = useAuth();
     
@@ -46,6 +55,13 @@ export const UploadTab: React.FC<UploadTabProps> = ({
     const [uploadProgress, setUploadProgress] = useState(0);
     const [supportedExtensions, setSupportedExtensions] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Fetch existing documents to check for duplicates
+    const { data: existingDocuments = [] } = useQuery<Document[]>({
+        queryKey: ['documents'],
+        queryFn: fetchDocuments,
+        staleTime: 30 * 1000,
+    });
 
     useEffect(() => {
         const loadSupportedExtensions = async () => {
@@ -63,6 +79,26 @@ export const UploadTab: React.FC<UploadTabProps> = ({
     const isFileExtensionSupported = (fileName: string): boolean => {
         const extension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
         return supportedExtensions.includes(extension);
+    };
+
+    /**
+     * Checks if a file with the same normalized name already exists for the current user
+     */
+    const checkDuplicateFileName = (fileName: string): { isDuplicate: boolean; normalizedName: string; existingDoc?: Document } => {
+        const normalizedName = normalizeFileName(fileName);
+        const currentUsername = user?.username || 'default';
+        
+        // Check if any existing document (uploaded by this user) has the same normalized source_name
+        const existingDoc = existingDocuments.find(doc => {
+            const normalizedExistingName = normalizeFileName(doc.source_name);
+            return normalizedExistingName === normalizedName && doc.upload_by === currentUsername;
+        });
+
+        return {
+            isDuplicate: !!existingDoc,
+            normalizedName,
+            existingDoc
+        };
     };
     
     const handleDragEnter = (e: React.DragEvent) => {
@@ -102,15 +138,49 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         if (sizeErrors.length > 0) {
             errorMessages.push(formatFileSizeErrors(sizeErrors));
         }
+
+        // Check for duplicate files (same normalized name for current user)
+        const duplicateFiles: { fileName: string; normalizedName: string }[] = [];
+        const nonDuplicateFiles: File[] = [];
+
+        for (const file of validFiles) {
+            const { isDuplicate, normalizedName } = checkDuplicateFileName(file.name);
+            
+            // Also check if the file is already in the selected files list
+            const alreadySelected = selectedFiles.some(
+                sf => normalizeFileName(sf.file.name) === normalizedName
+            );
+
+            if (isDuplicate || alreadySelected) {
+                duplicateFiles.push({ fileName: file.name, normalizedName });
+            } else {
+                nonDuplicateFiles.push(file);
+            }
+        }
+
+        if (duplicateFiles.length > 0) {
+            const duplicateNames = duplicateFiles.map(d => 
+                d.fileName !== d.normalizedName 
+                    ? `"${d.fileName}" (saved as "${d.normalizedName}")`
+                    : `"${d.fileName}"`
+            ).join(', ');
+            
+            toast({
+                variant: "destructive",
+                title: "Duplicate name(s) detected",
+                description: `You already have document(s) with the same name: ${duplicateNames}. Please rename the file(s) or remove the existing ones first.`,
+            });
+        }
+
         if (errorMessages.length > 0) {
-            setError(errorMessages.join('\n'));
+            setError(combineValidationErrors(errorMessages));
         } else {
             setError(""); // Clear any previous errors if no invalid files
         }
         
-        if (validFiles.length > 0) {
+        if (nonDuplicateFiles.length > 0) {
             const currentFileCount = selectedFiles.length;
-            const totalAfterAdd = currentFileCount + validFiles.length;
+            const totalAfterAdd = currentFileCount + nonDuplicateFiles.length;
             
             if (totalAfterAdd > 5) {
                 toast({
@@ -121,7 +191,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                 return;
             }
             
-            const newFiles = validFiles.map(file => ({
+            const newFiles = nonDuplicateFiles.map(file => ({
                 file,
                 tags: [],
                 showTagInput: false,
@@ -167,66 +237,53 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         }));
     };
 
-    const uploadFiles = async () => {
+    const handleUpload = async () => {
         if (selectedFiles.length === 0) return;
         
         setIsUploading(true);
         setUploadProgress(0);
-        let uploadedCount = 0;
         
         try {
-            for (const item of selectedFiles) {
-                const base64 = await new Promise<string>((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => {
-                        const result = reader.result as string;
-                        resolve(result.split(",")[1]);
-                    };
-                    reader.onerror = reject;
-                    reader.readAsDataURL(item.file);
-                });
-                
-                // Pass tags if the backend supports it, for now we assume it's part of metadata or separate call
-                // The uploadDocs function signature is: uploadDocs(files: {name: string, content: string}[]): Promise<any>
-                // If we need to send tags, we might need to update the API or use a different endpoint.
-                // For this implementation, we'll stick to the existing uploadDocs for file content.
-                // Ideally, tags should be associated with the document after upload or during embedding.
-                
-                await uploadDocs([{ name: item.file.name, content: base64 }]);
-                
-                uploadedCount++;
-                setUploadProgress(Math.round((uploadedCount / selectedFiles.length) * 90));
-            }
-
-            setIsUploading(false);
-            // Refetch documents immediately after upload to show new documents
-            await fetchDocuments();
-            setShowUploadModal(false);
+            // Step 1: Upload files
+            await uploadFiles();
+            
+            // Step 2: Start embedding pipeline
+            await startPipeline();
         } catch (err) {
-            console.error("Upload failed", err);
-            const message = (err as Error)?.message || "Upload failed. Please try again.";
-            setError(message);
-            toast({
-                variant: "destructive",
-                title: (
-                    <span className="inline-flex items-center gap-2">
-                        <CircleX className="h-4 w-4 text-red-500" />
-                        <span>Upload failed</span>
-                    </span>
-                ),
-                description: message,
-            });
+            // Errors are handled in the respective functions
             setIsUploading(false);
-            throw err; // Propagate to caller so downstream steps (embed) are not started
         }
     };
 
-    const startPipeline = async (docs: {source_name: string}[]) => {
+    const uploadFiles = async () => {
+        let uploadedCount = 0;
+        
+        for (const item of selectedFiles) {
+            const base64 = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const result = reader.result as string;
+                    resolve(result.split(",")[1]);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(item.file);
+            });
+            
+            await uploadDocs([{ name: item.file.name, content: base64 }]);
+            
+            uploadedCount++;
+            setUploadProgress(Math.round((uploadedCount / selectedFiles.length) * 50));
+        }
+    };
+
+    const startPipeline = async () => {
         try {
             const docs = selectedFiles.map((item) => ({
                 source_name: item.file.name,
                 tags: item.tags
             }));
+            
+            setUploadProgress(60);
             
             const res = await embedDocs(docs, user?.username || 'default');
             
@@ -234,13 +291,6 @@ export const UploadTab: React.FC<UploadTabProps> = ({
             if (issues.length > 0) {
                 issues.forEach((issue: any) => {
                     const { title: titleText, description } = formatPipelineError(issue);
-
-                    const title: React.ReactNode = (
-                        <span className="inline-flex items-center gap-2">
-                            <CircleX className="h-4 w-4 text-red-500" />
-                            <span>{titleText}</span>
-                        </span>
-                    );
 
                     toast({
                         variant: "destructive",
@@ -254,21 +304,28 @@ export const UploadTab: React.FC<UploadTabProps> = ({
             
             toast({
                 title: "Success",
-                description: "Documents uploaded and processed successfully.",
+                description: "Documents uploaded and processing started.",
             });
             
-            if (fetchDocuments) await fetchDocuments();
+            if (refetchDocuments) await refetchDocuments();
             setSelectedFiles([]);
             setShowUploadModal(false);
             
         } catch (err) {
-            console.error("Upload failed", err);
-            const message = (err as Error)?.message || "There was an error uploading your documents.";
+            console.error("Embedding failed", err);
+            const message = (err as Error)?.message || "There was an error processing your documents.";
+            setError(message);
             toast({
                 variant: "destructive",
-                title: "Upload failed",
+                title: (
+                    <span className="inline-flex items-center gap-2">
+                        <CircleX className="h-4 w-4 text-red-500" />
+                        <span>Processing failed</span>
+                    </span>
+                ),
                 description: message,
             });
+            throw err;
         } finally {
             setIsUploading(false);
         }
@@ -285,7 +342,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                     <Button variant="outline" onClick={() => setShowUploadModal(false)}>Cancel</Button>
                     {selectedFiles.length > 0 && !isUploading && (
                         <Button 
-                            onClick={uploadFiles}
+                            onClick={handleUpload}
                             className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm transition-all hover:shadow-md"
                         >
                             <CloudUpload className="mr-2 h-4 w-4" />
@@ -331,11 +388,29 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                         <h3 className="text-xl font-semibold text-foreground mb-2">
                             {selectedFiles.length >= 5 ? "Maximum files reached" : "Click to upload or drag and drop"}
                         </h3>
-                        <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                            {selectedFiles.length >= 5 
-                                ? "Please remove a file to add another." 
-                                : `Supported formats: ${supportedExtensions.map(ext => ext.replace('.', '').toUpperCase()).join(', ')}`}
+                        <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-4">
+                            {selectedFiles.length >= 5 ? "Please remove a file to add another." : ""}
                         </p>
+                        
+                        {/* Additional details */}
+                        <div className="flex flex-col items-center gap-2 text-xs text-muted-foreground">
+                            <p>
+                                Supported formats: {supportedExtensions.map(ext => ext.toUpperCase().substring(1)).join(', ')}
+                            </p>
+                            <p>
+                                Maximum file size: <span className="font-semibold text-foreground/70">50 MB</span> per file
+                            </p>
+                            <p>
+                                Maximum files: <span className="font-semibold text-foreground/70">5</span> documents
+                            </p>
+                        </div>
+                        
+                        {/* Error display */}
+                        {error && (
+                            <div className="mt-6 w-full max-w-sm">
+                                <p className="text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-md px-3 py-2 whitespace-pre-line">{error}</p>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
