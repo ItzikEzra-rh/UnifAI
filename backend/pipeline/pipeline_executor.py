@@ -59,10 +59,6 @@ class PipelineExecutor:
     def run(self) -> Any:
         self._run_orchestration()
         stored = None
-        doc_path = None
-        # Try to get doc_path if this is a DocumentPipeline
-        if hasattr(self.pipeline, 'metadata') and hasattr(self.pipeline.metadata, 'doc_path'):
-            doc_path = self.pipeline.metadata.doc_path
         try:
             collected   = self._run_collect()
             processed   = self._run_process(collected)
