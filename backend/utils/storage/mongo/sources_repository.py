@@ -1,3 +1,4 @@
+import re
 from typing import Optional, Dict, List, Any
 from pymongo.collection import Collection
 from datetime import datetime
@@ -101,19 +102,18 @@ class SourcesRepository:
         skip = int(cursor) if cursor and cursor.isdigit() else 0
         pipeline = []
         
+        start_anchored = f"^{re.escape(search_regex)}" if search_regex else None
+        
         # Base match filter
         if match_filter:
             pipeline.append({"$match": match_filter})
         
         if field_path:
             # DISTINCT VALUES MODE - extract unique values from a field
-            if search_regex:
-                pipeline.append({"$match": {field_path: {"$regex": search_regex, "$options": "i"}}})
-            
             pipeline.append({"$unwind": f"${field_path}"})
             
-            if search_regex:
-                pipeline.append({"$match": {field_path: {"$regex": search_regex, "$options": "i"}}})
+            if start_anchored:
+                pipeline.append({"$match": {field_path: {"$regex": start_anchored, "$options": "i"}}})
             else:
                 pipeline.append({"$match": {field_path: {"$exists": True, "$ne": None, "$ne": ""}}})
             
@@ -121,8 +121,8 @@ class SourcesRepository:
             pipeline.append({"$sort": {"_id": sort_order if sort_order else 1}})
         else:
             # FULL DOCUMENTS MODE
-            if search_regex:
-                pipeline.append({"$match": {"source_name": {"$regex": search_regex, "$options": "i"}}})
+            if start_anchored:
+                pipeline.append({"$match": {"source_name": {"$regex": start_anchored, "$options": "i"}}})
             
             sort_field = sort_by or "created_at"
             pipeline.append({"$sort": {sort_field: sort_order}})
