@@ -1,3 +1,4 @@
+import os
 from typing import Any
 from pipeline.pipeline_repository import PipelineRepository
 from config.constants import PipelineStatus
@@ -58,6 +59,10 @@ class PipelineExecutor:
     def run(self) -> Any:
         self._run_orchestration()
         stored = None
+        doc_path = None
+        # Try to get doc_path if this is a DocumentPipeline
+        if hasattr(self.pipeline, 'metadata') and hasattr(self.pipeline.metadata, 'doc_path'):
+            doc_path = self.pipeline.metadata.doc_path
         try:
             collected   = self._run_collect()
             processed   = self._run_process(collected)
@@ -75,3 +80,11 @@ class PipelineExecutor:
         finally:
             # Always detach monitoring handler even if any step fails
             self._run_clean_orchestration()
+            # Delete the document file if applicable
+            if doc_path:
+                try:
+                    if os.path.exists(doc_path):
+                        os.remove(doc_path)
+                except Exception as e:
+                    from shared.logger import logger
+                    logger.warning(f"Failed to delete document file {doc_path}: {e}")
