@@ -191,7 +191,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
 
   // Effect to re-fetch when debounced search term changes
   useEffect(() => {
-    if (supportsSearch && populatedOptions.length > 0) {
+    if (supportsSearch && hasLoadedOnce) {
       // Reset and fetch with new search term
       performPopulation(null, debouncedSearchTerm);
     }
@@ -402,11 +402,13 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         }}
       >
         <Command shouldFilter={false} loop>
-          <CommandInput 
-            placeholder={`Search ${populateHint.field_mapping || 'options'}...`}
-            value={searchTerm}
-            onValueChange={setSearchTerm}
-          />
+        <div className="[&_input]:!text-white">
+            <CommandInput 
+              placeholder={`Search ${populateHint.field_mapping || 'options'}...`}
+              value={searchTerm}
+              onValueChange={setSearchTerm}
+            />
+          </div>
           {isSearching && (
             <div className="flex items-center justify-center py-2">
               <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
