@@ -113,10 +113,13 @@ class SessionService:
 
     def get_user_blueprints(self, user_id) -> List[str]:
         """
-        Get all blueprints created by a user.
+        Get all existing blueprints that have sessions for a user.
+        Only returns blueprint IDs that still exist (filters out deleted blueprints).
         """
         docs = self._manager.list_docs(user_id)
-        return list({d.get("blueprint_id") for d in docs})
+        blueprint_ids = {d.get("blueprint_id") for d in docs if d.get("blueprint_id")}
+        # Filter to only include blueprints that still exist
+        return [bp_id for bp_id in blueprint_ids if self._manager.blueprint_exists(bp_id)]
 
     def get_user_blueprint_session_counts(self, user_id: str) -> Dict[str, int]:
         """

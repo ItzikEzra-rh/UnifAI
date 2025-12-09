@@ -39,21 +39,19 @@ class StatisticsService:
         Returns:
             StatisticsResponse: Pydantic model containing all statistics
         """
-        # Get available blueprint IDs for this user
-        available_blueprint_ids = set(self._blueprint_service.list_ids(user_id=user_id))
-        total_workflows = len(available_blueprint_ids)
+        # Get counts using optimized queries
+        total_workflows = self._blueprint_service.count(user_id=user_id)
         
-        # Get blueprint IDs that have sessions
-        blueprints_with_sessions = set(self._session_service.get_user_blueprints(user_id))
-        
-        # Count only blueprints that exist AND have sessions
-        active_sessions = len(available_blueprint_ids & blueprints_with_sessions)
+        # Get existing blueprints that have sessions (already filters out deleted blueprints)
+        active_blueprints = self._session_service.get_user_blueprints(user_id)
+        active_sessions = len(active_blueprints)
         
         # Get session counts, filtered to only include existing blueprints
+        active_blueprint_set = set(active_blueprints)
         all_session_counts = self._session_service.get_user_blueprint_session_counts(user_id)
         blueprint_session_counts = {
             bp_id: count for bp_id, count in all_session_counts.items()
-            if bp_id in available_blueprint_ids
+            if bp_id in active_blueprint_set
         }
 
         # Get resource aggregation
