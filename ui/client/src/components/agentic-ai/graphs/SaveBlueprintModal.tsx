@@ -1,5 +1,5 @@
 
-import React, { useState , useMemo} from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -44,7 +44,6 @@ const SaveBlueprintModal: React.FC<SaveBlueprintModalProps> = ({
 
   const isFormValid = name.trim().length > 0;
   const { user } = useAuth();
-  const timestamp = useMemo(() => new Date().toISOString(), [isOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -99,8 +98,6 @@ const SaveBlueprintModal: React.FC<SaveBlueprintModalProps> = ({
             className="bg-primary hover:bg-primary/80"
             data-umami-event="agent-graphs-save-blueprint-button" 
             data-umami-event-user-id={user?.username}
-            data-umami-event-blueprint-name={name}
-            data-umami-event-blueprint-unique-id={`${name}-${timestamp}`}
           >
             {isLoading ? (
               <div className="flex items-center gap-2">

@@ -761,7 +761,6 @@ export default function ChatInterface({
               className="bg-primary hover:bg-[#7525c9] mb-0"
               data-umami-event="agent-chat-send-message-button" 
               data-umami-event-user-id={user?.username}
-              data-umami-event-flow-name={runId}
             >
               <Send className="h-4 w-4" />
             </Button>

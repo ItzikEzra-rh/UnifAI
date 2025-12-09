@@ -3,7 +3,6 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FaSearch } from "react-icons/fa";
-import { useAuth } from "@/contexts/AuthContext";
 
 interface DocumentFiltersProps {
   fileTypeFilter: string;
