@@ -93,7 +93,6 @@ class SourcesRepository:
             match_filter: Additional match conditions (e.g. {"source_type": "DOCUMENT"})
             sort_by: Field to sort by (defaults to "_id" for fields, "created_at" for docs)
             sort_order: 1 for ascending, -1 for descending
-            normalize_fields: If True, renames source_id->id, source_name->name for API responses
             
         Returns:
             {"data": [...], "nextCursor": str|None, "hasMore": bool, "total": int}
@@ -183,7 +182,7 @@ class SourcesRepository:
                     "source_type": source_type,
                     "upload_by": upload_by,
                     "pipeline_id": pipeline_id,
-                    "created_at": now,
+                    "created_at": now
                 }
             },
             upsert=True

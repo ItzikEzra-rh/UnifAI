@@ -5,7 +5,7 @@ from utils.storage.mongo.sources_repository import SourcesRepository
 from utils.storage.mongo.slack_channels_repository import SlackChannelsRepository
 from utils.storage.mongo.utils import make_json_safe
 from pymongo import UpdateOne
-from config.constants import Database, Collection as CollectionName, PipelineStatus
+from config.constants import Database, Collection as CollectionName
 
 class MongoStorage:
     """Main MongoDB storage facade that composes repositories."""
@@ -95,7 +95,7 @@ class MongoStorage:
             sort_order=sort_order
         )
 
-    def get_sources_paginated(self, cursor: Optional[str] = None, limit: int = 50, search_regex: Optional[str] = None, source_type: Optional[str] = None, normalize_fields: bool = True) -> Dict[str, Any]:
+    def get_sources_paginated(self, cursor: Optional[str] = None, limit: int = 50, search_regex: Optional[str] = None, source_type: Optional[str] = None) -> Dict[str, Any]:
         """Get sources with pagination and pipeline stats enrichment."""
         match_filter = {"source_type": source_type.upper()} if source_type else None
         result = self.sources.get_paginated(
@@ -120,17 +120,7 @@ class MongoStorage:
             else:
                 source['pipeline_stats'] = None
                 source['status'] = None
-            
-            if normalize_fields:
-                # Only include sources with 'done' status, normalized to id/name
-                if source['status'] == PipelineStatus.DONE.value:
-                    enriched.append({
-                        "id": source.get('source_id'),
-                        "name": source.get('source_name'),
-                        "upload_by": source.get('upload_by')
-                    })
-            else:
-                enriched.append(make_json_safe(source))
+            enriched.append(make_json_safe(source))
             
         result["sources"] = enriched
         del result["data"]
