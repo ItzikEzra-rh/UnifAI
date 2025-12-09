@@ -60,6 +60,7 @@ class StatisticsService:
             totalWorkflows=total_workflows,
             activeSessions=active_sessions,
             totalResources=total_resources,
+            categoriesInUse=len(resources_by_category),
             blueprintSessionCounts=blueprint_session_counts,
             resourcesByCategory=resources_by_category
         )

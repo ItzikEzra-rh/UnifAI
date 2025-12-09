@@ -14,6 +14,7 @@ class StatisticsResponse(BaseModel):
     totalWorkflows: int = Field(..., description="Total number of workflows/blueprints")
     activeSessions: int = Field(..., description="Number of active sessions")
     totalResources: int = Field(..., description="Total number of resources")
+    categoriesInUse: int = Field(..., description="Number of categories with at least one configured resource")
     blueprintSessionCounts: Dict[str, int] = Field(default_factory=dict, description="Dictionary mapping blueprint_id to session count")
     resourcesByCategory: List[ResourceCategoryStats] = Field(default_factory=list, description="List of resource statistics grouped by category")
 

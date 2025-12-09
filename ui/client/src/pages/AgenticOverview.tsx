@@ -161,8 +161,8 @@ export default function AgenticOverview() {
                     Categories
                   </span>
                 }
-                value={resourceDistribution.length}
-                subtext="Resource categories"
+                value={agenticStats.data?.categoriesInUse || 0}
+                subtext="Categories in use"
                 isLoading={agenticStats.isLoading}
                 error={agenticStats.error}
                 iconColor={themeColors.categories}
