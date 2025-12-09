@@ -12,6 +12,7 @@ from .models import (
     AvailableTagsResponse,
     AvailableDocsResponse,
     QueryMatchResponse,
+    HealthResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class DataflowClient:
     - Querying vector database
     """
 
+    HEALTH_ENDPOINT = "/api/health/"
     TAGS_ENDPOINT = "/api/docs/available.tags.get"
     DOCS_ENDPOINT = "/api/docs/available.docs.get"
     QUERY_ENDPOINT = "/api/docs/query.match"
@@ -216,6 +218,28 @@ class DataflowClient:
         except httpx.HTTPStatusError as e:
             raise DataflowClientError(
                 f"Query failed: {e.response.status_code}"
+            ) from e
+        except httpx.RequestError as e:
+            raise DataflowConnectionError(f"Connection error: {e}") from e
+
+    def health_check(self) -> HealthResponse:
+        """
+        Check Dataflow service health.
+
+        Returns:
+            HealthResponse with status and message
+        """
+        self._require_connected()
+
+        try:
+            response = self._client.get(
+                self._build_url(self.HEALTH_ENDPOINT),
+            )
+            response.raise_for_status()
+            return HealthResponse.model_validate(response.json())
+        except httpx.HTTPStatusError as e:
+            raise DataflowClientError(
+                f"Health check failed: {e.response.status_code}"
             ) from e
         except httpx.RequestError as e:
             raise DataflowConnectionError(f"Connection error: {e}") from e

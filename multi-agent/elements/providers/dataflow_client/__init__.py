@@ -17,6 +17,7 @@ from .models import (
     AvailableDocsResponse,
     QueryMatchResult,
     QueryMatchResponse,
+    HealthResponse,
 )
 
 __all__ = [
@@ -34,5 +35,6 @@ __all__ = [
     "AvailableDocsResponse",
     "QueryMatchResult",
     "QueryMatchResponse",
+    "HealthResponse",
 ]
 

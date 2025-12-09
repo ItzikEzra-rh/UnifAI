@@ -1,7 +1,7 @@
 """
 Response models for Dataflow API.
 """
-from typing import List, Optional
+from typing import List, Optional, ClassVar
 from pydantic import BaseModel
 
 
@@ -44,4 +44,16 @@ class QueryMatchResponse(BaseModel):
     """Response from /api/docs/query.match"""
     matches: List[QueryMatchResult]
     total: int = 0
+
+
+class HealthResponse(BaseModel):
+    """Response from /api/health/"""
+    STATUS_OK: ClassVar[str] = "ok"
+
+    message: str
+    status: str
+
+    @property
+    def is_healthy(self) -> bool:
+        return self.status == self.STATUS_OK
 
