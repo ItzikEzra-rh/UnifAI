@@ -1,18 +1,14 @@
 from config.app_config import AppConfig
 from shared.logger import logger
+from functools import lru_cache
 import umami
 
 
 app_config = AppConfig.get_instance()
 
-_cached_website_id = None
-
+@lru_cache(maxsize=1)
 def get_umami_settings():
-    try:
-        global _cached_website_id
-        if _cached_website_id:
-            return {"umami_url": app_config.get("umami_url", ""), "website_id": _cached_website_id}
-        
+    try:        
         umami_url = app_config.get("umami_url", "")
         umami_website_name = app_config.get("umami_website_name", "unifai")
         umami_username = app_config.get("umami_username", "")
@@ -22,7 +18,6 @@ def get_umami_settings():
         websites = umami.websites()
         website_info = next(w for w in websites if w.name == umami_website_name)
         website_id = website_info.id
-        _cached_website_id = website_id
         return {"umami_url": umami_url, "website_id": website_id}
     except StopIteration:
         logger.error(f"Umami website not found: {umami_website_name}")
