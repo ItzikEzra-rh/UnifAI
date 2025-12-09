@@ -17,7 +17,7 @@ import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { isEmbeddingActivelyProcessing } from "@/features/helpers";
 import { BulkDeleteButton } from "@/components/shared/BulkDeleteButton";
-import { useBulkDelete } from "@/hooks/useBulkDelete";
+import { useBulkDelete } from "@/hooks/use-bulk-delete";
 
 export default function Documents() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
