@@ -18,7 +18,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { isEmbeddingActivelyProcessing } from "../helpers";
-import { useAuth } from "@/contexts/AuthContext";
 
 export function isChannelNew(createdAt: Date): boolean {
   const now = new Date()
@@ -31,9 +30,8 @@ export function getColumns(
   onDeleteClick: (ch: EmbedChannel) => void,
   deletingChannelId?: string,
   activeEmbeddingIds: string[] = [],
+  user?: { username?: string } | null,
 ): DataTableColumn<EmbedChannel>[] {
-
-  const { user } = useAuth();
 
   return [
     {
