@@ -4,7 +4,7 @@ pyyaml==6.0.2
 langchain==0.3.25
 langchain-core==0.3.65
 langchain-openai==0.3.24
-langchain-google-genai>=2.1.0
+langchain-google-genai
 openai==1.100.2
 langgraph==0.4.8
 langgraph-sdk==0.1.70
