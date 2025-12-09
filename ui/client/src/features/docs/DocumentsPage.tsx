@@ -259,6 +259,7 @@ export default function Documents() {
                             rowSelection={rowSelection}
                             onRowSelectionChange={setRowSelection}
                             onRefresh={refetch}
+                            onColumnFiltersChange={() => setRowSelection({})}
                           />
 
                         </div>

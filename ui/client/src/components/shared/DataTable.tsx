@@ -110,6 +110,7 @@ interface DataTableProps<T extends object> {
     rowSelection: RowSelectionState
   }>
   onSortingChange?: (updater: SortingState) => void
+  onColumnFiltersChange?: (filters: ColumnFiltersState) => void
   expendedRow?: any;
   renderExpandedRow?: (row: T) => React.ReactNode
 }
@@ -127,6 +128,7 @@ export function DataTable<T extends object>({
   getRowId,
   initialState,
   onSortingChange,
+  onColumnFiltersChange,
   expendedRow,
   renderExpandedRow
 }: DataTableProps<T>) {
@@ -270,7 +272,11 @@ export function DataTable<T extends object>({
       }
     },
     onGlobalFilterChange: setGlobalFilter,
-    onColumnFiltersChange: setColumnFilters,
+    onColumnFiltersChange: (updater) => {
+      const newFilters = typeof updater === 'function' ? updater(columnFilters) : updater
+      setColumnFilters(newFilters)
+      onColumnFiltersChange?.(newFilters)
+    },
     onPaginationChange: setPagination,
     initialState: {
       sorting: initialState?.sorting ?? [],
