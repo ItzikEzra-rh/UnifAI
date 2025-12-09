@@ -111,7 +111,7 @@ ui/
 │   │   │   ├── use-graph-logic.ts   # ⭐ Graph builder logic
 │   │   │   ├── use-mobile.tsx       # Mobile detection
 │   │   │   ├── use-toast.ts         # Toast notifications
-│   │   │   └── useWorkspaceData.ts  # ⭐ Workspace data management
+│   │   │   └── use-workspace-data.ts  # ⭐ Workspace data management
 │   │   ├── http/                    # HTTP clients
 │   │   │   ├── authClient.ts        # API3 (SSO) client
 │   │   │   ├── axiosAgentConfig.ts  # API2 (Multi-Agent) client
@@ -182,13 +182,13 @@ The application uses a **nested provider pattern** to manage global state:
 - **AuthProvider**: User authentication, session handling
 - **NotificationProvider**: Share invites, periodic polling (30s), notification counts
 - **SharedProvider**: Shared panel visibility state
-- **ProjectContext**: Current project selection
+- **ProjectContext**: Current project selection (not fully implemented)
 
 ### 2. **Multi-Backend API Architecture**
 
 The system communicates with **3 separate backends** via Vite proxy configuration:
 
-| Proxy Path | Backend Service | Purpose | Base URL |
+| Proxy Path | Backend Service | Purpose | Port |
 |------------|----------------|---------|----------|
 | `/api1` | Data Pipeline Hub | Document/Slack pipelines, embeddings | Port 13457 |
 | `/api2` | Multi-Agent System | Agentic workflows, sessions, blueprints | Port 8002 |
@@ -196,6 +196,13 @@ The system communicates with **3 separate backends** via Vite proxy configuratio
 
 **HTTP Client Configuration:**
 ```typescript
+// api1 - RAG System (main application backend)
+const axiosBEConfig = axios.create({
+  baseURL: '/api1',
+  timeout: 20000, // 20 seconds
+  withCredentials: true, // Important: This ensures cookies are sent with requests
+});
+
 // api2 - Multi-Agent System (main agentic AI backend)
 const axiosAgentConfig = axios.create({
   baseURL: '/api2',
@@ -501,7 +508,7 @@ const reader = new EnhancedStreamReader(
 
 #### 4. **Workspace Resource Management**
 
-**Hook: `useWorkspaceData.ts`** (~410 lines)
+**Hook: `use-workspace-data.ts`** (~410 lines)
 
 Manages all workspace resources (nodes, conditions, LLMs, tools, etc.):
 
@@ -1117,7 +1124,7 @@ const { currentPage, setCurrentPage } = usePaginationStore();
 **Major custom hooks:**
 
 1. **`use-graph-logic.ts`** - Graph builder state machine (~1250 lines)
-2. **`useWorkspaceData.ts`** - Workspace resource management (~410 lines)
+2. **`use-workspace-data.ts`** - Workspace resource management (~410 lines)
 3. **`use-toast.ts`** - Toast notification system
 4. **`use-mobile.tsx`** - Mobile detection
 
@@ -1712,4 +1719,5 @@ For questions about this architecture document or UI conventions:
 **Document Version:** 1.0  
 **Last Updated:** November 23, 2025  
 **Maintainer:** UnifAI Development Team
+
 
