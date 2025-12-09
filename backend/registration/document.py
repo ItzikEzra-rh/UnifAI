@@ -11,7 +11,7 @@ from werkzeug.utils import secure_filename
 from config.app_config import AppConfig
 from config.constants import DataSource
 from shared.source_types import DocumentMetadata, DocumentTypeData
-from utils.file_hash import compute_file_md5
+from utils.file_hash import compute_file_md5, cleanup_file
 from validator.validator import Validator, DocValidators
 
 app_config = AppConfig.get_instance()
@@ -35,8 +35,7 @@ class DocumentRegistration(RegistrationBase):
     def source_data(self) -> DocumentSourceData:
         # Get the original name for display purposes
         original_name = self.instance.get("source_name", "")
-        # Use secure_filename to get the actual filename on disk (spaces -> underscores)
-        # This matches what upload_docs() does when saving the file
+        # Use secure_filename to get the actual filename which matches what upload_docs() does when saving the file
         secure_name = secure_filename(original_name)
         path = os.path.join(self.upload_folder, secure_name)
         md5 = compute_file_md5(path)
@@ -61,6 +60,9 @@ class DocumentRegistration(RegistrationBase):
         is_valid, issue = self._validator.validate(**validation_args)
 
         if not is_valid:
+            # Clean up the uploaded file since it failed validation
+            cleanup_file(self.source_data.doc_path, "after validation failure")
+            
             issue_key = (issue or {}).get("issue_key", "ValidationError")
             message = (issue or {}).get("message", "Validation error")
             validator_name = (issue or {}).get("validator_name", "Validator")

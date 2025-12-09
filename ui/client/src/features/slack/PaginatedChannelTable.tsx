@@ -6,8 +6,6 @@ import { motion } from "framer-motion";
 import { EmbedChannel } from "@/types";
 import { DataTable } from "@/components/shared/DataTable";
 import { getColumns } from "./ChannelTable";
-import { RowSelectionState } from "@tanstack/react-table";
-import { BulkDeleteButton } from "@/components/shared/BulkDeleteButton";
 
 export interface PaginatedChannelTableProps {
   allChannels: EmbedChannel[];
@@ -18,11 +16,6 @@ export interface PaginatedChannelTableProps {
   isLoading?: boolean;
   deletingChannelId?: string;
   activeEmbeddingIds?: string[];
-  rowSelection?: RowSelectionState;
-  onRowSelectionChange?: (selection: RowSelectionState) => void;
-  onBulkDelete?: () => void;
-  bulkDeleteLoading?: boolean;
-  selectedCount?: number;
 }
 
 export function PaginatedChannelTable({
@@ -34,11 +27,6 @@ export function PaginatedChannelTable({
   isLoading = false,
   deletingChannelId,
   activeEmbeddingIds = [],
-  rowSelection,
-  onRowSelectionChange,
-  onBulkDelete,
-  bulkDeleteLoading = false,
-  selectedCount = 0,
 }: PaginatedChannelTableProps) {
   const [, navigate] = useLocation();
 
@@ -80,15 +68,6 @@ export function PaginatedChannelTable({
               Channel Status Dashboard
             </h3>
             <div className="flex items-center space-x-3">
-              {onBulkDelete && (
-                <BulkDeleteButton
-                  selectedCount={selectedCount || 0}
-                  onClick={onBulkDelete}
-                  disabled={bulkDeleteLoading || !!deletingChannelId}
-                  itemName="Selected"
-                  className="px-4 py-2 rounded-lg font-medium transition-all duration-200"
-                />
-              )}
               <motion.div
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
@@ -122,13 +101,11 @@ export function PaginatedChannelTable({
               [&_tbody_tr]:!border-b-[0.5px] [&_tbody_tr]:!border-gray-500/15"
           >
             <DataTable
-              columns={getColumns(onSettingsClick, onDeleteClick, deletingChannelId, activeEmbeddingIds, rowSelection, onRowSelectionChange)}
+              columns={getColumns(onSettingsClick, onDeleteClick, deletingChannelId, activeEmbeddingIds)}
               data={allChannels}
               enableSorting={true}
               enableColumnFilters={true}
               enablePagination={true}
-              enableRowSelection={false}
-              getRowId={(row) => row.channel_id}
               initialState={{
                 pagination: { pageIndex: 0, pageSize: 8 },
                 sorting: [],

@@ -1,4 +1,3 @@
-import os
 from pipeline.pipeline_repository import PipelineRepository
 from global_utils.celery_app import CeleryApp
 from pipeline.pipeline_factory import PipelineFactory
@@ -9,6 +8,7 @@ from shared.source_types import (
 )
 from shared.logger import logger
 from config.constants import DataSource
+from utils.file_hash import cleanup_file
 
 @CeleryApp().app.task(bind=True)
 def execute_pipeline_task(self, source_type: str, source_data: dict):
@@ -45,7 +45,7 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
             
         elif source_type.upper() == DataSource.DOCUMENT.upper_name:
             metadata = DocumentMetadata(**metadata_dict_copy, pipeline_id=pipeline_id)
-            doc_path = metadata.doc_path  # Store for cleanup
+            doc_path = metadata.doc_path
             logger.info(f"Document path: {metadata}")
         else:
             raise ValueError(f"Unsupported source type: {source_type}")
@@ -72,9 +72,4 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
     finally:
         # Clean up uploaded file after pipeline completes (success or failure) for documents
         if source_type.upper() == DataSource.DOCUMENT.upper_name and doc_path:
-            if os.path.exists(doc_path):
-                try:
-                    os.remove(doc_path)
-                    logger.info(f"Cleaned up uploaded file: {doc_path}")
-                except Exception as cleanup_error:
-                    logger.warning(f"Failed to clean up uploaded file {doc_path}: {cleanup_error}")
+            cleanup_file(doc_path, "after pipeline completion")

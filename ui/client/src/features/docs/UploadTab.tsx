@@ -88,7 +88,6 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         const normalizedName = normalizeFileName(fileName);
         const currentUsername = user?.username || 'default';
         
-        // Check if any existing document (uploaded by this user) has the same normalized source_name
         const existingDoc = existingDocuments.find(doc => {
             const normalizedExistingName = normalizeFileName(doc.source_name);
             return normalizedExistingName === normalizedName && doc.upload_by === currentUsername;
@@ -244,13 +243,9 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         setUploadProgress(0);
         
         try {
-            // Step 1: Upload files
             await uploadFiles();
-            
-            // Step 2: Start embedding pipeline
             await startPipeline();
         } catch (err) {
-            // Errors are handled in the respective functions
             setIsUploading(false);
         }
     };

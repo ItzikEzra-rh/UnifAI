@@ -1,4 +1,3 @@
-import os
 from typing import Any
 from pipeline.pipeline_repository import PipelineRepository
 from config.constants import PipelineStatus

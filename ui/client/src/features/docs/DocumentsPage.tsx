@@ -72,9 +72,7 @@ export default function Documents() {
   // Refetch documents immediately when upload modal closes to show new documents
   useEffect(() => {
     if (!showUploadModal) {
-      // Force immediate refetch to show newly uploaded documents
       queryClient.refetchQueries({ queryKey: ['documents'] });
-      // Also switch to list view to show the documents
       setViewMode("list");
     }
   }, [showUploadModal, queryClient]);
