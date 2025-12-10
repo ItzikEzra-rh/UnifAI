@@ -124,6 +124,8 @@ export default function AgenticAI() {
                         className="bg-primary hover:bg-opacity-80 flex items-center gap-2"
                         size="sm"
                         onClick={handleBuildGraph}
+                        data-umami-event="agent-graphs-build-flow-button" 
+                        data-umami-event-user-id={user?.username}
                       >
                         <Plus className="h-4 w-4" />
                         Build Workflow

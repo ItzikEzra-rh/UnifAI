@@ -690,6 +690,7 @@ export default function ExecutionTab({
           className={`flex items-center gap-2 ${isActiveChatSession ? "bg-[#03DAC6] hover:bg-opacity-80" : "bg-gray-700 text-gray-300 cursor-not-allowed"}`}
           onClick={() => setShowExecutionStream(!showExecutionStream)}
           disabled={!isActiveChatSession}
+          data-umami-event="agent-chat-toggle-execution-stream-button"
         >
           <SplitSquareVertical className="h-4 w-4" />
           {showExecutionStream ? "Hide" : "Open"} Execution Stream
@@ -713,6 +714,7 @@ export default function ExecutionTab({
                     onCheckedChange={handleGlobalScopeToggle}
                     id="scope-switch"
                     title={`Current scope: ${globalScope}`}
+                    data-umami-event="agent-chat-toggle-global-scope-button"
                   >
                     {/* Background label */}
                     <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white pointer-events-none select-none">
@@ -733,6 +735,7 @@ export default function ExecutionTab({
                     className="h-6 w-6 p-0 text-[#03DAC6] hover:bg-[#03DAC6] hover:bg-opacity-20 flex-shrink-0" 
                     onClick={handleAddFlowClick}
                     title="Add new chat from flow"
+                    data-umami-event="agent-chat-add-flow-button"
                   >
                     <Plus className="h-3 w-3" />
                   </Button>
@@ -774,6 +777,7 @@ export default function ExecutionTab({
                           size="sm"
                           className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(e) => handleDeleteChat(session, e)}
+                          data-umami-event="agent-chat-delete-chat-button"
                         >
                           <Trash2 className="h-3 w-3" />
                         </Button>

@@ -54,7 +54,7 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({
                 <TabsTrigger value="nodes" className="text-gray-300 data-[state=active]:text-white">
                   Nodes ({buildingBlocks.length})
                 </TabsTrigger>
-                <TabsTrigger value="conditions" className="text-gray-300 data-[state=active]:text-white">
+                <TabsTrigger value="conditions" className="text-gray-300 data-[state=active]:text-white" data-umami-event="agent-graphs-conditions-button">
                   Conditions ({conditions.length})
                 </TabsTrigger>
               </TabsList>

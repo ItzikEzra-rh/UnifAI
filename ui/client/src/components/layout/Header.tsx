@@ -93,6 +93,7 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
             <button
               onClick={() => openSharedPanel('list')}
               className="p-2 rounded-full hover:bg-background-card text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors"
+              data-umami-event="shared-system-button"
             >
               <FaShareNodes />
             </button>
@@ -110,6 +111,7 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
             <button
               onClick={() => setIsNotificationPanelOpen(!isNotificationPanelOpen)}
               className="p-2 rounded-full hover:bg-background-card text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors relative"
+              data-umami-event="notifications-button"
             >
               <FaBell />
               {hasUnreadNotifications && (
