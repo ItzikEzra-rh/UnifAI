@@ -4,13 +4,13 @@ set +e
 echo "Starting shared-resources postsync hook..."
 
 # Source common functions
-source "$(dirname "$0")/common.sh"
+source "$(dirname "$0")/postsync-lib.sh"
 
 # Get service details
-MONGO_PORT=$(wait_for_port mongodb)
-RMQ_PORT=$(wait_for_port rabbitmq)
-MONGO_IP=$(wait_for_service_name mongodb)
-RMQ_IP=$(wait_for_service_name rabbitmq)
+MONGO_PORT=$(wait_for_port mongodb) || exit 1
+RMQ_PORT=$(wait_for_port rabbitmq) || exit 1
+MONGO_IP=$(wait_for_service_name mongodb) || exit 1
+RMQ_IP=$(wait_for_service_name rabbitmq) || exit 1  
 
 # Create configmap
 create_or_update_configmap shared-config \

@@ -3,7 +3,7 @@
 set -e  # Exit on error
 set -o pipefail  # Exit on pipe failure
 
-source "$(dirname "$0")/common.sh"
+source "$(dirname "$0")/postsync-lib.sh"
 
 log_info "Starting presync hook for dataflow"
 
