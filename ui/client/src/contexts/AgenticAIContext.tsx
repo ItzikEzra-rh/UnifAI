@@ -158,10 +158,9 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
     return null;
   }, [uuidToResourceMap]);
 
-  // Helper to check if a string looks like a UUID (raw resource ID)
-  const isLikelyUuid = useCallback((str: string): boolean => {
-    if (uuidToResourceMap.has(str)) return true;
-    return /^[0-9a-f]{32}$/i.test(str) || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+  // Check if a string is a known resource ID (exists in our resource map)
+  const isKnownResourceId = useCallback((str: string): boolean => {
+    return uuidToResourceMap.has(str);
   }, [uuidToResourceMap]);
 
   // Recursively resolve all refs in a config object
@@ -182,8 +181,8 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
         if (typeof item === 'object' && item !== null && item.$ref) {
           return getResourceName(item);
         }
-        // If item is a raw UUID string, resolve it
-        if (typeof item === 'string' && isLikelyUuid(item)) {
+        // If item is a known resource ID (raw UUID), resolve it
+        if (typeof item === 'string' && isKnownResourceId(item)) {
           return getResourceName(item);
         }
         // Otherwise, recursively resolve
@@ -197,8 +196,8 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
       if (typeof config === 'string' && config.startsWith('$ref:')) {
         return getResourceName(config);
       }
-      // If it's a raw UUID, resolve it
-      if (typeof config === 'string' && isLikelyUuid(config)) {
+      // If it's a known resource ID (raw UUID), resolve it
+      if (typeof config === 'string' && isKnownResourceId(config)) {
         return getResourceName(config);
       }
       return config;
@@ -215,8 +214,8 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
       if (typeof value === 'string' && value.startsWith('$ref:')) {
         // Resolve the ref to a name
         resolved[key] = getResourceName(value);
-      } else if (typeof value === 'string' && isLikelyUuid(value)) {
-        // Resolve raw UUID strings
+      } else if (typeof value === 'string' && isKnownResourceId(value)) {
+        // Resolve known resource IDs (raw UUIDs)
         resolved[key] = getResourceName(value);
       } else if (typeof value === 'object' && value !== null) {
         // Check if this object is itself a ref
@@ -231,7 +230,7 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
       }
     }
     return resolved;
-  }, [getResourceName, isLikelyUuid]);
+  }, [getResourceName, isKnownResourceId]);
 
   // Refresh the mapping
   const refreshMapping = useCallback(async () => {
