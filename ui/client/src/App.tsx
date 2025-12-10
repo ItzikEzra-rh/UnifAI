@@ -45,12 +45,12 @@ function App() {
                   <Route path="/" component={withAgenticAIProvider(AgenticAI)} />
                   <Route path="/agentic-ai" component={withAgenticAIProvider(AgenticAI)} />
                   <Route path="/inventory" component={withAgenticAIProvider(AgentRepository)} />
+                  <Route path="/agentic-chats" component={AgenticChats} />
                   
                   {/* Non-agentic routes - don't need AgenticAIProvider */}
                   <Route path="/jira" component={JiraIntegration} />
                   <Route path="/slack" component={SlackIntegration} />
                   <Route path="/documents" component={DocumentsPage} />
-                  <Route path="/agentic-chats" component={AgenticChats} />
                   <Route path="/slack/add-source" component={SlackAddSourcePage} />
                   <Route path="/configuration" component={Configuration} />
                   <Route path="/guides" component={GuidesPage} />
