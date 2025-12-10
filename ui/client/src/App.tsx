@@ -43,12 +43,12 @@ function App() {
               <ProtectedRoute>
                 <Switch>
                   {/* Agentic AI routes - wrapped with AgenticAIProvider */}
+                  <Route path="/" component={withAgenticAIProvider(AgenticOverview)} />
                   <Route path="/agentic-ai" component={withAgenticAIProvider(AgenticAI)} />
                   <Route path="/inventory" component={withAgenticAIProvider(AgentRepository)} />
                   <Route path="/agentic-chats" component={withAgenticAIProvider(AgenticChats)} />
                   
                   {/* Non-agentic routes - don't need AgenticAIProvider */}
-                  <Route path="/" component={AgenticOverview} />
                   <Route path="/overview" component={RagOverview} />
                   <Route path="/jira" component={JiraIntegration} />
                   <Route path="/slack" component={SlackIntegration} />

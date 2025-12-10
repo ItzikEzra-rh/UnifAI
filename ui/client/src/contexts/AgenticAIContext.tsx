@@ -92,17 +92,28 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
     }
   }, [USER_ID]);
 
-  // Get resource name from a ref
+  // Get resource name from a ref (falls back to type if no name)
   const getResourceName = useCallback((ref: string | any): string => {
     if (!ref) return '';
+    
+    // Helper to get display name from resource (name or type as fallback)
+    const getDisplayName = (uuid: string): string => {
+      const resource = uuidToResourceMap.get(uuid);
+      if (resource) {
+        // Return name if available, otherwise return type
+        return resource.name || resource.type || uuid;
+      }
+      return uuidToNameMap.get(uuid) || uuid;
+    };
     
     if (typeof ref === 'string') {
       if (ref.startsWith('$ref:')) {
         const uuid = ref.substring(5);
-        return uuidToNameMap.get(uuid) || uuid;
+        return getDisplayName(uuid);
       }
-      if (uuidToNameMap.has(ref)) {
-        return uuidToNameMap.get(ref) || ref;
+      // Handle raw UUIDs (check if it exists in the map)
+      if (uuidToResourceMap.has(ref) || uuidToNameMap.has(ref)) {
+        return getDisplayName(ref);
       }
       return ref;
     }
@@ -112,12 +123,12 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
         const uuid = typeof ref.$ref === 'string' && ref.$ref.startsWith('$ref:') 
           ? ref.$ref.substring(5) 
           : ref.$ref;
-        return uuidToNameMap.get(uuid) || uuid;
+        return getDisplayName(uuid);
       }
     }
     
     return String(ref);
-  }, [uuidToNameMap]);
+  }, [uuidToNameMap, uuidToResourceMap]);
 
   // Get full resource info from a ref
   const getResource = useCallback((ref: string | any): ResourceMapping | null => {
@@ -147,6 +158,12 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
     return null;
   }, [uuidToResourceMap]);
 
+  // Helper to check if a string looks like a UUID (raw resource ID)
+  const isLikelyUuid = useCallback((str: string): boolean => {
+    if (uuidToResourceMap.has(str)) return true;
+    return /^[0-9a-f]{32}$/i.test(str) || /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+  }, [uuidToResourceMap]);
+
   // Recursively resolve all refs in a config object
   const resolveRefsInConfig = useCallback((config: any): any => {
     // Handle null/undefined
@@ -161,6 +178,14 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
         if (typeof item === 'string' && item.startsWith('$ref:')) {
           return getResourceName(item);
         }
+        // If item is an object ref like { "$ref": "uuid" }, resolve it
+        if (typeof item === 'object' && item !== null && item.$ref) {
+          return getResourceName(item);
+        }
+        // If item is a raw UUID string, resolve it
+        if (typeof item === 'string' && isLikelyUuid(item)) {
+          return getResourceName(item);
+        }
         // Otherwise, recursively resolve
         return resolveRefsInConfig(item);
       });
@@ -172,7 +197,16 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
       if (typeof config === 'string' && config.startsWith('$ref:')) {
         return getResourceName(config);
       }
+      // If it's a raw UUID, resolve it
+      if (typeof config === 'string' && isLikelyUuid(config)) {
+        return getResourceName(config);
+      }
       return config;
+    }
+
+    // Handle object refs like { "$ref": "uuid" } - resolve to name directly
+    if (config.$ref) {
+      return getResourceName(config);
     }
 
     // Handle objects - recursively resolve all properties
@@ -181,15 +215,23 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
       if (typeof value === 'string' && value.startsWith('$ref:')) {
         // Resolve the ref to a name
         resolved[key] = getResourceName(value);
+      } else if (typeof value === 'string' && isLikelyUuid(value)) {
+        // Resolve raw UUID strings
+        resolved[key] = getResourceName(value);
       } else if (typeof value === 'object' && value !== null) {
-        // Recursively resolve nested objects and arrays
-        resolved[key] = resolveRefsInConfig(value);
+        // Check if this object is itself a ref
+        if ('$ref' in value) {
+          resolved[key] = getResourceName(value);
+        } else {
+          // Recursively resolve nested objects and arrays
+          resolved[key] = resolveRefsInConfig(value);
+        }
       } else {
         resolved[key] = value;
       }
     }
     return resolved;
-  }, [getResourceName]);
+  }, [getResourceName, isLikelyUuid]);
 
   // Refresh the mapping
   const refreshMapping = useCallback(async () => {
