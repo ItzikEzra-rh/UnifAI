@@ -45,7 +45,7 @@ function App() {
                   <Route path="/" component={withAgenticAIProvider(AgenticAI)} />
                   <Route path="/agentic-ai" component={withAgenticAIProvider(AgenticAI)} />
                   <Route path="/inventory" component={withAgenticAIProvider(AgentRepository)} />
-                  <Route path="/agentic-chats" component={AgenticChats} />
+                  <Route path="/agentic-chats" component={withAgenticAIProvider(AgenticChats)} />
                   
                   {/* Non-agentic routes - don't need AgenticAIProvider */}
                   <Route path="/jira" component={JiraIntegration} />
