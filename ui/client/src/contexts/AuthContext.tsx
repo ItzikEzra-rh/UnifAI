@@ -1,5 +1,6 @@
 import { api } from '@/http/authClient';
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { useAnalytics } from '@/hooks/useAnalytics';
 
 export interface User {
   username: string;
@@ -38,6 +39,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Load analytics after authentication
+  useAnalytics(isAuthenticated);
 
   // Check authentication status
   const checkAuthStatus = async () => {

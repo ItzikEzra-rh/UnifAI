@@ -12,7 +12,16 @@ def get_umami_settings():
         umami_url = app_config.get("umami_url", "")
         umami_website_name = app_config.get("umami_website_name", "unifai")
         umami_username = app_config.get("umami_username", "")
-        umami_password = app_config.get("umami_password", "")
+        umami_password = app_config.get("umami_password", "")        
+        # Validate required configuration
+        if not umami_url or umami_url == "0.0.0.0":
+            raise ValueError("Umami URL is not configured")
+        if not umami_username or umami_username == "dummy":
+            raise ValueError("Umami username is not configured")
+        if not umami_password or umami_password == "dummy":
+            raise ValueError("Umami password is not configured")
+        if not umami_website_name:
+            raise ValueError("Umami website name is not configured")        
         umami.set_url_base(umami_url)
         umami.login(umami_username, umami_password)
         websites = umami.websites()
