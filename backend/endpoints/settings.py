@@ -11,6 +11,15 @@ def get_umami_settings():
     try:
         data = _get_umami_settings()
         return jsonify(data), 200
+    except ValueError as e:
+        # Configuration issue (e.g., website not found)
+        logger.error(f"Umami configuration error: {e}")
+        return jsonify({"error": "Website ID not found in Umami"}), 500
+    except ConnectionError as e:
+        # Network/connection issue
+        logger.error(f"Failed to connect to Umami service: {e}")
+        return jsonify({"error": "Umami service unavailable"}), 503
     except Exception as e:
-        logger.error(f"Failed to get Umami settings: {e}")
-        return jsonify({"error": str(e)}), 500
+        # Unexpected error
+        logger.error(f"Unexpected error getting Umami settings: {e}")
+        return jsonify({"error": "Internal server error"}), 500
