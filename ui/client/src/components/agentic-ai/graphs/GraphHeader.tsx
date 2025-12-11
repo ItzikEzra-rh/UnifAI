@@ -26,7 +26,7 @@ const GraphHeader: React.FC<GraphHeaderProps> = ({
               size="sm"
               onClick={onBack}
               className="flex items-center gap-2"
-              data-umami-event="agent-graphs-clear-button" 
+              data-umami-event="agent-graphs-back-button" 
             >
               <ArrowLeft className="w-4 h-4" />
               Back
@@ -40,7 +40,7 @@ const GraphHeader: React.FC<GraphHeaderProps> = ({
             size="sm"
             onClick={onClearGraph}
             className="flex items-center gap-2"
-            data-umami-event="agent-graphs-back-button" 
+            data-umami-event="agent-graphs-clear-button" 
           >
             <Trash2 className="w-4 h-4" />
             Clear

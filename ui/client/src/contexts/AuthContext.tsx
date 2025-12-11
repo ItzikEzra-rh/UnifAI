@@ -100,7 +100,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
 
-    // a NEW useEffect that watches for user changes:
+    // A new useEffect that watches for user changes
     useEffect(() => {
       if (user && isAuthenticated) {
         // User just logged in or page loaded with authenticated user
