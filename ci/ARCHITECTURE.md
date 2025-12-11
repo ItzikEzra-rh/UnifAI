@@ -1085,24 +1085,3 @@ When reviewing CI/CD pipeline changes:
 | **Helmfile** | Declarative specification for Helm chart deployments |
 | **Jenkins Agent** | Worker node that executes pipeline jobs |
 
----
-
-## Contact & Support
-
-For questions about CI/CD pipelines:
-
-1. **Pipeline issues**: Check Jenkins console output, review this documentation
-2. **Build failures**: Check Podman logs, verify Dockerfile syntax
-3. **Deployment issues**: Check Helmfile logs, verify Kubernetes resources
-4. **Access issues**: Contact DevOps team for credentials/permissions
-
-**Jenkins URLs:**
-- Image Builder: `https://jenkins-csb-ant-main.dno.corp.redhat.com/job/UnifAI/job/image-builder/`
-- Application Deployer: `https://jenkins-csb-ant-main.dno.corp.redhat.com/job/UnifAI/job/app-deployer/`
-
----
-
-**Document Version:** 1.0  
-**Last Updated:** December 1, 2024  
-**Maintainer:** UnifAI DevOps Team
-

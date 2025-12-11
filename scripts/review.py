@@ -164,11 +164,6 @@ def main():
     for domain in sorted(loaded_domains):
         print(f"   ✓ {domain:8} → {domain_map[domain]}", file=sys.stderr)
     
-    # Calculate full context for comparison
-    full_context_chars = 144000  # Approximate full context size
-    full_context_tokens = full_context_chars // 4
-    savings_pct = int(100 * (1 - len(context) / full_context_chars))
-    
     print(f"\n📚 Context loaded: ~{context_tokens:,} tokens", file=sys.stderr)
 
     # Load PR diff
