@@ -13,7 +13,7 @@ def load_context(changed_files=None):
     domains = {
         "UI": {
             "files": ["ui/ARCHITECTURE.md", "ui/README.md"],
-            "paths": ["ui/", "client/"]
+            "paths": ["ui/"]
         },
         "CI/CD": {
             "files": ["ci/ARCHITECTURE.md", "ci/README.md"],
