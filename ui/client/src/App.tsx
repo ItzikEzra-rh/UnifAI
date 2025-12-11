@@ -43,7 +43,7 @@ function App() {
               <ProtectedRoute>
                 <Switch>
                   {/* Agentic AI routes - wrapped with AgenticAIProvider */}
-                  <Route path="/" component={GetToKnow} />
+                  <Route path="/" component={withAgenticAIProvider(GetToKnow)} />
                   <Route path="/agentic-ai" component={withAgenticAIProvider(AgenticAI)} />
                   <Route path="/inventory" component={withAgenticAIProvider(AgentRepository)} />
                   <Route path="/agentic-chats" component={withAgenticAIProvider(AgenticChats)} />
