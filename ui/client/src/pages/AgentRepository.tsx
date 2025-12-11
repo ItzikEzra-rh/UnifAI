@@ -152,7 +152,7 @@ export default function UserWorkspace() {
                         className="bg-primary hover:bg-opacity-80"
                         disabled={!elementSchema}
                         data-umami-event="agent-repository-create-new-button" 
-                        data-umami-event-user-id={user?.username}
+                        data-umami-event-user-id={user?.sub}
                         data-umami-event-element-type={selectedElementType?.name}
                       >
                         <Plus className="h-4 w-4 mr-2" />

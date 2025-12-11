@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { isEmbeddingActivelyProcessing } from "../helpers";
+import type { User } from "@/contexts/AuthContext";
 
 export function isChannelNew(createdAt: Date): boolean {
   const now = new Date()
@@ -30,7 +31,7 @@ export function getColumns(
   onDeleteClick: (ch: EmbedChannel) => void,
   deletingChannelId?: string,
   activeEmbeddingIds: string[] = [],
-  user?: { username?: string } | null,
+  user?: User | null,
 ): DataTableColumn<EmbedChannel>[] {
 
   return [
@@ -316,7 +317,7 @@ export function getColumns(
                       : "Delete channel"
                 }
                 data-umami-event="slack-deletesource-button" 
-                data-umami-event-user-id={user?.username}
+                data-umami-event-user-id={user?.sub}
                 data-umami-event-channel-name={ch.name}
               >
                 {isDeleting ? (

@@ -97,7 +97,7 @@ export default function Documents() {
       <Button 
         onClick={() => setShowUploadModal(true)} 
         data-umami-event="upload-document-button" 
-        data-umami-event-user-id={user?.username}
+        data-umami-event-user-id={user?.sub}
         >
           Upload Document
           </Button>
