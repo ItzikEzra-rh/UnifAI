@@ -65,7 +65,7 @@ INSTRUCTIONS:
 3. **IMPORTANT**: Use context selectively based on file paths:
    
    When reviewing files in:
-   - ui/ or client/ directories     → Use ONLY "DOMAIN: UI" context
+   - ui/ directory (includes ui/client/, ui/deployment/, etc.) → Use ONLY "DOMAIN: UI" context
    - ci/ directory (*.groovy files) → Use ONLY "DOMAIN: CI/CD" context  
    - helm/ directory (charts/values)→ Use ONLY "DOMAIN: HELM" context
    
@@ -127,7 +127,7 @@ def main():
     # Map files to domains for display
     def get_file_domain(file_path):
         """Determine which domain a file belongs to."""
-        if file_path.startswith("ui/") or file_path.startswith("client/"):
+        if file_path.startswith("ui/"):
             return "UI"
         elif file_path.startswith("ci/"):
             return "CI/CD"
@@ -156,7 +156,7 @@ def main():
     # Show which domains were detected and loaded
     print(f"\n🎯 Loaded domains ({len(loaded_domains)}):", file=sys.stderr)
     domain_map = {
-        "UI": "ui/, client/ directories",
+        "UI": "ui/ directory (includes client/, deployment/, etc.)",
         "CI/CD": "ci/ directory (Groovy pipelines)",
         "HELM": "helm/ directory (Kubernetes charts)"
     }
