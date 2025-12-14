@@ -10,6 +10,33 @@ export interface PlatformResource {
     description: string;
     url: string;
   }
+
+  export interface VideoConfig {
+    enabled: boolean;
+    type: "direct" | "gdrive";
+    src: string;
+    startTime: number;
+    endTime: number;
+    playbackRate: number;
+    title?: string;
+    description?: string;
+    label?: string;
+    showLoopBadge?: boolean;
+  }
+  
+  export const introVideoConfig: VideoConfig = {
+    enabled: true,
+    type: "direct",
+    // src: "1yGcVaM5XiY3yhFMTKvxgLfVw8HcJAxL9",
+    src: '/intro-video.mp4',
+    startTime: 0,
+    endTime: 43,
+    playbackRate: 2,
+    title: "See UnifAI in Action",
+    description: "Watch how workflows are created in our platform",
+    label: "Platform Demo",
+    showLoopBadge: true
+  };
   
   export const platformResources: PlatformResource[] = [
     {

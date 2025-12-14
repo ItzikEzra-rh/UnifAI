@@ -6,6 +6,7 @@ import Header from "@/components/layout/Header";
 import StatusBar from "@/components/layout/StatusBar";
 
 import PageHeader from "@/components/get-to-know/PageHeader";
+import IntroVideoSection from "@/components/get-to-know/IntroVideoSection";
 import ResourceLinksSection from "@/components/get-to-know/ResourceLinksSection";
 import ReadmePreview from "@/components/get-to-know/ReadmePreview";
 import TechStackSection from "@/components/get-to-know/TechStackSection";
@@ -19,7 +20,7 @@ export default function GetToKnow() {
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header
-          title="Get to Know UnifAI"
+          title="Getting Started"
           onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
         />
 
@@ -31,6 +32,7 @@ export default function GetToKnow() {
             className="max-w-7xl mx-auto"
           >
             <PageHeader />
+            <IntroVideoSection />
             <ResourceLinksSection />
             <ReadmePreview />
             <TechStackSection />

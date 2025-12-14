@@ -17,7 +17,7 @@ export default function PageHeader() {
           Get to Know UnifAI
         </h1>
       </div>
-      <p className="text-gray-400 text-lg max-w-3xl">
+      <p className="text-gray-400 text-lg max-w-5xl">
         Explore the core concepts, architecture, and resources behind your agentic AI creation platform.
       </p>
     </motion.div>

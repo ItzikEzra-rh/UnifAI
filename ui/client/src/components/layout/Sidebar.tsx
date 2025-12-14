@@ -188,7 +188,7 @@ export default function Sidebar() {
         <ul>
           <NavItem 
             icon={<FaInfoCircle className="sidebar-icon" />} 
-            label="Get to Know" 
+            label="Getting Started" 
             to="/get-to-know"
             isActive={location === '/get-to-know'}
             status={null}
