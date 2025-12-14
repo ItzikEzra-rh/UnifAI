@@ -27,13 +27,10 @@ class AuthManager:
         self.app = app
         
         # Set up secret key for sessions (required for secure session management)
+        # The secret_key should be configured in app_config for both dev and production
+        # A permanent key ensures sessions persist across container restarts
         if not app.secret_key:
-            secret_key = config.get('secret_key')
-            if not secret_key:
-                # Use default fallback - config should override this in production via app_config
-                secret_key = 'dev-secret-key-fixed-for-session-persistence-change-in-production'
-                logger.warning("Using default development secret key - set 'secret_key' in config for production!")
-            app.secret_key = secret_key
+            app.secret_key = config.get('secret_key')
         
         # Configure OAuth
         self.oauth = OAuth(app)
@@ -75,8 +72,11 @@ class AuthManager:
         def login():
             """Initiate OAuth login flow"""
             # Get the state parameter from frontend (contains original URL encoded by client)
-            # The frontend is responsible for encoding the original URL in the state
-            client_state = request.args.get('state', '')
+            # State is required by our protocol - frontend must always provide it
+            client_state = request.args.get('state')
+            
+            if not client_state:
+                return jsonify({'error': 'State parameter is required'}), 400
             
             # Get the OAuth callback redirect URI
             redirect_uri = config.get(
@@ -88,13 +88,7 @@ class AuthManager:
             
             # Pass the client-provided state through to Keycloak
             # Keycloak will echo it back in the callback
-            # If no state provided, authlib will generate one for CSRF protection
-            if client_state:
-                response = self.keycloak_client.authorize_redirect(redirect_uri, state=client_state)
-            else:
-                response = self.keycloak_client.authorize_redirect(redirect_uri)
-            
-            return response
+            return self.keycloak_client.authorize_redirect(redirect_uri, state=client_state)
 
         @self.app.route('/api/auth/callback')
         def auth_callback():

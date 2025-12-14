@@ -716,7 +716,7 @@ export default function ExecutionTab({
             <CardContent className="p-0 flex-grow">
               {chatSessions.length === 0 ? (
                 <div className="p-4 text-center text-gray-400 text-sm">
-                  No chat sessions availableﬂ
+                  No chat sessions available
                 </div>
               ) : (
                 <div className="h-full max-h-[75vh] overflow-y-auto py-2">
