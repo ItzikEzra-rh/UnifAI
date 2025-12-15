@@ -25,7 +25,7 @@ export default function Documents() {
   const [retrying, setRetrying] = useState(false);
   const { currentPage, setPage, resetPage, itemsPerPage, } = usePaginationStore();
   const { user } = useAuth();
-  const { data: documents = [], isLoading, isError, error } = useQuery<Document[]>({
+  const { data: documents = [], isLoading, isError, error, refetch } = useQuery<Document[]>({
     queryKey: ['documents'],
     queryFn: fetchDocuments,
     refetchInterval: 10000,
@@ -191,6 +191,7 @@ export default function Documents() {
                             onDeleteConfirmed={onDeleteConfirmed}
                             retrying={retrying}
                             handleRetry={handleRetry}
+                            onRefresh={refetch}
                           />
 
                         </div>
