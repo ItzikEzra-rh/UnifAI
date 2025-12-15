@@ -1,8 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Activity, FileText, Bug, AlertTriangle, Loader2 } from "lucide-react";
+import { Activity, FileText, MessageSquare, Bug, AlertTriangle, Loader2, Slack as SlackIcon } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useTheme } from "@/contexts/ThemeContext";
 import { fetchRecentActivities } from "@/api/activity";
 
 type RangeKey = 'today' | 'week' | 'month';
@@ -15,6 +16,7 @@ interface LiveActivityFeedProps {
 }
 
 export function LiveActivityFeed({ defaultRange = 'month', fullHeight = false, contentHeight, compact = false }: LiveActivityFeedProps) {
+  const { primaryHex } = useTheme();
   const [range, setRange] = useState<RangeKey>(defaultRange);
   const sinceHours = useMemo(() => {
     switch (range) {
@@ -29,10 +31,9 @@ export function LiveActivityFeed({ defaultRange = 'month', fullHeight = false, c
     }
   }, [range]);
 
-  // Slack removed - only fetching document activities
   const { data: activities = [], isLoading } = useQuery({
-    queryKey: ['recentActivities', { sources: ['document'], sinceHours }],
-    queryFn: () => fetchRecentActivities({ sources: ['document'], sinceHours }),
+    queryKey: ['recentActivities', { sources: ['slack','document'], sinceHours }],
+    queryFn: () => fetchRecentActivities({ sources: ['slack','document'], sinceHours }),
     refetchInterval: 10000,
     refetchOnWindowFocus: true,
   });
@@ -40,20 +41,20 @@ export function LiveActivityFeed({ defaultRange = 'month', fullHeight = false, c
     switch (type) {
       case 'document':
         return <FileText className="text-white text-sm" />;
-      // case 'slack':
-      //   return <SlackIcon className="text-white text-sm" />;
+      case 'slack':
+        return <SlackIcon className="text-white text-sm" />;
       case 'jira':
         return <Bug className="text-white text-sm" />;
       default:
-        return <FileText className="text-white text-sm" />;
+        return <AlertTriangle className="text-white text-sm" />;
     }
   };
 
-  // Minimal colors: just color the icon background - Slack removed
+  // Minimal colors: just color the icon background
   const getActivityColor = (type: string) => {
-    // if (type === 'slack') {
-    //   return primaryHex || '#A60000';
-    // }
+    if (type === 'slack') {
+      return primaryHex || '#A60000';
+    }
     if (type === 'document') {
       return 'hsl(var(--secondary))';
     }

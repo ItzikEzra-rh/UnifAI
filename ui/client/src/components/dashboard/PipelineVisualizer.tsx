@@ -1,7 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { Loader2 } from "lucide-react";
-import { FaFileAlt } from "react-icons/fa";
+import { FaSlack, FaFileAlt } from "react-icons/fa";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface StageMetrics {
   stageName: string;
@@ -12,7 +13,7 @@ interface ActivePipeline {
   id: string;
   source_id: string;
   source_name: string;
-  source_type: 'document';  // Slack removed
+  source_type: 'slack' | 'document';
   status: string;
   pipeline_stats?: {
     documents_retrieved?: number;
@@ -34,10 +35,13 @@ interface EnhancedPipelineVisualizerProps {
 }
 
 export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, activePipelines = [] }: EnhancedPipelineVisualizerProps) {
+  const { primaryHex } = useTheme();
   const isLight = typeof window !== 'undefined' && document.body.classList.contains('light-mode');
   const textColor = isLight ? '#111827' : '#FFFFFF';
+  const mutedText = isLight ? '#4B5563' : '#CBD5E1';
   const gridStroke = isLight ? '#0F172A' : '#FFFFFF';
   const gridOpacity = isLight ? 0.06 : 0.08;
+  const slackColor = primaryHex || '#A60000';
   const docsColor = 'hsl(var(--secondary))';
   const getStageMetric = (stageName: string) => {
     return stageMetrics?.find(stage => stage.stageName === stageName);
@@ -71,40 +75,47 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
 
   const colorOf = (stageName: string) => getStatusColor(getStageMetric(stageName)?.status);
 
-  // Layout configuration (data-driven) - simplified for documents only (Slack removed)
-  const yCenter = 165;
+  // Layout configuration (data-driven) - reduced width
+  const yTop = 80;
+  const yBottom = 250;
   const nodes = {
-    docs: { x: 80, y: yCenter, label: 'Docs', stage: 'Docs' },
-    docling: { x: 380, y: yCenter, label: 'Docling', stage: 'Docling' },
-    processing: { x: 680, y: yCenter, label: 'Processing', stage: 'Processing' },
-    embedding: { x: 980, y: yCenter, label: 'Embedding', stage: 'Embedding' },
-    vectorDb: { x: 1280, y: yCenter, label: 'Vector DB', stage: 'Vector DB' },
+    docs: { x: 80, y: yTop, label: 'Docs', stage: 'Docs' },
+    slack: { x: 80, y: yBottom, label: 'Slack', stage: 'Slack' },
+    collecting: { x: 420, y: yTop, label: 'Collecting', stage: 'Collecting' },
+    docling: { x: 420, y: yBottom, label: 'Docling', stage: 'Docling' },
+    procTop: { x: 720, y: yTop, label: 'Processing', stage: 'Processing' },
+    procBottom: { x: 720, y: yBottom, label: 'Processing', stage: 'Processing' },
+    embedTop: { x: 1020, y: yTop, label: 'Embedding', stage: 'Embedding' },
+    embedBottom: { x: 1020, y: yBottom, label: 'Embedding', stage: 'Embedding' },
+    vecTop: { x: 1320, y: yTop, label: 'Slack Vector DB', stage: 'Vector DB' },
+    vecBottom: { x: 1320, y: yBottom, label: 'Docs Vector DB', stage: 'Vector DB' },
   } as const;
   type NodeKey = keyof typeof nodes;
   type Node = (typeof nodes)[NodeKey];
 
-  // Active pipeline flow types - Slack removed
-  type SourceType = 'document';
-  type FlowStage = 'Docs' | 'Docling' | 'Processing' | 'Embedding' | 'Vector DB';
+  // Active pipeline flow types
+  type SourceType = 'slack' | 'document';
+  type FlowStage = 'Slack' | 'Docs' | 'Collecting' | 'Docling' | 'Processing' | 'Embedding' | 'Vector DB';
 
   const resolveNodeKeyFor = (sourceType: SourceType, status: string): NodeKey => {
     switch (status) {
-      // case 'Slack':
-      //   return 'slack';
+      case 'Slack':
+        return 'slack';
       case 'Docs':
         return 'docs';
       case 'COLLECTING':
-        return 'docling';
+        // For document sources, the equivalent initial stage is Dockling
+        return sourceType === 'slack' ? 'collecting' : 'docling';
       case 'Docling':
         return 'docling';
       case 'PROCESSING':
-        return 'processing';
+        return sourceType === 'slack' ? 'procTop' : 'procBottom';
       case 'CHUNKING_AND_EMBEDDING':
-        return 'embedding';
+        return sourceType === 'slack' ? 'embedBottom' : 'embedTop';
       case 'STORING':
-        return 'vectorDb';
+        return sourceType === 'slack' ? 'vecTop' : 'vecBottom';
       default:
-        return 'docling';
+        return 'collecting';
     }
   };
 
@@ -386,15 +397,15 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
 
   const isVectorDbNode = (
     node: Node,
-  ): node is typeof nodes['vectorDb'] => node.stage === 'Vector DB';
+  ): node is typeof nodes['vecTop'] | typeof nodes['vecBottom'] => node.stage === 'Vector DB';
 
   const hasActivePipelines = (activePipelines || []).some(p =>
     p.status === 'COLLECTING' || p.status === 'CHUNKING_AND_EMBEDDING' || p.status === 'PROCESSING'
   );
 
-  // Simplified flow - only documents (Slack removed)
   const flows: { id: string; color: string; dash: string; nodes: NodeKey[]; duration: number; delay: number; dotColor: string }[] = [
-    { id: 'docs', color: 'url(#flowGradient3)', dash: '6,3', nodes: ['docs', 'docling', 'processing', 'embedding', 'vectorDb'], duration: 10, delay: 2, dotColor: hasActivePipelines ? docsColor : '#FFFFFF' },
+    { id: 'slack', color: 'url(#flowGradient2)', dash: '6,3', nodes: ['slack', 'collecting', 'procTop', 'embedBottom', 'vecTop'], duration: 11, delay: 3, dotColor: hasActivePipelines ? slackColor : '#FFFFFF' },
+    { id: 'docs', color: 'url(#flowGradient3)', dash: '6,3', nodes: ['docs', 'docling', 'procBottom', 'embedTop', 'vecBottom'], duration: 10, delay: 6, dotColor: hasActivePipelines ? docsColor : '#FFFFFF' },
   ];
 
   const buildPath = (flowNodes: NodeKey[]) => {
@@ -415,6 +426,7 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
   const renderNode = (key: NodeKey) => {
     const node = nodes[key];
     const stageMetric = getStageMetric(node.stage);
+    const isTop = node.y === yTop;
 
     if (isVectorDbNode(node)) {
       const labelY = node.y - 39;
@@ -422,20 +434,20 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
         <motion.g key={key}
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 2.6 }}
+          transition={{ delay: isTop ? 2.8 : 2.6 }}
         >
           <rect x={node.x - 20} y={node.y - 25} width="40" height="50" rx="5" fill={isLight ? '#FFFFFF' : '#1A1A1A'} stroke={isLight ? '#CBD5E1' : '#6B7280'} strokeWidth="2" />
           <rect x={node.x - 17} y={node.y - 22} width="34" height="44" rx="3" fill="#6B7280" opacity="0.1">
-            <animate attributeName="opacity" values="0.1;0.4;0.1" dur="3.8s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.1;0.4;0.1" dur={isTop ? "4.2s" : "3.8s"} repeatCount="indefinite" />
           </rect>
           <rect x={node.x - 14} y={node.y - 18} width="28" height="6" rx="2" fill="#6B7280" opacity="0.3">
-            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2.2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.3;0.8;0.3" dur={isTop ? "1.8s" : "2.2s"} repeatCount="indefinite" />
           </rect>
           <rect x={node.x - 14} y={node.y - 8} width="28" height="6" rx="2" fill="#6B7280" opacity="0.3">
-            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="2.7s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.3;0.8;0.3" dur={isTop ? "2.3s" : "2.7s"} repeatCount="indefinite" />
           </rect>
           <rect x={node.x - 14} y={node.y + 2} width="28" height="6" rx="2" fill="#6B7280" opacity="0.3">
-            <animate attributeName="opacity" values="0.3;0.8;0.3" dur="3.2s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.3;0.8;0.3" dur={isTop ? "2.8s" : "3.2s"} repeatCount="indefinite" />
           </rect>
           <text x={node.x} y={labelY} textAnchor="middle" fill={textColor} fontSize="10" fontWeight="500">{node.label}</text>
         </motion.g>
@@ -447,44 +459,58 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
         <motion.g key={key}
           initial={{ opacity: 0, scale: 0 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 2.0 }}
+          transition={{ delay: isTop ? 2.2 : 2.0 }}
         >
           <circle cx={node.x} cy={node.y} r="16" fill={isLight ? '#FFFFFF' : '#1A1A1A'} stroke={isLight ? '#CBD5E1' : '#6B7280'} strokeWidth="3" />
           <circle cx={node.x} cy={node.y} r="10" fill="#6B7280" opacity="0.2">
-            <animate attributeName="r" values="10;14;10" dur="3.5s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.2;0.8;0.2" dur="3.5s" repeatCount="indefinite" />
+            <animate attributeName="r" values="10;14;10" dur={isTop ? "2.8s" : "3.5s"} repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.2;0.8;0.2" dur={isTop ? "2.8s" : "3.5s"} repeatCount="indefinite" />
           </circle>
           <text x={node.x} y={node.y - 20} textAnchor="middle" fill={textColor} fontSize="13" fontWeight="1000">{node.label}</text>
         </motion.g>
       );
     }
 
-    // Sources and processing nodes - Slack removed
-    const isProcessing = node.label === 'Docling' || node.label === 'Processing';
+    // Sources and processing nodes
+    const isProcessing = node.label === 'Collecting' || node.label === 'Docling' || node.label === 'Processing';
+    const isSlack = node.label === 'Slack';
     const isDocs = node.label === 'Docs';
-    const radius = isProcessing ? 14 : 12;
+    const radius = isSlack ? 16 : (isProcessing ? 14 : 12);
     const strokeWidth = isProcessing ? 3 : 2;
     const labelY = node.y - (isProcessing ? 18 : 15);
+    const metricY = node.y + (isProcessing ? 25 : 22);
+    const metricColor = isProcessing ? '#22C55E' : '#9CA3AF';
     return (
       <motion.g key={key}
         initial={{ opacity: 0, scale: 0 }}
         animate={{ opacity: 1, scale: 1 }}
-        transition={{ delay: 0.8 }}
+        transition={{ delay: isTop ? 1.1 : 0.8 }}
       >
         <circle cx={node.x} cy={node.y} r={radius} fill={isLight ? '#FFFFFF' : '#1A1A1A'} stroke={isLight ? '#CBD5E1' : '#6B7280'} strokeWidth={strokeWidth} />
-        {!isProcessing && isDocs && (
-          <foreignObject x={node.x - 8} y={node.y - 8} width="16" height="16" pointerEvents="none">
-            <div style={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <FaFileAlt className="sidebar-icon" size={14} color={isLight ? '#6B7280' : '#9CA3AF'} />
-            </div>
-          </foreignObject>
+        {!isProcessing && (
+          isSlack ? (
+            <foreignObject x={node.x - 8} y={node.y - 8} width="16" height="16" pointerEvents="none">
+              <div style={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FaSlack className="sidebar-icon" size={16} color={isLight ? '#6B7280' : '#9CA3AF'} />
+              </div>
+            </foreignObject>
+          ) : isDocs ? (
+            <foreignObject x={node.x - 8} y={node.y - 8} width="16" height="16" pointerEvents="none">
+              <div style={{ width: 16, height: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <FaFileAlt className="sidebar-icon" size={14} color={isLight ? '#6B7280' : '#9CA3AF'} />
+              </div>
+            </foreignObject>
+          ) : null
         )}
         {isProcessing && (
           <circle cx={node.x} cy={node.y} r={8} fill={isLight ? '#D1D5DB' : '#6B7280'} opacity="0.3">
-            <animate attributeName="opacity" values="0.3;0.7;0.3" dur="2.8s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="0.3;0.7;0.3" dur={isTop ? "3.2s" : "2.8s"} repeatCount="indefinite" />
           </circle>
         )}
         <text x={node.x} y={labelY} textAnchor="middle" fill={textColor} fontSize="14" fontWeight="1000">{node.label}</text>
+        {/* {!isProcessing && (
+          <text x={node.x} y={metricY} textAnchor="middle" fill={metricColor} fontSize="9">{stageMetric?.throughput || 0}/min</text>
+        )} */}
       </motion.g>
     );
   };
@@ -614,11 +640,15 @@ export function EnhancedPipelineVisualizer({ metrics, stageMetrics, isLoading, a
             {/* Active pipelines animations */}
             {renderActiveFlows()}
 
-            {/* Bottom-left legend with dots - Slack removed */}
+            {/* Bottom-left legend with dots */}
             <g transform="translate(40, 360)">
               <g>
+                <circle cx="0" cy="0" r="4" fill={slackColor} />
+                <text x="10" y="4" fill={textColor} fontSize="12" fontWeight="600">Slack</text>
+              </g>
+              <g transform="translate(0, 18)">
                 <circle cx="0" cy="0" r="4" fill={docsColor} />
-                <text x="10" y="4" fill={textColor} fontSize="12" fontWeight="600">Documents</text>
+                <text x="10" y="4" fill={textColor} fontSize="12" fontWeight="600">Docs</text>
               </g>
             </g>
           </svg>
