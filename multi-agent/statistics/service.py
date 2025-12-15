@@ -33,7 +33,7 @@ class StatisticsService:
         Get aggregated statistics for all features.
         Returns all stats in a single response for optimal performance.
 
-        Uses generic group_count() methods for efficient MongoDB aggregations
+        Uses generic group_count() methods for efficient database aggregations
         instead of N+1 queries or Python-side grouping.
 
         Args:

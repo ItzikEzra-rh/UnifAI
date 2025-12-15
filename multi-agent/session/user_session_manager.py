@@ -112,6 +112,6 @@ class UserSessionManager:
     ) -> List[Dict[str, Any]]:
         """
         Group sessions by specified fields and return counts.
-        Uses MongoDB aggregation for efficient server-side grouping.
+        Performs efficient server-side grouping via the repository.
         """
         return self._repo.group_count(user_id, group_by, filter)

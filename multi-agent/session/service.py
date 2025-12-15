@@ -126,7 +126,7 @@ class SessionService:
     ) -> List[Dict[str, Any]]:
         """
         Group sessions by specified fields and return counts.
-        Uses MongoDB aggregation for efficient server-side grouping.
+        Performs efficient server-side grouping via the session manager.
         
         Args:
             user_id: The user ID to filter by
@@ -135,7 +135,7 @@ class SessionService:
             
         Returns:
             List of dicts with grouped field values and count:
-            [{"_id": {"blueprint_id": "..."}, "count": N}, ...]
+            [{"_id": {"field": "value"}, "count": N}, ...]
         """
         return self._manager.group_count(user_id, group_by, filter)
 

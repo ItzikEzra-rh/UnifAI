@@ -113,7 +113,7 @@ class ResourcesService:
     ) -> List[Dict[str, Any]]:
         """
         Group resources by specified fields and return counts.
-        Uses MongoDB aggregation for efficient server-side grouping.
+        Performs efficient server-side grouping via the registry.
         
         Args:
             user_id: The user ID to filter by

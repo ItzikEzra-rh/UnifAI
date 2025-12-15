@@ -42,7 +42,7 @@ class SessionRepository(ABC):
     ) -> List[Dict[str, Any]]:
         """
         Group documents by specified fields and return counts.
-        Uses MongoDB aggregation for efficient server-side grouping.
+        Implementation should perform efficient server-side grouping.
         
         Args:
             user_id: The user ID to filter by
