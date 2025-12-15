@@ -17,6 +17,8 @@ import axios from "../http/axiosAgentConfig";
 // Create a ReactFlow provider wrapper
 import { ReactFlowProvider } from "reactflow";
 import { FlowObject } from "@/components/agentic-ai/graphs/interfaces";
+import { UmamiTrack } from '@/components/ui/umamitrack';
+import { UmamiEvents } from '@/config/umamiEvents';
 
 export interface GraphNode {
   id: string;
@@ -107,29 +109,34 @@ export default function AgenticAI() {
                       Agent Workflow Configuration
                     </CardTitle>
                     <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={handleLoadFlow}
-                        disabled={isLoadingFlow}
-                        className="bg-primary hover:bg-[#7525c9] text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                        data-umami-event="agent-graphs-load-flow-button" 
-                        data-umami-event-user-id={user?.sub}
-                        data-umami-event-flow-name={selectedFlow?.name}
+                      <UmamiTrack 
+                        event={UmamiEvents.AGENT_GRAPHS_LOAD_FLOW_BUTTON}
+                        eventData={{ userId: user?.sub, flowName: selectedFlow?.name }}
                       >
-                        <LoaderCircle className={`h-4 w-4 ${isLoadingFlow ? 'animate-spin' : ''}`} />
-                        {isLoadingFlow ? 'Loading...' : 'Load Workflow'}
-                      </Button>
-                      <Button
-                        className="bg-primary hover:bg-opacity-80 flex items-center gap-2"
-                        size="sm"
-                        onClick={handleBuildGraph}
-                        data-umami-event="agent-graphs-build-flow-button" 
-                        data-umami-event-user-id={user?.sub}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={handleLoadFlow}
+                          disabled={isLoadingFlow}
+                          className="bg-primary hover:bg-[#7525c9] text-white flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <LoaderCircle className={`h-4 w-4 ${isLoadingFlow ? 'animate-spin' : ''}`} />
+                          {isLoadingFlow ? 'Loading...' : 'Load Workflow'}
+                        </Button>
+                      </UmamiTrack>
+                      <UmamiTrack 
+                        event={UmamiEvents.AGENT_GRAPHS_BUILD_FLOW_BUTTON}
+                        eventData={{ userId: user?.sub }}
                       >
-                        <Plus className="h-4 w-4" />
-                        Build Workflow
-                      </Button>
+                        <Button
+                          className="bg-primary hover:bg-opacity-80 flex items-center gap-2"
+                          size="sm"
+                          onClick={handleBuildGraph}
+                        >
+                          <Plus className="h-4 w-4" />
+                          Build Workflow
+                        </Button>
+                      </UmamiTrack>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-2 px-4 pb-4">

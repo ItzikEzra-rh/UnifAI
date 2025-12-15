@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/contexts/AuthContext"; 
+import { UmamiTrack } from '@/components/ui/umamitrack';
+import { UmamiEvents } from '@/config/umamiEvents';
 
 interface SaveBlueprintModalProps {
   isOpen: boolean;
@@ -92,22 +94,25 @@ const SaveBlueprintModal: React.FC<SaveBlueprintModalProps> = ({
           >
             Cancel
           </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!isFormValid || isLoading}
-            className="bg-primary hover:bg-primary/80"
-            data-umami-event="agent-graphs-save-blueprint-button" 
-            data-umami-event-user-id={user?.sub}
+          <UmamiTrack 
+            event={UmamiEvents.AGENT_GRAPHS_SAVE_BUTTON}
+            eventData={{ userId: user?.sub }}
           >
-            {isLoading ? (
-              <div className="flex items-center gap-2">
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Saving...
-              </div>
-            ) : (
-              "Save Workflow"
-            )}
-          </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!isFormValid || isLoading}
+              className="bg-primary hover:bg-primary/80"
+            >
+              {isLoading ? (
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  Saving...
+                </div>
+              ) : (
+                "Save Workflow"
+              )}
+            </Button>
+          </UmamiTrack>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -6,6 +6,8 @@ import { motion } from "framer-motion";
 import { EmbedChannel } from "@/types";
 import { DataTable } from "@/components/shared/DataTable";
 import { getColumns } from "./ChannelTable";
+import { UmamiTrack } from '@/components/ui/umamitrack';
+import { UmamiEvents } from '@/config/umamiEvents';
 import { useAuth } from "@/contexts/AuthContext";
 
 export interface PaginatedChannelTableProps {
@@ -73,14 +75,17 @@ export function PaginatedChannelTable({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                <Button
-                  onClick={() => navigate("/slack/add-source")}
-                  className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 hover:-translate-y-0.5 hover:scale-105 hover:shadow-lg transition-all duration-200"
-                  data-umami-event="slack-addsource-button" 
-                  data-umami-event-user-id={user?.sub}
+                <UmamiTrack 
+                  event={UmamiEvents.SLACK_ADD_SOURCE_BUTTON}
+                  eventData={{ userId: user?.sub }}
                 >
-                  <FaPlus className="mr-2" /> Add Channel
-                </Button>
+                  <Button
+                    onClick={() => navigate("/slack/add-source")}
+                    className="px-4 py-2 bg-primary text-primary-foreground rounded-lg font-medium hover:bg-primary/90 hover:-translate-y-0.5 hover:scale-105 hover:shadow-lg transition-all duration-200"
+                  >
+                    <FaPlus className="mr-2" /> Add Channel
+                  </Button>
+                </UmamiTrack>
               </motion.div>
               <motion.div
                 whileHover={{ scale: 1.02 }}

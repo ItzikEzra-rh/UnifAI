@@ -16,6 +16,8 @@ import {
 } from "../../../types/workspace";
 import { FieldRenderer } from "./FieldRenderer";
 import { useAuth } from "@/contexts/AuthContext";
+import { UmamiTrack } from '@/components/ui/umamitrack';
+import { UmamiEvents } from '@/config/umamiEvents';
 
 interface ElementFormProps {
   isOpen: boolean;
@@ -686,15 +688,18 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              className="bg-primary hover:bg-opacity-80"
-              disabled={isSaving || !isFormValid()}
-              data-umami-event="agent-repository-save-element-button" 
-              data-umami-event-user-id={user?.sub}
+            <UmamiTrack 
+              event={UmamiEvents.AGENT_REPOSITORY_SAVE_ELEMENT_BUTTON}
+              eventData={{ userId: user?.sub }}
             >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
+              <Button
+                type="submit"
+                className="bg-primary hover:bg-opacity-80"
+                disabled={isSaving || !isFormValid()}
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </UmamiTrack>
           </DialogFooter>
         </form>
       </DialogContent>

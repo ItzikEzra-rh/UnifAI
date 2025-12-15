@@ -12,6 +12,8 @@ import { DocumentTable } from "./DocumentsTable";
 import { PageLoader } from "@/components/shared/PageLoader";
 import { DocumentGrid } from "./DocumentGrid";
 import { deleteDoc, fetchDocuments } from "@/api/docs";
+import { UmamiTrack } from '@/components/ui/umamitrack';
+import { UmamiEvents } from '@/config/umamiEvents';
 import { useAuth } from "@/contexts/AuthContext";
 
 export default function Documents() {
@@ -94,13 +96,17 @@ export default function Documents() {
 
   const viewButtons = (
     <div className="flex items-center space-x-4">
-      <Button 
-        onClick={() => setShowUploadModal(true)} 
-        data-umami-event="upload-document-button" 
-        data-umami-event-user-id={user?.sub}
+
+        <UmamiTrack 
+          event={UmamiEvents.UPLOAD_DOCUMENT_BUTTON}
+          eventData={{ userId: user?.sub }}
         >
-          Upload Document
-          </Button>
+        <Button 
+          onClick={() => setShowUploadModal(true)} 
+          >
+            Upload Document
+        </Button>
+        </UmamiTrack>
       <div className="flex">
         <Button
           variant={viewMode === "list" ? "default" : "outline"}

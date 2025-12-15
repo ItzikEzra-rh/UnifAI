@@ -21,6 +21,8 @@ import { useStreamingData } from "../StreamingDataContext";
 import { Message, StreamLogEntry, WorkPlanSnapshot } from "./types";
 import { StreamLogDisplay } from "./StreamLogDisplay";
 import { useToast } from "@/hooks/use-toast";
+import { UmamiTrack } from '@/components/ui/umamitrack';
+import { UmamiEvents } from '@/config/umamiEvents';
 import { useAuth } from "@/contexts/AuthContext";
 
 
@@ -755,15 +757,18 @@ export default function ChatInterface({
               rows={3}
               disabled={!blueprintExists}
             />
-            <Button
-              onClick={handleSendMessage}
-              disabled={inputMessage.trim() === "" || isTyping || !blueprintExists}
-              className="bg-primary hover:bg-[#7525c9] mb-0"
-              data-umami-event="agent-chat-send-message-button" 
-              data-umami-event-user-id={user?.sub}
+            <UmamiTrack 
+              event={UmamiEvents.AGENT_CHAT_SEND_MESSAGE_BUTTON}
+              eventData={{ userId: user?.sub }}
             >
-              <Send className="h-4 w-4" />
-            </Button>
+              <Button
+                onClick={handleSendMessage}
+                disabled={inputMessage.trim() === "" || isTyping || !blueprintExists}
+                className="bg-primary hover:bg-[#7525c9] mb-0"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </UmamiTrack>
           </div>
         </div>
       </CardContent>

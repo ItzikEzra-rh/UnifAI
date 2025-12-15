@@ -14,6 +14,8 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { useAuth } from '@/contexts/AuthContext';
 import { useNotifications } from '@/contexts/NotificationContext';
 import { useShared } from '@/contexts/SharedContext';
+import { UmamiTrack } from '@/components/ui/umamitrack';
+import { UmamiEvents } from '@/config/umamiEvents';
 
 interface HeaderProps {
   title: string;
@@ -90,13 +92,14 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
 
         <div className="relative">
           <SimpleTooltip content={<p>Shared System</p>}>
-            <button
-              onClick={() => openSharedPanel('list')}
-              className="p-2 rounded-full hover:bg-background-card text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors"
-              data-umami-event="shared-system-button"
-            >
-              <FaShareNodes />
-            </button>
+            <UmamiTrack event={UmamiEvents.SHARED_SYSTEM_BUTTON}>
+              <button
+                onClick={() => openSharedPanel('list')}
+                className="p-2 rounded-full hover:bg-background-card text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors"
+              >
+                <FaShareNodes />
+              </button>
+            </UmamiTrack>
           </SimpleTooltip>
           
           {/* Shared Panel */}
@@ -108,20 +111,22 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
 
         <div className="relative">
           <SimpleTooltip content={<p>Notifications{hasUnreadNotifications ? ` (${pendingNotificationsCount})` : ''}</p>}>
-            <button
-              onClick={() => setIsNotificationPanelOpen(!isNotificationPanelOpen)}
-              className="p-2 rounded-full hover:bg-background-card text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors relative"
-              data-umami-event="notifications-button"
-            >
-              <FaBell />
-              {hasUnreadNotifications && (
-                <motion.span
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500"
-                />
-              )}
-            </button>
+              
+            <UmamiTrack event={UmamiEvents.NOTIFICATIONS_BUTTON}>
+              <button
+                onClick={() => setIsNotificationPanelOpen(!isNotificationPanelOpen)}
+                className="p-2 rounded-full hover:bg-background-card text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors relative"
+              >
+                <FaBell />
+                {hasUnreadNotifications && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute top-1 right-1 w-2 h-2 rounded-full bg-red-500"
+                  />
+                )}
+              </button>
+            </UmamiTrack>
           </SimpleTooltip>
           
           {/* Notification Panel */}
