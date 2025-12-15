@@ -248,6 +248,13 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
       // Extract results based on field_mapping
       const fieldMapping = populateHint.field_mapping || 'results';
       const rawResults = response.data[fieldMapping] || [];
+      
+    
+      if (populateHint.selection_type === 'automatic' && !Array.isArray(rawResults)) {
+        onPopulateResult(fieldName, rawResults, false);
+        return;
+      }
+      
       const normalizedResults = normalizeOptions(rawResults);
       
       if (populateHint.selection_type == 'manual' || populateHint.multi_select) {
