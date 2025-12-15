@@ -97,7 +97,7 @@ def get_blueprint_info(blueprint_id):
     """
     try:
         svc = current_app.container.blueprint_service
-        doc = svc.get_blueprint_info(blueprint_id)
+        doc = svc.get_blueprint_draft_doc(blueprint_id)
         return json.loads(json_util.dumps(doc)), 200
     except KeyError:
         return jsonify({"error": "Blueprint not found"}), 404

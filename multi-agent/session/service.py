@@ -2,7 +2,7 @@ from typing import Any, Dict, Iterator, List, Union
 from .user_session_manager import UserSessionManager
 from .session_executor import SessionExecutor
 from .workflow_session import WorkflowSession
-from .dto import ChatHistoryItem
+from .dto import ChatHistoryItem, CreateSessionRequest
 from .models import SessionMeta
 from .exceptions import BlueprintNotFoundError
 
@@ -16,14 +16,20 @@ class SessionService:
         self._manager = manager
         self._executor = executor
 
-    def create(self, user_id: str, blueprint_id: str, metadata:  Dict[str, Any] | SessionMeta | None = None) -> WorkflowSession:
+    def create(self, user_id: str, blueprint_id: str, metadata: Dict[str, Any] | SessionMeta | None = None) -> WorkflowSession:
         """
         Create a new session and return its object (with run_id).
         """
-        return self._manager.create_session(
+        # Use CreateSessionRequest DTO to handle metadata validation automatically
+        request = CreateSessionRequest(
             user_id=user_id,
             blueprint_id=blueprint_id,
-            metadata=SessionMeta.model_validate(metadata)
+            metadata=metadata
+        )
+        return self._manager.create_session(
+            user_id=request.user_id,
+            blueprint_id=request.blueprint_id,
+            metadata=request.metadata
         )
 
     def run(self, session: WorkflowSession, inputs: Dict[str, Any], scope: str = "public", logged_in_user="") -> Any:
@@ -111,7 +117,7 @@ class SessionService:
                 source = doc.get("metadata", {}).get("source", "")
                 if source == "public_link":
                     try:
-                        blueprint_doc = self._manager._bp_service.get_blueprint_info(blueprint_id)
+                        blueprint_doc = self._manager._bp_service.get_blueprint_draft_doc(blueprint_id)
                         bp_metadata = blueprint_doc.get("metadata", {})
                         public_usage_scope = bp_metadata.get("usageScope") == "public"
                     except (KeyError, Exception):

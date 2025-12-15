@@ -1,5 +1,6 @@
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass
 from typing import Dict, Any, Optional
+from pydantic import BaseModel, Field
 
 
 @dataclass(frozen=True)
@@ -15,35 +16,15 @@ class RuntimeElement:
         return self.resource_spec.config if self.resource_spec else None
 
 
-@dataclass(slots=True)
-class SessionMeta:
+class SessionMeta(BaseModel):
+    """Session metadata with Pydantic validation."""
     title: str | None = None
-    tags: Dict[str, str] = field(default_factory=dict)
+    tags: Dict[str, str] = Field(default_factory=dict)
     source: Optional[str] = None
 
     def to_dict(self) -> Dict[str, Any]:
-        return asdict(self)
+        return self.model_dump()
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "SessionMeta":
         return cls(**data)
-    
-    @classmethod
-    def model_validate(cls, data: Dict[str, Any] | "SessionMeta" | None) -> "SessionMeta":
-        """
-        Validate and create SessionMeta from dict or return existing instance.
-        Mimics Pydantic's model_validate for compatibility with requirements.
-        
-        Args:
-            data: Dict to validate, existing SessionMeta instance, or None
-            
-        Returns:
-            SessionMeta instance
-        """
-        if data is None:
-            return cls()
-        if isinstance(data, cls):
-            return data
-        if isinstance(data, dict):
-            return cls(**data)
-        raise ValueError(f"Cannot validate {type(data)} as SessionMeta")

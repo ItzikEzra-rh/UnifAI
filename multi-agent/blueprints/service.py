@@ -25,16 +25,6 @@ class BlueprintService:
         """Get blueprint document with metadata for sharing operations."""
         return self._repo.load(blueprint_id)
 
-    def get_blueprint_info(self, blueprint_id: str) -> Mapping[str, Any]:
-        """
-        Get full blueprint document including spec, owner, and metadata.
-        
-        :param blueprint_id: The blueprint ID
-        :return: Full blueprint document from repository
-        :raises KeyError: If blueprint doesn't exist
-        """
-        return self.get_blueprint_draft_doc(blueprint_id)
-
     def update_draft(self, *, blueprint_id: str, draft_dict: dict) -> bool:  # NEW
         draft = BlueprintDraft(**draft_dict)
         rid_refs = list(RefWalker.external_rids(draft))

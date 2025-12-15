@@ -1,5 +1,24 @@
 from dataclasses import dataclass, asdict
-from typing import Any, Dict, Mapping
+from typing import Any, Dict, Mapping, Optional
+from pydantic import BaseModel, field_validator
+from .models import SessionMeta
+
+
+class CreateSessionRequest(BaseModel):
+    """Request DTO for session creation with automatic metadata validation."""
+    user_id: str
+    blueprint_id: str
+    metadata: SessionMeta | None = None
+
+    @field_validator("metadata", mode="before")
+    @classmethod
+    def cast_metadata(cls, v):
+        """Let Pydantic handle the union resolution automatically."""
+        if v is None:
+            return SessionMeta()
+        if isinstance(v, dict):
+            return SessionMeta.model_validate(v)
+        return v
 
 
 @dataclass(slots=True)
