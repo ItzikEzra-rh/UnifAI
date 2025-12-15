@@ -18,7 +18,6 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
         source_type: Type of source (SLACK, DOCUMENT, etc.)
         source_data: RegisteredSource data from registration task
     """
-    pipeline = None
     try:
         logger.info(f"Starting pipeline execution for {source_type} source: {source_data}")
         
@@ -65,7 +64,3 @@ def execute_pipeline_task(self, source_type: str, source_data: dict):
         
     except Exception as e:
         logger.error(f"Pipeline execution failed for {source_type}: {str(e)}", exc_info=True)
-    
-    finally:
-        if pipeline is not None:
-            pipeline.cleanup()

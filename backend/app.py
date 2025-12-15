@@ -11,6 +11,8 @@ from flask_cors import CORS
 from global_utils.flask.request_rules import RequestRules
 from config.app_config import AppConfig
 from global_utils.utils.util import get_mongo_url
+from providers.data_sources import initialize_embedding_generator
+from shared.logger import logger
 
 # from be_utils.db.flaks_db import register_mongo
 # from be_utils.utils import init_flask_logger
@@ -35,6 +37,14 @@ register_all_endpoints(app)
 
 # Init before_request/after_request rules
 RequestRules(app)
+
+# Warm up embedding model to avoid lazy loading issues on first request
+try:
+    logger.info("Warming up embedding model...")
+    initialize_embedding_generator()
+    logger.info("Embedding model ready")
+except Exception as e:
+    logger.warning(f"Failed to warm up embedding model: {e}")
 
 if __name__ == '__main__':
     app.run(host=config.hostname_local, port=config.port, debug=True)
