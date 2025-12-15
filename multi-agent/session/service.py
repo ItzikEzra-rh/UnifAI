@@ -137,11 +137,11 @@ class SessionService:
             List of dicts with grouped field values and count:
             [{"_id": {"blueprint_id": "..."}, "count": N}, ...]
         """
-        return self._manager._repo.group_count(user_id, group_by, filter)
+        return self._manager.group_count(user_id, group_by, filter)
 
     def count(self, user_id: str, filter: Dict[str, Any] = None) -> int:
         """Count sessions matching filter criteria for a user."""
-        return self._manager._repo.count(user_id, filter or {})
+        return self._manager.count(user_id, filter)
 
     def delete(self, run_id: str) -> bool:
         """

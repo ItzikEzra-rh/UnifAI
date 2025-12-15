@@ -3,7 +3,7 @@ from resources.models import ResourceDoc, ResourceQuery
 from resources.repository.base import ResourceRepository
 from blueprints.repository.repository import BlueprintRepository
 from resources.errors import ResourceInUseError
-from typing import List, Tuple
+from typing import List, Tuple, Dict, Any
 
 
 class ResourcesRegistry:
@@ -63,3 +63,20 @@ class ResourcesRegistry:
 
     def exists(self, rid: str) -> bool:
         return self._repo.exists(rid)
+
+    # ---------- statistics ----------
+    def count(self, user_id: str, filter: Dict[str, Any] = None) -> int:
+        """Count resources matching filter criteria for a user."""
+        return self._repo.count(user_id, filter or {})
+
+    def group_count(
+        self, 
+        user_id: str, 
+        group_by: List[str],
+        filter: Dict[str, Any] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Group resources by specified fields and return counts.
+        Uses MongoDB aggregation for efficient server-side grouping.
+        """
+        return self._repo.group_count(user_id, group_by, filter)

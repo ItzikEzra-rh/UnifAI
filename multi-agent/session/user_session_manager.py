@@ -1,4 +1,4 @@
-from typing import List, Mapping, Any
+from typing import List, Mapping, Any, Dict
 from session.repository.repository import SessionRepository
 from session.workflow_session_factory import WorkflowSessionFactory
 from session.workflow_session import WorkflowSession
@@ -98,3 +98,20 @@ class UserSessionManager:
     def delete_session(self, run_id: str) -> bool:
         """Delete a session by run_id. Returns True if deleted, False if not found."""
         return self._repo.delete(run_id)
+
+    # ---------- statistics ----------
+    def count(self, user_id: str, filter: Dict[str, Any] = None) -> int:
+        """Count sessions matching filter criteria for a user."""
+        return self._repo.count(user_id, filter or {})
+
+    def group_count(
+        self, 
+        user_id: str, 
+        group_by: List[str],
+        filter: Dict[str, Any] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Group sessions by specified fields and return counts.
+        Uses MongoDB aggregation for efficient server-side grouping.
+        """
+        return self._repo.group_count(user_id, group_by, filter)

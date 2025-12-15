@@ -103,7 +103,7 @@ class ResourcesService:
     # ---------- Statistics ----------
     def count(self, user_id: str, filter: Dict[str, Any] = None) -> int:
         """Count resources matching filter criteria for a user."""
-        return self._store._repo.count(user_id, filter or {})
+        return self._store.count(user_id, filter)
 
     def group_count(
         self, 
@@ -124,4 +124,4 @@ class ResourcesService:
             List of dicts with grouped field values and count:
             [{"_id": {"category": "...", "type": "..."}, "count": N}, ...]
         """
-        return self._store._repo.group_count(user_id, group_by, filter)
+        return self._store.group_count(user_id, group_by, filter)
