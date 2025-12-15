@@ -7,11 +7,10 @@ from functools import cached_property
 from dataclasses import dataclass
 from registration.base import BaseSourceData
 from registration.base import RegistrationBase
-from werkzeug.utils import secure_filename
+from global_utils.utils import secure_filename, compute_file_md5, cleanup_file
 from config.app_config import AppConfig
 from config.constants import DataSource
 from shared.source_types import DocumentMetadata, DocumentTypeData
-from utils.file_hash import compute_file_md5, cleanup_file
 from validator.validator import Validator, DocValidators
 
 app_config = AppConfig.get_instance()

@@ -1,7 +1,7 @@
 from typing import Any, Dict, List, Optional
 
 from config.constants import DataSource
-from utils.file_hash import compute_file_md5
+from global_utils.utils import compute_file_md5
 
 
 class DocumentDuplicateChecker:

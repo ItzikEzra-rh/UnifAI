@@ -75,7 +75,7 @@ export default function Documents() {
       queryClient.refetchQueries({ queryKey: ['documents'] });
       setViewMode("list");
     }
-  }, [showUploadModal, queryClient]);
+  }, [showUploadModal]);
 
   // Clear selection when filters change to avoid confusion
   useEffect(() => {

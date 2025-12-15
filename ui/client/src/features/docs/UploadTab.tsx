@@ -20,6 +20,7 @@ import { embedDocs, uploadDocs, getSupportedFileExtensions, fetchDocuments } fro
 import { useAuth } from '@/contexts/AuthContext';
 import { formatExtensionErrors, formatFileSizeErrors, validateFiles, combineValidationErrors } from "@/utils/fileValidation";
 import { formatPipelineError } from "@/utils/errorFormatting";
+import { filterDuplicateFiles, formatDuplicateNames, normalizeFileName } from "@/utils/documentValidation";
 import { useQuery } from "@tanstack/react-query";
 import type { Document } from "@/types";
 
@@ -34,14 +35,6 @@ interface FileWithTags {
     showTagInput: boolean;
     id: string;
 }
-
-/**
- * Normalizes a file name the same way the backend does:
- * - Replaces spaces with underscores
- */
-const normalizeFileName = (fileName: string): string => {
-    return fileName.replace(/ /g, '_');
-};
 
 export const UploadTab: React.FC<UploadTabProps> = ({
     setShowUploadModal, fetchDocuments: refetchDocuments
@@ -81,25 +74,6 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         return supportedExtensions.includes(extension);
     };
 
-    /**
-     * Checks if a file with the same normalized name already exists for the current user
-     */
-    const checkDuplicateFileName = (fileName: string): { isDuplicate: boolean; normalizedName: string; existingDoc?: Document } => {
-        const normalizedName = normalizeFileName(fileName);
-        const currentUsername = user?.username || 'default';
-        
-        const existingDoc = existingDocuments.find(doc => {
-            const normalizedExistingName = normalizeFileName(doc.source_name);
-            return normalizedExistingName === normalizedName && doc.upload_by === currentUsername;
-        });
-
-        return {
-            isDuplicate: !!existingDoc,
-            normalizedName,
-            existingDoc
-        };
-    };
-    
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -128,6 +102,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
 
     const handleFiles = (files: FileList) => {
         const { validFiles, invalidFiles, sizeErrors } = validateFiles(files, isFileExtensionSupported);
+        const currentUsername = user?.username || 'default';
         
         const errorMessages: string[] = [];
         
@@ -138,36 +113,19 @@ export const UploadTab: React.FC<UploadTabProps> = ({
             errorMessages.push(formatFileSizeErrors(sizeErrors));
         }
 
-        // Check for duplicate files (same normalized name for current user)
-        const duplicateFiles: { fileName: string; normalizedName: string }[] = [];
-        const nonDuplicateFiles: File[] = [];
-
-        for (const file of validFiles) {
-            const { isDuplicate, normalizedName } = checkDuplicateFileName(file.name);
-            
-            // Also check if the file is already in the selected files list
-            const alreadySelected = selectedFiles.some(
-                sf => normalizeFileName(sf.file.name) === normalizedName
-            );
-
-            if (isDuplicate || alreadySelected) {
-                duplicateFiles.push({ fileName: file.name, normalizedName });
-            } else {
-                nonDuplicateFiles.push(file);
-            }
-        }
+        // Check for duplicate files using centralized validator
+        const { nonDuplicateFiles, duplicateFiles } = filterDuplicateFiles(
+            validFiles,
+            existingDocuments,
+            selectedFiles,
+            currentUsername
+        );
 
         if (duplicateFiles.length > 0) {
-            const duplicateNames = duplicateFiles.map(d => 
-                d.fileName !== d.normalizedName 
-                    ? `"${d.fileName}" (saved as "${d.normalizedName}")`
-                    : `"${d.fileName}"`
-            ).join(', ');
-            
             toast({
                 variant: "destructive",
                 title: "Duplicate name(s) detected",
-                description: `You already have document(s) with the same name: ${duplicateNames}. Please rename the file(s) or remove the existing ones first.`,
+                description: `You already have document(s) with the same name: ${formatDuplicateNames(duplicateFiles)}. Please rename the file(s) or remove the existing ones first.`,
             });
         }
 
