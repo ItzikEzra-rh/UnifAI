@@ -247,7 +247,7 @@ export default function Documents() {
                       <>
                         <div className="w-full">
                           <DocumentTable
-                            documents={filteredDocuments}
+                            documents={paginatedDocuments}
                             activeDoc={activeDoc}
                             setActiveDoc={setActiveDoc}
                             deleteLoading={deleteLoading}
@@ -259,8 +259,8 @@ export default function Documents() {
                             onRefresh={refetch}
                             onColumnFiltersChange={() => setRowSelection({})}
                           />
-
                         </div>
+                        <div className="mt-4">{footer}</div>
                       </>
                     )
                   ) : (
