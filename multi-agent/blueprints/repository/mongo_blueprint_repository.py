@@ -67,9 +67,6 @@ class MongoBlueprintRepository(BlueprintRepository):
         doc = self._col.find_one({"blueprint_id": blueprint_id})
         if not doc:
             raise KeyError(f"No blueprint with id={blueprint_id}")
-        # Ensure metadata exists (for backward compatibility with old blueprints)
-        if "metadata" not in doc:
-            doc["metadata"] = {}
         return doc
 
     def delete(self, blueprint_id: str) -> bool:

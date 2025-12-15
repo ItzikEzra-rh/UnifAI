@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Copy, Check, Share2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { getPublicUsageScope, setBlueprintMetadata, validateBlueprint } from "@/api/blueprints";
+import { getPublicUsageScope, setBlueprintMetadata } from "@/api/blueprints";
 import { constructShareLink } from "@/utils/blueprintHelpers";
 
 interface ShareWorkflowProps {
@@ -54,21 +54,6 @@ export default function ShareWorkflow({
 
     setIsLoading(true);
     try {
-      // Validate blueprint before enabling public sharing (private -> public only)
-      if (checked) {
-        const validationResult = await validateBlueprint(blueprintId);        
-        if (!validationResult.valid) {
-          toast({
-            title: "Failed to load current workflow",
-            description: `Error: ${validationResult.error || "Blueprint validation failed"}`,
-            variant: "destructive",
-          });
-          setEnabled(false);
-          setIsLoading(false);
-          return;
-        }
-      }
-
       await setBlueprintMetadata(blueprintId, { usageScope: checked ? "public" : "private" }, user.username);
       setEnabled(checked);
       setShareLink(checked ? constructShareLink(blueprintId) : null);
@@ -123,7 +108,7 @@ export default function ShareWorkflow({
           )}
           <Label htmlFor="share-toggle" className="text-sm font-medium">
             {isLoading 
-              ? (enabled ? "Disabling..." : "Validating workflow...")
+              ? (enabled ? "Disabling..." : "Enabling...")
               : "Enable Public Chat Sharing"
             }
           </Label>

@@ -177,22 +177,3 @@ def set_metadata(blueprint_id, metadata):
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-
-@blueprints_bp.route("/validate", methods=["GET"])
-@from_query({
-    "blueprint_id": fields.Str(data_key="blueprintId", required=True),
-    "user_id": fields.Str(data_key="userId", required=False, load_default="validation_user"),
-})
-def validate_blueprint(blueprint_id, user_id):
-    """
-    Validate a blueprint by attempting to create a test session.
-    This ensures the blueprint can be fully compiled and executed.
-    Always returns 200 with valid=true/false so frontend can check the result.
-    """
-    try:
-        # Use session service which actually compiles the graph
-        session_svc = current_app.container.session_service
-        session_svc.validate_blueprint(user_id=user_id, blueprint_id=blueprint_id)
-        return jsonify({"valid": True, "blueprint_id": blueprint_id}), 200
-    except Exception as e:
-        return jsonify({"valid": False, "blueprint_id": blueprint_id, "error": str(e)}), 200

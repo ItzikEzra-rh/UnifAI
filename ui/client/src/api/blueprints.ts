@@ -13,12 +13,6 @@ export interface BlueprintInfoResponse {
   };
 }
 
-export interface BlueprintValidationResult {
-  valid: boolean;
-  blueprint_id: string;
-  error?: string;
-}
-
 export interface SetMetadataResponse {
   status: string;
 }
@@ -60,13 +54,3 @@ export async function setBlueprintMetadata(
   return data;
 }
 
-/**
- * Validate a blueprint by checking if it can be resolved and compiled.
- * Should be called before enabling public sharing.
- */
-export async function validateBlueprint(blueprintId: string): Promise<BlueprintValidationResult> {
-  const { data } = await axios.get<BlueprintValidationResult>('/blueprints/validate', {
-    params: { blueprintId },
-  });
-  return data;
-}
