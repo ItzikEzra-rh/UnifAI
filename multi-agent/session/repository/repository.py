@@ -34,6 +34,23 @@ class SessionRepository(ABC):
         ...
     
     @abstractmethod
-    def get_distinct_blueprint_ids(self, user_id: str) -> List[str]:
-        """Get distinct blueprint_ids for a user."""
+    def group_count(
+        self, 
+        user_id: str, 
+        group_by: List[str],
+        filter: Dict[str, Any] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Group documents by specified fields and return counts.
+        Uses MongoDB aggregation for efficient server-side grouping.
+        
+        Args:
+            user_id: The user ID to filter by
+            group_by: List of field names to group by
+            filter: Optional additional filter criteria
+            
+        Returns:
+            List of dicts with grouped field values and count:
+            [{"_id": {"field1": "value1", ...}, "count": N}, ...]
+        """
         ...

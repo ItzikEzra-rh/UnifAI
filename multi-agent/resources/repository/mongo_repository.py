@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Dict, Any
 import pymongo
 from resources.models import ResourceDoc, ResourceQuery
 from resources.repository.base import ResourceRepository
@@ -105,35 +105,21 @@ class MongoResourceRepository(ResourceRepository):
     def exists(self, rid: str) -> bool:
         return self.col.count_documents({"_id": rid}, limit=1) == 1
 
-    def aggregate_by_category(self, user_id: str) -> List[dict]:
+    def group_count(
+        self, 
+        user_id: str, 
+        group_by: List[str],
+        filter: Dict[str, Any] = None
+    ) -> List[Dict[str, Any]]:
         """
-        Aggregate resources by category and type.
+        Group documents by specified fields and return counts.
+        Uses MongoDB aggregation for efficient server-side grouping.
         """
-        # Get only category and type fields (minimal data transfer)
-        cursor = self.col.find(
-            {"user_id": user_id},
-            {"category": 1, "type": 1, "_id": 0}
-        )
+        match = {"user_id": user_id, **(filter or {})}
+        group_id = {field: f"${field}" for field in group_by}
         
-        # Group by category and type in Python
-        results_dict = {}
-        for doc in cursor:
-            category = doc.get("category")
-            type_name = doc.get("type")
-            
-            if not category:
-                continue
-            
-            if category not in results_dict:
-                results_dict[category] = {"count": 0, "types": {}}
-            
-            results_dict[category]["count"] += 1
-            if type_name:
-                results_dict[category]["types"][type_name] = \
-                    results_dict[category]["types"].get(type_name, 0) + 1
-        
-        # Convert to list format
-        return [
-            {"category": cat, "count": data["count"], "types": data["types"]}
-            for cat, data in results_dict.items()
+        pipeline = [
+            {"$match": match},
+            {"$group": {"_id": group_id, "count": {"$sum": 1}}}
         ]
+        return list(self.col.aggregate(pipeline))

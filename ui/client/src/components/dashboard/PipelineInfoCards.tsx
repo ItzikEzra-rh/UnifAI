@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { motion } from "framer-motion";
-import { Activity, Database, TrendingUp, FileText, MessageSquare, Bug, Slack as SlackIcon, Clock, Menu, PieChart, Plug } from "lucide-react";
+import { Activity, Database, TrendingUp, FileText, Clock, Menu, Plug } from "lucide-react";
 import type { PipelineMetrics, ActivePipeline } from "@/api/pipelines";
 import { useQuery } from "@tanstack/react-query";
 import { fetchQdrantChunksCounts, fetchConnectedSources } from "@/api/pipelines";
@@ -49,19 +49,18 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
   );
 
   const ConnectedSourcesCard = () => {
-    const sourceTypes = ["slack", "document"] as const;
+    // Slack removed - only showing document sources
+    const sourceTypes = ["document"] as const;
     const getSourceIcon = (type: string) => {
       switch (type) {
-        case "slack":
-          return <MessageSquare className="h-4 w-4" />;
+        // case "slack":
+        //   return <MessageSquare className="h-4 w-4" />;
         case "document":
           return <FileText className="h-4 w-4" />;
         default:
           return <Database className="h-4 w-4" />;
       }
     };
-    const { primaryHex } = useTheme();
-    const slackColor = primaryHex || "#A60000";
 
     return (
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
@@ -80,7 +79,7 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
               {sourceTypes.map((type) => {
                 const count = activePipelines.filter((p) => p.source_type === (type as any) || (p as any).type === type).length;
                 const isActive = count > 0;
-                const leftColor = type === 'slack' ? slackColor : 'hsl(var(--secondary))';
+                const leftColor = 'hsl(var(--secondary))';
                 return (
                   <div
                     key={type}
@@ -92,7 +91,7 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
                         <span className="relative inline-flex h-3.5 w-3.5 rounded-full" style={{ backgroundColor: leftColor }}></span>
                       </span>
                       <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-white font-medium text-sm sm:text-base capitalize truncate">{type}</span>
+                        <span className="text-white font-medium text-sm sm:text-base capitalize truncate">{type === 'document' ? 'Documents' : type}</span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -110,21 +109,14 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
   };
 
   const LastSyncCard = () => {
-    // Repurposed as Embedded Sources compact chart
+    // Repurposed as Embedded Sources compact chart - Slack removed
     const { data: sources } = useQuery({
       queryKey: ["embeddedSourcesCounts"],
       queryFn: fetchConnectedSources,
       refetchInterval: 30000,
       refetchOnWindowFocus: true,
     });
-    const { primaryHex } = useTheme();
-    const slackColor = primaryHex || "#A60000";
-    const slack = sources?.byType?.slack ?? 0;
     const docs = sources?.byType?.document ?? 0;
-    const total = Math.max(slack + docs, 1);
-    const slackPct = Math.round((slack / total) * 100);
-    const docsPct = Math.round((docs / total) * 100);
-
 
     return (
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.25 }} className="h-full">
@@ -140,21 +132,21 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
           </div>
           <CardContent className="p-4">
             <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs text-gray-400">
+              {/* <div className="flex items-center justify-between text-xs text-gray-400">
                 <span>Slack</span>
                 <span className="text-white font-medium">{slack} ({slackPct}%)</span>
               </div>
               <div className="w-full h-2 bg-gray-800 rounded">
                 <div className="h-2 rounded" style={{ width: `${slackPct}%`, backgroundColor: slackColor }}></div>
-              </div>
+              </div> */}
               <div className="flex items-center justify-between text-xs text-gray-400">
                 <span>Documents</span>
-                <span className="text-white font-medium">{docs} ({docsPct}%)</span>
+                <span className="text-white font-medium">{docs}</span>
               </div>
               <div className="w-full h-2 bg-gray-800 rounded">
-                <div className="h-2 rounded" style={{ width: `${docsPct}%`, backgroundColor: 'hsl(var(--secondary))' }}></div>
+                <div className="h-2 rounded w-full" style={{ backgroundColor: 'hsl(var(--secondary))' }}></div>
               </div>
-              <div className="mt-1 text-xs text-gray-500">Total: {total} • Auto-updates every 30s</div>
+              <div className="mt-1 text-xs text-gray-500">Total: {docs} • Auto-updates every 30s</div>
             </div>
           </CardContent>
         </Card>
@@ -186,20 +178,16 @@ export function PipelineInfoCards({ metrics, activePipelines = [], showProcessin
 
     const getActivityIcon = (type: string) => {
       switch (type) {
-        case 'slack':
-          return <SlackIcon className="text-white text-sm" />;
+        // case 'slack':
+        //   return <SlackIcon className="text-white text-sm" />;
         case 'document':
           return <FileText className="text-white text-sm" />;
         default:
-          return <MessageSquare className="text-white text-sm" />;
+          return <FileText className="text-white text-sm" />;
       }
     };
 
-    const { primaryHex } = useTheme();
     const getActivityColor = (type: string) => {
-      if (type === 'slack') {
-        return primaryHex || '#A60000';
-      }
       if (type === 'document') {
         return 'hsl(var(--secondary))';
       }

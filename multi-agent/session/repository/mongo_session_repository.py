@@ -74,13 +74,21 @@ class MongoSessionRepository(SessionRepository):
         query = {"user_id": user_id, **filter}
         return self._col.count_documents(query)
     
-    def get_distinct_blueprint_ids(self, user_id: str) -> List[str]:
+    def group_count(
+        self, 
+        user_id: str, 
+        group_by: List[str],
+        filter: Dict[str, Any] = None
+    ) -> List[Dict[str, Any]]:
         """
-        Get distinct blueprint_ids for a user.
-        Simple MongoDB distinct query - more efficient than fetching all documents.
+        Group documents by specified fields and return counts.
+        Uses MongoDB aggregation for efficient server-side grouping.
         """
-        blueprint_ids = self._col.distinct(
-            "blueprint_id",
-            {"user_id": user_id, "blueprint_id": {"$exists": True, "$nin": [None, ""]}}
-        )
-        return [bid for bid in blueprint_ids if bid]
+        match = {"user_id": user_id, **(filter or {})}
+        group_id = {field: f"${field}" for field in group_by}
+        
+        pipeline = [
+            {"$match": match},
+            {"$group": {"_id": group_id, "count": {"$sum": 1}}}
+        ]
+        return list(self._col.aggregate(pipeline))

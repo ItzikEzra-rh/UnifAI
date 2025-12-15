@@ -51,7 +51,7 @@ function App() {
                   <Route path="/agentic-chats" component={withAgenticAIProvider(AgenticChats)} />
                   
                   {/* Non-agentic routes - don't need AgenticAIProvider */}
-                  <Route path="/overview" component={RagOverview} />
+                  <Route path="/rag-overview" component={RagOverview} />
                   <Route path="/jira" component={JiraIntegration} />
                   <Route path="/slack" component={SlackIntegration} />
                   <Route path="/documents" component={DocumentsPage} />

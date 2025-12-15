@@ -118,12 +118,30 @@ class SessionService:
         docs = self._manager.list_docs(user_id)
         return list({d.get("blueprint_id") for d in docs})
 
-    def get_user_blueprint_session_counts(self, user_id: str) -> Dict[str, int]:
+    def group_count(
+        self, 
+        user_id: str, 
+        group_by: List[str],
+        filter: Dict[str, Any] = None
+    ) -> List[Dict[str, Any]]:
         """
-        Get count of sessions by blueprint_id for a user.
-        Returns a dictionary mapping blueprint_id to session count.
+        Group sessions by specified fields and return counts.
+        Uses MongoDB aggregation for efficient server-side grouping.
+        
+        Args:
+            user_id: The user ID to filter by
+            group_by: List of field names to group by (e.g., ["blueprint_id"])
+            filter: Optional additional filter criteria
+            
+        Returns:
+            List of dicts with grouped field values and count:
+            [{"_id": {"blueprint_id": "..."}, "count": N}, ...]
         """
-        return self._manager.get_blueprint_session_counts(user_id)
+        return self._manager._repo.group_count(user_id, group_by, filter)
+
+    def count(self, user_id: str, filter: Dict[str, Any] = None) -> int:
+        """Count sessions matching filter criteria for a user."""
+        return self._manager._repo.count(user_id, filter or {})
 
     def delete(self, run_id: str) -> bool:
         """

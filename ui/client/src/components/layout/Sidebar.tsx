@@ -111,11 +111,11 @@ export default function Sidebar() {
           <NavItem 
             icon={<FaTachometerAlt className="sidebar-icon" />} 
             label="RAG Overview" 
-            to="/overview"
-            isActive={location === '/overview'}
+            to="/rag-overview"
+            isActive={location === '/rag-overview'}
             status={null}
             isCollapsed={isCollapsed}
-            disabled={true}
+            disabled={false}
           />
           <NavItem 
             icon={<FaSlack className="sidebar-icon" />} 
@@ -151,8 +151,8 @@ export default function Sidebar() {
           <NavItem 
             icon={<FaTachometerAlt className="sidebar-icon" />} 
             label="Agentic AI Overview" 
-            to="/"
-            isActive={location === '/'}
+            to="/agentic-overview"
+            isActive={location === '/agentic-overview'}
             status={null}
             isCollapsed={isCollapsed}
           />

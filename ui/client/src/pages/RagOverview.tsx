@@ -29,7 +29,8 @@ export default function RagOverview() {
   const { projects } = useProject();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { primaryHex } = useTheme();
-  const slackFill = primaryHex || "#A60000";
+  // Slack statistics removed - no longer relevant
+  // const slackFill = primaryHex || "#A60000";
 
   // Live metrics for summary cards
   const { data: metrics } = useQuery({
@@ -46,9 +47,10 @@ export default function RagOverview() {
     refetchOnWindowFocus: true,
   });
 
-  const slackCount = connectedSources?.byType?.slack ?? 0;
+  // Slack statistics removed - no longer relevant
+  // const slackCount = connectedSources?.byType?.slack ?? 0;
   const documentCount = connectedSources?.byType?.document ?? 0;
-  const totalSources = slackCount + documentCount;
+  const totalSources = documentCount;
 
   const { data: activePipelines = [] } = useQuery({
     queryKey: ['activePipelinesListSummary'],
@@ -80,22 +82,22 @@ export default function RagOverview() {
     refetchInterval: 30000,
     refetchOnWindowFocus: true,
   });
-  const qSlack = chunkCounts?.slack ?? 0;
+  // Slack statistics removed - no longer relevant
+  // const qSlack = chunkCounts?.slack ?? 0;
   const qDocs = chunkCounts?.document ?? 0;
-  const qTotal = Math.max(qSlack + qDocs, 1);
-  const qSlackPct = Math.round((qSlack / qTotal) * 100);
-  const qDocsPct = Math.round((qDocs / qTotal) * 100);
-  const size = 280; const center = size / 2; const outerRadius = 98; const innerRadius = 76; const stroke = 16;
-  const outerCirc = 2 * Math.PI * outerRadius; const innerCirc = 2 * Math.PI * innerRadius;
-  const outerDash = `${(qDocsPct / 100) * outerCirc} ${outerCirc}`; const innerDash = `${(qSlackPct / 100) * innerCirc} ${innerCirc}`;
+  // Simplified to only show documents
+  const qTotal = Math.max(qDocs, 1);
+  const qDocsPct = 100; // Documents are now 100% of chunks
+  const size = 280; const center = size / 2; const outerRadius = 98; const stroke = 16;
+  const outerCirc = 2 * Math.PI * outerRadius;
+  const outerDash = `${(qDocsPct / 100) * outerCirc} ${outerCirc}`;
 
-  // Data source stats
+  // Data source stats - Slack removed as no longer relevant
   const dataSourceStats = {
     totalVectors: '26.7K',
     stats: [
-      { source: 'Jira Issues', color: 'primary', count: '12.3K', percentage: 45 },
-      { source: 'Slack Messages', color: 'secondary', count: '8.2K', percentage: 30 },
-      { source: 'Documents', color: 'accent', count: '6.7K', percentage: 25 }
+      { source: 'Jira Issues', color: 'primary', count: '12.3K', percentage: 65 },
+      { source: 'Documents', color: 'accent', count: '6.7K', percentage: 35 }
     ]
   };
 
@@ -147,7 +149,7 @@ export default function RagOverview() {
                       <FaChartPie className="text-primary" />
                       Total Chunks (Approx)
                     </CardTitle>
-                    <span className="text-sm text-gray-400">Slack vs Documents</span>
+                    <span className="text-sm text-gray-400">Documents</span>
                   </div>
                 </CardHeader>
                 <CardContent className="px-6 pb-6 flex-1 flex flex-col justify-between min-h-0">
@@ -156,12 +158,9 @@ export default function RagOverview() {
                       <g transform={`rotate(-90 ${center} ${center})`}>
                         <circle cx={center} cy={center} r={outerRadius} fill="none" stroke="#2F2F2F" strokeWidth={stroke} />
                         <circle cx={center} cy={center} r={outerRadius} fill="none" stroke="hsl(var(--secondary))" strokeWidth={stroke} strokeLinecap="round" strokeDasharray={outerDash} />
-                        <circle cx={center} cy={center} r={innerRadius} fill="none" stroke="#2F2F2F" strokeWidth={stroke} />
-                        <circle cx={center} cy={center} r={innerRadius} fill="none" stroke={slackFill} strokeWidth={stroke} strokeLinecap="round" strokeDasharray={innerDash} />
                       </g>
                       <g>
-                        <text x={center} y={center - 6} textAnchor="middle" className="fill-gray-300" style={{ fontSize: 26, fontWeight: 800 }}>{qDocs}</text>
-                        <text x={center} y={center + 24} textAnchor="middle" className="fill-gray-300" style={{ fontSize: 22, fontWeight: 800 }}>{qSlack}</text>
+                        <text x={center} y={center + 6} textAnchor="middle" className="fill-gray-300" style={{ fontSize: 28, fontWeight: 800 }}>{qDocs}</text>
                       </g>
                     </svg>
                     <div className="space-y-4">
@@ -169,11 +168,7 @@ export default function RagOverview() {
                         <div className="text-3xl font-bold" style={{ color: 'hsl(var(--secondary))' }}>{qDocsPct}%</div>
                         <div className="text-sm text-gray-400">Documents</div>
                       </div>
-                      <div>
-                        <div className="text-3xl font-bold" style={{ color: slackFill }}>{qSlackPct}%</div>
-                        <div className="text-sm text-gray-400">Slack</div>
-                      </div>
-                      <div className="pt-1 text-sm text-gray-400">Total: {qSlack + qDocs}</div>
+                      <div className="pt-1 text-sm text-gray-400">Total: {qDocs}</div>
                       <div className="text-sm text-gray-500">Auto-updates every 30s</div>
                     </div>
                   </div>

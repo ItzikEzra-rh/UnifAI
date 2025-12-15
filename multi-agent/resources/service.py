@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Dict, Any
 from .registry import ResourcesRegistry
 from catalog.element_registry import ElementRegistry
 from .models import ResourceDoc, ResourceQuery
@@ -99,3 +99,29 @@ class ResourcesService:
     def get_resource_schema() -> dict:
         """Get the JSON schema for ResourceDoc model."""
         return ResourceDoc.model_json_schema()
+
+    # ---------- Statistics ----------
+    def count(self, user_id: str, filter: Dict[str, Any] = None) -> int:
+        """Count resources matching filter criteria for a user."""
+        return self._store._repo.count(user_id, filter or {})
+
+    def group_count(
+        self, 
+        user_id: str, 
+        group_by: List[str],
+        filter: Dict[str, Any] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Group resources by specified fields and return counts.
+        Uses MongoDB aggregation for efficient server-side grouping.
+        
+        Args:
+            user_id: The user ID to filter by
+            group_by: List of field names to group by (e.g., ["category", "type"])
+            filter: Optional additional filter criteria
+            
+        Returns:
+            List of dicts with grouped field values and count:
+            [{"_id": {"category": "...", "type": "..."}, "count": N}, ...]
+        """
+        return self._store._repo.group_count(user_id, group_by, filter)

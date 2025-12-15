@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Dict, Any
 from resources.models import ResourceDoc, ResourceQuery
 
 
@@ -59,3 +59,25 @@ class ResourceRepository(ABC):
 
     @abstractmethod
     def exists(self, rid: str) -> bool: ...
+
+    @abstractmethod
+    def group_count(
+        self, 
+        user_id: str, 
+        group_by: List[str],
+        filter: Dict[str, Any] = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Group documents by specified fields and return counts.
+        Uses MongoDB aggregation for efficient server-side grouping.
+        
+        Args:
+            user_id: The user ID to filter by
+            group_by: List of field names to group by
+            filter: Optional additional filter criteria
+            
+        Returns:
+            List of dicts with grouped field values and count:
+            [{"_id": {"field1": "value1", ...}, "count": N}, ...]
+        """
+        ...

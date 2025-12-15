@@ -1,4 +1,4 @@
-from typing import List, Mapping, Any, Dict
+from typing import List, Mapping, Any
 from session.repository.repository import SessionRepository
 from session.workflow_session_factory import WorkflowSessionFactory
 from session.workflow_session import WorkflowSession
@@ -98,19 +98,3 @@ class UserSessionManager:
     def delete_session(self, run_id: str) -> bool:
         """Delete a session by run_id. Returns True if deleted, False if not found."""
         return self._repo.delete(run_id)
-
-    def get_blueprint_session_counts(self, user_id: str) -> Dict[str, int]:
-        """
-        Get count of sessions by blueprint_id for a user.
-        Uses repository's get_distinct_blueprint_ids() and generic count() method.
-        Follows SOLID principles by using repository abstraction, not implementation details.
-        """
-        # Use repository method to get distinct blueprint_ids (respects abstraction)
-        blueprint_ids = self._repo.get_distinct_blueprint_ids(user_id)
-        
-        # Use generic count method for each blueprint_id
-        counts: Dict[str, int] = {}
-        for blueprint_id in blueprint_ids:
-            counts[blueprint_id] = self._repo.count(user_id, {"blueprint_id": blueprint_id})
-        
-        return counts
