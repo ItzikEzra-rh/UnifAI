@@ -220,7 +220,7 @@ export default function ExecutionTab({
           baseSession.blueprintId,
           baseSession.fromSharedLink ?? false,
           baseSession.blueprintExists,
-          sessionData.public_usage_scope
+          sessionData.metadata?.public_usage_scope
         );
 
         return {

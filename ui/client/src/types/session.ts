@@ -20,12 +20,11 @@ export interface ChatSession {
 
 // Types for the API response
 export interface ChatSessionData {
-  metadata: Record<string, any>;
+  metadata: Record<string, any>; // Contains public_usage_scope for shared link sessions
   blueprint_id: string;
   session_id: string;
   started_at: string;
   blueprint_exists: boolean;
-  public_usage_scope?: boolean; // Only relevant for sessions from shared links (from_shared_link=true)
 }
 
 export interface SessionStateData {
