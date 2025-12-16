@@ -19,7 +19,7 @@ class QdrantStorage(VectorStorage):
     def __init__(
         self,
         collection_name: str,
-        embedding_dim: int,
+        embedding_dim: Optional[int] = None,
         url: Optional[str] = None,
         port: Optional[int] = None,
         grpc_port: Optional[int] = None,
@@ -33,7 +33,7 @@ class QdrantStorage(VectorStorage):
         
         Args:
             collection_name: Name of the collection in Qdrant
-            embedding_dim: Dimension of the embedding vectors
+            embedding_dim: Dimension of the embedding vectors (required only for creating new collections)
             url: URL of the Qdrant server (e.g., "http://localhost")
             port: HTTP port of the Qdrant server (default: 6333)
             grpc_port: gRPC port of the Qdrant server (default: 6334)
@@ -88,6 +88,10 @@ class QdrantStorage(VectorStorage):
         if self.collection_name in collection_names:
             logger.info(f"Collection '{self.collection_name}' already exists")
             return
+        
+        # embedding_dim is required when creating a new collection
+        if self.embedding_dim is None:
+            raise ValueError(f"embedding_dim is required to create collection '{self.collection_name}'")
         
         # Create collection with vector configuration
         self.client.create_collection(
