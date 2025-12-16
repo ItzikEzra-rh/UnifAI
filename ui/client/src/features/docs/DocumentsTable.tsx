@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { FaEye, FaTrash, FaEdit } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
 import { InlineLoader } from "@/components/shared/InlineLoader";
@@ -10,10 +10,10 @@ import { DocumentData } from "./DocumentData";
 import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { RowSelectionState } from "@tanstack/react-table";
-import { SelectAllCheckbox } from "@/components/shared/SelectAllCheckbox";
-import { RowSelectionCheckbox } from "@/components/shared/RowSelectionCheckbox";
+import { SelectionCheckbox } from "@/components/shared/SelectionCheckbox";
 import { getSupportedFileExtensions } from "@/api/docs";
 import { EditDocumentModal } from "./EditDocumentModal";
+import { useQuery } from "@tanstack/react-query";
 
 interface DocumentTableProps {
   documents: Document[];
@@ -44,24 +44,16 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
 }) => {
   const [confirmDoc, setConfirmDoc] = useState<Document | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
-  const [fileTypeFilterOptions, setFileTypeFilterOptions] = useState<string[]>([]);
   const [editDoc, setEditDoc] = useState<Document | null>(null);
 
-  useEffect(() => {
-    const loadSupportedExtensions = async () => {
-      try {
-        const extensions = await getSupportedFileExtensions();
-        // Transform extensions: remove dot and convert to uppercase (e.g., ".pdf" -> "PDF")
-        const filterOptions = extensions.map(ext => ext.substring(1).toUpperCase());
-        setFileTypeFilterOptions(filterOptions);
-      } catch (err) {
-        console.error("Failed to load supported extensions:", err);
-        // Fallback to common extensions if API fails
-        setFileTypeFilterOptions(["PDF", "DOCX", "PPTX", "MD"]);
-      }
-    };
-    loadSupportedExtensions();
-  }, []);
+  // Use TanStack Query for caching supported extensions across pages/refetches
+  // Extensions are static data, so we use staleTime: Infinity to prevent refetching
+  const { data: fileTypeFilterOptions = [] } = useQuery({
+    queryKey: ['supportedFileExtensions'],
+    queryFn: getSupportedFileExtensions,
+    staleTime: Infinity, // Extensions never change during a session
+    select: (extensions) => extensions.map(ext => ext.substring(1).toUpperCase()),
+  });
 
   const columns: DataTableColumn<Document>[] = React.useMemo(() => [
     {
@@ -163,12 +155,33 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       id: "actions",
       header: ({ table }) => {
         if (!onRowSelectionChange || !rowSelection) return "";
+        
+        // Calculate if all filtered rows are selected
+        const filteredRows = table.getFilteredRowModel().rows;
+        const isAllFilteredSelected = filteredRows.length > 0 && filteredRows.every(row => {
+          return rowSelection[row.original.source_id];
+        });
+        
+        // Handle select all toggle for filtered rows
+        const handleSelectAllChange = (checked: boolean) => {
+          const newSelection = { ...rowSelection };
+          if (checked) {
+            filteredRows.forEach(row => {
+              newSelection[row.original.source_id] = true;
+            });
+          } else {
+            filteredRows.forEach(row => {
+              delete newSelection[row.original.source_id];
+            });
+          }
+          onRowSelectionChange(newSelection);
+        };
+        
         return (
-          <SelectAllCheckbox
-            table={table}
-            rowSelection={rowSelection}
-            onRowSelectionChange={onRowSelectionChange}
-            getRowId={(doc) => doc.source_id}
+          <SelectionCheckbox
+            checked={isAllFilteredSelected}
+            onCheckedChange={handleSelectAllChange}
+            ariaLabel="Select all filtered rows"
             align="right"
           />
         );
@@ -176,6 +189,19 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       cell: ({ row }) => {
         const doc = row.original;
         const isActive = activeDoc?.pipeline_id === doc.pipeline_id;
+        
+        // Handle individual row selection toggle
+        const handleRowSelect = (checked: boolean) => {
+          if (!onRowSelectionChange || !rowSelection) return;
+          const newSelection = { ...rowSelection };
+          if (checked) {
+            newSelection[doc.source_id] = true;
+          } else {
+            delete newSelection[doc.source_id];
+          }
+          onRowSelectionChange(newSelection);
+        };
+        
         return (
           <div className="flex items-center space-x-2 justify-end">
             <Button
@@ -207,10 +233,9 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
               <FaTrash className="h-3 w-3" />
             </Button>
             {onRowSelectionChange && rowSelection && (
-              <RowSelectionCheckbox
-                rowId={doc.source_id}
-                rowSelection={rowSelection}
-                onRowSelectionChange={onRowSelectionChange}
+              <SelectionCheckbox
+                checked={rowSelection[doc.source_id] === true}
+                onCheckedChange={handleRowSelect}
                 ariaLabel={`Select document ${doc.source_name}`}
               />
             )}

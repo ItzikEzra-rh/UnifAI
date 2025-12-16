@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useRef } from "react";
 import type React from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -46,7 +46,6 @@ export const UploadTab: React.FC<UploadTabProps> = ({
     const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState<string>("");
     const [uploadProgress, setUploadProgress] = useState(0);
-    const [supportedExtensions, setSupportedExtensions] = useState<string[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Fetch existing documents to check for duplicates
@@ -56,18 +55,13 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         staleTime: 30 * 1000,
     });
 
-    useEffect(() => {
-        const loadSupportedExtensions = async () => {
-            try {
-                const extensions = await getSupportedFileExtensions();
-                setSupportedExtensions(extensions);
-            } catch (err) {
-                console.error("Failed to load supported extensions:", err);
-                setSupportedExtensions([".pdf", ".docx", ".md", ".pptx"]);
-            }
-        };
-        loadSupportedExtensions();
-    }, []);
+    // Use TanStack Query for caching supported extensions across pages/refetches
+    // Uses same queryKey as DocumentsTable for automatic cache sharing
+    const { data: supportedExtensions = [] } = useQuery({
+        queryKey: ['supportedFileExtensions'],
+        queryFn: getSupportedFileExtensions,
+        staleTime: Infinity, // Extensions never change during a session
+    });
 
     const isFileExtensionSupported = (fileName: string): boolean => {
         const extension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));

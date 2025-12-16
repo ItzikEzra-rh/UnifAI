@@ -38,7 +38,7 @@ import {
   TableHead,
   TableCell,
 } from '../ui/table'
-import { Checkbox } from '../ui/checkbox'
+import { SelectionCheckbox } from './SelectionCheckbox'
 
 
 // ─── 1. SORT HELPERS ───────────────────────────────────────────────────────
@@ -150,12 +150,41 @@ export function DataTable<T extends object>({
   const [internalRowSelection, setInternalRowSelection] = React.useState<RowSelectionState>(
     initialState?.rowSelection ?? {}
   )
-  
   const rowSelection = controlledRowSelection ?? internalRowSelection
   const setRowSelection = onRowSelectionChange ?? setInternalRowSelection
+  
+  /** Handles "Select All" checkbox toggle - selects/deselects all currently filtered rows */
+  const handleSelectAllChange = React.useCallback((checked: boolean, filteredRows: any[]) => {
+    const newSelection: RowSelectionState = { ...rowSelection }
+    if (checked) {
+      // Select all filtered rows
+      filteredRows.forEach(row => {
+        const rowId = getRowId ? getRowId(row.original) : row.id
+        newSelection[rowId] = true
+      })
+    } else {
+      // Deselect all filtered rows
+      filteredRows.forEach(row => {
+        const rowId = getRowId ? getRowId(row.original) : row.id
+        delete newSelection[rowId]
+      })
+    }
+    setRowSelection(newSelection)
+  }, [rowSelection, setRowSelection, getRowId])
+
+  /** Handles individual row checkbox toggle */
+  const handleRowSelectionChange = React.useCallback((rowId: string, checked: boolean) => {
+    const newSelection = { ...rowSelection }
+    if (checked) {
+      newSelection[rowId] = true
+    } else {
+      delete newSelection[rowId]
+    }
+    setRowSelection(newSelection)
+  }, [rowSelection, setRowSelection])
 
   // ─── Auto‐assign sortingFns
-  const baseProcessedColumns = React.useMemo(() => {
+  const columnsWithSortingFns = React.useMemo(() => {
     return columns.map(col => {
       if (col.enableSorting === false) return col
       if (col.sortingFn) return col
@@ -171,13 +200,12 @@ export function DataTable<T extends object>({
     })
   }, [columns, data])
 
-  // ─── Create selection column after we have rowSelection state
-  const processedColumns = React.useMemo(() => {
+  // ─── Create selection column (adds checkbox column when row selection is enabled)
+  const columnsWithSelection = React.useMemo(() => {
     if (!enableRowSelection) {
-      return baseProcessedColumns
+      return columnsWithSortingFns
     }
     
-    // Create selection column that will use the table instance when rendered
     const selectionColumn: ColumnDef<T> = {
       id: 'select',
       header: ({ table }) => {
@@ -188,63 +216,43 @@ export function DataTable<T extends object>({
         })
         
         return (
-          <Checkbox
+          <SelectionCheckbox
             checked={isAllFilteredSelected}
-            onCheckedChange={(checked) => {
-              if (checked) {
-                // Select all filtered rows
-                const newSelection: RowSelectionState = { ...rowSelection }
-                filteredRows.forEach(row => {
-                  const rowId = getRowId ? getRowId(row.original) : row.id
-                  newSelection[rowId] = true
-                })
-                setRowSelection(newSelection)
-              } else {
-                // Deselect all filtered rows
-                const newSelection: RowSelectionState = { ...rowSelection }
-                filteredRows.forEach(row => {
-                  const rowId = getRowId ? getRowId(row.original) : row.id
-                  delete newSelection[rowId]
-                })
-                setRowSelection(newSelection)
-              }
-            }}
-            aria-label="Select all filtered rows"
+            onCheckedChange={(checked) => handleSelectAllChange(checked, filteredRows)}
+            ariaLabel="Select all filtered rows"
           />
         )
       },
       cell: ({ row }) => {
         const rowId = getRowId ? getRowId(row.original) : row.id
         return (
-          <Checkbox
+          <SelectionCheckbox
             checked={rowSelection[rowId] === true}
-            onCheckedChange={(checked) => {
-              const newSelection = { ...rowSelection }
-              if (checked) {
-                newSelection[rowId] = true
-              } else {
-                delete newSelection[rowId]
-              }
-              setRowSelection(newSelection)
-            }}
-            aria-label={`Select row ${rowId}`}
+            onCheckedChange={(checked) => handleRowSelectionChange(rowId, checked)}
+            ariaLabel={`Select row ${rowId}`}
           />
         )
       },
       enableSorting: false,
       enableHiding: false,
     }
-    return [selectionColumn, ...baseProcessedColumns]
-  }, [baseProcessedColumns, enableRowSelection, rowSelection, setRowSelection, getRowId])
+    return [selectionColumn, ...columnsWithSortingFns]
+  }, [columnsWithSortingFns, enableRowSelection, rowSelection, getRowId, handleSelectAllChange, handleRowSelectionChange])
 
   // ─── TanStack Table instance
   const table = useReactTable({
     data,
-    columns: processedColumns,
+    columns: columnsWithSelection,
     filterFns,
     getRowId: getRowId as any,
     enableRowSelection: enableRowSelection,
-    onRowSelectionChange: setRowSelection,
+    // Handle TanStack's updater pattern (can be value or function)
+    onRowSelectionChange: (updaterOrValue) => {
+      const newValue = typeof updaterOrValue === 'function' 
+        ? updaterOrValue(rowSelection) 
+        : updaterOrValue
+      setRowSelection(newValue)
+    },
     state: {
       sorting: enableSorting ? sorting : [],
       globalFilter: enableGlobalFilter ? globalFilter : undefined,
