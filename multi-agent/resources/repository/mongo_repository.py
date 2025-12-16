@@ -2,6 +2,7 @@ from typing import List, Dict, Any
 import pymongo
 from resources.models import ResourceDoc, ResourceQuery
 from resources.repository.base import ResourceRepository
+from core.dto import GroupedCount
 
 
 class MongoResourceRepository(ResourceRepository):
@@ -110,10 +111,13 @@ class MongoResourceRepository(ResourceRepository):
         user_id: str, 
         group_by: List[str],
         filter: Dict[str, Any] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[GroupedCount]:
         """
         Group documents by specified fields and return counts.
         Uses MongoDB aggregation for efficient server-side grouping.
+        
+        Transforms MongoDB's {"_id": {...}, "count": N} format to 
+        database-agnostic GroupedCount DTOs.
         """
         match = {"user_id": user_id, **(filter or {})}
         group_id = {field: f"${field}" for field in group_by}
@@ -122,4 +126,9 @@ class MongoResourceRepository(ResourceRepository):
             {"$match": match},
             {"$group": {"_id": group_id, "count": {"$sum": 1}}}
         ]
-        return list(self.col.aggregate(pipeline))
+        
+        # Transform MongoDB format → clean DTO
+        return [
+            GroupedCount(fields=doc["_id"], count=doc["count"])
+            for doc in self.col.aggregate(pipeline)
+        ]

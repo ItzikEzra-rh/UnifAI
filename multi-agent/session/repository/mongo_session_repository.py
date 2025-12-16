@@ -3,6 +3,7 @@ from pymongo.collection import Collection
 from typing import List, Mapping, Any, Dict
 from session.repository.repository import SessionRepository
 from session.workflow_session import WorkflowSession
+from core.dto import GroupedCount
 
 
 class MongoSessionRepository(SessionRepository):
@@ -79,10 +80,13 @@ class MongoSessionRepository(SessionRepository):
         user_id: str, 
         group_by: List[str],
         filter: Dict[str, Any] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[GroupedCount]:
         """
         Group documents by specified fields and return counts.
         Uses MongoDB aggregation for efficient server-side grouping.
+        
+        Transforms MongoDB's {"_id": {...}, "count": N} format to 
+        database-agnostic GroupedCount DTOs.
         """
         match = {"user_id": user_id, **(filter or {})}
         group_id = {field: f"${field}" for field in group_by}
@@ -91,4 +95,9 @@ class MongoSessionRepository(SessionRepository):
             {"$match": match},
             {"$group": {"_id": group_id, "count": {"$sum": 1}}}
         ]
-        return list(self._col.aggregate(pipeline))
+        
+        # Transform MongoDB format → clean DTO
+        return [
+            GroupedCount(fields=doc["_id"], count=doc["count"])
+            for doc in self._col.aggregate(pipeline)
+        ]

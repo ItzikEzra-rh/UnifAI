@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Mapping, Any, Dict
 from session.workflow_session import WorkflowSession
+from core.dto import GroupedCount
 
 
 class SessionRepository(ABC):
@@ -39,7 +40,7 @@ class SessionRepository(ABC):
         user_id: str, 
         group_by: List[str],
         filter: Dict[str, Any] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[GroupedCount]:
         """
         Group documents by specified fields and return counts.
         Implementation should perform efficient server-side grouping.
@@ -50,7 +51,7 @@ class SessionRepository(ABC):
             filter: Optional additional filter criteria
             
         Returns:
-            List of dicts with grouped field values and count:
-            [{"_id": {"field1": "value1", ...}, "count": N}, ...]
+            List of GroupedCount DTOs with grouped field values and count.
+            Example: [GroupedCount(fields={"blueprint_id": "bp-123"}, count=10), ...]
         """
         ...

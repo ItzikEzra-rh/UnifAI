@@ -4,6 +4,7 @@ from .session_executor import SessionExecutor
 from .workflow_session import WorkflowSession
 from .dto import ChatHistoryItem
 from .models import SessionMeta
+from core.dto import GroupedCount
 
 
 class SessionService:
@@ -123,7 +124,7 @@ class SessionService:
         user_id: str, 
         group_by: List[str],
         filter: Dict[str, Any] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[GroupedCount]:
         """
         Group sessions by specified fields and return counts.
         Performs efficient server-side grouping via the session manager.
@@ -134,8 +135,8 @@ class SessionService:
             filter: Optional additional filter criteria
             
         Returns:
-            List of dicts with grouped field values and count:
-            [{"_id": {"field": "value"}, "count": N}, ...]
+            List of GroupedCount DTOs with grouped field values and count.
+            Example: [GroupedCount(fields={"blueprint_id": "bp-123"}, count=10), ...]
         """
         return self._manager.group_count(user_id, group_by, filter)
 

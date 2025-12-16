@@ -4,6 +4,7 @@ from catalog.element_registry import ElementRegistry
 from .models import ResourceDoc, ResourceQuery
 from core.enums import ResourceCategory
 from core.ref import RefWalker
+from core.dto import GroupedCount
 from pydantic import BaseModel
 
 
@@ -110,7 +111,7 @@ class ResourcesService:
         user_id: str, 
         group_by: List[str],
         filter: Dict[str, Any] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[GroupedCount]:
         """
         Group resources by specified fields and return counts.
         Performs efficient server-side grouping via the registry.
@@ -121,7 +122,7 @@ class ResourcesService:
             filter: Optional additional filter criteria
             
         Returns:
-            List of dicts with grouped field values and count:
-            [{"_id": {"category": "...", "type": "..."}, "count": N}, ...]
+            List of GroupedCount DTOs with grouped field values and count.
+            Example: [GroupedCount(fields={"category": "llm", "type": "openai"}, count=5), ...]
         """
         return self._store.group_count(user_id, group_by, filter)

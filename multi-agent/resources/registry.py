@@ -4,6 +4,7 @@ from resources.repository.base import ResourceRepository
 from blueprints.repository.repository import BlueprintRepository
 from resources.errors import ResourceInUseError
 from typing import List, Tuple, Dict, Any
+from core.dto import GroupedCount
 
 
 class ResourcesRegistry:
@@ -74,9 +75,17 @@ class ResourcesRegistry:
         user_id: str, 
         group_by: List[str],
         filter: Dict[str, Any] = None
-    ) -> List[Dict[str, Any]]:
+    ) -> List[GroupedCount]:
         """
         Group resources by specified fields and return counts.
         Performs efficient server-side grouping via the repository.
+        
+        Args:
+            user_id: The user ID to filter by
+            group_by: List of field names to group by (e.g., ["category", "type"])
+            filter: Optional additional filter criteria
+            
+        Returns:
+            List of GroupedCount DTOs with grouped field values and count.
         """
         return self._repo.group_count(user_id, group_by, filter)
