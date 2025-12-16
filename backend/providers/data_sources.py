@@ -35,10 +35,14 @@ def initialize_vector_storage(embedding_dim: int = 384, source_type: str = "data
     return vector_storage
 
 
-def initialize_storage_manager(source_type: str = "data_source"):
+def initialize_storage_manager(source_type: str = "data_source", for_delete: bool = False):
     """Initialize and return storage manager for operations."""
-    embedding_generator = initialize_embedding_generator()
-    vector_storage = initialize_vector_storage(embedding_generator.embedding_dim, source_type)
+    if for_delete:
+        embedding_dim = 384  # Assuming fixed embedding dim for deletion
+    else:
+        embedding_generator = initialize_embedding_generator()
+        embedding_dim = embedding_generator.embedding_dim
+    vector_storage = initialize_vector_storage(embedding_dim=embedding_dim, source_type=source_type)
     
     mongo_storage = get_mongo_storage()
     vector_store = vector_storage if isinstance(vector_storage, QdrantStorage) else None
@@ -87,9 +91,8 @@ def delete_data_source(source_id: str):
         if source_info.get("success"):
             actual_source_type = source_info.get("source_type")
         
-        # For deletion, we don't need the embedding model - just connect to existing collection
-        vector_storage = initialize_vector_storage(source_type=actual_source_type if actual_source_type else "data_source")
-        storage_manager = SourceDeletionManager(vector_storage, mongo_storage)
+        # Initialize storage manager with the correct source type
+        storage_manager = initialize_storage_manager(actual_source_type if actual_source_type else "data_source", for_delete=True)
         
         result = storage_manager.delete_source(source_id, actual_source_type)
 
