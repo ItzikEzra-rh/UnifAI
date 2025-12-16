@@ -47,17 +47,6 @@ def initialize_storage_manager(source_type: str = "data_source"):
     
     return SourceDeletionManager(vector_store, mongo_storage)
 
-
-def get_qdrant_for_deletion(source_type: str = "data_source") -> QdrantStorage:
-    """
-    Get a QdrantStorage client for deletion operations.
-    
-    Does NOT load the embedding model - just connects to the existing collection.
-    """
-    storage_config = asdict(StorageConfig(collection_name=f"{source_type.lower()}_data"))
-    # No embedding_dim needed - collection already exists for deletion
-    return VectorStorageFactory.create(storage_config)
-
 def get_available_data_sources(source_type: str):
     """
     Fetches a list of available data sources of a specific type.
@@ -85,21 +74,23 @@ def delete_data_source(source_id: str):
     
     Args:
         source_id: The ID of the pipeline/source to delete
+        source_type: Optional source type for additional validation/logging
         
     Returns:
         dict: Result of deletion operation with success status and details
     """
     try:
-        # Get source info to determine the source type
+        # First get the source info to determine the actual source type and source_id
         mongo_storage = get_mongo_storage()
         source_info = mongo_storage.get_source_info_by_source_id(source_id)
-        actual_source_type = source_info.get("source_type") if source_info.get("success") else None
+        actual_source_type = None
+        if source_info.get("success"):
+            actual_source_type = source_info.get("source_type")
         
-        # Get Qdrant client for deletion (no embedding model needed)
-        qdrant = get_qdrant_for_deletion(actual_source_type if actual_source_type else "data_source")
+        # For deletion, we don't need the embedding model - just connect to existing collection
+        vector_storage = initialize_vector_storage(source_type=actual_source_type if actual_source_type else "data_source")
+        storage_manager = SourceDeletionManager(vector_storage, mongo_storage)
         
-        # Create deletion manager with just the qdrant client and mongo storage
-        storage_manager = SourceDeletionManager(qdrant, mongo_storage)
         result = storage_manager.delete_source(source_id, actual_source_type)
 
         return {
@@ -107,13 +98,14 @@ def delete_data_source(source_id: str):
             "result": {
                 "source_id": result.get("source_id"),
                 "source_name": result.get("source_name"),
+                # Map counts directly from deletion result
                 "qdrant_embeddings_deleted": result.get("embeddings_deleted", 0),
                 "mongo_source_deleted": result.get("source_deleted", False),
                 "mongo_pipelines_deleted": result.get("pipelines_deleted", 0)
             }
         }
     except Exception as e:
-        logger.error(f"Failed to delete source {source_id}: {e}")
+        logger.error(f"Failed to delete channel {source_id}: {e}")
         raise e
 
 def get_data_source_by_id(pipeline_id: str, source_type: str = None):
