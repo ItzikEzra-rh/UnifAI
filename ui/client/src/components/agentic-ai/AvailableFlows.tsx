@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Trash2, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useShared } from "@/contexts/SharedContext";
+import axios from '../../http/axiosAgentConfig'
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -15,9 +16,9 @@ import {
 import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
-import axios from "../../http/axiosAgentConfig";
-import ShareWorkflow from "./ShareWorkflow";
+import { fetchBlueprints, fetchResolvedBlueprints, fetchActiveSessions } from "@/api/agentic";
 import { convertGraphFlowToFlowObject } from "@/utils/blueprintHelpers";
+import ShareWorkflow from "./ShareWorkflow";
 
 export interface AvailableFlowsProps {
   selectedFlow: FlowObject | null;
@@ -65,16 +66,15 @@ export default function AvailableFlows({
   const { user } = useAuth();
   const { openShareForItem } = useShared();
 
-  // Fetch available workflows from API
+  // Fetch available blueprints from API
   const fetchAvailableFlows = async (): Promise<void> => {
     try {
       const userId = user?.username || "default";
-      const endpoint = useResolvedEndpoint 
-        ? `/blueprints/available.blueprints.resolved.get?userId=${userId}`
-        : `/blueprints/available.blueprints.get?userId=${userId}`;
-      
-      const response = await axios.get(endpoint);
-      const blueprints: Array<{ blueprint_id: string; spec_dict: GraphFlow }> = response.data;
+      // Use resolved endpoint if requested (returns blueprints with all references resolved)
+      // Otherwise use regular endpoint (returns blueprints as stored, may contain unresolved references)
+      const blueprints = useResolvedEndpoint 
+        ? await fetchResolvedBlueprints(userId)
+        : await fetchBlueprints(userId);
 
       // Convert the blueprints to the format expected by the component
       const processedFlows = blueprints
@@ -90,7 +90,7 @@ export default function AvailableFlows({
         onFlowSelect(processedFlows[0]);
       }
     } catch (error) {
-      console.error("Error fetching available workflows:", error);
+      console.error("Error fetching available blueprints:", error);
       throw error;
     } finally {
       setIsLoading(false);
@@ -103,10 +103,8 @@ export default function AvailableFlows({
 
     try {
       const userId = user?.username || "default";
-      const response = await axios.get(
-        `/sessions/session.user.blueprints.get?userId=${userId}`
-      );
-      setActiveFlowIds(response.data || []);
+      const activeSessions = await fetchActiveSessions(userId);
+      setActiveFlowIds(activeSessions || []);
     } catch (error) {
       console.error("Error fetching active flows:", error);
       setActiveFlowIds([]);

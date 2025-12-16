@@ -5,9 +5,8 @@ import {
   FaTachometerAlt, FaCogs, FaFileAlt, 
   FaChartLine, FaUserShield, FaCog, FaSignOutAlt,
   FaRobot, FaFile, FaChevronLeft, FaChevronRight,
-  FaInfoCircle
+  FaInfoCircle, FaBook, FaComment
 } from "react-icons/fa";
-import { MessageSquare, Info } from "lucide-react";
 import { FaJira, FaSlack, FaBars } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -110,12 +109,12 @@ export default function Sidebar() {
         <ul>
           <NavItem 
             icon={<FaTachometerAlt className="sidebar-icon" />} 
-            label="Overview" 
-            to="/overview"
-            isActive={location === '/overview'}
+            label="RAG Overview" 
+            to="/rag-overview"
+            isActive={location === '/rag-overview'}
             status={null}
             isCollapsed={isCollapsed}
-            disabled={true}
+            disabled={false}
           />
           <NavItem 
             icon={<FaSlack className="sidebar-icon" />} 
@@ -149,6 +148,14 @@ export default function Sidebar() {
         )}
         <ul>
           <NavItem 
+            icon={<FaTachometerAlt className="sidebar-icon" />} 
+            label="Agentic AI Overview" 
+            to="/agentic-overview"
+            isActive={location === '/agentic-overview'}
+            status={null}
+            isCollapsed={isCollapsed}
+          />
+          <NavItem 
               icon={<FaFile className="sidebar-icon" />} 
               label="Agentic Inventory" 
               to="/inventory"
@@ -166,7 +173,7 @@ export default function Sidebar() {
             isCollapsed={isCollapsed}
           />
           <NavItem 
-            icon={<MessageSquare className="sidebar-icon" />} 
+            icon={<FaComment className="sidebar-icon" />} 
             label="Agentic Chats" 
             to="/agentic-chats"
             isActive={location === '/agentic-chats'}
@@ -203,7 +210,7 @@ export default function Sidebar() {
             isCollapsed={isCollapsed}
           />
           <NavItem 
-            icon={<Info className="sidebar-icon" />} 
+            icon={<FaBook className="sidebar-icon" />} 
             label="How-To Guides" 
             to="/guides"
             isActive={location === '/guides'}
