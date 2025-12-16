@@ -5,9 +5,8 @@ import {
   FaTachometerAlt, FaCogs, FaFileAlt, 
   FaChartLine, FaUserShield, FaCog, FaSignOutAlt,
   FaRobot, FaFile, FaChevronLeft, FaChevronRight,
-  FaInfoCircle
+  FaInfoCircle, FaBook, FaComment
 } from "react-icons/fa";
-import { MessageSquare, Info } from "lucide-react";
 import { FaJira, FaSlack, FaBars } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -174,7 +173,7 @@ export default function Sidebar() {
             isCollapsed={isCollapsed}
           />
           <NavItem 
-            icon={<MessageSquare className="sidebar-icon" />} 
+            icon={<FaComment className="sidebar-icon" />} 
             label="Agentic Chats" 
             to="/agentic-chats"
             isActive={location === '/agentic-chats'}
@@ -211,7 +210,7 @@ export default function Sidebar() {
             isCollapsed={isCollapsed}
           />
           <NavItem 
-            icon={<Info className="sidebar-icon" />} 
+            icon={<FaBook className="sidebar-icon" />} 
             label="How-To Guides" 
             to="/guides"
             isActive={location === '/guides'}
