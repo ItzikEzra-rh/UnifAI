@@ -39,6 +39,7 @@ import {
   TableCell,
 } from '../ui/table'
 import { SelectionCheckbox } from './SelectionCheckbox'
+import { Pagination } from './Pagination'
 
 
 // ─── 1. SORT HELPERS ───────────────────────────────────────────────────────
@@ -484,34 +485,17 @@ export function DataTable<T extends object>({
 
       {/* Pagination */}
       {enablePagination && (
-        <div className="flex items-center justify-between py-4">
-          <span className="text-sm text-muted-foreground">
-            Page <strong>{table.getState().pagination.pageIndex + 1} of {table.getPageCount()}</strong>
-            {' '}(documents{' '}
-            {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}-
-            {Math.min(
-              (table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize,
-              table.getFilteredRowModel().rows.length
-            )}
-            {' '}out of {table.getFilteredRowModel().rows.length})
-          </span>
-          <div className="flex items-center space-x-2">
-            <button
-              className="btn-animated px-3 py-1 border border-border text-muted-foreground rounded-lg hover:bg-muted hover:text-foreground transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => table.previousPage()}
-              disabled={!table.getCanPreviousPage()}
-            >
-              Previous
-            </button>
-            <button
-              className="btn-animated px-3 py-1 border border-border text-foreground rounded-lg hover:bg-muted transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-              onClick={() => table.nextPage()}
-              disabled={!table.getCanNextPage()}
-            >
-              Next
-            </button>
-          </div>
-        </div>
+        <Pagination
+          pageIndex={table.getState().pagination.pageIndex}
+          pageCount={table.getPageCount()}
+          pageSize={table.getState().pagination.pageSize}
+          totalItems={table.getFilteredRowModel().rows.length}
+          onPreviousPage={() => table.previousPage()}
+          onNextPage={() => table.nextPage()}
+          canPreviousPage={table.getCanPreviousPage()}
+          canNextPage={table.getCanNextPage()}
+          itemName="items"
+        />
       )}
     </div>
   )

@@ -7,7 +7,7 @@ import { PaginatedChannelTable } from "@/features/slack/PaginatedChannelTable";
 import { ChannelSettingsDrawer } from "@/features/slack/ChannelSettingsDrawer";
 import { AnimatePresence, motion } from "framer-motion";
 import { useLocation } from "wouter";
-import { fetchEmbeddedSlackChannels, fetchSystemStats, deleteSlackChannel } from "@/api/slack";
+import { fetchEmbeddedSlackChannels, fetchSystemStats, deleteSlackChannels } from "@/api/slack";
 import { FaHashtag, FaComments, FaSync, FaDatabase } from "react-icons/fa";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -110,7 +110,7 @@ export default function SlackIntegration() {
   }, [embedChannels.length, activeEmbedding.size, refetchStats]);
 
   const deleteMutation = useMutation({
-    mutationFn: deleteSlackChannel,
+    mutationFn: (channelId: string) => deleteSlackChannels([channelId]),
     onMutate: (channelId) => {
       setDeletingChannelId(channelId);
     },

@@ -54,13 +54,10 @@ export async function embedDocs(
     return embedded.data;
 }
 
-export async function deleteDoc(pipelineId: string): Promise<any> {
-  console.log("Deleting document with pipeline ID:", pipelineId);
-    // Call the new backend endpoint for deleting data sources
+export async function deleteDocs(pipelineIds: string[]): Promise<any> {
     const deleted = await api.delete(`data_sources/data.source.delete`, {
-        data: { pipeline_id: pipelineId }
+        data: { pipeline_ids: pipelineIds }
     });
-    console.log("Delete response:", deleted.data, "for pipeline ID:", pipelineId);
     return deleted.data;
 };
 

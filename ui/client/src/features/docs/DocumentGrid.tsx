@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
 import { FaEye, FaEdit } from "react-icons/fa";
 import { DataCard } from "@/components/shared/DataCard";
-import { fileByColors, getDataToDisplay, getFileIcon, isEmbeddingActivelyProcessing } from "@/features/helpers";
-import { InlineLoader } from "@/components/shared/InlineLoader";
+import { fileByColors, getDataToDisplay, getFileIcon } from "@/features/helpers";
 import { Document } from "@/types";
 import { RowSelectionState } from "@tanstack/react-table";
 import { DocumentData } from "./DocumentData";
@@ -10,7 +9,7 @@ import { PIPELINE_STATUS } from "@/constants/pipelineStatus";
 import { EditDocumentModal } from "./EditDocumentModal";
 
 interface DocumentGridProps {
-  paginatedDocuments: Document[];
+  documents: Document[];
   activeDoc: Document | null;
   setActiveDoc: (doc: Document | null) => void;
   onActiveDocChange: () => void;
@@ -18,19 +17,16 @@ interface DocumentGridProps {
   onDeleteConfirmed: (id: string) => void;
   retrying: boolean;
   handleRetry: (id: string) => void;
-  footer?: React.ReactNode;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
   onRefresh?: () => void;
   expandedDocDetails: Document | null;
   isLoadingDetails: boolean;
-  
 }
 
 const getFooterText = (doc: Document) => {
-  if (isEmbeddingActivelyProcessing(doc)) return <InlineLoader />;
   if (!doc.status || doc.status === PIPELINE_STATUS.PENDING || doc.status === PIPELINE_STATUS.FAILED) return "-";
-  return `${doc.pipeline_stats?.chunks_generated} chunks`;
+  return getDataToDisplay(doc) || `${doc.pipeline_stats?.chunks_generated} chunks`;
 };
 
 // const getExtraTopRight = (
@@ -97,11 +93,10 @@ const getActions = (
 };
 
 export const DocumentGrid = ({
-  paginatedDocuments, 
+  documents, 
   activeDoc, 
   setActiveDoc, 
   onActiveDocChange,
-  footer,
   rowSelection = {},
   onRowSelectionChange,
   onRefresh,
@@ -119,32 +114,23 @@ export const DocumentGrid = ({
     <>
       <div className="p-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {paginatedDocuments.map((doc) => (
+            {documents.map((doc) => (
               <DataCard
                 key={doc.pipeline_id}
                 iconRenderer={() => getFileIcon(doc.type_data.file_type)}
                 iconBgClass={fileByColors[doc.type_data.file_type]}
                 title={doc.source_name}
                 status={doc.status}
+                statusErrorMessage={doc.type_data?.last_error}
                 subtitle={getDataToDisplay(doc) || `${doc.type_data.page_count} pages | ${doc.type_data.file_type} | ${doc.type_data.file_size}`}
                 metadata={`Uploaded ${new Date(doc.created_at).toLocaleString("en-GB")} by ${doc.upload_by}`}
-                footer={
-                  doc.status === PIPELINE_STATUS.FAILED && doc.type_data?.last_error
-                    ? <span className="text-red-400">{doc.type_data.last_error}</span>
-                    : (getDataToDisplay(doc) || `${doc.pipeline_stats?.chunks_generated} chunks`)
-                }
+                footer={getFooterText(doc)}
                 selected={doc === activeDoc}
                 onClick={() => setActiveDoc(doc === activeDoc ? null : doc)}
                 actions={getActions(doc, activeDoc, setActiveDoc, setEditDoc, rowSelection, onRowSelectionChange)}
               />
             ))}
           </div>
-
-          {footer && (
-            <div className="mt-6 flex justify-between items-center">
-              {footer}
-            </div>
-          )}
       </div>
 
       {activeDoc && (

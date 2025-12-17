@@ -140,7 +140,10 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
       cell: ({ row }) => {
         const doc = row.original;
         return (
-          <StatusBadge status={doc.status} />
+          <StatusBadge 
+            status={doc.status} 
+            errorMessage={doc.type_data?.last_error}
+          />
         );
       },
       meta: {

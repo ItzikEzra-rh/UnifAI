@@ -6,18 +6,18 @@ import { UploadTab } from "./UploadTab";
 import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { usePaginationStore } from "@/stores/usePaginationStore";
 import { DocumentFilters } from "./DocumentFilters";
 import { DocumentTable } from "./DocumentsTable";
 import { PageLoader } from "@/components/shared/PageLoader";
 import { DocumentGrid } from "./DocumentGrid";
-import { deleteDoc, fetchDocumentDetails, fetchDocuments } from "@/api/docs";
+import { deleteDocs, fetchDocumentDetails, fetchDocuments } from "@/api/docs";
 import { RowSelectionState } from "@tanstack/react-table";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
 import { isEmbeddingActivelyProcessing } from "@/features/helpers";
 import { BulkDeleteButton } from "@/components/shared/BulkDeleteButton";
 import { useBulkDelete } from "@/hooks/use-bulk-delete";
+import { Pagination } from "@/components/shared/Pagination";
 
 export default function Documents() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -31,6 +31,10 @@ export default function Documents() {
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
   const [expandedDocDetails, setExpandedDocDetails] = useState<Document | null>(null);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  
+  // Grid pagination state
+  const [gridPageIndex, setGridPageIndex] = useState(0);
+  const gridPageSize = 15;
 
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -42,13 +46,11 @@ export default function Documents() {
     handleDeleteSelected: handleDeleteSelectedBase,
     confirmBulkDelete: confirmBulkDeleteBase,
   } = useBulkDelete({
-    deleteFunction: deleteDoc,
+    deleteFunction: deleteDocs,
     queryKeys: ['documents'],
     itemName: 'document',
     onSuccess: () => setRowSelection({}),
   });
-
-  const { currentPage, setPage, resetPage, itemsPerPage, } = usePaginationStore();
 
   const hasActiveOperations = (docs: Document[] | undefined) => {
     if (!docs || !Array.isArray(docs)) return false;
@@ -68,10 +70,6 @@ export default function Documents() {
     },
   });
 
-  useEffect(() => {
-    resetPage();
-  }, []);
-
   // Refetch documents immediately when upload modal closes to show new documents
   useEffect(() => {
     if (!showUploadModal) {
@@ -86,40 +84,16 @@ export default function Documents() {
     return matchesType && matchesSearch;
   });
 
-  const totalPages = Math.ceil(filteredDocuments.length / itemsPerPage);
-  const paginatedDocuments = filteredDocuments.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  // Reset grid page when filters change
+  useEffect(() => {
+    setGridPageIndex(0);
+  }, [fileTypeFilter, searchQuery, documents.length]);
 
-  const startIndex = (currentPage - 1) * itemsPerPage + 1;
-  const endIndex = Math.min(currentPage * itemsPerPage, filteredDocuments.length);
-  const footer = (
-    <div className="flex items-center justify-between w-full px-4">
-      <span className="text-sm text-gray-400">
-        Showing {startIndex}-{endIndex} of {filteredDocuments.length} documents
-      </span>
-
-      <div className="flex items-center space-x-2">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setPage(Math.max(currentPage - 1, 1))}
-          disabled={currentPage === 1}
-        >
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setPage(Math.min(currentPage + 1, totalPages))}
-          disabled={currentPage === totalPages}
-        >
-          Next
-        </Button>
-
-      </div>
-    </div>
+  // Grid pagination calculations
+  const gridPageCount = Math.ceil(filteredDocuments.length / gridPageSize);
+  const paginatedGridDocuments = filteredDocuments.slice(
+    gridPageIndex * gridPageSize,
+    (gridPageIndex + 1) * gridPageSize
   );
 
   const filters = (
@@ -164,7 +138,7 @@ export default function Documents() {
   const onDeleteConfirmed = async (source_id: string) => {
     try {
       setDeleteLoading(true);
-      await deleteDoc(source_id);
+      await deleteDocs([source_id]);
       // Invalidate queries to refresh the list after successful deletion
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       toast({
@@ -247,27 +221,43 @@ export default function Documents() {
 
                   {documents.length ? (
                     viewMode === "grid" ? (
-                      <DocumentGrid
-                        paginatedDocuments={paginatedDocuments}
-                        activeDoc={activeDoc}
-                        setActiveDoc={setActiveDoc}
-                        onActiveDocChange={onActiveDocChange}
-                        deleteLoading={deleteLoading}
-                        onDeleteConfirmed={onDeleteConfirmed}
-                        retrying={retrying}
-                        handleRetry={handleRetry}
-                        footer={footer}
-                        rowSelection={rowSelection}
-                        onRowSelectionChange={setRowSelection}
-                        onRefresh={refetch}
-                        expandedDocDetails={expandedDocDetails}
-                        isLoadingDetails={isLoadingDetails}
-                      />
+                      <>
+                        <DocumentGrid
+                          documents={paginatedGridDocuments}
+                          activeDoc={activeDoc}
+                          setActiveDoc={setActiveDoc}
+                          onActiveDocChange={onActiveDocChange}
+                          deleteLoading={deleteLoading}
+                          onDeleteConfirmed={onDeleteConfirmed}
+                          retrying={retrying}
+                          handleRetry={handleRetry}
+                          rowSelection={rowSelection}
+                          onRowSelectionChange={setRowSelection}
+                          onRefresh={refetch}
+                          expandedDocDetails={expandedDocDetails}
+                          isLoadingDetails={isLoadingDetails}
+                        />
+                        {filteredDocuments.length > gridPageSize && (
+                          <div className="px-6">
+                            <Pagination
+                              pageIndex={gridPageIndex}
+                              pageCount={gridPageCount}
+                              pageSize={gridPageSize}
+                              totalItems={filteredDocuments.length}
+                              onPreviousPage={() => setGridPageIndex(prev => prev - 1)}
+                              onNextPage={() => setGridPageIndex(prev => prev + 1)}
+                              canPreviousPage={gridPageIndex > 0}
+                              canNextPage={gridPageIndex < gridPageCount - 1}
+                              itemName="documents"
+                            />
+                          </div>
+                        )}
+                      </>
                     ) : (
                       <>
                         <div className="w-full">
                           <DocumentTable
-                            documents={paginatedDocuments}
+                            documents={filteredDocuments}
                             activeDoc={activeDoc}
                             setActiveDoc={setActiveDoc}
                             onActiveDocChange={onActiveDocChange}
@@ -282,7 +272,6 @@ export default function Documents() {
                             isLoadingDetails={isLoadingDetails}
                           />
                         </div>
-                        <div className="mt-4">{footer}</div>
                       </>
                     )
                   ) : (

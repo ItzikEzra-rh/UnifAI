@@ -4,7 +4,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RowSelectionState } from "@tanstack/react-table";
 
 interface UseBulkDeleteOptions<T> {
-  deleteFunction: (id: string) => Promise<any>;
+  deleteFunction: (ids: string[]) => Promise<any>;
   queryKeys: string[];
   itemName: string; // e.g., "document" or "channel"
   onSuccess?: () => void;
@@ -29,8 +29,8 @@ export function useBulkDelete<T>({
   const handleBulkDelete = async (ids: string[]) => {
     try {
       setBulkDeleteLoading(true);
-      // Delete all selected items in parallel
-      await Promise.all(ids.map(id => deleteFunction(id)));
+      // Delete all selected items in a single API call
+      await deleteFunction(ids);
       
       // Invalidate queries to refresh the list
       queryKeys.forEach(key => {

@@ -24,30 +24,67 @@ def available_data_sources(source_type):
     
 
 @data_sources_bp.route("/data.source.delete", methods=["DELETE"])
-@from_body({"pipeline_id": fields.Str(required=True)})
-def delete_source(pipeline_id):
+@from_body({"pipeline_ids": fields.List(fields.Str(), required=True)})
+def delete_source(pipeline_ids):
     """
-    Delete a data source by its pipeline ID.
-    Removes the source from both MongoDB and vector storage.
+    Delete one or more data sources by their pipeline IDs.
+    Removes the sources from both MongoDB and vector storage.
+    Accepts a list of pipeline_ids - for single deletion, pass a 1-element list.
     """
     try:
-        result = delete_data_source(pipeline_id)
+        results = {
+            "succeeded": [],
+            "failed": []
+        }
         
-        if result.get("success", False):
+        for pipeline_id in pipeline_ids:
+            try:
+                result = delete_data_source(pipeline_id)
+                if result.get("success", False):
+                    results["succeeded"].append({
+                        "pipeline_id": pipeline_id,
+                        "result": result.get("result", {})
+                    })
+                else:
+                    results["failed"].append({
+                        "pipeline_id": pipeline_id,
+                        "error": result.get("message", "Unknown error")
+                    })
+            except Exception as e:
+                results["failed"].append({
+                    "pipeline_id": pipeline_id,
+                    "error": str(e)
+                })
+        
+        # For single deletions, also include 'result' at the top level for backwards compatibility
+        top_level_result = None
+        if len(pipeline_ids) == 1 and len(results["succeeded"]) == 1:
+            top_level_result = results["succeeded"][0].get("result", {})
+        
+        if len(results["failed"]) == 0:
+            response = {
+                "status": "success",
+                "message": f"Successfully deleted {len(results['succeeded'])} source(s)",
+                "results": results
+            }
+            if top_level_result:
+                response["result"] = top_level_result
+            return jsonify(response), 200
+        elif len(results["succeeded"]) > 0:
             return jsonify({
-                "status": "success", 
-                "message": f"Source {pipeline_id} deleted successfully", 
-                "result": result.get("result", {})
-            }), 200
+                "status": "partial",
+                "message": f"Deleted {len(results['succeeded'])} source(s), {len(results['failed'])} failed",
+                "results": results
+            }), 207  # Multi-Status
         else:
             return jsonify({
                 "status": "error",
-                "message": f"Failed to delete source {pipeline_id}",
-                "result": result.get("result", {})
+                "message": f"Failed to delete all {len(results['failed'])} source(s)",
+                "results": results
             }), 500
             
     except Exception as e:
-        logger.error(f"Failed to delete data source {pipeline_id}: {str(e)}")
+        logger.error(f"Failed to delete data sources: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @data_sources_bp.route("/data.source.details.get", methods=["GET"])

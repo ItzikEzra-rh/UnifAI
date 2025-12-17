@@ -26,6 +26,7 @@ interface DataCardProps {
   title?: React.ReactNode;
   subtitle?: React.ReactNode;
   status?: PipelineStatus;
+  statusErrorMessage?: string;
   metadata?: React.ReactNode;
   footer?: React.ReactNode;
   actions?: any[];
@@ -43,6 +44,7 @@ export const DataCard: React.FC<DataCardProps> = ({
   title,
   subtitle,
   status,
+  statusErrorMessage,
   metadata,
   footer,
   actions = [],
@@ -98,7 +100,7 @@ export const DataCard: React.FC<DataCardProps> = ({
         {(metadata || status) && (
           <div className="mt-3 flex items-center justify-between text-xs">
             {metadata && <div className="text-gray-400">{metadata}</div>}
-            <StatusBadge status={status} />
+            <StatusBadge status={status} errorMessage={statusErrorMessage} />
           </div>
         )}
 
