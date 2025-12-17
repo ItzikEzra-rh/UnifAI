@@ -77,11 +77,6 @@ export default function Documents() {
     }
   }, [showUploadModal]);
 
-  // Clear selection when filters change to avoid confusion
-  useEffect(() => {
-    setRowSelection({});
-  }, [fileTypeFilter, searchQuery]);
-
   const filteredDocuments = documents.filter((doc) => {
     const matchesType = fileTypeFilter === "all" || doc.type_data.file_type === fileTypeFilter;
     const matchesSearch = doc.source_name?.toLowerCase().includes(searchQuery.toLowerCase());
@@ -257,7 +252,6 @@ export default function Documents() {
                             rowSelection={rowSelection}
                             onRowSelectionChange={setRowSelection}
                             onRefresh={refetch}
-                            onColumnFiltersChange={() => setRowSelection({})}
                           />
                         </div>
                         <div className="mt-4">{footer}</div>

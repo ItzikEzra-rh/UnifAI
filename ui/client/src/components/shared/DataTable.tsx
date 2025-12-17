@@ -150,6 +150,13 @@ export function DataTable<T extends object>({
   const [internalRowSelection, setInternalRowSelection] = React.useState<RowSelectionState>(
     initialState?.rowSelection ?? {}
   )
+
+  /** 
+    Controlled mode means the parent passes the data, in this case rowSelection + onRowSelectionChange 
+    so DataTable uses those (external state management)
+    while uncontrolled mode means DataTable manages its own internal state
+    so here DocumentsTable uses controlled mode to share selection state with the bulk delete button
+   */
   const rowSelection = controlledRowSelection ?? internalRowSelection
   const setRowSelection = onRowSelectionChange ?? setInternalRowSelection
   

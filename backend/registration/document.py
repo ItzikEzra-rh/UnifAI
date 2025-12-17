@@ -22,13 +22,28 @@ class DocumentSourceData(BaseSourceData):
     md5: str
     
 class DocumentRegistration(RegistrationBase):
-    """Registration flow for Document sources."""
+    """
+    Registration flow for Document sources.
+    
+    Supports skip_validation flag:
+    - When False (default): Full validation (extension, size, name, MD5)
+      Used for external API calls that didn't pre-validate
+    - When True: Only MD5 duplicate validation
+      Used for UI uploads that pre-validated via /docs/validate endpoint
+    """
     DATA_SOURCE_TYPE = DataSource.DOCUMENT.upper_name
 
-    def __init__(self, mongo_storage: Any, upload_by: str, instance: Dict[str, Any]) -> None:
-        super().__init__(mongo_storage, upload_by, instance)
+    def __init__(
+        self, 
+        mongo_storage: Any, 
+        upload_by: str, 
+        instance: Dict[str, Any],
+        skip_validation: bool = False
+    ) -> None:
+        super().__init__(mongo_storage, upload_by, instance, skip_validation)
         self.upload_folder = upload_folder
-        self._validator = Validator(DocValidators().create_validators())
+        # Create validators based on skip_validation flag
+        self._validator = Validator(DocValidators().create_validators(skip_validation))
 
     @cached_property
     def source_data(self) -> DocumentSourceData:
@@ -54,7 +69,8 @@ class DocumentRegistration(RegistrationBase):
         validation_args = {
             "doc_path": self.source_data.doc_path,
             "source_name": self.source_data.source_name,
-            "md5": self.source_data.md5
+            "md5": self.source_data.md5,
+            "upload_by": self.upload_by,
         }
         is_valid, issue = self._validator.validate(**validation_args)
 

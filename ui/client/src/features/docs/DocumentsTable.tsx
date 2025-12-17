@@ -26,7 +26,6 @@ interface DocumentTableProps {
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
   onRefresh?: () => void;
-  onColumnFiltersChange?: () => void;
 }
 
 export const DocumentTable: React.FC<DocumentTableProps> = ({
@@ -40,7 +39,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   rowSelection,
   onRowSelectionChange,
   onRefresh,
-  onColumnFiltersChange
 }) => {
   const [confirmDoc, setConfirmDoc] = useState<Document | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
@@ -261,7 +259,6 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
         }}
         expendedRow={activeDoc}
         renderExpandedRow={(doc) => <DocumentData doc={doc} />}
-        onColumnFiltersChange={onColumnFiltersChange}
       />
 
       {confirmDoc && (

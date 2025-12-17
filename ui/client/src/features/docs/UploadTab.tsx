@@ -11,18 +11,16 @@ import {
   X, 
   CloudUpload,
   Tag,
-  CircleX
+  CircleX,
+  Loader2
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { ProcessingOptions } from "./ProcessingOptions";
-import { embedDocs, uploadDocs, getSupportedFileExtensions, fetchDocuments } from "@/api/docs";
+import { embedDocs, uploadDocs, getSupportedFileExtensions, validateFiles as validateFilesApi } from "@/api/docs";
 import { useAuth } from '@/contexts/AuthContext';
-import { formatExtensionErrors, formatFileSizeErrors, validateFiles, combineValidationErrors } from "@/utils/fileValidation";
 import { formatPipelineError } from "@/utils/errorFormatting";
-import { filterDuplicateFiles, formatDuplicateNames, normalizeFileName } from "@/utils/documentValidation";
 import { useQuery } from "@tanstack/react-query";
-import type { Document } from "@/types";
 
 interface UploadTabProps {
     setShowUploadModal: (showUploadModal: boolean) => void;
@@ -44,29 +42,17 @@ export const UploadTab: React.FC<UploadTabProps> = ({
     const [isDragging, setIsDragging] = useState(false);
     const [selectedFiles, setSelectedFiles] = useState<FileWithTags[]>([]);
     const [isUploading, setIsUploading] = useState(false);
+    const [isValidating, setIsValidating] = useState(false);
     const [error, setError] = useState<string>("");
     const [uploadProgress, setUploadProgress] = useState(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Fetch existing documents to check for duplicates
-    const { data: existingDocuments = [] } = useQuery<Document[]>({
-        queryKey: ['documents'],
-        queryFn: fetchDocuments,
-        staleTime: 30 * 1000,
-    });
-
-    // Use TanStack Query for caching supported extensions across pages/refetches
-    // Uses same queryKey as DocumentsTable for automatic cache sharing
+    // Use TanStack Query for caching supported extensions (for display only)
     const { data: supportedExtensions = [] } = useQuery({
         queryKey: ['supportedFileExtensions'],
         queryFn: getSupportedFileExtensions,
-        staleTime: Infinity, // Extensions never change during a session
+        staleTime: Infinity,
     });
-
-    const isFileExtensionSupported = (fileName: string): boolean => {
-        const extension = fileName.toLowerCase().substring(fileName.lastIndexOf('.'));
-        return supportedExtensions.includes(extension);
-    };
 
     const handleDragEnter = (e: React.DragEvent) => {
         e.preventDefault();
@@ -94,62 +80,136 @@ export const UploadTab: React.FC<UploadTabProps> = ({
         handleFiles(e.dataTransfer.files);
     };
 
-    const handleFiles = (files: FileList) => {
-        const { validFiles, invalidFiles, sizeErrors } = validateFiles(files, isFileExtensionSupported);
+    /**
+     * Handle file selection/drop - validates files via backend API
+     * 
+     * Backend validation checks:
+     * - File extension support
+     * - File size limits (50 MB max)
+     * - Duplicate filenames (allows re-upload of FAILED documents)
+     * 
+     * Only valid files are added to the selection list.
+     * Invalid files are rejected and errors are shown in the error box.
+     * Files already in the selection list are silently ignored.
+     */
+    const handleFiles = async (files: FileList) => {
         const currentUsername = user?.username || 'default';
+        const filesArray = Array.from(files);
         
-        const errorMessages: string[] = [];
+        // Get names of files already in the selection list
+        const alreadySelectedNames = new Set(selectedFiles.map(f => f.file.name));
         
-        if (invalidFiles.length > 0) {
-            errorMessages.push(formatExtensionErrors(invalidFiles));
-        }
-        if (sizeErrors.length > 0) {
-            errorMessages.push(formatFileSizeErrors(sizeErrors));
-        }
-
-        // Check for duplicate files using centralized validator
-        const { nonDuplicateFiles, duplicateFiles } = filterDuplicateFiles(
-            validFiles,
-            existingDocuments,
-            selectedFiles,
-            currentUsername
-        );
-
-        if (duplicateFiles.length > 0) {
-            toast({
-                variant: "destructive",
-                title: "Duplicate name(s) detected",
-                description: `You already have document(s) with the same name: ${formatDuplicateNames(duplicateFiles)}. Please rename the file(s) or remove the existing ones first.`,
-            });
-        }
-
-        if (errorMessages.length > 0) {
-            setError(combineValidationErrors(errorMessages));
-        } else {
-            setError(""); // Clear any previous errors if no invalid files
+        // Filter out files that are already in the selection list (silently ignore them)
+        const trulyNewFiles = filesArray.filter(file => !alreadySelectedNames.has(file.name));
+        
+        // If all files were already selected, just return silently
+        if (trulyNewFiles.length === 0) {
+            return;
         }
         
-        if (nonDuplicateFiles.length > 0) {
-            const currentFileCount = selectedFiles.length;
-            const totalAfterAdd = currentFileCount + nonDuplicateFiles.length;
+        // Check max file limit
+        const currentFileCount = selectedFiles.length;
+        if (currentFileCount + trulyNewFiles.length > 5) {
+            setError(`Maximum of 5 documents allowed. You have ${currentFileCount} selected and tried to add ${trulyNewFiles.length} more.`);
+            return;
+        }
+
+        // Build file metadata for backend validation
+        // Include already selected files so backend can check for duplicates in the batch
+        const existingFileNames = selectedFiles.map(f => ({
+            name: f.file.name,
+            size: f.file.size
+        }));
+        
+        const newFilesMetadata = trulyNewFiles.map(file => ({
+            name: file.name,
+            size: file.size
+        }));
+        
+        // Combine existing and new for complete validation
+        const allFilesMetadata = [...existingFileNames, ...newFilesMetadata];
+
+        setIsValidating(true);
+        setError("");
+
+        try {
+            // Validate all files via backend API
+            const result = await validateFilesApi(allFilesMetadata, currentUsername, true);
             
-            if (totalAfterAdd > 5) {
-                toast({
-                    variant: "destructive",
-                    title: "Too many files",
-                    description: "Maximum of 5 documents allowed."
+            // Get errors for new files only
+            const newFileErrors = result.errors.filter(err => 
+                newFilesMetadata.some(nf => nf.name === err.file_name)
+            );
+
+            // Display validation errors in the error box only (no toast)
+            if (newFileErrors.length > 0) {
+                const errorsByType: Record<string, string[]> = {};
+                
+                newFileErrors.forEach(err => {
+                    if (!errorsByType[err.error_type]) {
+                        errorsByType[err.error_type] = [];
+                    }
+                    errorsByType[err.error_type].push(`${err.file_name}`);
                 });
-                return;
+
+                const errorMessages: string[] = [];
+                
+                if (errorsByType.extension) {
+                    errorMessages.push(`Unsupported file types: ${errorsByType.extension.join(', ')}`);
+                }
+                if (errorsByType.size) {
+                    errorMessages.push(`Files too large (max 50 MB): ${errorsByType.size.join(', ')}`);
+                }
+                if (errorsByType.duplicate) {
+                    errorMessages.push(`Duplicate names: ${errorsByType.duplicate.join(', ')}`);
+                }
+
+                if (errorMessages.length > 0) {
+                    setError(errorMessages.join('\n') + '\n\nThese files were not added.');
+                }
+            }
+
+            // Build a set of valid file names from backend response (for new files only)
+            // Use a count-based approach to handle multiple files with the same name correctly
+            const validNameCounts: Record<string, number> = {};
+            result.valid_files
+                .filter(vf => newFilesMetadata.some(nf => nf.name === vf.name))
+                .forEach(vf => {
+                    validNameCounts[vf.name] = (validNameCounts[vf.name] || 0) + 1;
+                });
+            
+            // Track how many of each name we've added to prevent duplicates
+            const addedNameCounts: Record<string, number> = {};
+            
+            // Add ONLY valid files to selection - one per valid name from backend
+            const validNewFiles: File[] = [];
+            for (const file of trulyNewFiles) {
+                const allowedCount = validNameCounts[file.name] || 0;
+                const addedCount = addedNameCounts[file.name] || 0;
+                
+                if (addedCount < allowedCount) {
+                    validNewFiles.push(file);
+                    addedNameCounts[file.name] = addedCount + 1;
+                }
             }
             
-            const newFiles = nonDuplicateFiles.map(file => ({
-                file,
-                tags: [],
-                showTagInput: false,
-                id: Math.random().toString(36).substring(7)
-            }));
-            
-            setSelectedFiles((prev) => [...prev, ...newFiles]);
+            if (validNewFiles.length > 0) {
+                const newFiles = validNewFiles.map(file => ({
+                    file,
+                    tags: [],
+                    showTagInput: false,
+                    id: Math.random().toString(36).substring(7)
+                }));
+                
+                setSelectedFiles(prev => [...prev, ...newFiles]);
+            }
+
+        } catch (err) {
+            console.error("File validation failed", err);
+            const message = (err as Error)?.message || "Failed to validate files. Please try again.";
+            setError(message);
+        } finally {
+            setIsValidating(false);
         }
     };
 
@@ -236,7 +296,7 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                 ),
                 description: message,
             });
-            throw err; // Re-throw to prevent pipeline from starting
+            throw err;
         }
     };
 
@@ -249,7 +309,8 @@ export const UploadTab: React.FC<UploadTabProps> = ({
             
             setUploadProgress(60);
             
-            const res = await embedDocs(docs, user?.username || 'default');
+            // Pass skip_validation=true since files were pre-validated
+            const res = await embedDocs(docs, user?.username || 'default', true);
             
             const issues = res?.registration?.issues || [];
             if (issues.length > 0) {
@@ -324,13 +385,13 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                         isDragging 
                             ? "border-primary bg-primary/10 ring-4 ring-primary/20" 
                             : "border-border hover:border-primary/50 hover:bg-accent/50",
-                        selectedFiles.length >= 5 ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
+                        (selectedFiles.length >= 5 || isValidating) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"
                     )}
-                    onDragEnter={selectedFiles.length < 5 ? handleDragEnter : undefined}
-                    onDragLeave={selectedFiles.length < 5 ? handleDragLeave : undefined}
-                    onDragOver={selectedFiles.length < 5 ? handleDragOver : undefined}
-                    onDrop={selectedFiles.length < 5 ? handleDrop : undefined}
-                    onClick={selectedFiles.length < 5 ? () => fileInputRef.current?.click() : undefined}
+                    onDragEnter={selectedFiles.length < 5 && !isValidating ? handleDragEnter : undefined}
+                    onDragLeave={selectedFiles.length < 5 && !isValidating ? handleDragLeave : undefined}
+                    onDragOver={selectedFiles.length < 5 && !isValidating ? handleDragOver : undefined}
+                    onDrop={selectedFiles.length < 5 && !isValidating ? handleDrop : undefined}
+                    onClick={selectedFiles.length < 5 && !isValidating ? () => fileInputRef.current?.click() : undefined}
                 >
                     <CardContent className="flex flex-col items-center justify-center h-full min-h-[300px] py-12 text-center">
                         <input 
@@ -339,21 +400,35 @@ export const UploadTab: React.FC<UploadTabProps> = ({
                             multiple 
                             className="hidden" 
                             onChange={handleFileSelect}
-                            disabled={selectedFiles.length >= 5 || isUploading}
+                            disabled={selectedFiles.length >= 5 || isUploading || isValidating}
                         />
                         
                         <div className={cn(
                             "w-20 h-20 rounded-full flex items-center justify-center mb-6 transition-transform duration-300",
                             isDragging ? "bg-primary/20 scale-110" : "bg-background shadow-sm border border-border"
                         )}>
-                            <Upload className={cn("h-10 w-10", isDragging ? "text-primary" : "text-muted-foreground")} />
+                            {isValidating ? (
+                                <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                            ) : (
+                                <Upload className={cn("h-10 w-10", isDragging ? "text-primary" : "text-muted-foreground")} />
+                            )}
                         </div>
                         
                         <h3 className="text-xl font-semibold text-foreground mb-2">
-                            {selectedFiles.length >= 5 ? "Maximum files reached" : "Click to upload or drag and drop"}
+                            {isValidating 
+                                ? "Validating files..." 
+                                : selectedFiles.length >= 5 
+                                    ? "Maximum files reached" 
+                                    : "Click to upload or drag and drop"
+                            }
                         </h3>
                         <p className="text-sm text-muted-foreground max-w-xs mx-auto mb-4">
-                            {selectedFiles.length >= 5 ? "Please remove a file to add another." : ""}
+                            {isValidating 
+                                ? "Checking file types, sizes, and duplicates..."
+                                : selectedFiles.length >= 5 
+                                    ? "Please remove a file to add another." 
+                                    : ""
+                            }
                         </p>
                         
                         {/* Additional details */}

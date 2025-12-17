@@ -37,23 +37,30 @@ export interface PipelineEmbedResponse {
     };
 }
 
-export async function embedDocs(docs: {source_name: string, tags?: string[]}[], user: string): Promise<PipelineEmbedResponse> {
+export async function embedDocs(
+    docs: {source_name: string, tags?: string[]}[], 
+    user: string,
+    skipValidation: boolean = false
+): Promise<PipelineEmbedResponse> {
     const embedded = await api.put<PipelineEmbedResponse>(
       'pipelines/embed',
       {
         data: docs,
         source_type: 'document',
-        logged_in_user: user
+        logged_in_user: user,
+        skip_validation: skipValidation
       }
     );
     return embedded.data;
 }
 
 export async function deleteDoc(pipelineId: string): Promise<any> {
+  console.log("Deleting document with pipeline ID:", pipelineId);
     // Call the new backend endpoint for deleting data sources
     const deleted = await api.delete(`data_sources/data.source.delete`, {
         data: { pipeline_id: pipelineId }
     });
+    console.log("Delete response:", deleted.data, "for pipeline ID:", pipelineId);
     return deleted.data;
 };
 
@@ -61,6 +68,69 @@ export async function getSupportedFileExtensions(): Promise<string[]> {
     const response = await api.get<{supported_extensions: string[]}>('docs/supported-extensions');
     return response.data.supported_extensions;
 };
+
+/**
+ * File validation error from the backend
+ */
+export interface FileValidationError {
+    file_name: string;
+    error_type: 'extension' | 'size' | 'duplicate';
+    message: string;
+}
+
+/**
+ * Valid file info returned from validation
+ */
+export interface ValidatedFile {
+    name: string;
+    normalized_name: string;
+    size: number;
+}
+
+/**
+ * Response from the file validation endpoint
+ */
+export interface FileValidationResponse {
+    valid_files: ValidatedFile[];
+    errors: FileValidationError[];
+    has_errors: boolean;
+}
+
+/**
+ * Validate files before upload.
+ * 
+ * This endpoint performs pre-upload validation including:
+ * - File extension validation (must be in supported list)
+ * - File size validation (max 50 MB per file)
+ * - Duplicate name detection (allows re-upload of FAILED documents)
+ * 
+ * @param files - Array of file metadata objects with 'name' and 'size' keys
+ * @param username - Username of the person uploading files
+ * @param checkDuplicates - Whether to check for duplicate filenames (default: true)
+ * @returns Validation results with valid files and errors
+ * 
+ * @example
+ * const result = await validateFiles(
+ *   [{ name: 'doc.pdf', size: 1024000 }],
+ *   'username'
+ * );
+ * if (result.has_errors) {
+ *   // Handle errors
+ * }
+ * // Proceed with valid files
+ */
+export async function validateFiles(
+    files: { name: string; size: number }[],
+    username: string,
+    checkDuplicates: boolean = true
+): Promise<FileValidationResponse> {
+    const response = await api.post<FileValidationResponse>('docs/validate', {
+        files,
+        username,
+        check_duplicates: checkDuplicates
+    });
+    return response.data;
+}
 
 export async function updateDocument(sourceId: string, updates: Record<string, unknown>): Promise<void> {
     await api.put('data_sources/data.source.update', {

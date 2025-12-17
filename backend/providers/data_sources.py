@@ -35,13 +35,10 @@ def initialize_vector_storage(embedding_dim: int = 384, source_type: str = "data
     return vector_storage
 
 
-def initialize_storage_manager(source_type: str = "data_source", for_delete: bool = False):
+def initialize_storage_manager(source_type: str = "data_source"):
     """Initialize and return storage manager for operations."""
-    if for_delete:
-        embedding_dim = 384  # Assuming fixed embedding dim for deletion
-    else:
-        embedding_generator = initialize_embedding_generator()
-        embedding_dim = embedding_generator.embedding_dim
+    embedding_generator = initialize_embedding_generator()
+    embedding_dim = embedding_generator.embedding_dim
     vector_storage = initialize_vector_storage(embedding_dim=embedding_dim, source_type=source_type)
     
     mongo_storage = get_mongo_storage()
@@ -92,7 +89,7 @@ def delete_data_source(source_id: str):
             actual_source_type = source_info.get("source_type")
         
         # Initialize storage manager with the correct source type
-        storage_manager = initialize_storage_manager(actual_source_type if actual_source_type else "data_source", for_delete=True)
+        storage_manager = initialize_storage_manager(actual_source_type if actual_source_type else "data_source")
         
         result = storage_manager.delete_source(source_id, actual_source_type)
 
