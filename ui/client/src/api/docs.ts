@@ -138,3 +138,13 @@ export async function updateDocument(sourceId: string, updates: Record<string, u
         updates
     });
 };
+
+export async function fetchDocumentDetails(sourceId: string): Promise<Document> {
+    const response = await api.get<{ success: boolean; source: Document }>(
+        'data_sources/data.source.details.get',
+        {
+            params: { source_id: sourceId }
+        }
+    );
+    return response.data.source;
+};

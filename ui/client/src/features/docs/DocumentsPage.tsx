@@ -11,7 +11,7 @@ import { DocumentFilters } from "./DocumentFilters";
 import { DocumentTable } from "./DocumentsTable";
 import { PageLoader } from "@/components/shared/PageLoader";
 import { DocumentGrid } from "./DocumentGrid";
-import { deleteDoc, fetchDocuments } from "@/api/docs";
+import { deleteDoc, fetchDocumentDetails, fetchDocuments } from "@/api/docs";
 import { RowSelectionState } from "@tanstack/react-table";
 import { ConfirmDialog } from "@/components/shared/ConfirmDialog";
 import { useToast } from "@/hooks/use-toast";
@@ -29,6 +29,9 @@ export default function Documents() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [rowSelection, setRowSelection] = useState<RowSelectionState>({});
+  const [expandedDocDetails, setExpandedDocDetails] = useState<Document | null>(null);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -187,6 +190,25 @@ export default function Documents() {
     await confirmBulkDeleteBase(rowSelection);
   };
 
+  const onActiveDocChange = () => {
+    if (activeDoc) {
+          setIsLoadingDetails(true);
+          setExpandedDocDetails(null);
+          fetchDocumentDetails(activeDoc.source_id)
+            .then((details) => {
+              setExpandedDocDetails(details);
+            })
+            .catch((err) => {
+              console.error("Failed to fetch document details:", err);
+            })
+            .finally(() => {
+              setIsLoadingDetails(false);
+            });
+    } else {
+      setExpandedDocDetails(null);
+    }
+}
+
   const handleRetry = async (id: string) => {
     try {
       setRetrying(true);
@@ -229,6 +251,7 @@ export default function Documents() {
                         paginatedDocuments={paginatedDocuments}
                         activeDoc={activeDoc}
                         setActiveDoc={setActiveDoc}
+                        onActiveDocChange={onActiveDocChange}
                         deleteLoading={deleteLoading}
                         onDeleteConfirmed={onDeleteConfirmed}
                         retrying={retrying}
@@ -237,6 +260,8 @@ export default function Documents() {
                         rowSelection={rowSelection}
                         onRowSelectionChange={setRowSelection}
                         onRefresh={refetch}
+                        expandedDocDetails={expandedDocDetails}
+                        isLoadingDetails={isLoadingDetails}
                       />
                     ) : (
                       <>
@@ -245,6 +270,7 @@ export default function Documents() {
                             documents={paginatedDocuments}
                             activeDoc={activeDoc}
                             setActiveDoc={setActiveDoc}
+                            onActiveDocChange={onActiveDocChange}
                             deleteLoading={deleteLoading}
                             onDeleteConfirmed={onDeleteConfirmed}
                             retrying={retrying}
@@ -252,6 +278,8 @@ export default function Documents() {
                             rowSelection={rowSelection}
                             onRowSelectionChange={setRowSelection}
                             onRefresh={refetch}
+                            expandedDocDetails={expandedDocDetails}
+                            isLoadingDetails={isLoadingDetails}
                           />
                         </div>
                         <div className="mt-4">{footer}</div>

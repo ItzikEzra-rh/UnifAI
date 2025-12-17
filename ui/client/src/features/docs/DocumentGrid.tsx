@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaEye, FaEdit } from "react-icons/fa";
 import { DataCard } from "@/components/shared/DataCard";
 import { fileByColors, getDataToDisplay, getFileIcon, isEmbeddingActivelyProcessing } from "@/features/helpers";
@@ -13,6 +13,7 @@ interface DocumentGridProps {
   paginatedDocuments: Document[];
   activeDoc: Document | null;
   setActiveDoc: (doc: Document | null) => void;
+  onActiveDocChange: () => void;
   deleteLoading: boolean;
   onDeleteConfirmed: (id: string) => void;
   retrying: boolean;
@@ -21,6 +22,9 @@ interface DocumentGridProps {
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
   onRefresh?: () => void;
+  expandedDocDetails: Document | null;
+  isLoadingDetails: boolean;
+  
 }
 
 const getFooterText = (doc: Document) => {
@@ -96,12 +100,20 @@ export const DocumentGrid = ({
   paginatedDocuments, 
   activeDoc, 
   setActiveDoc, 
+  onActiveDocChange,
   footer,
   rowSelection = {},
   onRowSelectionChange,
-  onRefresh
+  onRefresh,
+  expandedDocDetails,
+  isLoadingDetails,
 }: DocumentGridProps) => {
   const [editDoc, setEditDoc] = useState<Document | null>(null);
+
+  // Fetch document details when activeDoc changes
+  useEffect(() => {
+    onActiveDocChange()
+  }, [activeDoc?.source_id]);
 
   return (
     <>
@@ -137,7 +149,7 @@ export const DocumentGrid = ({
 
       {activeDoc && (
         <div className="mt-6">
-          <DocumentData doc={activeDoc} />
+          <DocumentData doc={activeDoc} details={expandedDocDetails} isLoading={isLoadingDetails}/>
         </div>
       )}
 

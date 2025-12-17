@@ -126,9 +126,14 @@ class MongoStorage:
         del result["data"]
         return result
 
-    def list_sources(self, source_type: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get all sources enriched with pipeline stats (for backward compatibility)."""
-        sources = self.sources.get_all(source_type)
+    def list_sources(self, source_type: Optional[str] = None, exclude_full_text: bool = True) -> List[Dict[str, Any]]:
+        """Get all sources enriched with pipeline stats (for backward compatibility).
+        
+        Args:
+            source_type: Optional filter by source type
+            exclude_full_text: If True, excludes type_data.full_text from results (default: True)
+        """
+        sources = self.sources.get_all(source_type, exclude_full_text=exclude_full_text)
         pipeline_ids = [s.get('pipeline_id') for s in sources if s.get('pipeline_id')]
         valid_ids = [pid for pid in pipeline_ids if pid is not None]
         pipeline_stats = self.pipelines.get_stats(valid_ids)

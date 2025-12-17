@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { FaEye, FaTrash, FaEdit } from "react-icons/fa";
 import { Button } from "@/components/ui/button";
 import { InlineLoader } from "@/components/shared/InlineLoader";
@@ -19,6 +19,7 @@ interface DocumentTableProps {
   documents: Document[];
   activeDoc?: Document | null;
   setActiveDoc?: (doc: Document | null) => void;
+  onActiveDocChange: () => void;
   deleteLoading?: boolean; // Optional: legacy
   onDeleteConfirmed?: (id: string) => void;
   retrying?: boolean;
@@ -26,12 +27,15 @@ interface DocumentTableProps {
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: (selection: RowSelectionState) => void;
   onRefresh?: () => void;
+  expandedDocDetails: Document | null;
+  isLoadingDetails: boolean;
 }
 
 export const DocumentTable: React.FC<DocumentTableProps> = ({
   documents, 
   activeDoc, 
   setActiveDoc, 
+  onActiveDocChange,
   deleteLoading, 
   onDeleteConfirmed, 
   retrying, 
@@ -39,10 +43,18 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
   rowSelection,
   onRowSelectionChange,
   onRefresh,
+  expandedDocDetails,
+  isLoadingDetails,
+  
 }) => {
   const [confirmDoc, setConfirmDoc] = useState<Document | null>(null);
   const [confirmLoading, setConfirmLoading] = useState(false);
   const [editDoc, setEditDoc] = useState<Document | null>(null);
+
+  // Fetch document details when activeDoc changes
+  useEffect(() => {
+    onActiveDocChange()
+  }, [activeDoc?.source_id]);
 
   // Use TanStack Query for caching supported extensions across pages/refetches
   // Extensions are static data, so we use staleTime: Infinity to prevent refetching
@@ -258,7 +270,11 @@ export const DocumentTable: React.FC<DocumentTableProps> = ({
           pagination: { pageIndex: 0, pageSize: 15 }
         }}
         expendedRow={activeDoc}
-        renderExpandedRow={(doc) => <DocumentData doc={doc} />}
+        expandedRowDetails={expandedDocDetails}
+        isLoadingExpanded={isLoadingDetails}
+        renderExpandedRow={(doc, details, isLoading) => (
+          <DocumentData doc={doc} details={details} isLoading={isLoading} />
+        )}
       />
 
       {confirmDoc && (

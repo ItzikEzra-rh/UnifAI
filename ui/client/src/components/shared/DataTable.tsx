@@ -112,7 +112,10 @@ interface DataTableProps<T extends object> {
   onSortingChange?: (updater: SortingState) => void
   onColumnFiltersChange?: (filters: ColumnFiltersState) => void
   expendedRow?: any;
-  renderExpandedRow?: (row: T) => React.ReactNode
+  /** Detailed row data loaded on demand - separate from expendedRow for lazy loading */
+  expandedRowDetails?: any;
+  isLoadingExpanded?: boolean;
+  renderExpandedRow?: (row: T, details?: any, isLoading?: boolean) => React.ReactNode
 }
 
 export function DataTable<T extends object>({
@@ -130,6 +133,8 @@ export function DataTable<T extends object>({
   onSortingChange,
   onColumnFiltersChange,
   expendedRow,
+  expandedRowDetails,
+  isLoadingExpanded = false,
   renderExpandedRow
 }: DataTableProps<T>) {
   // ─── State Hooks
@@ -458,7 +463,7 @@ export function DataTable<T extends object>({
       {expendedRow === row.original && (
         <TableRow className="bg-muted/40 transition-all duration-300">
           <TableCell colSpan={row.getVisibleCells().length}>
-            {renderExpandedRow?.(row.original)}
+            {renderExpandedRow?.(row.original, expandedRowDetails, isLoadingExpanded)}
           </TableCell>
         </TableRow>
       )}

@@ -5,6 +5,7 @@ from global_utils.helpers.apiargs import from_query, from_body
 from providers.data_sources import (
     get_available_data_sources,
     delete_data_source,
+    get_data_source_details,
 )
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
 
@@ -49,6 +50,27 @@ def delete_source(pipeline_id):
         logger.error(f"Failed to delete data source {pipeline_id}: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+@data_sources_bp.route("/data.source.details.get", methods=["GET"])
+@from_query({"source_id": fields.Str(required=True)})
+def get_source_details(source_id):
+    """
+    Get detailed information for a single data source, including full text.
+    This endpoint is used for lazy loading expanded row data.
+    """
+    try:
+        result = get_data_source_details(source_id)
+
+        if result.get("success"):
+            return jsonify(result), 200
+        else:
+            return jsonify({
+                "success": False,
+                "message": result.get("message", f"Source {source_id} not found")
+            }), 404
+
+    except Exception as e:
+        logger.error(f"Failed to get data source details for {source_id}: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @data_sources_bp.route("/data.source.update", methods=["PUT"])
 @from_body({

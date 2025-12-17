@@ -38,8 +38,7 @@ def initialize_vector_storage(embedding_dim: int = 384, source_type: str = "data
 def initialize_storage_manager(source_type: str = "data_source"):
     """Initialize and return storage manager for operations."""
     embedding_generator = initialize_embedding_generator()
-    embedding_dim = embedding_generator.embedding_dim
-    vector_storage = initialize_vector_storage(embedding_dim=embedding_dim, source_type=source_type)
+    vector_storage = initialize_vector_storage(embedding_dim=embedding_generator.embedding_dim, source_type=source_type)
     
     mongo_storage = get_mongo_storage()
     vector_store = vector_storage if isinstance(vector_storage, QdrantStorage) else None
@@ -134,3 +133,40 @@ def get_data_source_by_id(pipeline_id: str, source_type: str = None):
     except Exception as e:
         logger.error(f"Failed to get data source {pipeline_id}: {str(e)}")
         return None
+    
+def get_data_source_details(source_id: str):
+    """
+    Get detailed information for a single data source including full text.
+    This is used for lazy loading expanded row data in the UI.
+    
+    Args:
+        source_id: The source ID to retrieve details for
+        
+    Returns:
+        dict: Full data source information including type_data.full_text
+    """
+    try:
+        svc = get_mongo_storage()
+        result = svc.get_source_info_by_source_id(source_id)
+
+        if not result.get("success"):
+            return result
+
+        source_info = result.get("source_info", {})
+        pipeline_id = result.get("pipeline_id")
+
+        # Enrich with pipeline stats if available
+        if pipeline_id:
+            pipeline_stats = svc.get_pipeline_stats([pipeline_id])
+            if pipeline_id in pipeline_stats:
+                source_info['pipeline_stats'] = pipeline_stats[pipeline_id]
+                source_info['status'] = pipeline_stats[pipeline_id].get('status')
+
+        return {
+            "success": True,
+            "source": source_info
+        }
+
+    except Exception as e:
+        logger.error(f"Failed to get data source details for {source_id}: {str(e)}")
+        return {"success": False, "error": str(e)}

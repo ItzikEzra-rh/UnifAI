@@ -11,10 +11,16 @@ class SourcesRepository:
     def __init__(self, col: Collection):
         self.col = col
 
-    def get_all(self, source_type: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Get all sources, optionally filtered by type."""
+    def get_all(self, source_type: Optional[str] = None, exclude_full_text: bool = True) -> List[Dict[str, Any]]:
+        """Get all sources, optionally filtered by type.
+        
+        Args:
+            source_type: Optional filter by source type
+            exclude_full_text: If True, excludes type_data.full_text from results (default: True)
+        """
         query = {"source_type": source_type.upper()} if source_type else {}
-        return list(self.col.find(query))
+        projection = {"type_data.full_text": 0} if exclude_full_text else None
+        return list(self.col.find(query, projection))
 
     def get_by_query(self, query: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Get sources by custom query."""
@@ -80,6 +86,7 @@ class SourcesRepository:
         match_filter: Optional[Dict[str, Any]] = None,
         sort_by: Optional[str] = None,
         sort_order: int = -1,
+        exclude_full_text: bool = True
     ) -> Dict[str, Any]:
         """
         Generic paginated query for any field or full documents.
@@ -93,6 +100,7 @@ class SourcesRepository:
             match_filter: Additional match conditions (e.g. {"source_type": "DOCUMENT"})
             sort_by: Field to sort by (defaults to "_id" for fields, "created_at" for docs)
             sort_order: 1 for ascending, -1 for descending
+            exclude_full_text: If True, excludes type_data.full_text from results (default: True)
             
         Returns:
             {"data": [...], "nextCursor": str|None, "hasMore": bool, "total": int}
@@ -127,6 +135,10 @@ class SourcesRepository:
         
         # Build data pipeline stages
         data_pipeline = [{"$skip": skip}, {"$limit": limit}]
+        
+        # Exclude full_text for efficiency when fetching document lists
+        if exclude_full_text and not field_path:
+            data_pipeline.append({"$project": {"type_data.full_text": 0}})
         
         # Facet for pagination
         pipeline.append({
