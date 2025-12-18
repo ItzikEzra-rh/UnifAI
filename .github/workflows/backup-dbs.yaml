@@ -4,9 +4,10 @@ env:
   PREPROD_API: "https://api.stc-ai-e1-pp.imap.p1.openshiftapps.com:6443"
   PROD_API: "https://api.stc-ai-e1-prod.rtc9.p1.openshiftapps.com:6443"
   MONGO_URI: "mongodb://localhost:27017/unifai"
-  NAMESPACE: "tag-ai--pipeline"
+  NAMESPACE: k8sgpt-operator-system
   MONGO_POD: "mongodb-0"
   username: "tag-ai"
+  cluster_name: "nemer"
 
 on:
   schedule:
@@ -22,11 +23,10 @@ jobs:
 
       - name: Check MongoDB Connection
         run: |
-          # kubectl login $PREPROD_API --token=$PP_CLUSTER 
-          kubectl config set-credentials preprod --username=$username --token=$PP_CLUSTER
-          kubectl config set-cluster preprod --server=$PREPROD_API
-          kubectl config set-context preprod --user=preprod --cluster=preprod
-          kubectl config use-context preprod
+          kubectl config set-credentials $cluster_name --username=$NEMER_CLUSTER_USER --token=$NEMER_CLUSTER
+          kubectl config set-cluster $cluster_name --server=$NEMER_CLUSTER_API
+          kubectl config set-context $cluster_name --user=$cluster_name --cluster=$cluster_name
+          kubectl config use-context $cluster_name
           kubectl get pods --namespace $NAMESPACE
           kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongo --eval "db.adminCommand('ping')"
       
