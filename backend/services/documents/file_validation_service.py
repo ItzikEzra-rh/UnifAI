@@ -25,12 +25,11 @@ MD5 validation happens during registration (after file upload) and only blocks d
 of successfully processed (DONE status) documents, allowing retry of FAILED uploads.
 """
 
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List
 from dataclasses import dataclass
 
-from config.constants import DataSource, PipelineStatus
 from data_sources.docs.doc_config_manager import DocConfigManager
-from global_utils.utils import secure_filename
+from services.documents.name_duplicate_checker import NameDuplicateChecker
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from shared.logger import logger
 
@@ -99,7 +98,7 @@ class FileValidationService:
         self.username = username
         self.config_manager = DocConfigManager()
         self.supported_extensions = self.config_manager.get_supported_file_types()
-        self.mongo_storage = get_mongo_storage()
+        self.name_checker = NameDuplicateChecker(get_mongo_storage())
         
     def _is_extension_supported(self, filename: str) -> bool:
         """Check if the file extension is supported."""
@@ -109,75 +108,6 @@ class FileValidationService:
     def _is_size_valid(self, size_bytes: int) -> bool:
         """Check if the file size is within limits."""
         return size_bytes <= MAX_FILE_SIZE_BYTES
-    
-    def _normalize_filename(self, filename: str) -> str:
-        """
-        Normalize filename for duplicate checking.
-        Uses the same logic as the backend's secure_filename function.
-        """
-        return secure_filename(filename)
-    
-    def _get_existing_documents_for_user(self) -> List[Dict[str, Any]]:
-        """
-        Get existing documents for the current user.
-        Returns documents with their status for duplicate checking.
-        """
-        try:
-            query = {
-                "source_type": DataSource.DOCUMENT.upper_name,
-                "upload_by": self.username
-            }
-            result = self.mongo_storage.get_source_by_query(query)
-            return result if isinstance(result, list) else []
-        except Exception as e:
-            logger.warning(f"Failed to fetch existing documents: {e}")
-            return []
-    
-    def _check_duplicate_name(
-        self, 
-        normalized_name: str, 
-        existing_docs: List[Dict[str, Any]],
-        pending_names: set
-    ) -> Tuple[bool, Optional[str]]:
-        """
-        Check if a file with the same normalized name already exists.
-        
-        Args:
-            normalized_name: The normalized filename to check
-            existing_docs: List of existing documents for the user
-            pending_names: Set of normalized names already validated in this batch
-            
-        Returns:
-            Tuple of (is_duplicate, existing_doc_status)
-            - is_duplicate: True if a blocking duplicate exists
-            - existing_doc_status: Status of the existing document (if any)
-            
-        Note: Documents with FAILED status are NOT considered duplicates,
-        allowing users to retry failed uploads.
-        """
-        # Check if already in the pending batch
-        if normalized_name in pending_names:
-            return True, "pending_upload"
-        
-        # Check against existing documents
-        for doc in existing_docs:
-            doc_name = doc.get("source_name", "")
-            doc_normalized = self._normalize_filename(doc_name)
-            
-            if doc_normalized == normalized_name:
-                # Get the document's pipeline status
-                pipeline_id = doc.get("pipeline_id", "")
-                status = self._get_pipeline_status(pipeline_id)
-                
-                # Only block if the existing document is NOT failed
-                if status != PipelineStatus.FAILED.value:
-                    return True, status
-                    
-        return False, None
-    
-    def _get_pipeline_status(self, pipeline_id: str) -> Optional[str]:
-        """Get the status of a pipeline by its ID."""
-        return self.mongo_storage.get_pipeline_status(pipeline_id)
     
     def validate(
         self, 
@@ -213,8 +143,11 @@ class FileValidationService:
         errors: List[FileValidationError] = []
         pending_normalized_names: set = set()
         
-        # Fetch existing documents once for duplicate checking
-        existing_docs = self._get_existing_documents_for_user() if check_duplicates else []
+        # Fetch existing documents once for duplicate checking (batch optimization)
+        existing_docs = (
+            self.name_checker.get_existing_documents_for_user(self.username) 
+            if check_duplicates else []
+        )
         
         for file_info in files:
             filename = file_info.get("name", "")
@@ -244,21 +177,23 @@ class FileValidationService:
             
             # Validate duplicate name (only if no other errors and duplicates check enabled)
             if check_duplicates and not file_errors:
-                normalized_name = self._normalize_filename(filename)
-                is_duplicate, status = self._check_duplicate_name(
-                    normalized_name, 
-                    existing_docs, 
-                    pending_normalized_names
-                )
+                normalized_name = self.name_checker.normalize_filename(filename)
                 
-                if is_duplicate:
-                    if status == "pending_upload":
-                        file_errors.append(FileValidationError(
-                            file_name=filename,
-                            error_type="duplicate",
-                            message=f"A file with the same name is already selected for upload"
-                        ))
-                    else:
+                # First check if already in the pending batch (same upload)
+                if normalized_name in pending_normalized_names:
+                    file_errors.append(FileValidationError(
+                        file_name=filename,
+                        error_type="duplicate",
+                        message="A file with the same name is already selected for upload"
+                    ))
+                else:
+                    # Then check against existing documents using shared checker
+                    is_duplicate, status = self.name_checker.find_blocking_duplicate(
+                        normalized_name, 
+                        existing_docs
+                    )
+                    
+                    if is_duplicate:
                         file_errors.append(FileValidationError(
                             file_name=filename,
                             error_type="duplicate",
@@ -269,7 +204,7 @@ class FileValidationService:
             if file_errors:
                 errors.extend(file_errors)
             else:
-                normalized_name = self._normalize_filename(filename)
+                normalized_name = self.name_checker.normalize_filename(filename)
                 pending_normalized_names.add(normalized_name)
                 valid_files.append({
                     "name": filename,
@@ -283,6 +218,3 @@ class FileValidationService:
         )
         
         return FileValidationResult(valid_files=valid_files, errors=errors)
-
-
-

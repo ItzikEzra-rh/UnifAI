@@ -22,10 +22,9 @@ Therefore, we enforce uniqueness at the filter level:
 
 """
 
-from typing import Optional, Any, Tuple, List, Dict
+from typing import Optional, Any, Tuple
 from common.interfaces import DataSourceValidator, ValidationIssue
-from config.constants import DataSource, PipelineStatus
-from global_utils.utils import secure_filename
+from services.documents.name_duplicate_checker import NameDuplicateChecker
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
 
 
@@ -45,33 +44,7 @@ class NameDuplicateValidator(DataSourceValidator):
     error_message_key = "Duplicate filename"
 
     def __init__(self) -> None:
-        self.mongo_storage = get_mongo_storage()
-
-    def _get_pipeline_status(self, pipeline_id: str) -> Optional[str]:
-        """Get the status of a pipeline by its ID."""
-        if not pipeline_id:
-            return None
-            
-        try:
-            if hasattr(self.mongo_storage, "get_pipeline_stats"):
-                stats = self.mongo_storage.get_pipeline_stats([pipeline_id])
-                if stats and pipeline_id in stats:
-                    return stats[pipeline_id].get("status")
-        except Exception:
-            pass
-        return None
-
-    def _get_existing_docs_for_user(self, upload_by: str) -> List[Dict[str, Any]]:
-        """Get existing documents for the user."""
-        try:
-            query = {
-                "source_type": DataSource.DOCUMENT.upper_name,
-                "upload_by": upload_by
-            }
-            result = self.mongo_storage.get_source_by_query(query)
-            return result if isinstance(result, list) else []
-        except Exception:
-            return []
+        self.duplicate_checker = NameDuplicateChecker(get_mongo_storage())
 
     def validate(self, **kwargs: Any) -> Tuple[bool, Optional[ValidationIssue]]:
         """
@@ -90,25 +63,17 @@ class NameDuplicateValidator(DataSourceValidator):
         if not source_name:
             return True, None
         
-        normalized_name = secure_filename(source_name)
-        existing_docs = self._get_existing_docs_for_user(upload_by)
+        is_duplicate, status = self.duplicate_checker.is_duplicate_name(
+            filename=source_name,
+            username=upload_by
+        )
         
-        for doc in existing_docs:
-            doc_name = doc.get("source_name", "")
-            doc_normalized = secure_filename(doc_name)
-            
-            if doc_normalized == normalized_name:
-                pipeline_id = doc.get("pipeline_id", "")
-                status = self._get_pipeline_status(pipeline_id)
-                
-                # Only block if existing document is NOT failed
-                if status != PipelineStatus.FAILED.value:
-                    return False, self.build_issue(
-                        self.error_message.format(
-                            source_name=source_name,
-                            status=status or "unknown"
-                        )
-                    )
+        if is_duplicate:
+            return False, self.build_issue(
+                self.error_message.format(
+                    source_name=source_name,
+                    status=status or "unknown"
+                )
+            )
         
         return True, None
-

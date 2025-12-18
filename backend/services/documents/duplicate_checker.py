@@ -4,8 +4,8 @@ from config.constants import DataSource, PipelineStatus
 from global_utils.utils import compute_file_md5
 
 
-# Statuses that should block duplicate uploads (successfully processed documents)
-BLOCKING_STATUSES = {PipelineStatus.DONE.value}
+# Statuses that should NOT block duplicate uploads (allow retry of failed uploads)
+NON_BLOCKING_STATUSES = {PipelineStatus.FAILED.value}
 
 
 class DocumentDuplicateChecker:
@@ -15,30 +15,14 @@ class DocumentDuplicateChecker:
     This service depends on a storage facade that exposes `get_source_by_query`.
     It keeps persistence concerns out of validators and orchestrators.
     
-    A document is only considered a duplicate if an existing document with the 
-    same MD5 hash has been successfully processed (status = DONE). Documents 
-    with FAILED or other non-complete statuses are not considered duplicates,
-    allowing users to retry failed uploads.
+    A document is considered a duplicate if an existing document with the same 
+    MD5 hash exists and is NOT in FAILED status. Documents with FAILED status 
+    are not considered duplicates, allowing users to retry failed uploads.
+    Documents that are pending, processing, or completed will block duplicates.
     """
 
     def __init__(self, storage: Any):
         self._storage = storage
-
-    def _get_pipeline_status(self, pipeline_id: str) -> Optional[str]:
-        """Get the status of a pipeline by its ID."""
-        if not pipeline_id:
-            return None
-        
-        if not hasattr(self._storage, "get_pipeline_stats"):
-            return None
-            
-        try:
-            stats = self._storage.get_pipeline_stats([pipeline_id])
-            if stats and pipeline_id in stats:
-                return stats[pipeline_id].get("status")
-        except Exception:
-            pass
-        return None
 
     def find_existing_by_md5(
         self,
@@ -56,7 +40,7 @@ class DocumentDuplicateChecker:
             source_type: The type of source to filter by
             extra_filters: Additional query filters
             only_blocking: If True, only return documents that would block 
-                          a new upload (i.e., those with DONE status)
+                          a new upload (i.e., those NOT in FAILED status)
         
         Returns:
             List of matching source documents
@@ -78,12 +62,13 @@ class DocumentDuplicateChecker:
             if not only_blocking or not sources:
                 return sources
             
-            # Filter to only include sources with blocking status (DONE)
+            # Filter to only include sources with blocking status (NOT FAILED)
+            # This ensures documents that are pending, processing, or completed block duplicates
             blocking_sources = []
             for source in sources:
                 pipeline_id = source.get("pipeline_id")
-                status = self._get_pipeline_status(pipeline_id)
-                if status in BLOCKING_STATUSES:
+                status = self._storage.get_pipeline_status(pipeline_id) if hasattr(self._storage, "get_pipeline_status") else None
+                if status not in NON_BLOCKING_STATUSES:
                     blocking_sources.append(source)
             
             return blocking_sources
@@ -100,9 +85,10 @@ class DocumentDuplicateChecker:
         """
         Determine if the provided document is a duplicate by MD5.
 
-        A document is only considered a duplicate if there's an existing 
-        document with the same MD5 hash that has been successfully processed 
-        (status = DONE). Failed uploads do not block re-uploads.
+        A document is considered a duplicate if there's an existing document 
+        with the same MD5 hash that is NOT in FAILED status. This means:
+        - Pending, processing, and completed documents block duplicates
+        - Only FAILED uploads do not block re-uploads (allowing retry)
 
         Accepts a doc dict and will attempt to compute or read the MD5 from:
         - doc["md5"]
@@ -123,7 +109,7 @@ class DocumentDuplicateChecker:
         if not md5_hash:
             return False
 
-        # Only consider documents with DONE status as blocking duplicates
+        # Consider documents as blocking duplicates unless they're in FAILED status
         existing = self.find_existing_by_md5(
             md5_hash, 
             source_type=source_type, 
