@@ -22,8 +22,11 @@ jobs:
       - name: Check MongoDB Connection
         run: |
           # kubectl login $PREPROD_API --token=$PP_CLUSTER 
-          kubectl config set-credentials default --server=$PREPROD_API --token=$PP_CLUSTER
-          #kubectl project $NAMESPACE
+          kubectl config set-credentials preprod --token=$PP_CLUSTER
+          kubectl config set-cluster preprod --server=$PREPROD_API
+          kubectl config set-context preprod --user=preprod --cluster=preprod
+          kubectl config use-context preprod
+          kubectl get pods --namespace $NAMESPACE
           kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongo --eval "db.adminCommand('ping')"
       
       - name: Backup MongoDB
