@@ -21,7 +21,8 @@ jobs:
 
       - name: Check MongoDB Connection
         run: |
-          kubectl login $PREPROD_API --token=$PP_CLUSTER 
+          # kubectl login $PREPROD_API --token=$PP_CLUSTER 
+          kubectl config set-credentials default --server=$PREPROD_API --token=$PP_CLUSTER
           kubectl project $NAMESPACE
           kubectl exec -it $MONGO_POD -- mongo --eval "db.adminCommand('ping')"
       
