@@ -23,12 +23,12 @@ jobs:
         run: |
           # kubectl login $PREPROD_API --token=$PP_CLUSTER 
           kubectl config set-credentials default --server=$PREPROD_API --token=$PP_CLUSTER
-          kubectl project $NAMESPACE
-          kubectl exec -it $MONGO_POD -- mongo --eval "db.adminCommand('ping')"
+          #kubectl project $NAMESPACE
+          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongo --eval "db.adminCommand('ping')"
       
       - name: Backup MongoDB
         run: |
-          kubectl exec -it $MONGO_POD -- mongodump --uri="mongodb://localhost:27017/unifai" --out="/tmp/backup"
+          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongodump --uri="mongodb://localhost:27017/unifai" --out="/tmp/backup"
           tar -czvf /tmp/backup.tar.gz /tmp/backup
           #aws s3 cp /tmp/backup.tar.gz s3://unifai-backup/backup.tar.gz
           echo "Backup completed"
