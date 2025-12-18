@@ -6,6 +6,7 @@ env:
   MONGO_URI: "mongodb://localhost:27017/unifai"
   NAMESPACE: "tag-ai--pipeline"
   MONGO_POD: "mongodb-0"
+  username: "tag-ai"
 
 on:
   schedule:
@@ -22,7 +23,7 @@ jobs:
       - name: Check MongoDB Connection
         run: |
           # kubectl login $PREPROD_API --token=$PP_CLUSTER 
-          kubectl config set-credentials preprod --token=$PP_CLUSTER
+          kubectl config set-credentials preprod --username=$username --token=$PP_CLUSTER
           kubectl config set-cluster preprod --server=$PREPROD_API
           kubectl config set-context preprod --user=preprod --cluster=preprod
           kubectl config use-context preprod
