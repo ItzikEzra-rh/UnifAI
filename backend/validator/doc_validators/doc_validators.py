@@ -12,7 +12,7 @@ class DocValidators:
 	
 	Supports two modes:
 	1. Full validation (skip_validation=False): All validators run
-	   Used for external API calls (Postman, scripts) that didn't pre-validate
+	   Used for external API calls that didn't pre-validate
 	   
 	2. MD5-only validation (skip_validation=True): Only DuplicateValidator runs
 	   Used for UI uploads that were pre-validated via /docs/validate endpoint

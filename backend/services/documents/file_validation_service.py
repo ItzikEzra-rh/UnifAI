@@ -10,7 +10,7 @@ IMPORTANT: This validation is designed to be called BEFORE files are uploaded to
 The UI calls this endpoint with file metadata (name, size) to validate files before uploading.
 Files that pass validation can be uploaded with skip_validation=true on the embed endpoint.
 
-For external API calls (e.g., Postman), skip_validation should be false (default) to ensure
+For external API calls, skip_validation should be false (default) to ensure
 full validation is performed during the registration phase.
 
 Validation Flow:
@@ -80,7 +80,7 @@ class FileValidationService:
     
     Usage:
         service = FileValidationService(username="john_doe")
-        result = service.validate_files([
+        result = service.validate([
             {"name": "document.pdf", "size": 1024000},
             {"name": "invalid.exe", "size": 500000},
         ])
@@ -177,19 +177,9 @@ class FileValidationService:
     
     def _get_pipeline_status(self, pipeline_id: str) -> Optional[str]:
         """Get the status of a pipeline by its ID."""
-        if not pipeline_id:
-            return None
-            
-        try:
-            if hasattr(self.mongo_storage, "get_pipeline_stats"):
-                stats = self.mongo_storage.get_pipeline_stats([pipeline_id])
-                if stats and pipeline_id in stats:
-                    return stats[pipeline_id].get("status")
-        except Exception:
-            pass
-        return None
+        return self.mongo_storage.get_pipeline_status(pipeline_id)
     
-    def validate_files(
+    def validate(
         self, 
         files: List[Dict[str, Any]],
         check_duplicates: bool = True
@@ -206,7 +196,7 @@ class FileValidationService:
             FileValidationResult containing valid files and errors.
             
         Example usage:
-            result = service.validate_files([
+            result = service.validate([
                 {"name": "report.pdf", "size": 2048000},
                 {"name": "image.exe", "size": 500},
             ])
@@ -295,30 +285,4 @@ class FileValidationService:
         return FileValidationResult(valid_files=valid_files, errors=errors)
 
 
-def validate_files_for_user(
-    files: List[Dict[str, Any]], 
-    username: str,
-    check_duplicates: bool = True
-) -> Dict[str, Any]:
-    """
-    Convenience function to validate files for a user.
-    
-    This is the main entry point for the validation endpoint.
-    
-    Args:
-        files: List of file metadata dictionaries with 'name' and 'size' keys
-        username: The username of the person uploading files
-        check_duplicates: Whether to check for duplicate filenames
-        
-    Returns:
-        Dictionary with validation results:
-        {
-            "valid_files": [...],      # Files that passed validation
-            "errors": [...],           # Validation errors
-            "has_errors": bool         # Quick check if any errors occurred
-        }
-    """
-    service = FileValidationService(username=username)
-    result = service.validate_files(files, check_duplicates=check_duplicates)
-    return result.to_dict()
 

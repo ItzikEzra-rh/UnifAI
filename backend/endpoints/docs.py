@@ -10,7 +10,7 @@ from shared.logger import logger
 from global_utils.helpers.apiargs import from_query, from_body
 from global_utils.celery_app.helpers import send_task
 from providers.docs import get_best_match_results, upload_docs, get_available_docs
-from services.documents.file_validation_service import validate_files_for_user
+from services.documents.file_validation_service import FileValidationService
 
 docs_bp = Blueprint("docs", __name__)
 
@@ -69,17 +69,14 @@ def validate_files(files, username, check_duplicates):
         3. UI only uploads files that passed validation
         4. UI calls /pipelines/embed with skip_validation=true
         
-    For external API calls (Postman, scripts):
+    For external API calls:
         - Call /pipelines/embed with skip_validation=false (default)
         - Full validation will be performed during registration
     """
     try:
-        result = validate_files_for_user(
-            files=files,
-            username=username,
-            check_duplicates=check_duplicates
-        )
-        return jsonify(result), 200
+        service = FileValidationService(username=username)
+        result = service.validate(files, check_duplicates=check_duplicates)
+        return jsonify(result.to_dict()), 200
     except Exception as e:
         logger.error(f"Failed to validate files: {str(e)}")
         return jsonify({"error": str(e)}), 500

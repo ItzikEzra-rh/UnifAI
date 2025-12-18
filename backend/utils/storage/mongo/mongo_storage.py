@@ -66,6 +66,10 @@ class MongoStorage:
         """Get pipeline stats (delegates to pipelines repository)."""
         return self.pipelines.get_stats(pipeline_ids)
 
+    def get_pipeline_status(self, pipeline_id: str) -> str:
+        """Get single pipeline status (delegates to pipelines repository)."""
+        return self.pipelines.get_status(pipeline_id)
+
     def delete_pipeline(self, pipeline_id: str) -> Dict[str, Any]:
         """Delete pipeline (delegates to pipelines repository)."""
         return self.pipelines.delete(pipeline_id)
@@ -126,14 +130,14 @@ class MongoStorage:
         del result["data"]
         return result
 
-    def list_sources(self, source_type: Optional[str] = None, exclude_full_text: bool = True) -> List[Dict[str, Any]]:
-        """Get all sources enriched with pipeline stats (for backward compatibility).
+    def list_sources(self, source_type: Optional[str] = None, projection: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """Get all sources enriched with pipeline stats.
         
         Args:
             source_type: Optional filter by source type
-            exclude_full_text: If True, excludes type_data.full_text from results (default: True)
+            projection: Optional MongoDB projection
         """
-        sources = self.sources.get_all(source_type, exclude_full_text=exclude_full_text)
+        sources = self.sources.get_all(source_type, projection=projection)
         pipeline_ids = [s.get('pipeline_id') for s in sources if s.get('pipeline_id')]
         valid_ids = [pid for pid in pipeline_ids if pid is not None]
         pipeline_stats = self.pipelines.get_stats(valid_ids)

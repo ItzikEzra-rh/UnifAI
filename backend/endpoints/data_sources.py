@@ -12,10 +12,13 @@ from utils.storage.mongo.mongo_helpers import get_mongo_storage
 data_sources_bp = Blueprint("data_sources", __name__)
 
 @data_sources_bp.route("/data.sources.get", methods=["GET"])
-@from_query({"source_type": fields.Str(required=True)})
-def available_data_sources(source_type):
+@from_query({
+    "source_type": fields.Str(required=True),
+    "filter_query": fields.Str(required=False, load_default=None)
+})
+def available_data_sources(source_type, filter_query):
     try:
-        sources = get_available_data_sources(source_type=source_type)
+        sources = get_available_data_sources(source_type=source_type, filter_query=filter_query)
         return jsonify({"sources": sources}), 200
 
     except Exception as e:
@@ -56,20 +59,12 @@ def delete_source(pipeline_ids):
                     "error": str(e)
                 })
         
-        # For single deletions, also include 'result' at the top level for backwards compatibility
-        top_level_result = None
-        if len(pipeline_ids) == 1 and len(results["succeeded"]) == 1:
-            top_level_result = results["succeeded"][0].get("result", {})
-        
         if len(results["failed"]) == 0:
-            response = {
+            return jsonify({
                 "status": "success",
                 "message": f"Successfully deleted {len(results['succeeded'])} source(s)",
                 "results": results
-            }
-            if top_level_result:
-                response["result"] = top_level_result
-            return jsonify(response), 200
+            }), 200
         elif len(results["succeeded"]) > 0:
             return jsonify({
                 "status": "partial",

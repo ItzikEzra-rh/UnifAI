@@ -1,3 +1,4 @@
+import json
 from dataclasses import asdict
 from utils.storage.mongo.mongo_helpers import get_mongo_storage
 from shared.logger import logger
@@ -47,26 +48,29 @@ def initialize_storage_manager(source_type: str = "data_source"):
     
     return SourceDeletionManager(vector_store, mongo_storage)
 
-def get_available_data_sources(source_type: str):
+def get_available_data_sources(source_type: str, filter_query: str = None):
     """
     Fetches a list of available data sources of a specific type.
     
     Args:
         source_type: The type of data source (e.g., 'DOCUMENT', 'DATABASE', etc.)
-        user: Optional user filter to get sources for a specific user
+        filter_query: Optional JSON string of MongoDB projection to apply
         
     Returns:
         List of available data sources matching the criteria
-    """
+    """    
     try:
         svc = get_mongo_storage()
-        source_type_upper = source_type.upper()      
-        all_sources = svc.list_sources(source_type_upper)       
+        source_type_upper = source_type.upper()
+        
+        # Parse filter_query JSON string to projection dict
+        projection = json.loads(filter_query) if filter_query else None
+        all_sources = svc.list_sources(source_type_upper, projection=projection)
         return all_sources
         
     except Exception as e:
         logger.error(f"Failed to get available data sources for type {source_type}: {str(e)}")
-        return []   
+        return []
 
 def delete_data_source(source_id: str):
     """

@@ -8,7 +8,8 @@ export async function fetchDocuments(): Promise<Document[]> {
     "data_sources/data.sources.get",
     {
       params: {
-        source_type: "document"
+        source_type: "document",
+        filter_query: JSON.stringify({ "type_data.full_text": 0 })
       }
     }
   );

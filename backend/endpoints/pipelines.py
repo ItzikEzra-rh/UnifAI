@@ -28,7 +28,7 @@ def start_pipeline(data, source_type, logged_in_user, skip_validation):
             This should ONLY be True when files have been pre-validated via 
             the /docs/validate endpoint (UI flow).
             
-            For external API calls (Postman, scripts), this should be False (default)
+            For external API calls, this should be False (default)
             to ensure full validation is performed.
             
             Note: MD5 duplicate checking is ALWAYS performed during registration
