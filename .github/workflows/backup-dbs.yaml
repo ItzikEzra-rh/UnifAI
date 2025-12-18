@@ -1,4 +1,4 @@
-NAME: Backup Databases
+name: Backup Databases
 
 env:
   PREPROD_API: "https://api.stc-ai-e1-pp.imap.p1.openshiftapps.com:6443"
