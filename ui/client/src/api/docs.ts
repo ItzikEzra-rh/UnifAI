@@ -1,6 +1,34 @@
 import { api } from '@/http/queryClient';
 import type { Document } from '@/types';
 
+/**
+ * File validation error from the backend
+ */
+export interface FileValidationError {
+    file_name: string;
+    error_type: 'extension' | 'size' | 'duplicate';
+    message: string;
+}
+
+/**
+ * Valid file info returned from validation
+ */
+export interface ValidatedFile {
+    name: string;
+    normalized_name: string;
+    size: number;
+}
+
+/**
+ * Response from the file validation endpoint
+ */
+export interface FileValidationResponse {
+    valid_files: ValidatedFile[];
+    errors: FileValidationError[];
+    has_errors: boolean;
+}
+
+
 export async function fetchDocuments(): Promise<Document[]> {
   // Call the new backend endpoint for available data sources with source_type='document'
   // Using GET request with query parameters as required by the backend @from_query decorator
@@ -68,33 +96,6 @@ export async function getSupportedFileExtensions(): Promise<string[]> {
 };
 
 /**
- * File validation error from the backend
- */
-export interface FileValidationError {
-    file_name: string;
-    error_type: 'extension' | 'size' | 'duplicate';
-    message: string;
-}
-
-/**
- * Valid file info returned from validation
- */
-export interface ValidatedFile {
-    name: string;
-    normalized_name: string;
-    size: number;
-}
-
-/**
- * Response from the file validation endpoint
- */
-export interface FileValidationResponse {
-    valid_files: ValidatedFile[];
-    errors: FileValidationError[];
-    has_errors: boolean;
-}
-
-/**
  * Validate files before upload.
  * 
  * This endpoint performs pre-upload validation including:
@@ -107,15 +108,6 @@ export interface FileValidationResponse {
  * @param checkDuplicates - Whether to check for duplicate filenames (default: true)
  * @returns Validation results with valid files and errors
  * 
- * @example
- * const result = await validateFiles(
- *   [{ name: 'doc.pdf', size: 1024000 }],
- *   'username'
- * );
- * if (result.has_errors) {
- *   // Handle errors
- * }
- * // Proceed with valid files
  */
 export async function validateFiles(
     files: { name: string; size: number }[],

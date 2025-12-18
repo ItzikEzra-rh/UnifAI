@@ -6,11 +6,20 @@ for the user (unless the existing document has FAILED status).
 
 This validator is used during registration for external API calls
 (when skip_validation=False).
-
 For UI uploads, name duplicate validation happens in /docs/validate before upload.
 
-Note: This is different from MD5 DuplicateValidator which checks file content.
-This validator checks file NAMES to prevent confusion.
+Note: This is different from the MD5 DuplicateValidator, which checks file content.
+This validator checks file *names* to prevent ambiguity and confusion.
+
+Rationale:
+When a user defines a Retriever, they may filter documents based on file names
+in order to reduce the scope of the retrieval operation. Allowing multiple files
+with the same name uploaded by the same user would introduce ambiguity in this
+filtering logic and make retrieval behavior unclear.
+
+Therefore, we enforce uniqueness at the filter level:
+{FILE_NAME}/{UPLOADED_BY} must be unique.
+
 """
 
 from typing import Optional, Any, Tuple, List, Dict
