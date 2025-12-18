@@ -23,7 +23,7 @@ jobs:
 
       - name: Check MongoDB Connection
         run: | 
-          kubectl config set-credentials $cluster_name --username=${{ vars.NEMER_CLUSTER_USER }} --token=${{ secrets.NEMER_CLUSTER }}
+          kubectl config set-credentials $cluster_name --token=${{ secrets.NEMER_CLUSTER }}
           kubectl config set-cluster $cluster_name --server=${{ vars.NEMER_CLUSTER_API }}
           kubectl config set-context $cluster_name --user=$cluster_name --cluster=$cluster_name
           kubectl config use-context $cluster_name
