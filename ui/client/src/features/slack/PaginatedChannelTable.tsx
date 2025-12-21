@@ -108,7 +108,7 @@ export function PaginatedChannelTable({
               [&_tbody_tr]:!border-b-[0.5px] [&_tbody_tr]:!border-gray-500/15"
           >
             <DataTable
-              columns={getColumns(onSettingsClick, onDeleteClick, deletingChannelId, activeEmbeddingIds, user)}
+              columns={getColumns(onSettingsClick, onDeleteClick, deletingChannelId, activeEmbeddingIds)}
               data={allChannels}
               enableSorting={true}
               enableColumnFilters={true}

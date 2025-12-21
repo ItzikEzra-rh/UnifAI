@@ -33,7 +33,6 @@ export function getColumns(
   onDeleteClick: (ch: EmbedChannel) => void,
   deletingChannelId?: string,
   activeEmbeddingIds: string[] = [],
-  user?: User | null,
 ): DataTableColumn<EmbedChannel>[] {
 
   return [
