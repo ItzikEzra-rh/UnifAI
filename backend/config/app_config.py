@@ -39,4 +39,4 @@ class AppConfig(SharedConfig):
     umami_website_name: str = "unifai"
     umami_username: str = "dummy"
     umami_password: str = "dummy"
-    
+   

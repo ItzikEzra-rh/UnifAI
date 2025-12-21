@@ -37,3 +37,4 @@ def get_umami_settings():
     except Exception as e:
         logger.error(f"Failed to get Umami website ID: {e}")
         raise
+

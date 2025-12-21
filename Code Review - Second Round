@@ -1,0 +1,152 @@
+Code Review - Second Round
+Critical Issues
+1. Security: Passwords in ConfigMap instead of Secrets - TBD in future PR***
+  helm/scripts/shared-resources-postsync.sh lines 28-29: Umami password stored in ConfigMap
+  ConfigMaps are not encrypted; use Kubernetes Secrets for passwords
+2. Security: No authentication on settings - not needed as the BE API is open for all at the moment***
+  backend/endpoints/settings.py: The /get.umami.settings endpoint has no authentication decorator
+  Anyone with API access can retrieve Umami configuration
+
+3. Backend: Incorrect exception handling - will leave this as is for the moment***
+   backend/endpoints/settings.py line 18: Catches ConnectionError but the umami library likely raises different exceptions
+   The umami-analytics library and requests library raise different exception types
+
+4. Backend: No version pinning for new dependency - will be done after deployment succeeds along with the build***
+   backend/requirements.txt: Added umami-analytics without version number
+   This can cause deployment issues if breaking changes occur
+5. Helm: Removed version pinning from charts - these is currently by design as we don't manage a helm repository.***
+   helm/dataflow.yaml.gotmpl line 260 (removed): version: "0.9.0" for unifai-dataflow-celery
+   helm/shared-resources.yaml.gotmpl line 312 (removed): version: "0.9.0" for unifai-dataflow-shared-storage
+   This makes deployments non-deterministic
+6. Jenkins: Fragile environment file manipulation - the key is always populated.***
+   ci/pipeline-deploy.groovy lines 233-236: Uses replaceFirst on .env file
+   Will fail silently if umami_website_name key doesn't exist in .env
+   Only updates staging, not other environments
+
+7. Frontend: Type mismatch in umamitrack.tsx - not an issue***
+   Line 21: umamiProps: Record<string, string> but line 41 converts all values to strings
+   Line 28: UmamiEventData allows number | boolean but they're all stringified
+   Type definition doesn't match implementation
+
+8. Frontend: Potential memory leak - low priority***
+   useAnalytics.ts line 36-38: Cleanup function may reference stale scriptElement
+   If API call succeeds after component unmounts, scriptElement will be null in cleanup
+
+9. Backend: Cache never invalidates - low priority***
+   backend/providers/settings.py line 9: @lru_cache(maxsize=1) with no invalidation
+   backend/utils/analytics/umami.py line 26: Instance-level cache _website_cache
+   If Umami config changes, requires application restart
+
+10. Frontend: Race condition with window.umami - low priority***
+    AuthContext.tsx lines 80, 111: Uses window.umami?.identify()
+    Script loads asynchronously but identify is called immediately on auth
+    May execute before Umami script loads
+
+Code Quality Issues
+11. Missing newlines at end of files - fixed***
+    backend/config/app_config.py line 43
+    ui/client/src/components/ui/umamitrack.tsx line 48
+    ui/client/src/config/umamiEvents.ts line 29
+    helm/scripts/shared-resources-postsync.sh line 29
+    ui/client/src/hooks/useAnalytics.ts line 
+    
+12. Commented code left in production - fixed (the 2nd one won't be removed now.)
+    backend/utils/analytics/umami.py lines 1, 24: Commented imports and code
+    ui/client/src/components/agentic-ai/ExecutionTab.tsx lines 692-725: Large blocks of commented tracking code
+    Remove or document why it's kept
+
+13. Magic strings as configuration  - these are placeholders so there's always a value. won't be removed***
+    backend/utils/analytics/umami.py lines 47, 49, 51: Hardcoded "0.0.0.0", "dummy"
+    backend/providers/settings.py line 28: Hardcoded "dummy"
+    Define as constants
+
+14. Inconsistent error messages - will leave it as is at the moment***
+    backend/endpoints/settings.py line 17: Generic "Website ID not found" for all ValueError
+    Actual error could be "URL not configured", "username not configured", etc.
+    Error message doesn't reflect actual 
+    
+15. Global Window type in wrong location
+    ui/client/src/contexts/AuthContext.tsx lines 23-30: Global type declaration in component file
+    Should be in a .d.ts file (e.g., types/umami.d.ts)
+
+16. Sidebar display inconsistency - fixed***
+    ui/client/src/components/layout/Sidebar.tsx line 263: Changed from user?.name to user?.username
+    Latest commit message says "changed back to user name instead of username"
+    Code and commit message contradict each other
+
+17. Unused enum values - the buttons are commented out for the moment, will leave it as is***
+    ui/client/src/config/umamiEvents.ts lines 3-4: AGENT_CHAT_TOGGLE_EXECUTION_STREAM_BUTTON and AGENT_CHAT_TOGGLE_GLOBAL_SCOPE_BUTTON defined but only used in commented code
+    Remove unused enum values or uncomment the tracking
+
+18. Inconsistent YAML formatting - it is still valid and it's ok***
+    helm/ui/values.yaml lines 115-116, 121-122: Indentation of scheme and periodSeconds changed
+    Verify YAML is still valid and renders correctly
+
+19. TODO comment in production code - fixed***
+    backend/endpoints/settings.py line 5: # we might want this as a "settings bp and not umami only"
+    Remove or create a proper issue tracker item
+
+20. Missing error handling for script load failure - as intended. we don't want the user to be aware of that***
+    ui/client/src/hooks/useAnalytics.ts line 28: Silent failure with console.warn
+    No user feedback if analytics fails to load
+
+Missing Documentation
+21. No environment variable documentation - the env is coming from a private creds repo at the moment***
+    New variables: umami_url, umami_website_name, umami_username, umami_password
+    No README or .env.example updates
+
+22. No API documentation - are the other apis documented
+    New endpoint /settings/get.umami.settings not documented
+
+23. No privacy policy  - will add this to the requirements in another story.
+    User tracking added with no visible privacy notice
+    May violate GDPR/privacy regulations
+
+Testing Gaps - ignore for now
+24. No unit tests for new backend code
+    No tests for UmamiAnalytics class
+    No tests for get_umami_settings function
+    No tests for /get.umami.settings endpoint
+25. No frontend tests for tracking
+    No tests for UmamiTrack component
+    No tests for useAnalytics hook
+26. No integration tests
+    No tests for end-to-end analytics flow
+
+DevOps/Infrastructure
+27. Environment variables not validated in deployment - as intended***
+    helm/scripts/shared-resources-postsync.sh lines 15-18: Variables assigned but not validated
+    Could deploy with empty/invalid values
+28. No rollback plan documented - not related to this repo***
+    If Umami service is down, what happens?
+    Application behavior not defined
+29. Hardcoded environment logic - as intended***
+    ci/pipeline-deploy.groovy line 234: Only handles STAGING
+    What about PRODUCTION, DEV, QA?
+
+Potential Bugs
+30. Validation happens after object construction - will be taken care of in another story.***
+    backend/utils/analytics/umami.py line 27-28: Validation called after self.umami = umami
+    If validation fails, object is partially initialized
+    
+31. Duplicate validation logic - not duplicate as the website name is "dynamic" and depends on deployment.***
+    backend/utils/analytics/umami.py lines 47-52: Validates params
+    backend/providers/settings.py lines 28-29: Validates website_name
+    Inconsistent validation 
+    
+32. Missing null  - will leave this as is for now***
+    ui/client/src/components/ui/umamitrack.tsx line 26: Spreads eventData which could be undefined
+    Works but creates unnecessary object
+
+33. Incorrect return type in provider - it indeed returns a dictionary ***
+    backend/providers/settings.py line 32: Returns result from umami.get_website_id()
+    Function signature says it returns dict, but relies on nested function
+    Implicit coupling
+Summary: 33 issues identified
+Critical: 10 (security, breaking changes, race conditions)
+Code Quality: 10 (commented code, magic strings, inconsistencies)
+Documentation: 3 (missing docs, privacy concerns)
+Testing: 3 (no tests)
+DevOps: 3 (deployment concerns)
+Potential Bugs: 4 (validation, null checks, coupling)
+Top Priority: Issues #1, #2, #4, #5, #10, #23

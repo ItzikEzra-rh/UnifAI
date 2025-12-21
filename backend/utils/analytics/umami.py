@@ -1,4 +1,3 @@
-#from config.app_config import AppConfig
 from shared.logger import logger
 import umami
 
@@ -21,7 +20,6 @@ class UmamiAnalytics():
         self.username = username
         self.password = password
         self.umami = umami
-        #self.app_config = AppConfig.get_instance()
         self.logger = logger
         self._website_cache = {}
         self.validate_umami_params(url, username, password)
@@ -50,8 +48,6 @@ class UmamiAnalytics():
             raise ValueError("Umami username is not configured")
         if not password or password == "dummy":
             raise ValueError("Umami password is not configured")
-        # if not website_name:
-        #     raise ValueError("Umami website name is not configured")
 
     def get_website_id(self, website_name: str) -> dict:
         """

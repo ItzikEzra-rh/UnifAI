@@ -1,6 +1,7 @@
 import { api } from '@/http/authClient';
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useAnalytics } from '@/hooks/useAnalytics';
+import { Window } from '@/types/analytics';
 
 export interface User {
   username: string;
@@ -17,16 +18,6 @@ export interface AuthContextType {
   login: () => void;
   logout: () => Promise<void>;
   checkAuthStatus: () => Promise<void>;
-}
-
-
-declare global {
-  interface Window {
-    umami?: {
-      identify: (data: Record<string, any>| null) => void;
-      track: (event: string, data?: Record<string, any>) => void;
-    };
-  }
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
