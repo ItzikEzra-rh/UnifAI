@@ -29,9 +29,9 @@ class MongoStorage:
         
         self._conn = conn
 
-    def get_all_sources(self, source_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_all_sources(self, source_type: Optional[str] = None, projection: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Get all sources (delegates to sources repository)."""
-        return self.sources.get_all(source_type)
+        return self.sources.get_all(source_type, projection)
 
     def get_source_by_query(self, query: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Get sources by query (delegates to sources repository)."""
@@ -74,9 +74,9 @@ class MongoStorage:
         """Delete pipeline (delegates to pipelines repository)."""
         return self.pipelines.delete(pipeline_id)
 
-    def get_all(self, source_type: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_all(self, source_type: Optional[str] = None, projection: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """Alias for get_all_sources to maintain SourceRepository interface compatibility."""
-        return self.get_all_sources(source_type)
+        return self.get_all_sources(source_type, projection)
 
     def get_paginated(
         self,
