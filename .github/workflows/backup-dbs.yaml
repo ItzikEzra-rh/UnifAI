@@ -18,7 +18,8 @@ on:
 
 jobs:
   backup_mongo:
-    runs-on: ubuntu-latest
+    # runs-on: ubuntu-latest
+    runs-on: cnv-runner
     steps:
 
       - name: Check MongoDB Connection
