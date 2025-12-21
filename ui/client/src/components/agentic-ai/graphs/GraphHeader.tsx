@@ -23,7 +23,7 @@ const GraphHeader: React.FC<GraphHeaderProps> = ({
       <div className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           {onBack && (
-            <UmamiTrack event={UmamiEvents.AGENT_GRAPHS_BACK_BUTTON}>
+            <UmamiTrack event={UmamiEvents.AGENT_GRAPHS_BACK_BUTTON} includeUserData={false}>
               <Button
                 variant="ghost"
                 size="sm"
@@ -38,7 +38,7 @@ const GraphHeader: React.FC<GraphHeaderProps> = ({
           <CardTitle className="text-lg font-heading">Workflow Canvas</CardTitle>
         </div>
         <div className="flex gap-2">
-          <UmamiTrack event={UmamiEvents.AGENT_GRAPHS_CLEAR_BUTTON}>
+          <UmamiTrack event={UmamiEvents.AGENT_GRAPHS_CLEAR_BUTTON} includeUserData={false}>
             <Button
               variant="outline"
               size="sm"

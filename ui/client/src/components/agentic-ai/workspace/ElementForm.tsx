@@ -690,7 +690,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             </Button>
             <UmamiTrack 
               event={UmamiEvents.AGENT_REPOSITORY_SAVE_ELEMENT_BUTTON}
-              eventData={{ userId: user?.sub }}
             >
               <Button
                 type="submit"

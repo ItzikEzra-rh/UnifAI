@@ -111,7 +111,7 @@ export default function AgenticAI() {
                     <div className="flex gap-2">
                       <UmamiTrack 
                         event={UmamiEvents.AGENT_GRAPHS_LOAD_FLOW_BUTTON}
-                        eventData={{ userId: user?.sub, flowName: selectedFlow?.name }}
+                        eventData={{ flowName: selectedFlow?.name }}
                       >
                         <Button
                           variant="outline"
@@ -126,7 +126,6 @@ export default function AgenticAI() {
                       </UmamiTrack>
                       <UmamiTrack 
                         event={UmamiEvents.AGENT_GRAPHS_BUILD_FLOW_BUTTON}
-                        eventData={{ userId: user?.sub }}
                       >
                         <Button
                           className="bg-primary hover:bg-opacity-80 flex items-center gap-2"

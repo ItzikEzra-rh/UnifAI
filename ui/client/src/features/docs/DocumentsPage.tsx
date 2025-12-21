@@ -99,7 +99,6 @@ export default function Documents() {
 
         <UmamiTrack 
           event={UmamiEvents.UPLOAD_DOCUMENT_BUTTON}
-          eventData={{ userId: user?.sub }}
         >
         <Button 
           onClick={() => setShowUploadModal(true)} 

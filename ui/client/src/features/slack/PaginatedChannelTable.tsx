@@ -77,7 +77,6 @@ export function PaginatedChannelTable({
               >
                 <UmamiTrack 
                   event={UmamiEvents.SLACK_ADD_SOURCE_BUTTON}
-                  eventData={{ userId: user?.sub }}
                 >
                   <Button
                     onClick={() => navigate("/slack/add-source")}

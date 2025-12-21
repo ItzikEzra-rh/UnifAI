@@ -57,7 +57,7 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({
                   Nodes ({buildingBlocks.length})
                 </TabsTrigger>
 
-                <UmamiTrack event={UmamiEvents.AGENT_GRAPHS_CONDITIONS_BUTTON}>
+                <UmamiTrack event={UmamiEvents.AGENT_GRAPHS_CONDITIONS_BUTTON} includeUserData={false}>
                   <TabsTrigger value="conditions" className="text-gray-300 data-[state=active]:text-white">
                     Conditions ({conditions.length})
                   </TabsTrigger>

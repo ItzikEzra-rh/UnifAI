@@ -152,7 +152,7 @@ export default function UserWorkspace() {
 
                       <UmamiTrack 
                         event={UmamiEvents.AGENT_REPOSITORY_CREATE_NEW_BUTTON}
-                        eventData={{ userId: user?.sub, elementType: selectedElementType?.name }}
+                        eventData={{ elementType: selectedElementType?.name }}
                       >
                         <Button 
                           onClick={handleCreateNew}

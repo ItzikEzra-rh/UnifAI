@@ -737,7 +737,7 @@ export default function ExecutionTab({
                     <Users className="h-3 w-3" />
                   </Button>
                   
-                  <UmamiTrack event={UmamiEvents.AGENT_CHAT_ADD_FLOW_BUTTON}>
+                  <UmamiTrack event={UmamiEvents.AGENT_CHAT_ADD_FLOW_BUTTON} includeUserData={false}>
                   <Button 
                     variant="ghost" 
                     size="sm" 
@@ -781,7 +781,7 @@ export default function ExecutionTab({
                             {session.title}
                           </span>
                         </div>
-                        <UmamiTrack event={UmamiEvents.AGENT_CHAT_DELETE_CHAT_BUTTON}>
+                        <UmamiTrack event={UmamiEvents.AGENT_CHAT_DELETE_CHAT_BUTTON} includeUserData={false}>
                         <Button
                           variant="ghost"
                           size="sm"

@@ -92,7 +92,7 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
 
         <div className="relative">
           <SimpleTooltip content={<p>Shared System</p>}>
-            <UmamiTrack event={UmamiEvents.SHARED_SYSTEM_BUTTON}>
+            <UmamiTrack event={UmamiEvents.SHARED_SYSTEM_BUTTON} includeUserData={false}>
               <button
                 onClick={() => openSharedPanel('list')}
                 className="p-2 rounded-full hover:bg-background-card text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors"
@@ -112,7 +112,7 @@ export default function Header({ title, onToggleSidebar }: HeaderProps) {
         <div className="relative">
           <SimpleTooltip content={<p>Notifications{hasUnreadNotifications ? ` (${pendingNotificationsCount})` : ''}</p>}>
               
-            <UmamiTrack event={UmamiEvents.NOTIFICATIONS_BUTTON}>
+            <UmamiTrack event={UmamiEvents.NOTIFICATIONS_BUTTON} includeUserData={false}>
               <button
                 onClick={() => setIsNotificationPanelOpen(!isNotificationPanelOpen)}
                 className="p-2 rounded-full hover:bg-background-card text-gray-400 hover:text-gray-800 dark:hover:text-white transition-colors relative"

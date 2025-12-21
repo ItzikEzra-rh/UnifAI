@@ -96,7 +96,6 @@ const SaveBlueprintModal: React.FC<SaveBlueprintModalProps> = ({
           </Button>
           <UmamiTrack 
             event={UmamiEvents.AGENT_GRAPHS_SAVE_BUTTON}
-            eventData={{ userId: user?.sub }}
           >
             <Button
               onClick={handleSave}

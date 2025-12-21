@@ -303,7 +303,7 @@ export function getColumns(
             <motion.div whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}>
               <UmamiTrack 
                 event={UmamiEvents.SLACK_DELETE_SOURCE_BUTTON}
-                eventData={{ userId: user?.sub, channelName: ch.name }}
+                eventData={{ channelName: ch.name }}
               >
                 <Button
                   variant="ghost"

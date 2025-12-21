@@ -759,7 +759,6 @@ export default function ChatInterface({
             />
             <UmamiTrack 
               event={UmamiEvents.AGENT_CHAT_SEND_MESSAGE_BUTTON}
-              eventData={{ userId: user?.sub }}
             >
               <Button
                 onClick={handleSendMessage}
