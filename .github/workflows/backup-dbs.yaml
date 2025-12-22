@@ -35,10 +35,7 @@ on:
 jobs:
 
   verify_agent_deps:
-    runs-on: linux
-    steps:
-      - name: Verify Agent Dependencies
-        uses: ./.github/workflows/verify-agent-deps.yaml
+    uses: ./.github/workflows/verify-agent-deps.yaml
 
   backup_mongo:
     runs-on: linux
