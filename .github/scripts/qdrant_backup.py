@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from qdrant_client import QdrantClient
 import requests
 import os

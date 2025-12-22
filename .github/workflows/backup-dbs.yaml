@@ -14,14 +14,33 @@ on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Which branch do you want to use?'
+        required: true
+        default: 'GENIE-1071/backup_dbs'
+      target_cluster:
+        description: 'Which cluster do you want to backup?'
+        required: true
+        default: 'PP'
+      target_namespace:
+        description: 'Which namespace do you want to backup?'
+        required: true
+        default: 'tag-ai--pipeline'
   #This triggers the workflow automatically anytime someone pushes to the branch - needs to change to when this file is changed
   push:                
-    branches: [ "GENIE-1071/backup_dbs" ]
+    branches: [ ${{ inputs.target_branch }} ]
 
 jobs:
   backup_mongo:
     runs-on: linux
     steps:
+# THIS IS THE VITAL STEP:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ inputs.target_branch }}
 
       - name: Verify Secret isn't empty
         run: |
@@ -62,5 +81,5 @@ jobs:
       - name: Backup Qdrant
         run: |
           echo "Backing up Qdrant"
-          python scripts/qdrant_backup.py
+          python .github/scripts/qdrant_backup.py
           echo "Qdrant backup completed"
