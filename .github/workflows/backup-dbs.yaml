@@ -29,7 +29,8 @@ on:
         default: 'tag-ai--pipeline'
   #This triggers the workflow automatically anytime someone pushes to the branch - needs to change to when this file is changed
   push:                
-    branches: [ ${{ inputs.target_branch }} ]
+    branches: [ 'GENIE-1071/backup_dbs' ]
+    paths: [ '.github/workflows/backup-dbs.yaml' ]
 
 jobs:
   backup_mongo:
