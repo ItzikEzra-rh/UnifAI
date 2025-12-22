@@ -25,6 +25,7 @@ jobs:
 
       - name: Check MongoDB Connection
         run: | 
+          echo "cluster_secret: $cluster_secret"
           kubectl config set-credentials $cluster_name --token=$cluster_secret
           kubectl config set-cluster $cluster_name --server=$PREPROD_API
           kubectl config set-context $cluster_name --user=$cluster_name --cluster=$cluster_name
