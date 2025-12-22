@@ -67,7 +67,7 @@ def check_connection(node_url: str) -> bool:
     '''
     try:
         client = QdrantClient(node_url)
-        client.health()
+        client.healthz()
         return True
     except Exception as e:
         print(f"Error checking connection to {node_url}: {e}")
