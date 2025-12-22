@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   workflow_call:
   push:                
-    paths: [ '.github/workflows/verify-agent-deps.yaml', '.github/scripts/qdrant_backup.py' ]
+    paths: [ '.github/workflows/verify-agent-deps.yaml' ]
 
 jobs:
   verify_agent_deps:
