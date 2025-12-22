@@ -4,10 +4,11 @@ env:
   PREPROD_API: "https://api.stc-ai-e1-pp.imap.p1.openshiftapps.com:6443"
   PROD_API: "https://api.stc-ai-e1-prod.rtc9.p1.openshiftapps.com:6443"
   MONGO_URI: "mongodb://localhost:27017/unifai"
-  NAMESPACE: k8sgpt-operator-system
+  #NAMESPACE: k8sgpt-operator-system
+  NAMESPACE: tag-ai--pipeline
   MONGO_POD: "mongodb-0"
   username: "tag-ai"
-  cluster_name: "nemer"
+  cluster_name: "PP"
   cluster_secret: ${{ secrets.PP_CLUSTER }}
 
 on:
