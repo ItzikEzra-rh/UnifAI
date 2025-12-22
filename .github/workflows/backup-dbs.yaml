@@ -8,6 +8,7 @@ env:
   MONGO_POD: "mongodb-0"
   username: "tag-ai"
   cluster_name: "nemer"
+  cluster_secret: ${{ secrets.PP_CLUSTER }}
 
 on:
   schedule:
@@ -19,12 +20,12 @@ on:
 jobs:
   backup_mongo:
     # runs-on: ubuntu-latest
-    runs-on: cnv-runner
+    runs-on: linux
     steps:
 
       - name: Check MongoDB Connection
         run: | 
-          kubectl config set-credentials $cluster_name --token=${{ secrets.PP_CLUSTER }}
+          kubectl config set-credentials $cluster_name --token=$cluster_secret
           kubectl config set-cluster $cluster_name --server=$PREPROD_API
           kubectl config set-context $cluster_name --user=$cluster_name --cluster=$cluster_name
           kubectl config use-context $cluster_name
