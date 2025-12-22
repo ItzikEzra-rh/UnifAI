@@ -33,8 +33,16 @@ on:
     paths: [ '.github/workflows/backup-dbs.yaml' ]
 
 jobs:
+
+  verify_agent_deps:
+    runs-on: linux
+    steps:
+      - name: Verify Agent Dependencies
+        uses: ./.github/workflows/verify-agent-deps.yaml
+
   backup_mongo:
     runs-on: linux
+    needs: verify_agent_deps
     steps:
 # THIS IS THE VITAL STEP:
       - name: Checkout Code
@@ -50,9 +58,6 @@ jobs:
           else
             echo "Secret has a length of ${#cluster_secret} characters"
           fi
-
-      - name: Verify Agent Dependencies
-        uses: ./.github/workflows/verify-agent-deps.yaml
 
       # - name: Check Cluster Connection
       #   run: | 
