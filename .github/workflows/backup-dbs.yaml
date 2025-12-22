@@ -8,7 +8,7 @@ env:
   MONGO_POD: "mongodb-0"
   username: "tag-ai"
   cluster_name: "nemer"
-  
+  cluster_secret: ${{ secrets.PP_CLUSTER }}
 
 on:
   schedule:
@@ -23,9 +23,15 @@ jobs:
     runs-on: linux
     steps:
 
+      - name: Debug Secret Length
+        run: |
+          if [ -z "$cluster_secret" ]; then
+            echo "SECRET IS EMPTY"
+          else
+            echo "Secret has a length of ${#cluster_secret} characters"
+          fi
+
       - name: Check MongoDB Connection
-        env:
-          cluster_secret: ${{ secrets.PP_CLUSTER }}
         run: | 
           echo "cluster_secret: $cluster_secret"
           kubectl config set-credentials $cluster_name --token=$cluster_secret
