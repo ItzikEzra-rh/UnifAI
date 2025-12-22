@@ -51,7 +51,7 @@ jobs:
           kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- ls -la /tmp/backup
           kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- tar -czvf /tmp/backup.tar.gz /tmp/backup
           kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- ls -la /tmp/backup.tar.gz
-          kubectl cp $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
+          kubectl cp --namespace $NAMESPACE $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
           ls -la /tmp/backup.tar.gz
           echo "Removing temporary files"
           kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup
