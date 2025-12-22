@@ -105,15 +105,15 @@ def execute_action(uid, input_data, context):
         "response_time_ms": 125.5
     }
     """
-    # try:
-    svc = current_app.container.actions_service
+    try:
+        svc = current_app.container.actions_service
 
-    # Execute the action (validation happens automatically inside)
-    result = svc.execute_action_sync(uid, input_data, context)
+        # Execute the action (validation happens automatically inside)
+        result = svc.execute_action_sync(uid, input_data, context)
 
-    return jsonify(result), 200
+        return jsonify(result), 200
 
-    # except ValueError as e:
-    #     return jsonify({"error": str(e)}), 404
-    # except Exception as e:
-    #     return jsonify({"error": str(e)}), 500
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

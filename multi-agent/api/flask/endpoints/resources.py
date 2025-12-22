@@ -143,18 +143,18 @@ def get_resource_schema():
 def validate_resource(resource_id, timeout_seconds):
     """Validate a saved resource and its dependencies."""
     svc = current_app.container.resources_service
-    # try:
-    result = svc.validate_resource(
-        rid=resource_id,
-        timeout_seconds=timeout_seconds,
-    )
-    return jsonify(result.to_dict()), 200
-    # except KeyError as e:
-    #     return jsonify({"error": f"Resource not found: {e}"}), 404
-    # except RuntimeError as e:
-    #     return jsonify({"error": str(e)}), 500
-    # except Exception as e:
-    #     return jsonify({"error": str(e)}), 500
+    try:
+        result = svc.validate_resource(
+            rid=resource_id,
+            timeout_seconds=timeout_seconds,
+        )
+        return jsonify(result.to_dict()), 200
+    except KeyError as e:
+        return jsonify({"error": f"Resource not found: {e}"}), 404
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @resources_bp.route("/config.validate", methods=["POST"])
