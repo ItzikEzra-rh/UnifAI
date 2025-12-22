@@ -45,14 +45,14 @@ jobs:
       - name: Backup MongoDB
         run: |
           kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongodump --uri="mongodb://localhost:27017/unifai" --out="/tmp/backup"
-          tar -czvf /tmp/backup.tar.gz /tmp/backup
-          kubectl cp $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
-          echo "Backup completed"
-          echo "Removing temporary files"
-          rm -rf /tmp/backup
-          rm /tmp/backup.tar.gz
-          echo "Temporary files removed"
-          echo "Backup completed"
+          #tar -czvf /tmp/backup.tar.gz /tmp/backup
+          #kubectl cp $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
+          #echo "Backup completed"
+          #echo "Removing temporary files"
+          #rm -rf /tmp/backup
+          #rm /tmp/backup.tar.gz
+          #echo "Temporary files removed"
+          #echo "Backup completed"
 
 
       # - name: Backup MongoDB
