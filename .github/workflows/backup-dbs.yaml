@@ -52,7 +52,7 @@ jobs:
           fi
 
       - name: Verify Agent Dependencies
-        uses: ./.github/workflows/Verify-agent-deps.yaml
+        uses: ./.github/workflows/verify-agent-deps.yaml
 
       # - name: Check Cluster Connection
       #   run: | 

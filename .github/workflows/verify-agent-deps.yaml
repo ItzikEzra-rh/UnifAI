@@ -2,6 +2,7 @@ name: Verify Agent Dependencies
 
 on:
   workflow_dispatch:
+  workflow_call:
 
 jobs:
   verify_agent_deps:
