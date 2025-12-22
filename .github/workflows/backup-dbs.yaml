@@ -14,16 +14,16 @@ on:
   schedule:
     - cron: '0 0 * * *'
   workflow_dispatch:
+  #This triggers the workflow automatically anytime someone pushes to the branch - needs to change to when this file is changed
   push:                
     branches: [ "GENIE-1071/backup_dbs" ]
 
 jobs:
   backup_mongo:
-    # runs-on: ubuntu-latest
     runs-on: linux
     steps:
 
-      - name: Debug Secret Length
+      - name: Verify Secret isn't empty
         run: |
           if [ -z "$cluster_secret" ]; then
             echo "SECRET IS EMPTY"
@@ -31,43 +31,36 @@ jobs:
             echo "Secret has a length of ${#cluster_secret} characters"
           fi
 
-      - name: Check MongoDB Connection
-        run: | 
-          echo "cluster_secret: $cluster_secret"
-          kubectl config set-credentials $cluster_name --token=$cluster_secret
-          kubectl config set-cluster $cluster_name --server=$PREPROD_API
-          kubectl config set-context $cluster_name --user=$cluster_name --cluster=$cluster_name
-          kubectl config use-context $cluster_name
-          kubectl get pods --namespace $NAMESPACE
-          kubectl get deployments --namespace $NAMESPACE
-          #kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongo --eval "db.adminCommand('ping')"
+      # - name: Check Cluster Connection
+      #   run: | 
+      #     echo "cluster_secret: $cluster_secret"
+      #     kubectl config set-credentials $cluster_name --token=$cluster_secret
+      #     kubectl config set-cluster $cluster_name --server=$PREPROD_API
+      #     kubectl config set-context $cluster_name --user=$cluster_name --cluster=$cluster_name
+      #     kubectl config use-context $cluster_name
+      #     kubectl get pods --namespace $NAMESPACE
+      #     kubectl get deployments --namespace $NAMESPACE
+      #     #kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongo --eval "db.adminCommand('ping')"
       
-      - name: Backup MongoDB
-        run: |
-          echo "Removing old backup files"
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup.tar.gz
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongodump --uri="mongodb://localhost:27017" --out="/tmp/backup"
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- ls -la /tmp/backup
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- tar -czvf /tmp/backup.tar.gz /tmp/backup
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- ls -la /tmp/backup.tar.gz
-          kubectl cp --namespace $NAMESPACE $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
-          ls -la /tmp/backup.tar.gz
-          echo "Removing temporary files"
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup.tar.gz
-          echo "Temporary files removed"
-          echo "Backup completed"
-
-
       # - name: Backup MongoDB
       #   run: |
-      #     kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongodump --uri="mongodb://localhost:27017/unifai" --out="/tmp/backup"
-      #     tar -czvf /tmp/backup.tar.gz /tmp/backup
-      #     #aws s3 cp /tmp/backup.tar.gz s3://unifai-backup/backup.tar.gz
-      #     echo "Backup completed"
+      #     echo "Removing old backup files"
+      #     kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup
+      #     kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup.tar.gz
+      #     kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongodump --uri="mongodb://localhost:27017" --out="/tmp/backup"
+      #     kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- ls -la /tmp/backup
+      #     kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- tar -czvf /tmp/backup.tar.gz /tmp/backup
+      #     kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- ls -la /tmp/backup.tar.gz
+      #     kubectl cp --namespace $NAMESPACE $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
+      #     ls -la /tmp/backup.tar.gz
       #     echo "Removing temporary files"
-      #     rm -rf /tmp/backup
-      #     rm /tmp/backup.tar.gz
+      #     kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup
+      #     kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup.tar.gz
       #     echo "Temporary files removed"
       #     echo "Backup completed"
+
+      - name: Backup Qdrant
+        run: |
+          echo "Backing up Qdrant"
+          python scripts/qdrant_backup.py
+          echo "Qdrant backup completed"
