@@ -73,7 +73,6 @@ def check_connection(node_url: str) -> bool:
             return True
         else:
             return False
-        return True
     except Exception as e:
         print(f"Error checking connection to {node_url}: {e}")
         return False
