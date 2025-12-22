@@ -8,7 +8,7 @@ env:
   MONGO_POD: "mongodb-0"
   username: "tag-ai"
   cluster_name: "nemer"
-  cluster_secret: ${{ secrets.PP_CLUSTER }}
+  
 
 on:
   schedule:
@@ -24,6 +24,8 @@ jobs:
     steps:
 
       - name: Check MongoDB Connection
+        env:
+          cluster_secret: ${{ secrets.PP_CLUSTER }}
         run: | 
           echo "cluster_secret: $cluster_secret"
           kubectl config set-credentials $cluster_name --token=$cluster_secret
