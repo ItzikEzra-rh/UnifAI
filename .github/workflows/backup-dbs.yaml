@@ -4,7 +4,6 @@ env:
   PREPROD_API: "https://api.stc-ai-e1-pp.imap.p1.openshiftapps.com:6443"
   PROD_API: "https://api.stc-ai-e1-prod.rtc9.p1.openshiftapps.com:6443"
   MONGO_URI: "mongodb://localhost:27017/unifai"
-  #NAMESPACE: k8sgpt-operator-system
   NAMESPACE: tag-ai--pipeline
   MONGO_POD: "mongodb-0"
   username: "tag-ai"
@@ -43,6 +42,19 @@ jobs:
           kubectl get deployments --namespace $NAMESPACE
           #kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongo --eval "db.adminCommand('ping')"
       
+      - name: Backup MongoDB
+        run: |
+          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongodump --uri="mongodb://localhost:27017/unifai" --out="/tmp/backup"
+          tar -czvf /tmp/backup.tar.gz /tmp/backup
+          kubectl cp $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
+          echo "Backup completed"
+          echo "Removing temporary files"
+          rm -rf /tmp/backup
+          rm /tmp/backup.tar.gz
+          echo "Temporary files removed"
+          echo "Backup completed"
+
+
       # - name: Backup MongoDB
       #   run: |
       #     kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongodump --uri="mongodb://localhost:27017/unifai" --out="/tmp/backup"
