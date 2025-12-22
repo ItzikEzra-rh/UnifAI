@@ -44,7 +44,7 @@ jobs:
       
       - name: Backup MongoDB
         run: |
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongodump --uri="mongodb://localhost:27017/unifai" --out="/tmp/backup"
+          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongodump --uri="mongodb://localhost:27017" --out="/tmp/backup"
           kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- ls -la /tmp/backup
           kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- tar -czvf /tmp/backup.tar.gz /tmp/backup
           kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- ls -la /tmp/backup.tar.gz
