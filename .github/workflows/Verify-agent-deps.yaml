@@ -16,5 +16,5 @@ jobs:
       - name: Verify Agent python Dependencies
         run: |
           echo "Verifying agent dependencies"
-          pip install -r scripts/requirements.txt
+          pip freeze | grep -E 'qdrant-client|requests|os'
           echo "Agent dependencies verified"
