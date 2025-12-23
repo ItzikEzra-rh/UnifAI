@@ -3,20 +3,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StreamingDataProvider } from "@/components/agentic-ai/StreamingDataContext";
 import { FlowObject } from "./graphs/interfaces";
 import AvailableFlows from "./AvailableFlows";
+import { BlueprintValidationResult } from "@/types/validation";
 
 // Create a ReactFlow provider wrapper
 import { ReactFlowProvider } from "reactflow";
 
-
-
 type AgentFlowGraphProps = {
   selectedFlow: FlowObject | null;
   setSelectedFlow: (flow: FlowObject | null) => void;
+  onValidationChange?: (isValid: boolean, validationResult: BlueprintValidationResult | null, isValidating: boolean) => void;
 };
 
 export default function AgentFlowGraph({
   selectedFlow,
   setSelectedFlow,
+  onValidationChange,
 }: AgentFlowGraphProps): React.ReactElement {
   
   const handleFlowSelect = (flow: FlowObject | null): void => {
@@ -44,6 +45,7 @@ export default function AgentFlowGraph({
               selectedFlow={selectedFlow}
               onFlowSelect={handleFlowSelect}
               onFlowDelete={handleFlowDelete}
+              onValidationChange={onValidationChange}
               showActiveStatus={true}
               showDeleteButton={true}
               useResolvedEndpoint={true}

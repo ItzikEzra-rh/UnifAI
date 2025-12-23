@@ -26,6 +26,7 @@ export default function UserWorkspace() {
     elementSchema,
     elementActions,
     isLoading,
+    isLoadingInstances,
     fetchElementInstances,
     fetchElementSchema,
     fetchElementActions,
@@ -164,7 +165,7 @@ export default function UserWorkspace() {
                     <ElementGrid
                       elements={elementInstances}
                       elementType={selectedElementType}
-                      isLoading={isLoading}
+                      isLoading={isLoadingInstances}
                       onEditElement={handleEditElement}
                       onDeleteElement={handleDeleteElement}
                       elementSchema={elementSchema}

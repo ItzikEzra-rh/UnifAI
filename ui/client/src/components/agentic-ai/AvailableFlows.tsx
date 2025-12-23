@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { flushSync } from "react-dom";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -14,6 +15,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useShared } from "@/contexts/SharedContext";
+import { useToast } from "@/hooks/use-toast";
 import axios from '../../http/axiosAgentConfig'
 import { Button } from "@/components/ui/button";
 import {
@@ -27,7 +29,8 @@ import {
 import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
-import { fetchBlueprints, fetchResolvedBlueprints, fetchActiveSessions } from "@/api/agentic";
+import { fetchBlueprints, fetchResolvedBlueprints, fetchActiveSessions, validateBlueprint } from "@/api/agentic";
+import { BlueprintValidationResult, ElementValidationResult } from "@/types/validation";
 
 // Helper function to convert GraphFlow to FlowObject
 const convertGraphFlowToFlowObject = (
@@ -70,6 +73,7 @@ export interface AvailableFlowsProps {
   selectedFlow: FlowObject | null;
   onFlowSelect: (flow: FlowObject | null) => void;
   onFlowDelete?: (flow: FlowObject) => void;
+  onValidationChange?: (isValid: boolean, validationResult: BlueprintValidationResult | null, isValidating: boolean) => void;
   showActiveStatus?: boolean;
   showDeleteButton?: boolean;
   className?: string;
@@ -88,6 +92,7 @@ export default function AvailableFlows({
   selectedFlow,
   onFlowSelect,
   onFlowDelete,
+  onValidationChange,
   showActiveStatus = false,
   showDeleteButton = false,
   className = "",
@@ -108,9 +113,14 @@ export default function AvailableFlows({
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [flowToDelete, setFlowToDelete] = useState<FlowObject | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  
+  // Validation state
+  const [isValidating, setIsValidating] = useState<boolean>(false);
+  const [validationResults, setValidationResults] = useState<Record<string, ElementValidationResult>>({});
 
   const { user } = useAuth();
   const { openShareForItem } = useShared();
+  const { toast } = useToast();
 
   // Fetch available blueprints from API
   const fetchAvailableFlows = async (): Promise<void> => {
@@ -167,6 +177,58 @@ export default function AvailableFlows({
       setIsLoading(false);
     });
   }, [user, useResolvedEndpoint]);
+
+  // Validate a blueprint and update state
+  const validateSelectedBlueprint = useCallback(async (blueprintId: string) => {
+    // Use flushSync to ensure the "validating" state is rendered before the API call
+    flushSync(() => {
+      setIsValidating(true);
+      setValidationResults({});
+    });
+    
+    // Notify parent that validation is starting (also flush to ensure button updates)
+    onValidationChange?.(true, null, true);
+    
+    try {
+      const result = await validateBlueprint({ blueprintId });
+      setValidationResults(result.element_results || {});
+      
+      // Notify parent component of validation result (validation complete)
+      onValidationChange?.(result.is_valid, result, false);
+      
+      // Show toast if validation failed
+      if (!result.is_valid) {
+        const errorCount = Object.values(result.element_results).filter(r => !r.is_valid).length;
+        toast({
+          title: "Workflow Validation Failed",
+          description: `${errorCount} element${errorCount !== 1 ? 's' : ''} failed validation. Click on node indicators for details.`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error validating blueprint:", error);
+      // Notify parent that validation failed (validation complete with error)
+      onValidationChange?.(false, null, false);
+      toast({
+        title: "Validation Error",
+        description: "Failed to validate the workflow. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsValidating(false);
+    }
+  }, [onValidationChange, toast]);
+
+  // Trigger validation when selected flow changes
+  useEffect(() => {
+    if (selectedFlow?.id) {
+      validateSelectedBlueprint(selectedFlow.id);
+    } else {
+      // Clear validation state when no flow is selected
+      setValidationResults({});
+      onValidationChange?.(true, null, false);
+    }
+  }, [selectedFlow?.id, validateSelectedBlueprint, onValidationChange]);
 
   const handleFlowSelect = (flow: FlowObject): void => {
     onFlowSelect(flow);
@@ -330,6 +392,8 @@ export default function AvailableFlows({
             <ReactFlowGraph
               blueprintId={selectedFlow.id}
               height="100%"
+              validationResults={validationResults}
+              isValidating={isValidating}
               {...graphProps}
             />
           ) : (
