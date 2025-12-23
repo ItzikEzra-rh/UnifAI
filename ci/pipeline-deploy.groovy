@@ -119,7 +119,7 @@ def updateValuesYaml(String filePath , String version) {
 def updateDeployerEnv() {
     echo "🔄 updating deployer env with new values"
     if(params.deploy_location == 'STAGING') {
-        def envFile = new File('.env')
+        def envFile = new File('./genie-cred-data/.env')
         def key = "umami_website_name"
         def newValue = "unifai-staging"
         envFile.text = envFile.text.replaceFirst(/(?m)^${key}=.*/, "${key}=${newValue}")        
