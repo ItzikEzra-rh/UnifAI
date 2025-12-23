@@ -39,13 +39,6 @@ class McpProviderValidator(BaseElementValidator):
         
         Synchronous method - runs async checks internally using AsyncBridge.
         Returns ValidatorReport (service adds metadata).
-        
-        Note: We catch RuntimeError here (not inside async code) because the MCP
-        library's streamablehttp_client has a bug that corrupts anyio's cancel
-        scope stack during connection failures. This causes a RuntimeError to be
-        raised during the AsyncBridge's portal cleanup - AFTER the async code
-        has finished executing. The error cannot be caught inside the async
-        function; it must be caught here at the sync boundary.
         """
         messages: List[ValidationMessage] = []
 
@@ -59,7 +52,7 @@ class McpProviderValidator(BaseElementValidator):
                 field="sse_endpoint",
             ))
         except RuntimeError as e:
-            # MCP library cancel scope corruption on connection failure
+            # MCP library cancel scope bug - handle here only
             messages.append(self._error(
                 ValidationCode.ENDPOINT_UNREACHABLE.value,
                 f"Connection failed: {e}",
@@ -98,6 +91,9 @@ class McpProviderValidator(BaseElementValidator):
                 f"Connection timed out after {context.timeout_seconds}s",
                 field="sse_endpoint",
             ))
+        except RuntimeError:
+            # Let RuntimeError propagate to validate() for handling
+            raise
         except Exception as e:
             messages.append(self._error(
                 ValidationCode.ENDPOINT_UNREACHABLE.value,
