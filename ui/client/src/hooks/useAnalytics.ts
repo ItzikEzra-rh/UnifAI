@@ -1,13 +1,13 @@
 import { useEffect } from 'react';
 import { api } from '@/http/queryClient';
-
+import { User } from '@/contexts/AuthContext';
 /**
  * Custom hook to load Umami analytics script after authentication
  * This ensures analytics only loads for authenticated users
  */
-export const useAnalytics = (isAuthenticated: boolean) => {
+export const useAnalytics = (isAuthenticated: boolean, user: User | null) => {
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !user) return;
 
     let scriptElement: HTMLScriptElement | null = null;
 
@@ -22,6 +22,17 @@ export const useAnalytics = (isAuthenticated: boolean) => {
           scriptElement.defer = true;
           scriptElement.setAttribute('data-website-id', config.website_id);
           scriptElement.src = `${config.umami_url}/script.js`;
+
+          // Identify user after script loads
+          scriptElement.onload = () => {
+            window.umami?.identify({
+              userId: user.sub,
+              username: user.username,
+              email: user.email,
+              name: user.name
+            });
+          };
+
           document.head.appendChild(scriptElement);
         }
       } catch (error) {
@@ -36,6 +47,7 @@ export const useAnalytics = (isAuthenticated: boolean) => {
       if (scriptElement && document.head.contains(scriptElement)) {
         document.head.removeChild(scriptElement);
       }
+      window.umami?.identify(null);
     };
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user]);
 };

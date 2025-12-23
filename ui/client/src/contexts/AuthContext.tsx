@@ -1,7 +1,6 @@
 import { api } from '@/http/authClient';
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { useAnalytics } from '@/hooks/useAnalytics';
-import { Window } from '@/types/analytics';
 
 export interface User {
   username: string;
@@ -32,7 +31,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isLoading, setIsLoading] = useState(true);
 
   // Load analytics after authentication
-  useAnalytics(isAuthenticated);
+  useAnalytics(isAuthenticated, user);
 
   // Check authentication status
   const checkAuthStatus = async () => {
@@ -68,7 +67,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } finally {
       setUser(null);
       setIsAuthenticated(false);
-      window.umami?.identify(null); // Clear user identity in Umami
       // Redirect to login
       login();
     }
@@ -94,19 +92,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       checkAuthStatus();
     }
   }, []);
-
-    // A new useEffect that watches for user changes
-    useEffect(() => {
-      if (user && isAuthenticated) {
-        // User just logged in or page loaded with authenticated user
-        window.umami?.identify({
-          userId: user.sub,
-          username: user.username,
-          email: user.email,
-          name: user.name
-        });
-      }
-    }, [user, isAuthenticated]);
   
   // Set up token refresh and expiration checking
   useEffect(() => {
