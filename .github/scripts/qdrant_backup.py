@@ -4,9 +4,9 @@ import requests
 import os
 
 #constants to Qdrant cluster connection
-QDRANT_MAIN_URL = "http://qdrant-route-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com/"
+QDRANT_MAIN_URL = "http://qdrant-route-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
 QDRANT_NODES = (
-    "http://qdrant-route-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com/"
+    "http://qdrant-route-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
 )
 QDRANT_API_KEY = ""
 COLLECTION_NAME = "data_source_data"
@@ -66,7 +66,8 @@ def check_connection(node_url: str) -> bool:
     Checks if the connection to the given node URL is successful
     '''
     try:
-        client = QdrantClient(node_url)
+        client = QdrantClient(url=node_url, prefer_grpc=False, timeout=30.0)
+        print('created client')
         collections = client.get_collections()
         if collections:
             print(f"Collections: {collections}")
