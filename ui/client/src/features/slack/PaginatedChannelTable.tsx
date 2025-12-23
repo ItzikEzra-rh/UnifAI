@@ -8,7 +8,6 @@ import { DataTable } from "@/components/shared/DataTable";
 import { getColumns } from "./ChannelTable";
 import { UmamiTrack } from '@/components/ui/umamitrack';
 import { UmamiEvents } from '@/config/umamiEvents';
-import { useAuth } from "@/contexts/AuthContext";
 
 export interface PaginatedChannelTableProps {
   allChannels: EmbedChannel[];
@@ -32,7 +31,6 @@ export function PaginatedChannelTable({
   activeEmbeddingIds = [],
 }: PaginatedChannelTableProps) {
   const [, navigate] = useLocation();
-  const { user } = useAuth();
   if (isLoading) {
     return (
       <Card className="gradient-border shadow-2xl overflow-hidden">

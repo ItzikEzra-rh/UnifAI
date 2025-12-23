@@ -11,7 +11,6 @@ import { ElementForm } from '../components/agentic-ai/workspace/ElementForm';
 import { ElementType, ElementInstance } from '../types/workspace';
 import { UmamiTrack } from '@/components/ui/umamitrack';
 import { UmamiEvents } from '@/config/umamiEvents';
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function UserWorkspace() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -22,7 +21,6 @@ export default function UserWorkspace() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [elementToDelete, setElementToDelete] = useState<ElementInstance | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const { user } = useAuth();
   const {
     categories,
     elementInstances,

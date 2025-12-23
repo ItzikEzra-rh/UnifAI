@@ -15,7 +15,6 @@ import {
   ElementInstance,
 } from "../../../types/workspace";
 import { FieldRenderer } from "./FieldRenderer";
-import { useAuth } from "@/contexts/AuthContext";
 import { UmamiTrack } from '@/components/ui/umamitrack';
 import { UmamiEvents } from '@/config/umamiEvents';
 
@@ -66,7 +65,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     handleInputChange(fieldName, multiSelect || typeof results === 'object' ? results : results.length > 0 ? results[0] : "");
   };
 
-  const { user } = useAuth();
 
   // Initialize form data
   useEffect(() => {

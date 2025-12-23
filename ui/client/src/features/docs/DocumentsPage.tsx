@@ -14,7 +14,6 @@ import { DocumentGrid } from "./DocumentGrid";
 import { deleteDoc, fetchDocuments } from "@/api/docs";
 import { UmamiTrack } from '@/components/ui/umamitrack';
 import { UmamiEvents } from '@/config/umamiEvents';
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function Documents() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -26,7 +25,6 @@ export default function Documents() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const { currentPage, setPage, resetPage, itemsPerPage, } = usePaginationStore();
-  const { user } = useAuth();
   const { data: documents = [], isLoading, isError, error, refetch } = useQuery<Document[]>({
     queryKey: ['documents'],
     queryFn: fetchDocuments,

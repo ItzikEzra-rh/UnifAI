@@ -23,7 +23,6 @@ import { StreamLogDisplay } from "./StreamLogDisplay";
 import { useToast } from "@/hooks/use-toast";
 import { UmamiTrack } from '@/components/ui/umamitrack';
 import { UmamiEvents } from '@/config/umamiEvents';
-import { useAuth } from "@/contexts/AuthContext";
 
 
 // Backend message format
@@ -65,7 +64,6 @@ export default function ChatInterface({
   const streamLogDataRef = useRef<Record<string, StreamLogEntry[]>>({});
   const { nodeListRef, clearStream } = useStreamingData();
   const { toast } = useToast();
-  const { user } = useAuth();
 
   // Transform backend messages to frontend format (streamLogs/workPlans, managed separately)
   const transformBackendMessagesToFrontend = useCallback(

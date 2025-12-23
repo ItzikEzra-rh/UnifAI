@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { useAuth } from "@/contexts/AuthContext"; 
 import { UmamiTrack } from '@/components/ui/umamitrack';
 import { UmamiEvents } from '@/config/umamiEvents';
 
@@ -45,7 +44,6 @@ const SaveBlueprintModal: React.FC<SaveBlueprintModalProps> = ({
   };
 
   const isFormValid = name.trim().length > 0;
-  const { user } = useAuth();
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
