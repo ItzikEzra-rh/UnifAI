@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,6 +18,7 @@ import { useAgenticAI } from '@/contexts/AgenticAIContext';
 import { ElementInstance, ElementType, ElementSchema } from '../../../types/workspace';
 import { ElementData } from './ElementData';
 import { formatConfigValue } from '../../../utils/maskSecretFields';
+import { getDisplayValueFromItem } from '../../../utils/displayUtils';
 
 interface ElementGridProps {
   elements: ElementInstance[];
@@ -153,8 +153,8 @@ export const ElementGrid: React.FC<ElementGridProps> = ({
                         const fieldSchema = elementSchema?.config_schema?.properties?.[key];
                         const rawValue = element.config[key];
                         const displayValue = Array.isArray(rawValue)
-                          ? rawValue.map((item: any) => getResourceName(item)).join(', ')
-                          : getResourceName(rawValue);
+                          ? rawValue.map((item: any) => getDisplayValueFromItem(item, getResourceName)).join(', ')
+                          : getDisplayValueFromItem(rawValue, getResourceName);
                         return (
                           <div key={key} className="flex justify-between">
                             <span className="truncate">{key}:</span>

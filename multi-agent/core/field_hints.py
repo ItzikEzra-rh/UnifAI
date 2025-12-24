@@ -33,9 +33,9 @@ class ActionHint(BaseModel):
         None,
         description="Target field in action output for population hints"
     )
-    label_field: Optional[str] = Field(
+    display_field: Optional[str] = Field(
         None,
-        description="Dot-notation path to display label (e.g., 'documents.name')"
+        description="Dot-notation path to display value (e.g., 'name' or 'name.x'). UI stores full object and uses this to display."
     )
     value_field: Optional[str] = Field(
         None,
