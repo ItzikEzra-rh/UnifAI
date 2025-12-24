@@ -2,23 +2,23 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Popover, 
-  PopoverContent, 
+  Popover,
+  PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
-  Command, 
-  CommandEmpty, 
-  CommandGroup, 
-  CommandInput, 
-  CommandItem, 
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
   CommandList,
 } from "@/components/ui/command";
 import { Loader2, RefreshCw, ChevronDown, Check } from 'lucide-react';
@@ -62,7 +62,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [shouldKeepOpen, setShouldKeepOpen] = useState(false);
   const [hasAutoTriggered, setHasAutoTriggered] = useState(false);
-  const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
+  const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Track if options were ever loaded
   
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
@@ -202,8 +202,8 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
 
     return () => {
       if (searchTimeoutRef.current) {
-      clearTimeout(searchTimeoutRef.current);
-    }
+        clearTimeout(searchTimeoutRef.current);
+      }
     };
   }, [searchTerm, supportsSearch]);
 
@@ -277,9 +277,10 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
       
       if (populateHint.selection_type === 'manual' || populateHint.multi_select) {
         if (isLoadMore) {
+          // Append to existing options
           setPopulatedOptions(prev => [...prev, ...normalizedResults]);
         } else if (!searchRegex) {
-          // Initial population: set options and auto-select all
+          // Initial fetch (not search) - replace options and mark as loaded
           setPopulatedOptions(normalizedResults);
           if (normalizedResults.length > 0) {
             setHasLoadedOnce(true);
@@ -288,7 +289,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
             onPopulateResult(fieldName, normalizedResults.map(opt => opt.originalObject), populateHint.multi_select || false);
           }
         } else {
-          // Replace options (search result)
+          // Search: update with results (even if empty - will show "No results found")
           setPopulatedOptions(normalizedResults);
         }
       }
@@ -560,24 +561,25 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         )}
       </div>
 
-      {/* Selection Dropdown */}
+      {/* Selection Dropdown (show if we have ever loaded options - keeps visible during search) */}
       {(hasLoadedOnce || populatedOptions.length > 0) && (
         <div className="space-y-2">
+          {/* Use searchable dropdown if search is supported, otherwise use standard dropdown */}
           {supportsSearch ? renderSearchableDropdown() : renderStandardDropdown()}
 
-          {/* Selected items as removable badges - show names */}
+          {/* Show selected items (for multi-select or single select) */}
           {!isAllSelected && selectedValues.length > 0 && (
             <div className="flex flex-wrap gap-2">
-              {selectedValues.map((value: string, index: number) => (
+              {selectedValues.map((selectedValue: string, index: number) => (
                 <Badge
                   key={index}
                   variant="secondary"
                   className="flex items-center gap-1 bg-gray-700 text-white border-gray-600 hover:bg-gray-600"
                 >
-                  {getDisplayLabel(value)}
+                  {getDisplayLabel(selectedValue)}
                   <button
                     type="button"
-                    onClick={() => removeSelectedValue(value)}
+                    onClick={() => removeSelectedValue(selectedValue)}
                     className="ml-1 text-xs text-gray-300 hover:text-red-400 transition-colors"
                   >
                     ×
@@ -587,6 +589,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
             </div>
           )}
 
+          {/* Show total count if available */}
           {supportsPagination && pagination.total !== null && (
             <p className="text-xs text-gray-400">
               Showing {populatedOptions.length} of {pagination.total} {populateHint.field_mapping || 'options'}
