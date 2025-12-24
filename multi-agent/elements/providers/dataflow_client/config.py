@@ -13,7 +13,8 @@ class DataflowProviderConfig(ProviderBaseConfig):
     type: Literal[Identifier.TYPE] = Identifier.TYPE
 
     base_url: HttpUrl = Field(
-        default="http://unifai-dataflow-server:13456",
+        default="http://10.46.253.0:13457",
+        # default="http://unifai-dataflow-server:13456",
         description="Base URL of the Dataflow service",
         json_schema_extra=ActionHint(
             action_uid="dataflow.validate_connection",
