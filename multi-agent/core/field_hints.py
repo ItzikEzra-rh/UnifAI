@@ -25,6 +25,10 @@ class ActionHint(BaseModel):
         ..., 
         description="Name of the action to invoke"
     )
+    display_name: Optional[str] = Field(
+        None,
+        description="Display name for the field in the UI"
+    )
     hint_type: HintType = Field(
         ..., 
         description="Type of hint (populate, validate)"

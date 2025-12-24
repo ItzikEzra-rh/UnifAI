@@ -435,10 +435,17 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
       return getItemLabel(value);
     };
 
+    const getDisplayName = (): string => {
+      if (populateHint.display_name) {
+        return populateHint.display_name;
+      }
+      return fieldName;
+    }
+
     return (
       <div key={fieldName} className="space-y-2">
         <Label htmlFor={fieldName}>
-          {fieldName} {isRequired && <span className="text-red-400">*</span>}
+          {getDisplayName()} {isRequired && <span className="text-red-400">*</span>}
           {populateHint && (
             <Badge variant="outline" className="ml-2 text-xs">
               populate

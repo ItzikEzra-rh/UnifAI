@@ -36,6 +36,7 @@ class DocsDataflowRetrieverConfig(BaseRetrieverConfig):
         description="Filter results to specific documents",
         json_schema_extra=ActionHint(
             action_uid="dataflow.get_available_docs",
+            display_name="documents",
             hint_type=HintType.POPULATE,
             selection_type=SelectionType.MANUAL,
             field_mapping="documents",
