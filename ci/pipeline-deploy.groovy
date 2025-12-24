@@ -122,7 +122,7 @@ def updateDeployerEnv() {
         def file_path = "./genie-cred-data/.env"
         def key = "umami_website_name"
         def newValue = "unifai-staging"
-        def content = readFile(filePath)
+        def content = readFile(file_path)
         def newContent = content.replaceFirst(/(?m)^${key}=.*/, "${key}=${newValue}")
         writeFile(file: file_path, text: newContent)     
     }
