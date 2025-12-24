@@ -16,6 +16,8 @@ export enum UmamiEvents {
     SHARED_SYSTEM_BUTTON = "shared-system-button",
     NOTIFICATIONS_BUTTON = "notifications-button",
     UPLOAD_DOCUMENT_BUTTON = "upload-document-button",
+    VIEW_DOCUMENT_LIST_BUTTON = "view-document-list-button",
+    VIEW_DOCUMENT_GRID_BUTTON = "view-document-grid-button",
     SLACK_DELETE_SOURCE_BUTTON = "slack-deletesource-button",
     SLACK_ADD_SOURCE_BUTTON = "slack-addsource-button"
 }
