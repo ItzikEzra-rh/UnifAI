@@ -119,6 +119,9 @@ def updateValuesYaml(String filePath , String version) {
 def updateDeployerEnv() {
     echo "🔄 updating deployer env with new values"
     if(params.deploy_location == 'STAGING') {
+        sh("ls -la")
+        sh("ls -la ./genie-cred-data")
+        sh("ls -la ./genie-cred-data/.env")
         def envFile = new File('./genie-cred-data/.env')
         def key = "umami_website_name"
         def newValue = "unifai-staging"
