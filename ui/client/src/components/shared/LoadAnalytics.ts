@@ -5,13 +5,13 @@ import { User } from '@/contexts/AuthContext';
  * Custom hook to load Umami analytics script after authentication
  * This ensures analytics only loads for authenticated users
  */
-export const useAnalytics = (isAuthenticated: boolean, user: User | null) => {
+export const loadAnalytics = (isAuthenticated: boolean, user: User | null) => {
   useEffect(() => {
     if (!isAuthenticated || !user) return;
 
     let scriptElement: HTMLScriptElement | null = null;
 
-    const loadAnalytics = async () => {
+    const initAnalytics = async () => {
       try {
         const response = await api.get('/settings/get.umami.settings');
         const config = response.data;
@@ -40,7 +40,7 @@ export const useAnalytics = (isAuthenticated: boolean, user: User | null) => {
       }
     };
 
-    loadAnalytics();
+    initAnalytics();
 
     // Cleanup function to remove script if component unmounts
     return () => {
