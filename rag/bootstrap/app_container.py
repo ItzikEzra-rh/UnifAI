@@ -95,6 +95,35 @@ def document_processor():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# CONFIG MANAGERS (Infrastructure layer - configuration adapters)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@lru_cache(maxsize=1)
+def slack_config_manager():
+    """Slack configuration manager."""
+    from infrastructure.config.slack_config_manager import SlackConfigManager
+    return SlackConfigManager()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CONNECTORS (Infrastructure layer - data source adapters)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@lru_cache(maxsize=None)
+def slack_connector(project_id: str):
+    """Slack connector for a specific project."""
+    from infrastructure.connector.slack_connector import SlackConnector
+    return SlackConnector(slack_config_manager(), project_id=project_id)
+
+
+@lru_cache(maxsize=1)
+def document_connector():
+    """Document connector for PDF and other document formats."""
+    from infrastructure.connector.document_connector import DocumentConnector
+    return DocumentConnector()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # CHUNKERS (Infrastructure layer - content splitting strategies)
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -105,6 +134,7 @@ def slack_chunker():
     return SlackChunkerStrategy(
         max_tokens_per_chunk=500,
         overlap_tokens=50,
+        time_window_seconds=300,
     )
 
 
@@ -139,6 +169,17 @@ def monitoring_service():
     )
 
 
+@lru_cache(maxsize=1)
+def data_source_service():
+    """Data source application service."""
+    from application.data_source_service import DataSourceService
+    return DataSourceService(
+        source_repo=data_source_repository(),
+        pipeline_repo=pipeline_repository(),
+        vector_repo=vector_repository("default"),
+    )
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # EMBEDDING & VECTOR COMPONENTS
 # ══════════════════════════════════════════════════════════════════════════════
@@ -148,6 +189,71 @@ def embedding_generator():
     """Shared embedding generator (sentence transformer)."""
     from bootstrap.factories import EmbeddingGeneratorFactory
     return EmbeddingGeneratorFactory.create({"type": "sentence_transformer"})
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# PIPELINE HANDLERS (Application layer - source-specific orchestration)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@lru_cache(maxsize=1)
+def slack_pipeline_handler():
+    """Slack pipeline handler with injected dependencies."""
+    from application.pipeline.slack_handler import SlackPipelineHandler
+    return SlackPipelineHandler(
+        connector=slack_connector("default"),
+        processor=slack_processor(),
+        chunker=slack_chunker(),
+        embedder=embedding_generator(),
+    )
+
+
+@lru_cache(maxsize=1)
+def document_pipeline_handler():
+    """Document pipeline handler with injected dependencies."""
+    from application.pipeline.document_handler import DocumentPipelineHandler
+    return DocumentPipelineHandler(
+        connector=document_connector(),
+        processor=document_processor(),
+        chunker=pdf_chunker(),
+        embedder=embedding_generator(),
+    )
+
+
+def get_pipeline_handler(source_type: str):
+    """
+    Resolve the appropriate pipeline handler for a source type.
+    
+    Args:
+        source_type: Source type string (e.g., 'SLACK', 'DOCUMENT')
+        
+    Returns:
+        SourcePipelinePort implementation for the given source type
+        
+    Raises:
+        ValueError: If source type is not supported
+    """
+    handlers = {
+        "SLACK": slack_pipeline_handler,
+        "DOCUMENT": document_pipeline_handler,
+    }
+    
+    factory = handlers.get(source_type.upper())
+    if not factory:
+        raise ValueError(f"Unsupported source type: {source_type}")
+    
+    return factory()
+
+
+@lru_cache(maxsize=1)
+def pipeline_executor():
+    """Pipeline executor use case with all dependencies."""
+    from application.pipeline.executor import PipelineExecutor
+    return PipelineExecutor(
+        pipeline_service=pipeline_service(),
+        monitoring_service=monitoring_service(),
+        data_source_service=data_source_service(),
+        vector_repository=vector_repository,
+    )
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -174,12 +280,22 @@ def clear_all_caches():
     # Processors
     slack_processor.cache_clear()
     document_processor.cache_clear()
+    # Config Managers
+    slack_config_manager.cache_clear()
+    # Connectors
+    slack_connector.cache_clear()
+    document_connector.cache_clear()
     # Chunkers
     slack_chunker.cache_clear()
     pdf_chunker.cache_clear()
     # Services
     pipeline_service.cache_clear()
     monitoring_service.cache_clear()
+    data_source_service.cache_clear()
     # Embedding
     embedding_generator.cache_clear()
+    # Pipeline Handlers & Executor
+    slack_pipeline_handler.cache_clear()
+    document_pipeline_handler.cache_clear()
+    pipeline_executor.cache_clear()
 

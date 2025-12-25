@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
-from infrastructure.config.configuration_manager import ConfigurationManager
+from domain.connector.configuration import ConfigurationManager
 
 class DataConnector(ABC):
     """
