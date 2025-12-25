@@ -66,7 +66,7 @@ def check_connection(node_url: str) -> bool:
     Checks if the connection to the given node URL is successful
     '''
     try:
-        client = QdrantClient(url=node_url, prefer_grpc=False, timeout=30.0)
+        client = QdrantClient(url=node_url, port=80, prefer_grpc=False, timeout=30.0)
         print('created client')
         collections = client.get_collections()
         if collections:
