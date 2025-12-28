@@ -27,9 +27,14 @@ def create_snapshots(node_urls: list[str], collection_name: str) -> list[str]:
     '''
     snapshot_urls = []
     for node_url in node_urls:
+        print(node_url)
+        print("colllection name: ", collection_name)
         node_client = QdrantClient(node_url)
+        print('created client')
         #node_client = QdrantClient(node_url, api_key=QDRANT_API_KEY)
-        snapshot_info = node_client.create_snapshot(collection_name=collection_name)
+        snapshot_info = node_client.create_snapshot(collection_name=collection_name, wait=True)
+        print('created snapshot')
+        print(snapshot_info)
         snapshot_url = f"{node_url}/collections/test_collection/snapshots/{snapshot_info.name}"
         snapshot_urls.append(snapshot_url)
     return snapshot_urls
@@ -61,19 +66,19 @@ def download_snapshots(snapshot_urls: list[str]) -> None:
 
         local_snapshot_paths.append(local_snapshot_path)
 
-def check_connection(node_url: str) -> bool:
+def  get_collections(node_url: str) -> bool:
     '''
     Checks if the connection to the given node URL is successful
     '''
     try:
         client = QdrantClient(url=node_url, port=80, prefer_grpc=False, timeout=30.0)
         print('created client')
-        collections = client.get_collections()
+        collections = client.get_collections().collections
+        print(collections)
         if collections:
-            print(f"Collections: {collections}")
-            return True
-        else:
-            return False
+            return collections
+        # else:
+        #     return False
     except Exception as e:
         print(f"Error checking connection to {node_url}: {e}")
         return False
@@ -82,11 +87,18 @@ def main():
     '''
     Main function to run the backup
     '''
-    if not check_connection(QDRANT_MAIN_URL):
-        print(f"Error checking connection to {QDRANT_MAIN_URL}")
+    collections = get_collections(QDRANT_MAIN_URL)
+    #print(collections)
+    if not collections:
+        print(f"Error getting collections from {QDRANT_MAIN_URL}")
         return
-    #snapshot_urls = create_snapshots(QDRANT_NODES, COLLECTION_NAME)
-    #download_snapshots(snapshot_urls)
+    snapshot_urls = []
+    for collection in collections:
+        print(collection)
+        snapshot_url = create_snapshots([QDRANT_MAIN_URL], collection.name)
+        snapshot_urls.append(snapshot_url)
+    print(snapshot_urls)
+    # download_snapshots(snapshot_urls)
 
 if __name__ == "__main__":
     main()
