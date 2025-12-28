@@ -8,7 +8,6 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
-import { useAgenticAI } from "@/contexts/AgenticAIContext";
 import { Button } from "@/components/ui/button";
 import {
   ElementType,
@@ -45,7 +44,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   const [populateResults, setPopulateResults] = useState<{ [fieldName: string]: string[] | any }>({});
 
   const { fetchResourcesForCategory } = useWorkspaceData();
-  const { revalidateResourceAndAncestors } = useAgenticAI();
 
   const handleValidationChange = (fieldName: string, isValid: boolean) => {
     setFieldValidationStates(prev => ({
@@ -399,7 +397,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
 
     // Check all required fields from combined schema, excluding hidden fields
     const required = elementSchema.config_schema.required || [];
-    return required.every((field) => {
+    const allRequiredFieldsValid = required.every((field) => {
       const fieldSchema = elementSchema.config_schema.properties[field];
       
       // Skip validation for hidden fields
@@ -409,8 +407,9 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       
       const value = formData[field];
       
-      // Check if field has validation hint
-      const hasValidationHint = fieldSchema?.hints?.action?.hint_type === 'validate';
+      // Check if field has validation hint (supports both ActionHint and ApiHint)
+      const hasValidationHint = fieldSchema?.hints?.action?.hint_type === 'validate' || 
+                                fieldSchema?.hints?.api?.hint_type === 'validate';
       
       // Basic value validation
       let hasValue = false;
@@ -429,6 +428,12 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       // Otherwise, just check if value exists
       return hasValue;
     });
+
+    // Additionally, check that no field validation has returned false
+    // This handles both required and non-required fields with validation hints (ActionHint or ApiHint)
+    const noFailedValidations = !Object.values(fieldValidationStates).some(isValid => isValid === false);
+
+    return allRequiredFieldsValid && noFailedValidations;
   };
 
   const handleSave = async () => {
@@ -568,11 +573,6 @@ export const ElementForm: React.FC<ElementFormProps> = ({
 
       // Only close the dialog if save was successful (result is not null/false)
       if (result !== null) {
-        // For edit mode, revalidate the resource and all its ancestors
-        // This ensures parent resources are updated if the edited resource's health status changed
-        if (editingElement?.rid) {
-          revalidateResourceAndAncestors(editingElement.rid);
-        }
         onClose();
       }
     } catch (error) {
@@ -585,8 +585,17 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   const renderFormField = (fieldName: string, fieldSchema: any) => {
     const isRequired = elementSchema.config_schema.required?.includes(fieldName);
     const value = formData[fieldName] || "";
-    const validationHint = fieldSchema.hints?.action?.hint_type === 'validate' ? fieldSchema.hints.action : null;
-    const populateHint = fieldSchema.hints?.action?.hint_type === 'populate' ? fieldSchema.hints.action : null;
+    
+    // Check for validation hints - supports both ActionHint and ApiHint
+    const actionValidationHint = fieldSchema.hints?.action?.hint_type === 'validate' ? fieldSchema.hints.action : null;
+    const apiValidationHint = fieldSchema.hints?.api?.hint_type === 'validate' ? fieldSchema.hints.api : null;
+    const validationHint = actionValidationHint || apiValidationHint;
+
+    // Check for populate hints - supports both ActionHint and ApiHint
+    const actionPopulateHint = fieldSchema.hints?.action?.hint_type === 'populate' ? fieldSchema.hints.action : null;
+    const apiPopulateHint = fieldSchema.hints?.api?.hint_type === 'populate' ? fieldSchema.hints.api : null;
+    const populateHint = actionPopulateHint || apiPopulateHint;
+    
     const isSecret = fieldSchema?.hints?.secret?.hint_type === "secret";
 
     return (

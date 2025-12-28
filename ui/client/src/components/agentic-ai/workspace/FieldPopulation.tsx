@@ -26,6 +26,11 @@ import {
 import { Loader2, RefreshCw, ChevronDown, Check } from 'lucide-react';
 import axios from "../../../http/axiosAgentConfig";
 
+// Type guard to check if hint is an ApiHint (has endpoint) vs ActionHint (has action_uid)
+const isApiHint = (hint: any): boolean => {
+  return hint && typeof hint.endpoint === 'string' && hint.endpoint.length > 0;
+};
+
 // Type for option items - can be string or object with label/value
 interface OptionItem {
   label: string;
@@ -89,12 +94,19 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
   const labelField = populateHint.label_field;
   const valueField = populateHint.value_field;
 
-  // Find the populate action from elementActions
-  const populateAction = elementActions.find(
-    action => action.uid === populateHint.action_uid
-  );
+  // Determine if this is an ApiHint or ActionHint
+  const useApiHint = isApiHint(populateHint);
 
-  if (!populateAction) {
+  // Find the populate action from elementActions (only needed for ActionHint)
+  const populateAction = !useApiHint
+    ? elementActions.find(action => action.uid === populateHint.action_uid)
+    : null;
+
+  // For ActionHint, we need a valid action; for ApiHint, we need an endpoint
+  if (!useApiHint && !populateAction) {
+    return null;
+  }
+  if (useApiHint && !populateHint.endpoint) {
     return null;
   }
 
@@ -197,6 +209,42 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     }
   }, [debouncedSearchTerm]);
 
+  // Perform population via ActionHint (action system)
+  const performActionPopulation = async (inputData: any) => {
+    if (!populateAction) {
+      throw new Error('Populate action not found');
+    }
+
+    const response = await axios.post('/actions/action.execute', {
+      uid: populateAction.uid,
+      inputData
+    });
+
+    return response.data;
+  };
+
+  // Perform population via ApiHint (direct API call)
+  const performApiPopulation = async (requestBody: any) => {
+    // Determine the HTTP method (default to POST)
+    const method = (populateHint.method || 'POST').toUpperCase();
+    const endpoint = populateHint.endpoint;
+
+    let response;
+    if (method === 'GET') {
+      // For GET requests, send data as query params
+      response = await axios.get(endpoint, { params: requestBody });
+    } else {
+      // For POST/PUT/PATCH, send data in body
+      response = await axios({
+        method: method.toLowerCase(),
+        url: endpoint,
+        data: requestBody
+      });
+    }
+
+    return response.data;
+  };
+
   const performPopulation = async (cursor: string | null = null, searchRegex: string | null = null) => {
     const isLoadMore = cursor !== null;
     
@@ -207,19 +255,19 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     }
 
     try {
-      // Prepare input data based on populate action's input schema
+      // Prepare input/request data based on dependencies
       const inputData: any = {};
       
-      // Map dependencies from populate hint or use field name directly
+      // Map dependencies from populate hint
       if (populateHint.dependencies && Object.keys(populateHint.dependencies).length > 0) {
-        Object.entries(populateHint.dependencies).forEach(([configField, actionField]) => {
+        Object.entries(populateHint.dependencies).forEach(([configField, requestField]) => {
           const configValue = formData[configField];
           if (configValue !== undefined && configValue !== null && configValue !== '') {
-            inputData[actionField as string] = configValue;
+            inputData[requestField as string] = configValue;
           }
         });
-      } else {
-        // If no dependencies specified, use form data directly
+      } else if (!useApiHint && populateAction) {
+        // For ActionHint without explicit dependencies, use form data directly
         Object.keys(populateAction.input_schema?.properties || {}).forEach(inputField => {
           if (formData[inputField] !== undefined && formData[inputField] !== null && formData[inputField] !== '') {
             inputData[inputField] = formData[inputField];
@@ -240,14 +288,14 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         inputData.search_regex = searchRegex;
       }
 
-      const response = await axios.post('/actions/action.execute', {
-        uid: populateAction.uid,
-        inputData
-      });
+      // Use the appropriate population method based on hint type
+      const responseData = useApiHint
+        ? await performApiPopulation(inputData)
+        : await performActionPopulation(inputData);
 
       // Extract results based on field_mapping
       const fieldMapping = populateHint.field_mapping || 'results';
-      const rawResults = response.data[fieldMapping] || [];
+      const rawResults = responseData[fieldMapping] || [];
       
     
       if (populateHint.selection_type === 'automatic' && !Array.isArray(rawResults)) {
@@ -276,9 +324,9 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
       // Update pagination state if supported
       if (supportsPagination) {
         setPagination({
-          nextCursor: response.data.nextCursor || response.data.next_cursor || null,
-          hasMore: response.data.hasMore ?? response.data.has_more ?? false,
-          total: response.data.total ?? null
+          nextCursor: responseData.nextCursor || responseData.next_cursor || null,
+          hasMore: responseData.hasMore ?? responseData.has_more ?? false,
+          total: responseData.total ?? null
         });
       }
 
@@ -581,7 +629,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
           ) : (
             <RefreshCw className="h-4 w-4" />
           )}
-          {populateAction.uid}
+          {useApiHint ? `Fetch ${populateHint.field_mapping || 'options'}` : populateAction?.uid}
         </Button>
         <Badge variant="outline" className="text-xs">
           populate
