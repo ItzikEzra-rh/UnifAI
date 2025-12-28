@@ -8,6 +8,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
+import { useAgenticAI } from "@/contexts/AgenticAIContext";
 import { Button } from "@/components/ui/button";
 import {
   ElementType,
@@ -44,6 +45,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   const [populateResults, setPopulateResults] = useState<{ [fieldName: string]: string[] | any }>({});
 
   const { fetchResourcesForCategory } = useWorkspaceData();
+  const { revalidateResourceAndAncestors } = useAgenticAI();
 
   const handleValidationChange = (fieldName: string, isValid: boolean) => {
     setFieldValidationStates(prev => ({
@@ -566,6 +568,11 @@ export const ElementForm: React.FC<ElementFormProps> = ({
 
       // Only close the dialog if save was successful (result is not null/false)
       if (result !== null) {
+        // For edit mode, revalidate the resource and all its ancestors
+        // This ensures parent resources are updated if the edited resource's health status changed
+        if (editingElement?.rid) {
+          revalidateResourceAndAncestors(editingElement.rid);
+        }
         onClose();
       }
     } catch (error) {

@@ -34,6 +34,10 @@ interface AgenticAIContextType {
   getValidationStatus: (rid: string) => ValidationStatus;
   invalidateValidation: (rid: string) => void;
   validateResources: (rids: string[]) => Promise<void>;
+  // Dependency parent tracking - revalidate resource and all ancestors after edit
+  revalidateResourceAndAncestors: (rid: string) => Promise<void>;
+  // Get all ancestor rids for a given resource
+  getAllAncestors: (rid: string) => string[];
 }
 
 const AgenticAIContext = createContext<AgenticAIContextType | undefined>(undefined);
@@ -47,6 +51,8 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
   const [uuidToResourceMap, setUuidToResourceMap] = useState<Map<string, ResourceMapping>>(new Map());
   const [validationCache, setValidationCache] = useState<Map<string, CachedValidationResult>>(new Map());
   const [validationStatusMap, setValidationStatusMap] = useState<Map<string, ValidationStatus>>(new Map());
+  // Dependency parent tracking: maps resourceId -> [parentIds] where parents are resources that depend on this resource
+  const [dependencyParentMap, setDependencyParentMap] = useState<Map<string, string[]>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useAuth();
@@ -55,6 +61,10 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
   // Use ref to access latest cache without causing re-renders in callbacks
   const validationCacheRef = useRef(validationCache);
   validationCacheRef.current = validationCache;
+  
+  // Use ref to access latest dependency parent map without causing re-renders in callbacks
+  const dependencyParentMapRef = useRef(dependencyParentMap);
+  dependencyParentMapRef.current = dependencyParentMap;
 
   // ==================== Helper Functions ====================
 
@@ -115,6 +125,31 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
     };
   }, []);
 
+  // Helper: Update dependency parent map based on validation result
+  // This tracks which resources are "parents" (depend on) each resource
+  const updateDependencyParentMap = useCallback((rid: string, dependencyResults: Record<string, ElementValidationResult>) => {
+    setDependencyParentMap((prevMap) => {
+      const newMap = new Map(prevMap);
+      
+      // Ensure the validated resource exists in the map
+      if (!newMap.has(rid)) {
+        newMap.set(rid, []);
+      }
+      
+      // For each dependency, add the current resource as a parent
+      const dependencyRids = Object.keys(dependencyResults);
+      for (const depRid of dependencyRids) {
+        const existingParents = newMap.get(depRid) || [];
+        // Only add if not already present
+        if (!existingParents.includes(rid)) {
+          newMap.set(depRid, [...existingParents, rid]);
+        }
+      }
+      
+      return newMap;
+    });
+  }, []);
+
   // Helper: Fetch validation from API and cache result
   const fetchAndCacheValidation = useCallback(async (rid: string): Promise<ElementValidationResult> => {
     try {
@@ -124,6 +159,7 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
       );
       const result = response.data;
       cacheValidationResult(rid, result);
+      updateDependencyParentMap(rid, result.dependency_results);
       return result;
     } catch (err: any) {
       console.error(`Error validating resource ${rid}:`, err);
@@ -134,7 +170,7 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
       cacheValidationResult(rid, errorResult);
       return errorResult;
     }
-  }, [cacheValidationResult, createErrorResult]);
+  }, [cacheValidationResult, createErrorResult, updateDependencyParentMap]);
 
   // ==================== Resource Mapping Functions ====================
 
@@ -399,6 +435,51 @@ return String(ref);
     );
   }, [setValidationStatus, fetchAndCacheValidation]);
 
+  // Get all ancestors (parents, grandparents, etc.) of a resource recursively
+  // Uses ref to access latest map and avoid stale closures
+  const getAllAncestors = useCallback((rid: string): string[] => {
+    const ancestors: Set<string> = new Set();
+    const visited: Set<string> = new Set();
+    
+    const collectAncestors = (currentRid: string) => {
+      // Avoid cycles by tracking visited nodes
+      if (visited.has(currentRid)) {
+        return;
+      }
+      visited.add(currentRid);
+      
+      // Get parents from the current map ref
+      const parents = dependencyParentMapRef.current.get(currentRid) || [];
+      for (const parentRid of parents) {
+        ancestors.add(parentRid);
+        collectAncestors(parentRid);
+      }
+    };
+    
+    collectAncestors(rid);
+    return Array.from(ancestors);
+  }, []);
+
+  // Revalidate a resource and all its ancestors after edit
+  // This ensures that when a child resource is modified, all parent resources
+  // that depend on it are also revalidated to reflect potential status changes
+  const revalidateResourceAndAncestors = useCallback(async (rid: string): Promise<void> => {    
+    // Find all ancestors and revalidate them
+    const ancestors = getAllAncestors(rid);
+    if (ancestors.length > 0) {
+      // Invalidate all ancestors
+      ancestors.forEach(ancestorRid => {
+        removeFromValidationCache(ancestorRid);
+        setValidationStatus(ancestorRid, 'loading');
+      });
+      
+      // Revalidate all ancestors in parallel
+      await Promise.all(
+        ancestors.map(ancestorRid => fetchAndCacheValidation(ancestorRid))
+      );
+    }
+  }, [removeFromValidationCache, setValidationStatus, fetchAndCacheValidation, getAllAncestors]);
+
   // ==================== Effects ====================
 
   // Fetch resources when user changes or component mounts
@@ -425,6 +506,8 @@ return String(ref);
     getValidationStatus,
     invalidateValidation,
     validateResources,
+    revalidateResourceAndAncestors,
+    getAllAncestors,
   };
 
   return (

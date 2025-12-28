@@ -180,11 +180,8 @@ export default function AvailableFlows({
 
   // Validate a blueprint and update state
   const validateSelectedBlueprint = useCallback(async (blueprintId: string) => {
-    // Use flushSync to ensure the "validating" state is rendered before the API call
-    flushSync(() => {
       setIsValidating(true);
       setValidationResults({});
-    });
     
     // Notify parent that validation is starting (also flush to ensure button updates)
     onValidationChange?.(true, null, true);
@@ -201,7 +198,7 @@ export default function AvailableFlows({
         const errorCount = Object.values(result.element_results).filter(r => !r.is_valid).length;
         toast({
           title: "Workflow Validation Failed",
-          description: `${errorCount} element${errorCount !== 1 ? 's' : ''} failed validation. Click on node indicators for details.`,
+          description: `${errorCount} element${errorCount !== 1 ? 's' : ''} failed validation (including referenced elements). Click on node indicators for details.`,
           variant: "destructive",
         });
       }
