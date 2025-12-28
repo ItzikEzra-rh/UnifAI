@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode, useCa
 import axios from '@/http/axiosAgentConfig';
 import { useAuth } from './AuthContext';
 import { catalogService } from '@/api/catalog';
-import { ElementValidationResult, CachedValidationResult } from '@/types/validation';
+import { ElementValidationResult, CachedValidationResult, BlueprintValidationResult } from '@/types/validation';
 
 // Validation status type
 export type ValidationStatus = 'loading' | 'valid' | 'invalid';
@@ -38,6 +38,8 @@ interface AgenticAIContextType {
   revalidateResourceAndAncestors: (rid: string) => Promise<void>;
   // Get all ancestor rids for a given resource
   getAllAncestors: (rid: string) => string[];
+  // Cache all element results from a blueprint validation result
+  cacheBlueprintValidationResults: (blueprintResult: BlueprintValidationResult) => void;
 }
 
 const AgenticAIContext = createContext<AgenticAIContextType | undefined>(undefined);
@@ -66,6 +68,13 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
   const dependencyParentMapRef = useRef(dependencyParentMap);
   dependencyParentMapRef.current = dependencyParentMap;
 
+  // Use ref for validation status map to access latest status without stale closures
+  const validationStatusMapRef = useRef(validationStatusMap);
+  validationStatusMapRef.current = validationStatusMap;
+
+  // Ref to hold the revalidate ancestors function (avoids circular dependency in useCallback)
+  const revalidateAncestorsRef = useRef<((rid: string) => Promise<void>) | null>(null);
+
   // ==================== Helper Functions ====================
 
   // Helper: Remove rid from validation cache
@@ -92,7 +101,18 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
   }, []);
 
   // Helper: Cache a validation result and update status
+  // Automatically triggers ancestor revalidation if status changed
   const cacheValidationResult = useCallback((rid: string, result: ElementValidationResult) => {
+    // Get previous status before updating (use ref to get latest)
+    const previousStatus = validationStatusMapRef.current.get(rid);
+    const newStatus: ValidationStatus = result.is_valid ? 'valid' : 'invalid';
+    
+    // Check if status actually changed (not first-time validation, and status differs)
+    const statusChanged = previousStatus !== undefined && 
+                          previousStatus !== 'loading' && 
+                          previousStatus !== newStatus;
+
+    // Update the cache
     setValidationCache((prevCache) => {
       const newCache = new Map(prevCache);
       newCache.set(rid, {
@@ -101,11 +121,22 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
       });
       return newCache;
     });
-    setValidationStatusMap((prevStatus) => {
-      const newStatus = new Map(prevStatus);
-      newStatus.set(rid, result.is_valid ? 'valid' : 'invalid');
-      return newStatus;
+    
+    // Update the status map
+    setValidationStatusMap((prevStatusMap) => {
+      const updatedStatusMap = new Map(prevStatusMap);
+      updatedStatusMap.set(rid, newStatus);
+      return updatedStatusMap;
     });
+
+    // If status changed, trigger ancestor revalidation
+    if (statusChanged && revalidateAncestorsRef.current) {
+      // Use setTimeout to avoid blocking the current call stack
+      // and to ensure state updates have been processed
+      setTimeout(() => {
+        revalidateAncestorsRef.current?.(rid);
+      }, 0);
+    }
   }, []);
 
   // Helper: Create error validation result
@@ -158,8 +189,8 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
         { resourceId: rid }
       );
       const result = response.data;
-      cacheValidationResult(rid, result);
       updateDependencyParentMap(rid, result.dependency_results);
+      cacheValidationResult(rid, result);
       return result;
     } catch (err: any) {
       console.error(`Error validating resource ${rid}:`, err);
@@ -460,10 +491,10 @@ return String(ref);
     return Array.from(ancestors);
   }, []);
 
-  // Revalidate a resource and all its ancestors after edit
-  // This ensures that when a child resource is modified, all parent resources
-  // that depend on it are also revalidated to reflect potential status changes
-  const revalidateResourceAndAncestors = useCallback(async (rid: string): Promise<void> => {    
+  // Revalidate all ancestors of a resource
+  // This ensures that when a child resource's status changes, all parent resources
+  // that depend on it are also revalidated to reflect potential cascading status changes
+  const revalidateAncestors = useCallback(async (rid: string): Promise<void> => {    
     // Find all ancestors and revalidate them
     const ancestors = getAllAncestors(rid);
     if (ancestors.length > 0) {
@@ -479,6 +510,38 @@ return String(ref);
       );
     }
   }, [removeFromValidationCache, setValidationStatus, fetchAndCacheValidation, getAllAncestors]);
+
+  // Keep the ref updated with the latest revalidateAncestors function
+  revalidateAncestorsRef.current = revalidateAncestors;
+
+  // Public function to manually trigger revalidation of a resource and its ancestors
+  // Useful when explicitly needing to refresh validation (e.g., after external changes)
+  const revalidateResourceAndAncestors = useCallback(async (rid: string): Promise<void> => {
+    // First, revalidate the resource itself
+    removeFromValidationCache(rid);
+    setValidationStatus(rid, 'loading');
+    await fetchAndCacheValidation(rid);
+    // Note: ancestors will be automatically revalidated if status changed via cacheValidationResult
+  }, [removeFromValidationCache, setValidationStatus, fetchAndCacheValidation]);
+
+  // Cache all element results from a blueprint validation result
+  // This leverages the blueprint.validate API response to populate our validation cache
+  const cacheBlueprintValidationResults = useCallback((blueprintResult: BlueprintValidationResult) => {
+    // Helper function to recursively cache an element and its dependencies
+    const cacheElementAndDependencies = (elementResult: ElementValidationResult) => {
+      cacheValidationResult(elementResult.element_rid, elementResult);
+
+      // Recursively cache all dependency results
+      Object.values(elementResult.dependency_results).forEach(depResult => {
+        cacheElementAndDependencies(depResult);
+      });
+    };
+
+    // Cache all top-level element results
+    Object.values(blueprintResult.element_results).forEach(elementResult => {
+      cacheElementAndDependencies(elementResult);
+    });
+  }, [cacheValidationResult, updateDependencyParentMap]);
 
   // ==================== Effects ====================
 
@@ -508,6 +571,7 @@ return String(ref);
     validateResources,
     revalidateResourceAndAncestors,
     getAllAncestors,
+    cacheBlueprintValidationResults,
   };
 
   return (

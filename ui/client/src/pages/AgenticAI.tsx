@@ -3,6 +3,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import Header from "@/components/layout/Header";
 import StatusBar from "@/components/layout/StatusBar";
 import { useAuth } from "@/contexts/AuthContext";
+import { useAgenticAI } from "@/contexts/AgenticAIContext";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
@@ -39,13 +40,19 @@ export default function AgenticAI() {
   const [currentValidationResult, setCurrentValidationResult] = useState<BlueprintValidationResult | null>(null);
   const { user } = useAuth();
   const { toast } = useToast();
+  const { cacheBlueprintValidationResults } = useAgenticAI();
   
   // Handle validation changes from the flow graph
   const handleValidationChange = useCallback((isValid: boolean, validationResult: BlueprintValidationResult | null, isValidating: boolean) => {
     setIsFlowValid(isValid);
     setCurrentValidationResult(validationResult);
     setIsValidatingFlow(isValidating);
-  }, []);
+    
+    // Cache all element validation results from the the blueprint.validate API response
+    if (validationResult) {
+      cacheBlueprintValidationResults(validationResult);
+    }
+  }, [cacheBlueprintValidationResults]);
 
   const handleLoadFlow = async () => {
     if (isLoadingFlow) return; // Prevent multiple calls
