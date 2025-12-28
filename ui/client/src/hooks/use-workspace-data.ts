@@ -49,7 +49,7 @@ export const useWorkspaceData = () => {
   const [isLoadingInstances, setIsLoadingInstances] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
-  const { addOrUpdateResource, removeResource, invalidateValidation } = useAgenticAI();
+  const { addOrUpdateResource, removeResource, revalidateResourceAndAncestors } = useAgenticAI();
 
   const { user } = useAuth();
   const USER_ID = user?.username || "default";
@@ -320,8 +320,8 @@ export const useWorkspaceData = () => {
               category: response.data.category || category,
               type: response.data.type || type,
             });
-            // Invalidate validation cache since resource was modified
-            invalidateValidation(response.data.rid || rid);
+            // Revalidate resource after update
+            revalidateResourceAndAncestors(response.data.rid || rid);
           }
           
           toast({
@@ -353,8 +353,8 @@ export const useWorkspaceData = () => {
               category: response.data.category || category,
               type: response.data.type || type,
             });
-            // Invalidate validation cache for new resource (will trigger fresh validation)
-            invalidateValidation(response.data.rid);
+            // Validate new resource immediately after creation
+            revalidateResourceAndAncestors(response.data.rid);
           }
           
           toast({

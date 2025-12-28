@@ -32,7 +32,6 @@ interface AgenticAIContextType {
   // Validation functions
   getValidationResult: (rid: string) => ElementValidationResult | null;
   getValidationStatus: (rid: string) => ValidationStatus;
-  invalidateValidation: (rid: string) => void;
   validateResources: (rids: string[]) => Promise<void>;
   // Dependency parent tracking - revalidate resource and all ancestors after edit
   revalidateResourceAndAncestors: (rid: string) => Promise<void>;
@@ -443,11 +442,6 @@ return String(ref);
     return validationStatusMap.get(rid) || 'loading';
   }, [validationStatusMap]);
 
-  // Invalidate validation cache for a specific resource
-  const invalidateValidation = useCallback((rid: string) => {
-    removeFromValidationCache(rid);
-  }, [removeFromValidationCache]);
-
   // Validate multiple resources in parallel (only those not already cached)
   const validateResources = useCallback(async (rids: string[]): Promise<void> => {
     // Filter out resources that are already cached
@@ -515,14 +509,11 @@ return String(ref);
   revalidateAncestorsRef.current = revalidateAncestors;
 
   // Public function to manually trigger revalidation of a resource and its ancestors
-  // Useful when explicitly needing to refresh validation (e.g., after external changes)
+  // Useful when explicitly needing to refresh validation (e.g., after resource edit/save)
   const revalidateResourceAndAncestors = useCallback(async (rid: string): Promise<void> => {
-    // First, revalidate the resource itself
-    removeFromValidationCache(rid);
-    setValidationStatus(rid, 'loading');
     await fetchAndCacheValidation(rid);
     // Note: ancestors will be automatically revalidated if status changed via cacheValidationResult
-  }, [removeFromValidationCache, setValidationStatus, fetchAndCacheValidation]);
+  }, [fetchAndCacheValidation]);
 
   // Cache all element results from a blueprint validation result
   // This leverages the blueprint.validate API response to populate our validation cache
@@ -567,7 +558,6 @@ return String(ref);
     removeResource,
     getValidationResult,
     getValidationStatus,
-    invalidateValidation,
     validateResources,
     revalidateResourceAndAncestors,
     getAllAncestors,
