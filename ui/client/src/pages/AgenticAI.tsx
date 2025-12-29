@@ -20,6 +20,8 @@ import { ReactFlowProvider } from "reactflow";
 import { FlowObject } from "@/components/agentic-ai/graphs/interfaces";
 import { BlueprintValidationResult } from "@/types/validation";
 import SimpleTooltip from "@/components/shared/SimpleTooltip";
+import { UmamiTrack } from '@/components/ui/umamitrack';
+import { UmamiEvents } from '@/config/umamiEvents';
 
 export interface GraphNode {
   id: string;
@@ -135,37 +137,46 @@ export default function AgenticAI() {
                           ) : null
                         }
                       >
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handleLoadFlow}
-                          disabled={isLoadingFlow || !isFlowValid || isValidatingFlow}
-                          className={`${
-                            !isFlowValid && !isValidatingFlow
-                              ? 'bg-gray-600 text-gray-400 border-gray-600' 
-                              : isValidatingFlow
-                              ? 'bg-gray-600 text-gray-300 border-gray-600'
-                              : 'bg-primary hover:bg-[#7525c9] text-white'
-                          } flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
+                        <UmamiTrack 
+                          event={UmamiEvents.AGENT_GRAPHS_LOAD_FLOW_BUTTON}
+                          eventData={{ flowName: selectedFlow?.name }}
                         >
-                          {isValidatingFlow ? (
-                            <LoaderCircle className="h-4 w-4 animate-spin" />
-                          ) : !isFlowValid ? (
-                            <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                          ) : (
-                            <LoaderCircle className={`h-4 w-4 ${isLoadingFlow ? 'animate-spin' : ''}`} />
-                          )}
-                          {isValidatingFlow ? 'Validating...' : isLoadingFlow ? 'Loading...' : !isFlowValid ? 'Validation Failed' : 'Load Workflow'}
-                        </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={handleLoadFlow}
+                            disabled={isLoadingFlow || !isFlowValid || isValidatingFlow}
+                            className={`${
+                              !isFlowValid && !isValidatingFlow
+                                ? 'bg-gray-600 text-gray-400 border-gray-600' 
+                                : isValidatingFlow
+                                ? 'bg-gray-600 text-gray-300 border-gray-600'
+                                : 'bg-primary hover:bg-[#7525c9] text-white'
+                            } flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
+                          >
+                            {isValidatingFlow ? (
+                              <LoaderCircle className="h-4 w-4 animate-spin" />
+                            ) : !isFlowValid ? (
+                              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                            ) : (
+                              <LoaderCircle className={`h-4 w-4 ${isLoadingFlow ? 'animate-spin' : ''}`} />
+                            )}
+                            {isValidatingFlow ? 'Validating...' : isLoadingFlow ? 'Loading...' : !isFlowValid ? 'Validation Failed' : 'Load Workflow'}
+                          </Button>
+                        </UmamiTrack>
                       </SimpleTooltip>
-                      <Button
-                        className="bg-primary hover:bg-opacity-80 flex items-center gap-2"
-                        size="sm"
-                        onClick={handleBuildGraph}
-                      >
-                        <Plus className="h-4 w-4" />
-                        Build Workflow
-                      </Button>
+                        <UmamiTrack 
+                          event={UmamiEvents.AGENT_GRAPHS_BUILD_FLOW_BUTTON}
+                        >
+                          <Button
+                            className="bg-primary hover:bg-opacity-80 flex items-center gap-2"
+                            size="sm"
+                            onClick={handleBuildGraph}
+                          >
+                            <Plus className="h-4 w-4" />
+                            Build Workflow
+                          </Button>
+                        </UmamiTrack>
                     </div>
                   </CardHeader>
                   <CardContent className="pt-2 px-4 pb-4">
