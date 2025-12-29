@@ -264,6 +264,24 @@ def retrieval_service(source_type: str):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# STATS SERVICES (Application layer - query/aggregation use cases)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@lru_cache(maxsize=1)
+def vector_stats_service():
+    """Vector storage statistics service."""
+    from application.stats.vector_stats_service import VectorStatsService
+    return VectorStatsService(vector_repo_factory=vector_repository)
+
+
+@lru_cache(maxsize=1)
+def slack_stats_service():
+    """Slack statistics aggregation service."""
+    from application.stats.slack_stats_service import SlackStatsService
+    return SlackStatsService(data_source_service=data_source_service())
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PIPELINE HANDLERS (Application layer - source-specific orchestration)
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -371,6 +389,9 @@ def clear_all_caches():
     # Retrieval
     source_filter_resolver.cache_clear()
     retrieval_service.cache_clear()
+    # Stats
+    vector_stats_service.cache_clear()
+    slack_stats_service.cache_clear()
     # Slack Events
     channel_created_handler.cache_clear()
     slack_event_service.cache_clear()
