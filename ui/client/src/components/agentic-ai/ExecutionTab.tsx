@@ -35,6 +35,9 @@ import {
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import { UmamiTrack } from '@/components/ui/umamitrack';
 import { UmamiEvents } from '@/config/umamiEvents';
+import { validateBlueprint } from "@/api/agentic";
+import { ElementValidationResult } from "@/types/validation";
+import { useToast } from "@/hooks/use-toast";
 
 // Types for the API response
 interface ChatMessage {
@@ -118,6 +121,9 @@ export default function ExecutionTab({
   const [selectedFlowForModal, setSelectedFlowForModal] = useState<FlowObject | null>(null);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
   const [isLoadingFlowsForModal, setIsLoadingFlowsForModal] = useState(false);
+  const [isValidatingBlueprint, setIsValidatingBlueprint] = useState<boolean>(false);
+  const [blueprintValidationResults, setBlueprintValidationResults] = useState<Record<string, ElementValidationResult>>({});
+  const [isBlueprintValid, setIsBlueprintValid] = useState<boolean>(true);
   // Three panel widths: Available Chats, ChatInterface, Blueprint Graph
   const [chatSidebarWidth, setChatSidebarWidth] = useState(20);
   const [chatInterfaceWidth, setChatInterfaceWidth] = useState(50);
@@ -129,6 +135,7 @@ export default function ExecutionTab({
 
   const { nodeListRef, forceUpdate } = useStreamingData();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   // Toggle Blueprint Graph visibility
   const toggleBlueprintGraph = () => {
@@ -261,6 +268,39 @@ export default function ExecutionTab({
     return 'No message content available';
   };
 
+  // Validate a blueprint and update state
+  const validateSelectedBlueprint = useCallback(async (blueprintId: string) => {
+    setIsValidatingBlueprint(true);
+    setBlueprintValidationResults({});
+    setIsBlueprintValid(true); // Assume valid until proven otherwise
+    
+    try {
+      const result = await validateBlueprint({ blueprintId });
+      setBlueprintValidationResults(result.element_results || {});
+      setIsBlueprintValid(result.is_valid);
+      
+      // Show toast if validation failed
+      if (!result.is_valid) {
+        const errorCount = Object.values(result.element_results).filter(r => !r.is_valid).length;
+        toast({
+          title: "Workflow Validation Failed",
+          description: `${errorCount} element${errorCount !== 1 ? 's' : ''} failed validation. The chat is disabled until the workflow is fixed.`,
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      console.error("Error validating blueprint:", error);
+      setIsBlueprintValid(false);
+      toast({
+        title: "Validation Error",
+        description: "Failed to validate the workflow. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsValidatingBlueprint(false);
+    }
+  }, [toast]);
+
   const transformApiDataToSessions = (apiData: ChatSessionData[]): ChatSession[] => {
     return apiData.map((sessionData, index) => {
       const title = sessionData.metadata?.title || generateRandomTitle(index);
@@ -314,6 +354,11 @@ export default function ExecutionTab({
         const firstSession = sortedSessions[0];
         setSelectedSession(firstSession);
         
+        // Trigger blueprint validation for the first session
+        if (firstSession.blueprintId) {
+          validateSelectedBlueprint(firstSession.blueprintId);
+        }
+        
         // Fetch the state for the first session
         const stateData = await fetchSessionState(firstSession.id);
         if (stateData && stateData.messages) {
@@ -344,6 +389,11 @@ export default function ExecutionTab({
   // Handle session selection
   const handleSessionSelect = async (session: ChatSession) => {
     setSelectedSession(session);
+    
+    // Trigger blueprint validation
+    if (session.blueprintId) {
+      validateSelectedBlueprint(session.blueprintId);
+    }
     
     // If messages are already loaded for this session, use them
     if (session.messages && session.messages.length > 0) {
@@ -445,6 +495,9 @@ export default function ExecutionTab({
           if (newestSession) {
             setSelectedSession(newestSession);
             setCurrentSessionMessages(newestSession.messages);
+            if (newestSession.blueprintId) {
+              validateSelectedBlueprint(newestSession.blueprintId);
+            }
           }
           return prevSessions; // Return unchanged sessions
         });
@@ -827,6 +880,8 @@ export default function ExecutionTab({
               triggerExecution={triggerExecution}
               initialMessages={currentSessionMessages}
               blueprintExists={selectedSession?.blueprintExists ?? true}
+              blueprintValid={isBlueprintValid}
+              isValidatingBlueprint={isValidatingBlueprint}
               onToggleBlueprintGraph={toggleBlueprintGraph}
               isBlueprintGraphHidden={isBlueprintGraphHidden}
             />
@@ -887,6 +942,8 @@ export default function ExecutionTab({
                     showBackground={true}
                     interactive={true}
                     isLiveRequest={isLiveRequest}
+                    validationResults={blueprintValidationResults}
+                    isValidating={isValidatingBlueprint}
                   />
                 </ReactFlowProvider>
               ) : (
