@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { flushSync } from "react-dom";
 import { motion } from "framer-motion";
 import {
   Activity,
@@ -183,7 +182,7 @@ export default function AvailableFlows({
       setIsValidating(true);
       setValidationResults({});
     
-    // Notify parent that validation is starting (also flush to ensure button updates)
+    // Notify parent that validation is starting
     onValidationChange?.(true, null, true);
     
     try {

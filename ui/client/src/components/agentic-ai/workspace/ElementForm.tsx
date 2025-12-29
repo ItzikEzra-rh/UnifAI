@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -41,15 +41,30 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     {},
   );
   const [fieldValidationStates, setFieldValidationStates] = useState<{ [fieldName: string]: boolean }>({});
+  const [validatingFields, setValidatingFields] = useState<Set<string>>(new Set());
   const [populateResults, setPopulateResults] = useState<{ [fieldName: string]: string[] | any }>({});
 
   const { fetchResourcesForCategory } = useWorkspaceData();
+
+  // Helper to check if a field has validation hint
+  const fieldHasValidation = useCallback((fieldName: string): boolean => {
+    const fieldSchema = elementSchema?.config_schema.properties[fieldName];
+    if (!fieldSchema) return false;
+    return fieldSchema.hints?.action?.hint_type === 'validate' || 
+           fieldSchema.hints?.api?.hint_type === 'validate';
+  }, [elementSchema]);
 
   const handleValidationChange = (fieldName: string, isValid: boolean) => {
     setFieldValidationStates(prev => ({
       ...prev,
       [fieldName]: isValid
     }));
+    // Remove from validating set when validation completes
+    setValidatingFields(prev => {
+      const next = new Set(prev);
+      next.delete(fieldName);
+      return next;
+    });
   };
 
   const handlePopulateResult = (fieldName: string, results: string[] | any, multiSelect: boolean) => {
@@ -366,6 +381,11 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       ...prev,
       [field]: value,
     }));
+    // If field has validation hint, mark it as validating immediately
+    // This prevents the save button from being enabled during the validation delay
+    if (fieldHasValidation(field)) {
+      setValidatingFields(prev => new Set(prev).add(field));
+    }
   };
 
   const handleArrayChange = (field: string, index: number, value: any) => {
@@ -394,6 +414,9 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   // Check if all required fields are filled and validated
   const isFormValid = () => {
     if (!elementSchema) return false;
+
+    // If any field is currently being validated, form is not valid yet
+    if (validatingFields.size > 0) return false;
 
     // Check all required fields from combined schema, excluding hidden fields
     const required = elementSchema.config_schema.required || [];

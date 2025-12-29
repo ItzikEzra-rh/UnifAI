@@ -103,12 +103,11 @@ export const AgenticAIProvider: React.FC<AgenticAIProviderProps> = ({ children }
   // Automatically triggers ancestor revalidation if status changed
   const cacheValidationResult = useCallback((rid: string, result: ElementValidationResult) => {
     // Get previous status before updating (use ref to get latest)
-    const previousStatus = validationStatusMapRef.current.get(rid);
+    const previousStatus = validationCacheRef.current.get(rid)?.result.is_valid ? 'valid' : 'invalid';
     const newStatus: ValidationStatus = result.is_valid ? 'valid' : 'invalid';
     
     // Check if status actually changed (not first-time validation, and status differs)
-    const statusChanged = previousStatus !== undefined && 
-                          previousStatus !== 'loading' && 
+    const statusChanged = previousStatus !== undefined &&  
                           previousStatus !== newStatus;
 
     // Update the cache
@@ -494,7 +493,6 @@ return String(ref);
     if (ancestors.length > 0) {
       // Invalidate all ancestors
       ancestors.forEach(ancestorRid => {
-        removeFromValidationCache(ancestorRid);
         setValidationStatus(ancestorRid, 'loading');
       });
       
@@ -510,9 +508,9 @@ return String(ref);
 
   // Public function to manually trigger revalidation of a resource and its ancestors
   // Useful when explicitly needing to refresh validation (e.g., after resource edit/save)
+  // Note: ancestors will be automatically revalidated if status changed via cacheValidationResult
   const revalidateResourceAndAncestors = useCallback(async (rid: string): Promise<void> => {
     await fetchAndCacheValidation(rid);
-    // Note: ancestors will be automatically revalidated if status changed via cacheValidationResult
   }, [fetchAndCacheValidation]);
 
   // Cache all element results from a blueprint validation result
