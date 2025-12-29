@@ -510,6 +510,7 @@ return String(ref);
   // Useful when explicitly needing to refresh validation (e.g., after resource edit/save)
   // Note: ancestors will be automatically revalidated if status changed via cacheValidationResult
   const revalidateResourceAndAncestors = useCallback(async (rid: string): Promise<void> => {
+    setValidationStatus(rid, 'loading');
     await fetchAndCacheValidation(rid);
   }, [fetchAndCacheValidation]);
 

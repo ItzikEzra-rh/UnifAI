@@ -1044,6 +1044,7 @@ export default function ReactFlowGraph({
         validationResult={selectedValidationResult}
         isOpen={isValidationModalOpen}
         onOpenChange={setIsValidationModalOpen}
+        showRefreshButton={false}
       />
     </div>
   );

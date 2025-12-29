@@ -1,6 +1,7 @@
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { 
   CheckCircle2, 
   XCircle, 
@@ -8,7 +9,8 @@ import {
   Info,
   ChevronDown,
   ChevronRight,
-  Server
+  Server,
+  RefreshCw
 } from 'lucide-react';
 import { ElementValidationResult, ValidationMessage, ValidationSeverity } from '@/types/validation';
 import { useAgenticAI } from '@/contexts/AgenticAIContext';
@@ -18,6 +20,7 @@ interface ValidationResultModalProps {
   validationResult: ElementValidationResult | null;
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  showRefreshButton?: boolean;
 }
 
 // Severity icon and color mapping
@@ -149,8 +152,9 @@ export const ValidationResultModal: React.FC<ValidationResultModalProps> = ({
   validationResult,
   isOpen,
   onOpenChange,
+  showRefreshButton = true,
 }) => {
-  const { getResourceName } = useAgenticAI();
+  const { getResourceName, revalidateResourceAndAncestors } = useAgenticAI();
 
   if (!validationResult) return null;
 
@@ -164,6 +168,12 @@ export const ValidationResultModal: React.FC<ValidationResultModalProps> = ({
   const errorCount = validationResult.messages.filter(m => m.severity === 'error').length;
   const warningCount = validationResult.messages.filter(m => m.severity === 'warning').length;
   const infoCount = validationResult.messages.filter(m => m.severity === 'info').length;
+
+  // Handle refresh validation
+  const handleRefreshValidation = () => {
+    revalidateResourceAndAncestors(validationResult.element_rid);
+    onOpenChange(false);
+  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -202,24 +212,39 @@ export const ValidationResultModal: React.FC<ValidationResultModalProps> = ({
               </div>
             </div>
             
-            <div className="flex gap-3">
-              {errorCount > 0 && (
-                <div className="flex items-center gap-1">
-                  <XCircle className="h-4 w-4 text-red-500" />
-                  <span className="text-sm text-red-400">{errorCount}</span>
-                </div>
-              )}
-              {warningCount > 0 && (
-                <div className="flex items-center gap-1">
-                  <AlertTriangle className="h-4 w-4 text-yellow-500" />
-                  <span className="text-sm text-yellow-400">{warningCount}</span>
-                </div>
-              )}
-              {infoCount > 0 && (
-                <div className="flex items-center gap-1">
-                  <Info className="h-4 w-4 text-blue-500" />
-                  <span className="text-sm text-blue-400">{infoCount}</span>
-                </div>
+            <div className="flex items-center gap-4">
+              <div className="flex gap-3">
+                {errorCount > 0 && (
+                  <div className="flex items-center gap-1">
+                    <XCircle className="h-4 w-4 text-red-500" />
+                    <span className="text-sm text-red-400">{errorCount}</span>
+                  </div>
+                )}
+                {warningCount > 0 && (
+                  <div className="flex items-center gap-1">
+                    <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                    <span className="text-sm text-yellow-400">{warningCount}</span>
+                  </div>
+                )}
+                {infoCount > 0 && (
+                  <div className="flex items-center gap-1">
+                    <Info className="h-4 w-4 text-blue-500" />
+                    <span className="text-sm text-blue-400">{infoCount}</span>
+                  </div>
+                )}
+              </div>
+              
+              {showRefreshButton && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefreshValidation}
+                  className="h-8 px-3 hover:bg-gray-700 border-gray-700"
+                  title="Re-validate resource"
+                >
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Refresh
+                </Button>
               )}
             </div>
           </div>
