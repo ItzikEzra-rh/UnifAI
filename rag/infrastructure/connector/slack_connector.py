@@ -4,9 +4,11 @@ from typing import Dict, List, Optional, Any, Tuple
 from shared.logger import logger
 from infrastructure.config.slack_config_manager import SlackConfigManager
 from domain.connector.data_connector import DataConnector
+from domain.slack_channel.model import SlackChannel
+from domain.slack_channel.repository import SlackChannelRepository
 from infrastructure.connector.slack_thread_retriever import SlackThreadRetriever
 from infrastructure.connector.slack_thread_retriever_worker import ThreadRetrieverWorker
-from infrastructure.mongo.mongo_helpers import get_mongo_storage
+
 
 class SlackConnector(DataConnector):
     """
@@ -15,12 +17,18 @@ class SlackConnector(DataConnector):
     Handles authentication, rate limiting, and pagination for Slack API calls.
     """
     
-    def __init__(self, config_manager: SlackConfigManager, project_id: Optional[str] = None):
+    def __init__(
+        self,
+        config_manager: SlackConfigManager,
+        channel_repo: SlackChannelRepository,
+        project_id: Optional[str] = None,
+    ):
         """
         Initialize the Slack connector.
         
         Args:
             config_manager: Configuration manager for Slack
+            channel_repo: Repository for Slack channel persistence
             project_id: Optional project ID to use, defaults to the default project
         """
         super().__init__(config_manager)
@@ -39,8 +47,8 @@ class SlackConnector(DataConnector):
         if not self._project_id:
             raise ValueError("No project ID provided and no default project set")
         
-        # Initialize MongoDB storage
-        self._mongo_storage = get_mongo_storage()
+        # Injected repository
+        self._channel_repo = channel_repo
         
         # Get tokens for the project
         try:
@@ -191,12 +199,12 @@ class SlackConnector(DataConnector):
         Returns:
             List of dictionaries containing channel_id, channel_name, and type
         """
-        channels = []
+        channels: List[SlackChannel] = []
         cursor = None
         api_call_count = 0
         
         # Clear existing channels for this project to avoid duplicates
-        self._mongo_storage.slack_channels.clear_project_channels(self._project_id)
+        self._channel_repo.delete_by_project(self._project_id)
         
         # Fetch all channels (both public and private) until there's no next_cursor
         while True:
@@ -212,14 +220,14 @@ class SlackConnector(DataConnector):
                 break
             
             # Process channels from current page
-            batch_channels = []
+            batch_channels: List[SlackChannel] = []
             for channel in response.get('channels', []):
-                channel_data = self._mongo_storage.slack_channels.create_channel_document(channel, self._project_id)
-                channels.append(channel_data)
-                batch_channels.append(channel_data)
+                channel_model = SlackChannel.from_slack_api(channel, self._project_id)
+                channels.append(channel_model)
+                batch_channels.append(channel_model)
             
             # Cache batch to MongoDB
-            self._mongo_storage.slack_channels.cache_channels(batch_channels)
+            self._channel_repo.save_many(batch_channels)
             
             # Check if there are more pages
             response_metadata = response.get('response_metadata', {})
@@ -230,7 +238,7 @@ class SlackConnector(DataConnector):
                 break
         
         logger.info(f"Retrieved and cached {len(channels)} Slack channels from {api_call_count} API calls")
-        return channels
+        return [ch.to_dict() for ch in channels]
     
     def get_available_slack_channels_from_cache(self, types: Optional[str] = None, cursor: Optional[str] = None, limit: int = 50, search_regex: Optional[str] = None) -> Dict[str, Any]:
         """
@@ -248,7 +256,7 @@ class SlackConnector(DataConnector):
         """
         try:
             # Get channels from repository with pagination
-            return self._mongo_storage.slack_channels.get_channels_with_pagination(
+            return self._channel_repo.find_paginated(
                 project_id=self._project_id,
                 types=types,
                 cursor=cursor,
@@ -318,7 +326,7 @@ class SlackConnector(DataConnector):
         Returns:
             List of dictionaries containing channel_id, channel_name, and is_private
         """
-        channels = []
+        channels: List[SlackChannel] = []
         cursor = None
         api_call_count = 0
         
@@ -338,8 +346,8 @@ class SlackConnector(DataConnector):
             
             # Process channels from current page
             for channel in response.get('channels', []):
-                channel_data = self._mongo_storage.slack_channels.create_channel_document(channel, self._project_id)
-                channels.append(channel_data)
+                channel_model = SlackChannel.from_slack_api(channel, self._project_id)
+                channels.append(channel_model)
             
             # Check if there are more pages
             response_metadata = response.get('response_metadata', {})
@@ -350,7 +358,7 @@ class SlackConnector(DataConnector):
                 break
         
         logger.info(f"Retrieved {len(channels)} Slack channels from {api_call_count} fallback API calls")
-        return channels
+        return [ch.to_dict() for ch in channels]
     
     def get_conversations_history(
         self,

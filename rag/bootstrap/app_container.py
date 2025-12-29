@@ -76,6 +76,13 @@ def vector_repository(collection_name: str):
     }).initialize()
 
 
+@lru_cache(maxsize=1)
+def slack_channel_repository():
+    """Slack channel repository (Mongo adapter)."""
+    from infrastructure.mongo.slack_channel_repository import MongoSlackChannelRepository
+    return MongoSlackChannelRepository(data_sources_db()["slack_channels"])
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # PROCESSORS (Domain layer - stateless data transformers)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -113,7 +120,11 @@ def slack_config_manager():
 def slack_connector(project_id: str):
     """Slack connector for a specific project."""
     from infrastructure.connector.slack_connector import SlackConnector
-    return SlackConnector(slack_config_manager(), project_id=project_id)
+    return SlackConnector(
+        config_manager=slack_config_manager(),
+        channel_repo=slack_channel_repository(),
+        project_id=project_id,
+    )
 
 
 @lru_cache(maxsize=1)
@@ -178,6 +189,29 @@ def data_source_service():
         pipeline_repo=pipeline_repository(),
         vector_repo=vector_repository("default"),
     )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# SLACK EVENTS (Application layer - event handling)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@lru_cache(maxsize=1)
+def channel_created_handler():
+    """Handler for Slack channel_created events."""
+    from application.slack_events.handlers.channel_created import ChannelCreatedEventHandler
+    return ChannelCreatedEventHandler(
+        channel_repo=slack_channel_repository(),
+        project_id="example-project",  # TODO: Get from config
+    )
+
+
+@lru_cache(maxsize=1)
+def slack_event_service():
+    """Slack event dispatch service with registered handlers."""
+    from application.slack_events.service import SlackEventService
+    service = SlackEventService()
+    service.register_factory("channel_created", channel_created_handler)
+    return service
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -277,6 +311,7 @@ def clear_all_caches():
     data_source_repository.cache_clear()
     monitoring_repository.cache_clear()
     vector_repository.cache_clear()
+    slack_channel_repository.cache_clear()
     # Processors
     slack_processor.cache_clear()
     document_processor.cache_clear()
@@ -294,6 +329,9 @@ def clear_all_caches():
     data_source_service.cache_clear()
     # Embedding
     embedding_generator.cache_clear()
+    # Slack Events
+    channel_created_handler.cache_clear()
+    slack_event_service.cache_clear()
     # Pipeline Handlers & Executor
     slack_pipeline_handler.cache_clear()
     document_pipeline_handler.cache_clear()

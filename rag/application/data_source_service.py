@@ -7,6 +7,7 @@ from domain.data_source.model import DataSource
 from domain.data_source.repository import DataSourceRepository
 from domain.pipeline.repository import PipelineRepository
 from domain.vector.repository import VectorRepository
+from shared.logger import logger
 
 
 @dataclass
@@ -63,12 +64,11 @@ class DataSourceService:
 
     def delete(self, source_id: str) -> DeleteResult:
         """
-        Delete a source and all associated data.
+        Delete a source and all associated data with transaction-like behavior.
         
-        Removes:
-        - Vector embeddings from Qdrant
-        - Pipeline records from MongoDB
-        - Source document from MongoDB
+        Deletion order (abort on vector failure to maintain consistency):
+        1. Vector embeddings from Qdrant (critical - abort if fails)
+        2. MongoDB records (pipeline + source document)
         
         Args:
             source_id: The source ID to delete
@@ -83,14 +83,33 @@ class DataSourceService:
                 message=f"Source {source_id} not found",
             )
 
-        vectors_deleted = self._vector_repo.delete_by_source_id(source_id)
-        pipelines_deleted = self._pipeline_repo.delete(source.pipeline_id)
-        source_deleted = self._source_repo.delete(source_id)
-
+        source_name = source.source_name
+        try:
+            vectors_deleted = self._vector_repo.delete_by_source_id(source_id)
+        except Exception as e:
+            return DeleteResult(
+                success=False,
+                source_id=source_id,
+                source_name=source_name,
+                message=f"Vector storage deletion failed: {e}",
+            )
+        try:
+            pipelines_deleted = self._pipeline_repo.delete(source.pipeline_id)
+            source_deleted = self._source_repo.delete(source_id)
+        except Exception as e:
+            return DeleteResult(
+                success=False,
+                source_id=source_id,
+                source_name=source_name,
+                source_deleted=False,
+                pipelines_deleted=0,
+                vectors_deleted=vectors_deleted,
+                message=f"Partial deletion - MongoDB deletion failed: {e}",
+            )
         return DeleteResult(
             success=True,
             source_id=source_id,
-            source_name=source.source_name,
+            source_name=source_name,
             source_deleted=source_deleted,
             pipelines_deleted=pipelines_deleted,
             vectors_deleted=vectors_deleted,
