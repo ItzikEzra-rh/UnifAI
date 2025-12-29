@@ -22,6 +22,7 @@ import axios from '../../http/axiosAgentConfig'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
+import { useAgenticAI } from "@/contexts/AgenticAIContext";
 import AvailableFlows from "./AvailableFlows";
 import { ReactFlowProvider } from "reactflow";
 import {
@@ -136,6 +137,7 @@ export default function ExecutionTab({
   const { nodeListRef, forceUpdate } = useStreamingData();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { cacheBlueprintValidationResults } = useAgenticAI();
 
   // Toggle Blueprint Graph visibility
   const toggleBlueprintGraph = () => {
@@ -279,6 +281,11 @@ export default function ExecutionTab({
       setBlueprintValidationResults(result.element_results || {});
       setIsBlueprintValid(result.is_valid);
       
+      // Cache all element validation results from the blueprint.validate API response
+      if (result) {
+        cacheBlueprintValidationResults(result);
+      }
+      
       // Show toast if validation failed
       if (!result.is_valid) {
         const errorCount = Object.values(result.element_results).filter(r => !r.is_valid).length;
@@ -299,7 +306,7 @@ export default function ExecutionTab({
     } finally {
       setIsValidatingBlueprint(false);
     }
-  }, [toast]);
+  }, [toast, cacheBlueprintValidationResults]);
 
   const transformApiDataToSessions = (apiData: ChatSessionData[]): ChatSession[] => {
     return apiData.map((sessionData, index) => {
