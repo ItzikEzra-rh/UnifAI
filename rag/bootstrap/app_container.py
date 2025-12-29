@@ -41,6 +41,14 @@ def data_sources_db():
     return mongo_client()["data_sources"]
 
 
+@lru_cache(maxsize=1)
+def file_storage():
+    """Local file storage for document uploads."""
+    from infrastructure.storage.local_file_storage import LocalFileStorage
+    from config.app_config import AppConfig
+    return LocalFileStorage(AppConfig.get_instance().upload_folder)
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # REPOSITORIES (Infrastructure adapters implementing domain ports)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -226,6 +234,36 @@ def embedding_generator():
 
 
 # ══════════════════════════════════════════════════════════════════════════════
+# RETRIEVAL SERVICE (Application layer - vector search orchestration)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@lru_cache(maxsize=1)
+def source_filter_resolver():
+    """Filter resolver for search scoping (doc_ids, tags -> source_ids)."""
+    from infrastructure.retrieval.source_filter_resolver import SourceFilterResolver
+    return SourceFilterResolver(data_sources_db()["sources"])
+
+
+@lru_cache(maxsize=None)
+def retrieval_service(source_type: str):
+    """
+    Retrieval service for a specific source type.
+    
+    Args:
+        source_type: Source type (e.g., "DOCUMENT", "SLACK")
+        
+    Returns:
+        RetrievalService configured for the specified source type
+    """
+    from application.retrieval_service import RetrievalService
+    return RetrievalService(
+        embedder=embedding_generator(),
+        vector_repo=vector_repository(f"{source_type.lower()}_data"),
+        filter_resolver=source_filter_resolver(),
+    )
+
+
+# ══════════════════════════════════════════════════════════════════════════════
 # PIPELINE HANDLERS (Application layer - source-specific orchestration)
 # ══════════════════════════════════════════════════════════════════════════════
 
@@ -306,6 +344,7 @@ def clear_all_caches():
     mongo_client.cache_clear()
     pipeline_monitoring_db.cache_clear()
     data_sources_db.cache_clear()
+    file_storage.cache_clear()
     # Repositories
     pipeline_repository.cache_clear()
     data_source_repository.cache_clear()
@@ -329,6 +368,9 @@ def clear_all_caches():
     data_source_service.cache_clear()
     # Embedding
     embedding_generator.cache_clear()
+    # Retrieval
+    source_filter_resolver.cache_clear()
+    retrieval_service.cache_clear()
     # Slack Events
     channel_created_handler.cache_clear()
     slack_event_service.cache_clear()
