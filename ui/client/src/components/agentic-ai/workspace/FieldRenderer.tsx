@@ -505,6 +505,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
             onPopulateResult={onPopulateResult}
             hideUI={populateHint.selection_type == 'automatic'}
             autoTrigger={areDependenciesValid}
+            currentValue={Array.isArray(value) ? value : value ? [value] : []}
           />
         )}
         {/* Agent Card Visualization */}
@@ -578,6 +579,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
           onPopulateResult={onPopulateResult}
           hideUI={populateHint.selection_type == 'automatic'}
           autoTrigger={areDependenciesValid}
+          currentValue={Array.isArray(value) ? value : value ? [value] : []}
         />
       )}
       {/* Agent Card Visualization */}
