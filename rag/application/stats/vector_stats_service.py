@@ -1,6 +1,6 @@
 """Vector storage statistics service."""
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Dict, Any, Optional
 
 from domain.vector.repository import VectorRepository
 
@@ -76,4 +76,41 @@ class VectorStatsService:
         """
         repo = self._repo_factory(collection_name)
         return repo.count(exact=exact)
+
+    def count_by_filter(
+        self,
+        collection_name: str,
+        filters: Dict[str, Any],
+        exact: bool = True,
+    ) -> int:
+        """
+        Count chunks matching specific filters in a collection.
+        
+        This method allows counting chunks based on metadata filters,
+        such as counting all chunks for a specific channel or document.
+        
+        Args:
+            collection_name: Name of the vector collection (e.g., 'slack_data')
+            filters: Dictionary of filter criteria to match
+                     Example: {"metadata.channel_name": "general"}
+            exact: Whether to perform exact count (slower but accurate)
+            
+        Returns:
+            Number of chunks matching the filter criteria
+            
+        Example:
+            # Count chunks for a specific Slack channel
+            count = service.count_by_filter(
+                collection_name="slack_data",
+                filters={"metadata.channel_name": "engineering"},
+            )
+            
+            # Count chunks for a specific document
+            count = service.count_by_filter(
+                collection_name="document_data", 
+                filters={"metadata.source_id": "doc_123"},
+            )
+        """
+        repo = self._repo_factory(collection_name)
+        return repo.count(filters=filters, exact=exact)
 
