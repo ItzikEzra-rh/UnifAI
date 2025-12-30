@@ -309,57 +309,6 @@ export default function ExecutionTab({
     }
   };
 
-  // Fetch chat sessions from API
-  const fetchChatSessions = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const userId = user?.username || "default";
-      const response = await axios.get(`/sessions/session.user.chat.get?userId=${userId}`);
-      const transformedSessions = transformApiDataToSessions(response.data);
-
-      // sort chat sessions based on the latest date
-      const sortedSessions = transformedSessions.sort((firstSession, secondSession) => secondSession.timestamp.getTime() - firstSession.timestamp.getTime());
-      setChatSessions(sortedSessions);
-
-      // Auto-select the first session if available and fetch its state
-      if (sortedSessions.length > 0 && !selectedSession) {
-        const firstSession = sortedSessions[0];
-        setSelectedSession(firstSession);
-        
-        // Trigger blueprint validation for the first session
-        if (firstSession.blueprintId) {
-          validateSelectedBlueprint(firstSession.blueprintId);
-        }
-        
-        // Fetch the state for the first session
-        const stateData = await fetchSessionState(firstSession.id);
-        if (stateData && stateData.messages) {
-          setCurrentSessionMessages(stateData.messages);
-          
-          // Update the session's preview with actual message content
-          const updatedSession = {
-            ...firstSession,
-            messages: stateData.messages,
-            preview: getPreviewText(stateData.messages)
-          };
-          setSelectedSession(updatedSession);
-          
-          // Update the session in the list as well
-          setChatSessions(prevSessions => 
-            prevSessions.map(s => s.id === firstSession.id ? updatedSession : s)
-          );
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching chat sessions:', err);
-      setError('Failed to load chat sessions');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   // Handle session selection
   const handleSessionSelect = async (session: ChatSession) => {
     setSelectedSession(session);
@@ -391,6 +340,32 @@ export default function ExecutionTab({
           prevSessions.map(s => s.id === session.id ? updatedSession : s)
         );
       }
+    }
+  };
+
+  // Fetch chat sessions from API
+  const fetchChatSessions = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      const userId = user?.username || "default";
+      const response = await axios.get(`/sessions/session.user.chat.get?userId=${userId}`);
+      const transformedSessions = transformApiDataToSessions(response.data);
+
+      // Sort chat sessions based on the latest date
+      const sortedSessions = transformedSessions.sort((firstSession, secondSession) => secondSession.timestamp.getTime() - firstSession.timestamp.getTime());
+      setChatSessions(sortedSessions);
+
+      // Auto-select the first session if available
+      if (sortedSessions.length > 0 && !selectedSession) {
+        await handleSessionSelect(sortedSessions[0]);
+      }
+    } catch (err) {
+      console.error('Error fetching chat sessions:', err);
+      setError('Failed to load chat sessions');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -454,28 +429,23 @@ export default function ExecutionTab({
         userId: user?.username || "default",
       };
 
-      const response = await axios.post(
+      await axios.post(
         "/sessions/user.session.create",
         selectedBlueprint,
       );
 
-      await fetchChatSessions();
+      // Fetch updated sessions
+      const userId = user?.username || "default";
+      const response = await axios.get(`/sessions/session.user.chat.get?userId=${userId}`);
+      const transformedSessions = transformApiDataToSessions(response.data);
+      const sortedSessions = transformedSessions.sort((firstSession, secondSession) => secondSession.timestamp.getTime() - firstSession.timestamp.getTime());
+      setChatSessions(sortedSessions);
 
       // Auto-select the newly created session
-      // Wait a bit for state to update, then find the newest session with matching blueprintId
-      setTimeout(() => {
-        setChatSessions(prevSessions => {
-          const newestSession = prevSessions.find(session => session.blueprintId === graphId);
-          if (newestSession) {
-            setSelectedSession(newestSession);
-            setCurrentSessionMessages(newestSession.messages);
-            if (newestSession.blueprintId) {
-              validateSelectedBlueprint(newestSession.blueprintId);
-            }
-          }
-          return prevSessions; // Return unchanged sessions
-        });
-      }, 100);
+      const newestSession = sortedSessions.find(session => session.blueprintId === graphId);
+      if (newestSession) {
+        await handleSessionSelect(newestSession);
+      }
 
       setShowAddFlowModal(false);
       setSelectedFlowForModal(null);
