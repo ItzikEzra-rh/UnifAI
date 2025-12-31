@@ -50,10 +50,10 @@ def get_resource(resource_id):
     "user_id": fields.Str(data_key="userId", required=True),
     "category": fields.Str(required=False),
     "type": fields.Str(required=False),
-    "limit": fields.Int(required=False, load_default=50),
+    "limit": fields.Int(required=False, load_default=1000),
     "offset": fields.Int(required=False, load_default=0),
 })
-def list_resources(user_id, category=None, type=None, limit=50, offset=0):
+def list_resources(user_id, category=None, type=None, limit=1000, offset=0):
     """
     Get resources with flexible filtering and pagination:
     - Only user_id: returns all resources for that user
