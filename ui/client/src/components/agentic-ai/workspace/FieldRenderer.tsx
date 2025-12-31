@@ -286,6 +286,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
             onPopulateResult={onPopulateResult}
             hideUI={populateHint.selection_type === 'automatic'}
             autoTrigger={areDependenciesValid}
+            currentValue={value}
           />
         )}
       </div>
@@ -381,6 +382,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
               onPopulateResult={onPopulateResult}
               hideUI={populateHint.selection_type === 'automatic'}
               autoTrigger={areDependenciesValid}
+              currentValue={value}
             />
           )}
         </div>
@@ -598,6 +600,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
           onPopulateResult={onPopulateResult}
           hideUI={populateHint.selection_type == 'automatic'}
           autoTrigger={areDependenciesValid}
+          currentValue={value}
         />
       )}
       {/* Agent Card Visualization */}
@@ -672,6 +675,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
         onPopulateResult={onPopulateResult}
         hideUI={populateHint.selection_type == 'automatic'}
         autoTrigger={areDependenciesValid}
+        currentValue={value}
       />
     )}
     {/* Agent Card Visualization */}

@@ -23,7 +23,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Loader2, RefreshCw, ChevronDown, Check } from 'lucide-react';
+import { Loader2, RefreshCw, ChevronDown, Check, CheckCheck, X } from 'lucide-react';
 import axios from "../../../http/axiosAgentConfig";
 
 // Type guard to check if hint is an ApiHint (has endpoint) vs ActionHint (has action_uid)
@@ -52,9 +52,12 @@ interface FieldPopulationProps {
   onPopulateResult: (fieldName: string, results: string[] | any, multiSelect: boolean) => void;
   autoTrigger?: boolean;
   hideUI?: boolean;
+  currentValue?: string[];
 }
 
 const SEARCH_DEBOUNCE_DELAY = 300; // ms
+const SELECT_ALL_VALUE = "__select_all__";
+
 
 export const FieldPopulation: React.FC<FieldPopulationProps> = ({
   fieldName,
@@ -64,16 +67,18 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
   formData,
   onPopulateResult,
   autoTrigger = false,
-  hideUI = false
+  hideUI = false,
+  currentValue = []
 }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [populatedOptions, setPopulatedOptions] = useState<OptionItem[]>([]);
-  const [selectedValues, setSelectedValues] = useState<string[]>([]);
+  const [selectedValues, setSelectedValues] = useState<string[]>(currentValue);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [shouldKeepOpen, setShouldKeepOpen] = useState(false);
   const [hasAutoTriggered, setHasAutoTriggered] = useState(false);
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false); // Track if options were ever loaded
+  const [isInitialized, setIsInitialized] = useState(false); // Track if we've synced with parent value
   
   // Search state
   const [searchTerm, setSearchTerm] = useState('');
@@ -87,6 +92,8 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     hasMore: false,
     total: null
   });
+
+  const isSelectAll = (value: string) => value === SELECT_ALL_VALUE;
 
   // Extract hint flags with defaults for backwards compatibility
   const supportsPagination = populateHint.pagination === true;
@@ -140,6 +147,15 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
       return { label: String(item), value: String(item) };
     });
   };
+
+  // When a user edits an existing element, ensure that any previously saved selections are reflected as "selected" in the dropdown. This only runs once
+  // on initial mount to avoid overwriting user changes during the editing session
+  useEffect(() => {
+    if (!isInitialized && currentValue && currentValue.length > 0) {
+      setSelectedValues(currentValue);
+      setIsInitialized(true);
+    }
+  }, [currentValue, isInitialized]);
 
   // Effect to force dropdown to stay open for multi-select
   useEffect(() => {
@@ -208,6 +224,49 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
       performPopulation(null, debouncedSearchTerm);
     }
   }, [debouncedSearchTerm]);
+
+  const applySelection = (values: string[]) => {
+    setSelectedValues(values);
+    onPopulateResult(fieldName, values, populateHint.multi_select || false);
+  };
+
+  /**
+   * Toggle between "Select All" and "Clear All" for multi-select dropdowns.
+   * 
+   * Behavior:
+   * - If ALL options are currently selected → Clear all selections (empty array)
+   * - If ANY options are unselected → Select all available options
+   * 
+   * This allows users to quickly select/deselect all options with a single click.
+   * The `allOptionsSelected` flag (computed elsewhere) determines which action to take.
+   */
+  const toggleSelectAll = () => {
+    const allValues = populatedOptions.map(o => o.value);
+    applySelection(allOptionsSelected ? [] : allValues);
+  };
+
+  const handleSelectChange = (value: string) => {
+    if (!value || value === "__no_options_disabled__" || value === "__load_more__") return;
+    if (isSelectAll(value)) return toggleSelectAll();
+
+    const newValues = populateHint.multi_select
+      ? selectedValues.includes(value)
+        ? selectedValues.filter(v => v !== value)
+        : [...selectedValues, value]
+      : [value];
+
+    applySelection(newValues);
+  };
+
+  const handleItemSelect = (value: string) => {
+    handleSelectChange(value);
+    if (populateHint.multi_select) setShouldKeepOpen(true);
+  };
+
+  const removeSelectedValue = (value: string) => {
+    applySelection(selectedValues.filter(v => v !== value));
+  };
+
 
   // Perform population via ActionHint (action system)
   const performActionPopulation = async (inputData: any) => {
@@ -304,6 +363,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
       }
       
       const normalizedResults = normalizeOptions(rawResults);
+      const newOptionValues = new Set(normalizedResults.map(opt => opt.value));
       
       if (populateHint.selection_type == 'manual' || populateHint.multi_select) {
         if (isLoadMore) {
@@ -315,6 +375,22 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
           if (normalizedResults.length > 0) {
             setHasLoadedOnce(true);
           }
+          
+          // Validate existing selections - remove any that no longer exist in new results
+          setSelectedValues(prevSelected => {
+            if (prevSelected.length === 0) return prevSelected;
+            const validatedSelections = prevSelected.filter(val => newOptionValues.has(val));
+            
+            // If selections changed (some were removed), notify parent
+            if (validatedSelections.length !== prevSelected.length) {
+              // Use setTimeout to avoid state update during render
+              setTimeout(() => {
+                onPopulateResult(fieldName, validatedSelections, populateHint.multi_select || false);
+              }, 0);
+            }
+            
+            return validatedSelections;
+          });
         } else {
           // Search: update with results (even if empty - will show "No results found")
           setPopulatedOptions(normalizedResults);
@@ -328,13 +404,6 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
           hasMore: responseData.hasMore ?? responseData.has_more ?? false,
           total: responseData.total ?? null
         });
-      }
-
-      // Only report to parent on initial load (not load more or search)
-      if (!isLoadMore && !searchRegex) {
-        // For backwards compatibility, send values based on the original format
-        const resultValues = normalizedResults.map(opt => opt.value);
-        onPopulateResult(fieldName, resultValues, populateHint.multi_select || false);
       }
 
     } catch (error: any) {
@@ -362,43 +431,6 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     }
   };
 
-  const handleSelectChange = (value: string) => {
-    if (!value || value === "__no_options_disabled__" || value === "__load_more__") return;
-
-    let newSelectedValues: string[];
-    
-    if (populateHint.multi_select) {
-      // Multi-select: toggle selection
-      if (selectedValues.includes(value)) {
-        newSelectedValues = selectedValues.filter(v => v !== value);
-      } else {
-        newSelectedValues = [...selectedValues, value];
-      }
-    } else {
-      // Single select: replace current selection
-      newSelectedValues = [value];
-    }
-
-    setSelectedValues(newSelectedValues);
-    
-    // Update parent component with selected values
-    onPopulateResult(fieldName, newSelectedValues, populateHint.multi_select || false);
-  };
-
-  // Handle item selection for multi-select to keep dropdown open
-  const handleItemSelect = (value: string) => {
-    handleSelectChange(value);
-    // For multi-select, signal that we want to keep the dropdown open
-    if (populateHint.multi_select) {
-      setShouldKeepOpen(true);
-    }
-  };
-
-  const removeSelectedValue = (valueToRemove: string) => {
-    const newSelectedValues = selectedValues.filter(val => val !== valueToRemove);
-    setSelectedValues(newSelectedValues);
-    onPopulateResult(fieldName, newSelectedValues, populateHint.multi_select || false);
-  };
 
   const getAvailableOptions = (): OptionItem[] => {
     if (populateHint.multi_select) {
@@ -419,6 +451,10 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
   const remainingCount = pagination.total 
     ? pagination.total - populatedOptions.length 
     : null;
+  
+  // Check if all options are selected (for showing Select All vs Clear All)
+  const allOptionsSelected = populatedOptions.length > 0 && 
+    selectedValues.length === populatedOptions.length;
 
   // Hide UI when auto-triggering (keep logic running in background)
   if (hideUI) {
@@ -475,6 +511,27 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
               {isLoading ? 'Loading...' : isSearching ? 'Searching...' : searchTerm ? 'No matching results found.' : 'No options found.'}
             </CommandEmpty>
             <CommandGroup>
+              {/* Select All / Clear All option for multi-select */}
+              {populateHint.multi_select && populatedOptions.length > 0 && !searchTerm && (
+                <CommandItem
+                  value={SELECT_ALL_VALUE}
+                  onSelect={handleSelectChange}
+                  className="font-medium border-b border-gray-700 mb-1 pb-2"
+                >
+                  {allOptionsSelected ? (
+                    <>
+                      <X className="mr-2 h-4 w-4 text-red-400" />
+                      <span className="text-red-400">Clear All</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCheck className="mr-2 h-4 w-4 text-green-400" />
+                      <span className="text-green-400">Select All ({populatedOptions.length})</span>
+                    </>
+                  )}
+                </CommandItem>
+              )}
+
               {availableOptions.map((option: OptionItem) => (
                 <CommandItem
                   key={option.value}
@@ -563,6 +620,26 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
           setIsDropdownOpen(false);
         }}
       >
+        {/* Select All / Clear All option for multi-select */}
+        {populateHint.multi_select && populatedOptions.length > 0 && (
+          <SelectItem 
+            value={SELECT_ALL_VALUE}
+            className="font-medium border-b border-gray-700"
+          >
+            {allOptionsSelected ? (
+              <span className="flex items-center gap-2 text-red-400">
+                <X className="h-3 w-3" />
+                Clear All
+              </span>
+            ) : (
+              <span className="flex items-center gap-2 text-green-400">
+                <CheckCheck className="h-3 w-3" />
+                Select All ({populatedOptions.length})
+              </span>
+            )}
+          </SelectItem>
+        )}
+
         {availableOptions.map((option: OptionItem, index: number) => (
           <SelectItem 
             key={`${option.value}-${index}`} 
