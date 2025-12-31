@@ -495,27 +495,27 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
             onValidationChange={onValidationChange}
           />
         )}
-        {populateHint && (
-          <FieldPopulation
-            fieldName={fieldName}
-            populateHint={populateHint}
-            elementActions={elementActions}
-            selectedElementType={elementType}
-            formData={formData}
-            onPopulateResult={onPopulateResult}
-            hideUI={populateHint.selection_type == 'automatic'}
-            autoTrigger={areDependenciesValid}
-            currentValue={Array.isArray(value) ? value : value ? [value] : []}
-          />
-        )}
-        {/* Agent Card Visualization */}
-        {fieldName === "agent_card" && (
-          <AgentCardVisualization agentCard={value} 
-          />
-        )}
-      </div>
-    );
-  }
+      {populateHint && (
+        <FieldPopulation
+          fieldName={fieldName}
+          populateHint={populateHint}
+          elementActions={elementActions}
+          selectedElementType={elementType}
+          formData={formData}
+          onPopulateResult={onPopulateResult}
+          hideUI={populateHint.selection_type == 'automatic'}
+          autoTrigger={areDependenciesValid}
+          currentValue={value}
+        />
+      )}
+      {/* Agent Card Visualization */}
+      {fieldName === "agent_card" && (
+        <AgentCardVisualization agentCard={value} 
+        />
+      )}
+    </div>
+  );
+}
 
   // Handle regular string fields (with secret masking if needed)
   const secretProps = getSecretInputProps();
@@ -579,7 +579,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
           onPopulateResult={onPopulateResult}
           hideUI={populateHint.selection_type == 'automatic'}
           autoTrigger={areDependenciesValid}
-          currentValue={Array.isArray(value) ? value : value ? [value] : []}
+          currentValue={value}
         />
       )}
       {/* Agent Card Visualization */}

@@ -136,7 +136,8 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     });
   };
 
-  // Effect to sync selectedValues with currentValue from parent (for edit mode)
+  // When a user edits an existing element, ensure that any previously saved selections are reflected as "selected" in the dropdown. This only runs once
+  // on initial mount to avoid overwriting user changes during the editing session
   useEffect(() => {
     if (!isInitialized && currentValue && currentValue.length > 0) {
       setSelectedValues(currentValue);
@@ -217,6 +218,16 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     onPopulateResult(fieldName, values, populateHint.multi_select || false);
   };
 
+  /**
+   * Toggle between "Select All" and "Clear All" for multi-select dropdowns.
+   * 
+   * Behavior:
+   * - If ALL options are currently selected → Clear all selections (empty array)
+   * - If ANY options are unselected → Select all available options
+   * 
+   * This allows users to quickly select/deselect all options with a single click.
+   * The `allOptionsSelected` flag (computed elsewhere) determines which action to take.
+   */
   const toggleSelectAll = () => {
     const allValues = populatedOptions.map(o => o.value);
     applySelection(allOptionsSelected ? [] : allValues);
@@ -318,6 +329,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
           
           // Validate existing selections - remove any that no longer exist in new results
           setSelectedValues(prevSelected => {
+            if (prevSelected.length === 0) return prevSelected;
             const validatedSelections = prevSelected.filter(val => newOptionValues.has(val));
             
             // If selections changed (some were removed), notify parent
