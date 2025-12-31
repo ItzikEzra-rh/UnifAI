@@ -1,3 +1,23 @@
+/**
+ * ValidationResultModal Component
+ * 
+ * This modal displays the validation status of building blocks (resources) in the Agentic AI system.
+ * It provides users with clear feedback on whether a resource is VALID or INVALID, along with
+ * detailed messages indicating what needs to be fixed to make it valid.
+ * 
+ * Key features:
+ * - Shows overall validation status (Valid/Invalid) with visual indicators
+ * - Displays validation messages categorized by severity (error, warning, info)
+ * - Renders dependency validation results in a hierarchical tree structure
+ * - Provides a refresh button to re-validate the resource and its ancestors
+ * - Shows element type, RID, and human-readable name for context
+ * 
+ * Used by:
+ * - ReactFlowGraph nodes to show validation details when clicking on validation indicators
+ * - Workspace components to display resource validation status
+ * - Any component that needs to present detailed validation feedback to users
+ */
+
 import React from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
