@@ -68,7 +68,7 @@ const convertGraphFlowToFlowObject = (
   };
 };
 
-export interface AvailableFlowsProps {
+export interface WorkflowsPanelProps {
   selectedFlow: FlowObject | null;
   onFlowSelect: (flow: FlowObject | null) => void;
   onFlowDelete?: (flow: FlowObject) => void;
@@ -87,7 +87,7 @@ export interface AvailableFlowsProps {
   };
 }
 
-export default function AvailableFlows({
+export default function WorkflowsPanel({
   selectedFlow,
   onFlowSelect,
   onFlowDelete,
@@ -104,7 +104,7 @@ export default function AvailableFlows({
     interactive: true,
     isLiveRequest: false,
   },
-}: AvailableFlowsProps): React.ReactElement {
+}: WorkflowsPanelProps): React.ReactElement {
   // State for available graph flows
   const [graphFlows, setGraphFlows] = useState<FlowObject[]>([]);
   const [activeFlowIds, setActiveFlowIds] = useState<string[]>([]);

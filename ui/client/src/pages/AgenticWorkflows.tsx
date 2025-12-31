@@ -29,7 +29,7 @@ export interface GraphNode {
   description: string | null;
 }
 
-export default function AgenticAI() {
+export default function AgenticWorkflows() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [selectedFlow, setSelectedFlow] = useState<FlowObject | null>(null);
   const [builtGraphId, setBuiltGraphId] = useState<string | null>(null);

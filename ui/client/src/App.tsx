@@ -3,7 +3,7 @@ import RagOverview from "@/pages/RagOverview";
 import AgenticOverview from "@/pages/AgenticOverview";
 import Configuration from "@/pages/Configuration";
 import JiraIntegration from "@/pages/JiraIntegration";
-import AgenticAI from "@/pages/AgenticAI";
+import AgenticWorkflows from "@/pages/AgenticWorkflows";
 import AgentRepository from "@/pages/AgentRepository";
 import AgenticChats from "@/pages/AgenticChats";
 import GetToKnow from "@/pages/GetToKnow";
@@ -35,7 +35,7 @@ function AppRoutes() {
       <AgenticAIProvider>
         <Switch>
           <Route path="/agentic-overview" component={AgenticOverview} />
-          <Route path="/agentic-ai" component={AgenticAI} />
+          <Route path="/agentic-ai" component={AgenticWorkflows} />
           <Route path="/inventory" component={AgentRepository} />
           <Route path="/agentic-chats" component={AgenticChats} />
         </Switch>

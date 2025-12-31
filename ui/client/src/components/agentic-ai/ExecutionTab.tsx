@@ -17,13 +17,12 @@ import { MessageSquare, Users, Clock, ArrowUpRight, SplitSquareVertical, Trash2,
 import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
-import { GraphNode } from "../../pages/AgenticAI"
 import axios from '../../http/axiosAgentConfig'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
 import { useAgenticAI } from "@/contexts/AgenticAIContext";
-import AvailableFlows from "./AvailableFlows";
+import WorkflowsPanel from "./WorkflowsPanel";
 import { ReactFlowProvider } from "reactflow";
 import {
   Dialog,
@@ -911,7 +910,7 @@ export default function ExecutionTab({
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-hidden">
             <ReactFlowProvider key={`new-chat-graph-${showAddFlowModal}`}>
-              <AvailableFlows
+              <WorkflowsPanel
                 selectedFlow={selectedFlowForModal}
                 onFlowSelect={handleFlowSelect}
                 showActiveStatus={false}

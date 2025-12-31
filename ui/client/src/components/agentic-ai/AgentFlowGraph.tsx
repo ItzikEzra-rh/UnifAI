@@ -2,7 +2,7 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StreamingDataProvider } from "@/components/agentic-ai/StreamingDataContext";
 import { FlowObject } from "./graphs/interfaces";
-import AvailableFlows from "./AvailableFlows";
+import WorkflowsPanel from "./WorkflowsPanel";
 import { BlueprintValidationResult } from "@/types/validation";
 
 // Create a ReactFlow provider wrapper
@@ -41,7 +41,7 @@ export default function AgentFlowGraph({
       <CardContent className="p-0" style={{ height: "73.5vh" }}>
         <StreamingDataProvider>
           <ReactFlowProvider>
-            <AvailableFlows
+            <WorkflowsPanel
               selectedFlow={selectedFlow}
               onFlowSelect={handleFlowSelect}
               onFlowDelete={handleFlowDelete}
