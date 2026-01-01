@@ -112,6 +112,6 @@ jobs:
           pwd
           ls -la .
           cd $BACKUP_REPO_NAME
-          git pull $REMOTE_NAME $BRANCH_NAME
+          git pull $REMOTE_NAME $BRANCH_NAME --rebase
           ls -la .
         shell: bash        
