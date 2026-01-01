@@ -101,7 +101,7 @@ jobs:
           # BRANCH_NAME="main" 
 
           # Add the 3rd party repository as a new remote
-          git remote add $REMOTE_NAME $REPO_URL
+          #git remote add $REMOTE_NAME $REPO_URL
 
           git clone $BACKUP_REPO
 
