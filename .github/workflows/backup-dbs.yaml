@@ -99,6 +99,12 @@ jobs:
           echo "Qdrant backup completed"
 
   upload_to_gitlab:        
+    runs-on: linux
+    needs: 
+      - backup_qdrant
+      - backup_mongo
+    steps:
+
       - name: Upload files to gitlab repo
         run: |
           # Define the URL with the PAT for authentication
