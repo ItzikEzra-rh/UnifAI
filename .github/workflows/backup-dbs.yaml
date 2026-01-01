@@ -91,13 +91,14 @@ jobs:
     runs-on: linux
     needs: verify_agent_deps
     steps:
-      
+
       - name: Backup Qdrant
         run: |
           echo "Backing up Qdrant"
           python .github/scripts/qdrant_backup.py
           echo "Qdrant backup completed"
 
+  upload_to_gitlab:        
       - name: Upload files to gitlab repo
         run: |
           # Define the URL with the PAT for authentication
@@ -106,13 +107,14 @@ jobs:
           # BRANCH_NAME="main" 
 
           git clone $BACKUP_REPO
+          cp backup.tar.gz $BACKUP_REPO_NAME/
           cp -r snapshots $BACKUP_REPO_NAME/
+
           cd $BACKUP_REPO_NAME
           git config user.email "sfiresht@redhat.com"
           git config user.name "sfiresht"
           git add .
-          git commit -m "Backup Qdrant"
+          git commit -m "uploading backup files to gitlab"
           echo "Committed changes"
           git push
-          echo "Backup Qdrant completed"
         shell: bash        
