@@ -96,15 +96,14 @@ jobs:
       - name: Upload files to gitlab repo
         run: |
           # Define the URL with the PAT for authentication
-          REPO_URL=$BACKUP_REPO
-          REMOTE_NAME="unifai_backups"
-          BRANCH_NAME="main" 
+          # REPO_URL=$BACKUP_REPO
+          # REMOTE_NAME="unifai_backups"
+          # BRANCH_NAME="main" 
 
           # Add the 3rd party repository as a new remote
           git remote add $REMOTE_NAME $REPO_URL
 
-          # Fetch all branches and tags from the new remote
-          git clone $REMOTE_NAME
+          git clone $BACKUP_REPO
 
           # Pull (fetch and merge) changes into the current branch
           # You may want to use 'git pull --rebase' or a specific merge strategy
