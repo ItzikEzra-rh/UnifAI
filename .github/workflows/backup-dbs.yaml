@@ -11,6 +11,7 @@ env:
   cluster_secret: ${{ secrets.PP_CLUSTER }}
   BACKUP_REPO: "git@gitlab.cee.redhat.com:ai_tools/unifai_backups.git"
   #BACKUP_REPO: "https://${{ secrets.GITLAB_BACKUP_REPO_KEY }}@gitlab.cee.redhat.com/ai_tools/unifai_backups.git"
+  BACKUP_REPO_NAME: "unifai_backups"
 
 on:
   schedule:
@@ -96,7 +97,7 @@ jobs:
         run: |
           # Define the URL with the PAT for authentication
           REPO_URL=$BACKUP_REPO
-          REMOTE_NAME="db_backups"
+          REMOTE_NAME="unifai_backups"
           BRANCH_NAME="main" 
 
           # Add the 3rd party repository as a new remote
@@ -107,6 +108,8 @@ jobs:
 
           # Pull (fetch and merge) changes into the current branch
           # You may want to use 'git pull --rebase' or a specific merge strategy
+          #git pull $REMOTE_NAME $BRANCH_NAME
+          cd $BACKUP_REPO_NAME
           git pull $REMOTE_NAME $BRANCH_NAME
           ls -la .
         shell: bash        
