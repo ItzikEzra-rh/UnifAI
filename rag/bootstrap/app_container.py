@@ -49,6 +49,19 @@ def file_storage():
     return LocalFileStorage(AppConfig.get_instance().upload_folder)
 
 
+@lru_cache(maxsize=1)
+def umami_client():
+    """Umami analytics client for website tracking."""
+    from infrastructure.umami.umami_client import UmamiClient
+    from config.app_config import AppConfig
+    config = AppConfig.get_instance()
+    return UmamiClient(
+        url=config.get("umami_url", ""),
+        username=config.get("umami_username", ""),
+        password=config.get("umami_password", ""),
+    )
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # REPOSITORIES (Infrastructure adapters implementing domain ports)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -118,6 +131,24 @@ def slack_config_manager():
     """Slack configuration manager."""
     from infrastructure.config.slack_config_manager import SlackConfigManager
     return SlackConfigManager()
+
+
+# ══════════════════════════════════════════════════════════════════════════════
+# CELERY ADAPTERS (Infrastructure layer - async task dispatch)
+# ══════════════════════════════════════════════════════════════════════════════
+
+@lru_cache(maxsize=1)
+def celery_pipeline_dispatcher():
+    """Celery adapter for pipeline task dispatch."""
+    from infrastructure.celery.pipeline_dispatcher import CeleryPipelineDispatcher
+    return CeleryPipelineDispatcher()
+
+
+@lru_cache(maxsize=1)
+def celery_slack_event_dispatcher():
+    """Celery adapter for Slack event dispatch."""
+    from infrastructure.celery.slack_event_dispatcher import CelerySlackEventDispatcher
+    return CelerySlackEventDispatcher()
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -196,6 +227,62 @@ def data_source_service():
         source_repo=data_source_repository(),
         pipeline_repo=pipeline_repository(),
         vector_repo=vector_repository("default"),
+    )
+
+
+@lru_cache(maxsize=1)
+def doc_validators():
+    """Document validators pipeline factory."""
+    from application.validation.validators.document.factory import DocValidators
+    from infrastructure.config.doc_config_manager import DocConfigManager
+    return DocValidators(config_manager=DocConfigManager())
+
+
+@lru_cache(maxsize=1)
+def slack_validators():
+    """Slack validators pipeline factory."""
+    from application.validation.validators.slack.factory import SlackValidators
+    from application.validation.validators.slack.channel_bot_installation import ChannelBotInstallationValidator
+    # TODO: Inject proper Slack connector based on project
+    return SlackValidators(channel_bot_validator=ChannelBotInstallationValidator(slack_connector=None))
+
+
+@lru_cache(maxsize=1)
+def registration_factory():
+    """Registration factory for creating source-specific registrations."""
+    from application.registration.factory import RegistrationFactory
+    from config.app_config import AppConfig
+    return RegistrationFactory(
+        data_source_repository=data_source_repository(),
+        upload_folder=AppConfig.get_instance().upload_folder,
+        doc_validators=doc_validators(),
+        slack_validators=slack_validators(),
+    )
+
+
+@lru_cache(maxsize=1)
+def registration_service():
+    """Registration service for source registration flows."""
+    from application.registration.registration_service import RegistrationService
+    return RegistrationService(factory=registration_factory())
+
+
+@lru_cache(maxsize=1)
+def pipeline_dispatch_service():
+    """Pipeline dispatch service - orchestrates registration and task dispatch."""
+    from application.pipeline_dispatch_service import PipelineDispatchService
+    return PipelineDispatchService(
+        registration_svc=registration_service(),
+        task_dispatcher=celery_pipeline_dispatcher(),
+    )
+
+
+@lru_cache(maxsize=1)
+def slack_event_dispatch_service():
+    """Slack event dispatch service - handles Slack Events API webhooks."""
+    from application.slack_event_dispatch_service import SlackEventDispatchService
+    return SlackEventDispatchService(
+        dispatcher=celery_slack_event_dispatcher(),
     )
 
 
@@ -363,6 +450,7 @@ def clear_all_caches():
     pipeline_monitoring_db.cache_clear()
     data_sources_db.cache_clear()
     file_storage.cache_clear()
+    umami_client.cache_clear()
     # Repositories
     pipeline_repository.cache_clear()
     data_source_repository.cache_clear()
@@ -384,6 +472,16 @@ def clear_all_caches():
     pipeline_service.cache_clear()
     monitoring_service.cache_clear()
     data_source_service.cache_clear()
+    # Registration & Dispatch
+    doc_validators.cache_clear()
+    slack_validators.cache_clear()
+    registration_factory.cache_clear()
+    registration_service.cache_clear()
+    pipeline_dispatch_service.cache_clear()
+    # Celery Adapters
+    celery_pipeline_dispatcher.cache_clear()
+    celery_slack_event_dispatcher.cache_clear()
+    slack_event_dispatch_service.cache_clear()
     # Embedding
     embedding_generator.cache_clear()
     # Retrieval

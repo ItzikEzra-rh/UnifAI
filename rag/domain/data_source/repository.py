@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any
 
 from domain.data_source.model import DataSource
+from domain.pagination import PaginatedResult
 
 
 class DataSourceRepository(ABC):
@@ -30,18 +31,19 @@ class DataSourceRepository(ABC):
         limit: int = 50,
         source_type: Optional[str] = None,
         search: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Paginated query returning {data, next_cursor, has_more, total}."""
-        ...
-
-    @abstractmethod
-    def save(self, source: DataSource) -> None:
-        """Insert or update a source (upsert by pipeline_id)."""
-        ...
-
-    @abstractmethod
-    def delete(self, source_id: str) -> bool:
-        """Delete source by ID. Returns True if deleted."""
+    ) -> PaginatedResult[Dict[str, Any]]:
+        """
+        Paginated query for sources.
+        
+        Args:
+            cursor: Pagination cursor
+            limit: Max items to return
+            source_type: Filter by type (e.g., "DOCUMENT", "SLACK")
+            search: Filter by name prefix (case-insensitive)
+            
+        Returns:
+            PaginatedResult containing source documents
+        """
         ...
 
     @abstractmethod
@@ -52,7 +54,7 @@ class DataSourceRepository(ABC):
         search: Optional[str] = None,
         cursor: Optional[str] = None,
         limit: int = 50,
-    ) -> Dict[str, Any]:
+    ) -> PaginatedResult[str]:
         """
         Get distinct values from a field (e.g., tags, categories).
         
@@ -64,7 +66,16 @@ class DataSourceRepository(ABC):
             limit: Max values to return
             
         Returns:
-            {data: List[str], next_cursor, has_more, total}
+            PaginatedResult containing unique string values
         """
         ...
 
+    @abstractmethod
+    def save(self, source: DataSource) -> None:
+        """Insert or update a source (upsert by pipeline_id)."""
+        ...
+
+    @abstractmethod
+    def delete(self, source_id: str) -> bool:
+        """Delete source by ID. Returns True if deleted."""
+        ...

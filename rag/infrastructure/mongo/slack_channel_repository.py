@@ -3,8 +3,10 @@ from typing import Optional, List, Dict, Any
 
 from pymongo.collection import Collection
 
-from domain.slack_channel.model import SlackChannel, ChannelType
+from domain.slack_channel.model import SlackChannel
 from domain.slack_channel.repository import SlackChannelRepository
+from domain.pagination import PaginatedResult
+from infrastructure.mongo.pagination_builder import PaginatedQueryBuilder
 from shared.logger import logger
 
 
@@ -35,47 +37,25 @@ class MongoSlackChannelRepository(SlackChannelRepository):
         types: Optional[str] = None,
         cursor: Optional[str] = None,
         limit: int = 50,
-        search_regex: Optional[str] = None,
-    ) -> Dict[str, Any]:
-        """Get channels with pagination support."""
-        query_filter: Dict[str, Any] = {"project_id": project_id}
-
+        search: Optional[str] = None,
+    ) -> PaginatedResult[Dict[str, Any]]:
+        """
+        Get channels with pagination using the builder.
+        
+        Uses PaginatedQueryBuilder for consistent pagination logic.
+        """
+        builder = (PaginatedQueryBuilder(self._col)
+            .with_filter({"project_id": project_id})
+            .with_search(search, field="channel_name")
+            .with_sort("channel_name", desc=False)  # Alphabetical
+            .paginate(cursor, limit))
+        
         if types:
-            channel_types = [t.strip() for t in types.split(",")]
-            cache_types = [self._TYPE_MAP.get(ct, ct) for ct in channel_types]
-            query_filter["type"] = {"$in": cache_types}
-
-        if search_regex:
-            try:
-                query_filter["channel_name"] = {"$regex": search_regex, "$options": "i"}
-            except Exception as regex_error:
-                logger.warning(f"Invalid regex pattern '{search_regex}': {regex_error}")
-
-        total_count = self._col.count_documents(query_filter)
-
-        skip = 0
-        if cursor:
-            try:
-                skip = int(cursor)
-            except ValueError:
-                logger.warning(f"Invalid cursor value: {cursor}, using 0")
-
-        docs = list(
-            self._col.find(query_filter, {"_id": 0}).skip(skip).limit(limit)
-        )
-
-        next_cursor = None
-        has_more = False
-        if len(docs) == limit and (skip + limit) < total_count:
-            next_cursor = str(skip + limit)
-            has_more = True
-
-        return {
-            "channels": docs,
-            "nextCursor": next_cursor,
-            "hasMore": has_more,
-            "total": total_count,
-        }
+            type_list = [self._TYPE_MAP.get(t.strip(), t.strip()) 
+                        for t in types.split(",")]
+            builder.with_filter({"type": {"$in": type_list}})
+        
+        return builder.documents()
 
     def exists_for_project(self, project_id: str) -> bool:
         """Check if there are any channels for the project."""
@@ -114,4 +94,3 @@ class MongoSlackChannelRepository(SlackChannelRepository):
         result = self._col.delete_many({"project_id": project_id})
         logger.info(f"Cleared {result.deleted_count} existing channels for project {project_id}")
         return result.deleted_count
-

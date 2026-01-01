@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from typing import Optional, List, Dict, Any
 
 from domain.slack_channel.model import SlackChannel
+from domain.pagination import PaginatedResult
 
 
 class SlackChannelRepository(ABC):
@@ -20,20 +21,20 @@ class SlackChannelRepository(ABC):
         types: Optional[str] = None,
         cursor: Optional[str] = None,
         limit: int = 50,
-        search_regex: Optional[str] = None,
-    ) -> Dict[str, Any]:
+        search: Optional[str] = None,
+    ) -> PaginatedResult[Dict[str, Any]]:
         """
         Get channels with pagination support.
         
         Args:
             project_id: Project ID to filter by
-            types: Optional channel types to filter by
+            types: Optional channel types (comma-separated: "private_channel,public_channel")
             cursor: Optional cursor for pagination
             limit: Number of channels to return
-            search_regex: Optional regex pattern to search channel names
+            search: Optional search pattern for channel names
             
         Returns:
-            Dictionary with channels, nextCursor, hasMore, total
+            PaginatedResult containing channel documents
         """
         ...
 
@@ -61,4 +62,3 @@ class SlackChannelRepository(ABC):
     def delete_by_project(self, project_id: str) -> int:
         """Delete all channels for a project. Returns count deleted."""
         ...
-

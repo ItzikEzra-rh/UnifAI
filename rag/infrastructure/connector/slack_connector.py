@@ -256,13 +256,15 @@ class SlackConnector(DataConnector):
         """
         try:
             # Get channels from repository with pagination
-            return self._channel_repo.find_paginated(
+            result = self._channel_repo.find_paginated(
                 project_id=self._project_id,
                 types=types,
                 cursor=cursor,
                 limit=limit,
-                search_regex=search_regex
+                search=search_regex,
             )
+            # Convert PaginatedResult to dict for backward compatibility
+            return result.to_dict("channels")
             
         except Exception as e:
             logger.error(f"Error retrieving channels from cache: {str(e)}")
