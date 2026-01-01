@@ -107,7 +107,7 @@ jobs:
           # BRANCH_NAME="main" 
 
           git clone $BACKUP_REPO
-          cp backup.tar.gz $BACKUP_REPO_NAME/
+          cp /tmp/backup.tar.gz $BACKUP_REPO_NAME/
           cp -r snapshots $BACKUP_REPO_NAME/
 
           cd $BACKUP_REPO_NAME
