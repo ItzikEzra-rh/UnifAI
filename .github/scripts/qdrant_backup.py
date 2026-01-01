@@ -5,9 +5,9 @@ import os
 
 #constants to Qdrant cluster connection
 QDRANT_MAIN_URL = "http://qdrant-route-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
-QDRANT_NODES = (
-    "http://qdrant-route-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
-)
+# QDRANT_NODES = (
+#     "http://qdrant-route-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
+# )
 QDRANT_API_KEY = ""
 COLLECTION_NAME = "data_source_data"
 
@@ -15,31 +15,30 @@ COLLECTION_NAME = "data_source_data"
 # create the client to connect to the Qdrant cluster
 # client = QdrantClient(QDRANT_MAIN_URL, api_key=QDRANT_API_KEY)
 
-def create_snapshots(node_urls: list[str], collection_name: str) -> list[str]:
+def create_snapshots(node_url: str, collection_name: str) -> str:
     '''
     Creates a snapshot of the collection from the given node URLs
 
     Args:
-        node_urls: list of node URLs to create the snapshot from
+        node_url: node URL to create the snapshot from
         collection_name: name of the collection to create the snapshot from
     Returns:
-        list of snapshot URLs
+        snapshot URL
     '''
-    snapshot_urls = []
-    for node_url in node_urls:
-        print(node_url)
-        print("colllection name: ", collection_name)
-        node_client = QdrantClient(node_url)
-        print('created client')
-        #node_client = QdrantClient(node_url, api_key=QDRANT_API_KEY)
-        snapshot_info = node_client.create_snapshot(collection_name=collection_name, wait=True)
-        print('created snapshot')
-        print(snapshot_info)
-        snapshot_url = f"{node_url}/collections/test_collection/snapshots/{snapshot_info.name}"
-        snapshot_urls.append(snapshot_url)
-    return snapshot_urls
+    #snapshot_urls = []
+    print(node_url)
+    print("collection name: ", collection_name)
+    client = QdrantClient(url=node_url, port=80, prefer_grpc=False, timeout=30.0)
+    print('created client - create snapshots')
+    #node_client = QdrantClient(node_url, api_key=QDRANT_API_KEY)
+    snapshot_info = client.create_snapshot(collection_name=collection_name, wait=True)
+    print('created snapshot')
+    print(snapshot_info)
+    snapshot_url = f"{node_url}/collections/{collection_name}/snapshots/{snapshot_info.name}"
+    #snapshot_urls.append(snapshot_url)
+    return snapshot_url
 
-def download_snapshots(snapshot_urls: list[str]) -> None:
+def download_all_snapshots(snapshot_urls: list[str]) -> None:
     '''
     Downloads the snapshots from the given URLs and saves them to the local filesystem
     beforehand, checks if the directory exists and creates it if it doesn't
@@ -72,7 +71,7 @@ def  get_collections(node_url: str) -> bool:
     '''
     try:
         client = QdrantClient(url=node_url, port=80, prefer_grpc=False, timeout=30.0)
-        print('created client')
+        print('created client - get collections')
         collections = client.get_collections().collections
         print(collections)
         if collections:
@@ -95,10 +94,10 @@ def main():
     snapshot_urls = []
     for collection in collections:
         print(collection)
-        snapshot_url = create_snapshots([QDRANT_MAIN_URL], collection.name)
+        snapshot_url = create_snapshots(QDRANT_MAIN_URL, collection.name)
         snapshot_urls.append(snapshot_url)
     print(snapshot_urls)
-    # download_snapshots(snapshot_urls)
+    download_all_snapshots(snapshot_urls)
 
 if __name__ == "__main__":
     main()

@@ -9,6 +9,7 @@ env:
   username: "tag-ai"
   cluster_name: "PP"
   cluster_secret: ${{ secrets.PP_CLUSTER }}
+  BACKUP_REPO: https://gitlab.cee.redhat.com/ai_tools/unifai_backups.git
 
 on:
   schedule:
@@ -89,3 +90,22 @@ jobs:
           echo "Backing up Qdrant"
           python .github/scripts/qdrant_backup.py
           echo "Qdrant backup completed"
+
+      - name: Upload files to gitlab repo
+        run: |
+          # Define the URL with the PAT for authentication
+          REPO_URL=$BACKUP_REPO
+          REMOTE_NAME="db_backups"
+          BRANCH_NAME="main" 
+
+          # Add the 3rd party repository as a new remote
+          git remote add $REMOTE_NAME $REPO_URL
+
+          # Fetch all branches and tags from the new remote
+          git fetch $REMOTE_NAME
+
+          # Pull (fetch and merge) changes into the current branch
+          # You may want to use 'git pull --rebase' or a specific merge strategy
+          git pull $REMOTE_NAME $BRANCH_NAME
+          ls -la .
+        shell: bash        
