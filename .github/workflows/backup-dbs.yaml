@@ -109,6 +109,8 @@ jobs:
           # Pull (fetch and merge) changes into the current branch
           # You may want to use 'git pull --rebase' or a specific merge strategy
           #git pull $REMOTE_NAME $BRANCH_NAME
+          pwd
+          ls -la .
           cd $BACKUP_REPO_NAME
           git pull $REMOTE_NAME $BRANCH_NAME
           ls -la .
