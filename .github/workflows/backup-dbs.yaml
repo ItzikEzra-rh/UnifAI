@@ -99,7 +99,8 @@ jobs:
           # REPO_URL=$BACKUP_REPO
           # REMOTE_NAME="unifai_backups"
           # BRANCH_NAME="main" 
-
+          git config user.email "sfiresht@redhat.com"
+          git config user.name "sfiresht"
           git clone $BACKUP_REPO
           cp -r snapshots $BACKUP_REPO_NAME/
           cd $BACKUP_REPO_NAME
