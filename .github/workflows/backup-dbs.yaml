@@ -9,8 +9,8 @@ env:
   username: "tag-ai"
   cluster_name: "PP"
   cluster_secret: ${{ secrets.PP_CLUSTER }}
-  #BACKUP_REPO: "git@gitlab.cee.redhat.com:ai_tools/unifai_backups.git"
-  BACKUP_REPO: "https://${{ secrets.GITLAB_BACKUP_REPO_KEY }}@gitlab.cee.redhat.com/ai_tools/unifai_backups.git"
+  BACKUP_REPO: "git@gitlab.cee.redhat.com:ai_tools/unifai_backups.git"
+  #BACKUP_REPO: "https://${{ secrets.GITLAB_BACKUP_REPO_KEY }}@gitlab.cee.redhat.com/ai_tools/unifai_backups.git"
 
 on:
   schedule:
