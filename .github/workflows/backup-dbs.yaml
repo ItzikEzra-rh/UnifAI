@@ -104,7 +104,7 @@ jobs:
           git remote add $REMOTE_NAME $REPO_URL
 
           # Fetch all branches and tags from the new remote
-          git fetch $REMOTE_NAME
+          git clone $REMOTE_NAME
 
           # Pull (fetch and merge) changes into the current branch
           # You may want to use 'git pull --rebase' or a specific merge strategy
@@ -112,6 +112,6 @@ jobs:
           pwd
           ls -la .
           cd $BACKUP_REPO_NAME
-          git pull $REMOTE_NAME $BRANCH_NAME --rebase
+          #git pull $REMOTE_NAME $BRANCH_NAME --rebase
           ls -la .
         shell: bash        
