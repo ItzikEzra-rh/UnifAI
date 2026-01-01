@@ -100,17 +100,12 @@ jobs:
           # REMOTE_NAME="unifai_backups"
           # BRANCH_NAME="main" 
 
-          # Add the 3rd party repository as a new remote
-          #git remote add $REMOTE_NAME $REPO_URL
-
           git clone $BACKUP_REPO
-
-          # Pull (fetch and merge) changes into the current branch
-          # You may want to use 'git pull --rebase' or a specific merge strategy
-          #git pull $REMOTE_NAME $BRANCH_NAME
-          pwd
-          ls -la .
+          cp -r snapshots $BACKUP_REPO_NAME/
           cd $BACKUP_REPO_NAME
-          #git pull $REMOTE_NAME $BRANCH_NAME --rebase
-          ls -la .
+          git add .
+          git commit -m "Backup Qdrant"
+          echo "Committed changes"
+          git push
+          echo "Backup Qdrant completed"
         shell: bash        
