@@ -17,13 +17,13 @@ import { MessageSquare, Users, Clock, ArrowUpRight, SplitSquareVertical, Trash2,
 import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
-import { GraphNode } from "../../pages/AgenticAI"
 import axios from '../../http/axiosAgentConfig'
 import { getPublicUsageScope } from '@/api/blueprints'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
-import AvailableFlows from "./AvailableFlows";
+import { useAgenticAI } from "@/contexts/AgenticAIContext";
+import WorkflowsPanel from "./WorkflowsPanel";
 import { ReactFlowProvider } from "reactflow";
 import {
   Dialog,
@@ -33,7 +33,10 @@ import {
   DialogTitle,
   CustomDialogContent,
 } from "@/components/ui/dialog";
-import { FlowObject } from "./graphs/interfaces";
+import { GraphFlow, FlowObject } from "./graphs/interfaces";
+import { UmamiTrack } from '@/components/ui/umamitrack';
+import { UmamiEvents } from '@/config/umamiEvents';
+import { useBlueprintValidation } from "@/hooks/use-blueprint-validation";
 
 import { ChatSession, BackendChatMessage, ChatSessionData, SessionStateData } from "@/types/session";
 import {transformSessionData, sortSessionsByTimestamp} from "@/utils/sessionHelpers";
@@ -106,6 +109,18 @@ export default function ExecutionTab({
 
   const { nodeListRef, forceUpdate } = useStreamingData();
   const { user } = useAuth();
+  const { cacheBlueprintValidationResults } = useAgenticAI();
+  
+  // Blueprint validation hook
+  const {
+    isValidating: isValidatingBlueprint,
+    validationResults: blueprintValidationResults,
+    isValid: isBlueprintValid,
+    validateBlueprint: validateSelectedBlueprint,
+  } = useBlueprintValidation({
+    onCacheResults: cacheBlueprintValidationResults,
+    showToastOnFailure: true,
+  });
 
   // Toggle Blueprint Graph visibility
   // For shared link sessions, always show the message area (not the graph)
@@ -402,25 +417,23 @@ export default function ExecutionTab({
         userId: user?.username || "default",
       };
 
-      const response = await axios.post(
+      await axios.post(
         "/sessions/user.session.create",
         selectedBlueprint,
       );
 
-      await fetchChatSessions();
+      // Fetch updated sessions
+      const userId = user?.username || "default";
+      const response = await axios.get(`/sessions/session.user.chat.get?userId=${userId}`);
+      const transformedSessions = transformApiDataToSessions(response.data);
+      const sortedSessions = transformedSessions.sort((firstSession, secondSession) => secondSession.timestamp.getTime() - firstSession.timestamp.getTime());
+      setChatSessions(sortedSessions);
 
       // Auto-select the newly created session
-      // Wait a bit for state to update, then find the newest session with matching blueprintId
-      setTimeout(() => {
-        setChatSessions(prevSessions => {
-          const newestSession = prevSessions.find(session => session.blueprintId === graphId);
-          if (newestSession) {
-            setSelectedSession(newestSession);
-            setCurrentSessionMessages(newestSession.messages);
-          }
-          return prevSessions; // Return unchanged sessions
-        });
-      }, 100);
+      const newestSession = sortedSessions.find(session => session.blueprintId === graphId);
+      if (newestSession) {
+        await handleSessionSelect(newestSession);
+      }
 
       setShowAddFlowModal(false);
       setSelectedFlowForModal(null);
@@ -660,15 +673,18 @@ export default function ExecutionTab({
             Interact with your AI assistant and monitor execution details
           </p>
         </div>
-        {/* Commenting the next part out due to Nir's request. If and when commenting back in need to take care of coloring. */}
+
+          {/* <UmamiTrack event={UmamiEvents.AGENT_CHAT_TOGGLE_EXECUTION_STREAM_BUTTON}> */}
+            {/* Commenting the next part out due to Nir's request. If and when commenting back in need to take care of coloring. */}
         {/* <Button
-          className={`flex items-center gap-2 ${isActiveChatSession ? "bg-[#03DAC6] hover:bg-opacity-80" : "bg-gray-700 text-gray-300 cursor-not-allowed"}`}
-          onClick={() => setShowExecutionStream(!showExecutionStream)}
-          disabled={!isActiveChatSession}
-        >
-          <SplitSquareVertical className="h-4 w-4" />
-          {showExecutionStream ? "Hide" : "Open"} Execution Stream
-        </Button> */}
+            className={`flex items-center gap-2 ${isActiveChatSession ? "bg-[#03DAC6] hover:bg-opacity-80" : "bg-gray-700 text-gray-300 cursor-not-allowed"}`}
+            onClick={() => setShowExecutionStream(!showExecutionStream)}
+            disabled={!isActiveChatSession}
+            >
+            <SplitSquareVertical className="h-4 w-4" />
+            {showExecutionStream ? "Hide" : "Open"} Execution Stream
+            </Button> */}
+          {/* </UmamiTrack> */}
       </div>
 
       <div className="flex resizable-container gap-0" style={{ height: "calc(100vh - 230px)" }}>
@@ -683,6 +699,7 @@ export default function ExecutionTab({
                 <div className="flex items-center gap-1 flex-shrink-0 max-w-fit">
                   {/* Commenting the next part out since it's related to our RAG system. If and when commenting back in need to take care of coloring. */}
                   {/* Global Scope Toggle */}
+                  {/* <UmamiTrack event={UmamiEvents.AGENT_CHAT_TOGGLE_GLOBAL_SCOPE_BUTTON}> */}
                   {/* <Switch.Root
                     className="relative w-20 h-5 rounded-full bg-gray-600 data-[state=checked]:bg-[#03DAC6] transition-colors cursor-pointer flex-shrink-0"
                     checked={globalScope === 'public'}
@@ -700,18 +717,22 @@ export default function ExecutionTab({
                       className="absolute top-[1px] left-[1px] h-4 w-4 rounded-full bg-white transition-transform duration-300 z-10 transform data-[state=checked]:translate-x-[60px]"
                     /> */}
                   {/* </Switch.Root> */}
+                  {/* </UmamiTrack> */}
                   <Button variant="ghost" size="sm" className="h-6 w-6 p-0 flex-shrink-0">
                     <Users className="h-3 w-3" />
                   </Button>
+                  
+                  <UmamiTrack event={UmamiEvents.AGENT_CHAT_ADD_FLOW_BUTTON} includeUserData={false}>
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     className="h-6 w-6 p-0 text-[#03DAC6] hover:bg-[#03DAC6] hover:bg-opacity-20 flex-shrink-0" 
                     onClick={handleAddFlowClick}
                     title="Add new chat from flow"
-                  >
+                    >
                     <Plus className="h-3 w-3" />
                   </Button>
+                  </UmamiTrack>
                 </div>
               </div>
             </CardHeader>
@@ -745,14 +766,16 @@ export default function ExecutionTab({
                             {session.title}
                           </span>
                         </div>
+                        <UmamiTrack event={UmamiEvents.AGENT_CHAT_DELETE_CHAT_BUTTON} includeUserData={false}>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
                           onClick={(e) => handleDeleteChat(session, e)}
-                        >
+                          >
                           <Trash2 className="h-3 w-3" />
                         </Button>
+                        </UmamiTrack>
                       </div>
                       <div className="mt-1 flex items-center text-xs text-gray-400">
                         <Clock className="h-3 w-3 mr-1" />
@@ -790,6 +813,8 @@ export default function ExecutionTab({
               initialMessages={currentSessionMessages}
               blueprintExists={selectedSession?.blueprintExists ?? true}
               isSharingDisabled={isSharingDisabled}
+              blueprintValid={isBlueprintValid}
+              isValidatingBlueprint={isValidatingBlueprint}
               onToggleBlueprintGraph={toggleBlueprintGraph}
               isBlueprintGraphHidden={isBlueprintGraphHidden}
               isChatOnlyMode={selectedSession?.fromSharedLink ?? false}
@@ -853,6 +878,8 @@ export default function ExecutionTab({
                     showBackground={true}
                     interactive={true}
                     isLiveRequest={isLiveRequest}
+                    validationResults={blueprintValidationResults}
+                    isValidating={isValidatingBlueprint}
                   />
                 </ReactFlowProvider>
               ) : (
@@ -876,7 +903,7 @@ export default function ExecutionTab({
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-hidden">
             <ReactFlowProvider key={`new-chat-graph-${showAddFlowModal}`}>
-              <AvailableFlows
+              <WorkflowsPanel
                 selectedFlow={selectedFlowForModal}
                 onFlowSelect={handleFlowSelect}
                 showActiveStatus={false}

@@ -19,11 +19,14 @@ import ReactFlowGraph from "./graphs/ReactFlowGraph";
 import { fetchBlueprints, fetchResolvedBlueprints, fetchActiveSessions } from "@/api/agentic";
 import { convertGraphFlowToFlowObject } from "@/utils/blueprintHelpers";
 import ShareWorkflow from "./ShareWorkflow";
+import { BlueprintValidationResult } from "@/types/validation";
+import { useBlueprintValidation } from "@/hooks/use-blueprint-validation";
 
-export interface AvailableFlowsProps {
+export interface WorkflowsPanelProps {
   selectedFlow: FlowObject | null;
   onFlowSelect: (flow: FlowObject | null) => void;
   onFlowDelete?: (flow: FlowObject) => void;
+  onValidationChange?: (isValid: boolean, validationResult: BlueprintValidationResult | null, isValidating: boolean) => void;
   showActiveStatus?: boolean;
   showDeleteButton?: boolean;
   className?: string;
@@ -38,10 +41,11 @@ export interface AvailableFlowsProps {
   };
 }
 
-export default function AvailableFlows({
+export default function WorkflowsPanel({
   selectedFlow,
   onFlowSelect,
   onFlowDelete,
+  onValidationChange,
   showActiveStatus = false,
   showDeleteButton = false,
   className = "",
@@ -54,7 +58,7 @@ export default function AvailableFlows({
     interactive: true,
     isLiveRequest: false,
   },
-}: AvailableFlowsProps): React.ReactElement {
+}: WorkflowsPanelProps): React.ReactElement {
   // State for available graph flows
   const [graphFlows, setGraphFlows] = useState<FlowObject[]>([]);
   const [activeFlowIds, setActiveFlowIds] = useState<string[]>([]);
@@ -62,9 +66,20 @@ export default function AvailableFlows({
   const [showDeleteModal, setShowDeleteModal] = useState<boolean>(false);
   const [flowToDelete, setFlowToDelete] = useState<FlowObject | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
-
+  
   const { user } = useAuth();
   const { openShareForItem } = useShared();
+  
+  // Blueprint validation hook
+  const {
+    isValidating,
+    validationResults,
+    validateBlueprint: validateSelectedBlueprint,
+    clearValidation,
+  } = useBlueprintValidation({
+    onValidationChange,
+    showToastOnFailure: true,
+  });
 
   // Fetch available blueprints from API
   const fetchAvailableFlows = async (): Promise<void> => {
@@ -121,6 +136,16 @@ export default function AvailableFlows({
       setIsLoading(false);
     });
   }, [user, useResolvedEndpoint]);
+
+  // Trigger validation when selected flow changes
+  useEffect(() => {
+    if (selectedFlow?.id) {
+      validateSelectedBlueprint(selectedFlow.id);
+    } else {
+      // Clear validation state when no flow is selected
+      clearValidation();
+    }
+  }, [selectedFlow?.id, validateSelectedBlueprint, clearValidation]);
 
   const handleFlowSelect = (flow: FlowObject): void => {
     onFlowSelect(flow);
@@ -286,14 +311,13 @@ export default function AvailableFlows({
               <div className="border-b border-gray-800 bg-background-surface p-4">
                 <ShareWorkflow blueprintId={selectedFlow.id} />
               </div>
-              {/* Graph Visualization */}
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <ReactFlowGraph
-                  blueprintId={selectedFlow.id}
-                  height="100%"
-                  {...graphProps}
-                />
-              </div>
+            <ReactFlowGraph
+              blueprintId={selectedFlow.id}
+              height="100%"
+              validationResults={validationResults}
+              isValidating={isValidating}
+              {...graphProps}
+            />
             </>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400">
