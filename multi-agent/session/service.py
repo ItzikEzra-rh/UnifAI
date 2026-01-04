@@ -167,27 +167,3 @@ class SessionService:
         Delete a session by run_id. Returns True if deleted, False if not found.
         """
         return self._manager.delete_session(run_id)
-    
-    def validate_blueprint(self, user_id: str, blueprint_id: str) -> None:
-        """
-        Validate that a blueprint can be used in a session by creating a test session
-        and immediately deleting it. This ensures all nodes are valid and working.
-        
-        :raises BlueprintNotFoundError: If blueprint doesn't exist
-        :raises Exception: If blueprint cannot be used in a session
-        """
-        test_session = None
-        try:
-            test_session = self.create(user_id=user_id, blueprint_id=blueprint_id, metadata=None)
-        except BlueprintNotFoundError:
-            raise
-        except Exception as e:
-            raise Exception(f"Blueprint validation failed: {str(e)}") from e
-        finally:
-            # Clean up test session if it was created
-            if test_session:
-                try:
-                    self.delete(test_session.get_run_id())
-                except Exception:
-                    # Ignore cleanup errors
-                    pass

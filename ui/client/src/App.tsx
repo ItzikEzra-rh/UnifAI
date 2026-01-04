@@ -39,7 +39,6 @@ function AppRoutes() {
           <Route path="/agentic-ai" component={AgenticWorkflows} />
           <Route path="/inventory" component={AgentRepository} />
           <Route path="/agentic-chats" component={AgenticChats} />
-          <Route path="/chat/:token" component={PublicChat} />
         </Switch>
       </AgenticAIProvider>
     );
@@ -56,6 +55,7 @@ function AppRoutes() {
       <Route path="/get-to-know" component={GetToKnow} />
       <Route path="/configuration" component={Configuration} />
       <Route path="/guides" component={GuidesPage} />
+      <Route path="/chat/:token" component={PublicChat} />
       <Route component={NotFound} />
     </Switch>
   );

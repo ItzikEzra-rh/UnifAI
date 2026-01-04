@@ -104,11 +104,19 @@ def available_resolved_doc_list(user_id):
 
 @blueprints_bp.route("/blueprint.save", methods=["POST"])
 @from_body({
-    "blueprint_raw": fields.Str(data_key="blueprintRaw", required=False),  # optional for non-JSON/YAML raw
+    "blueprint_raw": fields.Str(data_key="blueprintRaw", required=False),
     "user_id": fields.Str(data_key="userId", required=False, load_default="alice"),
     "metadata": fields.Dict(data_key="metadata", required=False, load_default=lambda: {})
 })
 def save_blueprint(blueprint_raw=None, user_id="alice", metadata={}):
+    """
+    Save a blueprint draft.
+    
+    Accepts blueprint data in multiple formats:
+    - JSON body: { "blueprintRaw": "<yaml or json string>", "userId": "...", "metadata": {...} }
+    - Raw YAML/JSON body with Content-Type: application/x-yaml, text/yaml, or text/plain
+    - Form-data: file upload or string field named 'blueprint_raw'
+    """
     try:
         parsed = _extract_blueprint_data(
             json_field_value=blueprint_raw,

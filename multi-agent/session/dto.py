@@ -39,7 +39,7 @@ class ChatHistoryItem:
             metadata=metadata,
             started_at=rc.get("started_at"),
             blueprint_id=doc.get("blueprint_id", ""),
-            blueprint_exists=blueprint_exists,
+            blueprint_exists=blueprint_exists
         )
 
     # optional helper

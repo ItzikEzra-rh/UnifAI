@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback } from "react";
 import { useRoute } from "wouter";
 import { useAuth } from "@/contexts/AuthContext";
 import { useToast } from "@/hooks/use-toast";
-import axios from "@/http/axiosAgentConfig";
 import ChatInterface from "@/components/agentic-ai/chat/ChatInterface";
 import { SessionPayload } from "@/components/agentic-ai/ExecutionTab";
 import { StreamingDataProvider } from "@/components/agentic-ai/StreamingDataContext";
@@ -23,8 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { usePublicChat } from "@/hooks/use-public-chat";
-import { getPublicUsageScope } from "@/api/blueprints";
-import { validateBlueprint } from "@/api/agentic";
+import { getBlueprintInfo, getPublicUsageScope, validateBlueprint } from "@/api/blueprints";
 
 export default function PublicChat() {
   const [, params] = useRoute("/chat/:token");
@@ -101,10 +99,10 @@ export default function PublicChat() {
     const validateToken = async () => {
       try {
         // Get blueprint draft document
-        const blueprintInfoResponse = await axios.get(`/blueprints/blueprint.info.get?blueprintId=${token}`);
+        const blueprintInfo = await getBlueprintInfo(token);
         setBlueprintId(token);
-        setBlueprintName(blueprintInfoResponse.data?.spec_dict?.name || "Unnamed Workflow");
-        setBlueprintOwner(blueprintInfoResponse.data?.user_id || "");
+        setBlueprintName(blueprintInfo.spec_dict?.name || "Unnamed Workflow");
+        setBlueprintOwner(blueprintInfo.user_id || "");
         
         // Check sharing status
         const statusResponse = await getPublicUsageScope(token);

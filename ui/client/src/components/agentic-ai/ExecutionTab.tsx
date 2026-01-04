@@ -18,7 +18,7 @@ import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
 import axios from '../../http/axiosAgentConfig'
-import { getPublicUsageScope } from '@/api/blueprints'
+import { getBlueprintInfo, getPublicUsageScope } from '@/api/blueprints'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
@@ -324,11 +324,11 @@ export default function ExecutionTab({
     if (session.blueprintId) {
       setIsLoadingBlueprintName(true);
       try {
-        const response = await axios.get(`/blueprints/blueprint.info.get?blueprintId=${session.blueprintId}`);
-        if (response.data?.spec_dict?.name) {
-          setSharedLinkBlueprintName(response.data.spec_dict.name);
+        const blueprintInfo = await getBlueprintInfo(session.blueprintId);
+        if (blueprintInfo.spec_dict?.name) {
+          setSharedLinkBlueprintName(blueprintInfo.spec_dict.name);
         } else {
-          console.warn('Blueprint name not found in response:', response.data);
+          console.warn('Blueprint name not found in response:', blueprintInfo);
           setSharedLinkBlueprintName("Unknown");
         }
       } catch (error: any) {
@@ -852,6 +852,21 @@ export default function ExecutionTab({
         {(!isBlueprintGraphHidden || selectedSession?.fromSharedLink) && (
           <div className="flex-shrink-0" style={{ width: `${blueprintGraphWidth}%` }}>
             <Card className="bg-background-card shadow-card border-gray-800 h-full flex flex-col ml-0">
+            {/* TODO: Add below general component that gets 'blueprintId' and showing his title and uid - can be called from multiple places */}
+            {/* <CardHeader className="py-3 px-4 border-b border-gray-800">
+              {selectedSession && (
+                  <div className="mb-4 px-4 py-3 bg-[#8A2BE2] bg-opacity-10 border border-[hsl(var(--primary))] rounded-md">
+                    <p className="text-sm">
+                      <span className="font-medium">Active Graph:</span> {''} <span className="text-xs text-gray-400 ml-2">(ID: {selectedSession.blueprintId || 'N/A'})</span>
+                    </p>
+                  </div>
+                )}
+              {selectedSession && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Blueprint ID: {selectedSession.blueprintId || 'N/A'}
+                </p>
+              )}
+            </CardHeader> */}
             <CardContent className="p-0 flex-grow">
               {selectedSession?.fromSharedLink ? (
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm flex-col p-6">

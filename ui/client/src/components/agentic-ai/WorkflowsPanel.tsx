@@ -3,7 +3,6 @@ import { motion } from "framer-motion";
 import { Trash2, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useShared } from "@/contexts/SharedContext";
-import axios from '../../http/axiosAgentConfig'
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -16,7 +15,8 @@ import {
 import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
-import { fetchBlueprints, fetchResolvedBlueprints, fetchActiveSessions } from "@/api/agentic";
+import { fetchActiveSessions } from "@/api/agentic";
+import { fetchBlueprints, fetchResolvedBlueprints, deleteBlueprint } from "@/api/blueprints";
 import { convertGraphFlowToFlowObject } from "@/utils/blueprintHelpers";
 import ShareWorkflow from "./ShareWorkflow";
 import { BlueprintValidationResult } from "@/types/validation";
@@ -176,7 +176,7 @@ export default function WorkflowsPanel({
 
     setIsDeleting(true);
     try {
-      await axios.delete(`/blueprints/remove.blueprint?blueprintId=${flowToDelete.id}`);
+      await deleteBlueprint(flowToDelete.id);
       
       // Remove the deleted flow from the list
       setGraphFlows(prevFlows => prevFlows.filter(flow => flow.id !== flowToDelete.id));
