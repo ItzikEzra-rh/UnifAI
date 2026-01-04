@@ -4,14 +4,14 @@ env:
   PREPROD_API: "https://api.stc-ai-e1-pp.imap.p1.openshiftapps.com:6443"
   PROD_API: "https://api.stc-ai-e1-prod.rtc9.p1.openshiftapps.com:6443"
   MONGO_URI: "mongodb://localhost:27017/unifai"
-  NAMESPACE: tag-ai--pipeline
+  NAMESPACE: ${{ vars.NAMESPACE }}
   MONGO_POD: "mongodb-0"
   username: "tag-ai"
   cluster_name: "PP"
   cluster_secret: ${{ secrets.PP_CLUSTER }}
-  BACKUP_REPO: "git@gitlab.cee.redhat.com:ai_tools/unifai_backups.git"
+  BACKUP_REPO: ${{ vars.BACKUP_REPO_URL }}
   #BACKUP_REPO: "https://${{ secrets.GITLAB_BACKUP_REPO_KEY }}@gitlab.cee.redhat.com/ai_tools/unifai_backups.git"
-  BACKUP_REPO_NAME: "unifai_backups"
+  BACKUP_REPO_NAME: ${{ vars.BACKUP_REPO_NAME }}
 
 on:
   schedule:
