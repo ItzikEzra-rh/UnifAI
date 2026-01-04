@@ -347,6 +347,7 @@ def retrieval_service(source_type: str):
         embedder=embedding_generator(),
         vector_repo=vector_repository(f"{source_type.lower()}_data"),
         filter_resolver=source_filter_resolver(),
+        source_type=source_type.upper(),
     )
 
 

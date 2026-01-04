@@ -1,4 +1,4 @@
 """Qdrant infrastructure adapters."""
-from infrastructure.qdrant.vector_repository import QdrantVectorRepository
+from infrastructure.qdrant.qdrant_vector_repository import QdrantVectorRepository
 
 __all__ = ["QdrantVectorRepository"]
