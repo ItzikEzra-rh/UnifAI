@@ -98,8 +98,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         }
       }
       
-      // Remove auth params from URL
-      window.history.replaceState({}, document.title, window.location.pathname);
+      // Remove auth params from URL (normalize pathname to avoid protocol-relative URL issues)
+      const cleanPath = window.location.pathname.replace(/^\/+/, '/') || '/';
+      window.history.replaceState({}, document.title, cleanPath);
       
       // Check auth status after successful login
       checkAuthStatus().then(() => {
@@ -125,8 +126,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.error('Failed to decode state parameter on error:', error);
         }
       }
-      // Remove auth params from URL
-      window.history.replaceState({}, document.title, window.location.pathname);
+      // Remove auth params from URL (normalize pathname to avoid protocol-relative URL issues)
+      const cleanPath = window.location.pathname.replace(/^\/+/, '/') || '/';
+      window.history.replaceState({}, document.title, cleanPath);
       setIsLoading(false);
       console.error('Authentication failed');
     } else {

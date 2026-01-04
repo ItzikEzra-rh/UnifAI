@@ -766,65 +766,11 @@ export default function ChatInterface({
           <div ref={messagesEndRef} />
         </div>
         <div className="p-4 border-t border-gray-800 flex-shrink-0">
-          {(() => {
-            const getWarningMessage = () => {
-              if (!blueprintExists) {
-                return "The workflow associated with this chat has been deleted and can no longer be continued.";
-              }
-              if (isSharingDisabled && blueprintExists) {
-                return "This workflow's chat sharing has been disabled and can no longer be continued.";
-              }
-              return null;
-            };
-
-            const warningMessage = getWarningMessage();
-            const placeholderText = !blueprintExists
-              ? "This workflow has been deleted"
-              : isSharingDisabled
-              ? "Chat sharing has been disabled for this workflow"
-              : "Ask a question about your data...";
-            const isDisabled = !blueprintExists || isSharingDisabled;
-
-            return (
-              <>
-                {warningMessage && (
-                  <div className="mb-4 p-3 bg-orange-900/20 border border-orange-500/50 rounded-lg">
-                    <div className="flex items-center text-orange-200">
-                      <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                      <span className="text-sm font-medium">
-                        Workflow Unavailable: {warningMessage}
-                      </span>
-                    </div>
-                  </div>
-                )}
-                <div className="flex space-x-2 items-end">
-                  <Textarea
-                    ref={textareaRef}
-                    value={inputMessage}
-                    onChange={(e) => setInputMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={placeholderText}
-                    className={`bg-background-dark min-h-[80px] resize-none ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    rows={3}
-                    disabled={isDisabled}
-                  />
-                  <Button
-                    onClick={handleSendMessage}
-                    disabled={inputMessage.trim() === "" || isTyping || isDisabled}
-                    className="bg-primary hover:bg-[#7525c9] mb-0"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
-              </>
-            );
-          })()}
+          {/* Warning messages - priority order: deleted > sharing disabled > invalid > validating */}
           {!blueprintExists && (
             <div className="mb-4 p-3 bg-orange-900/20 border border-orange-500/50 rounded-lg">
               <div className="flex items-center text-orange-200">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
                 <span className="text-sm font-medium">
@@ -833,22 +779,34 @@ export default function ChatInterface({
               </div>
             </div>
           )}
-          {blueprintExists && !blueprintValid && !isValidatingBlueprint && (
-            <div className="mb-4 p-3 bg-red-900/20 border border-red-500/50 rounded-lg">
-              <div className="flex items-center text-red-200">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+          {blueprintExists && isSharingDisabled && (
+            <div className="mb-4 p-3 bg-orange-900/20 border border-orange-500/50 rounded-lg">
+              <div className="flex items-center text-orange-200">
+                <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                 </svg>
                 <span className="text-sm font-medium">
-                  Workflow Unavailable: The workflow associated with this chat didn't pass validation check.
+                  Workflow Unavailable: Chat sharing has been disabled for this workflow.
                 </span>
               </div>
             </div>
           )}
-          {isValidatingBlueprint && (
+          {blueprintExists && !isSharingDisabled && !blueprintValid && !isValidatingBlueprint && (
+            <div className="mb-4 p-3 bg-red-900/20 border border-red-500/50 rounded-lg">
+              <div className="flex items-center text-red-200">
+                <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                <span className="text-sm font-medium">
+                  Workflow Unavailable: This workflow failed validation and cannot be used. Please contact the workflow owner.
+                </span>
+              </div>
+            </div>
+          )}
+          {blueprintExists && !isSharingDisabled && isValidatingBlueprint && (
             <div className="mb-4 p-3 bg-blue-900/20 border border-blue-500/50 rounded-lg">
               <div className="flex items-center text-blue-200">
-                <svg className="w-5 h-5 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                <svg className="w-5 h-5 mr-2 flex-shrink-0 animate-spin" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
@@ -858,6 +816,8 @@ export default function ChatInterface({
               </div>
             </div>
           )}
+          
+          {/* Input area */}
           <div className="flex space-x-2 items-end">
             <Textarea
               ref={textareaRef}
@@ -867,22 +827,24 @@ export default function ChatInterface({
               placeholder={
                 !blueprintExists 
                   ? "This chat cannot be continued - workflow was deleted" 
-                  : isValidatingBlueprint
-                    ? "Validating workflow..."
-                    : !blueprintValid 
-                      ? "This chat cannot be continued - workflow validation failed" 
-                      : "Ask a question about your data..."
+                  : isSharingDisabled
+                    ? "Chat sharing has been disabled for this workflow"
+                    : isValidatingBlueprint
+                      ? "Validating workflow..."
+                      : !blueprintValid 
+                        ? "This chat cannot be continued - workflow validation failed" 
+                        : "Ask a question about your data..."
               }
-              className={`bg-background-dark min-h-[80px] resize-none ${(!blueprintExists || !blueprintValid) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              className={`bg-background-dark min-h-[80px] resize-none ${(!blueprintExists || isSharingDisabled || !blueprintValid || isValidatingBlueprint) ? 'opacity-50 cursor-not-allowed' : ''}`}
               rows={3}
-              disabled={!blueprintExists || !blueprintValid || isValidatingBlueprint}
+              disabled={!blueprintExists || isSharingDisabled || !blueprintValid || isValidatingBlueprint}
             />
             <UmamiTrack 
               event={UmamiEvents.AGENT_CHAT_SEND_MESSAGE_BUTTON}
             >
               <Button
                 onClick={handleSendMessage}
-                disabled={inputMessage.trim() === "" || isTyping || !blueprintExists || !blueprintValid || isValidatingBlueprint}
+                disabled={inputMessage.trim() === "" || isTyping || !blueprintExists || isSharingDisabled || !blueprintValid || isValidatingBlueprint}
                 className="bg-primary hover:bg-[#7525c9] mb-0"
               >
                 <Send className="h-4 w-4" />

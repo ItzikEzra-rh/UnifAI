@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { usePublicChat } from "@/hooks/use-public-chat";
 import { getPublicUsageScope } from "@/api/blueprints";
+import { validateBlueprint } from "@/api/agentic";
 
 export default function PublicChat() {
   const [, params] = useRoute("/chat/:token");
@@ -38,6 +39,8 @@ export default function PublicChat() {
   const [isValidating, setIsValidating] = useState(true);
   const [validationError, setValidationError] = useState<string | null>(null);
   const [isSharingDisabled, setIsSharingDisabled] = useState<boolean>(false);
+  const [isBlueprintValid, setIsBlueprintValid] = useState<boolean>(true);
+  const [isValidatingBlueprint, setIsValidatingBlueprint] = useState<boolean>(false);
 
   // Use the custom hook for chat management
   const {
@@ -70,6 +73,24 @@ export default function PublicChat() {
     }
   }, []);
 
+  // Check blueprint validity
+  const checkBlueprintValidity = useCallback(async (blueprintId: string) => {
+    setIsValidatingBlueprint(true);
+    try {
+      const result = await validateBlueprint({ blueprintId });
+      setIsBlueprintValid(result.is_valid);
+      if (!result.is_valid) {
+        setValidationError("Sorry, this workflow has validation errors and cannot be used. Please contact the workflow owner.");
+      }
+    } catch (error: any) {
+      console.error("Error validating blueprint:", error);
+      // If validation fails, allow the chat to proceed but mark as potentially invalid
+      setIsBlueprintValid(true); // Don't block on validation errors
+    } finally {
+      setIsValidatingBlueprint(false);
+    }
+  }, []);
+
   // Validate token and get blueprint info
   useEffect(() => {
     if (!token) {
@@ -92,6 +113,8 @@ export default function PublicChat() {
           setIsSharingDisabled(true);
         } else {
           await checkSharingStatus(token);
+          // Also check blueprint validity
+          await checkBlueprintValidity(token);
         }
       } catch (error: any) {
         if (error.response?.status === 404) {
@@ -106,7 +129,7 @@ export default function PublicChat() {
     };
 
     validateToken();
-  }, [token, checkSharingStatus]);
+  }, [token, checkSharingStatus, checkBlueprintValidity]);
 
 
   // Load chat sessions when authenticated and blueprint is available
@@ -332,6 +355,8 @@ export default function PublicChat() {
                 initialMessages={chatHistory}
                 blueprintExists={true}
                 isSharingDisabled={isSharingDisabled}
+                blueprintValid={isBlueprintValid}
+                isValidatingBlueprint={isValidatingBlueprint}
                 isBlueprintGraphHidden={true}
                 isChatOnlyMode={true}
               />

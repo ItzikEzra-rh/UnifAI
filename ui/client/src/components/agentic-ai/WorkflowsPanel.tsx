@@ -74,6 +74,7 @@ export default function WorkflowsPanel({
   const {
     isValidating,
     validationResults,
+    isValid,
     validateBlueprint: validateSelectedBlueprint,
     clearValidation,
   } = useBlueprintValidation({
@@ -309,7 +310,11 @@ export default function WorkflowsPanel({
             <>
               {/* Share Section */}
               <div className="border-b border-gray-800 bg-background-surface p-4">
-                <ShareWorkflow blueprintId={selectedFlow.id} />
+                <ShareWorkflow 
+                  blueprintId={selectedFlow.id} 
+                  isValid={isValid}
+                  isValidating={isValidating}
+                />
               </div>
             <ReactFlowGraph
               blueprintId={selectedFlow.id}
