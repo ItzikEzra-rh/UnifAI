@@ -55,7 +55,7 @@ jobs:
 
       - name: Verify Secret isn't empty
         run: |
-          if [ -z "$cluster_secret" ]; then
+          if [ -z "${{ secrets.ACCESS_TOKEN }}" ]; then
             echo "SECRET IS EMPTY"
           else
             echo "Secret has a length of ${#cluster_secret} characters"
@@ -63,7 +63,7 @@ jobs:
 
       - name: Check Cluster Connection
         run: | 
-          echo "cluster_secret: $cluster_secret"
+          echo "cluster_secret: ${{ secrets.ACCESS_TOKEN }}
           kubectl config set-credentials ${{ inputs.target_cluster }} --token=${{ secrets.ACCESS_TOKEN }}
           kubectl config set-cluster ${{ inputs.target_cluster }} --server=${{ vars.API_URL }}
           #here we combine the credentials and the cluster url to create a context, both has the same name.
