@@ -1,14 +1,14 @@
 name: Backup Databases
 
 env:
-  PREPROD_API: "https://api.stc-ai-e1-pp.imap.p1.openshiftapps.com:6443"
-  PROD_API: "https://api.stc-ai-e1-prod.rtc9.p1.openshiftapps.com:6443"
-  MONGO_URI: "mongodb://localhost:27017/unifai"
+  # PREPROD_API: "https://api.stc-ai-e1-pp.imap.p1.openshiftapps.com:6443"
+  # PROD_API: "https://api.stc-ai-e1-prod.rtc9.p1.openshiftapps.com:6443"
+  #MONGO_URI: "mongodb://localhost:27017/unifai"
   NAMESPACE: ${{ vars.NAMESPACE }}
   MONGO_POD: "mongodb-0"
   username: "tag-ai"
-  cluster_name: "PP"
-  cluster_secret: ${{ secrets.PP_CLUSTER }}
+  #cluster_name: "PP"
+  #cluster_secret: ${{ secrets.PP_CLUSTER }}
   BACKUP_REPO: ${{ vars.BACKUP_REPO_URL }}
   #BACKUP_REPO: "https://${{ secrets.GITLAB_BACKUP_REPO_KEY }}@gitlab.cee.redhat.com/ai_tools/unifai_backups.git"
   BACKUP_REPO_NAME: ${{ vars.BACKUP_REPO_NAME }}
@@ -25,7 +25,7 @@ on:
       target_cluster:
         description: 'Which cluster do you want to backup?'
         required: true
-        default: 'PP'
+        default: 'PRE-PRODUCTION'
       target_namespace:
         description: 'Which namespace do you want to backup?'
         required: true
@@ -43,6 +43,8 @@ jobs:
   backup_mongo:
     runs-on: linux
     needs: verify_agent_deps
+    environment:
+      name: ${{ inputs.target_cluster }}
     steps:
 
       - name: Checkout Code
@@ -62,34 +64,37 @@ jobs:
       - name: Check Cluster Connection
         run: | 
           echo "cluster_secret: $cluster_secret"
-          kubectl config set-credentials $cluster_name --token=$cluster_secret
-          kubectl config set-cluster $cluster_name --server=$PREPROD_API
-          kubectl config set-context $cluster_name --user=$cluster_name --cluster=$cluster_name
-          kubectl config use-context $cluster_name
-          kubectl get pods --namespace $NAMESPACE
-          kubectl get deployments --namespace $NAMESPACE
-          #kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongo --eval "db.adminCommand('ping')"
+          kubectl config set-credentials ${{ inputs.target_cluster }} --token=${{ secrets.ACCESS_TOKEN }}
+          kubectl config set-cluster ${{ inputs.target_cluster }} --server=${{ vars.API_URL }}
+          #here we combine the credentials and the cluster url to create a context, both has the same name.
+          kubectl config set-context ${{ inputs.target_cluster }} --user=${{ inputs.target_cluster }} --cluster=${{ inputs.target_cluster }}
+          kubectl config use-context ${{ inputs.target_cluster }}
+          kubectl get pods --namespace ${{ inputs.target_namespace }}
+          kubectl get deployments --namespace ${{ inputs.target_namespace }}
+          #kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- mongo --eval "db.adminCommand('ping')"
       
       - name: Backup MongoDB
         run: |
           echo "Removing old backup files"
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup.tar.gz
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- mongodump --uri="mongodb://localhost:27017" --out="/tmp/backup"
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- ls -la /tmp/backup
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- tar -czvf /tmp/backup.tar.gz /tmp/backup
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- ls -la /tmp/backup.tar.gz
-          kubectl cp --namespace $NAMESPACE $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
+          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- rm -rf /tmp/backup
+          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- rm -rf /tmp/backup.tar.gz
+          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- mongodump --uri="${{ vars.MONGO_URI }}" --out="/tmp/backup"
+          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- ls -la /tmp/backup
+          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- tar -czvf /tmp/backup.tar.gz /tmp/backup
+          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- ls -la /tmp/backup.tar.gz
+          kubectl cp --namespace ${{ inputs.target_namespace }} $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
           ls -la /tmp/backup.tar.gz
           echo "Removing temporary files"
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup
-          kubectl exec --namespace $NAMESPACE -it $MONGO_POD -- rm -rf /tmp/backup.tar.gz
+          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- rm -rf /tmp/backup
+          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- rm -rf /tmp/backup.tar.gz
           echo "Temporary files removed"
           echo "Backup completed"
 
   backup_qdrant:
     runs-on: linux
     needs: verify_agent_deps
+    environment:
+      name: ${{ inputs.target_cluster }}
     steps:
 
       - name: Backup Qdrant
@@ -107,10 +112,6 @@ jobs:
 
       - name: Upload files to gitlab repo
         run: |
-          # Define the URL with the PAT for authentication
-          # REPO_URL=$BACKUP_REPO
-          # REMOTE_NAME="unifai_backups"
-          # BRANCH_NAME="main" 
 
           git clone $BACKUP_REPO
           cp /tmp/backup.tar.gz $BACKUP_REPO_NAME/
