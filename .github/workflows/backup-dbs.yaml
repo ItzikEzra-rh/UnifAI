@@ -63,7 +63,7 @@ jobs:
 
       - name: Check Cluster Connection
         run: | 
-          echo "cluster_secret: ${{ secrets.ACCESS_TOKEN }}
+          echo cluster_secret: ${{ secrets.ACCESS_TOKEN }}
           kubectl config set-credentials ${{ inputs.target_cluster }} --token=${{ secrets.ACCESS_TOKEN }}
           kubectl config set-cluster ${{ inputs.target_cluster }} --server=${{ vars.API_URL }}
           #here we combine the credentials and the cluster url to create a context, both has the same name.
