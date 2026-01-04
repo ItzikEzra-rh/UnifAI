@@ -71,7 +71,6 @@ jobs:
           kubectl config use-context ${{ inputs.target_cluster }}
           kubectl get pods --namespace ${{ inputs.target_namespace }}
           kubectl get deployments --namespace ${{ inputs.target_namespace }}
-          #kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- mongo --eval "db.adminCommand('ping')"
       
       - name: Backup MongoDB
         run: |
