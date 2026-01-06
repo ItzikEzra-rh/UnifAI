@@ -75,17 +75,17 @@ jobs:
       - name: Backup MongoDB
         run: |
           echo "Removing old backup files"
-          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- rm -rf /tmp/backup
-          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- rm -rf /tmp/backup.tar.gz
-          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- mongodump --uri="${{ vars.MONGO_URI }}" --out="/tmp/backup"
-          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- ls -la /tmp/backup
-          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- tar -czvf /tmp/backup.tar.gz /tmp/backup
-          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- ls -la /tmp/backup.tar.gz
+          kubectl exec --namespace ${{ inputs.target_namespace }} $MONGO_POD -- rm -rf /tmp/backup
+          kubectl exec --namespace ${{ inputs.target_namespace }} $MONGO_POD -- rm -rf /tmp/backup.tar.gz
+          kubectl exec --namespace ${{ inputs.target_namespace }} $MONGO_POD -- mongodump --uri="${{ vars.MONGO_URI }}" --out="/tmp/backup"
+          kubectl exec --namespace ${{ inputs.target_namespace }} $MONGO_POD -- ls -la /tmp/backup
+          kubectl exec --namespace ${{ inputs.target_namespace }} $MONGO_POD -- tar -czvf /tmp/backup.tar.gz /tmp/backup
+          kubectl exec --namespace ${{ inputs.target_namespace }} $MONGO_POD -- ls -la /tmp/backup.tar.gz
           kubectl cp --namespace ${{ inputs.target_namespace }} $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
           ls -la /tmp/backup.tar.gz
           echo "Removing temporary files"
-          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- rm -rf /tmp/backup
-          kubectl exec --namespace ${{ inputs.target_namespace }} -it $MONGO_POD -- rm -rf /tmp/backup.tar.gz
+          kubectl exec --namespace ${{ inputs.target_namespace }} $MONGO_POD -- rm -rf /tmp/backup
+          kubectl exec --namespace ${{ inputs.target_namespace }} $MONGO_POD -- rm -rf /tmp/backup.tar.gz
           echo "Temporary files removed"
           echo "Backup completed"
 

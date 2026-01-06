@@ -32,3 +32,19 @@ database (optional) - if a specific database is desired we can specify this here
 
 
 Backup Qdrant
+
+
+
+
+Running a workflow manualy
+
+prereqs:
+1. workflow has a the on workflow_dispatch option
+2. github client installed and logged in
+
+
+gh workflow run backup-dbs.yaml \
+-f target_cluster=PRE-PRODUCTION \
+-f target_branch=GENIE-1071/backup_dbs \
+-f target_namespace=tag-ai--pipeline
+
