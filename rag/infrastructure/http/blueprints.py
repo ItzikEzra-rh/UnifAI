@@ -14,20 +14,20 @@ def register_blueprints(app: Flask) -> None:
     """
     Register all HTTP endpoint blueprints.
     
-    URL prefixes:
-    - /health - Health checks
-    - /api/vector - Vector storage stats
-    - /api/settings - Application settings
-    - /api/pipelines - Pipeline execution
-    - /api - Data source management
-    - /api/docs - Document operations
-    - /api/slack - Slack integration
+    URL prefixes match backend pattern: /api/{parent}/
+    - /api/health/ - Health checks
+    - /api/vector/ - Vector storage stats
+    - /api/settings/ - Application settings
+    - /api/pipelines/ - Pipeline execution
+    - /api/data_sources/ - Data source management
+    - /api/docs/ - Document operations
+    - /api/slack/ - Slack integration
     """
-    app.register_blueprint(health_bp, url_prefix="/health")
-    app.register_blueprint(vector_bp, url_prefix="/api/vector")
-    app.register_blueprint(settings_bp, url_prefix="/api/settings")
-    app.register_blueprint(pipelines_bp, url_prefix="/api/pipelines")
-    app.register_blueprint(data_sources_bp, url_prefix="/api")
-    app.register_blueprint(docs_bp, url_prefix="/api/docs")
-    app.register_blueprint(slack_bp, url_prefix="/api/slack")
+    app.register_blueprint(health_bp, url_prefix="/api/health/")
+    app.register_blueprint(vector_bp, url_prefix="/api/vector/")
+    app.register_blueprint(settings_bp, url_prefix="/api/settings/")
+    app.register_blueprint(pipelines_bp, url_prefix="/api/pipelines/")
+    app.register_blueprint(data_sources_bp, url_prefix="/api/data_sources/")
+    app.register_blueprint(docs_bp, url_prefix="/api/docs/")
+    app.register_blueprint(slack_bp, url_prefix="/api/slack/")
 

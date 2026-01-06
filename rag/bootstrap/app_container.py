@@ -128,9 +128,26 @@ def document_processor():
 
 @lru_cache(maxsize=1)
 def slack_config_manager():
-    """Slack configuration manager."""
+    """Slack configuration manager with tokens from AppConfig."""
     from infrastructure.config.slack_config_manager import SlackConfigManager
-    return SlackConfigManager()
+    from config.app_config import AppConfig
+    
+    config = AppConfig.get_instance()
+    manager = SlackConfigManager()
+    
+    # Configure default project tokens from app config
+    bot_token = config.get("default_slack_bot_token", "")
+    user_token = config.get("default_slack_user_token", "")
+    
+    if bot_token:
+        manager.set_project_tokens(
+            project_id="default",
+            bot_token=bot_token,
+            user_token=user_token,
+        )
+        manager.set_default_project("default")
+    
+    return manager
 
 
 # ══════════════════════════════════════════════════════════════════════════════
