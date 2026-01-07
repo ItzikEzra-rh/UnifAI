@@ -4,7 +4,7 @@
 
 import { useState, useCallback } from 'react';
 import axios from '@/http/axiosAgentConfig';
-import { ChatSession, SessionStateData, BackendChatMessage } from '@/types/session';
+import { ChatSession, SessionStateData, ChatMessage } from '@/types/session';
 import { getPreviewText } from '@/utils/sessionHelpers';
 
 /**
@@ -24,7 +24,7 @@ export const fetchSessionState = async (sessionId: string): Promise<SessionState
  * Hook for managing session selection and message loading
  */
 export const useSessionManagement = () => {
-  const [currentMessages, setCurrentMessages] = useState<BackendChatMessage[]>([]);
+  const [currentMessages, setCurrentMessages] = useState<ChatMessage[]>([]);
 
   const loadSessionMessages = useCallback(
     async (session: ChatSession): Promise<ChatSession | null> => {

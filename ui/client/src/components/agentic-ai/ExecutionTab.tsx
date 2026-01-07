@@ -38,7 +38,7 @@ import { UmamiTrack } from '@/components/ui/umamitrack';
 import { UmamiEvents } from '@/config/umamiEvents';
 import { useBlueprintValidation } from "@/hooks/use-blueprint-validation";
 
-import { ChatSession, BackendChatMessage, ChatSessionData, SessionStateData } from "@/types/session";
+import { ChatSession, ChatMessage, ChatSessionData, SessionStateData } from "@/types/session";
 import {transformSessionData, sortSessionsByTimestamp} from "@/utils/sessionHelpers";
 import { checkSessionSharingStatus } from "@/hooks/use-sharing-status";
 import { useSessionManagement } from "@/hooks/use-session-management";
@@ -82,7 +82,7 @@ export default function ExecutionTab({
 }: ExecutionTabProps): React.ReactElement {
   const [chatSessions, setChatSessions] = useState<ChatSession[]>([]);
   const [selectedSession, setSelectedSession] = useState<ChatSession | null>(null);
-  const [currentSessionMessages, setCurrentSessionMessages] = useState<BackendChatMessage[]>([]);
+  const [currentSessionMessages, setCurrentSessionMessages] = useState<ChatMessage[]>([]);
   const [showExecutionStream, setShowExecutionStream] = useState(false);
   const [isActiveChatSession, setIsActiveChatSession] = useState(true);
   const [isLiveRequest, setIsLiveRequest] = useState(false);

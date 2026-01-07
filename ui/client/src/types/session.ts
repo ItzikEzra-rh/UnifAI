@@ -1,5 +1,5 @@
-// Backend message format
-export interface BackendChatMessage {
+// Chat message format (used for both API responses and UI state)
+export interface ChatMessage {
   content: string;
   role: "user" | "assistant";
 }
@@ -12,7 +12,7 @@ export interface ChatSession {
   lastActive: string;
   timestamp: Date;
   preview: string;
-  messages: BackendChatMessage[];
+  messages: ChatMessage[];
   blueprintExists: boolean;
   fromSharedLink?: boolean;
   isSharingDisabled?: boolean; // Track if sharing is disabled for this session
@@ -29,5 +29,5 @@ export interface ChatSessionData {
 
 export interface SessionStateData {
   final_output: string;
-  messages: BackendChatMessage[];
+  messages: ChatMessage[];
 }

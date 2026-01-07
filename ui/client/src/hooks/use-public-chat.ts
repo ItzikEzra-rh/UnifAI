@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import axios from '@/http/axiosAgentConfig';
-import { ChatSession, BackendChatMessage, ChatSessionData } from '@/types/session';
+import { ChatSession, ChatMessage, ChatSessionData } from '@/types/session';
 import { checkSessionSharingStatus } from '@/hooks/use-sharing-status';
 import {transformSessionData, sortSessionsByTimestamp,} from '@/utils/sessionHelpers';
 import { useSessionManagement } from '@/hooks/use-session-management';
@@ -14,7 +14,7 @@ interface UsePublicChatReturn {
   isLoading: boolean;
   isCreatingSession: boolean;
   isDeleting: boolean;
-  chatHistory: BackendChatMessage[];
+  chatHistory: ChatMessage[];
   runId: string | null;
   handleNewChat: () => Promise<void>;
   handleSessionSelect: (session: ChatSession) => Promise<void>;
@@ -38,7 +38,7 @@ export const usePublicChat = (blueprintId: string | null): UsePublicChatReturn =
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<ChatSession | null>(null);
-  const [chatHistory, setChatHistory] = useState<BackendChatMessage[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [runId, setRunId] = useState<string | null>(null);
 
   const { currentMessages, loadSessionMessages, clearMessages, setCurrentMessages } =

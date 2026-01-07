@@ -2,7 +2,7 @@
  * Shared utilities for session data transformation and manipulation
  */
 
-import { ChatSession, ChatSessionData, BackendChatMessage } from '@/types/session';
+import { ChatSession, ChatSessionData, ChatMessage } from '@/types/session';
 import { formatRelativeTimestamp } from '@/utils';
 
 /**
@@ -16,7 +16,7 @@ export const generateRandomTitle = (index: number): string => {
 /**
  * Get preview text from messages (first 50 characters)
  */
-export const getPreviewText = (messages: BackendChatMessage[]): string => {
+export const getPreviewText = (messages: ChatMessage[]): string => {
   if (!messages || messages.length === 0) {
     return 'No messages yet';
   }
