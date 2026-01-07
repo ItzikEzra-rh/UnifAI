@@ -9,13 +9,20 @@ const isApiHint = (hint: any): boolean => {
   return hint && typeof hint.endpoint === 'string' && hint.endpoint.length > 0;
 };
 
+// Per-item validation result for list fields
+export interface ItemValidationResult {
+  rid: string;
+  isValid: boolean;
+  message?: string;
+}
+
 interface FieldValidationProps {
   fieldName: string;
   fieldValue: any;
   validationHint: any;
   elementActions: any[];
   selectedElementType: any;
-  onValidationChange: (fieldName: string, isValid: boolean) => void;
+  onValidationChange: (fieldName: string, isValid: boolean, itemResults?: ItemValidationResult[]) => void;
 }
 
 export const FieldValidation: React.FC<FieldValidationProps> = ({
@@ -178,16 +185,42 @@ export const FieldValidation: React.FC<FieldValidationProps> = ({
 
       // Extract validation result based on field_mapping or default to 'success'
       const fieldMapping = validationHint.field_mapping || 'success';
-      const isValid = responseData[fieldMapping] === true;
       
-      setValidationState({
-        isValidating: false,
-        isValid,
-        message: responseData.message || (isValid ? 'Valid' : 'Invalid')
-      });
+      // Handle array responses (for list validation like resources.validate)
+      if (Array.isArray(responseData)) {
+        const itemResults: ItemValidationResult[] = responseData.map((item: any) => ({
+          rid: item.element_rid || '',
+          isValid: item[fieldMapping] === true,
+          message: item.messages?.[0]?.message || (item[fieldMapping] ? 'Valid' : 'Invalid')
+        }));
+        
+        // Field is valid only if ALL items are valid
+        const allValid = itemResults.every(item => item.isValid);
+        const invalidCount = itemResults.filter(item => !item.isValid).length;
+        
+        setValidationState({
+          isValidating: false,
+          isValid: allValid,
+          message: allValid 
+            ? `All ${itemResults.length} items valid` 
+            : `${invalidCount} of ${itemResults.length} items invalid`
+        });
 
-      lastValidatedValueRef.current = value;
-      onValidationChange(fieldName, isValid);
+        lastValidatedValueRef.current = value;
+        onValidationChange(fieldName, allValid, itemResults);
+      } else {
+        // Single item response (original behavior)
+        const isValid = responseData[fieldMapping] === true;
+        
+        setValidationState({
+          isValidating: false,
+          isValid,
+          message: responseData.message || (isValid ? 'Valid' : 'Invalid')
+        });
+
+        lastValidatedValueRef.current = value;
+        onValidationChange(fieldName, isValid);
+      }
 
     } catch (error: any) {
       console.error('Validation error:', error);
