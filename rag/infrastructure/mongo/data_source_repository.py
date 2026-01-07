@@ -93,6 +93,25 @@ class MongoDataSourceRepository(DataSourceRepository):
         result = self._col.delete_one({"source_id": source_id})
         return result.deleted_count > 0
 
+    def get_source_by_query(self, query: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Find sources matching a query dict (for duplicate checking)."""
+        try:
+            return list(self._col.find(query, {"_id": 0}))
+        except Exception:
+            return []
+
+    def get_pipeline_status(self, pipeline_id: str) -> Optional[str]:
+        """Get pipeline status by looking up the pipelines collection."""
+        if not pipeline_id:
+            return None
+        try:
+            # Access sibling collection in same database
+            pipeline_col = self._col.database["pipelines"]
+            doc = pipeline_col.find_one({"pipeline_id": pipeline_id}, {"status": 1})
+            return doc.get("status") if doc else None
+        except Exception:
+            return None
+
     # ─── Mapping Methods ──────────────────────────────────────────────────────
 
     def _to_model(self, doc: Dict[str, Any]) -> DataSource:
