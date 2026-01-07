@@ -3,6 +3,7 @@ from typing import List, Dict, Any, Tuple
 
 from domain.pipeline.port import SourcePipelinePort, PipelineContext
 from domain.vector.embedder import EmbeddingGenerator
+from domain.vector.model import VectorChunk
 from domain.processor.slack_processor import SlackProcessor
 from infrastructure.connector.slack_connector import SlackConnector
 from infrastructure.chunking.slack_chunker import SlackChunkerStrategy
@@ -115,7 +116,7 @@ class SlackPipelineHandler(SourcePipelinePort):
         self, 
         context: PipelineContext, 
         processed: Tuple[List[Dict], List[List[Dict]]]
-    ) -> List[Dict]:
+    ) -> List[VectorChunk]:
         """
         Chunk content and generate embeddings.
         
@@ -124,7 +125,7 @@ class SlackPipelineHandler(SourcePipelinePort):
             processed: Tuple of (processed_main, processed_threads)
             
         Returns:
-            List of embedding dictionaries ready for storage
+            List of VectorChunk objects ready for storage
         """
         main, threads = processed
         upload_by = context.metadata.get("upload_by", "default")
@@ -144,7 +145,17 @@ class SlackPipelineHandler(SourcePipelinePort):
                 "chunk_index": idx,
             })
         
-        return self._embedder.generate_embeddings(chunks)
+        # Generate embeddings and convert to domain objects
+        enriched_dicts = self._embedder.generate_embeddings(chunks)
+        
+        return [
+            VectorChunk(
+                text=d["text"],
+                embedding=d["embedding"].tolist() if hasattr(d["embedding"], 'tolist') else d["embedding"],
+                metadata=d.get("metadata", {})
+            )
+            for d in enriched_dicts
+        ]
     
     def get_summary(self, context: PipelineContext, collected: Any) -> Dict:
         """

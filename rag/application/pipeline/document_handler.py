@@ -3,6 +3,7 @@ from typing import List, Dict, Any
 
 from domain.pipeline.port import SourcePipelinePort, PipelineContext
 from domain.vector.embedder import EmbeddingGenerator
+from domain.vector.model import VectorChunk
 from domain.processor.document_processor import DocumentProcessor
 from infrastructure.connector.document_connector import DocumentConnector
 from infrastructure.chunking.pdf_chunker import PDFChunkerStrategy
@@ -89,7 +90,7 @@ class DocumentPipelineHandler(SourcePipelinePort):
             preserve_original=True,
         )
     
-    def chunk_and_embed(self, context: PipelineContext, processed: Dict) -> List[Dict]:
+    def chunk_and_embed(self, context: PipelineContext, processed: Dict) -> List[VectorChunk]:
         """
         Chunk content and generate embeddings.
         
@@ -98,7 +99,7 @@ class DocumentPipelineHandler(SourcePipelinePort):
             processed: Processed document data
             
         Returns:
-            List of embedding dictionaries ready for storage
+            List of VectorChunk objects ready for storage
         """
         # Prepare document for embedding
         embedding_ready = self._processor.prepare_for_single_doc_embedding(processed)
@@ -113,7 +114,17 @@ class DocumentPipelineHandler(SourcePipelinePort):
                 "source_type": self.source_type,
             })
         
-        return self._embedder.generate_embeddings(chunks)
+        # Generate embeddings and convert to domain objects
+        enriched_dicts = self._embedder.generate_embeddings(chunks)
+        
+        return [
+            VectorChunk(
+                text=d["text"],
+                embedding=d["embedding"].tolist() if hasattr(d["embedding"], 'tolist') else d["embedding"],
+                metadata=d.get("metadata", {})
+            )
+            for d in enriched_dicts
+        ]
     
     def get_summary(self, context: PipelineContext, collected: Any) -> Dict:
         """

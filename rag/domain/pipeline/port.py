@@ -3,6 +3,8 @@ from abc import ABC, abstractmethod
 from typing import Any, List, Dict
 from dataclasses import dataclass
 
+from domain.vector.model import VectorChunk
+
 
 @dataclass(frozen=True)
 class PipelineContext:
@@ -69,7 +71,7 @@ class SourcePipelinePort(ABC):
         ...
     
     @abstractmethod
-    def chunk_and_embed(self, context: PipelineContext, processed: Any) -> List[Dict]:
+    def chunk_and_embed(self, context: PipelineContext, processed: Any) -> List[VectorChunk]:
         """
         Chunk content and generate embeddings.
         
@@ -78,7 +80,7 @@ class SourcePipelinePort(ABC):
             processed: Processed data from the process step
             
         Returns:
-            List of embedding dictionaries ready for storage
+            List of VectorChunk objects ready for storage
         """
         ...
     
