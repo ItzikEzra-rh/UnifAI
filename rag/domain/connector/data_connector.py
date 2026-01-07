@@ -1,6 +1,7 @@
+"""Base data connector - domain port."""
 from abc import ABC, abstractmethod
-from typing import List
-from domain.connector.configuration import ConfigurationManager
+from typing import List, Any
+
 
 class DataConnector(ABC):
     """
@@ -9,7 +10,7 @@ class DataConnector(ABC):
     Provides a common interface for retrieving data from various sources.
     """
     
-    def __init__(self, config_manager: ConfigurationManager):
+    def __init__(self, config_manager: Any):
         """
         Initialize the data connector.
         

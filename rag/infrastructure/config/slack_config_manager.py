@@ -1,26 +1,30 @@
+"""Slack configuration manager - infrastructure adapter."""
 from typing import Dict, List, Optional, Any, Tuple
-from domain.connector.configuration import ConfigurationManager
+from infrastructure.config.base_config_manager import BaseConfigurationManager
 
 
-class SlackConfigManager(ConfigurationManager):
+class SlackConfigManager(BaseConfigurationManager):
     """
     Configuration manager for Slack integration.
     
     Manages Slack-specific configuration and credentials, including OAuth tokens.
+    Inherits file loading capability from BaseConfigurationManager.
     """
     
-    def __init__(self):
-        """Initialize the Slack configuration manager."""
-        self._config: Dict[str, Any] = {}
+    def __init__(self, config_path: Optional[str] = None):
+        """
+        Initialize the Slack configuration manager.
+        
+        Args:
+            config_path: Optional path to a configuration file
+        """
+        super().__init__(config_path)
         self._project_tokens: Dict[str, Dict[str, str]] = {}
-    
-    def get_config_value(self, key: str, default: Any = None) -> Any:
-        """Get a configuration value."""
-        return self._config.get(key, default)
-    
-    def set_config_value(self, key: str, value: Any) -> None:
-        """Set a configuration value."""
-        self._config[key] = value
+        
+        # Auto-load project tokens if available in the configuration (matches backend behavior)
+        project_tokens = self.get_config_value('project_tokens', {})
+        for project_id, tokens in project_tokens.items():
+            self.set_project_tokens(project_id, tokens.get('user_token'), tokens.get('bot_token'))
     
     def validate_config(self) -> Tuple[bool, List[str]]:
         """

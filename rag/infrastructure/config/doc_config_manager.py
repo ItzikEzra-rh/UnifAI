@@ -1,13 +1,15 @@
+"""Document configuration manager - infrastructure adapter."""
 import os
-from typing import Dict, List, Any, Tuple
-from domain.connector.configuration import ConfigurationManager
+from typing import Dict, List, Any, Optional, Tuple
+from infrastructure.config.base_config_manager import BaseConfigurationManager
 
 
-class DocConfigManager(ConfigurationManager):
+class DocConfigManager(BaseConfigurationManager):
     """
     Configuration manager for document processing.
     
     Manages settings for document parsing and extraction operations.
+    Inherits file loading capability from BaseConfigurationManager.
     """
     
     DEFAULT_CONFIG: Dict[str, Any] = {
@@ -27,21 +29,23 @@ class DocConfigManager(ConfigurationManager):
         "image_extraction_path": "./extracted_images/",
     }
     
-    def __init__(self):
-        """Initialize the document configuration manager."""
-        self._config: Dict[str, Any] = dict(self.DEFAULT_CONFIG)
+    def __init__(self, config_path: Optional[str] = None):
+        """
+        Initialize the document configuration manager.
+        
+        Args:
+            config_path: Optional path to a configuration file
+        """
+        super().__init__(config_path)
+        
+        # Set default configurations if not already set (from file or elsewhere)
+        for key, value in self.DEFAULT_CONFIG.items():
+            if key not in self._config:
+                self._config[key] = value
         
         # Create directory for image extraction if enabled
         if self._config.get("extract_images", False):
             os.makedirs(self._config.get("image_extraction_path", "./extracted_images/"), exist_ok=True)
-    
-    def get_config_value(self, key: str, default: Any = None) -> Any:
-        """Get a configuration value."""
-        return self._config.get(key, default)
-    
-    def set_config_value(self, key: str, value: Any) -> None:
-        """Set a configuration value."""
-        self._config[key] = value
     
     def validate_config(self) -> Tuple[bool, List[str]]:
         """
