@@ -38,17 +38,32 @@ on:
     paths: [ '.github/workflows/backup-dbs.yaml', '.github/scripts/qdrant_backup.py' ]
 
 jobs:
+  setup_environment:
+    runs-on: ubuntu-latest
+    outputs:
+      BRANCH: ${{ steps.vars.outputs.branch }}
+      CLUSTER: ${{ steps.vars.outputs.cluster }}
+      NAMESPACE: ${{ steps.vars.outputs.namespace }}
+    steps:
+      - id: vars
+        run: |
+          echo "branch=${{ inputs.target_branch || 'GENIE-1071/backup_dbs' }}" >> $GITHUB_OUTPUT
+          echo "cluster=${{ inputs.target_cluster || 'PRE-PRODUCTION' }}" >> $GITHUB_OUTPUT
+          echo "namespace=${{ inputs.target_namespace || 'tag-ai--pipeline' }}" >> $GITHUB_OUTPUT
 
   verify_agent_deps:
     uses: ./.github/workflows/verify-agent-deps.yaml
 
   backup_mongo:
     runs-on: linux
-    needs: verify_agent_deps
+    needs: [setup_environment, verify_agent_deps]
     environment:
-      name: ${{ env.CLUSTER }}
+      name: ${{ needs.setup_environment.outputs.CLUSTER }}
+    env:
+      BRANCH: ${{ needs.setup_environment.outputs.BRANCH }}
+      CLUSTER: ${{ needs.setup_environment.outputs.CLUSTER }}
+      NAMESPACE: ${{ needs.setup_environment.outputs.NAMESPACE }}
     steps:
-
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
@@ -93,9 +108,9 @@ jobs:
 
   backup_qdrant:
     runs-on: linux
-    needs: verify_agent_deps
+    needs: [setup_environment, verify_agent_deps]
     environment:
-      name: ${{ env.CLUSTER }}
+      name: ${{ needs.setup_environment.outputs.CLUSTER }}
     steps:
 
       - name: Backup Qdrant
@@ -106,9 +121,7 @@ jobs:
 
   upload_to_gitlab:        
     runs-on: linux
-    needs: 
-      - backup_qdrant
-      - backup_mongo
+    needs: [setup_environment, verify_agent_deps, backup_qdrant, backup_mongo]
     steps:
 
       - name: Upload files to gitlab repo
