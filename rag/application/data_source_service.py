@@ -3,6 +3,8 @@ from dataclasses import dataclass, asdict
 from datetime import datetime
 from typing import Optional, List, Dict, Any
 
+from typing import Callable
+
 from domain.data_source.model import DataSource
 from domain.data_source.repository import DataSourceRepository
 from domain.pagination import PaginatedResult
@@ -30,11 +32,11 @@ class DataSourceService:
         self,
         source_repo: DataSourceRepository,
         pipeline_repo: PipelineRepository,
-        vector_repo: VectorRepository,
+        vector_repo_factory: Callable[[str], VectorRepository],
     ):
         self._source_repo = source_repo
         self._pipeline_repo = pipeline_repo
-        self._vector_repo = vector_repo
+        self._vector_repo_factory = vector_repo_factory
 
     # --- CRUD ---
     def get_by_id(self, source_id: str) -> Optional[DataSource]:
@@ -85,8 +87,12 @@ class DataSourceService:
             )
 
         source_name = source.source_name
+        # Get the correct vector repository based on source type
+        collection_name = f"{source.source_type.lower()}_data"
+        vector_repo = self._vector_repo_factory(collection_name)
+        
         try:
-            vectors_deleted = self._vector_repo.delete_by_source_id(source_id)
+            vectors_deleted = vector_repo.delete_by_source_id(source_id)
         except Exception as e:
             return DeleteResult(
                 success=False,

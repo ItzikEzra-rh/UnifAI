@@ -15,8 +15,8 @@ class CeleryPipelineDispatcher(PipelineTaskDispatcher):
     using Celery for async task dispatch to RabbitMQ.
     """
 
-    # Task name registered in Celery worker
-    PIPELINE_TASK = "celery_app.tasks.pipeline_tasks.execute_pipeline_task"
+    # Task name registered in Celery worker (matches rag hexagonal architecture path)
+    PIPELINE_TASK = "infrastructure.celery.workers.pipeline_tasks.execute_pipeline_task"
 
     def dispatch(
         self,

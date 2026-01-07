@@ -28,20 +28,23 @@ def get_sources(source_type, filter_query):
 @from_body({"pipeline_ids": fields.List(fields.Str(), required=True)})
 def delete_sources(pipeline_ids):
     """
-    Delete one or more data sources by their pipeline IDs.
+    Delete one or more data sources by their source IDs.
     Removes the sources from both MongoDB and vector storage.
+    
+    Note: Parameter is named 'pipeline_ids' for API compatibility, but actually
+    uses source_id for lookup (matching backend behavior).
     """
     try:
         svc = data_source_service()
         results = {"succeeded": [], "failed": []}
         
-        for pipeline_id in pipeline_ids:
+        for source_id in pipeline_ids:
             try:
-                # Get source by pipeline_id
-                source = svc.get_by_pipeline_id(pipeline_id)
+                # Get source by source_id (matching backend behavior)
+                source = svc.get_by_id(source_id)
                 if not source:
                     results["failed"].append({
-                        "pipeline_id": pipeline_id,
+                        "pipeline_id": source_id,
                         "error": "Source not found"
                     })
                     continue
@@ -49,7 +52,7 @@ def delete_sources(pipeline_ids):
                 result = svc.delete(source.source_id)
                 if result.success:
                     results["succeeded"].append({
-                        "pipeline_id": pipeline_id,
+                        "pipeline_id": source_id,
                         "result": {
                             "source_id": result.source_id,
                             "source_name": result.source_name,
@@ -60,12 +63,12 @@ def delete_sources(pipeline_ids):
                     })
                 else:
                     results["failed"].append({
-                        "pipeline_id": pipeline_id,
+                        "pipeline_id": source_id,
                         "error": result.message
                     })
             except Exception as e:
                 results["failed"].append({
-                    "pipeline_id": pipeline_id,
+                    "pipeline_id": source_id,
                     "error": str(e)
                 })
         

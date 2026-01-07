@@ -105,7 +105,7 @@ class PipelineExecutor:
             # Step 4: Store
             current_step = PipelineStatus.STORING
             self._pipeline_svc.update_status(context.pipeline_id, current_step)
-            result = vector_repo.store_embeddings(embeddings)
+            result = vector_repo.store(embeddings)
             
             # Success - update status
             self._pipeline_svc.update_status(context.pipeline_id, PipelineStatus.DONE)

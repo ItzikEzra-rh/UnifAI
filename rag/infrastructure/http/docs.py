@@ -5,6 +5,7 @@ from webargs import fields
 from bootstrap.app_container import (
     data_source_service,
     file_storage,
+    file_validation_service,
     retrieval_service,
 )
 from global_utils.helpers.apiargs import from_query, from_body
@@ -36,12 +37,67 @@ def upload_docs(files):
         return jsonify({"error": str(e)}), 500
 
 
+@docs_bp.route("/validate", methods=["POST"])
+@from_body({
+    "files": fields.List(fields.Dict(), required=True),
+    "username": fields.Str(required=True),
+    "check_duplicates": fields.Bool(required=False, load_default=True)
+})
+def validate_files(files, username, check_duplicates):
+    """
+    Validate files before upload.
+    
+    This endpoint performs pre-upload validation including:
+    - File extension validation (must be in supported list)
+    - File size validation (max 50 MB per file)
+    - Duplicate name detection (allows re-upload of FAILED documents)
+    
+    Request body:
+        files: List of file metadata objects with 'name' and 'size' keys
+               Example: [{"name": "document.pdf", "size": 1024000}]
+        username: Username of the person uploading files
+        check_duplicates: Whether to check for duplicate filenames (default: true)
+    
+    Response:
+        {
+            "valid_files": [
+                {"name": "doc.pdf", "normalized_name": "doc.pdf", "size": 1024000}
+            ],
+            "errors": [
+                {
+                    "file_name": "invalid.exe",
+                    "error_type": "extension",
+                    "message": "File type '.exe' is not supported..."
+                }
+            ],
+            "has_errors": true
+        }
+    
+    Usage Flow:
+        1. UI calls this endpoint with file metadata when files are selected
+        2. Backend validates and returns results
+        3. UI only uploads files that passed validation
+        4. UI calls /pipelines/embed with skip_validation=true
+        
+    For external API calls:
+        - Call /pipelines/embed with skip_validation=false (default)
+        - Full validation will be performed during registration
+    """
+    try:
+        service = file_validation_service(username=username)
+        result = service.validate(files, check_duplicates=check_duplicates)
+        return jsonify(result.to_dict()), 200
+    except Exception as e:
+        logger.error(f"Failed to validate files: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
 @docs_bp.route("/supported-extensions", methods=["GET"])
 def get_supported_extensions():
     """Get list of supported document file extensions."""
     try:
         config = DocConfigManager()
-        extensions = config.get_supported_extensions()
+        extensions = config.get_supported_file_types()
         return jsonify({"supported_extensions": extensions}), 200
     except Exception as e:
         logger.error(f"Failed to get supported extensions: {str(e)}")

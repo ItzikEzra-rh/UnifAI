@@ -90,11 +90,13 @@ def monitoring_repository():
 @lru_cache(maxsize=None)
 def vector_repository(collection_name: str):
     from bootstrap.factories import VectorRepositoryFactory    
-    return VectorRepositoryFactory.create({
+    repo = VectorRepositoryFactory.create({
         "type": "qdrant",
         "collection_name": collection_name,
         "embedding_dim": embedding_generator().embedding_dim,
-    }).initialize()
+    })
+    repo.initialize()
+    return repo
 
 
 @lru_cache(maxsize=1)
@@ -141,11 +143,11 @@ def slack_config_manager():
     
     if bot_token:
         manager.set_project_tokens(
-            project_id="default",
+            project_id="example-project",
             bot_token=bot_token,
             user_token=user_token,
         )
-        manager.set_default_project("default")
+        manager.set_default_project("example-project")
     
     return manager
 
@@ -243,7 +245,7 @@ def data_source_service():
     return DataSourceService(
         source_repo=data_source_repository(),
         pipeline_repo=pipeline_repository(),
-        vector_repo=vector_repository("default"),
+        vector_repo_factory=vector_repository,
     )
 
 
@@ -251,17 +253,72 @@ def data_source_service():
 def doc_validators():
     """Document validators pipeline factory."""
     from application.validation.validators.document.factory import DocValidators
+    from application.validation.validators.document.duplicate_validator import DuplicateValidator
+    from application.validation.validators.document.extension_validator import ExtensionValidator
+    from application.validation.validators.document.size_validator import SizeValidator
+    from application.validation.validators.document.name_duplicate_validator import NameDuplicateValidator
     from infrastructure.config.doc_config_manager import DocConfigManager
-    return DocValidators(config_manager=DocConfigManager())
+    from infrastructure.validation.document_duplicate_checker import DocumentDuplicateCheckerAdapter
+    from infrastructure.validation.name_duplicate_checker import NameDuplicateCheckerAdapter
+    
+    config = DocConfigManager()
+    
+    # Create individual validators with their dependencies
+    duplicate_validator = DuplicateValidator(
+        duplicate_checker=DocumentDuplicateCheckerAdapter(data_source_repository())
+    )
+    extension_validator = ExtensionValidator(
+        supported_extensions=config.get_supported_file_types()
+    )
+    size_validator = SizeValidator(
+        max_file_size_bytes=config.get_config_value("max_file_size_mb", 50) * 1024 * 1024
+    )
+    name_duplicate_validator = NameDuplicateValidator(
+        name_duplicate_checker=NameDuplicateCheckerAdapter(data_source_repository())
+    )
+    
+    return DocValidators(
+        duplicate_validator=duplicate_validator,
+        extension_validator=extension_validator,
+        size_validator=size_validator,
+        name_duplicate_validator=name_duplicate_validator,
+    )
 
 
 @lru_cache(maxsize=1)
 def slack_validators():
     """Slack validators pipeline factory."""
     from application.validation.validators.slack.factory import SlackValidators
-    from application.validation.validators.slack.channel_bot_installation import ChannelBotInstallationValidator
-    # TODO: Inject proper Slack connector based on project
-    return SlackValidators(channel_bot_validator=ChannelBotInstallationValidator(slack_connector=None))
+    from application.validation.validators.slack.channel_bot_installation_validator import ChannelBotInstallationValidator
+    from infrastructure.validation.bot_installation_checker import BotInstallationCheckerAdapter, MembershipUpdaterAdapter
+    
+    # TODO: Inject proper Slack connector based on project (None for now - graceful fallback)
+    bot_checker = BotInstallationCheckerAdapter(slack_connector=None)
+    membership_updater = MembershipUpdaterAdapter(storage=slack_channel_repository())
+    
+    return SlackValidators(
+        channel_bot_validator=ChannelBotInstallationValidator(
+            bot_checker=bot_checker,
+            membership_updater=membership_updater,
+        )
+    )
+
+
+def file_validation_service(username: str):
+    """
+    File validation service for pre-upload validation.
+    
+    Note: Not cached because it's user-specific (different username each time).
+    """
+    from application.file_validation_service import FileValidationService
+    from infrastructure.config.doc_config_manager import DocConfigManager
+    from infrastructure.validation.name_duplicate_checker import NameDuplicateCheckerAdapter
+    
+    return FileValidationService(
+        username=username,
+        config_manager=DocConfigManager(),
+        name_checker=NameDuplicateCheckerAdapter(data_source_repository()),
+    )
 
 
 @lru_cache(maxsize=1)
