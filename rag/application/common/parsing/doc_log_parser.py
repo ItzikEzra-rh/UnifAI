@@ -77,8 +77,6 @@ class DocLogParser(LogParser):
             The chunk count or None if not found
         """
         patterns = [
-            r'Generated (\d+) chunks',
-            r'Processed (\d+) chunks for document',
             r'Completed chunking with (\d+) total chunks generated'
         ]
         

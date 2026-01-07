@@ -95,7 +95,6 @@ class PDFChunkerStrategy(ContentChunker):
             logger.info(f"Splitting content of {doc.get('filename', 'Unknown')}")
             
             raw_chunks = text_splitter.split_text(content)
-            logger.info(f"Generated {len(raw_chunks)} chunks")
             
             # Process chunks and add metadata
             doc_chunks = []
@@ -122,7 +121,6 @@ class PDFChunkerStrategy(ContentChunker):
                 
                 doc_chunks.append(chunk)
             
-            logger.info(f"Processed {len(doc_chunks)} chunks for document {doc.get('filename', 'Unknown')}")
             self._chunks.extend(doc_chunks)
         
         logger.info(f"Completed chunking with {len(self._chunks)} total chunks generated")

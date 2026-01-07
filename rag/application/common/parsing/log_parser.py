@@ -48,7 +48,7 @@ class LogParser:
         Returns:
             The chunk count or None if not found
         """
-        pattern = r'Generated (\d+) chunks'
+        pattern = r'Completed chunking with (\d+) total chunks generated'
         match = re.search(pattern, log_line)
         if match:
             return int(match.group(1))
