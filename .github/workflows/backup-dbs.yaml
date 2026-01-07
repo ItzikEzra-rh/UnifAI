@@ -104,7 +104,7 @@ jobs:
           echo "Running mongodump with URI: ${{ vars.MONGO_URI }}"
           kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- mongodump --uri="${{ vars.MONGO_URI }}" --out="/tmp/backup" 2>&1 || (echo "mongodump failed with exit code $?" && exit 1)
           kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- ls -la /tmp/backup 2>/dev/null
-          kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- tar -czvf /tmp/backup.tar.gz /tmp/backup
+          kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- tar -czf /tmp/backup.tar.gz /tmp/backup
           kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- ls -la /tmp/backup.tar.gz
           kubectl cp --namespace ${{ env.NAMESPACE }} $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
           ls -la /tmp/backup.tar.gz
