@@ -4,6 +4,11 @@ from blueprints.models.blueprint import BlueprintSpec, BlueprintDraft
 from blueprints.repository.repository import BlueprintRepository
 from blueprints.resolver import BlueprintResolver
 from blueprints.validation.collector import BlueprintConfigCollector
+from blueprints.exceptions import (
+    BlueprintNotFoundError,
+    BlueprintSaveError,
+    BlueprintMetadataError,
+)
 from core.ref import RefWalker
 from elements.common.validator import ValidationContext
 from validation.models import BlueprintValidationResult
@@ -24,18 +29,27 @@ class BlueprintService:
 
     # ────────── Write ──────────
     def save_draft(self, *, user_id: str, draft_dict: dict, metadata: Dict[str, Any] = None) -> str:
-        draft_bp = BlueprintDraft(**draft_dict)
-        rid_refs = list(RefWalker.external_rids(draft_bp))
-        return self._repo.save(user_id=user_id, spec=draft_bp, rid_refs=rid_refs, metadata=metadata)
+        try:
+            draft_bp = BlueprintDraft(**draft_dict)
+            rid_refs = list(RefWalker.external_rids(draft_bp))
+            return self._repo.save(user_id=user_id, spec=draft_bp, rid_refs=rid_refs, metadata=metadata)
+        except Exception as e:
+            raise BlueprintSaveError(f"Failed to save blueprint: {str(e)}", cause=e)
 
     # ────────── Single-blueprint reads (ID is globally unique) ──────────
     def load_draft(self, blueprint_id: str) -> BlueprintDraft:
-        doc = self._repo.load(blueprint_id)
-        return BlueprintDraft(**doc["spec_dict"])
+        try:
+            doc = self._repo.load(blueprint_id)
+            return BlueprintDraft(**doc["spec_dict"])
+        except KeyError:
+            raise BlueprintNotFoundError(blueprint_id)
 
     def get_blueprint_draft_doc(self, blueprint_id: str) -> Mapping[str, Any]:
         """Get blueprint document with metadata for sharing operations."""
-        return self._repo.load(blueprint_id)
+        try:
+            return self._repo.load(blueprint_id)
+        except KeyError:
+            raise BlueprintNotFoundError(blueprint_id)
 
     def update_draft(self, *, blueprint_id: str, draft_dict: dict) -> bool:  # NEW
         draft = BlueprintDraft(**draft_dict)
@@ -134,9 +148,16 @@ class BlueprintService:
         :param blueprint_id: The blueprint ID
         :param metadata: Dictionary of metadata to set
         :return: True if the document was modified
-        :raises KeyError: If blueprint doesn't exist
+        :raises BlueprintNotFoundError: If blueprint doesn't exist
+        :raises BlueprintMetadataError: If update fails
         """
-        return self._repo.set_metadata(blueprint_id=blueprint_id, metadata=metadata)
+        if not self.exists(blueprint_id):
+            raise BlueprintNotFoundError(blueprint_id)
+        
+        try:
+            return self._repo.set_metadata(blueprint_id=blueprint_id, metadata=metadata)
+        except Exception as e:
+            raise BlueprintMetadataError(blueprint_id, f"Failed to update metadata: {str(e)}")
     # ────────── Validation ──────────
     def validate_blueprint(
         self,

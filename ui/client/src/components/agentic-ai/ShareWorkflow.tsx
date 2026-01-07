@@ -8,6 +8,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import { getPublicUsageScope, setBlueprintMetadata } from "@/api/blueprints";
 import { constructShareLink } from "@/utils/blueprintHelpers";
 import SimpleTooltip from "@/components/shared/SimpleTooltip";
+import { UmamiTrack } from "@/components/ui/umamitrack";
+import { UmamiEvents } from "@/config/umamiEvents";
 
 interface ShareWorkflowProps {
   blueprintId: string;
@@ -180,19 +182,24 @@ export default function ShareWorkflow({
             <div className="flex-1 bg-background-dark border border-gray-700 rounded-md px-3 py-2 text-sm text-gray-300 font-mono break-all">
               {shareLink}
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyLink}
-              className="border-gray-700 hover:bg-background-surface flex-shrink-0"
-              title="Copy link"
+            <UmamiTrack 
+              event={UmamiEvents.WORKFLOW_SHARE_COPY_LINK}
+              eventData={{ blueprintId }}
             >
-              {copied ? (
-                <Check className="h-4 w-4 text-green-400" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
-            </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyLink}
+                className="border-gray-700 hover:bg-background-surface flex-shrink-0"
+                title="Copy link"
+              >
+                {copied ? (
+                  <Check className="h-4 w-4 text-green-400" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
+              </Button>
+            </UmamiTrack>
           </div>
           <p className="text-xs text-gray-500">
             Anyone with this link can chat with your workflow (authentication required)

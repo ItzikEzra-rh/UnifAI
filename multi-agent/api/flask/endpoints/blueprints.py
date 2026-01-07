@@ -3,9 +3,17 @@ from global_utils.helpers.apiargs import from_body, from_query
 from webargs import fields
 import yaml
 import json
+import logging
 from bson import json_util
 from werkzeug.exceptions import BadRequest
 from typing import Optional
+from blueprints.exceptions import (
+    BlueprintNotFoundError,
+    BlueprintSaveError,
+    BlueprintMetadataError,
+)
+
+logger = logging.getLogger(__name__)
 
 blueprints_bp = Blueprint("blueprints", __name__)
 
@@ -133,7 +141,11 @@ def save_blueprint(blueprint_raw=None, user_id="alice", metadata={}):
 
     except BadRequest as e:
         return jsonify({"status": "error", "error": str(e)}), 400
+    except BlueprintSaveError as e:
+        logger.exception(f"Failed to save blueprint for user {user_id}")
+        return jsonify({"status": "error", "error": str(e)}), 500
     except Exception as e:
+        logger.exception(f"Unexpected error saving blueprint for user {user_id}")
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
@@ -149,9 +161,12 @@ def get_blueprint_info(blueprint_id):
         svc = current_app.container.blueprint_service
         doc = svc.get_blueprint_draft_doc(blueprint_id)
         return json.loads(json_util.dumps(doc)), 200
+    except BlueprintNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
     except KeyError:
         return jsonify({"error": "Blueprint not found"}), 404
     except Exception as e:
+        logger.exception(f"Unexpected error getting blueprint info for {blueprint_id}")
         return jsonify({"error": str(e)}), 500
 
 
@@ -224,7 +239,13 @@ def set_metadata(blueprint_id, metadata):
             return jsonify({"error": "Failed to update metadata"}), 500
         
         return jsonify({"status": "success"}), 200
+    except BlueprintNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except BlueprintMetadataError as e:
+        logger.exception(f"Failed to update metadata for blueprint {blueprint_id}")
+        return jsonify({"error": str(e)}), 500
     except Exception as e:
+        logger.exception(f"Unexpected error updating metadata for blueprint {blueprint_id}")
         return jsonify({"error": str(e)}), 500
 
 @blueprints_bp.route("/blueprint.validate", methods=["POST"])
@@ -241,11 +262,14 @@ def validate_blueprint(blueprint_id, timeout_seconds):
             timeout_seconds=timeout_seconds,
         )
         return jsonify(result.to_dict()), 200
+    except BlueprintNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
     except KeyError as e:
         return jsonify({"error": f"Blueprint not found: {e}"}), 404
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
+        logger.exception(f"Unexpected error validating blueprint {blueprint_id}")
         return jsonify({"error": str(e)}), 500
 
 

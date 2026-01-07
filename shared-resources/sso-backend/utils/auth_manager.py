@@ -4,6 +4,7 @@ Handles user authentication, session management, and token validation
 """
 from datetime import datetime, timedelta
 from functools import wraps
+import os
 from flask import request, jsonify, session, redirect, url_for, current_app
 from authlib.integrations.flask_client import OAuth
 from authlib.common.errors import AuthlibBaseError
@@ -28,9 +29,8 @@ class AuthManager:
         
         # Set up secret key for sessions (required for secure session management)
         # The secret_key should be configured in app_config for both dev and production
-        # A permanent key ensures sessions persist across container restarts
         if not app.secret_key:
-            app.secret_key = config.get('secret_key')
+            app.secret_key = config.get('secret_key', os.urandom(24))
         
         # Configure OAuth
         self.oauth = OAuth(app)

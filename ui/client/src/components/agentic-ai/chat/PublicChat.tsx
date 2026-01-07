@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { usePublicChat } from "@/hooks/use-public-chat";
 import { getBlueprintInfo, getPublicUsageScope, validateBlueprint } from "@/api/blueprints";
+import { UmamiTrack } from "@/components/ui/umamitrack";
+import { UmamiEvents } from "@/config/umamiEvents";
 
 export default function PublicChat() {
   const [, params] = useRoute("/chat/:token");
@@ -257,16 +259,18 @@ export default function PublicChat() {
                 <CardTitle className="text-sm font-medium">
                   Chat History ({chatSessions.length})
                 </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0 text-primary hover:bg-primary/20"
-                  onClick={handleNewChat}
-                  disabled={isCreatingSession}
-                  title="Start new chat"
-                >
-                  <Plus className="h-4 w-4" />
-                </Button>
+                <UmamiTrack event={UmamiEvents.PUBLIC_CHAT_NEW_SESSION}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0 text-primary hover:bg-primary/20"
+                    onClick={handleNewChat}
+                    disabled={isCreatingSession}
+                    title="Start new chat"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </UmamiTrack>
               </div>
             </CardHeader>
             <CardContent className="p-0 flex-grow overflow-y-auto">
