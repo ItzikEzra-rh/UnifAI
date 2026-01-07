@@ -38,8 +38,13 @@ on:
     paths: [ '.github/workflows/backup-dbs.yaml', '.github/scripts/qdrant_backup.py' ]
 
 jobs:
+
+  verify_agent_deps:
+    uses: ./.github/workflows/verify-agent-deps.yaml
+
   setup_environment:
     runs-on: ubuntu-latest
+    needs: verify_agent_deps
     outputs:
       BRANCH: ${{ steps.vars.outputs.branch }}
       CLUSTER: ${{ steps.vars.outputs.cluster }}
@@ -51,8 +56,7 @@ jobs:
           echo "cluster=${{ inputs.target_cluster || 'PRE-PRODUCTION' }}" >> $GITHUB_OUTPUT
           echo "namespace=${{ inputs.target_namespace || 'tag-ai--pipeline' }}" >> $GITHUB_OUTPUT
 
-  verify_agent_deps:
-    uses: ./.github/workflows/verify-agent-deps.yaml
+
 
   backup_mongo:
     runs-on: linux
