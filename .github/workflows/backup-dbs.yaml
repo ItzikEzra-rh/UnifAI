@@ -6,7 +6,6 @@ env:
   username: "tag-ai"
   QDRANT_SNAPSHOTS_DIR: "/tmp/snapshots"
   MONGO_BACKUP_FILE: /tmp/backup.tar.gz
-  #just to invoke workflow
   BRANCH: ${{ inputs.target_branch || 'GENIE-1071/backup_dbs' }}
   CLUSTER: ${{ inputs.target_cluster || 'PRE-PRODUCTION' }}
   NAMESPACE: ${{ inputs.target_namespace || 'tag-ai--pipeline' }}
@@ -30,9 +29,7 @@ on:
         description: 'Which namespace do you want to backup?'
         required: true
         default: 'tag-ai--pipeline'
-  #This triggers the workflow automatically anytime someone pushes to the branch - needs to change to when this file is changed
   push:                
-    branches: [ 'GENIE-1071/backup_dbs' ]
     paths: [ '.github/workflows/backup-dbs.yaml', '.github/scripts/qdrant_backup.py' ]
 
 jobs:

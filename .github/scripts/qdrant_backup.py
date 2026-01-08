@@ -85,12 +85,16 @@ def download_all_snapshots(snapshot_urls: list[str]) -> None:
 
 def get_collections(node_url: str) -> list[object]:
     '''
-    Checks if the connection to the given node URL is successful
+    Gets the collections from the given node URL
+
+    Args:
+        node_url: node URL to get the collections from
+    Returns:
+        list of collections
     '''
     try:
 
         client = QdrantClient(url=node_url, port=QDRANT_PORT, api_key=QDRANT_API_KEY, prefer_grpc=False, timeout=QDRANT_TIMEOUT)
-        print('created client - get collections')
         collections = client.get_collections().collections
         print(collections)
         if not collections:
@@ -114,8 +118,6 @@ def main():
     '''
     Main function to run the backup
     '''
-    print(QDRANT_API_KEY)
-    print(QDRANT_MAIN_URL)
     collections = get_collections(QDRANT_MAIN_URL)
     #print(collections)
     if not collections:

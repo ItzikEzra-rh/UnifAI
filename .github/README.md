@@ -1,50 +1,96 @@
-This folder includes all CI/automation scripts to be run using github actions
+# GitHub Actions & CI/CD
 
-prereqs:
+This folder contains all CI/automation scripts and workflows for GitHub Actions.
 
-1. github can access the cluster or have a self hosted runner accessible both from runner and cluster (see links below on how to create a new runner)
+## Overview
 
+Workflows are configured to run automated tasks using GitHub Actions. For complex operations, we use dedicated scripts (in `.github/scripts/`) that are invoked from the workflow files.
 
+## Available Workflows
 
-NOTES:
-when using runners the runs on refers to labels and not to the runner names so a matching label must exist prior to running the scripts.
+- **backup-dbs.yaml** - Automated database backups for MongoDB and Qdrant
+- **verify-agent-deps.yaml** - Dependency verification for agents
 
+## Prerequisites
 
-Appendixes
+1. GitHub must be able to access the target cluster **OR** you must have a self-hosted runner that can access both GitHub and the cluster (see [Creating a Runner](#creating-a-runner) below)
+2. GitHub Environments must be configured with the appropriate variables and secrets for each cluster (e.g., `PRE-PRODUCTION`, `PRODUCTION`)
 
-Creating a new runner
-1. To create a new runner go to your project settings tab.
-2. on the left side menu select actions > runners
-3. click on add a new runner
-4. follow the procedure (the keys are unique to your project)
-https://docs.github.com/en/actions/how-tos/manage-runners/self-hosted-runners/add-runners
+### Important Notes
 
+- When using runners, the `runs-on` field refers to **labels**, not runner names. Ensure matching labels exist before running workflows.
+- Environment-specific variables (like `QDRANT_URL`, `MONGO_URI`, `API_URL`) must be configured in GitHub repository settings under **Environments**.
 
-Backup mongodb
+## GitHub Environments Setup
 
-Running backup on mongodb is a straightforwad action which can be achieved via a oneliner:
+The workflows use GitHub Environments to manage cluster-specific configurations:
+
+1. Go to **Settings** → **Environments** in your repository
+2. Create environments matching your cluster names (e.g., `PRE-PRODUCTION`, `PRODUCTION`)
+3. Add environment-specific variables:
+   - `API_URL` - Kubernetes API server URL
+   - `MONGO_URI` - MongoDB connection string
+   - `QDRANT_URL` - Qdrant cluster URL
+4. Add environment-specific secrets:
+   - `ACCESS_TOKEN` - Kubernetes access token
+   - Other sensitive credentials as needed
+
+## Database Backup Details
+
+### MongoDB Backup
+
+MongoDB backups are performed using `mongodump`, which is straightforward:
+
+```bash
 mongodump --uri="mongodb://localhost:27017" --out="/tmp/backup"
+```
 
-where:
-uri - connection info to the mongodb we want to backup
-output - name of the target for the backup, this creates a new folder with the stated name
-database (optional) - if a specific database is desired we can specify this here (default: all databases)
+**Parameters:**
+- `--uri` - Connection string to the MongoDB instance to backup
+- `--out` - Target directory for the backup (creates a new folder)
+- `--db` (optional) - Specific database name (default: all databases)
 
+### Qdrant Backup
 
-Backup Qdrant
+Qdrant backups require creating snapshots via the API or UI. The workflow uses a Python script (`.github/scripts/qdrant_backup.py`) to:
+1. Connect to the Qdrant cluster
+2. Create snapshots for all collections
+3. Download the snapshots locally
+4. Upload them to the backup repository
 
+For more details, see the [Qdrant documentation](https://qdrant.tech/documentation/database-tutorials/create-snapshot/).
 
+## Running Workflows Manually
 
+### Prerequisites
 
-Running a workflow manualy
+1. The workflow must have the `workflow_dispatch` trigger enabled
+2. GitHub CLI must be installed and authenticated
+3. The workflow file must exist in the `main` branch (workflows in feature branches cannot be manually triggered)
 
-prereqs:
-1. workflow has a the on workflow_dispatch option
-2. github client installed and logged in
+### Example Command
 
-
+```bash
 gh workflow run backup-dbs.yaml \
--f target_cluster=PRE-PRODUCTION \
--f target_branch=GENIE-1071/backup_dbs \
--f target_namespace=tag-ai--pipeline
+  -f target_cluster=PRE-PRODUCTION \
+  -f target_branch=GENIE-1071/backup_dbs \
+  -f target_namespace=tag-ai--pipeline
+```
 
+**Parameters:**
+- `-f target_cluster` - The cluster environment to backup (must match a configured GitHub Environment)
+- `-f target_branch` - The branch to checkout for the workflow
+- `-f target_namespace` - The Kubernetes namespace to backup
+
+## Appendix
+
+### Creating a Runner
+
+To create a new self-hosted runner:
+
+1. Go to your repository's **Settings** tab
+2. In the left sidebar, select **Actions** → **Runners**
+3. Click **New self-hosted runner**
+4. Follow the setup instructions (the authentication tokens are unique to your repository)
+
+For more details, see the [GitHub documentation on self-hosted runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/adding-self-hosted-runners).
