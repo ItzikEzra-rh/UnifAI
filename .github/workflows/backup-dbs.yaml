@@ -112,6 +112,9 @@ jobs:
     needs: [setup_environment, verify_agent_deps]
     environment:
       name: ${{ needs.setup_environment.outputs.CLUSTER }}
+    env:
+      BRANCH: ${{ needs.setup_environment.outputs.BRANCH }}
+      QDRANT_URL: ${{ vars.QDRANT_URL }}
     steps:
 
       - name: Checkout Code
