@@ -52,8 +52,9 @@ def download_all_snapshots(snapshot_urls: list[str]) -> None:
     '''
     try:
         os.makedirs("snapshots", exist_ok=True)
-
+        print('creating snapshots directory')
         for snapshot_url in snapshot_urls:
+            print('downloading snapshot: ', snapshot_url)
             snapshot_name = os.path.basename(snapshot_url)
             local_snapshot_path = os.path.join("snapshots", snapshot_name)
 
@@ -63,7 +64,8 @@ def download_all_snapshots(snapshot_urls: list[str]) -> None:
             with open(local_snapshot_path, "wb") as f:
                 response.raise_for_status()
                 f.write(response.content)
-
+        print('snapshots downloaded')
+        print('snapshots directory: ', os.listdir("snapshots"))
     except requests.exceptions.HTTPError as e:
         # Already raised by raise_for_status()
         print(f"HTTP error downloading snapshot: {e}")
