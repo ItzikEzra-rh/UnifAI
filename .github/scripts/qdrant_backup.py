@@ -7,7 +7,7 @@ import sys
 QDRANT_MAIN_URL = os.getenv("QDRANT_URL")
 QDRANT_PORT = 80
 QDRANT_TIMEOUT = 30.0
-
+QDRANT_API_KEY = ''
 
 def create_snapshots(node_url: str, collection_name: str) -> str:
     '''
@@ -22,7 +22,7 @@ def create_snapshots(node_url: str, collection_name: str) -> str:
     try:
         print(node_url)
         print("collection name: ", collection_name)
-        client = QdrantClient(url=node_url, port=QDRANT_PORT, prefer_grpc=False, timeout=QDRANT_TIMEOUT)
+        client = QdrantClient(url=node_url, port=QDRANT_PORT, api_key=QDRANT_API_KEY, prefer_grpc=False, timeout=QDRANT_TIMEOUT)
         print('created client - create snapshots')
         #node_client = QdrantClient(node_url, api_key=QDRANT_API_KEY)
         snapshot_info = client.create_snapshot(collection_name=collection_name, wait=True)
@@ -85,7 +85,7 @@ def get_collections(node_url: str) -> list[object]:
     Checks if the connection to the given node URL is successful
     '''
     try:
-        client = QdrantClient(url=node_url, port=QDRANT_PORT, prefer_grpc=False, timeout=QDRANT_TIMEOUT)
+        client = QdrantClient(url=node_url, port=QDRANT_PORT, api_key=QDRANT_API_KEY, prefer_grpc=False, timeout=QDRANT_TIMEOUT)
         print('created client - get collections')
         collections = client.get_collections().collections
         print(collections)
