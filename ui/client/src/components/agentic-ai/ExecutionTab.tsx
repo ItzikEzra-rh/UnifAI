@@ -110,6 +110,10 @@ export default function ExecutionTab({
   const { user } = useAuth();
   const { cacheBlueprintValidationResults } = useAgenticAI();
   
+  // Derived state: Chat-only mode is active for shared link sessions
+  // This single flag drives all chat-only experience behaviors (no graph, no resize, etc.)
+  const isChatOnlyMode = selectedSession?.fromSharedLink ?? false;
+  
   // Blueprint validation hook
   const {
     isValidating: isValidatingBlueprint,
@@ -122,10 +126,10 @@ export default function ExecutionTab({
   });
 
   // Toggle Blueprint Graph visibility
-  // For shared link sessions, always show the message area (not the graph)
+  // For chat-only sessions (shared links), toggling is disabled
   const toggleBlueprintGraph = () => {
-    // Don't allow toggling for shared link sessions
-    if (selectedSession?.fromSharedLink) {
+    // Don't allow toggling for chat-only sessions
+    if (isChatOnlyMode) {
       return;
     }
     
@@ -283,10 +287,11 @@ export default function ExecutionTab({
     setSharedLinkBlueprintName("");
     setIsLoadingBlueprintName(false);
     
-    // For shared link sessions, always show the message area (not the graph)
+    // For chat-only sessions (shared links), configure panel layout for message area
+    // Note: Using session.fromSharedLink here (not isChatOnlyMode) because state hasn't updated yet
     if (session.fromSharedLink) {
-      setIsBlueprintGraphHidden(false); // Show the message area (not the graph)
-      setBlueprintGraphWidth(30); // Set a width for the message area
+      setIsBlueprintGraphHidden(false); // Ensure right panel is visible for message
+      setBlueprintGraphWidth(30); // Set width for the chat-only message area
       const remainingWidth = 100 - chatSidebarWidth - 30;
       setChatInterfaceWidth(remainingWidth);
     }
@@ -813,7 +818,7 @@ export default function ExecutionTab({
               isValidatingBlueprint={isValidatingBlueprint}
               onToggleBlueprintGraph={toggleBlueprintGraph}
               isBlueprintGraphHidden={isBlueprintGraphHidden}
-              isChatOnlyMode={selectedSession?.fromSharedLink ?? false}
+              isChatOnlyMode={isChatOnlyMode}
             />
           </div>
           
@@ -828,24 +833,25 @@ export default function ExecutionTab({
           )}
         </div>
 
-        {/* Second Resizable divider - only show when Blueprint Graph area is visible */}
-        {(!isBlueprintGraphHidden || selectedSession?.fromSharedLink) && (
+        {/* Second Resizable divider - only show when right panel is visible */}
+        {/* For chat-only sessions: always show (displays message). For regular: show when graph not hidden */}
+        {(isChatOnlyMode || !isBlueprintGraphHidden) && (
           <div
             className={`w-1 transition-colors duration-200 flex-shrink-0 ${
-              selectedSession?.fromSharedLink ? 'cursor-default' : 'cursor-col-resize'
+              isChatOnlyMode ? 'cursor-default' : 'cursor-col-resize'
             } ${
               isResizing && activeResizer === 'right' ? 'opacity-100' : 'opacity-50'
             }`}
             style={{
               backgroundColor: 'hsl(var(--primary))',
             }}
-            onMouseDown={selectedSession?.fromSharedLink ? undefined : handleMouseDown('right')}
-            title={selectedSession?.fromSharedLink ? "Workflow not available for shared link sessions" : "Drag to resize panels"}
+            onMouseDown={isChatOnlyMode ? undefined : handleMouseDown('right')}
+            title={isChatOnlyMode ? "Workflow not available for chat-only sessions" : "Drag to resize panels"}
           />
         )}
 
-        {/* Blueprint Graph Visualization or Shared Link Message - Dynamic width */}
-        {(!isBlueprintGraphHidden || selectedSession?.fromSharedLink) && (
+        {/* Blueprint Graph Visualization or Chat-Only Message - Dynamic width */}
+        {(isChatOnlyMode || !isBlueprintGraphHidden) && (
           <div className="flex-shrink-0" style={{ width: `${blueprintGraphWidth}%` }}>
             <Card className="bg-background-card shadow-card border-gray-800 h-full flex flex-col ml-0">
             {/* TODO: Add below general component that gets 'blueprintId' and showing his title and uid - can be called from multiple places */}
@@ -864,7 +870,7 @@ export default function ExecutionTab({
               )}
             </CardHeader> */}
             <CardContent className="p-0 flex-grow">
-              {selectedSession?.fromSharedLink ? (
+              {isChatOnlyMode ? (
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm flex-col p-6">
                   <p className="mb-2 text-base">This session was created from a shared chat link</p>
                   <p className="text-xs text-gray-500 mb-1">
