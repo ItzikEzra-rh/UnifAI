@@ -3,7 +3,7 @@
  */
 
 import { useState, useCallback } from 'react';
-import { getPublicUsageScope } from '@/api/blueprints';
+import { getBlueprintInfo } from '@/api/blueprints';
 
 interface UseSharingStatusReturn {
   isSharingDisabled: boolean;
@@ -28,8 +28,9 @@ export const useSharingStatus = (): UseSharingStatusReturn => {
 
     setIsLoading(true);
     try {
-      const statusResponse = await getPublicUsageScope(blueprintId);
-      setIsSharingDisabled(statusResponse.public_usage_scope !== true);
+      const blueprintInfo = await getBlueprintInfo(blueprintId);
+      const isPublic = blueprintInfo.metadata?.usageScope === "public";
+      setIsSharingDisabled(!isPublic);
     } catch (error) {
       // If status check fails, assume sharing is disabled for safety
       console.error('Error checking sharing status:', error);
@@ -67,8 +68,9 @@ export const checkSessionSharingStatus = async (
   }
 
   try {
-    const statusResponse = await getPublicUsageScope(blueprintId);
-    return statusResponse.public_usage_scope !== true;
+    const blueprintInfo = await getBlueprintInfo(blueprintId);
+    const isPublic = blueprintInfo.metadata?.usageScope === "public";
+    return !isPublic;
   } catch (error) {
     // If status check fails, use the fallback value from API response
     return !(fallbackValue ?? false);

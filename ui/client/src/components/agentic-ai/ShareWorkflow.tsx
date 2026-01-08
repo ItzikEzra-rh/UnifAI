@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Copy, Check, Share2, Loader2, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/contexts/AuthContext";
-import { getPublicUsageScope, setBlueprintMetadata } from "@/api/blueprints";
+import { getBlueprintInfo, setBlueprintMetadata } from "@/api/blueprints";
 import { constructShareLink } from "@/utils/blueprintHelpers";
 import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { UmamiTrack } from "@/components/ui/umamitrack";
@@ -39,18 +39,18 @@ export default function ShareWorkflow({
   // Show warning if sharing is enabled but blueprint is invalid
   const showInvalidWarning = enabled && !isValid && !isValidating;
 
-  // Fetch current public_usage_scope status
+  // Fetch current public_usage_scope status from blueprint metadata
   useEffect(() => {
     if (!blueprintId) return;
     
     const fetchStatus = async () => {
       try {
-        const response = await getPublicUsageScope(blueprintId);
-        const isPublic = response.public_usage_scope === true;
+        const blueprintInfo = await getBlueprintInfo(blueprintId);
+        const isPublic = blueprintInfo.metadata?.usageScope === "public";
         setEnabled(isPublic);
         setShareLink(isPublic ? constructShareLink(blueprintId) : null);
       } catch (error) {
-        console.error("Error fetching public_usage_scope status:", error);
+        console.error("Error fetching blueprint info:", error);
       }
     };
 
@@ -58,18 +58,9 @@ export default function ShareWorkflow({
   }, [blueprintId]);
 
   const handleToggle = async (checked: boolean) => {
-    if (!user?.username) {
-      toast({
-        title: "Authentication Required",
-        description: "Please log in to enable sharing",
-        variant: "destructive",
-      });
-      return;
-    }
-
     setIsLoading(true);
     try {
-      await setBlueprintMetadata(blueprintId, { usageScope: checked ? "public" : "private" }, user.username);
+      await setBlueprintMetadata(blueprintId, { usageScope: checked ? "public" : "private" }, user?.username || "");
       setEnabled(checked);
       setShareLink(checked ? constructShareLink(blueprintId) : null);
       toast({

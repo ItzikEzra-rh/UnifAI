@@ -1,14 +1,6 @@
 import axios from '../http/axiosAgentConfig';
 import { normalizeCategory } from '@/constants/resources';
 
-// Re-export blueprint functions for backwards compatibility
-export { 
-  fetchBlueprints, 
-  fetchResolvedBlueprints, 
-  validateBlueprint,
-  type WorkflowBlueprint 
-} from './blueprints';
-
 export interface Session {
   session_id: string;
   blueprint_id: string;

@@ -22,7 +22,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { usePublicChat } from "@/hooks/use-public-chat";
-import { getBlueprintInfo, getPublicUsageScope, validateBlueprint } from "@/api/blueprints";
+import { getBlueprintInfo, validateBlueprint } from "@/api/blueprints";
 import { UmamiTrack } from "@/components/ui/umamitrack";
 import { UmamiEvents } from "@/config/umamiEvents";
 
@@ -62,11 +62,12 @@ export default function PublicChat() {
     chatToDelete,
   } = usePublicChat(blueprintId);
 
-  // Check sharing status for the blueprint
+  // Check sharing status for the blueprint using getBlueprintInfo (usageScope is part of metadata)
   const checkSharingStatus = useCallback(async (blueprintId: string) => {
     try {
-      const statusResponse = await getPublicUsageScope(blueprintId);
-      setIsSharingDisabled(statusResponse.public_usage_scope !== true);
+      const blueprintInfo = await getBlueprintInfo(blueprintId);
+      const isPublic = blueprintInfo.metadata?.usageScope === "public";
+      setIsSharingDisabled(!isPublic);
     } catch (error: any) {
       // If status check fails, assume sharing is disabled
       setIsSharingDisabled(true);
@@ -100,19 +101,19 @@ export default function PublicChat() {
 
     const validateToken = async () => {
       try {
-        // Get blueprint draft document
+        // Get blueprint info (includes usageScope in metadata)
         const blueprintInfo = await getBlueprintInfo(token);
         setBlueprintId(token);
         setBlueprintName(blueprintInfo.spec_dict?.name || "Unnamed Workflow");
         setBlueprintOwner(blueprintInfo.user_id || "");
         
-        // Check sharing status
-        const statusResponse = await getPublicUsageScope(token);
-        if (statusResponse.public_usage_scope !== true) {
+        // Check sharing status from the same blueprintInfo response (no extra API call)
+        const isPublic = blueprintInfo.metadata?.usageScope === "public";
+        if (!isPublic) {
           setValidationError("Sorry, this workflow is not available for chats");
           setIsSharingDisabled(true);
         } else {
-          await checkSharingStatus(token);
+          setIsSharingDisabled(false);
           // Also check blueprint validity
           await checkBlueprintValidity(token);
         }
@@ -136,10 +137,14 @@ export default function PublicChat() {
   useEffect(() => {
     if (isAuthenticated && user && blueprintId) {
       // Check sharing status initially and periodically (every 30 seconds)
+      // This polling handles the scenario where the workflow owner DISABLES sharing while
+      // another user has the chat open. Without this, the user would continue chatting
+      // but their messages would fail with confusing errors. With polling, they'll see
+      // a clear "sharing disabled" message within 30 seconds of the owner disabling it.
       checkSharingStatus(blueprintId);
       const interval = setInterval(() => {
         checkSharingStatus(blueprintId);
-      }, 30000); // Check every 30 seconds
+      }, 30000);
       
       return () => clearInterval(interval);
     }
@@ -152,18 +157,6 @@ export default function PublicChat() {
         <div className="text-center">
           <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
           <p className="text-gray-400">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show authentication required
-  if (!isAuthenticated) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-background-dark">
-        <div className="text-center">
-          <p className="text-white mb-4">Authentication required to access this chat</p>
-          <p className="text-gray-400 text-sm">Please log in to continue</p>
         </div>
       </div>
     );

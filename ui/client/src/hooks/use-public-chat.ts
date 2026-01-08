@@ -6,7 +6,7 @@ import { ChatSession, ChatMessage, ChatSessionData } from '@/types/session';
 import { checkSessionSharingStatus } from '@/hooks/use-sharing-status';
 import {transformSessionData, sortSessionsByTimestamp,} from '@/utils/sessionHelpers';
 import { useSessionManagement } from '@/hooks/use-session-management';
-import { getPublicUsageScope } from '@/api/blueprints';
+import { getBlueprintInfo } from '@/api/blueprints';
 
 interface UsePublicChatReturn {
   sessions: ChatSession[];
@@ -316,11 +316,12 @@ export const usePublicChat = (blueprintId: string | null): UsePublicChatReturn =
       }
 
       // Check sharing status before allowing execution (fresh check each time)
+      // Uses getBlueprintInfo to avoid separate API call - usageScope is in metadata
       if (blueprintId) {
         try {
-          const statusResponse = await getPublicUsageScope(blueprintId);
-          const sharingDisabled = statusResponse.public_usage_scope !== true;
-          if (sharingDisabled) {
+          const blueprintInfo = await getBlueprintInfo(blueprintId);
+          const isPublic = blueprintInfo.metadata?.usageScope === "public";
+          if (!isPublic) {
             throw new Error("This workflow's chat sharing has been disabled and can no longer be continued.");
           }
         } catch (error: any) {

@@ -100,17 +100,6 @@ export async function saveBlueprint(
 // ────────────────────────────────────────────────────────────────────────────────
 
 /**
- * Check if a blueprint has public sharing enabled
- */
-export async function getPublicUsageScope(blueprintId: string): Promise<{ public_usage_scope: boolean; blueprint_id: string }> {
-  const info = await getBlueprintInfo(blueprintId);
-  return {
-    public_usage_scope: info.metadata?.usageScope === "public",
-    blueprint_id: info.blueprint_id,
-  };
-}
-
-/**
  * Set metadata for a blueprint (including sharing settings)
  */
 export async function setBlueprintMetadata(

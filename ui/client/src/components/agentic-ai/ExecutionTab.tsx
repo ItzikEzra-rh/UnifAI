@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-import * as Switch from '@radix-ui/react-switch';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -12,13 +11,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Users, Clock, ArrowUpRight, SplitSquareVertical, Trash2, Plus, X } from "lucide-react";
+import { motion } from "framer-motion";
+import { MessageSquare, Users, Clock, Trash2, Plus } from "lucide-react";
 import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
 import axios from '../../http/axiosAgentConfig'
-import { getBlueprintInfo, getPublicUsageScope } from '@/api/blueprints'
+import { getBlueprintInfo } from '@/api/blueprints'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
@@ -293,38 +292,31 @@ export default function ExecutionTab({
     }
     // For regular sessions, keep current graph visibility state
     
-    // Check sharing status immediately (before fetching other data) to avoid flash
-    // But only if the blueprint still exists
+    // Fetch blueprint info once and extract both sharing status and name
+    // This consolidates two API calls into one (getBlueprintInfo contains usageScope in metadata)
     if (!session.blueprintExists) {
       // If workflow is deleted, reset sharing disabled state (deleted message will show instead)
       setIsSharingDisabled(false);
-    } else if (session.fromSharedLink && session.blueprintId) {
-      // Always fetch fresh status to ensure accuracy (backend may have changed since session list was loaded)
-      try {
-        const statusResponse = await getPublicUsageScope(session.blueprintId);
-        const disabled = statusResponse.public_usage_scope !== true;
-        setIsSharingDisabled(disabled);
-        // Update the session with the current sharing status
-        setChatSessions(prev => prev.map(s => 
-          s.id === session.id ? { ...s, isSharingDisabled: disabled } : s
-        ));
-      } catch (statusError: any) {
-        // If status check fails, assume sharing is disabled for safety
-        setIsSharingDisabled(true);
-        setChatSessions(prev => prev.map(s => 
-          s.id === session.id ? { ...s, isSharingDisabled: true } : s
-        ));
-      }
-    } else {
-      // For non-shared-link sessions, sharing status doesn't matter
-      setIsSharingDisabled(false);
-    }
-    
-    // Fetch the blueprint name from database using blueprint_id from session
-    if (session.blueprintId) {
+    } else if (session.blueprintId) {
       setIsLoadingBlueprintName(true);
       try {
         const blueprintInfo = await getBlueprintInfo(session.blueprintId);
+        
+        // Extract sharing status from metadata.usageScope
+        if (session.fromSharedLink) {
+          const isPublic = blueprintInfo.metadata?.usageScope === "public";
+          const disabled = !isPublic;
+          setIsSharingDisabled(disabled);
+          // Update the session with the current sharing status
+          setChatSessions(prev => prev.map(s => 
+            s.id === session.id ? { ...s, isSharingDisabled: disabled } : s
+          ));
+        } else {
+          // For non-shared-link sessions, sharing status doesn't matter
+          setIsSharingDisabled(false);
+        }
+        
+        // Extract blueprint name
         if (blueprintInfo.spec_dict?.name) {
           setSharedLinkBlueprintName(blueprintInfo.spec_dict.name);
         } else {
@@ -332,9 +324,13 @@ export default function ExecutionTab({
           setSharedLinkBlueprintName("Unknown");
         }
       } catch (error: any) {
-        console.error('Error fetching blueprint name:', error);
-        // Set to "Unknown" on error so user sees something
+        console.error('Error fetching blueprint info:', error);
+        // On error, assume sharing is disabled for safety and set name to Unknown
         if (session.fromSharedLink) {
+          setIsSharingDisabled(true);
+          setChatSessions(prev => prev.map(s => 
+            s.id === session.id ? { ...s, isSharingDisabled: true } : s
+          ));
           setSharedLinkBlueprintName("Unknown");
         }
       } finally {
