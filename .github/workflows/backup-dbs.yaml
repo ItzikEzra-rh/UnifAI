@@ -68,19 +68,12 @@ jobs:
       CLUSTER: ${{ needs.setup_environment.outputs.CLUSTER }}
       NAMESPACE: ${{ needs.setup_environment.outputs.NAMESPACE }}
     steps:
+      
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
           ref: ${{ env.BRANCH }}
-
-      - name: Verify Secret isn't empty
-        run: |
-          if [ -z "${{ secrets.ACCESS_TOKEN }}" ]; then
-            echo "SECRET IS EMPTY"
-          else
-            echo "Secret has a length of ${#cluster_secret} characters"
-          fi
 
       - name: Check Cluster Connection
         run: | 
@@ -120,6 +113,12 @@ jobs:
     environment:
       name: ${{ needs.setup_environment.outputs.CLUSTER }}
     steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ env.BRANCH }}
 
       - name: Backup Qdrant
         run: |

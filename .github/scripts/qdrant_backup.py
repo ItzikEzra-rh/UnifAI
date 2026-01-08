@@ -2,18 +2,12 @@
 from qdrant_client import QdrantClient
 import requests
 import os
-
+import sys
 #constants to Qdrant cluster connection
-QDRANT_MAIN_URL = "http://qdrant-route-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
-# QDRANT_NODES = (
-#     "http://qdrant-route-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
-# )
-QDRANT_API_KEY = ""
-COLLECTION_NAME = "data_source_data"
+QDRANT_MAIN_URL = os.getenv("QDRANT_URL")
+QDRANT_PORT = 80
+QDRANT_TIMEOUT = 30.0
 
-
-# create the client to connect to the Qdrant cluster
-# client = QdrantClient(QDRANT_MAIN_URL, api_key=QDRANT_API_KEY)
 
 def create_snapshots(node_url: str, collection_name: str) -> str:
     '''
@@ -25,18 +19,26 @@ def create_snapshots(node_url: str, collection_name: str) -> str:
     Returns:
         snapshot URL
     '''
-    #snapshot_urls = []
-    print(node_url)
-    print("collection name: ", collection_name)
-    client = QdrantClient(url=node_url, port=80, prefer_grpc=False, timeout=30.0)
-    print('created client - create snapshots')
-    #node_client = QdrantClient(node_url, api_key=QDRANT_API_KEY)
-    snapshot_info = client.create_snapshot(collection_name=collection_name, wait=True)
-    print('created snapshot')
-    print(snapshot_info)
-    snapshot_url = f"{node_url}/collections/{collection_name}/snapshots/{snapshot_info.name}"
-    #snapshot_urls.append(snapshot_url)
-    return snapshot_url
+    try:
+        print(node_url)
+        print("collection name: ", collection_name)
+        client = QdrantClient(url=node_url, port=QDRANT_PORT, prefer_grpc=False, timeout=QDRANT_TIMEOUT)
+        print('created client - create snapshots')
+        #node_client = QdrantClient(node_url, api_key=QDRANT_API_KEY)
+        snapshot_info = client.create_snapshot(collection_name=collection_name, wait=True)
+        print('created snapshot')
+        print(snapshot_info)
+        snapshot_url = f"{node_url}/collections/{collection_name}/snapshots/{snapshot_info.name}"
+        #snapshot_urls.append(snapshot_url)
+        return snapshot_url
+    except PermissionError as e:
+      # Access denied to collection
+      print(f"Permission denied for collection {collection_name}: {e}")
+      sys.exit(1)
+    except RuntimeError as e:
+      # Snapshot creation failed
+      print(f"Failed to create snapshot: {e}")
+      sys.exit(1)
 
 def download_all_snapshots(snapshot_urls: list[str]) -> None:
     '''
@@ -48,39 +50,61 @@ def download_all_snapshots(snapshot_urls: list[str]) -> None:
     Returns:
         list of local snapshot paths
     '''
- 
-    os.makedirs("snapshots", exist_ok=True)
+    try:
+        os.makedirs("snapshots", exist_ok=True)
 
-    local_snapshot_paths = []
-    for snapshot_url in snapshot_urls:
-        snapshot_name = os.path.basename(snapshot_url)
-        local_snapshot_path = os.path.join("snapshots", snapshot_name)
+        for snapshot_url in snapshot_urls:
+            snapshot_name = os.path.basename(snapshot_url)
+            local_snapshot_path = os.path.join("snapshots", snapshot_name)
 
-        response = requests.get(
-            snapshot_url, headers={"api-key": QDRANT_API_KEY}
-        )
-        with open(local_snapshot_path, "wb") as f:
-            response.raise_for_status()
-            f.write(response.content)
+            response = requests.get(
+                snapshot_url
+            )
+            with open(local_snapshot_path, "wb") as f:
+                response.raise_for_status()
+                f.write(response.content)
 
-        local_snapshot_paths.append(local_snapshot_path)
+    except requests.exceptions.HTTPError as e:
+        # Already raised by raise_for_status()
+        print(f"HTTP error downloading snapshot: {e}")
+        sys.exit(1)
+    except PermissionError as e:
+        # Can't write to directory
+        print(f"Permission denied writing to disk: {e}")           
+        sys.exit(1)
+    except OSError as e:
+        # File writing issues, disk full, etc.
+        print(f"Failed to write snapshot to disk: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error downloading snapshots: {e}")
+        sys.exit(1)
 
-def  get_collections(node_url: str) -> bool:
+def get_collections(node_url: str) -> list[object]:
     '''
     Checks if the connection to the given node URL is successful
     '''
     try:
-        client = QdrantClient(url=node_url, port=80, prefer_grpc=False, timeout=30.0)
+        client = QdrantClient(url=node_url, port=QDRANT_PORT, prefer_grpc=False, timeout=QDRANT_TIMEOUT)
         print('created client - get collections')
         collections = client.get_collections().collections
         print(collections)
-        if collections:
-            return collections
-        # else:
-        #     return False
+        if not collections:
+            raise ValueError(f"No collections found at {node_url}")
+        return collections
+    except ValueError as e:
+        # Invalid URL or parameters
+        print(f"Invalid configuration for {node_url}: {e}")
+        sys.exit(1)
+    except ConnectionError as e:
+        print(f"Error connecting to {node_url}: {e}")
+        sys.exit(1)
+    except TimeoutError as e:
+        print(f"Timeout connecting to {node_url}: {e}")
+        sys.exit(1)
     except Exception as e:
         print(f"Error checking connection to {node_url}: {e}")
-        return False
+        sys.exit(1)
 
 def main():
     '''
