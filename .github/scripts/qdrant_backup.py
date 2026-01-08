@@ -51,12 +51,12 @@ def download_all_snapshots(snapshot_urls: list[str]) -> None:
         list of local snapshot paths
     '''
     try:
-        os.makedirs("snapshots", exist_ok=True)
+        os.makedirs("/tmp/snapshots", exist_ok=True)
         print('creating snapshots directory')
         for snapshot_url in snapshot_urls:
             print('downloading snapshot: ', snapshot_url)
             snapshot_name = os.path.basename(snapshot_url)
-            local_snapshot_path = os.path.join("snapshots", snapshot_name)
+            local_snapshot_path = os.path.join("/tmp/snapshots", snapshot_name)
 
             response = requests.get(
                 snapshot_url

@@ -125,7 +125,7 @@ jobs:
 
       - name: Backup Qdrant
         run: |
-          env
+          pwd
           echo "Backing up Qdrant"
           python .github/scripts/qdrant_backup.py
           echo "Qdrant backup completed"
