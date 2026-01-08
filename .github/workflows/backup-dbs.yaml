@@ -4,15 +4,13 @@ env:
 
   MONGO_POD: "mongodb-0"
   username: "tag-ai"
-  
+  QDRANT_SNAPSHOTS_DIR: "/tmp/snapshots"
+  MONGO_BACKUP_FILE: /tmp/backup.tar.gz
   #just to invoke workflow
   BRANCH: ${{ inputs.target_branch || 'GENIE-1071/backup_dbs' }}
   CLUSTER: ${{ inputs.target_cluster || 'PRE-PRODUCTION' }}
   NAMESPACE: ${{ inputs.target_namespace || 'tag-ai--pipeline' }}
-
-  #cluster_secret: ${{ secrets.PP_CLUSTER }}
   BACKUP_REPO: ${{ vars.BACKUP_REPO_URL }}
-  #BACKUP_REPO: "https://${{ secrets.GITLAB_BACKUP_REPO_KEY }}@gitlab.cee.redhat.com/ai_tools/unifai_backups.git"
   BACKUP_REPO_NAME: ${{ vars.BACKUP_REPO_NAME }}
 
 on:
@@ -136,12 +134,11 @@ jobs:
     steps:
 
       - name: Upload files to gitlab repo
+        shell: bash
         run: |
-
           git clone $BACKUP_REPO
-          cp /tmp/backup.tar.gz $BACKUP_REPO_NAME/
-          cp -r snapshots $BACKUP_REPO_NAME/
-
+          cp $MONGO_BACKUP_FILE $BACKUP_REPO_NAME/
+          cp -r $QDRANT_SNAPSHOTS_DIR $BACKUP_REPO_NAME/
           cd $BACKUP_REPO_NAME
           git config user.email "sfiresht@redhat.com"
           git config user.name "sfiresht"
@@ -149,4 +146,9 @@ jobs:
           git commit -m "uploading backup files to gitlab"
           echo "Committed changes"
           git push
-        shell: bash        
+        
+      - name: Clean up
+        shell: bash
+        run: |
+          rm -rf $MONGO_BACKUP_FILE
+          rm -rf $QDRANT_SNAPSHOTS_DIR
