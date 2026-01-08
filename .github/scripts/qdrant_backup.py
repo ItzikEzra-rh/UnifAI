@@ -60,7 +60,7 @@ def download_all_snapshots(snapshot_urls: list[str]) -> None:
             local_snapshot_path = os.path.join(SNAPSHOTS_DIR, snapshot_name)
 
             response = requests.get(
-                snapshot_url
+                snapshot_url, headers={"api-key": QDRANT_API_KEY}
             )
             with open(local_snapshot_path, "wb") as f:
                 response.raise_for_status()
