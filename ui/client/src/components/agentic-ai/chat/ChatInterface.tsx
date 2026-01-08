@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Trash2, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Send, Trash2, ChevronLeft, ChevronRight, Loader2, Sparkles, Info } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -572,6 +572,23 @@ export default function ChatInterface({
         className="flex justify-start"
       >
         <div className="bg-background-dark border border-gray-800 rounded-2xl rounded-tl-none p-3 max-w-[80%]">
+          {/* AI-generated indicator for typing state */}
+          <div 
+            className="mb-2.5 pb-2 border-b border-gray-700/30"
+            role="status"
+            aria-label="AI-generated content"
+          >
+            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border" style={{ borderColor: `hsl(var(--primary) / 0.3)` }}>
+              <Sparkles 
+                className="h-3.5 w-3.5" 
+                style={{ color: `hsl(var(--primary) / 0.85)` }}
+                aria-hidden="true" 
+              />
+              <span className="text-xs font-medium text-gray-300/90 tracking-wide">
+                AI Generated
+              </span>
+            </div>
+          </div>
           <div className="flex space-x-1">
             <motion.div
               className="w-2 h-2 bg-gray-400 rounded-full"
@@ -758,6 +775,25 @@ export default function ChatInterface({
                       : "bg-background-dark border border-gray-800 rounded-tl-none"
                   }`}
                 >
+                  {/* AI-generated indicator inside message bubble */}
+                  {message.sender === "ai" && (
+                    <div 
+                      className="mb-2.5 pb-2 border-b border-gray-700/30"
+                      role="status"
+                      aria-label="AI-generated content"
+                    >
+                      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border" style={{ borderColor: `hsl(var(--primary) / 0.3)` }}>
+                        <Sparkles 
+                          className="h-3.5 w-3.5" 
+                          style={{ color: `hsl(var(--primary) / 0.85)` }}
+                          aria-hidden="true" 
+                        />
+                        <span className="text-xs font-medium text-gray-300/90 tracking-wide">
+                          AI Generated
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   <MessageContent message={message} />
                 </div>
               </motion.div>
@@ -814,6 +850,12 @@ export default function ChatInterface({
                 <Send className="h-4 w-4" />
               </Button>
             </UmamiTrack>
+          </div>
+          <div className="flex items-start gap-2 mt-2 px-1">
+            <Info className="h-3.5 w-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-gray-500">
+              AI agent responses may be inaccurate or incomplete. Verify important information.
+            </p>
           </div>
         </div>
       </CardContent>
