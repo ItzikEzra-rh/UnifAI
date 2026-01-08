@@ -8,6 +8,7 @@ QDRANT_MAIN_URL = os.getenv("QDRANT_URL")
 QDRANT_PORT = 80
 QDRANT_TIMEOUT = 30.0
 QDRANT_API_KEY = ''
+SNAPSHOTS_DIR = "/tmp/snapshots"
 
 def create_snapshots(node_url: str, collection_name: str) -> str:
     '''
@@ -51,12 +52,12 @@ def download_all_snapshots(snapshot_urls: list[str]) -> None:
         list of local snapshot paths
     '''
     try:
-        os.makedirs("/tmp/snapshots", exist_ok=True)
+        os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
         print('creating snapshots directory')
         for snapshot_url in snapshot_urls:
             print('downloading snapshot: ', snapshot_url)
             snapshot_name = os.path.basename(snapshot_url)
-            local_snapshot_path = os.path.join("/tmp/snapshots", snapshot_name)
+            local_snapshot_path = os.path.join(SNAPSHOTS_DIR, snapshot_name)
 
             response = requests.get(
                 snapshot_url
@@ -65,7 +66,7 @@ def download_all_snapshots(snapshot_urls: list[str]) -> None:
                 response.raise_for_status()
                 f.write(response.content)
         print('snapshots downloaded')
-        print('snapshots directory: ', os.listdir("snapshots"))
+        print('snapshots directory: ', os.listdir(SNAPSHOTS_DIR))
     except requests.exceptions.HTTPError as e:
         # Already raised by raise_for_status()
         print(f"HTTP error downloading snapshot: {e}")
