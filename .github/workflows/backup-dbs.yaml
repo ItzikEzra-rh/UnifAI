@@ -68,7 +68,7 @@ jobs:
       CLUSTER: ${{ needs.setup_environment.outputs.CLUSTER }}
       NAMESPACE: ${{ needs.setup_environment.outputs.NAMESPACE }}
     steps:
-      
+
       - name: Checkout Code
         uses: actions/checkout@v4
         with:
@@ -122,6 +122,7 @@ jobs:
 
       - name: Backup Qdrant
         run: |
+          env
           echo "Backing up Qdrant"
           python .github/scripts/qdrant_backup.py
           echo "Qdrant backup completed"
