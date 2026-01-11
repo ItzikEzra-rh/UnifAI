@@ -525,31 +525,27 @@ export const ElementForm: React.FC<ElementFormProps> = ({
 
           // Convert reference fields back to $ref:rid format and handle empty values
           if (fieldSchema) {
-            if (typeof value === "object" && value !== null) {
-              processedValue = value;
+            // Handle array fields with $ref items first
+            if (isArrayWithRefItems(fieldSchema) && Array.isArray(value)) {
+              processedValue = value.map((rid: string) => `$ref:${rid}`);
             }
-            else if (
-              fieldSchema.$ref &&
-              value &&
-              value !== ""
-            ) {
+            // Handle single $ref fields
+            else if (fieldSchema.$ref && value && value !== "") {
               processedValue = `$ref:${value}`;
             }
-            // Handle anyOf with $ref
+            // Handle anyOf with $ref (single select)
             else if (
               fieldSchema.anyOf &&
               fieldSchema.anyOf.some((option: any) => option.$ref) &&
+              !Array.isArray(value) &&
               value &&
               value !== ""
             ) {
               processedValue = `$ref:${value}`;
             }
-            // Handle array fields with $ref items
-            else if (
-              isArrayWithRefItems(fieldSchema) &&
-              Array.isArray(value)
-            ) {
-              processedValue = value.map((rid: string) => `$ref:${rid}`);
+            // Handle non-ref objects as-is
+            else if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+              processedValue = value;
             }
             // Handle empty values based on field type
             else {
