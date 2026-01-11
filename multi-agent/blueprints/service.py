@@ -28,28 +28,19 @@ class BlueprintService:
         self._config_collector = BlueprintConfigCollector()
 
     # ────────── Write ──────────
-    def save_draft(self, *, user_id: str, draft_dict: dict, metadata: Dict[str, Any] = None) -> str:
-        try:
-            draft_bp = BlueprintDraft(**draft_dict)
-            rid_refs = list(RefWalker.external_rids(draft_bp))
-            return self._repo.save(user_id=user_id, spec=draft_bp, rid_refs=rid_refs, metadata=metadata)
-        except Exception as e:
-            raise BlueprintSaveError(f"Failed to save blueprint: {str(e)}", cause=e)
+    def save_draft(self, *, user_id: str, draft_dict: dict) -> str:
+        draft_bp = BlueprintDraft(**draft_dict)
+        rid_refs = list(RefWalker.external_rids(draft_bp))
+        return self._repo.save(user_id=user_id, spec=draft_bp, rid_refs=rid_refs)
 
     # ────────── Single-blueprint reads (ID is globally unique) ──────────
     def load_draft(self, blueprint_id: str) -> BlueprintDraft:
-        try:
-            doc = self._repo.load(blueprint_id)
-            return BlueprintDraft(**doc["spec_dict"])
-        except KeyError:
-            raise BlueprintNotFoundError(blueprint_id)
+        doc = self._repo.load(blueprint_id)
+        return BlueprintDraft(**doc["spec_dict"])
 
     def get_blueprint_draft_doc(self, blueprint_id: str) -> Mapping[str, Any]:
         """Get blueprint document with metadata for sharing operations."""
-        try:
-            return self._repo.load(blueprint_id)
-        except KeyError:
-            raise BlueprintNotFoundError(blueprint_id)
+        return self._repo.load(blueprint_id)
 
     def update_draft(self, *, blueprint_id: str, draft_dict: dict) -> bool:  # NEW
         draft = BlueprintDraft(**draft_dict)
