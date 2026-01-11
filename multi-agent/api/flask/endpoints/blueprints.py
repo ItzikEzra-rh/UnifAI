@@ -116,7 +116,7 @@ def available_resolved_doc_list(user_id):
     "user_id": fields.Str(data_key="userId", required=False, load_default="alice"),
     "metadata": fields.Dict(data_key="metadata", required=False, load_default=lambda: {})
 })
-def save_blueprint(blueprint_raw=None, user_id="alice", metadata={}):
+def save_blueprint(blueprint_raw=None, user_id="alice", metadata=None):
     """
     Save a blueprint draft.
     
@@ -126,6 +126,9 @@ def save_blueprint(blueprint_raw=None, user_id="alice", metadata={}):
     - Form-data: file upload or string field named 'blueprint_raw'
     """
     try:
+        if metadata is None:
+            metadata = {}
+            
         parsed = _extract_blueprint_data(
             json_field_value=blueprint_raw,
             field_name="blueprint_raw"
