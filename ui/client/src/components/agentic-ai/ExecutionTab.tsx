@@ -283,8 +283,7 @@ export default function ExecutionTab({
   const handleSessionSelect = async (session: ChatSession) => {
     setSelectedSession(session);
     
-    // Validate blueprint for all sessions to check if workflow is still valid
-    // This catches cases where credentials are revoked or workflow has validation errors
+    // Trigger blueprint validation
     if (session.blueprintId) {
       validateSelectedBlueprint(session.blueprintId);
     }
