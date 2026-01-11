@@ -6,6 +6,7 @@ import ChatInterface from "@/components/agentic-ai/chat/ChatInterface";
 import { SessionPayload } from "@/components/agentic-ai/ExecutionTab";
 import { StreamingDataProvider } from "@/components/agentic-ai/StreamingDataContext";
 import { Loader2, MessageSquare, Clock, Plus, Trash2, LogOut } from "lucide-react";
+import WorkflowStatusBanner, { WorkflowBannerMessages } from "@/components/shared/WorkflowStatusBanner";
 import { motion } from "framer-motion";
 import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -75,12 +76,15 @@ export default function PublicChat() {
   }, []);
 
   // Check blueprint validity
-  const checkBlueprintValidity = useCallback(async (blueprintId: string) => {
-    setIsValidatingBlueprint(true);
+  const checkBlueprintValidity = useCallback(async (blueprintId: string, showLoadingState: boolean = true) => {
+    if (showLoadingState) {
+      setIsValidatingBlueprint(true);
+    }
     try {
       const result = await validateBlueprint({ blueprintId });
       setIsBlueprintValid(result.is_valid);
-      if (!result.is_valid) {
+      if (!result.is_valid && showLoadingState) {
+        // Only set validation error on initial load, not during polling
         setValidationError("Sorry, this workflow has validation errors and cannot be used. Please contact the workflow owner.");
       }
     } catch (error: any) {
@@ -88,7 +92,9 @@ export default function PublicChat() {
       // If validation fails, allow the chat to proceed but mark as potentially invalid
       setIsBlueprintValid(true); // Don't block on validation errors
     } finally {
-      setIsValidatingBlueprint(false);
+      if (showLoadingState) {
+        setIsValidatingBlueprint(false);
+      }
     }
   }, []);
 
@@ -136,19 +142,22 @@ export default function PublicChat() {
   // Load chat sessions when authenticated and blueprint is available
   useEffect(() => {
     if (isAuthenticated && user && blueprintId) {
-      // Check sharing status initially and periodically (every 30 seconds)
-      // This polling handles the scenario where the workflow owner DISABLES sharing while
-      // another user has the chat open. Without this, the user would continue chatting
-      // but their messages would fail with confusing errors. With polling, they'll see
-      // a clear "sharing disabled" message within 30 seconds of the owner disabling it.
+      // Check sharing status and blueprint validity initially and periodically (every 30 seconds)
+      // This polling handles scenarios where:
+      // 1. The workflow owner DISABLES sharing while another user has the chat open
+      // 2. The workflow becomes invalid (e.g., missing credentials, broken connections)
+      // Without polling, users would continue chatting but get confusing errors.
+      // With polling, they'll see clear messages within 30 seconds of changes.
       checkSharingStatus(blueprintId);
+      checkBlueprintValidity(blueprintId, false);
       const interval = setInterval(() => {
         checkSharingStatus(blueprintId);
+        checkBlueprintValidity(blueprintId, false);
       }, 30000);
       
       return () => clearInterval(interval);
     }
-  }, [isAuthenticated, user, blueprintId, checkSharingStatus]);
+  }, [isAuthenticated, user, blueprintId, checkSharingStatus, checkBlueprintValidity]);
 
   // Show loading state
   if (authLoading || isValidating) {
@@ -332,6 +341,16 @@ export default function PublicChat() {
                 <div className="text-center">
                   <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-primary" />
                   <p className="text-gray-400">Loading chat sessions...</p>
+                </div>
+              </div>
+            ) : !isBlueprintValid ? (
+              <div className="flex items-center justify-center h-full bg-background-dark">
+                <div className="max-w-md">
+                  <WorkflowStatusBanner
+                    variant={WorkflowBannerMessages.validationFailed.variant}
+                    title={WorkflowBannerMessages.validationFailed.title}
+                    message={WorkflowBannerMessages.validationFailed.message}
+                  />
                 </div>
               </div>
             ) : (

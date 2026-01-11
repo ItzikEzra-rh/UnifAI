@@ -316,6 +316,10 @@ export default function ExecutionTab({
           setChatSessions(prev => prev.map(s => 
             s.id === session.id ? { ...s, isSharingDisabled: disabled } : s
           ));
+          
+          // Validate blueprint for shared link sessions to check if workflow is still valid
+          // This catches cases where credentials are revoked or workflow has validation errors
+          await validateSelectedBlueprint(session.blueprintId);
         } else {
           // For non-shared-link sessions, sharing status doesn't matter
           setIsSharingDisabled(false);
