@@ -2,7 +2,7 @@ from typing import Any, Dict, Iterator, List, Union
 from .user_session_manager import UserSessionManager
 from .session_executor import SessionExecutor
 from .workflow_session import WorkflowSession
-from .dto import ChatHistoryItem, CreateSessionRequest
+from .dto import ChatHistoryItem
 from .models import SessionMeta
 from .exceptions import BlueprintNotFoundError
 from core.dto import GroupedCount
@@ -21,16 +21,10 @@ class SessionService:
         """
         Create a new session and return its object (with run_id).
         """
-        # Use CreateSessionRequest DTO to handle metadata validation automatically
-        request = CreateSessionRequest(
+        return self._manager.create_session(
             user_id=user_id,
             blueprint_id=blueprint_id,
-            metadata=metadata
-        )
-        return self._manager.create_session(
-            user_id=request.user_id,
-            blueprint_id=request.blueprint_id,
-            metadata=request.metadata
+            metadata=SessionMeta.model_validate(metadata or {})
         )
 
     def run(self, session: WorkflowSession, inputs: Dict[str, Any], scope: str = "public", logged_in_user="") -> Any:
@@ -107,12 +101,12 @@ class SessionService:
         """
         docs = self._manager.list_docs(user_id)
         chat_items = []
-        
+
         for doc in docs:
             blueprint_id = doc.get("blueprint_id", "")
             # Check if blueprint still exists
             blueprint_exists = self._manager.blueprint_exists(blueprint_id) if blueprint_id else False
-            
+
             public_usage_scope = False
             if blueprint_exists and blueprint_id:
                 source = doc.get("metadata", {}).get("source", "")
@@ -123,11 +117,11 @@ class SessionService:
                         public_usage_scope = bp_metadata.get("usageScope") == "public"
                     except (KeyError, Exception):
                         public_usage_scope = False
-            
+
             chat_item = ChatHistoryItem.from_doc(doc, blueprint_exists=blueprint_exists, public_usage_scope=public_usage_scope)
 
             chat_items.append(chat_item)
-        
+
         return chat_items
 
     def get_user_blueprints(self, user_id) -> List[str]:
@@ -138,8 +132,8 @@ class SessionService:
         return list({d.get("blueprint_id") for d in docs})
 
     def group_count(
-        self, 
-        user_id: str, 
+        self,
+        user_id: str,
         group_by: List[str],
         filter: Dict[str, Any] = None
     ) -> List[GroupedCount]:
