@@ -62,6 +62,9 @@ jobs:
       BRANCH: ${{ needs.setup_environment.outputs.BRANCH }}
       CLUSTER: ${{ needs.setup_environment.outputs.CLUSTER }}
       NAMESPACE: ${{ needs.setup_environment.outputs.NAMESPACE }}
+      API_URL: ${{ vars.API_URL }}
+      ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
+      MONGO_URI: ${{ vars.MONGO_URI }}
     steps:
 
       - name: Checkout Code
@@ -71,35 +74,44 @@ jobs:
           ref: ${{ env.BRANCH }}
 
       - name: Check Cluster Connection
-        run: | 
-          kubectl config set-credentials ${{ env.CLUSTER }} --token=${{ secrets.ACCESS_TOKEN }}
-          kubectl config set-cluster ${{ env.CLUSTER }} --server=${{ vars.API_URL }}
-          #here we combine the credentials and the cluster url to create a context, both has the same name.
-          kubectl config set-context ${{ env.CLUSTER }} --user=${{ env.CLUSTER }} --cluster=${{ env.CLUSTER }}
-          kubectl config use-context ${{ env.CLUSTER }}
-          kubectl get pods --namespace ${{ env.NAMESPACE }}
-          kubectl get deployments --namespace ${{ env.NAMESPACE }}
-      
+        run: .github/scripts/check_k8s_connection.sh
+        shell: bash
+
       - name: Backup MongoDB
-        run: |
-          echo "Removing old backup files"
-          kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- rm -rf /tmp/backup
-          kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- rm -rf /tmp/backup.tar.gz
-          echo "Testing mongodump availability and MongoDB connection"
-          kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- which mongodump || echo "mongodump not found in PATH"
-          kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- mongosh --eval "db.version()" "${{ vars.MONGO_URI }}" || echo "MongoDB connection test failed"
-          echo "Running mongodump with URI: ${{ vars.MONGO_URI }}"
-          kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- mongodump --uri="${{ vars.MONGO_URI }}" --out="/tmp/backup" 2>&1 || (echo "mongodump failed with exit code $?" && exit 1)
-          kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- ls -la /tmp/backup 2>/dev/null
-          kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- tar -czf /tmp/backup.tar.gz /tmp/backup
-          kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- ls -la /tmp/backup.tar.gz
-          kubectl cp --namespace ${{ env.NAMESPACE }} --retries=10 $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
-          ls -la /tmp/backup.tar.gz
-          echo "Removing temporary files"
-          kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- rm -rf /tmp/backup
-          kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- rm -rf /tmp/backup.tar.gz
-          echo "Temporary files removed"
-          echo "Backup completed"
+        run: .github/scripts/backup_mongo.sh
+        shell: bash
+
+
+      # - name: Check Cluster Connection
+      #   run: | 
+      #     kubectl config set-credentials ${{ env.CLUSTER }} --token=${{ secrets.ACCESS_TOKEN }}
+      #     kubectl config set-cluster ${{ env.CLUSTER }} --server=${{ vars.API_URL }}
+      #     #here we combine the credentials and the cluster url to create a context, both has the same name.
+      #     kubectl config set-context ${{ env.CLUSTER }} --user=${{ env.CLUSTER }} --cluster=${{ env.CLUSTER }}
+      #     kubectl config use-context ${{ env.CLUSTER }}
+      #     kubectl get pods --namespace ${{ env.NAMESPACE }}
+      #     kubectl get deployments --namespace ${{ env.NAMESPACE }}
+      
+      # - name: Backup MongoDB
+      #   run: |
+      #     echo "Removing old backup files"
+      #     kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- rm -rf /tmp/backup
+      #     kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- rm -rf /tmp/backup.tar.gz
+      #     echo "Testing mongodump availability and MongoDB connection"
+      #     kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- which mongodump || echo "mongodump not found in PATH"
+      #     kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- mongosh --eval "db.version()" "${{ vars.MONGO_URI }}" || echo "MongoDB connection test failed"
+      #     echo "Running mongodump with URI: ${{ vars.MONGO_URI }}"
+      #     kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- mongodump --uri="${{ vars.MONGO_URI }}" --out="/tmp/backup" 2>&1 || (echo "mongodump failed with exit code $?" && exit 1)
+      #     kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- ls -la /tmp/backup 2>/dev/null
+      #     kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- tar -czf /tmp/backup.tar.gz /tmp/backup
+      #     kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- ls -la /tmp/backup.tar.gz
+      #     kubectl cp --namespace ${{ env.NAMESPACE }} --retries=10 $MONGO_POD:/tmp/backup.tar.gz /tmp/backup.tar.gz
+      #     ls -la /tmp/backup.tar.gz
+      #     echo "Removing temporary files"
+      #     kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- rm -rf /tmp/backup
+      #     kubectl exec --namespace ${{ env.NAMESPACE }} $MONGO_POD -- rm -rf /tmp/backup.tar.gz
+      #     echo "Temporary files removed"
+      #     echo "Backup completed"
 
   backup_qdrant:
     runs-on: linux
@@ -130,21 +142,25 @@ jobs:
     steps:
 
       - name: Upload files to gitlab repo
+        run: .github/scripts/upload_to_gitlab.sh
         shell: bash
-        run: |
-          git clone $BACKUP_REPO
-          cp $MONGO_BACKUP_FILE $BACKUP_REPO_NAME/
-          cp -r $QDRANT_SNAPSHOTS_DIR $BACKUP_REPO_NAME/
-          cd $BACKUP_REPO_NAME
-          git config user.email "sfiresht@redhat.com"
-          git config user.name "sfiresht"
-          git add .
-          git commit -m "uploading backup files to gitlab"
-          echo "Committed changes"
-          git push
+
+      # - name: Upload files to gitlab repo
+      #   shell: bash
+      #   run: |
+      #     git clone $BACKUP_REPO
+      #     cp $MONGO_BACKUP_FILE $BACKUP_REPO_NAME/
+      #     cp -r $QDRANT_SNAPSHOTS_DIR $BACKUP_REPO_NAME/
+      #     cd $BACKUP_REPO_NAME
+      #     git config user.email "sfiresht@redhat.com"
+      #     git config user.name "sfiresht"
+      #     git add .
+      #     git commit -m "uploading backup files to gitlab"
+      #     echo "Committed changes"
+      #     git push
         
-      - name: Clean up
-        shell: bash
-        run: |
-          rm -rf $MONGO_BACKUP_FILE
-          rm -rf $QDRANT_SNAPSHOTS_DIR
+      # - name: Clean up
+      #   shell: bash
+      #   run: |
+      #     rm -rf $MONGO_BACKUP_FILE
+      #     rm -rf $QDRANT_SNAPSHOTS_DIR

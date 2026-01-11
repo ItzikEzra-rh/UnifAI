@@ -8,7 +8,7 @@ QDRANT_MAIN_URL = os.getenv("QDRANT_URL")
 QDRANT_PORT = 80
 QDRANT_TIMEOUT = 30.0
 QDRANT_API_KEY = ''
-SNAPSHOTS_DIR =os.getenv("QDRANT_SNAPSHOTS_DIR", "/tmp/snapshots")
+SNAPSHOTS_DIR = os.getenv("QDRANT_SNAPSHOTS_DIR", "/tmp/snapshots")
 
 def create_snapshots(node_url: str, collection_name: str) -> str:
     '''
