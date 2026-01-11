@@ -78,7 +78,7 @@ jobs:
         shell: bash
 
       - name: Backup MongoDB
-        run: bash.github/scripts/backup_mongo.sh
+        run: bash .github/scripts/backup_mongo.sh
         shell: bash
 
 
@@ -142,7 +142,7 @@ jobs:
     steps:
 
       - name: Upload files to gitlab repo
-        run: bash.github/scripts/upload_to_gitlab.sh
+        run: bash .github/scripts/upload_to_gitlab.sh
         shell: bash
 
       # - name: Upload files to gitlab repo
