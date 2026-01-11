@@ -74,11 +74,11 @@ jobs:
           ref: ${{ env.BRANCH }}
 
       - name: Check Cluster Connection
-        run: .github/scripts/check_k8s_connection.sh
+        run: bash .github/scripts/check_k8s_connection.sh
         shell: bash
 
       - name: Backup MongoDB
-        run: .github/scripts/backup_mongo.sh
+        run: bash.github/scripts/backup_mongo.sh
         shell: bash
 
 
@@ -142,7 +142,7 @@ jobs:
     steps:
 
       - name: Upload files to gitlab repo
-        run: .github/scripts/upload_to_gitlab.sh
+        run: bash.github/scripts/upload_to_gitlab.sh
         shell: bash
 
       # - name: Upload files to gitlab repo
