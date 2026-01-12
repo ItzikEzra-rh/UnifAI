@@ -94,3 +94,10 @@ To create a new self-hosted runner:
 4. Follow the setup instructions (the authentication tokens are unique to your repository)
 
 For more details, see the [GitHub documentation on self-hosted runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/adding-self-hosted-runners).
+
+
+### connecting to gitlab
+
+Since the github runners can't reach gitlab we ha to use a VM running on CNV.
+To make gitlab "accessible" to this runner we need to set on the target repo a deploy token (go to repository > deploy keys and set the VM public key as the deploy key). this allows the VM perform actions on the target repo without needing to specify credentials.
+

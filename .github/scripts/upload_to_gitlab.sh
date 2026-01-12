@@ -28,8 +28,8 @@ echo "Copied files to gitlab repo"
 
 echo "Committing changes to gitlab repo"
 cd "$BACKUP_REPO_NAME"
-git config user.email "sfiresht@redhat.com"
-git config user.name "sfiresht"
+# git config user.email "sfiresht@redhat.com"
+# git config user.name "sfiresht"
 git add .
 git commit -m "uploading backup files to gitlab"
 echo "Committed changes"
