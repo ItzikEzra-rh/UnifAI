@@ -42,6 +42,12 @@ def data_sources_db():
 
 
 @lru_cache(maxsize=1)
+def users_db():
+    """Database for user data (terms approvals, etc.)."""
+    return mongo_client()["users"]
+
+
+@lru_cache(maxsize=1)
 def file_storage():
     """Local file storage for document uploads."""
     from infrastructure.storage.local_file_storage import LocalFileStorage
@@ -104,6 +110,13 @@ def slack_channel_repository():
     """Slack channel repository (Mongo adapter)."""
     from infrastructure.mongo.slack_channel_repository import MongoSlackChannelRepository
     return MongoSlackChannelRepository(data_sources_db()["slack_channels"])
+
+
+@lru_cache(maxsize=1)
+def terms_approval_repository():
+    """Terms approval repository (Mongo adapter)."""
+    from infrastructure.mongo.terms_approval_repository import MongoTermsApprovalRepository
+    return MongoTermsApprovalRepository(users_db()["terms_user_approval"])
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -360,6 +373,13 @@ def slack_event_dispatch_service():
     )
 
 
+@lru_cache(maxsize=1)
+def terms_approval_service():
+    """Terms approval application service."""
+    from application.terms_approval_service import TermsApprovalService
+    return TermsApprovalService(approval_repo=terms_approval_repository())
+
+
 # ══════════════════════════════════════════════════════════════════════════════
 # SLACK EVENTS (Application layer - event handling)
 # ══════════════════════════════════════════════════════════════════════════════
@@ -524,6 +544,7 @@ def clear_all_caches():
     mongo_client.cache_clear()
     pipeline_monitoring_db.cache_clear()
     data_sources_db.cache_clear()
+    users_db.cache_clear()
     file_storage.cache_clear()
     umami_client.cache_clear()
     # Repositories
@@ -532,6 +553,7 @@ def clear_all_caches():
     monitoring_repository.cache_clear()
     vector_repository.cache_clear()
     slack_channel_repository.cache_clear()
+    terms_approval_repository.cache_clear()
     # Processors
     slack_processor.cache_clear()
     document_processor.cache_clear()
@@ -547,6 +569,7 @@ def clear_all_caches():
     pipeline_service.cache_clear()
     monitoring_service.cache_clear()
     data_source_service.cache_clear()
+    terms_approval_service.cache_clear()
     # Registration & Dispatch
     doc_validators.cache_clear()
     slack_validators.cache_clear()
