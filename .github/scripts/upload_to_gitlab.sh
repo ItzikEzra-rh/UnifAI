@@ -13,8 +13,16 @@ git clone "$BACKUP_REPO"
 echo "Cloned gitlab repo"
 
 echo "Copying files to gitlab repo"
+#mongo files
 echo "Copying mongo backup file to gitlab repo"
 cp "$MONGO_BACKUP_FILE" "$BACKUP_REPO_NAME/"
+
+#qdrant files
+SNAPSHOTS_DIRNAME=$(basename "$QDRANT_SNAPSHOTS_DIR")
+if [ -d "$BACKUP_REPO_NAME/$SNAPSHOTS_DIRNAME" ]; then
+    echo "Removing old snapshots directory"
+    rm -rf "$BACKUP_REPO_NAME/$SNAPSHOTS_DIRNAME"
+fi
 cp -r "$QDRANT_SNAPSHOTS_DIR" "$BACKUP_REPO_NAME/"
 echo "Copied files to gitlab repo"
 

@@ -83,6 +83,24 @@ def download_all_snapshots(snapshot_urls: list[str]) -> None:
         print(f"Error downloading snapshots: {e}")
         sys.exit(1)
 
+def delete_snapshots(node_url: str, snapshot_urls: list[str]) -> None:
+    '''
+    Deletes the snapshots from the given URLs
+    '''
+    try:
+        client = QdrantClient(url=node_url, port=QDRANT_PORT, api_key=QDRANT_API_KEY, prefer_grpc=False, timeout=QDRANT_TIMEOUT)
+        for snapshot_url in snapshot_urls:
+            print('deleting snapshot: ', snapshot_url)
+            client.delete_snapshot(snapshot_url)
+    except PermissionError as e:
+      # Access denied to snapshot
+      print(f"Permission denied for snapshot {snapshot_url}: {e}")
+      sys.exit(1)
+    except RuntimeError as e:
+      # Snapshot deletion failed
+      print(f"Failed to delete snapshot: {e}")
+      sys.exit(1)    
+
 def get_collections(node_url: str) -> list[object]:
     '''
     Gets the collections from the given node URL
