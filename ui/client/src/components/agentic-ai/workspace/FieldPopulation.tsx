@@ -125,14 +125,6 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     const option = populatedOptions.find(opt => opt.value === value);
     if (option) return option.label;
     
-    // Fallback to formData for edit mode before population
-    // const currentValue = formData[fieldName];
-    // if (Array.isArray(currentValue)) {
-    //   const item = currentValue.find((i: any) => extractValue(i) === value);
-    //   if (item && typeof item === 'object') {
-    //     return String(item[displayField] ?? item.name ?? item.label ?? value);
-    //   }
-    // }
     return value;
   };
 
