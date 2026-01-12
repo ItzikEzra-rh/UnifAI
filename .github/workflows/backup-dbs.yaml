@@ -14,7 +14,7 @@ env:
 
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '5 0 * * *'
   workflow_dispatch:
     inputs:
       target_branch:
@@ -34,7 +34,7 @@ on:
 
 jobs:
 
-  
+
   verify_agent_deps:
     uses: ./.github/workflows/verify-agent-deps.yaml
 
