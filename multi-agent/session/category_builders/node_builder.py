@@ -25,7 +25,7 @@ class NodeBuilder(CategoryBuilder):
         "llm": ResourceCategory.LLM,
         "retriever": ResourceCategory.RETRIEVER,
         "tools": ResourceCategory.TOOL,
-        "provider": ResourceCategory.PROVIDER
+        "providers": ResourceCategory.PROVIDER
     }
 
     def _iter_specs(self, bp: BlueprintSpec) -> Iterable[NodeSpec]:
@@ -64,7 +64,7 @@ class NodeBuilder(CategoryBuilder):
     def _raise_type(cfg: NodeSpec, attr: str, expected: str, got_obj: Any) -> None:
         raise PluginConfigurationError(
             f"Node {cfg.name!r}: expected {expected} for {attr!r}, got {type(got_obj).__name__}",
-            cfg.dict(),
+            cfg.model_dump(),
         )
 
     def _resolve_dependency(
@@ -80,5 +80,6 @@ class NodeBuilder(CategoryBuilder):
         except KeyError as exc:
             raise PluginConfigurationError(
                 f"Node config: {cfg!r}: unknown {attr_name!r} rid={rid!r} "
-                f"in category={category.value}"
+                f"in category={category.value}",
+                cfg.model_dump(),
             ) from exc
