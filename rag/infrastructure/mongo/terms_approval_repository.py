@@ -14,6 +14,7 @@ class MongoTermsApprovalRepository(TermsApprovalRepository):
 
     def __init__(self, collection: Collection):
         self._col = collection
+        self._col.create_index("username", unique=True)
 
     def is_user_approved(self, username: str) -> bool:
         """Check if a user has approved the AI transparency notice."""

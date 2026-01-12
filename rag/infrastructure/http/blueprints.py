@@ -23,7 +23,7 @@ def register_blueprints(app: Flask) -> None:
     - /api/data_sources/ - Data source management
     - /api/docs/ - Document operations
     - /api/slack/ - Slack integration
-    - /api/terms/ - Terms approval
+    - /api/terms_approval/ - Terms approval
     """
     app.register_blueprint(health_bp, url_prefix="/api/health/")
     app.register_blueprint(vector_bp, url_prefix="/api/vector/")
@@ -32,5 +32,5 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(data_sources_bp, url_prefix="/api/data_sources/")
     app.register_blueprint(docs_bp, url_prefix="/api/docs/")
     app.register_blueprint(slack_bp, url_prefix="/api/slack/")
-    app.register_blueprint(terms_approval_bp, url_prefix="/api/terms/")
+    app.register_blueprint(terms_approval_bp, url_prefix="/api/terms_approval/")
 
