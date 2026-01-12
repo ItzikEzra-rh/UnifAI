@@ -26,57 +26,51 @@ const resolvePath = (obj: any, path: string | undefined): any => {
 
 /**
  * Extract the display name from an object.
- * Uses displayField path if provided, otherwise falls back to common display fields.
+ * Uses displayField path if provided by the populateHint contract.
+ * 
+ * IMPORTANT: We strictly follow the BE-GUI protocol - the backend MUST specify
+ * display_field/label_field in the populateHint. If not specified, we use the
+ * value field as the display (shows the ID/value as-is).
  */
 const extractDisplayName = (obj: any, displayField?: string): string => {
   if (!obj) return '';
   if (typeof obj === 'string') return obj;
   if (typeof obj !== 'object') return String(obj);
 
-  // Try displayField path first
+  // Use displayField path from populateHint contract
   if (displayField) {
     const val = resolvePath(obj, displayField);
     if (val != null) return String(val);
   }
 
-  // Common display field fallbacks
-  const fallbacks = ['name', 'label', 'title', 'display', 'text'];
-  for (const key of fallbacks) {
-    if (obj[key] != null) return String(obj[key]);
-  }
-
-  // ID as last resort
-  if (obj.id != null) return String(obj.id);
-  if (obj.value != null) return String(obj.value);
-
-  return '[Unknown]';
+  // No fallbacks - if displayField not specified, return stringified object
+  // This ensures backend must properly configure the populateHint
+  return JSON.stringify(obj);
 };
 
 /**
  * Extract the unique ID/value from an object.
- * Uses valueField path if provided, otherwise falls back to common ID fields.
+ * Uses valueField path if provided by the populateHint contract.
+ * 
+ * IMPORTANT: We strictly follow the BE-GUI protocol - the backend MUST specify
+ * value_field in the populateHint for object items. If not specified, we
+ * use the stringified object as the value (which will likely cause issues,
+ * making it obvious the backend needs to configure the hint properly).
  */
 const extractId = (obj: any, valueField?: string): string => {
   if (!obj) return '';
   if (typeof obj === 'string') return obj;
   if (typeof obj !== 'object') return String(obj);
 
-  // Try valueField path first
+  // Use valueField path from populateHint contract
   if (valueField) {
     const val = resolvePath(obj, valueField);
     if (val != null) return String(val);
   }
 
-  // Common ID field fallbacks
-  const fallbacks = ['id', 'value', '_id', 'key'];
-  for (const key of fallbacks) {
-    if (obj[key] != null) return String(obj[key]);
-  }
-
-  // Name as last resort (for tags where name IS the value)
-  if (obj.name != null) return String(obj.name);
-
-  return '[Unknown]';
+  // No fallbacks - if valueField not specified, return stringified object
+  // This ensures backend must properly configure the populateHint
+  return JSON.stringify(obj);
 };
 
 /**

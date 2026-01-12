@@ -502,17 +502,17 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
       if (item == null) return '';
       if (typeof item === 'string') return item;
       if (typeof item === 'object') {
-        // Try display_field path first (supports dot-notation)
+        // Use display_field path from populateHint contract (supports dot-notation)
+        // IMPORTANT: We strictly follow the BE-GUI protocol - backend MUST specify display_field
         if (displayFieldPath) {
           const val = resolvePath(item, displayFieldPath);
           if (val != null && typeof val !== 'object') {
             return String(val);
           }
         }
-        // Fallback to common name fields
-        if (item.name != null) return String(item.name);
-        if (item.label != null) return String(item.label);
-        if (item.id != null) return String(item.id);
+        // No fallbacks - if display_field not configured, show stringified object
+        // This makes it obvious the backend needs to configure the hint properly
+        return JSON.stringify(item);
       }
       return String(item);
     };
