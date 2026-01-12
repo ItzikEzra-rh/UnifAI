@@ -72,9 +72,19 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
 }) => {
   // Check if this field has validation errors based on validation action result
   // Use useMemo to recalculate when fieldValidationStates changes after validation action
+  // For non-required fields with no value, don't show error
   const hasFieldError = React.useMemo(() => {
-    return validationHint && fieldValidationStates?.[fieldName] === false;
-  }, [validationHint, fieldValidationStates, fieldName]);
+    if (!validationHint || fieldValidationStates?.[fieldName] !== false) {
+      return false;
+    }
+    // If field is not required and has no value, don't show error
+    const hasValue = value !== undefined && value !== null && value !== '' && 
+      !(Array.isArray(value) && value.length === 0);
+    if (!isRequired && !hasValue) {
+      return false;
+    }
+    return true;
+  }, [validationHint, fieldValidationStates, fieldName, value, isRequired]);
 
   // Helper function to check if a specific item in a list field is invalid
   const isItemInvalid = React.useCallback((rid: string): boolean => {
@@ -283,6 +293,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
             validationHint={validationHint}
             elementActions={elementActions}
             selectedElementType={elementType}
+            isRequired={isRequired}
             onValidationChange={onValidationChange}
           />
         )}
@@ -379,6 +390,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
               validationHint={validationHint}
               elementActions={elementActions}
               selectedElementType={elementType}
+              isRequired={isRequired}
               onValidationChange={onValidationChange}
             />
           )}
@@ -599,6 +611,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
           validationHint={validationHint}
           elementActions={elementActions}
           selectedElementType={elementType}
+          isRequired={isRequired}
           onValidationChange={onValidationChange}
         />
       )}
@@ -674,6 +687,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
         validationHint={validationHint}
         elementActions={elementActions}
         selectedElementType={elementType}
+        isRequired={isRequired}
         onValidationChange={onValidationChange}
       />
     )}

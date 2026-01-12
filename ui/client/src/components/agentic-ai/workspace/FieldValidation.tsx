@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import axios from "../../../http/axiosAgentConfig";
 
+
 // Type guard to check if hint is an ApiHint (has endpoint) vs ActionHint (has action_uid)
 const isApiHint = (hint: any): boolean => {
   return hint && typeof hint.endpoint === 'string' && hint.endpoint.length > 0;
@@ -22,6 +23,7 @@ interface FieldValidationProps {
   validationHint: any;
   elementActions: any[];
   selectedElementType: any;
+  isRequired?: boolean;
   onValidationChange: (fieldName: string, isValid: boolean, itemResults?: ItemValidationResult[]) => void;
 }
 
@@ -31,6 +33,7 @@ export const FieldValidation: React.FC<FieldValidationProps> = ({
   validationHint,
   elementActions,
   selectedElementType,
+  isRequired = false,
   onValidationChange
 }) => {
   const [validationState, setValidationState] = useState<{
@@ -157,13 +160,15 @@ export const FieldValidation: React.FC<FieldValidationProps> = ({
     }
 
     // Skip if no value
-    if (!value || value === '') {
+    if (!value || value === '' || (Array.isArray(value) && value.length === 0)) {
       setValidationState({
         isValidating: false,
         isValid: null,
         message: ''
       });
-      onValidationChange(fieldName, false);
+      // For non-required fields, empty value should not block save (report as valid)
+      // For required fields, empty value is invalid
+      onValidationChange(fieldName, !isRequired);
       return;
     }
 
