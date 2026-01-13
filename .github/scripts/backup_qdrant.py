@@ -10,7 +10,7 @@ QDRANT_TIMEOUT = 30.0
 QDRANT_API_KEY = ''
 SNAPSHOTS_DIR = os.getenv("QDRANT_SNAPSHOTS_DIR", "/tmp/snapshots")
 
-def create_snapshots(node_url: str, collection_name: str) -> str:
+def create_snapshots(node_url: str, collection_name: str) -> tuple[dict, str]:
     '''
     Creates a snapshot of the collection from the given node URLs
 
@@ -20,6 +20,7 @@ def create_snapshots(node_url: str, collection_name: str) -> str:
     Returns:
         snapshot URL
     '''
+
     try:
         print(node_url)
         print("collection name: ", collection_name)
@@ -28,10 +29,10 @@ def create_snapshots(node_url: str, collection_name: str) -> str:
         #node_client = QdrantClient(node_url, api_key=QDRANT_API_KEY)
         snapshot_info = client.create_snapshot(collection_name=collection_name, wait=True)
         print('created snapshot')
-        print(snapshot_info)
+        #print(snapshot_info)
         snapshot_url = f"{node_url}/collections/{collection_name}/snapshots/{snapshot_info.name}"
-        #snapshot_urls.append(snapshot_url)
-        return snapshot_url
+        #snapshot_list.append({"collection_name": collection_name, "snapshot_url": snapshot_url})
+        return snapshot_info, snapshot_url
     except PermissionError as e:
       # Access denied to collection
       print(f"Permission denied for collection {collection_name}: {e}")
@@ -41,7 +42,7 @@ def create_snapshots(node_url: str, collection_name: str) -> str:
       print(f"Failed to create snapshot: {e}")
       sys.exit(1)
 
-def download_all_snapshots(snapshot_urls: list[str]) -> None:
+def download_all_snapshots(snapshot_list: list[dict]) -> None:
     '''
     Downloads the snapshots from the given URLs and saves them to the local filesystem
     beforehand, checks if the directory exists and creates it if it doesn't
@@ -54,9 +55,12 @@ def download_all_snapshots(snapshot_urls: list[str]) -> None:
     try:
         os.makedirs(SNAPSHOTS_DIR, exist_ok=True)
         print('creating snapshots directory')
-        for snapshot_url in snapshot_urls:
+        for snapshot in snapshot_list:
+            snapshot_url = snapshot.get("snapshot_url")
+            print("snapshot_url: ")
+            print(snapshot_url)
             print('downloading snapshot: ', snapshot_url)
-            snapshot_name = os.path.basename(snapshot_url)
+            snapshot_name = os.path.basename(snapshot.get("snapshot_info").name)
             local_snapshot_path = os.path.join(SNAPSHOTS_DIR, snapshot_name)
 
             response = requests.get(
@@ -83,18 +87,18 @@ def download_all_snapshots(snapshot_urls: list[str]) -> None:
         print(f"Error downloading snapshots: {e}")
         sys.exit(1)
 
-def delete_snapshots(node_url: str, snapshot_urls: list[str]) -> None:
+def delete_snapshots(node_url: str, snapshot_list: list[dict]) -> None:
     '''
     Deletes the snapshots from the given URLs
     '''
     try:
         client = QdrantClient(url=node_url, port=QDRANT_PORT, api_key=QDRANT_API_KEY, prefer_grpc=False, timeout=QDRANT_TIMEOUT)
-        for snapshot_url in snapshot_urls:
-            print('deleting snapshot: ', snapshot_url)
-            client.delete_snapshot(snapshot_url)
+        for snapshot in snapshot_list:
+            print('deleting snapshot: ', snapshot.get("snapshot_info").name)
+            client.delete_snapshot(snapshot.get("collection_name"), snapshot.get("snapshot_info").name)
     except PermissionError as e:
       # Access denied to snapshot
-      print(f"Permission denied for snapshot {snapshot_url}: {e}")
+      print(f"Permission denied for snapshot {snapshot.get('collection_name')}: {e}")
       sys.exit(1)
     except RuntimeError as e:
       # Snapshot deletion failed
@@ -141,13 +145,14 @@ def main():
     if not collections:
         print(f"Error getting collections from {QDRANT_MAIN_URL}")
         return
-    snapshot_urls = []
+    snapshot_list = []
     for collection in collections:
         print(collection)
-        snapshot_url = create_snapshots(QDRANT_MAIN_URL, collection.name)
-        snapshot_urls.append(snapshot_url)
-    print(snapshot_urls)
-    download_all_snapshots(snapshot_urls)
+        snapshot_info, snapshot_url = create_snapshots(QDRANT_MAIN_URL, collection.name)
+        snapshot_list.append({"collection_name": collection.name, "snapshot_info": snapshot_info, "snapshot_url": snapshot_url})
+
+    download_all_snapshots(snapshot_list)
+    delete_snapshots(QDRANT_MAIN_URL, snapshot_list)
 
 if __name__ == "__main__":
     main()
