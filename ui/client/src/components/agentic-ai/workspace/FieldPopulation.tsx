@@ -27,7 +27,7 @@ import { OptionItem, normalizeOptions } from './fieldPopulationUtils';
 
 // Type guard to check if hint is an ApiHint (has endpoint) vs ActionHint (has action_uid)
 const isApiHint = (hint: any): boolean => {
-  return hint && typeof hint.endpoint === 'string' && hint.endpoint.length > 0;
+  return hint && typeof hint.endpoint == 'string' && hint.endpoint.length > 0;
 };
 
 interface PaginationState {
@@ -66,7 +66,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [populatedOptions, setPopulatedOptions] = useState<OptionItem[]>([]);
-  const [selectedValues, setSelectedValues] = useState<string[]>([]); // Track by value (ID)
+  const [selectedValues, setSelectedValues] = useState<string[]>([]);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [shouldKeepOpen, setShouldKeepOpen] = useState(false);
   const [hasAutoTriggered, setHasAutoTriggered] = useState(false);
@@ -111,8 +111,8 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
 
   // Helper to extract value (ID) from an item - handles both string and object formats
   const extractValue = (item: any): string => {
-    if (typeof item === 'string') return item;
-    if (typeof item === 'object' && item !== null) {
+    if (typeof item == 'string') return item;
+    if (typeof item == 'object' && item !== null) {
       if (valueField && item[valueField] != null) return String(item[valueField]);
       return String(item.id ?? item.value ?? item.name ?? item);
     }
@@ -245,7 +245,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
   };
 
   const handleSelectChange = (value: string) => {
-    if (!value || value === "__no_options_disabled__" || value === "__load_more__") return;
+    if (!value || value == "__no_options_disabled__" || value == "__load_more__") return;
     if (isSelectAll(value)) return toggleSelectAll();
 
     const newValues = populateHint.multi_select
@@ -293,7 +293,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     const endpoint = populateHint.endpoint;
 
     let response;
-    if (method === 'GET') {
+    if (method == 'GET') {
       // For GET requests, send data as query params
       response = await axios.get(endpoint, { params: requestBody });
     } else {
@@ -361,7 +361,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
       const rawResults = responseData[fieldMapping] || [];
 
       // Handle automatic selection (non-array result)
-      if (populateHint.selection_type === 'automatic' && !Array.isArray(rawResults)) {
+      if (populateHint.selection_type == 'automatic' && !Array.isArray(rawResults)) {
         onPopulateResult(fieldName, rawResults, false);
         return;
       }
@@ -369,7 +369,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
       const normalizedResults = normalizeOptions(rawResults, displayField, valueField);
       const newOptionValues = new Set(normalizedResults.map(opt => opt.value));
       
-      if (populateHint.selection_type === 'manual' || populateHint.multi_select) {
+      if (populateHint.selection_type == 'manual' || populateHint.multi_select) {
         if (isLoadMore) {
           // Append to existing options
           setPopulatedOptions(prev => [...prev, ...normalizedResults]);
@@ -566,7 +566,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
       open={isDropdownOpen}
       onOpenChange={setIsDropdownOpen}
       onValueChange={(value) => {
-        if (value === "__load_more__") { 
+        if (value == "__load_more__") { 
           handleLoadMore(); 
           return; 
         }

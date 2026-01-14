@@ -6,14 +6,11 @@
  * Objects that should be simplified for display must include a `_display` field
  * containing the display string value. This is the explicit marker that identifies
  * a display object. Example: { id: "abc123", name: "My Doc", _display: "My Doc" }
- * 
- * For backwards compatibility, we also support objects with common display patterns
- * (name+id, label+value) but the _display field takes priority.
  */
 
 /**
  * Check if an object is marked as a display object.
- * A display object has an explicit `_display` field OR follows known display patterns.
+ * A display object has an explicit `_display` field.
  */
 export const isDisplayObject = (obj: any): boolean => {
   if (!obj || typeof obj !== 'object') return false;
@@ -30,17 +27,15 @@ export const isDisplayObject = (obj: any): boolean => {
 
 /**
  * Extract display value from an object.
- * Uses explicit _display field if present, otherwise checks common display field names.
+ * Uses explicit _display field.
  */
 export const getDisplayValue = (obj: any): string => {
   if (!obj || typeof obj !== 'object') return String(obj || '');
   
-  // Explicit _display marker takes priority (preferred protocol)
+  // Explicit _display marker (required protocol)
   if (obj._display != null) return String(obj._display);
-  
-  // Backwards compatibility: common display field names in priority order
-  // TODO: Consider deprecating these fallbacks once all BE responses use _display
-  const displayFields = ['name', 'label', 'title', 'display', 'text'];
+
+  const displayFields = ['name'];
   for (const field of displayFields) {
     if (obj[field] != null) return String(obj[field]);
   }
@@ -69,17 +64,8 @@ export const getDisplayValueFromItem = (
   
   // If it's an object, extract display value
   if (typeof item === 'object' && item !== null) {
-    // Explicit _display marker takes priority (preferred protocol)
+    // Explicit _display marker (required protocol)
     if (item._display != null) return String(item._display);
-    
-    // Backwards compatibility: common display field patterns
-    const displayFields = ['name', 'label', 'title', 'display', 'text'];
-    for (const field of displayFields) {
-      if (item[field] != null) return String(item[field]);
-    }
-    // Fallback to id/value
-    if (item.id != null) return String(item.id);
-    if (item.value != null) return String(item.value);
     
     // If object has $ref, use fallback function
     if (item.$ref && fallbackFn) return fallbackFn(item);
@@ -90,10 +76,10 @@ export const getDisplayValueFromItem = (
 
 /**
  * Recursively simplify config objects for display.
- * Converts display objects (marked with _display or having display patterns) to just display names.
+ * Converts display objects (marked with _display) to just display names.
  * 
  * NOTE: This function uses isDisplayObject() to determine what should be simplified.
- * Objects with explicit _display field OR legacy patterns (name+id, label+value) are simplified.
+ * Only objects with explicit _display field are simplified.
  */
 export const simplifyConfigForDisplay = (config: any): any => {
   if (!config || typeof config !== 'object') return config;
