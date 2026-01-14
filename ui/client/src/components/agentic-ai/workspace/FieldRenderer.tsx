@@ -286,7 +286,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
             </>
           );
 
-        case 'populate':
+        case 'dynamic':
           return (
             <Textarea
               id={fieldName}
@@ -337,8 +337,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
       <div key={fieldName} className="space-y-2">
         {/* Label with badges */}
         <Label htmlFor={fieldName} className="flex items-center flex-wrap gap-1">
-          {arrayMode === 'populate' ? displayName : fieldName}
-          {isRequired && <span className="text-red-400">*</span>}
+          {displayName} {isRequired && <span className="text-red-400">*</span>}
           {arrayMode === 'refItems' && category && (
             <Badge variant="outline" className="ml-2 text-xs">
               {category}
@@ -365,8 +364,8 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
         {/* Mode-specific content */}
         {renderArrayContent()}
 
-        {/* Validation - only for refItems mode */}
-        {arrayMode === 'refItems' && validationHint && (
+        {/* Validation */}
+        {validationHint && (
           <FieldValidation
             fieldName={fieldName}
             fieldValue={value}

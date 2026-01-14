@@ -52,20 +52,20 @@ export const getArrayDisplayText = (value: any, displayFieldPath: string | undef
 };
 
 /**
- * Array field mode types
+ * Array field mode types, with dynamic meaning the array can contain different types
  */
-export type ArrayFieldMode = 'refItems' | 'populate' | 'regular';
+export type ArrayFieldMode = 'refItems' | 'dynamic' | 'regular';
 
 /**
  * Determine the array field rendering mode based on schema and hints
  */
 export const getArrayFieldMode = (
   isArrayWithRefItems: boolean,
-  hasPopulateHint: boolean,
+  hasDynamicHint: boolean,
   isDirectArrayType: boolean
 ): ArrayFieldMode | null => {
   if (isArrayWithRefItems) return 'refItems';
-  if (hasPopulateHint) return 'populate';
+  if (hasDynamicHint) return 'dynamic';
   if (isDirectArrayType) return 'regular';
   return null;
 };
