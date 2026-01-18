@@ -112,5 +112,5 @@ jobs:
     steps:
 
       - name: Upload files to gitlab repo
-        run: bash .github/scripts/upload_to_gitlab.sh
-        shell: bash
+        run: python .github/scripts/upload_to_gitlab.py
+        #shell: bash

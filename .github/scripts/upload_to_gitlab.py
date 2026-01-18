@@ -1,0 +1,85 @@
+import os
+import shutil
+from pathlib import Path
+from git import Repo
+
+# Environment variables
+BACKUP_REPO = os.getenv("BACKUP_REPO")
+BACKUP_REPO_NAME = os.getenv("BACKUP_REPO_NAME")
+MONGO_BACKUP_FILE = os.getenv("MONGO_BACKUP_FILE")
+QDRANT_SNAPSHOTS_DIR = os.getenv("QDRANT_SNAPSHOTS_DIR")
+
+
+def upload_to_gitlab():
+    """
+    Upload backup files to GitLab repository
+    Equivalent to upload_to_gitlab.sh
+    """
+    # Validate required environment variables
+    required_vars = {
+        "BACKUP_REPO": BACKUP_REPO,
+        "BACKUP_REPO_NAME": BACKUP_REPO_NAME,
+        "MONGO_BACKUP_FILE": MONGO_BACKUP_FILE,
+        "QDRANT_SNAPSHOTS_DIR": QDRANT_SNAPSHOTS_DIR
+    }
+    
+    for var_name, var_value in required_vars.items():
+        if not var_value:
+            raise ValueError(f"{var_name} environment variable is required")
+    
+    try:
+        # Clone repository
+        print("Cloning gitlab repo")
+        repo = Repo.clone_from(BACKUP_REPO, BACKUP_REPO_NAME)
+        print("Cloned gitlab repo")
+        
+        # Copy mongo backup file
+        print("Copying mongo backup file to gitlab repo")
+        shutil.copy(MONGO_BACKUP_FILE, BACKUP_REPO_NAME)
+        
+        # Copy qdrant snapshots directory
+        print("Copying qdrant snapshots to gitlab repo")
+        snapshots_dirname = os.path.basename(QDRANT_SNAPSHOTS_DIR)
+        dest_snapshots_path = os.path.join(BACKUP_REPO_NAME, snapshots_dirname)
+        
+        # Remove old snapshots directory if exists
+        if os.path.exists(dest_snapshots_path):
+            print("Removing old snapshots directory")
+            shutil.rmtree(dest_snapshots_path)
+        
+        # Copy new snapshots
+        shutil.copytree(QDRANT_SNAPSHOTS_DIR, dest_snapshots_path)
+        print("Copied files to gitlab repo")
+        
+        # Configure git user
+        print("Committing changes to gitlab repo")
+        with repo.config_writer() as git_config:
+            git_config.set_value('user', 'email', 'github_actions@users.noreply.gitlab.cee.redhat.com')
+            git_config.set_value('user', 'name', 'github_actions')
+        
+        # Add all changes
+        repo.git.add(A=True)
+        
+        # Commit
+        repo.index.commit("uploading backup files to gitlab")
+        print("Committed changes")
+        
+        # Push
+        origin = repo.remote(name='origin')
+        origin.push()
+        print("Pushed changes to gitlab repo")
+        
+    finally:
+        # Cleanup
+        print("Cleaning up")
+        if os.path.exists(MONGO_BACKUP_FILE):
+            os.remove(MONGO_BACKUP_FILE)
+        if os.path.exists(QDRANT_SNAPSHOTS_DIR):
+            shutil.rmtree(QDRANT_SNAPSHOTS_DIR)
+        if os.path.exists(BACKUP_REPO_NAME):
+            shutil.rmtree(BACKUP_REPO_NAME)
+        print("Uploading files to gitlab repo completed")
+
+
+if __name__ == "__main__":
+    upload_to_gitlab()

@@ -1,3 +1,5 @@
 qdrant-client
 datasets
 requests
+kubernetes  
+gitpython
