@@ -74,13 +74,13 @@ jobs:
           fetch-depth: 0
           ref: ${{ env.BRANCH }}
 
-      - name: Check Cluster Connection
-        run: bash .github/scripts/check_k8s_connection.sh
-        shell: bash
+      # - name: Check Cluster Connection
+      #   run: bash .github/scripts/check_k8s_connection.sh
+      #   shell: bash
 
       - name: Backup MongoDB
-        run: bash .github/scripts/backup_mongo.sh
-        shell: bash
+        run: python .github/scripts/backup_mongo.py
+        # shell: bash
 
 
   backup_qdrant:

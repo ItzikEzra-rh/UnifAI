@@ -8,8 +8,10 @@ Workflows are configured to run automated tasks using GitHub Actions. For comple
 
 ## Available Workflows
 
-- **backup-dbs.yaml** - Automated database backups for MongoDB and Qdrant
+- **backup-dbs.yaml** - Automated database backups for MongoDB and Qdrant (backups are being uploaded to internal gitlab and have no retention at the moment)
 - **verify-agent-deps.yaml** - Dependency verification for agents
+
+
 
 ## Prerequisites
 
@@ -18,6 +20,7 @@ Workflows are configured to run automated tasks using GitHub Actions. For comple
 
 ### Important Notes
 
+- Since every deployment is a bit different. the existing workflows won't necessarily work out in the box for deployment different from the one currently in use.Users wanting to deploy UnifAI in their own clusters should be aware of the work
 - When using runners, the `runs-on` field refers to **labels**, not runner names. Ensure matching labels exist before running workflows.
 - Environment-specific variables (like `QDRANT_URL`, `MONGO_URI`, `API_URL`) must be configured in GitHub repository settings under **Environments**.
 
@@ -100,4 +103,9 @@ For more details, see the [GitHub documentation on self-hosted runners](https://
 
 Since the github runners can't reach gitlab we ha to use a VM running on CNV.
 To make gitlab "accessible" to this runner we need to set on the target repo a deploy token (go to repository > deploy keys and set the VM public key as the deploy key). this allows the VM perform actions on the target repo without needing to specify credentials.
+
+### UnifAI team infra structure
+
+In the case if the Unifai team the lab structure is a bit "special" the code resides in a public github repo whereas all the deployment resources reside inside the company intra-net. to overcome this we have a self hosted runner with access to both domains so the code is downloaded from github (for example in order to run a workflow) and then all actions are being run against the intra resources.
+
 
