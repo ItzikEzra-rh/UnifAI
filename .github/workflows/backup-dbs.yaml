@@ -79,7 +79,7 @@ jobs:
       #   shell: bash
 
       - name: Backup MongoDB
-        run: python .github/scripts/backup_mongo.py
+        run: python3 .github/scripts/backup_mongo.py
         # shell: bash
 
 
@@ -103,7 +103,7 @@ jobs:
         run: |
           pwd
           echo "Backing up Qdrant"
-          python .github/scripts/backup_qdrant.py
+          python3 .github/scripts/backup_qdrant.py
           echo "Qdrant backup completed"
 
   upload_to_gitlab:        
@@ -112,5 +112,5 @@ jobs:
     steps:
 
       - name: Upload files to gitlab repo
-        run: python .github/scripts/upload_to_gitlab.py
+        run: python3 .github/scripts/upload_to_gitlab.py
         #shell: bash
