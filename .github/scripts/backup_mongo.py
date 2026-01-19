@@ -80,9 +80,7 @@ def copy_backup_from_pod(local_path: str = None):
     
     Args:
         local_path: Local path to save the backup. If None, generates a timestamped filename
-    
-    Returns:
-        str: Path to the downloaded backup file
+
     """
     if local_path is None:
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
@@ -100,7 +98,7 @@ def copy_backup_from_pod(local_path: str = None):
         raise Exception(f"Failed to copy backup from pod: {result.stderr}")
     
     print(f"✓ Backup downloaded to {local_path}")
-    #return local_path
+
 
 def remove_old_backup():
     print("Removing old backup if they exist")
@@ -110,12 +108,12 @@ def remove_old_backup():
 
 def test_mongodb_connection():
     print("Testing MongoDB connection")
-    run_cmd_on_pod(MONGO_POD, NAMESPACE, ["mongosh", "--eval", "db.version()"])
+    run_cmd_on_pod(MONGO_POD, NAMESPACE, ["mongosh", "--eval", "db.version()", "--uri", MONGO_URI])
     print("MongoDB connection test completed")
 
 def backup_mongodb():
     print("Running MongoDB backup")
-    run_cmd_on_pod(MONGO_POD, NAMESPACE, ["mongodump", "--uri", MONGO_URI])
+    run_cmd_on_pod(MONGO_POD, NAMESPACE, ["mongodump", "--uri", MONGO_URI, "--out", "/tmp/backup"])
     print("MongoDB backup completed")
 
 def compress_backup():
