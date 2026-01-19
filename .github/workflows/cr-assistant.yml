@@ -25,6 +25,21 @@ jobs:
           git branch -a
           git log --oneline --decorate -n 5
 
+      # -------------------------
+      # ✅ CodeRabbit AI Reviewer
+      # -------------------------
+      - name: Run CodeRabbit AI Code Review
+        uses: coderabbitai/ai-pr-reviewer@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          debug: false
+          review_simple_changes: false
+          review_comment_lgtm: false
+
+      # -------------------------
+      # ✅ Gemini CR agent
+      # -------------------------
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
