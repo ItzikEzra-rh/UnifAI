@@ -45,13 +45,14 @@ jobs:
       BRANCH: ${{ steps.vars.outputs.branch }}
       CLUSTER: ${{ steps.vars.outputs.cluster }}
       NAMESPACE: ${{ steps.vars.outputs.namespace }}
+      VERIFY_TLS: ${{ steps.vars.outputs.verify_tls }}
     steps:
       - id: vars
         run: |
           echo "branch=${{ inputs.target_branch || 'GENIE-1071/backup_dbs' }}" >> $GITHUB_OUTPUT
           echo "cluster=${{ inputs.target_cluster || 'PRE-PRODUCTION' }}" >> $GITHUB_OUTPUT
           echo "namespace=${{ inputs.target_namespace || 'tag-ai--pipeline' }}" >> $GITHUB_OUTPUT
-
+          echo "verify_tls=${{ inputs.verify_tls || 'false' }}" >> $GITHUB_OUTPUT
 
 
   backup_mongo:
@@ -63,6 +64,7 @@ jobs:
       BRANCH: ${{ needs.setup_environment.outputs.BRANCH }}
       CLUSTER: ${{ needs.setup_environment.outputs.CLUSTER }}
       NAMESPACE: ${{ needs.setup_environment.outputs.NAMESPACE }}
+      VERIFY_TLS: ${{ needs.setup_environment.outputs.VERIFY_TLS }}
       API_URL: ${{ vars.API_URL }}
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
       MONGO_URI: ${{ vars.MONGO_URI }}
@@ -110,6 +112,12 @@ jobs:
     runs-on: linux
     needs: [setup_environment, verify_agent_deps, backup_qdrant, backup_mongo]
     steps:
+
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ env.BRANCH }}
 
       - name: Upload files to gitlab repo
         run: python3 .github/scripts/upload_to_gitlab.py

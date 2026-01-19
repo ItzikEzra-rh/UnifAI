@@ -20,7 +20,7 @@ Workflows are configured to run automated tasks using GitHub Actions. For comple
 
 ### Important Notes
 
-- Since every deployment is a bit different. the existing workflows won't necessarily work out in the box for deployment different from the one currently in use.Users wanting to deploy UnifAI in their own clusters should be aware of the work
+- Since every deployment is a bit different. the existing workflows won't necessarily work out of the box for deployment different from the one currently in use. Users wanting to deploy UnifAI in their own clusters should be aware of the infra and networking to either fit the workflow to their needs or create a new workflow that fits it. 
 - When using runners, the `runs-on` field refers to **labels**, not runner names. Ensure matching labels exist before running workflows.
 - Environment-specific variables (like `QDRANT_URL`, `MONGO_URI`, `API_URL`) must be configured in GitHub repository settings under **Environments**.
 

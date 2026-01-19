@@ -13,7 +13,7 @@ CLUSTER = os.getenv("CLUSTER")
 ACCESS_TOKEN = os.getenv("ACCESS_TOKEN")
 API_URL = os.getenv("API_URL")
 MONGO_URI = os.getenv("MONGO_URI")
-
+VERIFY_TLS = os.getenv("VERIFY_TLS")
 
 def setup_k8s_connection():
     """
@@ -26,7 +26,7 @@ def setup_k8s_connection():
             "name": CLUSTER,
             "cluster": {
                 "server": API_URL,
-                "insecure-skip-tls-verify": True
+                "insecure-skip-tls-verify": VERIFY_TLS
             }
         }],
         "users": [{
