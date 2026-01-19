@@ -7,7 +7,6 @@ metadata:
     {{- include "qdrant.labels" . | nindent 4 }}
   name: {{ include "qdrant.fullname" . }}
 spec:
-  host: 
   port:
     targetPort: {{ .Values.service.port }}
   to:
