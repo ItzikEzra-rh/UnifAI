@@ -11,6 +11,21 @@ MONGO_BACKUP_FILE = os.getenv("MONGO_BACKUP_FILE")
 QDRANT_SNAPSHOTS_DIR = os.getenv("QDRANT_SNAPSHOTS_DIR")
 
 
+def find_mongo_backup_file():
+    """
+    Find the mongo backup file in the local filesystem
+    """
+    try:
+        for file in os.listdir("/tmp"):
+            if file.startswith("mongo_backup"):
+                return os.path.join("/tmp", file)
+    except FileNotFoundError as e:
+        print(f"Mongo backup file not found: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
+
 def upload_to_gitlab():
     """
     Upload backup files to GitLab repository
@@ -36,7 +51,8 @@ def upload_to_gitlab():
         
         # Copy mongo backup file
         print("Copying mongo backup file to gitlab repo")
-        shutil.copy(MONGO_BACKUP_FILE, BACKUP_REPO_NAME)
+        mongo_backup_file = find_mongo_backup_file()
+        shutil.copy(mongo_backup_file, BACKUP_REPO_NAME)
         
         # Copy qdrant snapshots directory
         print("Copying qdrant snapshots to gitlab repo")

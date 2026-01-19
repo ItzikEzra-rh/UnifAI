@@ -1,4 +1,6 @@
 import os
+import subprocess
+from datetime import datetime
 from kubernetes import client, config
 from kubernetes.stream import stream
 
@@ -72,6 +74,33 @@ def run_cmd_on_pod(pod_name: str, namespace: str, command: list[str]):
     )
     return result
 
+def copy_backup_from_pod(local_path: str = None):
+    """
+    Copy the compressed backup file from the pod to local filesystem
+    
+    Args:
+        local_path: Local path to save the backup. If None, generates a timestamped filename
+    
+    Returns:
+        str: Path to the downloaded backup file
+    """
+    if local_path is None:
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        local_path = f"/tmp/mongo_backup_{timestamp}.tar.gz"
+    
+    print(f"Downloading backup from pod to {local_path}")
+    
+    # Using kubectl cp command
+    pod_spec = f"{NAMESPACE}/{MONGO_POD}:/tmp/backup.tar.gz"
+    cmd = ['kubectl', 'cp', pod_spec, local_path, '-n', NAMESPACE]
+    
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    if result.returncode != 0:
+        raise Exception(f"Failed to copy backup from pod: {result.stderr}")
+    
+    print(f"✓ Backup downloaded to {local_path}")
+    #return local_path
 
 def remove_old_backup():
     print("Removing old backup if they exist")
@@ -105,4 +134,5 @@ if __name__ == "__main__":
     test_mongodb_connection()
     backup_mongodb()
     compress_backup()
+    copy_backup_from_pod()
     print("✓ Backup complete!")
