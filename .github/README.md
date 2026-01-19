@@ -99,13 +99,13 @@ To create a new self-hosted runner:
 For more details, see the [GitHub documentation on self-hosted runners](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners/adding-self-hosted-runners).
 
 
-### connecting to gitlab
+### Connecting to gitlab
 
-Since the github runners can't reach gitlab we ha to use a VM running on CNV.
-To make gitlab "accessible" to this runner we need to set on the target repo a deploy token (go to repository > deploy keys and set the VM public key as the deploy key). this allows the VM perform actions on the target repo without needing to specify credentials.
+Since the GitHub runners can't reach gitlab we ha to use a VM running on CNV.
+To make gitlab "accessible" to this runner, we need to set a deploy token at the target repo (go to repository > deploy keys and set the VM public key as the deploy key). This allows the VM perform actions on the target repo without needing to specify credentials.
 
 ### UnifAI team infra structure
 
-In the case if the Unifai team the lab structure is a bit "special" the code resides in a public github repo whereas all the deployment resources reside inside the company intra-net. to overcome this we have a self hosted runner with access to both domains so the code is downloaded from github (for example in order to run a workflow) and then all actions are being run against the intra resources.
+In the case if the Unifai team the lab structure is a bit "special" the code resides in a public GitHub repo whereas all the deployment resources reside inside the company intra-net. to overcome this we have a self-hosted runner with access to both domains so the code is downloaded from github (for example in order to run a workflow) and then all actions are being run against the intra resources.
 
 
