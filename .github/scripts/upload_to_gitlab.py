@@ -88,9 +88,6 @@ def upload_to_gitlab():
     except FileNotFoundError as e:
         print(f"File not found: {e}")
         sys.exit(1)
-    except DirectoryNotFoundError as e:
-        print(f"Directory not found: {e}")
-        sys.exit(1)
     except Exception as e:
         print(f"Error: {e}")
         sys.exit(1)
