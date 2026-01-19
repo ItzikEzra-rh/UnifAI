@@ -1,5 +1,6 @@
 import os
 import shutil
+import sys
 from pathlib import Path
 from git import Repo
 
@@ -68,7 +69,15 @@ def upload_to_gitlab():
         origin = repo.remote(name='origin')
         origin.push()
         print("Pushed changes to gitlab repo")
-        
+    except FileNotFoundError as e:
+        print(f"File not found: {e}")
+        sys.exit(1)
+    except DirectoryNotFoundError as e:
+        print(f"Directory not found: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)
     finally:
         # Cleanup
         print("Cleaning up")
