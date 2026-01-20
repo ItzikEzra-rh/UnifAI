@@ -90,7 +90,7 @@ def copy_backup_from_pod(local_path: str = None):
     
     # Using kubectl cp command
     pod_spec = f"{NAMESPACE}/{MONGO_POD}:/tmp/backup.tar.gz"
-    cmd = ['kubectl', 'cp', pod_spec, local_path, '-n', NAMESPACE]
+    cmd = ['kubectl', 'cp', pod_spec, local_path, '-n', NAMESPACE, '--retries', '10']
     
     result = subprocess.run(cmd, capture_output=True, text=True)
     
