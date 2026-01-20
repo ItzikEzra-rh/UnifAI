@@ -76,7 +76,7 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PR_NUMBER: ${{ github.event.pull_request.number || github.event.issue.number }}
-          GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref || github.event.issue.pull_request.base.ref }}
+          GITHUB_BASE_REF: ${{ steps.pr_data.outputs.base_ref || github.event.pull_request.base.ref }}
         run: |
           python scripts/review.py $PR_NUMBER > review_output.txt
 
