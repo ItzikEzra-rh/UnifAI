@@ -4,7 +4,6 @@ reviews:
     auto_incremental_review: true
 
   commit_status: true
-
   high_level_summary: true
 
   path_filters:
@@ -12,15 +11,6 @@ reviews:
       - "multi-agents/**"
       - "backend/**"
       - "ui/**"
-
-  focus_areas:
-    - architecture
-    - maintainability
-    - modularity
-    - separation of concerns
-    - dependency boundaries
-    - layering
-    - testability
 
   instructions: |
     This repository represents an agentic AI system with a modular, layered architecture.
@@ -31,6 +21,15 @@ reviews:
     These documents should be treated as the source of truth.
 
     During reviews, always cross-check code changes against the architectural guidance in those files.
+
+    FOCUS AREAS:
+    - architecture
+    - maintainability
+    - modularity
+    - separation of concerns
+    - dependency boundaries
+    - layering
+    - testability
 
     Please pay special attention to:
 
