@@ -121,4 +121,8 @@ jobs:
 
       - name: Upload files to gitlab repo
         run: python3 .github/scripts/upload_to_gitlab.py
-        #shell: bash
+      
+      - name: Clean up
+        run: |
+          rm -rf /tmp/mongo_backup_*.tar.gz
+          rm -rf /tmp/snapshots
