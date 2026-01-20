@@ -51,7 +51,7 @@ jobs:
       # -------------------------
       # ✅ CodeRabbit AI Reviewer
       # -------------------------
-          - name: Run CodeRabbit AI Code Review
+      - name: Run CodeRabbit AI Code Review
         uses: coderabbitai/ai-pr-reviewer@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
