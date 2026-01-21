@@ -62,14 +62,14 @@ def upload_to_gitlab():
 
         # Copy mongo backup file
         print("Copying mongo backup file to gitlab repo")
-        mongo_backup_file = find_mongo_backup_file("/tmp")
-        if mongo_backup_file is None:
+        mongo_backup_files = find_mongo_backup_file("/tmp")
+        if not mongo_backup_files:
             print("Mongo backup file not found")
             sys.exit(1)
         else:
-            for file in mongo_backup_file:
-                if file.startswith("mongo_backup"):
-                    shutil.copy(file, BACKUP_REPO_NAME)
+            for file in mongo_backup_files:
+                print(f"Copying mongo backup file: {file}")
+                shutil.copy(file, BACKUP_REPO_NAME)
         
         # Copy qdrant snapshots directory
         print("Copying qdrant snapshots to gitlab repo")

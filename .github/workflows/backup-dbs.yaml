@@ -29,8 +29,6 @@ on:
         description: 'Which namespace do you want to backup?'
         required: true
         default: 'tag-ai--pipeline'
-  push:                
-    paths: [ '.github/workflows/backup-dbs.yaml', '.github/scripts/qdrant_backup.py' ]
 
 jobs:
 
