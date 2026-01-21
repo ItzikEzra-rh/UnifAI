@@ -3,6 +3,7 @@ import shutil
 import sys
 from pathlib import Path
 from git import Repo
+from git.remote import RemoteProgress
 
 # Environment variables
 BACKUP_REPO = os.getenv("BACKUP_REPO")
@@ -51,7 +52,7 @@ def upload_to_gitlab():
     try:
         # Clone repository
         print("Cloning gitlab repo")
-        repo = Repo.clone_from(BACKUP_REPO, BACKUP_REPO_NAME)
+        repo = Repo.clone_from(BACKUP_REPO, BACKUP_REPO_NAME, depth=1)
         print("Cloned gitlab repo")
         
         #delete older mongo backups
