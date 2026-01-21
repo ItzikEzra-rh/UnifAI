@@ -11,21 +11,23 @@ MONGO_BACKUP_FILE = os.getenv("MONGO_BACKUP_FILE")
 QDRANT_SNAPSHOTS_DIR = os.getenv("QDRANT_SNAPSHOTS_DIR")
 
 
-def find_mongo_backup_file(path: str ):
+def find_mongo_backup_file(path: str ) -> list[str]:
     """
     Find the mongo backup file in the local filesystem
     """
     try:
+        matches: list[str] = []
         for file in os.listdir(path):
             if file.startswith("mongo_backup"):
-                return os.path.join(path, file)
+                matches.append(os.path.join(path, file))
+        return matches
     except FileNotFoundError as e:
         print(f"Mongo backup file not found: {e}")
-        return None
+        return []
         #sys.exit(1)
     except Exception as e:
         print(f"Error: {e}")
-        return None
+        return []
         #sys.exit(1)
 
 def upload_to_gitlab():
@@ -53,9 +55,10 @@ def upload_to_gitlab():
         
         #delete older mongo backups
         older_mongo_backup_files = find_mongo_backup_file(BACKUP_REPO_NAME)
-        if older_mongo_backup_files is not None:
-            for file in older_mongo_backup_files:
-                os.remove(file)
+        # if older_mongo_backup_files is not None:
+        for file in older_mongo_backup_files:
+            print(f"Deleting older mongo backup file: {file}")
+            os.remove(file)
 
         # Copy mongo backup file
         print("Copying mongo backup file to gitlab repo")
@@ -63,11 +66,17 @@ def upload_to_gitlab():
         if mongo_backup_file is None:
             print("Mongo backup file not found")
             sys.exit(1)
-        shutil.copy(mongo_backup_file, BACKUP_REPO_NAME)
+        else:
+            for file in mongo_backup_file:
+                if file.startswith("mongo_backup"):
+                    shutil.copy(file, BACKUP_REPO_NAME)
         
         # Copy qdrant snapshots directory
         print("Copying qdrant snapshots to gitlab repo")
-        snapshots_dirname = os.path.basename(QDRANT_SNAPSHOTS_DIR)
+        #snapshots_dirname = os.path.basename(QDRANT_SNAPSHOTS_DIR)
+        snapshots_dirname = Path(QDRANT_SNAPSHOTS_DIR).resolve().name
+        if not snapshots_dirname:
+            raise ValueError("QDRANT_SNAPSHOTS_DIR must not be filesystem root")        
         dest_snapshots_path = os.path.join(BACKUP_REPO_NAME, snapshots_dirname)
         
         # Remove old snapshots directory if exists
