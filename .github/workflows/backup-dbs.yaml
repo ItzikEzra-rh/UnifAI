@@ -5,7 +5,7 @@ env:
   MONGO_POD: "mongodb-0"
   username: "tag-ai"
   QDRANT_SNAPSHOTS_DIR: "/tmp/snapshots"
-  BRANCH: ${{ inputs.target_branch || 'GENIE-1071/backup_dbs' }}
+  BRANCH: ${{ inputs.target_branch || 'main' }}
   CLUSTER: ${{ inputs.target_cluster || 'PRE-PRODUCTION' }}
   NAMESPACE: ${{ inputs.target_namespace || 'tag-ai--pipeline' }}
   BACKUP_REPO: ${{ vars.BACKUP_REPO_URL }}
@@ -19,7 +19,7 @@ on:
       target_branch:
         description: 'Which branch do you want to use?'
         required: true
-        default: 'GENIE-1071/backup_dbs'
+        default: 'main'
       target_cluster:
         description: 'Which cluster do you want to backup?'
         required: true
@@ -44,7 +44,7 @@ jobs:
       CLUSTER: ${{ steps.vars.outputs.cluster }}
       NAMESPACE: ${{ steps.vars.outputs.namespace }}
     steps:
-      
+
       - id: vars
         run: |
           echo "branch=${{ inputs.target_branch || 'GENIE-1071/backup_dbs' }}" >> $GITHUB_OUTPUT
