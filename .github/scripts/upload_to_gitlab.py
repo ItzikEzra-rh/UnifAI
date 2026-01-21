@@ -114,11 +114,12 @@ def upload_to_gitlab():
     finally:
         # Cleanup
         print("Cleaning up")
-        if os.path.exists(MONGO_BACKUP_FILE):
-            os.remove(MONGO_BACKUP_FILE)
-        if os.path.exists(QDRANT_SNAPSHOTS_DIR):
+        for file in mongo_backup_files:
+          if os.path.exists(file):
+            os.remove(file)
+        if QDRANT_SNAPSHOTS_DIR and os.path.exists(QDRANT_SNAPSHOTS_DIR):
             shutil.rmtree(QDRANT_SNAPSHOTS_DIR)
-        if os.path.exists(BACKUP_REPO_NAME):
+        if BACKUP_REPO_NAME and os.path.exists(BACKUP_REPO_NAME):
             shutil.rmtree(BACKUP_REPO_NAME)
         print("Uploading files to gitlab repo completed")
 
