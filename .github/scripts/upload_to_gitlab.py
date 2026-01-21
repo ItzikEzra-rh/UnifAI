@@ -7,7 +7,7 @@ from git import Repo
 # Environment variables
 BACKUP_REPO = os.getenv("BACKUP_REPO")
 BACKUP_REPO_NAME = os.getenv("BACKUP_REPO_NAME")
-MONGO_BACKUP_FILE = os.getenv("MONGO_BACKUP_FILE")
+#MONGO_BACKUP_FILE = os.getenv("MONGO_BACKUP_FILE")
 QDRANT_SNAPSHOTS_DIR = os.getenv("QDRANT_SNAPSHOTS_DIR")
 
 
@@ -35,11 +35,12 @@ def upload_to_gitlab():
     Upload backup files to GitLab repository
     Equivalent to upload_to_gitlab.sh
     """
+
+    mongo_backup_files = []
     # Validate required environment variables
     required_vars = {
         "BACKUP_REPO": BACKUP_REPO,
         "BACKUP_REPO_NAME": BACKUP_REPO_NAME,
-        "MONGO_BACKUP_FILE": MONGO_BACKUP_FILE,
         "QDRANT_SNAPSHOTS_DIR": QDRANT_SNAPSHOTS_DIR
     }
     

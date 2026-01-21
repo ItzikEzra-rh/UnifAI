@@ -5,7 +5,7 @@ env:
   MONGO_POD: "mongodb-0"
   username: "tag-ai"
   QDRANT_SNAPSHOTS_DIR: "/tmp/snapshots"
-  MONGO_BACKUP_FILE: /tmp/backup.tar.gz
+  #MONGO_BACKUP_FILE: /tmp/backup.tar.gz
   BRANCH: ${{ inputs.target_branch || 'GENIE-1071/backup_dbs' }}
   CLUSTER: ${{ inputs.target_cluster || 'PRE-PRODUCTION' }}
   NAMESPACE: ${{ inputs.target_namespace || 'tag-ai--pipeline' }}
