@@ -7,7 +7,6 @@ reviews:
   high_level_summary: true
 
   path_filters:
-    include:
       - "multi-agents/**"
       - "backend/**"
       - "ui/**"
