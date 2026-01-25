@@ -1,4 +1,5 @@
-"""Validator for OpenShift OC Exec Tool."""
+"""Validator for OcExecTool."""
+
 import openshift_client as oc
 from typing import List
 
@@ -9,11 +10,11 @@ from elements.common.validator import (
     ValidationMessage,
     ValidationCode,
 )
-from elements.tools.oc_exec.config import OcExecToolConfig
+from .config import OcExecToolConfig
 
 
 class OcExecToolValidator(BaseElementValidator):
-    """Validates OpenShift connection."""
+    """Validates OpenShift cluster connection."""
 
     def validate(
         self,
@@ -25,22 +26,22 @@ class OcExecToolValidator(BaseElementValidator):
         try:
             with oc.api_server(config.server):
                 with oc.token(config.token):
-                    with oc.tls_verify(enable=not config.insecure_skip_tls_verify):
+                    with oc.tls_verify(enable=not config.skip_tls_verify):
                         result = oc.invoke('whoami')
             
-            stdout = result.out().strip() if result.out() else ""
-            stderr = result.err().strip() if result.err() else ""
+            stdout = (result.out() or "").strip()
+            stderr = (result.err() or "").strip()
             
             if result.status() == 0:
                 messages.append(self._info(
                     "CONNECTION_OK",
-                    f"Connected to {config.server} as {stdout}",
+                    f"Connected as: {stdout}",
                     field="server",
                 ))
             else:
                 messages.append(self._error(
                     ValidationCode.NETWORK_ERROR.value,
-                    stderr or stdout or "Connection failed",
+                    stderr or "Connection failed",
                     field="server",
                 ))
 
@@ -50,7 +51,6 @@ class OcExecToolValidator(BaseElementValidator):
                 str(e),
                 field="server",
             ))
-                
         except Exception as e:
             messages.append(self._error(
                 ValidationCode.NETWORK_ERROR.value,

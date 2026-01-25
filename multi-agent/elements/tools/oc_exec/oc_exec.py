@@ -1,91 +1,97 @@
-import openshift_client as oc
+"""OpenShift CLI execution tool."""
+
+import re
 import shlex
-from typing import Any, Optional
+from contextlib import contextmanager
+from typing import Any, Generator
+from urllib.parse import urlparse
+
+import openshift_client as oc
 from pydantic import BaseModel, Field
+
 from elements.tools.common.base_tool import BaseTool
 
 
 class OcCommandInput(BaseModel):
-    cmd: str = Field(
-        ..., 
-        description="The oc command to execute (without 'oc' prefix, e.g., 'get pods', 'describe deployment myapp')"
-    )
+    """Input schema for oc commands."""
+    cmd: str = Field(..., description="The oc command to execute (without 'oc' prefix)")
 
 
 class OcExecTool(BaseTool):
-    """Execute OpenShift 'oc' commands on a cluster."""
+    """Execute OpenShift CLI commands on a cluster."""
     
-    name: str = "OcExecTool"
+    name: str = "oc_exec"
     description: str = "Execute oc commands on an OpenShift cluster"
     args_schema = OcCommandInput
 
-    def __init__(
-        self,
-        *,
-        server: str,
-        token: str,
-        namespace: Optional[str] = None,
-        insecure_skip_tls_verify: bool = False,
-    ):
+    def __init__(self, *, server: str, token: str, skip_tls_verify: bool = False):
         super().__init__()
         self._server = server
         self._token = token
-        self._namespace = namespace
-        self._skip_tls = insecure_skip_tls_verify
+        self._skip_tls_verify = skip_tls_verify
         
-        # Create unique tool name
-        safe_server = server.replace("https://", "").replace("http://", "")
-        for char in '.:- /':
-            safe_server = safe_server.replace(char, '_')
-        self.name = f"oc_exec_{safe_server}"
+        self.name = self._build_tool_name(server)
+        self.description = self._build_description(server)
         
-        # Set description
-        ns_info = f" (namespace: {namespace})" if namespace else ""
-        self.description = (
-            f"Execute 'oc' commands on OpenShift cluster {server}{ns_info}. "
-            f"Provide commands without the 'oc' prefix. "
-            f"Examples: 'get pods', 'describe pod mypod', 'logs deployment/myapp'"
-        )
-        
-        # Verify connection
-        self._run_oc(['whoami'])
+        self._validate_connection()
 
-    def _run_oc(self, cmd_parts: list) -> str:
-        """Run an oc command and return combined output."""
-        if not cmd_parts:
-            return "Error: Empty command"
-        
-        verb = cmd_parts[0]
-        args = cmd_parts[1:] if len(cmd_parts) > 1 else []
-        
+    @staticmethod
+    def _build_tool_name(server: str) -> str:
+        """Generate a unique tool name from the server URL."""
+        parsed = urlparse(server)
+        host = parsed.netloc or parsed.path
+        sanitized = re.sub(r'[^a-zA-Z0-9]', '_', host)
+        return f"oc_exec_{sanitized}"
+
+    @staticmethod
+    def _build_description(server: str) -> str:
+        """Generate tool description."""
+        return (
+            f"Execute OpenShift 'oc' commands on cluster at {server}. "
+            f"Provide the command without 'oc' prefix. "
+            f"Examples: 'get pods', 'get deployments', 'describe pod <name>', 'logs <pod>'"
+        )
+
+    @contextmanager
+    def _oc_context(self) -> Generator[None, None, None]:
+        """Context manager for OpenShift client configuration."""
         with oc.api_server(self._server):
             with oc.token(self._token):
-                with oc.tls_verify(enable=not self._skip_tls):
-                    if self._namespace and '-n' not in cmd_parts and '--namespace' not in cmd_parts:
-                        with oc.project(self._namespace):
-                            result = oc.invoke(verb, args)
-                    else:
-                        result = oc.invoke(verb, args)
+                with oc.tls_verify(enable=not self._skip_tls_verify):
+                    yield
+
+    def _validate_connection(self) -> None:
+        """Validate connection to cluster on initialization."""
+        with self._oc_context():
+            oc.invoke('whoami')
+
+    def _execute(self, command: str) -> str:
+        """Execute an oc command and return the output."""
+        parts = shlex.split(command)
+        if not parts:
+            return "Error: empty command"
         
-        stdout = result.out().strip() if result.out() else ""
-        stderr = result.err().strip() if result.err() else ""
+        verb, args = parts[0], parts[1:]
         
-        # Return both stdout and stderr
-        output_parts = []
-        if stdout:
-            output_parts.append(stdout)
-        if stderr:
-            output_parts.append(f"stderr: {stderr}")
+        with self._oc_context():
+            result = oc.invoke(verb, args)
         
-        return "\n".join(output_parts) if output_parts else "(no output)"
+        status = result.status()
+        stdout = (result.out() or "").strip()
+        stderr = (result.err() or "").strip()
+        
+        if stdout and stderr:
+            return f"{stdout}\nstderr: {stderr}"
+        if stdout or stderr:
+            return stdout or stderr
+        return f"(no output, exit code: {status})"
 
     def run(self, *args: Any, **kwargs: Any) -> str:
-        inp = self.args_schema(**kwargs)
-        cmd_parts = shlex.split(inp.cmd)
-        
+        """Execute the oc command."""
         try:
-            return self._run_oc(cmd_parts)
+            command = self.args_schema(**kwargs).cmd
+            return self._execute(command)
         except oc.OpenShiftPythonException as e:
             return str(e)
         except Exception as e:
-            return str(e)
+            return f"Error: {e}"

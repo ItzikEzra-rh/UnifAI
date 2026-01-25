@@ -1,36 +1,31 @@
+"""Factory for OcExecTool."""
+
 from typing import Any
+
 from elements.common.base_factory import BaseFactory
 from elements.common.exceptions import PluginConfigurationError
+
 from .config import OcExecToolConfig
-from .oc_exec import OcExecTool
 from .identifiers import Identifier
+from .oc_exec import OcExecTool
 
 
 class OcExecToolFactory(BaseFactory[OcExecToolConfig, OcExecTool]):
-    """
-    Factory for creating OcExecTool clients from an OcExecToolConfig.
-    """
+    """Factory for creating OcExecTool instances."""
 
     def accepts(self, cfg: OcExecToolConfig, element_type: str) -> bool:
         return element_type == Identifier.TYPE
 
     def create(self, cfg: OcExecToolConfig, **kwargs: Any) -> OcExecTool:
-        """
-        Instantiate an OcExecTool using validated config values.
-
-        :param cfg: Fully-validated OcExecToolConfig
-        :raises PluginConfigurationError: if instantiation fails
-        """
+        """Create an OcExecTool instance from config."""
         try:
-            client = OcExecTool(
+            return OcExecTool(
                 server=cfg.server,
                 token=cfg.token,
-                namespace=cfg.namespace,
-                insecure_skip_tls_verify=cfg.insecure_skip_tls_verify,
+                skip_tls_verify=cfg.skip_tls_verify,
             )
-            return client
         except Exception as e:
             raise PluginConfigurationError(
-                f"OcExecToolFactory.create() failed: {e}",
-                cfg.dict()
+                f"Failed to create OcExecTool: {e}",
+                cfg.model_dump()
             ) from e
