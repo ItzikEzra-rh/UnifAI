@@ -138,11 +138,13 @@ class DataSourceService:
     # Private Helpers
     # ══════════════════════════════════════════════════════════════════════════
 
-    def _enrich_with_pipeline_stats(self, sources: List[DataSource]) -> List[Dict[str, Any]]:
+    def enrich_with_pipeline_stats(self, sources: List[DataSource]) -> List[Dict[str, Any]]:
         """
         Enrich sources with pipeline stats.
         
-        Single source of truth for stats enrichment logic.
+        Public utility method for enriching sources with status and stats.
+        Can be used by specialized services (DocumentService, etc.).
+        
         Batch-optimized: makes one DB call regardless of source count.
         
         Args:
@@ -226,7 +228,7 @@ class DataSourceService:
     def list_with_stats(self, source_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """Get all sources enriched with pipeline stats."""
         sources = self._source_repo.find_all(source_type)
-        result = self._enrich_with_pipeline_stats(sources)
+        result = self.enrich_with_pipeline_stats(sources)
         return sorted(result, key=lambda x: x.get("created_at") or 0, reverse=True)
 
     def get_with_stats(self, source_id: str) -> Optional[Dict[str, Any]]:
@@ -245,107 +247,12 @@ class DataSourceService:
         if not source:
             return None
         
-        enriched = self._enrich_with_pipeline_stats([source])
+        enriched = self.enrich_with_pipeline_stats([source])
         return enriched[0]
 
     # ══════════════════════════════════════════════════════════════════════════
     # Paginated Query Methods (for dropdowns/selectors)
     # ══════════════════════════════════════════════════════════════════════════
-
-    def list_available_docs(
-        self,
-        cursor: Optional[str] = None,
-        limit: int = 50,
-        search: Optional[str] = None,
-    ) -> PaginatedResult[Dict[str, Any]]:
-        """
-        Get paginated list of DONE documents for dropdown selection.
-        
-        Filters to only successfully processed (DONE) documents and
-        normalizes the response format for UI consumption.
-        
-        Args:
-            cursor: Pagination cursor
-            limit: Max items to return
-            search: Filter by name prefix
-            
-        Returns:
-            PaginatedResult with normalized docs {id, name, upload_by}
-        """
-        # Get paginated sources
-        result = self._source_repo.find_paginated(
-            cursor=cursor,
-            limit=limit,
-            source_type="DOCUMENT",
-            search=search,
-        )
-        
-        # Convert to domain models for enrichment
-        sources = [DataSource.from_dict(d) for d in result.data]
-        enriched = self._enrich_with_pipeline_stats(sources)
-        
-        # Filter to DONE only and normalize
-        done_docs = [
-            {"id": s["source_id"], "name": s["source_name"], "upload_by": s["upload_by"]}
-            for s in enriched
-            if s.get("status") == "DONE"
-        ]
-        
-        return PaginatedResult(
-            data=done_docs,
-            next_cursor=result.next_cursor,
-            has_more=result.has_more,
-            total=len(done_docs),  # Approximate due to post-filtering
-        )
-
-    def get_available_tags(
-        self,
-        cursor: Optional[str] = None,
-        limit: int = 50,
-        search: Optional[str] = None,
-    ) -> PaginatedResult[Dict[str, str]]:
-        """
-        Get tags from DONE documents only (for UI dropdowns).
-        
-        Unlike get_distinct_tags(), this filters to only include tags
-        from successfully processed documents.
-        
-        Args:
-            cursor: Pagination cursor
-            limit: Max tags to return
-            search: Filter tags by prefix (case-insensitive)
-            
-        Returns:
-            PaginatedResult with tag options [{label, value}]
-        """
-        # Get all DONE sources
-        all_sources = self._source_repo.find_all(source_type="DOCUMENT")
-        enriched = self._enrich_with_pipeline_stats(all_sources)
-        done_sources = [s for s in enriched if s.get("status") == "DONE"]
-        
-        # Extract unique tags from DONE sources
-        all_tags = set()
-        for s in done_sources:
-            all_tags.update(s.get("tags", []))
-        
-        # Apply search filter (case-insensitive prefix match)
-        if search:
-            search_lower = search.lower()
-            all_tags = {t for t in all_tags if t.lower().startswith(search_lower)}
-        
-        # Sort alphabetically and paginate
-        sorted_tags = sorted(all_tags)
-        skip = int(cursor) if cursor and cursor.isdigit() else 0
-        page = sorted_tags[skip:skip + limit]
-        
-        next_cursor = str(skip + len(page)) if skip + len(page) < len(sorted_tags) else None
-        
-        return PaginatedResult(
-            data=[{"label": t, "value": t} for t in page],
-            next_cursor=next_cursor,
-            has_more=next_cursor is not None,
-            total=len(sorted_tags),
-        )
 
     def get_distinct_tags(
         self,

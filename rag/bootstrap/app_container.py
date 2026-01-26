@@ -263,6 +263,16 @@ def data_source_service():
 
 
 @lru_cache(maxsize=1)
+def document_service():
+    """Document-specific application service."""
+    from core.data_sources.types.document.app.document_service import DocumentService
+    return DocumentService(
+        data_source_service=data_source_service(),
+        source_repo=data_source_repository(),
+    )
+
+
+@lru_cache(maxsize=1)
 def doc_validators():
     """Document validators pipeline factory."""
     from core.data_sources.types.document.app.validators.factory import DocValidators

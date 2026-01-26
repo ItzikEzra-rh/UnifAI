@@ -4,6 +4,7 @@ from webargs import fields
 
 from bootstrap.app_container import (
     data_source_service,
+    document_service,
     file_storage,
     file_validation_service,
     retrieval_service,
@@ -116,7 +117,7 @@ def get_available_docs(cursor, limit, search):
     Used for dropdown selection in the UI.
     """
     try:
-        result = data_source_service().list_available_docs(
+        result = document_service().list_available_docs(
             cursor=cursor,
             limit=limit,
             search=search,
@@ -142,7 +143,7 @@ def get_available_tags(cursor, limit, search_regex):
     Response format matches backend: options array with label/value pairs.
     """
     try:
-        result = data_source_service().get_available_tags(
+        result = document_service().get_available_tags(
             cursor=cursor if cursor else None,
             limit=limit,
             search=search_regex,
