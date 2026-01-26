@@ -664,10 +664,6 @@ export default function ChatInterface({
           await navigator.clipboard.writeText(message.finalAnswer);
           setCopiedMessageId(message.id);
           setTimeout(() => setCopiedMessageId(null), 2000);
-          toast({
-            title: "Copied!",
-            description: "Response copied to clipboard",
-          });
         } catch (error) {
           console.error("Failed to copy:", error);
           toast({
