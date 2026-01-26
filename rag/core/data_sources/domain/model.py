@@ -27,7 +27,7 @@ class DataSource:
             pipeline_id=data.get("pipeline_id", ""),
             upload_by=data.get("upload_by", ""),
             created_at=data.get("created_at", datetime.now()),
-            last_sync_at=data.get("last_sync_at", datetime.now()),
+            last_sync_at=data.get("last_sync_at"),
             tags=data.get("tags", []),
             type_data=data.get("type_data", {}),
         )

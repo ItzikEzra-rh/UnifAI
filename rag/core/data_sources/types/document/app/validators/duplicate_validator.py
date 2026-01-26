@@ -1,5 +1,6 @@
 """MD5 Duplicate Validator - checks for content duplicates."""
 from typing import Optional, Any, Tuple, Protocol
+from shared.logger import logger
 
 from core.validation.domain.port import DataSourceValidator
 from core.validation.domain.model import ValidationIssue
@@ -27,7 +28,11 @@ class DuplicateValidator(DataSourceValidator):
                 return False, self.build_issue(
                     self.error_message.format(source_name=kwargs.get("source_name"))
                 )
-        except Exception:
+        except Exception as e:
+            logger.warning(
+                f"Duplicate check failed for {kwargs.get('source_name')}, "
+                f"allowing upload: {e}"
+            )
             return True, None
 
         return True, None

@@ -13,6 +13,7 @@ from typing import Optional, Any, Tuple
 
 from core.validation.domain.port import DataSourceValidator
 from core.validation.domain.model import ValidationIssue
+from shared.logger import logger
 
 
 # Maximum file size in bytes (50 MB default)
@@ -57,8 +58,11 @@ class SizeValidator(DataSourceValidator):
                 return False, self.build_issue(
                     self.error_message.format(size_mb=size_mb, max_mb=max_mb)
                 )
-        except Exception:
-            # If we can't get file size, let it pass and fail elsewhere if needed
+        except Exception as e:
+            logger.warning(
+                f"Size validation failed for {doc_path}, "
+                f"allowing upload: {e}"
+            )
             return True, None
         
         return True, None

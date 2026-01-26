@@ -212,7 +212,7 @@ class PaginatedQueryBuilder:
             else:
                 # Filter out null/empty values
                 pipeline.append({"$match": {
-                    distinct_field: {"$exists": True, "$ne": None, "$ne": ""}
+                    distinct_field: {"$exists": True, "$nin": [None, ""]}
                 }})
             
             pipeline.append({"$group": {"_id": f"${distinct_field}"}})
