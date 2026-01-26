@@ -8,7 +8,9 @@ from core.monitoring.domain.model import MetricsEntry, ErrorEntry, LogEntry
 from core.monitoring.domain.repository import MonitoringRepository
 from core.pipeline.domain.repository import PipelineRepository
 
-from core.common.app.parsing import LogParser, SlackLogParser, DocLogParser
+from core.monitoring.app.parsing.base import LogParser
+from core.data_sources.types.slack.app.log_parser import SlackLogParser
+from core.data_sources.types.document.app.log_parser import DocLogParser
 
 
 class MonitoringService:

@@ -7,8 +7,8 @@ from core.registration.domain.port import RegistrationPort
 from core.data_sources.domain.repository import DataSourceRepository
 from core.data_sources.types.document.app.registration import DocumentRegistration
 from core.data_sources.types.slack.app.registration import SlackRegistration
-from core.validation.app.validators.document import DocValidators
-from core.validation.app.validators.slack import SlackValidators
+from core.data_sources.types.document.app.validators.factory import DocValidators
+from core.data_sources.types.slack.app.validators.factory import SlackValidators
 
 
 class RegistrationFactory:
