@@ -1,13 +1,14 @@
+"""Slack connector - infrastructure adapter for Slack API."""
 import requests
 import time
 from typing import Dict, List, Optional, Any, Tuple
 from shared.logger import logger
-from infrastructure.config.slack_config_manager import SlackConfigManager
+from infrastructure.sources.slack.config import SlackConfigManager
 from core.connector.domain.base import DataConnector
 from core.data_sources.types.slack.domain.channel.model import SlackChannel
 from core.data_sources.types.slack.domain.channel.repository import SlackChannelRepository
-from infrastructure.connector.slack_thread_retriever import SlackThreadRetriever
-from infrastructure.connector.slack_thread_retriever_worker import ThreadRetrieverWorker
+from infrastructure.sources.slack.thread_retriever import SlackThreadRetriever
+from infrastructure.sources.slack.thread_retriever_worker import ThreadRetrieverWorker
 
 
 class SlackConnector(DataConnector):
@@ -473,4 +474,3 @@ class SlackConnector(DataConnector):
         logger.info(f"Successfully retrieved user info for user: {user_info.get('name', 'Unknown')}")
         
         return response
-

@@ -5,8 +5,8 @@ from core.pipeline.domain.port import SourcePipelinePort, PipelineContext
 from core.vector.domain.embedder import EmbeddingGenerator
 from core.vector.domain.model import VectorChunk
 from core.data_sources.types.document.domain.processor import DocumentProcessor
-from infrastructure.connector.document_connector import DocumentConnector
-from infrastructure.chunking.pdf_chunker import PDFChunkerStrategy
+from infrastructure.sources.document.connector import DocumentConnector
+from infrastructure.sources.document.chunker import PDFChunkerStrategy
 from shared.logger import logger
 
 from global_utils.utils import cleanup_file

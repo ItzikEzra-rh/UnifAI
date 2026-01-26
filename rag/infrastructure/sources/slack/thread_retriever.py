@@ -63,4 +63,3 @@ class SlackThreadRetriever:
         logger.info(f"Retrieved {len(messages)} messages from thread {thread_number}")
         
         return messages
-

@@ -1,14 +1,16 @@
+"""Document connector - infrastructure adapter for document processing."""
 import os
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 from shared.logger import logger
 from core.connector.domain.base import DataConnector
-from infrastructure.config.doc_config_manager import DocConfigManager
-from infrastructure.chunking.pdf_chunker import DoclingProcessingError
+from infrastructure.sources.document.config import DocConfigManager
+from infrastructure.sources.document.chunker import DoclingProcessingError
 from docling.document_converter import DocumentConverter, ConversionResult, InputFormat, PdfFormatOption
 from docling.datamodel.pipeline_options import PdfPipelineOptions
 from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend 
 from pypdfium2 import PdfiumError
+
 
 class DocumentConnector(DataConnector):
     """
@@ -298,4 +300,3 @@ class DocumentConnector(DataConnector):
         except Exception as e:
             logger.error(f"Error extracting document structure: {str(e)}")
             return None
-

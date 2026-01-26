@@ -5,9 +5,11 @@ import tiktoken
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from shared.logger import logger
 
+
 class DoclingProcessingError(Exception):
     """Raised when docling fails to extract meaningful content from documents"""
     pass
+
 
 class PDFChunkerStrategy(ContentChunker):
     """

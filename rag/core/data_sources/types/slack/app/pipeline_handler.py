@@ -5,8 +5,8 @@ from core.pipeline.domain.port import SourcePipelinePort, PipelineContext
 from core.vector.domain.embedder import EmbeddingGenerator
 from core.vector.domain.model import VectorChunk
 from core.data_sources.types.slack.domain.processor import SlackProcessor
-from infrastructure.connector.slack_connector import SlackConnector
-from infrastructure.chunking.slack_chunker import SlackChunkerStrategy
+from infrastructure.sources.slack.connector import SlackConnector
+from infrastructure.sources.slack.chunker import SlackChunkerStrategy
 from shared.logger import logger
 
 from global_utils.helpers.helpers import get_time_range_bounds_from_type_data

@@ -9,7 +9,7 @@ from bootstrap.app_container import (
     retrieval_service,
 )
 from global_utils.helpers.apiargs import from_query, from_body
-from infrastructure.config.doc_config_manager import DocConfigManager
+from infrastructure.sources.document.config import DocConfigManager
 from shared.logger import logger
 
 docs_bp = Blueprint("docs", __name__)

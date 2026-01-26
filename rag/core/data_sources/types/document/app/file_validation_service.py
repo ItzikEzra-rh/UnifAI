@@ -15,8 +15,8 @@ Matches backend/services/documents/file_validation_service.py logic.
 from typing import Any, Dict, List
 from dataclasses import dataclass
 
-from infrastructure.config.doc_config_manager import DocConfigManager
-from infrastructure.validation.name_duplicate_checker import NameDuplicateCheckerAdapter
+from infrastructure.sources.document.config import DocConfigManager
+from infrastructure.sources.document.validator.name_duplicate_checker import NameDuplicateCheckerAdapter
 from shared.logger import logger
 
 

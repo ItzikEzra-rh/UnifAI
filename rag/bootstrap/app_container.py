@@ -144,7 +144,7 @@ def document_processor():
 @lru_cache(maxsize=1)
 def slack_config_manager():
     """Slack configuration manager with tokens from AppConfig."""
-    from infrastructure.config.slack_config_manager import SlackConfigManager
+    from infrastructure.sources.slack.config import SlackConfigManager
     from config.app_config import AppConfig
     
     config = AppConfig.get_instance()
@@ -190,7 +190,7 @@ def celery_slack_event_dispatcher():
 @lru_cache(maxsize=None)
 def slack_connector(project_id: str):
     """Slack connector for a specific project."""
-    from infrastructure.connector.slack_connector import SlackConnector
+    from infrastructure.sources.slack.connector import SlackConnector
     return SlackConnector(
         config_manager=slack_config_manager(),
         channel_repo=slack_channel_repository(),
@@ -201,7 +201,7 @@ def slack_connector(project_id: str):
 @lru_cache(maxsize=1)
 def document_connector():
     """Document connector for PDF and other document formats."""
-    from infrastructure.connector.document_connector import DocumentConnector
+    from infrastructure.sources.document.connector import DocumentConnector
     return DocumentConnector()
 
 
@@ -212,7 +212,7 @@ def document_connector():
 @lru_cache(maxsize=1)
 def slack_chunker():
     """Slack conversation chunker with default settings."""
-    from infrastructure.chunking.slack_chunker import SlackChunkerStrategy
+    from infrastructure.sources.slack.chunker import SlackChunkerStrategy
     return SlackChunkerStrategy(
         max_tokens_per_chunk=500,
         overlap_tokens=50,
@@ -223,7 +223,7 @@ def slack_chunker():
 @lru_cache(maxsize=1)
 def pdf_chunker():
     """PDF/Document chunker with default settings."""
-    from infrastructure.chunking.pdf_chunker import PDFChunkerStrategy
+    from infrastructure.sources.document.chunker import PDFChunkerStrategy
     return PDFChunkerStrategy(
         max_tokens_per_chunk=500,
         overlap_tokens=50,
@@ -270,9 +270,9 @@ def doc_validators():
     from core.data_sources.types.document.app.validators.extension_validator import ExtensionValidator
     from core.data_sources.types.document.app.validators.size_validator import SizeValidator
     from core.data_sources.types.document.app.validators.name_duplicate_validator import NameDuplicateValidator
-    from infrastructure.config.doc_config_manager import DocConfigManager
-    from infrastructure.validation.document_duplicate_checker import DocumentDuplicateCheckerAdapter
-    from infrastructure.validation.name_duplicate_checker import NameDuplicateCheckerAdapter
+    from infrastructure.sources.document.config import DocConfigManager
+    from infrastructure.sources.document.validator.duplicate_checker import DocumentDuplicateCheckerAdapter
+    from infrastructure.sources.document.validator.name_duplicate_checker import NameDuplicateCheckerAdapter
     
     config = DocConfigManager()
     
@@ -303,7 +303,7 @@ def slack_validators():
     """Slack validators pipeline factory."""
     from core.data_sources.types.slack.app.validators.factory import SlackValidators
     from core.data_sources.types.slack.app.validators.channel_bot_installation_validator import ChannelBotInstallationValidator
-    from infrastructure.validation.bot_installation_checker import BotInstallationCheckerAdapter, MembershipUpdaterAdapter
+    from infrastructure.sources.slack.validator.bot_installation_checker import BotInstallationCheckerAdapter, MembershipUpdaterAdapter
     
     # TODO: Inject proper Slack connector based on project (None for now - graceful fallback)
     bot_checker = BotInstallationCheckerAdapter(slack_connector=None)
@@ -324,8 +324,8 @@ def file_validation_service(username: str):
     Note: Not cached because it's user-specific (different username each time).
     """
     from core.data_sources.types.document.app.file_validation_service import FileValidationService
-    from infrastructure.config.doc_config_manager import DocConfigManager
-    from infrastructure.validation.name_duplicate_checker import NameDuplicateCheckerAdapter
+    from infrastructure.sources.document.config import DocConfigManager
+    from infrastructure.sources.document.validator.name_duplicate_checker import NameDuplicateCheckerAdapter
     
     return FileValidationService(
         username=username,

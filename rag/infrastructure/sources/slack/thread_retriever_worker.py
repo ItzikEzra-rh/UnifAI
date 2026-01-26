@@ -2,7 +2,7 @@
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Dict, Any, Optional
 
-from infrastructure.connector.slack_thread_retriever import SlackThreadRetriever
+from infrastructure.sources.slack.thread_retriever import SlackThreadRetriever
 from shared.logger import logger
 
 
@@ -75,4 +75,3 @@ class ThreadRetrieverWorker:
                 logger.exception(f"Exception while retrieving thread replies: {e}")
         self.executor.shutdown(wait=True)
         return results
-
