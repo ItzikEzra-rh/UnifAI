@@ -1,6 +1,6 @@
 """PDF chunking strategy implementation."""
 from typing import Dict, List, Any
-from domain.vector.chunker import ContentChunker
+from core.vector.domain.chunker import ContentChunker
 import tiktoken
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from shared.logger import logger

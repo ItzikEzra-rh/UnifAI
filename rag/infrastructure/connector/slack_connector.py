@@ -3,9 +3,9 @@ import time
 from typing import Dict, List, Optional, Any, Tuple
 from shared.logger import logger
 from infrastructure.config.slack_config_manager import SlackConfigManager
-from domain.connector.data_connector import DataConnector
-from domain.slack_channel.model import SlackChannel
-from domain.slack_channel.repository import SlackChannelRepository
+from core.connector.domain.base import DataConnector
+from core.data_sources.types.slack.domain.channel.model import SlackChannel
+from core.data_sources.types.slack.domain.channel.repository import SlackChannelRepository
 from infrastructure.connector.slack_thread_retriever import SlackThreadRetriever
 from infrastructure.connector.slack_thread_retriever_worker import ThreadRetrieverWorker
 

@@ -11,7 +11,7 @@ from core.registration.domain.model import DocumentSourceData
 from core.data_sources.domain.repository import DataSourceRepository
 from core.registration.app.base_registration import BaseRegistration
 from core.validation.app.validator import Validator
-from core.validation.app.validators.document import DocValidators
+from core.data_sources.types.document.app.validators.factory import DocValidators
 from global_utils.utils import secure_filename, compute_file_md5, cleanup_file
 
 

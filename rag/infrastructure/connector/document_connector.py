@@ -2,7 +2,7 @@ import os
 from typing import Dict, List, Any, Optional
 from pathlib import Path
 from shared.logger import logger
-from domain.connector.data_connector import DataConnector
+from core.connector.domain.base import DataConnector
 from infrastructure.config.doc_config_manager import DocConfigManager
 from infrastructure.chunking.pdf_chunker import DoclingProcessingError
 from docling.document_converter import DocumentConverter, ConversionResult, InputFormat, PdfFormatOption

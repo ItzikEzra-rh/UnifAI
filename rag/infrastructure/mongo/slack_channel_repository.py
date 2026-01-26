@@ -3,9 +3,9 @@ from typing import Optional, List, Dict, Any
 
 from pymongo.collection import Collection
 
-from domain.slack_channel.model import SlackChannel
-from domain.slack_channel.repository import SlackChannelRepository
-from domain.pagination import PaginatedResult
+from core.data_sources.types.slack.domain.channel.model import SlackChannel
+from core.data_sources.types.slack.domain.channel.repository import SlackChannelRepository
+from core.pagination.domain.model import PaginatedResult
 from infrastructure.mongo.pagination_builder import PaginatedQueryBuilder
 from shared.logger import logger
 

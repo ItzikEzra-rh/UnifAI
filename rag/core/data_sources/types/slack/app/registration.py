@@ -9,7 +9,7 @@ from core.registration.domain.model import SlackSourceData
 from core.data_sources.domain.repository import DataSourceRepository
 from core.registration.app.base_registration import BaseRegistration
 from core.validation.app.validator import Validator
-from core.validation.app.validators.slack import SlackValidators
+from core.data_sources.types.slack.app.validators.factory import SlackValidators
 from global_utils.helpers.helpers import calculate_date_range
 
 

@@ -2,7 +2,7 @@
 import uuid
 from typing import Dict, Any
 
-from domain.slack_event.dispatcher import SlackEventDispatcher, SlackEventTaskResult
+from core.data_sources.types.slack.domain.event.dispatcher import SlackEventDispatcher, SlackEventTaskResult
 from global_utils.celery_app.helpers import send_task
 from shared.logger import logger
 

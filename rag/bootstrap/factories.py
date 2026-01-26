@@ -6,8 +6,8 @@ from typing import Dict, Any, Optional
 
 from infrastructure.embedding.sentence_transformer_embedder import SentenceTransformerEmbedding
 from infrastructure.qdrant.qdrant_vector_repository import QdrantVectorRepository
-from domain.vector.embedder import EmbeddingGenerator
-from domain.vector.repository import VectorRepository
+from core.vector.domain.embedder import EmbeddingGenerator
+from core.vector.domain.repository import VectorRepository
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 

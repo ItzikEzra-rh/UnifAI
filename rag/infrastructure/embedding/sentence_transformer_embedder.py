@@ -1,6 +1,6 @@
 import time
 from typing import Dict, List, Any, Optional
-from domain.vector.embedder import EmbeddingGenerator
+from core.vector.domain.embedder import EmbeddingGenerator
 from shared.logger import logger
 import numpy as np
 from sentence_transformers import SentenceTransformer

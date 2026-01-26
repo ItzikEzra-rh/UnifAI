@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, List
 
 from pymongo.collection import Collection
 
-from domain.pagination import PaginatedResult
+from core.pagination.domain.model import PaginatedResult
 from shared.logger import logger
 
 
