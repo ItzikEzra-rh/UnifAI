@@ -6,6 +6,7 @@ import JiraIntegration from "@/pages/JiraIntegration";
 import AgenticWorkflows from "@/pages/AgenticWorkflows";
 import AgentRepository from "@/pages/AgentRepository";
 import AgenticChats from "@/pages/AgenticChats";
+import AgenticTemplates from "@/pages/AgenticTemplates";
 import GetToKnow from "@/pages/GetToKnow";
 import NotFound from "@/pages/not-found";
 import { useEffect } from "react";
@@ -24,7 +25,7 @@ import GuidesPage from "./components/guides/GuidesPage";
 import PublicChat from "./components/agentic-ai/chat/PublicChat";
 
 // Paths that require AgenticAIProvider
-const AGENTIC_PATHS = ['/agentic-overview', '/agentic-ai', '/inventory', '/agentic-chats'];
+const AGENTIC_PATHS = ['/agentic-overview', '/agentic-ai', '/inventory', '/agentic-chats', '/templates'];
 
 // Routes component that conditionally wraps agentic routes with the shared provider
 function AppRoutes() {
@@ -40,6 +41,7 @@ function AppRoutes() {
           <Route path="/agentic-ai" component={AgenticWorkflows} />
           <Route path="/inventory" component={AgentRepository} />
           <Route path="/agentic-chats" component={AgenticChats} />
+          <Route path="/templates" component={AgenticTemplates} />
         </Switch>
       </AgenticAIProvider>
     );

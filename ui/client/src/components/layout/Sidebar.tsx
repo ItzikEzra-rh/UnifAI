@@ -5,7 +5,7 @@ import {
   FaTachometerAlt, FaCogs, FaFileAlt, 
   FaChartLine, FaUserShield, FaCog, FaSignOutAlt,
   FaRobot, FaFile, FaChevronLeft, FaChevronRight,
-  FaInfoCircle, FaBook, FaComment
+  FaInfoCircle, FaBook, FaComment, FaPuzzlePiece
 } from "react-icons/fa";
 import { FaJira, FaSlack, FaBars } from "react-icons/fa";
 import { motion } from "framer-motion";
@@ -177,6 +177,14 @@ export default function Sidebar() {
             label="Agentic Chats" 
             to="/agentic-chats"
             isActive={location === '/agentic-chats'}
+            status={null}
+            isCollapsed={isCollapsed}
+          />
+          <NavItem 
+            icon={<FaPuzzlePiece className="sidebar-icon" />} 
+            label="Agentic AI Templates" 
+            to="/templates"
+            isActive={location === '/templates'}
             status={null}
             isCollapsed={isCollapsed}
           />
