@@ -99,8 +99,8 @@ class DocLogParser(LogParser):
             The embedding count or None if not found
         """
         patterns = [
-            r'Starting embedding generation for (\d+) chunks',
-            r'Storing (\d+) embeddings in',
+            # r'Starting embedding generation for (\d+) chunks',
+            # r'Storing (\d+) embeddings in',
             r'Stored (\d+) embeddings in'
         ]
         
