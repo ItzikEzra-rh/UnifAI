@@ -3,26 +3,13 @@
  * Handles normalizing API results into a consistent option format.
  */
 
+import { resolvePath } from './arrayFieldHelpers';
+
 export interface OptionItem {
   label: string;         // Display name (e.g., "My Document")
   value: string;         // Internal ID for deduplication (e.g., "abc123")
   originalObject: any;   // Full object from API (preserved but not used for storage)
 }
-
-/**
- * Resolve a dot-notation path on an object.
- * Example: resolvePath({a: {b: "hello"}}, "a.b") => "hello"
- */
-const resolvePath = (obj: any, path: string | undefined): any => {
-  if (!obj || !path) return undefined;
-  const segments = path.split('.');
-  let current = obj;
-  for (const segment of segments) {
-    if (current == null || typeof current !== 'object') return undefined;
-    current = current[segment];
-  }
-  return current;
-};
 
 /**
  * Extract the display name from an object.

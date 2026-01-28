@@ -100,9 +100,9 @@ class ApiHint(BaseModel):
         None,
         description="Target field in response for validation hints"
     )
-    label_field: Optional[str] = Field(
+    display_field: Optional[str] = Field(
         None,
-        description="Dot-notation path to display label (e.g., 'items.name')"
+        description="Dot-notation path to display value (e.g., 'name' or 'items.name'). UI stores full object and uses this to display."
     )
     value_field: Optional[str] = Field(
         None,

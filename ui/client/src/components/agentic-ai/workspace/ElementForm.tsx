@@ -78,7 +78,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     });
   };
 
-  const handlePopulateResult = (fieldName: string, results: string[] | any[], multiSelect: boolean) => {
+  const handlePopulateResult = (fieldName: string, results: any[], multiSelect: boolean) => {
     setPopulateResults(prev => ({
       ...prev,
       [fieldName]: results
@@ -90,9 +90,9 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       // Multi-select: always store as array
       handleInputChange(fieldName, results);
     } else {
-      // Single select: store single item (first in array, or empty)
-      const singleResult = Array.isArray(results) && results.length > 0 ? results[0] : results;
-      handleInputChange(fieldName, singleResult || "");
+      // Single select: store single item (first in array, or empty string)
+      const singleResult = results.length > 0 ? results[0] : "";
+      handleInputChange(fieldName, singleResult);
     }
   };
 

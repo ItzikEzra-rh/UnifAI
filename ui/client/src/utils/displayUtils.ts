@@ -19,7 +19,7 @@ export const isDisplayObject = (obj: any): boolean => {
   if ('_display' in obj) return true;
   
   // Backwards compatibility: known display patterns
-  // These should be phased out in favor of _display marker
+  // These legacy patterns should be phased out in favor of explicit _display marker.
   const hasLegacyPattern = ('name' in obj && ('id' in obj || 'value' in obj)) ||
                            ('label' in obj && 'value' in obj);
   return hasLegacyPattern;

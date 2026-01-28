@@ -58,20 +58,6 @@ def convert_doc_ids(old: list, docs_map: dict) -> list:
     return out
 
 
-def fetch_sources(db, ids: List[str]) -> Dict[str, str]:
-    if not ids:
-        return {}
-
-    print(f"Resolving {len(ids)} documents from Mongo data_sources.sources…")
-    col = db[SOURCES_COLLECTION]
-
-    result = {}
-    for src in col.find({"source_id": {"$in": ids}}, {"source_id": 1, "source_name": 1}):
-        result[src["source_id"]] = src.get("source_name", src["source_id"])
-
-    return result
-
-
 # ────────────────────────────────────────────────────────────────
 # Migration
 # ────────────────────────────────────────────────────────────────
