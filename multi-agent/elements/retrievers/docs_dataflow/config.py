@@ -31,7 +31,7 @@ class DocsDataflowRetrieverConfig(BaseRetrieverConfig):
         description="Request timeout in seconds"
     )
 
-    doc_ids: Optional[List[Union[dict, str]]] = Field(
+    docs: Optional[List[Union[dict, str]]] = Field(
         default=None,
         description="Filter results to specific documents",
         json_schema_extra=ActionHint(
@@ -41,7 +41,6 @@ class DocsDataflowRetrieverConfig(BaseRetrieverConfig):
             selection_type=SelectionType.MANUAL,
             field_mapping="documents",
             display_field="name",
-            value_field="id",
             multi_select=True,
             pagination=True,
             search=True,

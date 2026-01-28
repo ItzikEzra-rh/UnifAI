@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 """
-Migration Script: Convert doc_ids field from string array to object array.
+Migration Script: Convert doc_ids field from string array to object array,
+and rename the field from doc_ids to docs.
 
 Old:
     doc_ids: ["id1", "id2"]
 
 New:
-    doc_ids: [{"id": "id1", "name": "Document 1"}, ...]
+    docs: [{"id": "id1", "name": "Document 1"}, ...]
 """
 
 import argparse
@@ -40,9 +41,9 @@ CATEGORY = "retrievers"
 # ────────────────────────────────────────────────────────────────
 
 def needs_migration(cfg: dict) -> bool:
-    for d in cfg.get("doc_ids", []) or []:
-        if isinstance(d, str):
-            return True
+    # Needs migration if doc_ids field exists (should be renamed to docs)
+    if "doc_ids" in cfg:
+        return True
     return False
 
 
@@ -79,7 +80,8 @@ def migrate(dry_run: bool):
     needed_ids = set()
     for r in resources:
         if needs_migration(r.get("cfg_dict", {})):
-            for d in r.get("cfg_dict", {}).get("doc_ids", []):
+            doc_ids = r.get("cfg_dict", {}).get("doc_ids") or []
+            for d in doc_ids:
                 if isinstance(d, str):
                     needed_ids.add(d)
 
@@ -108,19 +110,22 @@ def migrate(dry_run: bool):
             continue
 
         old_ids = cfg.get("doc_ids", [])
-        new_ids = convert_doc_ids(old_ids, docs_map)
+        new_docs = convert_doc_ids(old_ids, docs_map)
 
-        print(f"  Old: {old_ids}")
-        print(f"  New: {new_ids}")
+        print(f"  Old doc_ids: {old_ids}")
+        print(f"  New docs: {new_docs}")
 
         if dry_run:
-            print("  [DRY RUN] Would update")
+            print("  [DRY RUN] Would update (rename doc_ids -> docs)")
             stats["migrated"] += 1
             continue
 
         retrievers.update_one(
             {"_id": r["_id"]},
-            {"$set": {"cfg_dict.doc_ids": new_ids, "updated": datetime.utcnow()}}
+            {
+                "$set": {"cfg_dict.docs": new_docs, "updated": datetime.utcnow()},
+                "$unset": {"cfg_dict.doc_ids": ""}
+            }
         )
 
         print("  ✓ Migrated")
