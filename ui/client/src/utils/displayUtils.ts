@@ -71,7 +71,8 @@ export const getDisplayValueFromItem = (
     if (item.$ref && fallbackFn) return fallbackFn(item);
     
     // Use getDisplayValue for other objects to extract name/id/value
-    if (isDisplayObject(item)) return getDisplayValue(item);} 
+    if (isDisplayObject(item)) return getDisplayValue(item);
+  } 
   
   return String(item);
 };
