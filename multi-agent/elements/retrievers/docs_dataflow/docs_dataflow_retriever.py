@@ -1,4 +1,4 @@
-from typing import List, Optional, Union
+from typing import Dict, List, Optional
 from elements.retrievers.common.base_retriever import BaseRetriever
 from elements.providers.dataflow_client.config import DataflowProviderConfig
 from elements.providers.dataflow_client.dataflow_provider_factory import DataflowProviderFactory
@@ -15,7 +15,7 @@ class DocsDataflowRetriever(BaseRetriever):
             top_k_results: int,
             threshold: float,
             timeout: float = 30.0,
-            docs: Optional[List[Union[dict, str]]] = None,
+            docs: Optional[List[Dict]] = None,
             tags: Optional[List[str]] = None,
     ):
         self.threshold = threshold
@@ -31,8 +31,8 @@ class DocsDataflowRetriever(BaseRetriever):
     def retrieve(self, query: str) -> List[dict]:
         context = get_current_context()
 
-        # Extract document IDs from docs list (handles both dict and string items)
-        doc_ids = [doc.get('id') if isinstance(doc, dict) else doc for doc in (self.docs or [])] or None
+        # Extract document IDs from docs list
+        doc_ids = [doc['id'] for doc in self.docs] if self.docs else None
 
         response = self._provider.query(
             query=query,
