@@ -10,7 +10,7 @@ from resources.registry import ResourcesRegistry
 from blueprints.models.blueprint import BlueprintDraft, Resource, StepDef
 from blueprints.service import BlueprintService
 from catalog.element_registry import ElementRegistry
-from core.ref import RefWalker
+from core.ref import RefWalker, RefRemapper
 from core.ref.models import Ref
 from core.enums import ResourceCategory
 
@@ -236,8 +236,8 @@ class ShareCloner:
             original_doc.type, original_doc.name
         )
 
-        # Clone config with reference rewriting
-        new_cfg_dict = self._walk_and_replace(original_doc.cfg_dict, rid_mapping)
+        # Clone config with reference rewriting (using shared utility)
+        new_cfg_dict = RefRemapper.remap(original_doc.cfg_dict, rid_mapping)
 
         # Map dependencies to new RIDs
         new_nested_refs = [
@@ -299,16 +299,8 @@ class ShareCloner:
         )
 
     def _clone_resource_with_refs(self, resource: Resource, rid_mapping: Dict[str, str]) -> Resource:
-        """Clone a resource and replace any Ref instances."""
-        new_resource = resource.model_copy(deep=True)
-
-        # Handle all fields that might contain refs (rid, config, name, type, etc.)
-        for field_name in new_resource.model_fields:
-            field_value = getattr(new_resource, field_name, None)
-            if field_value is not None:
-                setattr(new_resource, field_name, self._walk_and_replace(field_value, rid_mapping))
-
-        return new_resource
+        """Clone a resource and replace any Ref instances using shared utility."""
+        return RefRemapper.remap(resource, rid_mapping)
 
     def _clone_plan(self, plan: List[StepDef], rid_mapping: Dict[str, str]) -> List[StepDef]:
         """Clone plan with proper UID mapping for step references."""
@@ -339,8 +331,8 @@ class ShareCloner:
                 if field_name not in manually_handled_fields:
                     field_value = getattr(step, field_name, None)
                     if field_value is not None:
-                        # First replace RIDs, then replace UIDs
-                        updated_value = self._walk_and_replace(field_value, rid_mapping)
+                        # First replace RIDs using shared utility, then replace UIDs
+                        updated_value = RefRemapper.remap(field_value, rid_mapping)
                         updated_value = self._replace_step_uids(updated_value, uid_mapping)
                         setattr(step, field_name, updated_value)
         
@@ -370,61 +362,5 @@ class ShareCloner:
         else:
             return obj
 
-    def _walk_and_replace(self, node: Any, rid_mapping: Dict[str, str]) -> Any:
-        """Walk object graph and replace refs, following RefWalker's traversal pattern."""
-        if isinstance(node, Ref):
-            return self._clone_ref_with_mapping(node, rid_mapping)
-
-        elif isinstance(node, BaseModel):
-            # Use RefWalker's pattern: iterate over __dict__.values()
-            new_node = node.model_copy(deep=True)
-            for field_name, field_value in new_node.__dict__.items():
-                setattr(new_node, field_name, self._walk_and_replace(field_value, rid_mapping))
-            return new_node
-
-        elif isinstance(node, dict):
-            # Use RefWalker's pattern: iterate over values
-            return {k: self._walk_and_replace(v, rid_mapping) for k, v in node.items()}
-
-        elif isinstance(node, (list, tuple)):
-            # Use RefWalker's pattern: handle both list and tuple
-            result = [self._walk_and_replace(v, rid_mapping) for v in node]
-            return tuple(result) if isinstance(node, tuple) else result
-
-        elif isinstance(node, str):
-            return self._replace_string_refs(node, rid_mapping)
-
-        else:
-            return node
-
-    def _clone_ref_with_mapping(self, ref_obj: Ref, rid_mapping: Dict[str, str]) -> Ref:
-        """Clone a Ref object with updated RID if mapped."""
-        old_rid = ref_obj.ref
-        if old_rid not in rid_mapping:
-            return ref_obj
-
-        new_rid = rid_mapping[old_rid]
-
-        # Create new Ref with updated rid, preserving the ref format and type
-        new_ref = ref_obj.__class__(ref_obj.root)
-        if ref_obj.is_external_ref():
-            new_ref.root = f"$ref:{new_rid}"
-        else:
-            new_ref.root = new_rid
-
-        return new_ref
-
-    def _replace_string_refs(self, text: str, rid_mapping: Dict[str, str]) -> str:
-        """Replace reference patterns in a string."""
-        if not rid_mapping:
-            return text
-
-        result = text
-        for old_rid, new_rid in rid_mapping.items():
-            # Replace $ref: patterns
-            result = result.replace(f"$ref:{old_rid}", f"$ref:{new_rid}")
-            # Handle bare refs if they appear as full strings
-            if result == old_rid:
-                result = new_rid
-
-        return result
+    # NOTE: _walk_and_replace, _clone_ref_with_mapping, and _replace_string_refs
+    # have been replaced by the shared RefRemapper utility in core/ref/remapper.py

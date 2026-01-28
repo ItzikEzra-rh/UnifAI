@@ -11,7 +11,7 @@ from elements.retrievers.types import RetrieversSpec
 from elements.conditions.types import ConditionSpec
 from elements.tools.types import ToolsSpec
 from elements.providers.types import ProviderSpec
-from core.ref.models import Ref, NodeRef
+from core.ref.models import Ref, NodeRef, ConditionRef
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Author-time helper types
@@ -57,7 +57,7 @@ class StepDef(BaseModel):
     )
     after: str | List[str] | None = None  # depends-on
     node: NodeRef  # <-- node reference
-    exit_condition: str | None = None
+    exit_condition: ConditionRef | None = None
     branches: dict | None = None
     meta: StepMeta = Field(default_factory=StepMeta)
 
