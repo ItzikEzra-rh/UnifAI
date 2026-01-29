@@ -8,19 +8,24 @@ import asyncio
 import time
 from typing import Optional, Dict, Any
 
-from pydantic import HttpUrl
+from pydantic import HttpUrl, Field
 
 from actions.common.base_action import BaseAction
 from actions.common.action_models import BaseActionInput, BaseActionOutput, ActionType
 from elements.providers.mcp_server_client.mcp_server_client import McpServerClient
 from elements.providers.mcp_server_client.identifiers import Identifier
 from core.enums import ResourceCategory
+from core.field_hints import SecretHint
 
 
 # Input/Output models for this action
 class ValidateConnectionInput(BaseActionInput):
     """Input for MCP connection validation"""
     sse_endpoint: HttpUrl
+    bearer_token: Optional[str] = Field(
+        default=None,
+        description="Bearer token for MCP server authentication"
+    )
 
 
 class ValidateConnectionOutput(BaseActionOutput):
@@ -96,8 +101,13 @@ class ValidateConnectionAction(BaseAction):
         start_time = time.time()
         
         try:
-            # Create client and test connection
-            client = McpServerClient(input_data.sse_endpoint)
+            # Build headers from bearer_token if provided
+            headers = None
+            if input_data.bearer_token:
+                headers = {"Authorization": f"Bearer {input_data.bearer_token}"}
+            
+            # Create client and test connection with auth headers
+            client = McpServerClient(input_data.sse_endpoint, headers=headers)
             
             async with client:
                 # Test connection by listing tools with timeout

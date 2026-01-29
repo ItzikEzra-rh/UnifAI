@@ -1,5 +1,5 @@
 from typing import List, Optional, Dict, Any
-from pydantic import BaseModel, HttpUrl
+from pydantic import BaseModel, HttpUrl, Field
 from actions.common.base_action import BaseAction
 from actions.common.action_models import BaseActionInput, BaseActionOutput, ActionType
 from elements.providers.mcp_server_client.mcp_server_client import McpServerClient
@@ -11,6 +11,10 @@ from core.enums import ResourceCategory
 class GetToolsNamesInput(BaseActionInput):
     """Input for MCP tools discovery"""
     sse_endpoint: HttpUrl
+    bearer_token: Optional[str] = Field(
+        default=None,
+        description="Bearer token for MCP server authentication"
+    )
 
 
 class GetToolsNamesOutput(BaseActionOutput):
@@ -50,8 +54,13 @@ class GetToolsNamesAction(BaseAction):
             Discovery result with tool names and count
         """
         try:
-            # Create client and discover tools
-            client = McpServerClient(input_data.sse_endpoint)
+            # Build headers from bearer_token if provided
+            headers = None
+            if input_data.bearer_token:
+                headers = {"Authorization": f"Bearer {input_data.bearer_token}"}
+            
+            # Create client and discover tools with auth headers
+            client = McpServerClient(input_data.sse_endpoint, headers=headers)
             
             async with client:
                 tools = await client.tools.get_tools()
