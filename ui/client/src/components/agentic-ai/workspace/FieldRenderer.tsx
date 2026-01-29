@@ -294,6 +294,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
             elementActions={elementActions}
             selectedElementType={elementType}
             isRequired={isRequired}
+            configValues={formData}
             onValidationChange={onValidationChange}
           />
         )}
@@ -391,6 +392,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
               elementActions={elementActions}
               selectedElementType={elementType}
               isRequired={isRequired}
+              configValues={formData}
               onValidationChange={onValidationChange}
             />
           )}
@@ -612,6 +614,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
           elementActions={elementActions}
           selectedElementType={elementType}
           isRequired={isRequired}
+          configValues={formData}
           onValidationChange={onValidationChange}
         />
       )}
@@ -688,6 +691,7 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
         elementActions={elementActions}
         selectedElementType={elementType}
         isRequired={isRequired}
+        configValues={formData}
         onValidationChange={onValidationChange}
       />
     )}
