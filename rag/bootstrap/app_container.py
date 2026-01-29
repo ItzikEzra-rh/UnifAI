@@ -108,7 +108,7 @@ def vector_repository(collection_name: str):
 @lru_cache(maxsize=1)
 def slack_channel_repository():
     """Slack channel repository (Mongo adapter)."""
-    from infrastructure.mongo.slack_channel_repository import MongoSlackChannelRepository
+    from infrastructure.mongo.data_sources.slack_channel_repository import MongoSlackChannelRepository
     return MongoSlackChannelRepository(data_sources_db()["slack_channels"])
 
 
