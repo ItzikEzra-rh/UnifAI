@@ -1,70 +1,73 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'wouter';
+import axios from "../http/axiosAgentConfig";
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   TemplateCatalog,
   TemplateDetailView,
-  DynamicFormRenderer,
   InstantiationProgress
 } from '@/components/agentic-ai/templates';
 import { useTemplates } from '@/hooks/use-templates';
-import { Template, TemplateFormData } from '@/types/templates';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { TemplateListItem, TemplateFormData } from '@/types/templates';
 
-type ViewMode = 'catalog' | 'detail' | 'form';
+type ViewMode = 'catalog' | 'detail';
 
 export default function AgenticTemplates() {
   const [, setLocation] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('catalog');
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const { user } = useAuth();
+  const { toast } = useToast();
 
   const {
     templates,
+    selectedTemplate,
+    normalizedFields,
     isLoading,
     error,
     instantiationStatus,
     instantiationResult,
     fetchTemplates,
-    instantiateTemplate,
+    fetchTemplateDetail,
+    materialize,
     resetInstantiation,
-    getCategories
+    getCategories,
+    setSelectedTemplate,
+    getValidationResults
   } = useTemplates();
 
   useEffect(() => {
     fetchTemplates();
   }, [fetchTemplates]);
 
-  const handleSelectTemplate = useCallback((template: Template) => {
+  const handleSelectTemplate = useCallback(async (template: TemplateListItem) => {
     setSelectedTemplate(template);
     setViewMode('detail');
-  }, []);
+    
+    await fetchTemplateDetail(template.template_id);
+  }, [setSelectedTemplate, fetchTemplateDetail]);
 
   const handleBackToCatalog = useCallback(() => {
     setViewMode('catalog');
     setSelectedTemplate(null);
-  }, []);
+  }, [setSelectedTemplate]);
 
-  const handleOpenForm = useCallback(() => {
-    setIsFormOpen(true);
-  }, []);
-
-  const handleCloseForm = useCallback(() => {
-    setIsFormOpen(false);
-  }, []);
-
-  const handleSubmitForm = useCallback(async (data: TemplateFormData) => {
-    if (!selectedTemplate) return;
+  const handleGenerateWorkflow = useCallback(async (data: TemplateFormData) => {
+    if (!selectedTemplate || !user) return;
     
-    setIsFormOpen(false);
-    await instantiateTemplate(selectedTemplate.id, data);
-  }, [selectedTemplate, instantiateTemplate]);
+    // Generate a blueprint name based on template name
+    const blueprintName = `${selectedTemplate.name} - ${new Date().toLocaleDateString()}`;
+    
+    await materialize(selectedTemplate.template_id, data, user.username, blueprintName);
+  }, [selectedTemplate, materialize, user]);
 
   const handleRetryInstantiation = useCallback(() => {
     resetInstantiation();
-    setIsFormOpen(true);
   }, [resetInstantiation]);
 
   const handleNavigateToWorkflow = useCallback(() => {
@@ -72,16 +75,49 @@ export default function AgenticTemplates() {
     setLocation('/agentic-ai');
   }, [resetInstantiation, setLocation]);
 
-  const handleNavigateToChat = useCallback(() => {
-    resetInstantiation();
-    setLocation('/agentic-chats');
-  }, [resetInstantiation, setLocation]);
+  const handleNavigateToChat = useCallback(async () => {
+    if (!instantiationResult?.blueprint_id || !user) {
+      toast({
+        title: 'Error',
+        description: 'Could not create chat session. Missing workflow or user information.',
+        variant: 'destructive'
+      });
+      return;
+    }
+
+    setIsCreatingSession(true);
+    try {
+      // Create a new chat session with the blueprint
+      await axios.post('/sessions/user.session.create', {
+        blueprintId: instantiationResult.blueprint_id,
+        userId: user.username,
+      });
+
+      resetInstantiation();
+      setLocation('/agentic-chats');
+    } catch (err) {
+      console.error('Error creating chat session:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to create chat session. Please try again.',
+        variant: 'destructive'
+      });
+    } finally {
+      setIsCreatingSession(false);
+    }
+  }, [instantiationResult, user, resetInstantiation, setLocation, toast]);
 
   const handleCloseProgress = useCallback(() => {
     resetInstantiation();
   }, [resetInstantiation]);
 
   const categories = getCategories();
+
+  const isGenerating = instantiationStatus !== 'idle' && 
+                       instantiationStatus !== 'completed' && 
+                       instantiationStatus !== 'failed';
+
+  const validationResults = getValidationResults();
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -126,8 +162,10 @@ export default function AgenticTemplates() {
                   <TemplateDetailView
                     key="detail"
                     template={selectedTemplate}
+                    fields={normalizedFields}
                     onBack={handleBackToCatalog}
-                    onGenerate={handleOpenForm}
+                    onGenerate={handleGenerateWorkflow}
+                    isSubmitting={isGenerating}
                   />
                 )}
               </AnimatePresence>
@@ -136,24 +174,16 @@ export default function AgenticTemplates() {
         </main>
       </div>
 
-      {selectedTemplate && (
-        <DynamicFormRenderer
-          template={selectedTemplate}
-          isOpen={isFormOpen}
-          onClose={handleCloseForm}
-          onSubmit={handleSubmitForm}
-          isSubmitting={instantiationStatus !== 'idle' && instantiationStatus !== 'completed' && instantiationStatus !== 'failed'}
-        />
-      )}
-
       <InstantiationProgress
         status={instantiationStatus}
         result={instantiationResult}
         error={error}
+        validationResults={validationResults}
         onClose={handleCloseProgress}
         onRetry={handleRetryInstantiation}
         onNavigateToWorkflow={handleNavigateToWorkflow}
         onNavigateToChat={handleNavigateToChat}
+        isCreatingSession={isCreatingSession}
       />
     </div>
   );

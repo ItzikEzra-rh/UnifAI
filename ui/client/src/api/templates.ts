@@ -1,93 +1,89 @@
 import axios from '@/http/axiosAgentConfig';
 import {
-  Template,
   TemplatesListResponse,
-  TemplateInstantiationResponse,
-  InstantiationStatusResponse
+  TemplateDetail,
+  TemplateInputSchema,
+  ValidationResponse,
+  MaterializeResponse
 } from '@/types/templates';
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Template CRUD Operations
+// Template List & Detail Operations
 // ────────────────────────────────────────────────────────────────────────────────
 
+export interface ListTemplatesParams {
+  isPublic?: boolean;
+  category?: string;
+  tags?: string;
+  skip?: number;
+  limit?: number;
+}
+
 /**
- * Fetch all available templates
+ * List available templates with optional filtering
+ * GET /templates/templates.list
  */
-export async function fetchTemplates(): Promise<TemplatesListResponse> {
-  const response = await axios.get<TemplatesListResponse>('/api/templates');
+export async function listTemplates(params?: ListTemplatesParams): Promise<TemplatesListResponse> {
+  const response = await axios.get<TemplatesListResponse>('/templates/templates.list', {
+    params
+  });
   return response.data;
 }
 
 /**
- * Fetch a single template by ID
+ * Get full template details including blueprint draft and placeholders
+ * GET /templates/template.get
  */
-export async function fetchTemplateById(templateId: string): Promise<Template> {
-  const response = await axios.get<Template>(`/api/templates/${templateId}`);
+export async function getTemplate(templateId: string): Promise<TemplateDetail> {
+  const response = await axios.get<TemplateDetail>('/templates/template.get', {
+    params: { templateId }
+  });
   return response.data;
 }
 
 /**
- * Search templates by query
+ * Get JSON Schema for template input fields
+ * GET /templates/template.schema.get
  */
-export async function searchTemplates(query: string): Promise<TemplatesListResponse> {
-  const response = await axios.get<TemplatesListResponse>('/api/templates/search', {
-    params: { query }
+export async function getTemplateSchema(templateId: string): Promise<TemplateInputSchema> {
+  const response = await axios.get<TemplateInputSchema>('/templates/template.schema.get', {
+    params: { templateId }
   });
   return response.data;
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
-// Template Instantiation
+// Template Validation & Materialization
 // ────────────────────────────────────────────────────────────────────────────────
 
+export interface ValidateInputParams {
+  templateId: string;
+  input: Record<string, Record<string, Record<string, any>>>;
+}
+
 /**
- * Instantiate a template with the provided inputs
+ * Validate template input before materialization
+ * POST /templates/template.input.validate
  */
-export async function instantiateTemplate(
-  templateId: string,
-  inputs: Record<string, any>
-): Promise<TemplateInstantiationResponse> {
-  const response = await axios.post<TemplateInstantiationResponse>(
-    `/api/templates/${templateId}/instantiate`,
-    { inputs }
-  );
+export async function validateTemplateInput(params: ValidateInputParams): Promise<ValidationResponse> {
+  const response = await axios.post<ValidationResponse>('/templates/template.input.validate', params);
   return response.data;
 }
 
-/**
- * Get the status of a template instantiation
- */
-export async function getInstantiationStatus(
-  instanceId: string
-): Promise<InstantiationStatusResponse> {
-  const response = await axios.get<InstantiationStatusResponse>(
-    `/api/templates/instances/${instanceId}/status`
-  );
-  return response.data;
+export interface MaterializeParams {
+  templateId: string;
+  userId: string;
+  input: Record<string, Record<string, Record<string, any>>>;
+  blueprintName?: string;
+  skipValidation?: boolean;
 }
 
 /**
- * Cancel an ongoing template instantiation
+ * Materialize a template into a usable blueprint
+ * POST /templates/template.materialize
  */
-export async function cancelInstantiation(instanceId: string): Promise<void> {
-  await axios.delete(`/api/templates/instances/${instanceId}`);
-}
-
-// ────────────────────────────────────────────────────────────────────────────────
-// Template Validation
-// ────────────────────────────────────────────────────────────────────────────────
-
-/**
- * Validate template inputs before instantiation
- */
-export async function validateTemplateInputs(
-  templateId: string,
-  inputs: Record<string, any>
-): Promise<{ valid: boolean; errors: Record<string, string> }> {
-  const response = await axios.post<{ valid: boolean; errors: Record<string, string> }>(
-    `/api/templates/${templateId}/validate`,
-    { inputs }
-  );
+export async function materializeTemplate(params: MaterializeParams): Promise<MaterializeResponse> {
+  const response = await axios.post<MaterializeResponse>('/templates/template.materialize', params);
   return response.data;
 }
 

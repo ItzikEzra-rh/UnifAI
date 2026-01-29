@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft,
   FileText, 
@@ -14,32 +14,59 @@ import {
   CheckCircle,
   Key,
   List,
-  Settings
+  Settings,
+  Pencil,
+  Eye,
+  User,
+  AlertCircle
 } from 'lucide-react';
-import { Template, TemplateField } from '@/types/templates';
+import { TemplateListItem, NormalizedField, TemplateFormData } from '@/types/templates';
+import { FieldInput } from './FieldInputs';
 
 interface TemplateDetailViewProps {
-  template: Template;
+  template: TemplateListItem;
+  fields: NormalizedField[];
   onBack: () => void;
-  onGenerate: () => void;
+  onGenerate: (data: TemplateFormData) => void;
+  isSubmitting?: boolean;
 }
 
-const getTemplateIcon = (iconName?: string) => {
-  const iconMap: { [key: string]: React.ReactNode } = {
-    FileText: <FileText className="h-8 w-8" />,
-    MessageSquare: <MessageSquare className="h-8 w-8" />,
-    Database: <Database className="h-8 w-8" />,
-    GitBranch: <GitBranch className="h-8 w-8" />,
-    Zap: <Zap className="h-8 w-8" />
-  };
-  return iconMap[iconName || 'FileText'] || <FileText className="h-8 w-8" />;
+/**
+ * Category to icon mapping
+ */
+const categoryIconMap: Record<string, React.ReactNode> = {
+  devops: <GitBranch className="h-8 w-8" />,
+  git: <GitBranch className="h-8 w-8" />,
+  data: <Database className="h-8 w-8" />,
+  database: <Database className="h-8 w-8" />,
+  chat: <MessageSquare className="h-8 w-8" />,
+  bot: <MessageSquare className="h-8 w-8" />,
+  automation: <Zap className="h-8 w-8" />,
+  workflow: <Zap className="h-8 w-8" />,
 };
 
-const getFieldTypeIcon = (type: string) => {
+const getCategoryIcon = (category: string) => 
+  categoryIconMap[category.toLowerCase()] || <FileText className="h-8 w-8" />;
+
+/**
+ * Get default value for a field based on its type
+ */
+const defaultValueByType: Record<string, any> = {
+  array: [],
+  boolean: false,
+};
+
+const getFieldDefaultValue = (field: NormalizedField): any => 
+  field.default !== undefined ? field.default : (defaultValueByType[field.type] ?? undefined);
+
+const getFieldTypeIcon = (type: string, isSecret?: boolean) => {
+  if (isSecret) {
+    return <Key className="h-4 w-4 text-yellow-500" />;
+  }
   switch (type) {
     case 'secret':
       return <Key className="h-4 w-4 text-yellow-500" />;
-    case 'string[]':
+    case 'array':
       return <List className="h-4 w-4 text-blue-500" />;
     case 'boolean':
       return <CheckCircle className="h-4 w-4 text-green-500" />;
@@ -48,25 +75,162 @@ const getFieldTypeIcon = (type: string) => {
   }
 };
 
-const FieldRequirementBadge: React.FC<{ field: TemplateField }> = ({ field }) => {
+interface FieldCardProps {
+  field: NormalizedField;
+  isEditing: boolean;
+  value: any;
+  onChange: (value: any) => void;
+  error?: string;
+}
+
+const FieldCard: React.FC<FieldCardProps> = ({ 
+  field, 
+  isEditing, 
+  value, 
+  onChange,
+  error 
+}) => {
+  // Get display type for badge
+  const getDisplayType = () => {
+    if (field.isSecret) return 'secret';
+    if (field.type === 'array') return 'list';
+    return field.type;
+  };
+
   return (
-    <div className="flex items-center gap-2 p-3 bg-background-dark rounded-lg border border-gray-800">
-      {getFieldTypeIcon(field.type)}
-      <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-medium text-gray-200">{field.label}</span>
-          {field.required && (
-            <Badge variant="destructive" className="text-xs px-1.5 py-0">
-              Required
-            </Badge>
-          )}
-          <Badge variant="outline" className="text-xs px-1.5 py-0">
-            {field.type}
-          </Badge>
-        </div>
-        {field.description && (
-          <p className="text-xs text-gray-500 mt-0.5">{field.description}</p>
+    <div className="relative h-auto min-h-[72px]" style={{ perspective: '1000px' }}>
+      <AnimatePresence mode="wait">
+        {!isEditing ? (
+          <motion.div
+            key="badge"
+            initial={{ rotateX: -90, opacity: 0 }}
+            animate={{ rotateX: 0, opacity: 1 }}
+            exit={{ rotateX: 90, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className={`flex items-center gap-2 p-3 bg-background-dark rounded-lg border ${
+              error ? 'border-red-500 bg-red-500/5' : 'border-gray-800'
+            }`}
+            style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
+          >
+            {error ? (
+              <AlertCircle className="h-4 w-4 text-red-500 shrink-0" />
+            ) : (
+              getFieldTypeIcon(field.type, field.isSecret)
+            )}
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <span className={`text-sm font-medium ${error ? 'text-red-400' : 'text-gray-200'}`}>{field.label}</span>
+                {field.required && (
+                  <Badge variant="destructive" className="text-xs px-1.5 py-0">
+                    Required
+                  </Badge>
+                )}
+                <Badge variant="outline" className="text-xs px-1.5 py-0">
+                  {getDisplayType()}
+                </Badge>
+              </div>
+              {error ? (
+                <p className="text-xs text-red-500 mt-0.5 flex items-center gap-1">
+                  {error}
+                </p>
+              ) : field.description ? (
+                <p className="text-xs text-gray-500 mt-0.5">{field.description}</p>
+              ) : null}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="input"
+            initial={{ rotateX: 90, opacity: 0 }}
+            animate={{ rotateX: 0, opacity: 1 }}
+            exit={{ rotateX: -90, opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeInOut' }}
+            className="p-3 bg-background-dark rounded-lg border border-primary/30"
+            style={{ transformStyle: 'preserve-3d', backfaceVisibility: 'hidden' }}
+          >
+            <FieldInput
+              field={field}
+              value={value}
+              onChange={onChange}
+              error={error}
+            />
+          </motion.div>
         )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+interface FieldsSectionProps {
+  title: string;
+  fields: NormalizedField[];
+  isEditing: boolean;
+  onToggleEdit: () => void;
+  formData: TemplateFormData;
+  onFieldChange: (key: string, value: any) => void;
+  errors: Record<string, string>;
+  showToggle: boolean;
+}
+
+const FieldsSection: React.FC<FieldsSectionProps> = ({
+  title,
+  fields,
+  isEditing,
+  onToggleEdit,
+  formData,
+  onFieldChange,
+  errors,
+  showToggle
+}) => {
+  if (fields.length === 0) return null;
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-3">
+        <h3 className="text-lg font-medium">
+          {title}
+          <span className="text-sm font-normal text-gray-500 ml-2">
+            ({fields.length} fields)
+          </span>
+        </h3>
+        {showToggle && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onToggleEdit}
+            className="text-primary hover:text-primary/90 hover:bg-primary/10 gap-2"
+          >
+            {isEditing ? (
+              <>
+                <Eye className="h-4 w-4" />
+                View Mode
+              </>
+            ) : (
+              <>
+                <Pencil className="h-4 w-4" />
+                Edit Fields
+              </>
+            )}
+          </Button>
+        )}
+      </div>
+      <div className="space-y-3">
+        {fields.map((field, index) => (
+          <motion.div
+            key={field.key}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+          >
+            <FieldCard
+              field={field}
+              isEditing={isEditing}
+              value={formData[field.key]}
+              onChange={(value) => onFieldChange(field.key, value)}
+              error={errors[field.key]}
+            />
+          </motion.div>
+        ))}
       </div>
     </div>
   );
@@ -74,11 +238,94 @@ const FieldRequirementBadge: React.FC<{ field: TemplateField }> = ({ field }) =>
 
 export const TemplateDetailView: React.FC<TemplateDetailViewProps> = ({
   template,
+  fields,
   onBack,
-  onGenerate
+  onGenerate,
+  isSubmitting = false
 }) => {
-  const requiredFields = template.fields.filter(f => f.required);
-  const optionalFields = template.fields.filter(f => !f.required);
+  const [isEditingRequired, setIsEditingRequired] = useState(false);
+  const [isEditingOptional, setIsEditingOptional] = useState(false);
+  const [formData, setFormData] = useState<TemplateFormData>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Initialize form data with defaults
+  useEffect(() => {
+    const initial = fields.reduce<TemplateFormData>((acc, field) => {
+      acc[field.key] = getFieldDefaultValue(field);
+      return acc;
+    }, {});
+    setFormData(initial);
+    setErrors({});
+  }, [fields]);
+
+  const handleFieldChange = useCallback((key: string, value: any) => {
+    setFormData(prev => ({ ...prev, [key]: value }));
+    if (errors[key]) {
+      setErrors(prev => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+    }
+  }, [errors]);
+
+  const validateForm = useCallback((): boolean => {
+    const newErrors: Record<string, string> = {};
+    
+    fields.forEach(field => {
+      if (field.required) {
+        const value = formData[field.key];
+        
+        if (value === undefined || value === null || value === '') {
+          newErrors[field.key] = `${field.label} is required`;
+        } else if (field.type === 'array' && Array.isArray(value) && value.length === 0) {
+          newErrors[field.key] = `At least one ${field.label.toLowerCase()} is required`;
+        }
+      }
+
+      // Validate pattern if specified
+      if (field.pattern && formData[field.key]) {
+        const regex = new RegExp(field.pattern);
+        if (!regex.test(formData[field.key])) {
+          newErrors[field.key] = `Invalid format for ${field.label}`;
+        }
+      }
+    });
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  }, [fields, formData]);
+
+  const handleGenerate = useCallback(() => {
+    // Always validate first
+    const isValid = validateForm();
+    
+    if (!isValid) {
+      // If validation fails, switch to edit mode to show errors
+      setIsEditingRequired(true);
+      return;
+    }
+
+    // Validation passed, submit the form
+    onGenerate(formData);
+  }, [validateForm, onGenerate, formData]);
+
+  const requiredFields = fields.filter(f => f.required);
+  const optionalFields = fields.filter(f => !f.required);
+
+  // Check if form has any filled data
+  const hasFilledData = Object.values(formData).some(v => 
+    v !== undefined && v !== null && v !== '' && 
+    !(Array.isArray(v) && v.length === 0) &&
+    v !== false
+  );
+
+  // Button text changes based on state
+  const getButtonText = () => {
+    if (isSubmitting) return 'Generating...';
+    if (!isEditingRequired && !hasFilledData) return 'Configure & Generate';
+    return 'Generate Workflow';
+  };
 
   return (
     <motion.div
@@ -101,7 +348,7 @@ export const TemplateDetailView: React.FC<TemplateDetailViewProps> = ({
         <CardHeader className="border-b border-gray-800">
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white">
-              {getTemplateIcon(template.icon)}
+              {getCategoryIcon(template.category)}
             </div>
             <div className="flex-1">
               <div className="flex items-start justify-between">
@@ -109,25 +356,32 @@ export const TemplateDetailView: React.FC<TemplateDetailViewProps> = ({
                   <CardTitle className="text-2xl font-heading mb-2">
                     {template.name}
                   </CardTitle>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Badge variant="outline">{template.category}</Badge>
                     <Badge variant="secondary" className="bg-gray-800">
                       v{template.version}
                     </Badge>
-                    {template.estimated_setup_time && (
+                    {template.author && (
                       <span className="flex items-center text-xs text-gray-400">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {template.estimated_setup_time}
+                        <User className="h-3 w-3 mr-1" />
+                        {template.author}
+                      </span>
+                    )}
+                    {template.placeholder_count !== undefined && (
+                      <span className="flex items-center text-xs text-gray-400">
+                        <Settings className="h-3 w-3 mr-1" />
+                        {template.placeholder_count} field{template.placeholder_count !== 1 ? 's' : ''}
                       </span>
                     )}
                   </div>
                 </div>
                 <Button 
-                  onClick={onGenerate}
+                  onClick={handleGenerate}
                   className="bg-primary hover:bg-primary/90"
+                  disabled={isSubmitting}
                 >
                   <Zap className="h-4 w-4 mr-2" />
-                  Generate Workflow
+                  {getButtonText()}
                 </Button>
               </div>
             </div>
@@ -157,35 +411,27 @@ export const TemplateDetailView: React.FC<TemplateDetailViewProps> = ({
             </div>
           )}
 
-          <div>
-            <h3 className="text-lg font-medium mb-3">
-              Required Inputs
-              <span className="text-sm font-normal text-gray-500 ml-2">
-                ({requiredFields.length} fields)
-              </span>
-            </h3>
-            <div className="space-y-2">
-              {requiredFields.map((field) => (
-                <FieldRequirementBadge key={field.key} field={field} />
-              ))}
-            </div>
-          </div>
+          <FieldsSection
+            title="Required Inputs"
+            fields={requiredFields}
+            isEditing={isEditingRequired}
+            onToggleEdit={() => setIsEditingRequired(!isEditingRequired)}
+            formData={formData}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+            showToggle={requiredFields.length > 0}
+          />
 
-          {optionalFields.length > 0 && (
-            <div>
-              <h3 className="text-lg font-medium mb-3">
-                Optional Settings
-                <span className="text-sm font-normal text-gray-500 ml-2">
-                  ({optionalFields.length} fields)
-                </span>
-              </h3>
-              <div className="space-y-2">
-                {optionalFields.map((field) => (
-                  <FieldRequirementBadge key={field.key} field={field} />
-                ))}
-              </div>
-            </div>
-          )}
+          <FieldsSection
+            title="Optional Settings"
+            fields={optionalFields}
+            isEditing={isEditingOptional}
+            onToggleEdit={() => setIsEditingOptional(!isEditingOptional)}
+            formData={formData}
+            onFieldChange={handleFieldChange}
+            errors={errors}
+            showToggle={optionalFields.length > 0}
+          />
 
           {template.tags && template.tags.length > 0 && (
             <div>

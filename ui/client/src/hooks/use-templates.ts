@@ -1,462 +1,417 @@
 import { useState, useCallback } from 'react';
 import { 
-  Template, 
-  TemplateInstantiationResponse,
-  InstantiationStatusResponse,
+  TemplateListItem,
+  TemplateDetail,
+  TemplateInputSchema,
+  NormalizedField,
+  MaterializeResponse,
   InstantiationStatus,
-  TemplateCategory
+  TemplateCategory,
+  TemplateFormData,
+  SchemaFieldProperty,
+  ValidationError
 } from '../types/templates';
 import { 
-  fetchTemplates as fetchTemplatesApi,
-  fetchTemplateById as fetchTemplateByIdApi,
-  instantiateTemplate as instantiateTemplateApi,
-  getInstantiationStatus
+  listTemplates,
+  getTemplate,
+  getTemplateSchema,
+  validateTemplateInput,
+  materializeTemplate
 } from '../api/templates';
 import { useToast } from './use-toast';
+import { ElementValidationResult, ValidationMessage } from '../types/validation';
 
 interface UseTemplatesReturn {
-  templates: Template[];
-  selectedTemplate: Template | null;
+  templates: TemplateListItem[];
+  selectedTemplate: TemplateListItem | null;
+  templateDetail: TemplateDetail | null;
+  templateSchema: TemplateInputSchema | null;
+  normalizedFields: NormalizedField[];
   isLoading: boolean;
   error: string | null;
+  validationErrors: ValidationError[];
   instantiationStatus: InstantiationStatus;
-  instantiationResult: TemplateInstantiationResponse | null;
-  fetchTemplates: () => Promise<Template[] | null>;
-  fetchTemplateById: (id: string) => Promise<Template | null>;
-  instantiateTemplate: (templateId: string, inputs: Record<string, any>) => Promise<TemplateInstantiationResponse | null>;
-  checkInstantiationStatus: (instanceId: string) => Promise<InstantiationStatusResponse | null>;
+  instantiationResult: MaterializeResponse | null;
+  fetchTemplates: (category?: string, tags?: string) => Promise<TemplateListItem[] | null>;
+  fetchTemplateDetail: (templateId: string) => Promise<{ detail: TemplateDetail; schema: TemplateInputSchema } | null>;
+  materialize: (templateId: string, formData: TemplateFormData, userId: string, blueprintName?: string) => Promise<MaterializeResponse | null>;
   resetInstantiation: () => void;
   getCategories: () => TemplateCategory[];
-  filterTemplates: (searchQuery?: string, category?: string | null) => Template[];
-  setSelectedTemplate: (template: Template | null) => void;
+  setSelectedTemplate: (template: TemplateListItem | null) => void;
+  buildInputPayload: (formData: TemplateFormData) => Record<string, Record<string, Record<string, any>>>;
+  getValidationResults: () => ElementValidationResult[];
 }
 
-const MOCK_TEMPLATES: Template[] = [
-  {
-    id: 'weekly-report-agent',
-    name: 'Weekly Activity User Report',
-    description: 'Automatically generate comprehensive weekly activity reports from GitHub, Jira, and Slack data. This template creates a multi-agent workflow that aggregates user activities across platforms and generates summarized reports.',
-    category: 'Reports',
-    version: '1.0.0',
-    icon: 'FileText',
-    estimated_setup_time: '5 minutes',
-    tags: ['reporting', 'automation', 'productivity'],
-    output_capabilities: ['Weekly PDF Reports', 'Email Notifications', 'Dashboard Integration'],
-    fields: [
-      {
-        key: 'github_token',
-        label: 'GitHub Token',
-        type: 'secret',
-        required: true,
-        description: 'Personal access token with repo read permissions',
-        ui_hints: { masked: true, placeholder: 'ghp_xxxxxxxxxxxx' }
-      },
-      {
-        key: 'jira_token',
-        label: 'Jira API Token',
-        type: 'secret',
-        required: true,
-        description: 'Jira API token for accessing project data',
-        ui_hints: { masked: true }
-      },
-      {
-        key: 'jira_projects',
-        label: 'Jira Projects',
-        type: 'string[]',
-        required: true,
-        description: 'List of Jira project keys to include in the report',
-        ui_hints: { tagInput: true, placeholder: 'Add project key...' }
-      },
-      {
-        key: 'github_repos',
-        label: 'GitHub Repositories',
-        type: 'string[]',
-        required: true,
-        description: 'List of GitHub repositories to track (format: owner/repo)',
-        ui_hints: { tagInput: true, placeholder: 'owner/repo' }
-      },
-      {
-        key: 'user_emails',
-        label: 'User Emails',
-        type: 'string[]',
-        required: true,
-        description: 'Email addresses of users to include in the report',
-        ui_hints: { tagInput: true, placeholder: 'user@example.com' }
-      },
-      {
-        key: 'report_frequency',
-        label: 'Report Frequency',
-        type: 'enum',
-        required: false,
-        default: 'weekly',
-        options: ['daily', 'weekly', 'biweekly', 'monthly'],
-        description: 'How often to generate the report'
+/**
+ * Resolves a $ref path in JSON Schema $defs
+ */
+function resolveRef(ref: string, defs: Record<string, any>): any {
+  const path = ref.replace('#/$defs/', '');
+  return defs[path];
+}
+
+/**
+ * Normalize JSON Schema into flat field list for UI rendering
+ */
+function normalizeSchemaToFields(
+  schema: TemplateInputSchema
+): NormalizedField[] {
+  const fields: NormalizedField[] = [];
+  const defs = schema.$defs || {};
+
+  // Iterate over top-level properties (categories like "llms", "tools", "nodes")
+  for (const [category, categoryProp] of Object.entries(schema.properties)) {
+    // Resolve the category definition
+    const categoryDef = categoryProp.$ref 
+      ? resolveRef(categoryProp.$ref, defs) 
+      : categoryProp;
+
+    if (!categoryDef?.properties) continue;
+
+    // Iterate over resources within the category
+    for (const [resourceRid, resourceProp] of Object.entries(categoryDef.properties as Record<string, SchemaFieldProperty>)) {
+      // Resolve the resource definition
+      const resourceDef = resourceProp.$ref 
+        ? resolveRef(resourceProp.$ref, defs) 
+        : resourceProp;
+
+      if (!resourceDef?.properties) continue;
+
+      const resourceRequired = resourceDef.required || [];
+
+      // Iterate over fields within the resource
+      for (const [fieldPath, fieldProp] of Object.entries(resourceDef.properties as Record<string, SchemaFieldProperty>)) {
+        const field = fieldProp as SchemaFieldProperty;
+        const isRequired = resourceRequired.includes(fieldPath);
+        const hints = field.hints || {};
+
+        // Determine field type based on schema type and hints
+        let fieldType: NormalizedField['type'] = 'string';
+        if (hints.secret) {
+          fieldType = 'secret';
+        } else if (field.type === 'boolean') {
+          fieldType = 'boolean';
+        } else if (field.type === 'number' || field.type === 'integer') {
+          fieldType = 'number';
+        } else if (field.type === 'array') {
+          fieldType = 'array';
+        } else if (field.enum && field.enum.length > 0) {
+          fieldType = 'enum';
+        }
+
+        fields.push({
+          category,
+          resourceRid,
+          fieldPath,
+          key: `${category}.${resourceRid}.${fieldPath}`,
+          label: field.title || fieldPath,
+          description: field.description,
+          type: fieldType,
+          required: isRequired,
+          default: field.default,
+          pattern: field.pattern,
+          minLength: field.minLength,
+          maxLength: field.maxLength,
+          minimum: field.minimum,
+          maximum: field.maximum,
+          enumOptions: field.enum,
+          isSecret: !!hints.secret,
+          isMultiline: !!(hints as any).multiline,
+          rows: (hints as any).multiline?.rows
+        });
       }
-    ]
-  },
-  {
-    id: 'support-bot-agent',
-    name: 'Customer Support Bot',
-    description: 'Deploy an intelligent customer support chatbot powered by LLMs with retrieval-augmented generation. Connects to your knowledge base and provides accurate, context-aware responses.',
-    category: 'Chatbots',
-    version: '1.0.0',
-    icon: 'MessageSquare',
-    estimated_setup_time: '10 minutes',
-    tags: ['customer-support', 'chatbot', 'rag'],
-    output_capabilities: ['24/7 Support', 'Multi-channel Integration', 'Analytics Dashboard'],
-    fields: [
-      {
-        key: 'knowledge_base_url',
-        label: 'Knowledge Base URL',
-        type: 'string',
-        required: true,
-        description: 'URL to your documentation or knowledge base',
-        validation: { regex: '^https?://' },
-        ui_hints: { placeholder: 'https://docs.yourcompany.com' }
-      },
-      {
-        key: 'openai_api_key',
-        label: 'OpenAI API Key',
-        type: 'secret',
-        required: true,
-        description: 'API key for OpenAI GPT models',
-        ui_hints: { masked: true }
-      },
-      {
-        key: 'bot_name',
-        label: 'Bot Name',
-        type: 'string',
-        required: false,
-        default: 'Support Assistant',
-        description: 'Display name for the support bot'
-      },
-      {
-        key: 'welcome_message',
-        label: 'Welcome Message',
-        type: 'string',
-        required: false,
-        default: 'Hello! How can I help you today?',
-        description: 'Initial greeting message for users',
-        ui_hints: { rows: 3 }
-      },
-      {
-        key: 'escalation_enabled',
-        label: 'Enable Human Escalation',
-        type: 'boolean',
-        required: false,
-        default: true,
-        description: 'Allow users to request human support'
-      }
-    ]
-  },
-  {
-    id: 'data-pipeline-agent',
-    name: 'Automated Data Pipeline',
-    description: 'Create an intelligent data pipeline that monitors data sources, performs transformations, and loads data into your warehouse with anomaly detection and quality checks.',
-    category: 'Data Engineering',
-    version: '1.0.0',
-    icon: 'Database',
-    estimated_setup_time: '15 minutes',
-    tags: ['etl', 'data-pipeline', 'automation'],
-    output_capabilities: ['Automated ETL', 'Data Quality Monitoring', 'Anomaly Alerts'],
-    fields: [
-      {
-        key: 'source_connection',
-        label: 'Source Database Connection',
-        type: 'secret',
-        required: true,
-        description: 'Connection string for source database',
-        ui_hints: { masked: true, placeholder: 'postgresql://user:pass@host:5432/db' }
-      },
-      {
-        key: 'target_connection',
-        label: 'Target Warehouse Connection',
-        type: 'secret',
-        required: true,
-        description: 'Connection string for target data warehouse',
-        ui_hints: { masked: true }
-      },
-      {
-        key: 'tables',
-        label: 'Tables to Sync',
-        type: 'string[]',
-        required: true,
-        description: 'List of tables to include in the pipeline',
-        ui_hints: { tagInput: true }
-      },
-      {
-        key: 'sync_frequency',
-        label: 'Sync Frequency',
-        type: 'enum',
-        required: false,
-        default: 'hourly',
-        options: ['realtime', 'hourly', 'daily', 'weekly'],
-        description: 'How often to sync data'
-      },
-      {
-        key: 'enable_quality_checks',
-        label: 'Enable Quality Checks',
-        type: 'boolean',
-        required: false,
-        default: true,
-        description: 'Run data quality validation on each sync'
-      }
-    ]
-  },
-  {
-    id: 'code-review-agent',
-    name: 'AI Code Review Assistant',
-    description: 'Automated code review agent that analyzes pull requests, suggests improvements, checks for security vulnerabilities, and ensures code quality standards.',
-    category: 'Development',
-    version: '1.0.0',
-    icon: 'GitBranch',
-    estimated_setup_time: '8 minutes',
-    tags: ['code-review', 'development', 'security'],
-    output_capabilities: ['PR Comments', 'Security Scanning', 'Style Enforcement'],
-    fields: [
-      {
-        key: 'github_app_key',
-        label: 'GitHub App Private Key',
-        type: 'secret',
-        required: true,
-        description: 'Private key for your GitHub App',
-        ui_hints: { masked: true, rows: 5 }
-      },
-      {
-        key: 'github_app_id',
-        label: 'GitHub App ID',
-        type: 'string',
-        required: true,
-        description: 'Your GitHub App installation ID'
-      },
-      {
-        key: 'repos_to_monitor',
-        label: 'Repositories to Monitor',
-        type: 'string[]',
-        required: true,
-        description: 'List of repositories to enable code review on',
-        ui_hints: { tagInput: true }
-      },
-      {
-        key: 'review_style',
-        label: 'Review Style',
-        type: 'enum',
-        required: false,
-        default: 'balanced',
-        options: ['lenient', 'balanced', 'strict'],
-        description: 'How thorough the code review should be'
-      },
-      {
-        key: 'auto_approve',
-        label: 'Auto-approve Minor Changes',
-        type: 'boolean',
-        required: false,
-        default: false,
-        description: 'Automatically approve PRs with only minor changes'
-      }
-    ]
+    }
   }
-];
+
+  return fields;
+}
+
+/**
+ * Build the input payload structure required by the backend API
+ * Structure: { category: { resourceRid: { fieldPath: value } } }
+ */
+function buildInputPayloadFromFields(
+  formData: TemplateFormData,
+  normalizedFields: NormalizedField[]
+): Record<string, Record<string, Record<string, any>>> {
+  const input: Record<string, Record<string, Record<string, any>>> = {};
+
+  for (const field of normalizedFields) {
+    const value = formData[field.key];
+    
+    // Skip undefined/empty values unless they have a default
+    if (value === undefined || value === null || value === '') {
+      continue;
+    }
+    
+    // Skip empty arrays
+    if (Array.isArray(value) && value.length === 0) {
+      continue;
+    }
+
+    // Initialize nested structure if needed
+    if (!input[field.category]) {
+      input[field.category] = {};
+    }
+    if (!input[field.category][field.resourceRid]) {
+      input[field.category][field.resourceRid] = {};
+    }
+
+    input[field.category][field.resourceRid][field.fieldPath] = value;
+  }
+
+  return input;
+}
 
 export const useTemplates = (): UseTemplatesReturn => {
-    const [templates, setTemplates] = useState<Template[]>([]);
-    const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
-    const [instantiationStatus, setInstantiationStatus] = useState<InstantiationStatus>('idle');
-    const [instantiationResult, setInstantiationResult] = useState<TemplateInstantiationResponse | null>(null);
-    const { toast } = useToast();
-  
-    const fetchTemplates = useCallback(async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-  
-        try {
-          const response = await fetchTemplatesApi();
-          setTemplates(response.templates);
-          return response.templates;
-        } catch (apiError) {
-          console.log('API not available, using mock data');
-          setTemplates(MOCK_TEMPLATES);
-          return MOCK_TEMPLATES;
-        }
-      } catch (err: any) {
-        const errorMessage = err.response?.data?.error || 'Failed to fetch templates';
-        setError(errorMessage);
-        toast({
-          title: 'Error',
-          description: errorMessage,
-          variant: 'destructive'
-        });
-        console.error('Error fetching templates:', err);
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    }, [toast]);
-  
-    const fetchTemplateById = useCallback(async (id: string) => {
-      try {
-        setIsLoading(true);
-        setError(null);
-  
-        try {
-          const template = await fetchTemplateByIdApi(id);
-          setSelectedTemplate(template);
-          return template;
-        } catch (apiError) {
-          const mockTemplate = MOCK_TEMPLATES.find(t => t.id === id);
-          if (mockTemplate) {
-            setSelectedTemplate(mockTemplate);
-            return mockTemplate;
-          }
-          throw new Error('Template not found');
-        }
-      } catch (err: any) {
-        const errorMessage = err.response?.data?.error || 'Failed to fetch template';
-        setError(errorMessage);
-        toast({
-          title: 'Error',
-          description: errorMessage,
-          variant: 'destructive'
-        });
-        console.error('Error fetching template:', err);
-        return null;
-      } finally {
-        setIsLoading(false);
-      }
-    }, [toast]);
-  
-    const instantiateTemplate = useCallback(async (
-      templateId: string, 
-      inputs: Record<string, any>
-    ): Promise<TemplateInstantiationResponse | null> => {
-      try {
-        setInstantiationStatus('validating');
-        setError(null);
-  
-        await new Promise(resolve => setTimeout(resolve, 500));
-        setInstantiationStatus('submitting');
-  
-        try {
-          const result = await instantiateTemplateApi(templateId, inputs);
-  
-          setInstantiationStatus('provisioning');
-          await new Promise(resolve => setTimeout(resolve, 1000));
-  
-          setInstantiationStatus('finalizing');
-          await new Promise(resolve => setTimeout(resolve, 500));
-  
-          setInstantiationStatus('completed');
-          setInstantiationResult(result);
-  
-          toast({
-            title: 'Success',
-            description: 'Workflow created successfully!'
-          });
-  
-          return result;
-        } catch (apiError) {
-          // Fallback to mock mode when API is not available
-          setInstantiationStatus('provisioning');
-          await new Promise(resolve => setTimeout(resolve, 2000));
-  
-          setInstantiationStatus('finalizing');
-          await new Promise(resolve => setTimeout(resolve, 1000));
-  
-          const mockResult: TemplateInstantiationResponse = {
-            workflow_id: `wf-${Date.now()}`,
-            instance_id: `inst-${Date.now()}`,
-            created_elements: ['agent-1', 'tool-1', 'retriever-1'],
-            status: 'completed',
-            chat_endpoint: '/api/chat/session'
-          };
-  
-          setInstantiationStatus('completed');
-          setInstantiationResult(mockResult);
-  
-          toast({
-            title: 'Success',
-            description: 'Workflow created successfully! (Demo Mode)'
-          });
-  
-          return mockResult;
-        }
-      } catch (err: any) {
-        const errorMessage = err.response?.data?.error || 'Failed to instantiate template';
-        setError(errorMessage);
-        setInstantiationStatus('failed');
-        toast({
-          title: 'Error',
-          description: errorMessage,
-          variant: 'destructive'
-        });
-        console.error('Error instantiating template:', err);
-        return null;
-      }
-    }, [toast]);
-  
-    const checkInstantiationStatus = useCallback(async (
-      instanceId: string
-    ): Promise<InstantiationStatusResponse | null> => {
-      try {
-        const statusResponse = await getInstantiationStatus(instanceId);
-        setInstantiationStatus(statusResponse.status);
-        return statusResponse;
-      } catch (err: any) {
-        console.error('Error checking instantiation status:', err);
-        return null;
-      }
-    }, []);
-  
-    const resetInstantiation = useCallback(() => {
-      setInstantiationStatus('idle');
-      setInstantiationResult(null);
+  const [templates, setTemplates] = useState<TemplateListItem[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateListItem | null>(null);
+  const [templateDetail, setTemplateDetail] = useState<TemplateDetail | null>(null);
+  const [templateSchema, setTemplateSchema] = useState<TemplateInputSchema | null>(null);
+  const [normalizedFields, setNormalizedFields] = useState<NormalizedField[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [validationErrors, setValidationErrors] = useState<ValidationError[]>([]);
+  const [elementValidationResults, setElementValidationResults] = useState<ElementValidationResult[]>([]);
+  const [instantiationStatus, setInstantiationStatus] = useState<InstantiationStatus>('idle');
+  const [instantiationResult, setInstantiationResult] = useState<MaterializeResponse | null>(null);
+  const { toast } = useToast();
+
+  /**
+   * Get validation results for display in the UI
+   * Returns ElementValidationResult[] from various error sources
+   */
+  const getValidationResults = useCallback((): ElementValidationResult[] => {
+    if (elementValidationResults.length > 0) {
+      return elementValidationResults;
+    }
+
+    // Handle structured validation errors (from template.input.validate)
+    if (validationErrors.length > 0) {
+      return [{
+        is_valid: false,
+        element_rid: selectedTemplate?.template_id || 'unknown',
+        element_type: 'template_input',
+        name: selectedTemplate?.name || 'Template Input',
+        messages: validationErrors.map(err => ({
+          severity: 'error' as const,
+          code: 'MISSING_REQUIRED_FIELD' as const,
+          message: err.message,
+          field: err.field
+        })),
+        dependency_results: {}
+      }];
+    }
+
+    // If we have a generic error but no structured validation errors
+    if (error) {
+      return [{
+        is_valid: false,
+        element_rid: selectedTemplate?.template_id || 'unknown',
+        element_type: 'template',
+        name: selectedTemplate?.name || 'Template',
+        messages: [{
+          severity: 'error' as const,
+          code: 'NETWORK_ERROR' as const,
+          message: error,
+          field: null
+        }],
+        dependency_results: {}
+      }];
+    }
+
+    return [];
+  }, [error, validationErrors, elementValidationResults, selectedTemplate]);
+
+  const fetchTemplates = useCallback(async (category?: string, tags?: string) => {
+    try {
+      setIsLoading(true);
       setError(null);
-    }, []);
-  
-    const getCategories = useCallback((): TemplateCategory[] => {
-      const categoryMap = new Map<string, number>();
-      templates.forEach(template => {
-        const count = categoryMap.get(template.category) || 0;
-        categoryMap.set(template.category, count + 1);
+
+      const response = await listTemplates({ category, tags });
+      setTemplates(response.templates);
+      return response.templates;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'Failed to fetch templates';
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
       });
-      return Array.from(categoryMap.entries()).map(([name, count]) => ({ name, count }));
-    }, [templates]);
-  
-    const filterTemplates = useCallback((
-      searchQuery: string = '',
-      category: string | null = null
-    ): Template[] => {
-      return templates.filter(template => {
-        const matchesSearch = !searchQuery || 
-          template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          template.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          template.tags?.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
-        
-        const matchesCategory = !category || template.category === category;
-        
-        return matchesSearch && matchesCategory;
+      console.error('Error fetching templates:', err);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  const fetchTemplateDetail = useCallback(async (templateId: string) => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      // Fetch both template detail and schema in parallel
+      const [detail, schema] = await Promise.all([
+        getTemplate(templateId),
+        getTemplateSchema(templateId)
+      ]);
+
+      setTemplateDetail(detail);
+      setTemplateSchema(schema);
+
+      // Normalize schema fields for UI rendering
+      const fields = normalizeSchemaToFields(schema);
+      setNormalizedFields(fields);
+
+      // Update selected template with detail info
+      setSelectedTemplate({
+        template_id: detail.template_id,
+        name: detail.draft.name || detail.template_id,
+        description: detail.draft.description || '',
+        category: detail.metadata.category,
+        version: detail.metadata.version,
+        tags: detail.metadata.tags,
+        output_capabilities: detail.metadata.output_capabilities,
+        author: detail.metadata.author,
+        placeholder_count: fields.length
       });
-    }, [templates]);
-  
-    return {
-      templates,
-      selectedTemplate,
-      isLoading,
-      error,
-      instantiationStatus,
-      instantiationResult,
-      fetchTemplates,
-      fetchTemplateById,
-      instantiateTemplate,
-      checkInstantiationStatus,
-      resetInstantiation,
-      getCategories,
-      filterTemplates,
-      setSelectedTemplate
-    };
+
+      return { detail, schema };
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'Failed to fetch template details';
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      });
+      console.error('Error fetching template details:', err);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, [toast]);
+
+  const buildInputPayload = useCallback((formData: TemplateFormData) => {
+    return buildInputPayloadFromFields(formData, normalizedFields);
+  }, [normalizedFields]);
+
+  const materialize = useCallback(async (
+    templateId: string,
+    formData: TemplateFormData,
+    userId: string,
+    blueprintName?: string
+  ): Promise<MaterializeResponse | null> => {
+    try {
+      setInstantiationStatus('validating');
+      setError(null);
+
+      // Build the input payload in the correct structure
+      const input = buildInputPayloadFromFields(formData, normalizedFields);
+
+      // First validate the input
+      const validationResult = await validateTemplateInput({
+        templateId,
+        input
+      });
+
+      if (!validationResult.is_valid) {
+        const errorMessages = validationResult.errors
+          .map(e => `${e.field}: ${e.message}`)
+          .join('\n');
+        
+        setError(errorMessages);
+        setValidationErrors(validationResult.errors);
+        setInstantiationStatus('failed');
+        
+        toast({
+          title: 'Validation Failed',
+          description: validationResult.errors[0]?.message || 'Please check your input',
+          variant: 'destructive'
+        });
+        
+        return null;
+      }
+
+      setInstantiationStatus('submitting');
+
+      const result = await materializeTemplate({
+        templateId,
+        userId,
+        input,
+        blueprintName
+      });
+
+      setInstantiationStatus('completed');
+      setInstantiationResult(result);
+
+      toast({
+        title: 'Success',
+        description: `Blueprint "${result.name}" created successfully!`
+      });
+
+      return result;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.error || 'Failed to materialize template';
+      const errorData = err.response?.data;
+      
+      setError(errorMessage);
+      setInstantiationStatus('failed');
+      
+      // Capture element validation results directly (already in ElementValidationResult format)
+      if (errorData?.errors && Array.isArray(errorData.errors)) {
+        setElementValidationResults(errorData.errors as ElementValidationResult[]);
+      }
+      
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        variant: 'destructive'
+      });
+      
+      console.error('Error materializing template:', err);
+      return null;
+    }
+  }, [normalizedFields, toast]);
+
+  const resetInstantiation = useCallback(() => {
+    setInstantiationStatus('idle');
+    setInstantiationResult(null);
+    setError(null);
+    setValidationErrors([]);
+    setElementValidationResults([]);
+  }, []);
+
+  const getCategories = useCallback((): TemplateCategory[] => {
+    const categoryMap = new Map<string, number>();
+    templates.forEach(template => {
+      const count = categoryMap.get(template.category) || 0;
+      categoryMap.set(template.category, count + 1);
+    });
+    return Array.from(categoryMap.entries()).map(([name, count]) => ({ name, count }));
+  }, [templates]);
+
+  return {
+    templates,
+    selectedTemplate,
+    templateDetail,
+    templateSchema,
+    normalizedFields,
+    isLoading,
+    error,
+    validationErrors,
+    instantiationStatus,
+    instantiationResult,
+    fetchTemplates,
+    fetchTemplateDetail,
+    materialize,
+    resetInstantiation,
+    getCategories,
+    setSelectedTemplate,
+    buildInputPayload,
+    getValidationResults
   };
+};
 
 export default useTemplates;

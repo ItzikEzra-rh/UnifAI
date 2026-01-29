@@ -11,14 +11,14 @@ import {
   LoaderCircle,
   FolderOpen
 } from 'lucide-react';
-import { Template, TemplateCategory } from '@/types/templates';
+import { TemplateListItem, TemplateCategory } from '@/types/templates';
 import { TemplateCard } from './TemplateCard';
 
 interface TemplateCatalogProps {
-  templates: Template[];
+  templates: TemplateListItem[];
   categories: TemplateCategory[];
   isLoading: boolean;
-  onSelectTemplate: (template: Template) => void;
+  onSelectTemplate: (template: TemplateListItem) => void;
 }
 
 export const TemplateCatalog: React.FC<TemplateCatalogProps> = ({

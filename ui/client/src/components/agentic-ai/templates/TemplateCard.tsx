@@ -12,23 +12,34 @@ import {
   ArrowRight,
   Zap
 } from 'lucide-react';
-import { Template } from '@/types/templates';
+import { TemplateListItem } from '@/types/templates';
 
 interface TemplateCardProps {
-  template: Template;
+  template: TemplateListItem;
   index: number;
-  onSelect: (template: Template) => void;
+  onSelect: (template: TemplateListItem) => void;
 }
 
-const getTemplateIcon = (iconName?: string) => {
-  const iconMap: { [key: string]: React.ReactNode } = {
-    FileText: <FileText className="h-6 w-6" />,
-    MessageSquare: <MessageSquare className="h-6 w-6" />,
-    Database: <Database className="h-6 w-6" />,
-    GitBranch: <GitBranch className="h-6 w-6" />,
-    Zap: <Zap className="h-6 w-6" />
-  };
-  return iconMap[iconName || 'FileText'] || <FileText className="h-6 w-6" />;
+/**
+ * Get icon based on template category
+ */
+const getCategoryIcon = (category: string) => {
+  switch (category.toLowerCase()) {
+    case 'devops':
+    case 'git':
+      return <GitBranch className="h-6 w-6" />;
+    case 'data':
+    case 'database':
+      return <Database className="h-6 w-6" />;
+    case 'chat':
+    case 'bot':
+      return <MessageSquare className="h-6 w-6" />;
+    case 'automation':
+    case 'workflow':
+      return <Zap className="h-6 w-6" />;
+    default:
+      return <FileText className="h-6 w-6" />;
+  }
 };
 
 export const TemplateCard: React.FC<TemplateCardProps> = ({ 
@@ -50,7 +61,7 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
           <div className="flex items-start justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white">
-                {getTemplateIcon(template.icon)}
+                {getCategoryIcon(template.category)}
               </div>
               <div>
                 <CardTitle className="text-lg font-heading group-hover:text-primary transition-colors">
@@ -102,10 +113,10 @@ export const TemplateCard: React.FC<TemplateCardProps> = ({
 
         <CardFooter className="px-6 py-3 border-t border-gray-800 bg-background-dark">
           <div className="flex items-center justify-between w-full">
-            {template.estimated_setup_time && (
+            {template.placeholder_count !== undefined && (
               <div className="flex items-center text-xs text-gray-400">
                 <Clock className="h-3 w-3 mr-1" />
-                {template.estimated_setup_time}
+                {template.placeholder_count} field{template.placeholder_count !== 1 ? 's' : ''} to configure
               </div>
             )}
             <Button 

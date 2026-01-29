@@ -16,19 +16,23 @@ import {
   RefreshCw,
   FileText,
   Zap,
-  Server,
-  MessageSquare
+  MessageSquare,
+  Eye
 } from 'lucide-react';
-import { InstantiationStatus, TemplateInstantiationResponse } from '@/types/templates';
+import { InstantiationStatus, MaterializeResponse } from '@/types/templates';
+import { ElementValidationResult } from '@/types/validation';
+import { ValidationResultModal } from '../workspace/ValidationResultModal';
 
 interface InstantiationProgressProps {
   status: InstantiationStatus;
-  result: TemplateInstantiationResponse | null;
+  result: MaterializeResponse | null;
   error?: string | null;
+  validationResults?: ElementValidationResult[];
   onClose: () => void;
   onRetry: () => void;
   onNavigateToWorkflow: () => void;
-  onNavigateToChat: () => void;
+  onNavigateToChat: () => Promise<void>;
+  isCreatingSession?: boolean;
 }
 
 interface StepConfig {
@@ -39,9 +43,7 @@ interface StepConfig {
 
 const STEPS: StepConfig[] = [
   { key: 'validating', label: 'Validating inputs', icon: <FileText className="h-5 w-5" /> },
-  { key: 'submitting', label: 'Submitting request', icon: <Zap className="h-5 w-5" /> },
-  { key: 'provisioning', label: 'Provisioning resources', icon: <Server className="h-5 w-5" /> },
-  { key: 'finalizing', label: 'Finalizing workflow', icon: <MessageSquare className="h-5 w-5" /> },
+  { key: 'submitting', label: 'Creating blueprint', icon: <Zap className="h-5 w-5" /> },
 ];
 
 const getStepIndex = (status: InstantiationStatus): number => {
@@ -54,10 +56,8 @@ const getStepIndex = (status: InstantiationStatus): number => {
 const getProgressValue = (status: InstantiationStatus): number => {
   switch (status) {
     case 'idle': return 0;
-    case 'validating': return 15;
-    case 'submitting': return 35;
-    case 'provisioning': return 65;
-    case 'finalizing': return 85;
+    case 'validating': return 30;
+    case 'submitting': return 70;
     case 'completed': return 100;
     case 'failed': return 0;
     default: return 0;
@@ -68,14 +68,27 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
   status,
   result,
   error,
+  validationResults = [],
   onClose,
   onRetry,
   onNavigateToWorkflow,
-  onNavigateToChat
+  onNavigateToChat,
+  isCreatingSession = false
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isNavigatingToChat, setIsNavigatingToChat] = useState(false);
+  const [selectedValidationResult, setSelectedValidationResult] = useState<ElementValidationResult | null>(null);
   const currentStepIndex = getStepIndex(status);
   const progressValue = getProgressValue(status);
+
+  const handleOpenChat = async () => {
+    setIsNavigatingToChat(true);
+    try {
+      await onNavigateToChat();
+    } finally {
+      setIsNavigatingToChat(false);
+    }
+  };
 
   useEffect(() => {
     if (status !== 'idle') {
@@ -87,6 +100,13 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
     setIsOpen(false);
     onClose();
   };
+
+  const handleViewDetails = (result: ElementValidationResult) => {
+    setSelectedValidationResult(result);
+  };
+
+  const hasValidationErrors = validationResults.length > 0;
+  const totalErrorCount = validationResults.reduce((sum, r) => sum + r.messages.length, 0);
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -170,11 +190,16 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
                     <span className="font-medium">Success!</span>
                   </div>
                   <p className="text-sm text-gray-400">
-                    Your workflow has been created and is ready to use.
+                    Workflow "<span className="text-gray-200">{result.name}</span>" has been created and is ready to use.
                   </p>
-                  {result.created_elements && result.created_elements.length > 0 && (
+                  {result.fields_filled > 0 && (
                     <div className="mt-2 text-xs text-gray-500">
-                      Created {result.created_elements.length} elements
+                      Configured {result.fields_filled} field{result.fields_filled !== 1 ? 's' : ''}
+                    </div>
+                  )}
+                  {result.resource_ids && result.resource_ids.length > 0 && (
+                    <div className="mt-1 text-xs text-gray-500">
+                      Created {result.resource_ids.length} resource{result.resource_ids.length !== 1 ? 's' : ''}
                     </div>
                   )}
                 </div>
@@ -183,17 +208,28 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
                   <Button 
                     onClick={onNavigateToWorkflow}
                     className="flex-1 bg-primary hover:bg-primary/90"
+                    disabled={isNavigatingToChat || isCreatingSession}
                   >
                     View Workflow
                     <ArrowRight className="h-4 w-4 ml-2" />
                   </Button>
                   <Button 
-                    onClick={onNavigateToChat}
+                    onClick={handleOpenChat}
                     variant="outline"
                     className="flex-1 border-gray-700"
+                    disabled={isNavigatingToChat || isCreatingSession}
                   >
-                    Open Chat
-                    <MessageSquare className="h-4 w-4 ml-2" />
+                    {isNavigatingToChat || isCreatingSession ? (
+                      <>
+                        <LoaderCircle className="h-4 w-4 mr-2 animate-spin" />
+                        Creating Chat...
+                      </>
+                    ) : (
+                      <>
+                        Open Chat
+                        <MessageSquare className="h-4 w-4 ml-2" />
+                      </>
+                    )}
                   </Button>
                 </div>
               </motion.div>
@@ -210,10 +246,49 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
                   <div className="flex items-center gap-2 text-red-500 mb-2">
                     <XCircle className="h-5 w-5" />
                     <span className="font-medium">Creation Failed</span>
+                    {hasValidationErrors && (
+                      <span className="text-xs text-red-400 ml-auto">
+                        {totalErrorCount} error{totalErrorCount !== 1 ? 's' : ''} in {validationResults.length} element{validationResults.length !== 1 ? 's' : ''}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-sm text-gray-400">
+                  <p className="text-sm text-gray-400 mb-3">
                     {error || 'An unexpected error occurred while creating the workflow.'}
                   </p>
+
+                  {/* Element Errors List */}
+                  {hasValidationErrors && (
+                    <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
+                      <p className="text-xs text-gray-500 font-medium mb-2">Failed Elements:</p>
+                      {validationResults.map((result, idx) => (
+                        <div 
+                          key={result.element_rid || idx}
+                          className="flex items-center justify-between p-2 bg-gray-900/50 rounded border border-gray-800 hover:border-red-500/30 transition-colors"
+                        >
+                          <div className="flex items-center gap-2 min-w-0 flex-1">
+                            <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm text-gray-200 truncate">
+                                {result.name || result.element_rid}
+                              </p>
+                              <p className="text-xs text-gray-500">
+                                {result.element_type} • {result.messages.length} error{result.messages.length !== 1 ? 's' : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleViewDetails(result)}
+                            className="text-red-400 hover:text-red-300 hover:bg-red-500/10 h-7 px-2 shrink-0"
+                          >
+                            <Eye className="h-3 w-3 mr-1" />
+                            Details
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex gap-2">
@@ -237,6 +312,13 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
           </AnimatePresence>
         </div>
       </DialogContent>
+
+      <ValidationResultModal
+        validationResult={selectedValidationResult}
+        isOpen={!!selectedValidationResult}
+        onOpenChange={(open) => !open && setSelectedValidationResult(null)}
+        showRefreshButton={false}
+      />
     </Dialog>
   );
 };
