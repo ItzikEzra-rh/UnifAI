@@ -25,7 +25,7 @@ class FieldDefinition(BaseModel):
     required: bool = Field(default=True)
     
     # Complete JSON schema for this field - copied as-is from Pydantic
-    schema: Dict[str, Any] = Field(
+    field_schema: Dict[str, Any] = Field(
         default_factory=dict,
         description="Complete JSON schema from Pydantic model_json_schema()"
     )
@@ -187,4 +187,4 @@ class TemplateInputSchema(BaseModel):
 
     def _field_to_json_schema(self, field: FieldDefinition) -> Dict[str, Any]:
         """Return the field's schema as-is from Pydantic."""
-        return field.schema
+        return field.field_schema

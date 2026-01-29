@@ -117,10 +117,11 @@ class ResourceMaterializer:
         self._prepare_and_validate(resources_to_save, save_order)
         
         # Step 4: Save resources with rollback on failure
+        # Note: This also updates resources_to_save with remapped configs
         id_mapping = self._save_with_rollback(resources_to_save, save_order, user_id)
         
-        # Step 5: Build final blueprint with $ref entries
-        final_draft = self._build_final_draft(draft, id_mapping)
+        # Step 5: Build final blueprint using saved resources with remapped configs
+        final_draft = self._build_final_draft(draft, resources_to_save, id_mapping)
         
         return MaterializationResult(
             blueprint_draft=final_draft,
@@ -286,6 +287,9 @@ class ResourceMaterializer:
         """
         Save resources in order with rollback on failure.
         
+        Also updates resources[].config with the remapped config for use
+        in building the final blueprint.
+        
         Returns mapping: local_rid → saved_rid
         """
         id_mapping: Dict[str, str] = {}
@@ -301,6 +305,9 @@ class ResourceMaterializer:
                 
                 # Remap internal refs in config
                 remapped_config = RefRemapper.remap(res.config, prefixed_mapping)
+                
+                # Store remapped config back for use in final blueprint
+                res.config = remapped_config
                 
                 # Save via service
                 saved_doc = self._resources.create(
@@ -334,42 +341,43 @@ class ResourceMaterializer:
     def _build_final_draft(
         self,
         draft: BlueprintDraft,
+        saved_resources: Dict[str, ResourceToSave],
         id_mapping: Dict[str, str],
     ) -> BlueprintDraft:
         """
-        Build final blueprint with only plan-referenced resources.
+        Build final blueprint with only nodes and conditions.
         
-        The blueprint only needs:
-        - nodes: Referenced by plan steps
-        - conditions: Referenced by plan exit_conditions
-        
-        Other categories (llms, tools, retrievers, providers) are embedded
-        in the saved node/condition configs as $refs - not needed in blueprint.
+        - nodes/conditions: Include with $ref:saved_id or inline (system nodes)
+        - Other categories (llms, tools, providers, retrievers): Empty
+          (they are embedded as $refs in the saved node/condition configs)
         """
-        # Categories that appear in the blueprint (plan-referenced)
+        # Categories to include in blueprint (plan-referenced)
         PLAN_CATEGORIES = {ResourceCategory.NODE, ResourceCategory.CONDITION}
         
         result: Dict[str, Any] = {}
         
         for category in ResourceCategory:
             if category in PLAN_CATEGORIES:
-                # Nodes and Conditions: include with refs or inline
                 entries = []
                 for resource in getattr(draft, category.value, []):
                     rid = resource.rid.ref
                     
-                    if rid in id_mapping:
-                        # Was saved - dump full resource and update rid to external ref
-                        entry = resource.model_dump(mode="json")
-                        entry["rid"] = f"$ref:{id_mapping[rid]}"
-                        entries.append(entry)
+                    if rid in saved_resources:
+                        # Was saved - use saved resource with remapped config
+                        saved = saved_resources[rid]
+                        entries.append({
+                            "rid": f"$ref:{id_mapping[rid]}",
+                            "name": saved.name,
+                            "type": saved.type,
+                            "config": saved.config,
+                        })
                     else:
-                        # Keep as-is (system node stays inline)
+                        # Not saved (system nodes) - keep as-is from draft
                         entries.append(resource.model_dump(mode="json"))
                 
                 result[category.value] = entries
             else:
-                # LLMs, Tools, Retrievers, Providers: empty (embedded in saved configs)
+                # Other categories: empty (embedded in saved configs)
                 result[category.value] = []
         
         # Remap plan refs
@@ -387,22 +395,22 @@ class ResourceMaterializer:
         draft: BlueprintDraft,
         id_mapping: Dict[str, str],
     ) -> List[Dict[str, Any]]:
-        """Remap plan step references to saved resource IDs."""
+        """Remap plan step references to saved resource IDs (bare IDs, no $ref: prefix)."""
         remapped_plan = []
         
         for step in draft.plan:
             step_dict = step.model_dump(mode="json")
             
-            # Remap node ref
+            # Remap node ref - bare ID (no $ref: prefix)
             node_rid = step.node.ref
             if node_rid in id_mapping:
-                step_dict["node"] = f"$ref:{id_mapping[node_rid]}"
+                step_dict["node"] = id_mapping[node_rid]
             
-            # Remap exit_condition if present
+            # Remap exit_condition if present - bare ID
             if step.exit_condition:
                 cond_rid = step.exit_condition.ref
                 if cond_rid in id_mapping:
-                    step_dict["exit_condition"] = f"$ref:{id_mapping[cond_rid]}"
+                    step_dict["exit_condition"] = id_mapping[cond_rid]
             
             remapped_plan.append(step_dict)
         

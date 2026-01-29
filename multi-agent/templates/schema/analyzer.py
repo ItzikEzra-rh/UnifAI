@@ -57,7 +57,7 @@ class PlaceholderAnalyzer:
                     template=template,
                     category=category,
                     rid=res_placeholder.rid,
-                    field_paths=[p.field_path for p in res_placeholder.placeholders],
+                    placeholders=res_placeholder.placeholders,
                 )
                 if resource_model:
                     resource_models[res_placeholder.rid] = resource_model
@@ -92,14 +92,17 @@ class PlaceholderAnalyzer:
         template: Template,
         category: ResourceCategory,
         rid: str,
-        field_paths: List[str],
+        placeholders: List,
     ) -> Optional[Type[BaseModel]]:
         """
         Create a Pydantic model for a resource's placeholder fields.
         
-        Extracts the exact (annotation, FieldInfo) from the original
-        config schema and builds a new model with just those fields.
+        Extracts the field type and metadata from the original config schema,
+        but uses the placeholder's required flag to determine if the field
+        is required in the input schema.
         """
+        from templates.models.template import PlaceholderPointer
+        
         # Find the resource in the template
         resources = getattr(template.draft, category.value, [])
         resource = None
@@ -117,16 +120,41 @@ class PlaceholderAnalyzer:
         except KeyError:
             return None
         
-        # Extract the placeholder fields - exact copy from original
+        # Extract the placeholder fields with required override
         fields: Dict[str, Tuple[Any, FieldInfo]] = {}
         
-        for field_path in field_paths:
-            field_name = field_path.split(".")[-1]
+        for placeholder in placeholders:
+            field_name = placeholder.field_path.split(".")[-1]
             
-            if field_name in schema_cls.model_fields:
-                field_info = schema_cls.model_fields[field_name]
-                # Copy exact type and FieldInfo
-                fields[field_name] = (field_info.annotation, field_info)
+            if field_name not in schema_cls.model_fields:
+                continue
+            
+            original_field = schema_cls.model_fields[field_name]
+            
+            # Create new FieldInfo with placeholder's required setting
+            if placeholder.required:
+                # Required: use ... (Ellipsis) as default
+                new_field = Field(
+                    default=...,
+                    description=original_field.description,
+                    title=original_field.title,
+                    json_schema_extra=original_field.json_schema_extra,
+                )
+            else:
+                # Optional: keep original default or use None
+                from pydantic_core import PydanticUndefined
+                default = original_field.default
+                if default is PydanticUndefined:
+                    default = None
+                new_field = Field(
+                    default=default,
+                    description=original_field.description,
+                    title=original_field.title,
+                    json_schema_extra=original_field.json_schema_extra,
+                )
+            
+            # Use original type annotation with new FieldInfo
+            fields[field_name] = (original_field.annotation, new_field)
         
         if not fields:
             return None
