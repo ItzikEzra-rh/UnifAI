@@ -2,180 +2,270 @@
 Placeholder analyzer for extracting fields from element config schemas.
 
 Creates a real Pydantic model by extracting exact field definitions
-(type + FieldInfo) from the original configs and merging them.
+from original configs based on placeholder metadata.
 
-Single Responsibility: Build input model from placeholder field definitions.
-Open/Closed: Extensible via element registry without modifying analyzer.
+SOLID Principles:
+- SRP: Each method has one responsibility
+- OCP: Extensible via ElementRegistry without modification
+- DIP: Depends on ElementRegistry abstraction
 """
-from typing import List, Dict, Any, Optional, Type, Tuple
+from dataclasses import dataclass
+from typing import List, Dict, Any, Optional, Type, Iterator
+
 from pydantic import BaseModel, Field, create_model
 from pydantic.fields import FieldInfo
+from pydantic_core import PydanticUndefined
 
 from catalog.element_registry import ElementRegistry
 from core.enums import ResourceCategory
-from templates.models.template import Template
+from templates.models.template import Template, PlaceholderPointer
+
+
+@dataclass(frozen=True)
+class FieldDefinition:
+    """Extracted field definition for model creation."""
+    name: str
+    annotation: Any
+    field_info: FieldInfo
 
 
 class PlaceholderAnalyzer:
     """
     Analyzes templates and creates input Pydantic models.
     
-    The key insight: Instead of building custom schema objects,
-    we extract the exact (annotation, FieldInfo) tuples from the
-    original config schemas and use create_model to build a real
-    Pydantic model.
-    
-    This gives us:
-    - Exact same types (LLMRef, SecretStr, etc.)
-    - Exact same validation constraints
-    - Exact same json_schema_extra metadata
-    - Real Pydantic model for validation
+    Extracts exact (annotation, FieldInfo) from original config schemas
+    and builds a nested Pydantic model for user input validation.
     """
+    
+    # Model naming pattern
+    INPUT_SUFFIX = "Input"
 
     def __init__(self, element_registry: ElementRegistry):
         self._registry = element_registry
 
+    # ─────────────────────────────────────────────────────────────────────
+    #  Public API
+    # ─────────────────────────────────────────────────────────────────────
     def create_input_model(self, template: Template) -> Type[BaseModel]:
         """
-        Create a Pydantic model for template input.
+        Create a Pydantic model for template input validation.
         
-        Structure:
-        - Root model with category fields
-        - Category models with resource fields  
-        - Resource models with placeholder fields (extracted from original configs)
-        
-        Returns a real Pydantic model that can validate user input.
+        Structure: Root → Category → Resource → Fields
         """
+        category_models = self._build_all_category_models(template)
+        
+        if not category_models:
+            return self._create_empty_model(template.name)
+        
+        return self._build_root_model(template.name, category_models)
+
+    def get_json_schema(self, template: Template) -> Dict[str, Any]:
+        """Get JSON Schema for template input (for UI form generation)."""
+        return self.create_input_model(template).model_json_schema()
+
+    # ─────────────────────────────────────────────────────────────────────
+    #  Model Building
+    # ─────────────────────────────────────────────────────────────────────
+    def _build_all_category_models(
+        self, 
+        template: Template,
+    ) -> Dict[str, Type[BaseModel]]:
+        """Build models for all categories with placeholders."""
         category_models: Dict[str, Type[BaseModel]] = {}
         
         for cat_placeholder in template.placeholders.categories:
-            category = cat_placeholder.category
-            resource_models: Dict[str, Type[BaseModel]] = {}
-            
-            for res_placeholder in cat_placeholder.resources:
-                resource_model = self._create_resource_model(
-                    template=template,
-                    category=category,
-                    rid=res_placeholder.rid,
-                    placeholders=res_placeholder.placeholders,
-                )
-                if resource_model:
-                    resource_models[res_placeholder.rid] = resource_model
-            
-            # Create category model from resource models
-            if resource_models:
-                cat_fields = {
-                    rid: (model, Field(..., description=f"Input for {rid}"))
-                    for rid, model in resource_models.items()
-                }
-                category_models[category.value] = create_model(
-                    f"{category.value.title()}Input",
-                    **cat_fields
-                )
+            category_model = self._build_category_model(
+                template=template,
+                category=cat_placeholder.category,
+                resources=cat_placeholder.resources,
+            )
+            if category_model:
+                category_models[cat_placeholder.category.value] = category_model
         
-        # Create root model from category models
-        if not category_models:
-            return create_model(f"{template.name}Input")
+        return category_models
+
+    def _build_category_model(
+        self,
+        template: Template,
+        category: ResourceCategory,
+        resources: List,
+    ) -> Optional[Type[BaseModel]]:
+        """Build model for a single category."""
+        resource_models: Dict[str, Type[BaseModel]] = {}
         
-        root_fields = {
-            cat_name: (model, Field(..., description=f"Input for {cat_name}"))
-            for cat_name, model in category_models.items()
+        for res_placeholder in resources:
+            resource_model = self._build_resource_model(
+                template=template,
+                category=category,
+                rid=res_placeholder.rid,
+                placeholders=res_placeholder.placeholders,
+            )
+            if resource_model:
+                resource_models[res_placeholder.rid] = resource_model
+        
+        if not resource_models:
+            return None
+        
+        fields = {
+            rid: (model, Field(..., description=f"Input for {rid}"))
+            for rid, model in resource_models.items()
         }
         
         return create_model(
-            self._sanitize_name(f"{template.name}Input"),
-            **root_fields
+            self._model_name(category.value.title()),
+            **fields,
         )
 
-    def _create_resource_model(
+    def _build_resource_model(
         self,
         template: Template,
         category: ResourceCategory,
         rid: str,
-        placeholders: List,
+        placeholders: List[PlaceholderPointer],
     ) -> Optional[Type[BaseModel]]:
-        """
-        Create a Pydantic model for a resource's placeholder fields.
-        
-        Extracts the field type and metadata from the original config schema,
-        but uses the placeholder's required flag to determine if the field
-        is required in the input schema.
-        """
-        from templates.models.template import PlaceholderPointer
-        
-        # Find the resource in the template
-        resources = getattr(template.draft, category.value, [])
-        resource = None
-        for r in resources:
-            if r.rid.ref == rid:
-                resource = r
-                break
-        
-        if resource is None or not resource.type:
+        """Build model for a single resource's placeholder fields."""
+        # Find resource in draft
+        resource = self._find_resource(template.draft, category, rid)
+        if resource is None:
+            print(f"[PlaceholderAnalyzer] Resource not found: {category.value}/{rid}")
             return None
         
-        # Get the original config schema
-        try:
-            schema_cls = self._registry.get_schema(category, resource.type)
-        except KeyError:
+        # Get original config schema
+        schema_cls = self._get_config_schema(category, resource.type)
+        if schema_cls is None:
+            print(f"[PlaceholderAnalyzer] Schema not found: {category.value}/{resource.type}")
             return None
         
-        # Extract the placeholder fields with required override
-        fields: Dict[str, Tuple[Any, FieldInfo]] = {}
+        # Extract field definitions
+        field_defs = list(self._extract_fields(schema_cls, placeholders))
+        if not field_defs:
+            return None
         
+        # Build model
+        fields = {
+            fd.name: (fd.annotation, fd.field_info)
+            for fd in field_defs
+        }
+        
+        return create_model(self._model_name(rid), **fields)
+
+    def _build_root_model(
+        self,
+        template_name: str,
+        category_models: Dict[str, Type[BaseModel]],
+    ) -> Type[BaseModel]:
+        """Build root model from category models."""
+        fields = {
+            cat_name: (model, Field(..., description=f"Input for {cat_name}"))
+            for cat_name, model in category_models.items()
+        }
+        return create_model(self._model_name(template_name), **fields)
+
+    def _create_empty_model(self, name: str) -> Type[BaseModel]:
+        """Create empty model when no placeholders exist."""
+        return create_model(self._model_name(name))
+
+    # ─────────────────────────────────────────────────────────────────────
+    #  Field Extraction
+    # ─────────────────────────────────────────────────────────────────────
+    def _extract_fields(
+        self,
+        schema_cls: Type[BaseModel],
+        placeholders: List[PlaceholderPointer],
+    ) -> Iterator[FieldDefinition]:
+        """Extract field definitions from schema based on placeholders."""
         for placeholder in placeholders:
-            field_name = placeholder.field_path.split(".")[-1]
-            
-            if field_name not in schema_cls.model_fields:
-                continue
-            
-            original_field = schema_cls.model_fields[field_name]
-            
-            # Create new FieldInfo with placeholder's required setting
-            if placeholder.required:
-                # Required: use ... (Ellipsis) as default
-                new_field = Field(
-                    default=...,
-                    description=original_field.description,
-                    title=original_field.title,
-                    json_schema_extra=original_field.json_schema_extra,
-                )
-            else:
-                # Optional: keep original default or use None
-                from pydantic_core import PydanticUndefined
-                default = original_field.default
-                if default is PydanticUndefined:
-                    default = None
-                new_field = Field(
-                    default=default,
-                    description=original_field.description,
-                    title=original_field.title,
-                    json_schema_extra=original_field.json_schema_extra,
-                )
-            
-            # Use original type annotation with new FieldInfo
-            fields[field_name] = (original_field.annotation, new_field)
+            field_def = self._extract_single_field(schema_cls, placeholder)
+            if field_def:
+                yield field_def
+
+    def _extract_single_field(
+        self,
+        schema_cls: Type[BaseModel],
+        placeholder: PlaceholderPointer,
+    ) -> Optional[FieldDefinition]:
+        """Extract a single field definition."""
+        # Get field name (last segment of path)
+        field_name = placeholder.field_path.split(".")[-1]
         
-        if not fields:
+        if field_name not in schema_cls.model_fields:
+            print(f"[PlaceholderAnalyzer] Field '{field_name}' not found in {schema_cls.__name__}")
             return None
         
-        return create_model(
-            self._sanitize_name(f"{rid}Input"),
-            **fields
+        original = schema_cls.model_fields[field_name]
+        field_info = self._create_field_info(original, placeholder)
+        
+        return FieldDefinition(
+            name=field_name,
+            annotation=original.annotation,
+            field_info=field_info,
         )
 
-    def get_json_schema(self, template: Template) -> Dict[str, Any]:
+    def _create_field_info(
+        self,
+        original: FieldInfo,
+        placeholder: PlaceholderPointer,
+        use_placeholder_required: bool = False,
+    ) -> FieldInfo:
         """
-        Get JSON schema for template input.
+        Create FieldInfo with placeholder overrides for title/description.
         
-        Creates the input model and returns its JSON schema.
-        This includes all $defs for complex types.
+        Args:
+            use_placeholder_required: If True, use placeholder.required.
+                If False (default), use original schema's required status.
         """
-        input_model = self.create_input_model(template)
-        return input_model.model_json_schema()
+        # Determine required status
+        is_required = (
+            placeholder.required if use_placeholder_required
+            else original.default is PydanticUndefined
+        )
+        
+        # Determine default value
+        if is_required:
+            default = ...
+        elif original.default is PydanticUndefined:
+            default = None
+        else:
+            default = original.default
+        
+        return Field(
+            default=default,
+            title=placeholder.label or original.title,
+            description=placeholder.hint or original.description,
+            json_schema_extra=original.json_schema_extra,
+        )
 
-    def _sanitize_name(self, name: str) -> str:
-        """Sanitize name for use as Python identifier."""
+    # ─────────────────────────────────────────────────────────────────────
+    #  Helpers
+    # ─────────────────────────────────────────────────────────────────────
+    def _find_resource(
+        self,
+        draft,
+        category: ResourceCategory,
+        rid: str,
+    ):
+        """Find resource in draft by category and rid."""
+        resources = getattr(draft, category.value, [])
+        for resource in resources:
+            if resource.rid.ref == rid:
+                return resource
+        return None
+
+    def _get_config_schema(
+        self,
+        category: ResourceCategory,
+        element_type: str,
+    ) -> Optional[Type[BaseModel]]:
+        """Get config schema from registry."""
+        try:
+            return self._registry.get_schema(category, element_type)
+        except KeyError:
+            return None
+
+    def _model_name(self, base: str) -> str:
+        """Generate sanitized model name."""
+        name = f"{base}{self.INPUT_SUFFIX}"
+        # Sanitize for Python identifier
         result = "".join(
             c if c.isalnum() or c == "_" else "_"
             for c in name

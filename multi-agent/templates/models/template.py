@@ -10,7 +10,7 @@ The PlaceholderMeta just points to which fields need user input.
 """
 from typing import List, Optional
 from datetime import datetime
-from pydantic import BaseModel, Field, Extra
+from pydantic import BaseModel, Field
 
 from core.enums import ResourceCategory
 from blueprints.models.blueprint import BlueprintDraft
@@ -41,8 +41,7 @@ class PlaceholderPointer(BaseModel):
         description="Additional hint text for the user"
     )
 
-    class Config:
-        extra = Extra.forbid
+    model_config = {"extra": "forbid"}
 
 
 class ResourcePlaceholders(BaseModel):
@@ -57,8 +56,7 @@ class ResourcePlaceholders(BaseModel):
         description="List of placeholder fields for this resource"
     )
 
-    class Config:
-        extra = Extra.forbid
+    model_config = {"extra": "forbid"}
 
 
 class CategoryPlaceholders(BaseModel):
@@ -68,8 +66,7 @@ class CategoryPlaceholders(BaseModel):
     category: ResourceCategory
     resources: List[ResourcePlaceholders] = Field(default_factory=list)
 
-    class Config:
-        extra = Extra.forbid
+    model_config = {"extra": "forbid"}
 
 
 class PlaceholderMeta(BaseModel):
@@ -80,25 +77,7 @@ class PlaceholderMeta(BaseModel):
     """
     categories: List[CategoryPlaceholders] = Field(default_factory=list)
 
-    class Config:
-        extra = Extra.forbid
-
-    def get_category(self, category: ResourceCategory) -> Optional[CategoryPlaceholders]:
-        """Get placeholders for a specific category."""
-        for cat in self.categories:
-            if cat.category == category:
-                return cat
-        return None
-
-    def get_resource(self, category: ResourceCategory, rid: str) -> Optional[ResourcePlaceholders]:
-        """Get placeholders for a specific resource."""
-        cat = self.get_category(category)
-        if cat is None:
-            return None
-        for res in cat.resources:
-            if res.rid == rid:
-                return res
-        return None
+    model_config = {"extra": "forbid"}
 
     def iter_all_placeholders(self):
         """
@@ -134,8 +113,7 @@ class TemplateMetadata(BaseModel):
         description="List of output capabilities (e.g., 'streaming', 'json', 'markdown')"
     )
 
-    class Config:
-        extra = Extra.forbid
+    model_config = {"extra": "forbid"}
 
 
 class Template(BaseModel):
@@ -164,8 +142,7 @@ class Template(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
 
-    class Config:
-        extra = Extra.forbid
+    model_config = {"extra": "forbid"}
 
     @property
     def name(self) -> str:
@@ -177,6 +154,63 @@ class Template(BaseModel):
         """Template description (from draft)."""
         return self.draft.description
 
-    def has_placeholders(self) -> bool:
-        """Check if template has any placeholders."""
-        return self.placeholders.placeholder_count() > 0
+
+class TemplateSummary(BaseModel):
+    """
+    Lightweight template info for catalog display.
+    
+    Read-only projection of Template for API responses.
+    """
+    template_id: str
+    name: str
+    description: str
+    placeholder_count: int
+    category: Optional[str] = None
+    tags: List[str] = Field(default_factory=list)
+    version: str = "1.0.0"
+    output_capabilities: List[str] = Field(default_factory=list)
+    author: Optional[str] = None
+    is_public: bool = True
+    created_at: datetime
+
+    model_config = {"frozen": True, "extra": "forbid"}
+
+    @classmethod
+    def from_template(cls, template: Template) -> "TemplateSummary":
+        """Create summary from full template."""
+        return cls(
+            template_id=template.template_id,
+            name=template.name,
+            description=template.description,
+            placeholder_count=template.placeholders.placeholder_count(),
+            category=template.metadata.category,
+            tags=template.metadata.tags,
+            version=template.metadata.version,
+            output_capabilities=template.metadata.output_capabilities,
+            author=template.metadata.author,
+            is_public=template.metadata.is_public,
+            created_at=template.created_at,
+        )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Service Result Models
+# ─────────────────────────────────────────────────────────────────────────────
+class InputValidationResult(BaseModel):
+    """Result of input validation."""
+    is_valid: bool
+    errors: List[str] = Field(default_factory=list)
+
+    model_config = {"frozen": True}
+
+
+class MaterializeResult(BaseModel):
+    """Result of template materialization."""
+    blueprint_id: str
+    template_id: str
+    fields_filled: int
+    name: str
+    resources_created: int
+    resource_ids: List[str] = Field(default_factory=list)
+
+    model_config = {"frozen": True}

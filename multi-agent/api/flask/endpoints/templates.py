@@ -6,18 +6,16 @@ Provides REST API for template operations:
 - Input schema generation
 - Template instantiation and materialization
 """
-from flask import Blueprint, jsonify, current_app, request
+from flask import Blueprint, jsonify, current_app
 from global_utils.helpers.apiargs import from_body, from_query
 from webargs import fields
 import logging
-from typing import Optional
 
-from templates.service import (
+from templates.errors import (
     TemplateNotFoundError,
-    TemplateSaveError,
     InstantiationError,
+    MaterializationError,
 )
-from templates.instantiation import MaterializationError
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +53,7 @@ def list_templates(is_public, category, tags, skip, limit):
             limit=limit,
         )
         return jsonify({
-            "templates": summaries,
+            "templates": [s.model_dump(mode="json") for s in summaries],
             "count": len(summaries),
         }), 200
     except Exception as e:
@@ -78,20 +76,9 @@ def search_templates(query, limit):
     """
     try:
         svc = current_app.container.template_service
-        templates = svc.search_templates(query=query, limit=limit)
-        summaries = [
-            {
-                "template_id": t.template_id,
-                "name": t.name,
-                "description": t.description,
-                "placeholder_count": t.placeholders.placeholder_count(),
-                "category": t.metadata.category,
-                "tags": t.metadata.tags,
-            }
-            for t in templates
-        ]
+        summaries = svc.search_template_summaries(query=query, limit=limit)
         return jsonify({
-            "templates": summaries,
+            "templates": [s.model_dump(mode="json") for s in summaries],
             "count": len(summaries),
         }), 200
     except Exception as e:
@@ -152,7 +139,7 @@ def get_template_summary(template_id):
     try:
         svc = current_app.container.template_service
         summary = svc.get_template_summary(template_id)
-        return jsonify(summary), 200
+        return jsonify(summary.model_dump(mode="json")), 200
     except TemplateNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     except Exception as e:
@@ -176,22 +163,12 @@ def create_template(draft, placeholders, metadata):
         metadata: Optional template metadata
     """
     try:
-        from blueprints.models.blueprint import BlueprintDraft
-        from templates.models.template import PlaceholderMeta, TemplateMetadata
-        
         svc = current_app.container.template_service
-        
-        # Parse models
-        draft_model = BlueprintDraft(**draft)
-        placeholders_model = PlaceholderMeta(**placeholders)
-        metadata_model = TemplateMetadata(**metadata) if metadata else None
-        
         template_id = svc.create_template(
-            draft=draft_model,
-            placeholders=placeholders_model,
-            metadata=metadata_model,
+            draft=draft,
+            placeholders=placeholders,
+            metadata=metadata if metadata else None,
         )
-        
         return jsonify({
             "status": "success",
             "template_id": template_id,
@@ -261,29 +238,8 @@ def get_template_schema(template_id):
         return jsonify({"error": str(e)}), 500
 
 
-@templates_bp.route("/template.jsonschema.get", methods=["GET"])
-@from_query({
-    "template_id": fields.Str(data_key="templateId", required=True),
-})
-def get_template_json_schema(template_id):
-    """
-    Get JSON Schema for template input.
-    
-    Returns standard JSON Schema format for form generation.
-    """
-    try:
-        svc = current_app.container.template_service
-        json_schema = svc.get_input_json_schema(template_id)
-        return jsonify(json_schema), 200
-    except TemplateNotFoundError as e:
-        return jsonify({"error": str(e)}), 404
-    except Exception as e:
-        logger.exception(f"Error getting template JSON schema {template_id}")
-        return jsonify({"error": str(e)}), 500
-
-
 # ─────────────────────────────────────────────────────────────────────────────
-#  Validation
+#  Input Validation
 # ─────────────────────────────────────────────────────────────────────────────
 @templates_bp.route("/template.input.validate", methods=["POST"])
 @from_body({
@@ -292,55 +248,28 @@ def get_template_json_schema(template_id):
 })
 def validate_template_input(template_id, input):
     """
-    Validate user input against template schema.
+    Validate user input against a template's input schema.
     
-    Returns validation result with any errors.
+    Use this to check input before instantiation.
+    
+    Returns:
+        is_valid: Whether the input is valid
+        errors: List of validation errors (if any)
     """
     try:
         svc = current_app.container.template_service
-        is_valid, errors = svc.validate_input(template_id, input)
-        
-        return jsonify({
-            "is_valid": is_valid,
-            "errors": errors,
-        }), 200
+        result = svc.validate_input(template_id, input)
+        return jsonify(result.model_dump(mode="json")), 200
     except TemplateNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     except Exception as e:
-        logger.exception(f"Error validating template input {template_id}")
+        logger.exception(f"Error validating input for template {template_id}")
         return jsonify({"error": str(e)}), 500
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Instantiation
 # ─────────────────────────────────────────────────────────────────────────────
-@templates_bp.route("/template.preview", methods=["POST"])
-@from_body({
-    "template_id": fields.Str(data_key="templateId", required=True),
-    "input": fields.Dict(required=True),
-})
-def preview_template(template_id, input):
-    """
-    Preview template instantiation.
-    
-    Returns merged BlueprintDraft for preview purposes.
-    """
-    try:
-        svc = current_app.container.template_service
-        preview = svc.preview_instantiation(template_id, input)
-        return jsonify(preview.model_dump(mode="json")), 200
-    except TemplateNotFoundError as e:
-        return jsonify({"error": str(e)}), 404
-    except InstantiationError as e:
-        return jsonify({
-            "error": str(e),
-            "errors": e.errors,
-        }), 400
-    except Exception as e:
-        logger.exception(f"Error previewing template {template_id}")
-        return jsonify({"error": str(e)}), 500
-
-
 @templates_bp.route("/template.instantiate", methods=["POST"])
 @from_body({
     "template_id": fields.Str(data_key="templateId", required=True),
@@ -354,14 +283,14 @@ def instantiate_template(template_id, input):
     """
     try:
         svc = current_app.container.template_service
-        blueprint = svc.instantiate(template_id, input)
-        return jsonify(blueprint.model_dump(mode="json")), 200
+        result = svc.instantiate(template_id, input)
+        return jsonify(result.blueprint.model_dump(mode="json")), 200
     except TemplateNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     except InstantiationError as e:
         return jsonify({
             "error": str(e),
-            "errors": e.errors,
+            "errors": e.to_dict_list(),
         }), 400
     except Exception as e:
         logger.exception(f"Error instantiating template {template_id}")
@@ -395,33 +324,33 @@ def materialize_template(template_id, user_id, input, blueprint_name=None, skip_
         fields_filled: Number of fields that were filled
         name: Blueprint name
     """
-    try:
-        svc = current_app.container.template_service
-        result = svc.materialize(
-            template_id=template_id,
-            user_id=user_id,
-            user_input=input,
-            blueprint_name=blueprint_name,
-            skip_validation=skip_validation,
-        )
-        return jsonify({
-            "status": "success",
-            **result,
-        }), 201
-    except TemplateNotFoundError as e:
-        return jsonify({"error": str(e)}), 404
-    except InstantiationError as e:
-        return jsonify({
-            "error": str(e),
-            "errors": e.errors,
-        }), 400
-    except MaterializationError as e:
-        return jsonify({
-            "error": str(e),
-            "errors": e.errors,
-        }), 400
-    except RuntimeError as e:
-        return jsonify({"error": str(e)}), 500
-    except Exception as e:
-        logger.exception(f"Error materializing template {template_id}")
-        return jsonify({"error": str(e)}), 500
+    # try:
+    svc = current_app.container.template_service
+    result = svc.materialize(
+        template_id=template_id,
+        user_id=user_id,
+        user_input=input,
+        blueprint_name=blueprint_name,
+        skip_validation=skip_validation,
+    )
+    return jsonify({
+        "status": "success",
+        **result.model_dump(),
+    }), 201
+    # except TemplateNotFoundError as e:
+    #     return jsonify({"error": str(e)}), 404
+    # except InstantiationError as e:
+    #     return jsonify({
+    #         "error": str(e),
+    #         "errors": e.to_dict_list(),
+    #     }), 400
+    # except MaterializationError as e:
+    #     return jsonify({
+    #         "error": str(e),
+    #         "errors": e.to_dict_list(),
+    #     }), 400
+    # except RuntimeError as e:
+    #     return jsonify({"error": str(e)}), 500
+    # except Exception as e:
+    #     logger.exception(f"Error materializing template {template_id}")
+    #     return jsonify({"error": str(e)}), 500

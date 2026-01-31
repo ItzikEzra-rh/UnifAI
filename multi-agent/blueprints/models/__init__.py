@@ -2,7 +2,7 @@
 
 from blueprints.models.blueprint import (
     # Base types
-    Resource,
+    BlueprintResource,
     ResourceSpec,
     
     # Step types
@@ -16,7 +16,7 @@ from blueprints.models.blueprint import (
 
 __all__ = [
     # Base types
-    "Resource",
+    "BlueprintResource",
     "ResourceSpec",
     
     # Step types

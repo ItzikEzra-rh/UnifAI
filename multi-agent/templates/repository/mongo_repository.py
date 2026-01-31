@@ -6,7 +6,7 @@ Follows the pattern established by MongoBlueprintRepository.
 import pymongo
 from uuid import uuid4
 from datetime import datetime
-from typing import List, Mapping, Any, Optional
+from typing import List, Optional
 
 from templates.repository.repository import TemplateRepository
 from templates.models.template import Template
@@ -80,15 +80,6 @@ class MongoTemplateRepository(TemplateRepository):
             raise KeyError(f"Template not found: {template_id}")
         return self._doc_to_template(doc)
 
-    def get_dict(self, template_id: str) -> Mapping[str, Any]:
-        """Load raw template document by ID."""
-        doc = self._col.find_one({"template_id": template_id})
-        if not doc:
-            raise KeyError(f"Template not found: {template_id}")
-        # Remove MongoDB _id
-        doc.pop("_id", None)
-        return doc
-
     def exists(self, template_id: str) -> bool:
         """Check if a template exists."""
         return self._col.count_documents({"template_id": template_id}, limit=1) == 1
@@ -115,25 +106,6 @@ class MongoTemplateRepository(TemplateRepository):
         )
         
         return [self._doc_to_template(doc) for doc in cursor]
-
-    def list_ids(
-        self,
-        *,
-        is_public: Optional[bool] = None,
-        skip: int = 0,
-        limit: int = 100,
-    ) -> List[str]:
-        """List template IDs with optional filtering."""
-        query = self._build_filter(is_public)
-        
-        cursor = (
-            self._col.find(query, {"template_id": 1})
-            .sort("created_at", pymongo.DESCENDING)
-            .skip(skip)
-            .limit(limit)
-        )
-        
-        return [doc["template_id"] for doc in cursor]
 
     def count(
         self,

@@ -5,9 +5,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pydantic import BaseModel
 
-from resources.models import ResourceDoc
+from resources.models import Resource
 from resources.registry import ResourcesRegistry
-from blueprints.models.blueprint import BlueprintDraft, Resource, StepDef
+from blueprints.models.blueprint import BlueprintDraft, BlueprintResource, StepDef
 from blueprints.service import BlueprintService
 from catalog.element_registry import ElementRegistry
 from core.ref import RefWalker, RefRemapper
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ResourceCacheData:
     """Cached data for a resource."""
-    doc: ResourceDoc
+    doc: Resource
     dependencies: Set[str]  # Pre-computed dependencies
     cfg_model: object  # Pre-built schema model
 
@@ -225,7 +225,7 @@ class ShareCloner:
         return closure_cache
 
     def _clone_single_resource(self, cache_data: ResourceCacheData, rid_mapping: Dict[str, str],
-                               recipient_user_id: str) -> ResourceDoc:
+                               recipient_user_id: str) -> Resource:
         """Clone a single resource using pre-computed data."""
         original_doc = cache_data.doc
         new_rid = rid_mapping[original_doc.rid]
@@ -236,15 +236,16 @@ class ShareCloner:
             original_doc.type, original_doc.name
         )
 
-        # Clone config with reference rewriting (using shared utility)
-        new_cfg_dict = RefRemapper.remap(original_doc.cfg_dict, rid_mapping)
+        # Use typed model for clean remapping (Ref objects), then dump to dict
+        remapped_model = RefRemapper.remap(cache_data.cfg_model, rid_mapping)
+        new_cfg_dict = remapped_model.model_dump(mode="json")
 
         # Map dependencies to new RIDs
         new_nested_refs = [
             rid_mapping.get(dep_rid, dep_rid) for dep_rid in cache_data.dependencies
         ]
 
-        return ResourceDoc(
+        return Resource(
             rid=new_rid,
             user_id=recipient_user_id,
             category=original_doc.category,
@@ -255,7 +256,7 @@ class ShareCloner:
             nested_refs=new_nested_refs
         )
 
-    def _batch_create_resources(self, docs: List[ResourceDoc]) -> None:
+    def _batch_create_resources(self, docs: List[Resource]) -> None:
         """Create multiple resources efficiently."""
         # TODO: Implement actual batch creation in ResourcesRegistry
         for doc in docs:
@@ -298,7 +299,7 @@ class ShareCloner:
             **resource_fields
         )
 
-    def _clone_resource_with_refs(self, resource: Resource, rid_mapping: Dict[str, str]) -> Resource:
+    def _clone_resource_with_refs(self, resource: BlueprintResource, rid_mapping: Dict[str, str]) -> BlueprintResource:
         """Clone a resource and replace any Ref instances using shared utility."""
         return RefRemapper.remap(resource, rid_mapping)
 

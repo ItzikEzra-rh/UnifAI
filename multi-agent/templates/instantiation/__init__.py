@@ -1,21 +1,41 @@
-"""Template instantiation package."""
+"""
+Template instantiation module.
 
-from templates.instantiation.instantiator import (
-    TemplateInstantiator,
+Handles merging user input into templates and materializing resources.
+"""
+from templates.instantiation.models import (
+    CollectedResource,
     InstantiationResult,
-    MergeError,
-)
-from templates.instantiation.materializer import (
-    ResourceMaterializer,
     MaterializationResult,
+)
+from templates.instantiation.instantiator import TemplateInstantiator
+from templates.instantiation.materializer import ResourceMaterializer
+
+# Re-export error models from central location
+from templates.errors import (
+    MergeError,
+    MergeErrorType,
+    MergeFieldError,
     MaterializationError,
+    MaterializationErrorType,
+    MaterializationFieldError,
 )
 
 __all__ = [
-    "TemplateInstantiator",
+    # Models
+    "CollectedResource",
     "InstantiationResult",
-    "MergeError",
-    "ResourceMaterializer",
     "MaterializationResult",
+    
+    # Classes
+    "TemplateInstantiator",
+    "ResourceMaterializer",
+    
+    # Error models (re-exported for convenience)
+    "MergeError",
+    "MergeErrorType",
+    "MergeFieldError",
     "MaterializationError",
+    "MaterializationErrorType",
+    "MaterializationFieldError",
 ]

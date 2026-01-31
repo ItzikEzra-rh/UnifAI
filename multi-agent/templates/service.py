@@ -13,42 +13,27 @@ from catalog.element_registry import ElementRegistry
 from templates.repository.repository import TemplateRepository
 from templates.models.template import (
     Template,
+    TemplateSummary,
     PlaceholderMeta,
     TemplateMetadata,
+    InputValidationResult,
+    MaterializeResult,
 )
 from templates.schema.analyzer import PlaceholderAnalyzer
-from templates.schema.generator import InputValidator
 from templates.instantiation.instantiator import (
     TemplateInstantiator,
-    TemplateInstantiatorWithTracking,
     InstantiationResult,
-    MergeError,
 )
 from templates.instantiation.materializer import (
     ResourceMaterializer,
     MaterializationResult,
 )
-
-
-class TemplateNotFoundError(Exception):
-    """Raised when template is not found."""
-    
-    def __init__(self, template_id: str):
-        super().__init__(f"Template not found: {template_id}")
-        self.template_id = template_id
-
-
-class TemplateSaveError(Exception):
-    """Raised when template save fails."""
-    pass
-
-
-class InstantiationError(Exception):
-    """Raised when template instantiation fails."""
-    
-    def __init__(self, message: str, errors: List[Dict[str, Any]] = None):
-        super().__init__(message)
-        self.errors = errors or []
+from templates.errors import (
+    TemplateNotFoundError,
+    TemplateSaveError,
+    InstantiationError,
+    MergeError,
+)
 
 
 class TemplateService:
@@ -84,25 +69,24 @@ class TemplateService:
         
         # Internal components
         self._analyzer = PlaceholderAnalyzer(element_registry)
-        self._input_validator = InputValidator(self._analyzer)
-        self._instantiator = TemplateInstantiatorWithTracking()
+        self._instantiator = TemplateInstantiator()
 
     # ─────────────────────────────────────────────────────────────────────
     #  Template CRUD
     # ─────────────────────────────────────────────────────────────────────
     def create_template(
         self,
-        draft: BlueprintDraft,
-        placeholders: PlaceholderMeta,
-        metadata: Optional[TemplateMetadata] = None,
+        draft: Dict[str, Any],
+        placeholders: Dict[str, Any],
+        metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
-        Create a new template.
+        Create a new template from raw dicts.
         
         Args:
-            draft: The template blueprint (valid BlueprintDraft)
-            placeholders: Metadata about placeholder fields
-            metadata: Optional template metadata
+            draft: The template blueprint dict (BlueprintDraft format)
+            placeholders: Placeholder metadata dict (PlaceholderMeta format)
+            metadata: Optional template metadata dict
             
         Returns:
             Generated template ID
@@ -111,9 +95,9 @@ class TemplateService:
         
         template = Template(
             template_id=template_id,
-            draft=draft,
-            placeholders=placeholders,
-            metadata=metadata or TemplateMetadata(),
+            draft=BlueprintDraft(**draft),
+            placeholders=PlaceholderMeta(**placeholders),
+            metadata=TemplateMetadata(**(metadata or {})),
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
@@ -190,6 +174,16 @@ class TemplateService:
         """Search templates by name/description."""
         return self._repo.search(query, is_public=True, limit=limit)
 
+    def search_template_summaries(
+        self,
+        query: str,
+        *,
+        limit: int = 20,
+    ) -> List[TemplateSummary]:
+        """Search templates and return summaries."""
+        templates = self.search_templates(query=query, limit=limit)
+        return [TemplateSummary.from_template(t) for t in templates]
+
     def count_templates(
         self,
         *,
@@ -215,31 +209,32 @@ class TemplateService:
         template = self.get_template(template_id)
         return self._analyzer.get_json_schema(template)
 
-    def get_input_json_schema(self, template_id: str) -> Dict[str, Any]:
-        """
-        Get JSON Schema for template input.
-        
-        Alias for get_input_schema() - both return the same JSON Schema.
-        """
-        return self.get_input_schema(template_id)
-
-    # ─────────────────────────────────────────────────────────────────────
-    #  Input Validation
-    # ─────────────────────────────────────────────────────────────────────
     def validate_input(
         self,
         template_id: str,
         user_input: Dict[str, Any],
-    ) -> Tuple[bool, List[Dict[str, Any]]]:
+    ) -> InputValidationResult:
         """
-        Validate user input against template schema.
+        Validate user input against the template's input schema.
         
-        Uses the generated Pydantic model for validation.
-        Returns (is_valid, errors) tuple.
+        Args:
+            template_id: Template to validate against
+            user_input: User-provided input values
+
+        Returns:
+            InputValidationResult with is_valid and errors
+
+        Raises:
+            TemplateNotFoundError: If template not found
         """
         template = self.get_template(template_id)
-        errors = self._input_validator.get_validation_errors(template, user_input)
-        return len(errors) == 0, errors
+        input_model = self._analyzer.create_input_model(template)
+
+        try:
+            input_model(**user_input)
+            return InputValidationResult(is_valid=True, errors=[])
+        except Exception as e:
+            return InputValidationResult(is_valid=False, errors=[str(e)])
 
     # ─────────────────────────────────────────────────────────────────────
     #  Template Instantiation
@@ -248,12 +243,14 @@ class TemplateService:
         self,
         template_id: str,
         user_input: Dict[str, Any],
-    ) -> BlueprintDraft:
+    ) -> InstantiationResult:
         """
         Instantiate a template with user input.
         
-        Merges user values into placeholder positions and
-        returns a valid BlueprintDraft.
+        Returns InstantiationResult containing:
+        - blueprint: The merged BlueprintDraft
+        - template_id: Source template ID
+        - filled_fields: List of fields that were filled
         
         Raises InstantiationError if instantiation fails.
         """
@@ -266,38 +263,6 @@ class TemplateService:
         except Exception as e:
             raise InstantiationError(f"Instantiation failed: {str(e)}")
 
-    def instantiate_with_tracking(
-        self,
-        template_id: str,
-        user_input: Dict[str, Any],
-    ) -> InstantiationResult:
-        """
-        Instantiate template and return result with tracking info.
-        
-        Includes metadata about what fields were filled.
-        """
-        template = self.get_template(template_id)
-        
-        try:
-            return self._instantiator.instantiate_with_tracking(
-                template, user_input
-            )
-        except MergeError as e:
-            raise InstantiationError(str(e), errors=e.errors)
-
-    def preview_instantiation(
-        self,
-        template_id: str,
-        user_input: Dict[str, Any],
-    ) -> BlueprintDraft:
-        """
-        Preview instantiation.
-        
-        Returns BlueprintDraft with placeholders filled.
-        """
-        template = self.get_template(template_id)
-        return self._instantiator.instantiate(template, user_input)
-
     # ─────────────────────────────────────────────────────────────────────
     #  Full Materialization (Blueprint + Resources)
     # ─────────────────────────────────────────────────────────────────────
@@ -309,17 +274,11 @@ class TemplateService:
         blueprint_name: Optional[str] = None,
         save_resources: bool = True,
         skip_validation: bool = False,
-    ) -> Dict[str, Any]:
+    ) -> MaterializeResult:
         """
         Instantiate template and save blueprint + resources to user's account.
         
         This is the main entry point for template usage.
-        
-        Flow:
-        1. Instantiate template with user input
-        2. Validate the resulting blueprint
-        3. If save_resources=True: Save inline resources and create $refs
-        4. Save blueprint to user's account
         
         Args:
             template_id: Template to instantiate
@@ -330,7 +289,7 @@ class TemplateService:
             skip_validation: If True, skip blueprint validation (default False)
             
         Returns:
-            Dict with blueprint_id, resource_ids, and metadata
+            MaterializeResult with blueprint_id, resource_ids, and metadata
             
         Raises:
             InstantiationError: If instantiation or validation fails
@@ -339,96 +298,88 @@ class TemplateService:
         if self._blueprint_service is None:
             raise RuntimeError("BlueprintService not configured")
         
-        # Get template and instantiate (merge placeholders)
+        # Instantiate template
         template = self.get_template(template_id)
-        result = self._instantiator.instantiate_with_tracking(
-            template, user_input
-        )
+        result = self._instantiator.instantiate(template, user_input)
         
-        # Override name if provided
         if blueprint_name:
             result.blueprint.name = blueprint_name
         
-        # Validate the blueprint before materialization
+        # Validate
         if not skip_validation:
-            validation_result = self._blueprint_service.validate_draft(
-                result.blueprint.model_dump(mode="json")
-            )
-            if not validation_result.is_valid:
-                # Collect validation errors using to_dict() for each failed element
-                errors = [
-                    elem_result.to_dict()
-                    for elem_result in validation_result.element_results.values()
-                    if not elem_result.is_valid
-                ]
-                raise InstantiationError(
-                    f"Blueprint validation failed with {len(errors)} error(s)",
-                    errors=errors,
-                )
+            self._validate_blueprint(result.blueprint)
         
-        resource_ids = []
+        # Save blueprint (and optionally resources)
+        blueprint_id, resource_ids = self._save_blueprint(
+            blueprint=result.blueprint,
+            template=template,
+            user_id=user_id,
+            save_resources=save_resources,
+        )
+        
+        return MaterializeResult(
+            blueprint_id=blueprint_id,
+            template_id=template_id,
+            fields_filled=result.field_count,
+            name=result.blueprint.name,
+            resources_created=len(resource_ids),
+            resource_ids=resource_ids,
+        )
+
+    def _validate_blueprint(self, blueprint: BlueprintDraft) -> None:
+        """Validate blueprint, raise InstantiationError if invalid."""
+        validation_result = self._blueprint_service.validate_draft(
+            blueprint.model_dump(mode="json")
+        )
+        if not validation_result.is_valid:
+            errors = [
+                elem_result.to_dict()
+                for elem_result in validation_result.element_results.values()
+                if not elem_result.is_valid
+            ]
+            raise InstantiationError(
+                f"Blueprint validation failed with {len(errors)} error(s)",
+            )
+
+    def _save_blueprint(
+        self,
+        blueprint: BlueprintDraft,
+        template: Template,
+        user_id: str,
+        save_resources: bool,
+    ) -> Tuple[str, List[str]]:
+        """Save blueprint (and optionally resources). Returns (blueprint_id, resource_ids)."""
+        metadata = {
+            "source": "template",
+            "template_id": template.template_id,
+            "template_name": template.name,
+        }
         
         if save_resources and self._resources_service is not None:
-            # Materialize resources (save inline configs, create $refs)
             materializer = ResourceMaterializer(self._resources_service)
-            mat_result = materializer.materialize(result.blueprint, user_id)
+            mat_result = materializer.materialize(blueprint, user_id)
             
-            # Save the materialized blueprint (with $refs)
             blueprint_id = self._blueprint_service.save_draft(
                 user_id=user_id,
                 draft_dict=mat_result.blueprint_draft.model_dump(mode="json"),
-                metadata={
-                    "source": "template",
-                    "template_id": template_id,
-                    "template_name": template.name,
-                },
+                metadata=metadata,
             )
-            resource_ids = mat_result.resource_ids
+            return blueprint_id, mat_result.resource_ids
         else:
-            # Save blueprint directly (inline configs)
             blueprint_id = self._blueprint_service.save_draft(
                 user_id=user_id,
-                draft_dict=result.blueprint.model_dump(mode="json"),
-                metadata={
-                    "source": "template",
-                    "template_id": template_id,
-                    "template_name": template.name,
-                },
+                draft_dict=blueprint.model_dump(mode="json"),
+                metadata=metadata,
             )
-        
-        return {
-            "blueprint_id": blueprint_id,
-            "template_id": template_id,
-            "fields_filled": result.field_count,
-            "name": result.blueprint.name,
-            "resources_created": len(resource_ids),
-            "resource_ids": resource_ids,
-        }
+            return blueprint_id, []
 
     # ─────────────────────────────────────────────────────────────────────
     #  Utility Methods
     # ─────────────────────────────────────────────────────────────────────
-    def get_template_summary(self, template_id: str) -> Dict[str, Any]:
-        """
-        Get a summary of template for catalog display.
-        
-        Lightweight method that returns key metadata.
-        """
+    def get_template_summary(self, template_id: str) -> TemplateSummary:
+        """Get a summary of template for catalog display."""
         template = self.get_template(template_id)
-        
-        return {
-            "template_id": template.template_id,
-            "name": template.name,
-            "description": template.description,
-            "placeholder_count": template.placeholders.placeholder_count(),
-            "category": template.metadata.category,
-            "tags": template.metadata.tags,
-            "version": template.metadata.version,
-            "output_capabilities": template.metadata.output_capabilities,
-            "author": template.metadata.author,
-            "is_public": template.metadata.is_public,
-            "created_at": template.created_at.isoformat(),
-        }
+        return TemplateSummary.from_template(template)
 
     def list_template_summaries(
         self,
@@ -437,30 +388,12 @@ class TemplateService:
         category: Optional[str] = None,
         skip: int = 0,
         limit: int = 100,
-    ) -> List[Dict[str, Any]]:
-        """
-        Get summaries for template listing.
-        
-        More efficient than full template load for catalog pages.
-        """
+    ) -> List[TemplateSummary]:
+        """Get summaries for template listing."""
         templates = self.list_templates(
             is_public=is_public,
             category=category,
             skip=skip,
             limit=limit,
         )
-        
-        return [
-            {
-                "template_id": t.template_id,
-                "name": t.name,
-                "description": t.description,
-                "placeholder_count": t.placeholders.placeholder_count(),
-                "category": t.metadata.category,
-                "tags": t.metadata.tags,
-                "version": t.metadata.version,
-                "output_capabilities": t.metadata.output_capabilities,
-                "author": t.metadata.author,
-            }
-            for t in templates
-        ]
+        return [TemplateSummary.from_template(t) for t in templates]

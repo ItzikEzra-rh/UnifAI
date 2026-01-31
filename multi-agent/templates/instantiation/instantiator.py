@@ -1,275 +1,203 @@
 """
 Template instantiator for merging user input into BlueprintDraft.
 
-Single Responsibility: Merge user input into template and produce updated BlueprintDraft.
-
-The template's draft is always a valid BlueprintDraft. Placeholder fields contain
-default values that pass validation. This instantiator simply replaces those
-defaults with user-provided values.
+SOLID Principles:
+- SRP: Each method has one responsibility
+- OCP: Extensible without modification
+- DIP: Depends on abstractions (Template, BlueprintDraft)
 """
-from typing import Dict, Any, List, Tuple
-from copy import deepcopy
+from typing import Dict, Any, List, Optional
 
-from pydantic import BaseModel, Field, Extra
-
-from blueprints.models.blueprint import BlueprintDraft, Resource
-from core.enums import ResourceCategory
-from templates.models.template import Template, PlaceholderMeta
+from blueprints.models.blueprint import BlueprintDraft, BlueprintResource
+from templates.models.template import Template, PlaceholderMeta, PlaceholderPointer
+from templates.errors import MergeError, MergeErrorType, MergeFieldError
+from templates.instantiation.models import InstantiationResult
 
 
-class MergeError(Exception):
-    """Raised when merge fails."""
-    
-    def __init__(self, message: str, errors: List[Dict[str, Any]] = None):
-        super().__init__(message)
-        self.errors = errors or []
-
-
-class InstantiationResult(BaseModel):
-    """
-    Result of template instantiation.
-    
-    Contains:
-    - blueprint: The merged BlueprintDraft (valid, ready to use)
-    - Metadata about what was filled
-    """
-    blueprint: BlueprintDraft
-    template_id: str
-    filled_fields: List[str] = Field(default_factory=list)
-
-    class Config:
-        extra = Extra.forbid
-
-    @property
-    def field_count(self) -> int:
-        """Number of fields that were filled."""
-        return len(self.filled_fields)
-
-
+# ─────────────────────────────────────────────────────────────────────────────
+#  Instantiator
+# ─────────────────────────────────────────────────────────────────────────────
 class TemplateInstantiator:
     """
-    Merges user input into template draft.
+    Merges user input into template draft to produce BlueprintDraft.
     
-    Responsibilities:
-    - Deep copy template draft
-    - Merge user input values into placeholder positions
-    - Return the updated BlueprintDraft
-    
-    The template draft is already a valid BlueprintDraft - this just
-    replaces placeholder default values with actual user input.
+    The template draft is already valid - this replaces placeholder
+    default values with actual user input.
     """
 
     def instantiate(
         self,
         template: Template,
         user_input: Dict[str, Any],
-    ) -> BlueprintDraft:
-        """
-        Instantiate a template with user input.
-        
-        Args:
-            template: The template to instantiate
-            user_input: User-provided values structured by category/resource/field
-            
-        Returns:
-            BlueprintDraft with placeholders replaced by user values
-            
-        Raises:
-            MergeError: If merge fails (missing required fields, etc.)
-        """
-        # Deep copy the draft to avoid modifying the template
-        filled_draft = self._deep_copy_draft(template.draft)
-        
-        # Merge user input into draft
-        self._merge_input(filled_draft, template.placeholders, user_input)
-        
-        return filled_draft
-
-    def instantiate_with_tracking(
-        self,
-        template: Template,
-        user_input: Dict[str, Any],
     ) -> InstantiationResult:
         """
-        Instantiate template and return result with tracking info.
-        """
-        blueprint = self.instantiate(template, user_input)
+        Instantiate template with user input.
         
-        filled_fields = self._collect_filled_fields(
-            template.placeholders,
-            user_input,
-        )
+        Returns InstantiationResult containing:
+        - blueprint: The merged BlueprintDraft
+        - template_id: Source template ID
+        - filled_fields: List of fields that were filled
+        
+        Raises MergeError if required fields missing.
+        """
+        draft = self._copy_draft(template.draft)
+        errors = self._merge_placeholders(draft, template.placeholders, user_input)
+        
+        if errors:
+            raise MergeError(
+                message=f"Merge failed with {len(errors)} error(s)",
+                errors=errors,
+            )
+        
+        filled_fields = self._collect_filled_fields(template.placeholders, user_input)
         
         return InstantiationResult(
-            blueprint=blueprint,
+            blueprint=draft,
             template_id=template.template_id,
             filled_fields=filled_fields,
         )
 
-    def validate_merge(
-        self,
-        template: Template,
-        user_input: Dict[str, Any],
-    ) -> Tuple[bool, List[Dict[str, Any]]]:
-        """
-        Validate that merge would succeed.
-        
-        Returns (is_valid, errors) tuple.
-        """
-        try:
-            self.instantiate(template, user_input)
-            return True, []
-        except MergeError as e:
-            return False, e.errors
-        except Exception as e:
-            return False, [{"message": str(e)}]
-
-    def _deep_copy_draft(self, draft: BlueprintDraft) -> BlueprintDraft:
-        """Create a deep copy of the blueprint draft."""
-        # Use model_dump + model_validate for proper Pydantic copy
-        return BlueprintDraft.model_validate(draft.model_dump(mode="python"))
-
-    def _merge_input(
+    # ─────────────────────────────────────────────────────────────────────
+    #  Merge Operations
+    # ─────────────────────────────────────────────────────────────────────
+    def _merge_placeholders(
         self,
         draft: BlueprintDraft,
         placeholders: PlaceholderMeta,
         user_input: Dict[str, Any],
-    ) -> None:
-        """
-        Merge user input into the draft in-place.
+    ) -> List[MergeFieldError]:
+        """Merge all placeholder values into draft. Returns list of errors."""
+        errors: List[MergeFieldError] = []
         
-        Input structure:
-        {
-            "llms": {
-                "rid_123": {
-                    "api_key": "sk-xxx",
-                    "model": "gpt-4"
-                }
-            }
-        }
-        """
-        errors: List[Dict[str, Any]] = []
-        
-        # Iterate through placeholder metadata
-        for cat_placeholders in placeholders.categories:
-            category = cat_placeholders.category
-            field_name = category.value
-            
-            # Get user input for this category
+        for cat_placeholder in placeholders.categories:
+            category = cat_placeholder.category
             cat_input = user_input.get(category.value, {})
+            resources = getattr(draft, category.value, [])
             
-            # Get resources in draft
-            resources: List[Resource] = getattr(draft, field_name, [])
-            
-            for res_placeholders in cat_placeholders.resources:
-                rid = res_placeholders.rid
-                
-                # Find the resource in draft
+            for res_placeholder in cat_placeholder.resources:
+                rid = res_placeholder.rid
                 resource = self._find_resource(resources, rid)
+                
                 if resource is None:
-                    errors.append({
-                        "category": category.value,
-                        "rid": rid,
-                        "message": f"Resource {rid} not found in draft",
-                    })
+                    errors.append(MergeFieldError(
+                        category=category.value,
+                        rid=rid,
+                        error_type=MergeErrorType.RESOURCE_NOT_FOUND,
+                        message=f"Resource '{rid}' not found in draft",
+                    ))
                     continue
                 
-                # Get user input for this resource
                 res_input = cat_input.get(rid, {})
-                
-                # Merge each placeholder field
-                for placeholder in res_placeholders.placeholders:
-                    field_path = placeholder.field_path
-                    field_name_only = field_path.split(".")[-1]
-                    
-                    # Check if user provided value
-                    if field_name_only in res_input:
-                        value = res_input[field_name_only]
-                        self._set_field_value(resource, field_path, value)
-                    elif placeholder.required:
-                        errors.append({
-                            "category": category.value,
-                            "rid": rid,
-                            "field": field_path,
-                            "message": f"Required field '{field_path}' not provided",
-                        })
+                errors.extend(
+                    self._merge_resource_fields(
+                        resource=resource,
+                        placeholders=res_placeholder.placeholders,
+                        user_input=res_input,
+                        category=category.value,
+                        rid=rid,
+                    )
+                )
         
-        if errors:
-            raise MergeError(
-                f"Merge failed with {len(errors)} error(s)",
-                errors=errors,
-            )
+        return errors
+
+    def _merge_resource_fields(
+        self,
+        resource: BlueprintResource,
+        placeholders: List[PlaceholderPointer],
+        user_input: Dict[str, Any],
+        category: str,
+        rid: str,
+    ) -> List[MergeFieldError]:
+        """Merge fields for a single resource. Returns list of errors."""
+        errors: List[MergeFieldError] = []
+        
+        for placeholder in placeholders:
+            field_name = self._field_name(placeholder.field_path)
+            
+            if field_name in user_input:
+                self._set_field(resource, placeholder.field_path, user_input[field_name])
+            elif placeholder.required:
+                errors.append(MergeFieldError(
+                    category=category,
+                    rid=rid,
+                    field=placeholder.field_path,
+                    error_type=MergeErrorType.FIELD_REQUIRED,
+                    message=f"Required field '{placeholder.field_path}' not provided",
+                ))
+        
+        return errors
+
+    def _set_field(
+        self,
+        resource: BlueprintResource,
+        field_path: str,
+        value: Any,
+    ) -> bool:
+        """Set field value in resource config. Returns True if successful."""
+        if resource.config is None:
+            return False
+        
+        parts = field_path.split(".")
+        target = resource.config
+        
+        # Navigate to parent for nested paths
+        for part in parts[:-1]:
+            if not hasattr(target, part):
+                return False
+            target = getattr(target, part)
+        
+        # Set final value
+        final_field = parts[-1]
+        if hasattr(target, final_field):
+            setattr(target, final_field, value)
+            return True
+        
+        return False
+
+    # ─────────────────────────────────────────────────────────────────────
+    #  Helpers
+    # ─────────────────────────────────────────────────────────────────────
+    def _copy_draft(self, draft: BlueprintDraft) -> BlueprintDraft:
+        """Create deep copy of blueprint draft."""
+        return BlueprintDraft.model_validate(draft.model_dump(mode="python"))
 
     def _find_resource(
         self,
-        resources: List[Resource],
+        resources: List[BlueprintResource],
         rid: str,
-    ) -> Resource | None:
-        """Find a resource by rid."""
+    ) -> Optional[BlueprintResource]:
+        """Find resource by rid."""
         for resource in resources:
-            # resource.rid is a Ref (RootModel[str]), get the actual string value
-            resource_rid = resource.rid.ref
-            if resource_rid == rid:
+            if resource.rid.ref == rid:
                 return resource
         return None
 
-    def _set_field_value(
-        self,
-        resource: Resource,
-        field_path: str,
-        value: Any,
-    ) -> None:
-        """
-        Set a field value in the resource config.
-        
-        Handles nested paths like "nested.field".
-        The config is a Pydantic model, so we need to handle it properly.
-        """
-        if resource.config is None:
-            return
-        
-        parts = field_path.split(".")
-        
-        if len(parts) == 1:
-            # Direct field on config
-            if hasattr(resource.config, parts[0]):
-                setattr(resource.config, parts[0], value)
-        else:
-            # Nested field - navigate to parent
-            target = resource.config
-            for part in parts[:-1]:
-                if hasattr(target, part):
-                    target = getattr(target, part)
-                else:
-                    return  # Path doesn't exist
-            
-            # Set the final value
-            if hasattr(target, parts[-1]):
-                setattr(target, parts[-1], value)
+    @staticmethod
+    def _field_name(field_path: str) -> str:
+        """Extract field name from path (e.g., 'config.api_key' → 'api_key')."""
+        return field_path.split(".")[-1]
 
+    # ─────────────────────────────────────────────────────────────────────
+    #  Tracking
+    # ─────────────────────────────────────────────────────────────────────
     def _collect_filled_fields(
         self,
         placeholders: PlaceholderMeta,
         user_input: Dict[str, Any],
     ) -> List[str]:
         """Collect list of fields that were filled by user."""
-        filled = []
+        filled: List[str] = []
         
-        for cat_placeholders in placeholders.categories:
-            category = cat_placeholders.category
-            cat_input = user_input.get(category.value, {})
+        for cat_placeholder in placeholders.categories:
+            category = cat_placeholder.category.value
+            cat_input = user_input.get(category, {})
             
-            for res_placeholders in cat_placeholders.resources:
-                rid = res_placeholders.rid
+            for res_placeholder in cat_placeholder.resources:
+                rid = res_placeholder.rid
                 res_input = cat_input.get(rid, {})
                 
-                for placeholder in res_placeholders.placeholders:
-                    field_name = placeholder.field_path.split(".")[-1]
-                    if field_name in res_input:
-                        filled.append(f"{category.value}.{rid}.{placeholder.field_path}")
+                for placeholder in res_placeholder.placeholders:
+                    if self._field_name(placeholder.field_path) in res_input:
+                        filled.append(f"{category}.{rid}.{placeholder.field_path}")
         
         return filled
-
-
-# Backwards compatibility alias
-TemplateInstantiatorWithTracking = TemplateInstantiator

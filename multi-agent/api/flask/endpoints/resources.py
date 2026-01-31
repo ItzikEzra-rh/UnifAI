@@ -126,7 +126,7 @@ def delete_resource(resource_id):
 
 @resources_bp.route("/resource.schema", methods=["GET"])
 def get_resource_schema():
-    """Get the JSON schema for ResourceDoc model."""
+    """Get the JSON schema for Resource model."""
     svc = current_app.container.resources_service
     try:
         schema = svc.get_resource_schema()

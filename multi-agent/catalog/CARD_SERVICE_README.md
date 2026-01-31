@@ -57,7 +57,7 @@ The Element Card system provides a **standardized way to describe elements** - t
                                     DATA SOURCES
     ┌─────────────────────────────────────────────────────────────────────┐
     │                                                                     │
-    │   BlueprintSpec          ResourceDoc           SessionRegistry      │
+    │   BlueprintSpec          Resource              SessionRegistry      │
     │   (design-time)          (saved resources)     (runtime)            │
     │                                                                     │
     └─────────────────────────────────────────────────────────────────────┘

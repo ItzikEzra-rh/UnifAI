@@ -2,31 +2,26 @@
 
 from templates.models.template import (
     Template,
+    TemplateSummary,
     PlaceholderMeta,
     PlaceholderPointer,
     ResourcePlaceholders,
     CategoryPlaceholders,
     TemplateMetadata,
-)
-from templates.models.input_schema import (
-    ResourceInputSchema,
-    CategoryInputSchema,
-    TemplateInputSchema,
-    FieldDefinition,
+    InputValidationResult,
+    MaterializeResult,
 )
 
 __all__ = [
     # Template core models
     "Template",
+    "TemplateSummary",
     "PlaceholderMeta",
     "PlaceholderPointer",
     "ResourcePlaceholders",
     "CategoryPlaceholders",
     "TemplateMetadata",
-    
-    # Input schema models
-    "ResourceInputSchema",
-    "CategoryInputSchema",
-    "TemplateInputSchema",
-    "FieldDefinition",
+    # Result models
+    "InputValidationResult",
+    "MaterializeResult",
 ]

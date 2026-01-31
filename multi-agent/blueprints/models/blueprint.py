@@ -19,7 +19,8 @@ from core.ref.models import Ref, NodeRef, ConditionRef
 T = TypeVar("T", bound=BaseModel)
 
 
-class Resource(BaseModel, Generic[T]):
+class BlueprintResource(BaseModel, Generic[T]):
+    """A resource entry in a blueprint (may have inline config or $ref)."""
     rid: Ref
     name: str | None = None
     type: str | None = None
@@ -70,12 +71,12 @@ class StepDef(BaseModel):
 # ─────────────────────────────────────────────────────────────────────────────
 class BlueprintDraft(BaseModel):
     """UI-authorable document (may contain $refs)."""
-    providers: List[Resource[ProviderSpec]] = []
-    llms: List[Resource[LLMsSpec]] = []
-    retrievers: List[Resource[RetrieversSpec]] = []
-    tools: List[Resource[ToolsSpec]] = []
-    nodes: List[Resource[NodeSpec]] = []
-    conditions: List[Resource[ConditionSpec]] = []
+    providers: List[BlueprintResource[ProviderSpec]] = []
+    llms: List[BlueprintResource[LLMsSpec]] = []
+    retrievers: List[BlueprintResource[RetrieversSpec]] = []
+    tools: List[BlueprintResource[ToolsSpec]] = []
+    nodes: List[BlueprintResource[NodeSpec]] = []
+    conditions: List[BlueprintResource[ConditionSpec]] = []
 
     plan: List[StepDef]
 

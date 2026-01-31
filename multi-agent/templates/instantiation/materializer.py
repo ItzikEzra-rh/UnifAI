@@ -7,65 +7,20 @@ Converts a BlueprintDraft with inline configs into:
 
 SOLID:
 - Single Responsibility: Orchestrates resource saving and blueprint building
-- Open/Closed: Uses ResourceCategory enum, works with any category
+- Open/Closed: Works with any ResourceCategory
 - Dependency Inversion: Depends on ResourcesService abstraction
-
-Key insight: BlueprintDraft uses typed refs (LLMRef, ToolRef, etc.) which
-RefWalker understands. No need for custom ref detection.
-
-Two-Phase Materialization:
-1. Pre-validation: Validate configs against Pydantic schemas
-2. Save with rollback: Save resources, rollback on failure
 """
-from typing import Dict, List, Set, Any, Optional
+from typing import Dict, List
 from uuid import uuid4
 
-from pydantic import BaseModel, Field, Extra
-
-from blueprints.models.blueprint import BlueprintDraft, Resource
+from blueprints.models.blueprint import BlueprintDraft, BlueprintResource, StepDef
 from resources.service import ResourcesService
-from core.ref import RefWalker, RefRemapper
-from core.enums import ResourceCategory
-
-
-class MaterializationError(Exception):
-    """Raised when materialization fails."""
-    
-    def __init__(self, message: str, errors: List[Dict[str, Any]] = None):
-        super().__init__(message)
-        self.errors = errors or []
-
-
-# System node types that should never be saved as resources
-# These are blueprint-internal nodes that stay inline
-SYSTEM_NODE_TYPES = frozenset({
-    "user_question_node",
-    "final_answer_node",
-})
-
-
-class ResourceToSave(BaseModel):
-    """Resource data collected for saving."""
-    rid: str
-    category: ResourceCategory
-    type: str
-    name: Optional[str] = None
-    config: Dict[str, Any]
-    deps: Set[str] = Field(default_factory=set)
-    unique_name: str = ""
-
-    class Config:
-        extra = Extra.forbid
-
-
-class MaterializationResult(BaseModel):
-    """Result of materializing a blueprint."""
-    blueprint_draft: BlueprintDraft
-    resource_ids: List[str] = Field(default_factory=list)
-    id_mapping: Dict[str, str] = Field(default_factory=dict)
-
-    class Config:
-        extra = Extra.forbid
+from resources.models import Resource
+from core.ref import RefRemapper
+from core.ref.models import Ref
+from core.enums import ResourceCategory, SystemNodeType
+from templates.errors import MaterializationError
+from templates.instantiation.models import CollectedResource, MaterializationResult
 
 
 class ResourceMaterializer:
@@ -73,345 +28,167 @@ class ResourceMaterializer:
     Materializes inline blueprint resources to saved resources.
     
     Flow:
-    1. Collect inline resources (those with config defined)
-    2. Build dependency graph using RefWalker (understands typed refs)
-    3. Topological sort (dependencies first)
-    4. Pre-validate all configs
-    5. Save resources with rollback on failure
-    6. Build final blueprint with $ref entries
+    1. Collect inline resources, assign final_rids
+    2. Remap Ref objects in configs
+    3. Save resources (with rollback on failure)
+    4. Build final blueprint with $ref entries
     """
-    
+
+    UNIQUE_SUFFIX_LENGTH = 8
+
     def __init__(self, resources_service: ResourcesService):
         self._resources = resources_service
-    
-    def materialize(
-        self,
-        draft: BlueprintDraft,
-        user_id: str,
-    ) -> MaterializationResult:
-        """
-        Materialize inline resources and build final blueprint.
-        
-        Args:
-            draft: BlueprintDraft with inline configs
-            user_id: User who will own the resources
-            
-        Returns:
-            MaterializationResult with blueprint and saved resource info
-        """
-        # Step 1: Collect resources with inline configs
-        resources_to_save = self._collect_inline_resources(draft)
-        
-        if not resources_to_save:
-            # Nothing to save - return draft as-is
-            return MaterializationResult(
-                blueprint_draft=draft,
-                resource_ids=[],
-                id_mapping={},
-            )
-        
-        # Step 2: Topological sort (dependencies first)
-        save_order = self._topological_sort(resources_to_save)
-        
-        # Step 3: Pre-validate and generate unique names
-        self._prepare_and_validate(resources_to_save, save_order)
-        
-        # Step 4: Save resources with rollback on failure
-        # Note: This also updates resources_to_save with remapped configs
-        id_mapping = self._save_with_rollback(resources_to_save, save_order, user_id)
-        
-        # Step 5: Build final blueprint using saved resources with remapped configs
-        final_draft = self._build_final_draft(draft, resources_to_save, id_mapping)
-        
+
+    def materialize(self, draft: BlueprintDraft, user_id: str) -> MaterializationResult:
+        """Materialize inline resources and build final blueprint."""
+        # Step 1: Collect inline resources
+        collected = self._collect_inline_resources(draft)
+
+        if not collected:
+            return MaterializationResult(blueprint_draft=draft)
+
+        # Derive id_mapping from collected
+        id_mapping = {c.template_rid: c.final_rid for c in collected}
+
+        # Step 2: Remap Ref objects in configs
+        self._remap_configs(collected, id_mapping)
+
+        # Step 3 & 4: Save and build (single rollback point)
+        saved_rids: List[str] = []
+        try:
+            saved_rids = self._save_resources(collected, user_id)
+            final_draft = self._build_final_draft(draft, id_mapping)
+        except Exception as e:
+            self._rollback(saved_rids)
+            raise MaterializationError(f"Materialization failed: {e}", errors=[])
+
         return MaterializationResult(
             blueprint_draft=final_draft,
-            resource_ids=list(id_mapping.values()),
+            resource_ids=saved_rids,
             id_mapping=id_mapping,
         )
-    
-    def _collect_inline_resources(
-        self,
-        draft: BlueprintDraft,
-    ) -> Dict[str, ResourceToSave]:
-        """
-        Collect resources that have inline configs (need to be saved).
-        
-        Skips:
-        - Resources with config=None (already external refs)
-        - System node types (user_question_node, final_answer_node)
-        """
-        resources: Dict[str, ResourceToSave] = {}
-        
+
+    # ─────────────────────────────────────────────────────────────────────
+    #  Step 1: Collect
+    # ─────────────────────────────────────────────────────────────────────
+    def _collect_inline_resources(self, draft: BlueprintDraft) -> List[CollectedResource]:
+        """Collect inline resources that need to be saved."""
+        collected = []
         for category in ResourceCategory:
-            for resource in getattr(draft, category.value, []):
-                # Skip if no config (already an external $ref)
-                if resource.config is None:
-                    continue
-                
-                # Skip if already external ref
-                if resource.rid.is_external_ref():
-                    continue
-                
-                # Get clean rid (strips $ref: if present)
-                rid = resource.rid.ref
-                
-                # Skip system node types (they stay inline)
-                resource_type = resource.type or ""
-                if resource_type in SYSTEM_NODE_TYPES:
-                    continue
-                
-                # Convert config to dict for saving
-                config_dict = resource.config.model_dump(mode="python")
-                
-                resources[rid] = ResourceToSave(
-                    rid=rid,
-                    category=category,
-                    type=resource.type or config_dict.get("type", ""),
-                    name=resource.name,
-                    config=config_dict,
-                    deps=set(),  # Will be filled below
-                )
-        
-        # Extract dependencies using RefWalker (understands typed refs)
-        all_rids = set(resources.keys())
-        for rid, res in resources.items():
-            res.deps = self._extract_deps(res.config, all_rids)
-        
-        return resources
-    
-    def _extract_deps(self, config: Dict[str, Any], known_rids: Set[str]) -> Set[str]:
-        """
-        Extract dependency rids from config.
-        
-        Uses RefWalker for typed refs + bare string matching for inline refs.
-        """
-        deps: Set[str] = set()
-        
-        # RefWalker finds typed refs (LLMRef, ToolRef, etc.)
-        deps.update(RefWalker.all_rids(config))
-        
-        # Also find bare string refs (template-local refs stored as plain strings)
-        self._find_bare_string_refs(config, known_rids, deps)
-        
-        return deps
-    
-    def _find_bare_string_refs(
-        self, 
-        obj: Any, 
-        known_rids: Set[str], 
-        deps: Set[str]
-    ) -> None:
-        """Find bare string values that match known resource rids."""
-        if isinstance(obj, str):
-            if obj in known_rids:
-                deps.add(obj)
-        elif isinstance(obj, dict):
-            for v in obj.values():
-                self._find_bare_string_refs(v, known_rids, deps)
-        elif isinstance(obj, (list, tuple)):
-            for item in obj:
-                self._find_bare_string_refs(item, known_rids, deps)
-    
-    def _topological_sort(
-        self,
-        resources: Dict[str, ResourceToSave],
-    ) -> List[str]:
-        """Sort rids so dependencies come first."""
-        visited: Set[str] = set()
-        result: List[str] = []
-        
-        def visit(rid: str):
-            if rid in visited or rid not in resources:
-                return
-            visited.add(rid)
-            for dep in resources[rid].deps:
-                visit(dep)
-            result.append(rid)
-        
-        for rid in resources:
-            visit(rid)
-        
-        return result
-    
-    def _prepare_and_validate(
-        self,
-        resources: Dict[str, ResourceToSave],
-        order: List[str],
-    ) -> None:
-        """
-        Generate unique names and validate configs against Pydantic schemas.
-        """
-        errors: List[Dict[str, Any]] = []
-        unique_suffix = uuid4().hex[:8]
-        
-        for rid in order:
-            res = resources[rid]
-            
-            # Generate unique name
-            base_name = res.name or res.type
-            res.unique_name = f"{base_name}_{unique_suffix}"
-            
-            # Validate config against element Pydantic schema
-            try:
-                schema_cls = self._resources.element_registry.get_schema(
-                    res.category, res.type
-                )
-                schema_cls(**res.config)
-            except KeyError as e:
-                errors.append({
-                    "rid": rid,
-                    "category": res.category.value,
-                    "type": res.type,
-                    "error": f"Unknown element type: {e}",
-                })
-            except Exception as e:
-                errors.append({
-                    "rid": rid,
-                    "category": res.category.value,
-                    "type": res.type,
-                    "error": str(e),
-                })
-        
-        if errors:
-            raise MaterializationError(
-                f"Validation failed for {len(errors)} resource(s)",
-                errors=errors,
+            for bp_resource in getattr(draft, category.value, []):
+                if self._should_save(bp_resource):
+                    collected.append(CollectedResource(
+                        template_rid=bp_resource.rid.ref,
+                        final_rid=uuid4().hex,
+                        category=category,
+                        bp_resource=bp_resource,
+                    ))
+        return collected
+
+    def _should_save(self, bp_resource: BlueprintResource) -> bool:
+        """Check if resource should be saved (not system, has config, not external)."""
+        return (
+                bp_resource.config is not None
+                and not bp_resource.rid.is_external_ref()
+                and bp_resource.type not in SystemNodeType.values()
+        )
+
+    # ─────────────────────────────────────────────────────────────────────
+    #  Step 2: Remap
+    # ─────────────────────────────────────────────────────────────────────
+    def _remap_configs(self, collected: List[CollectedResource], id_mapping: Dict[str, str]) -> None:
+        """Remap Ref objects in configs to final_rids."""
+        prefixed = {k: Ref.make_external(v) for k, v in id_mapping.items()}
+        for item in collected:
+            if item.bp_resource.config:
+                item.bp_resource.config = RefRemapper.remap(item.bp_resource.config, prefixed)
+
+    # ─────────────────────────────────────────────────────────────────────
+    #  Step 3: Save
+    # ─────────────────────────────────────────────────────────────────────
+    def _save_resources(self, collected: List[CollectedResource], user_id: str) -> List[str]:
+        """Save resources one by one. Returns saved rids. Caller handles rollback."""
+        suffix = uuid4().hex[:self.UNIQUE_SUFFIX_LENGTH]
+        saved_rids = []
+
+        for item in collected:
+            resource = Resource(
+                rid=item.final_rid,
+                user_id=user_id,
+                category=item.category,
+                type=item.bp_resource.type or "",
+                name=f"{item.bp_resource.name or item.bp_resource.type}_{suffix}",
+                cfg_dict=item.bp_resource.config.model_dump(mode="json"),
+                nested_refs=[],
             )
-    
-    def _save_with_rollback(
-        self,
-        resources: Dict[str, ResourceToSave],
-        order: List[str],
-        user_id: str,
-    ) -> Dict[str, str]:
-        """
-        Save resources in order with rollback on failure.
-        
-        Also updates resources[].config with the remapped config for use
-        in building the final blueprint.
-        
-        Returns mapping: local_rid → saved_rid
-        """
-        id_mapping: Dict[str, str] = {}
-        saved_ids: List[str] = []
-        
-        try:
-            for rid in order:
-                res = resources[rid]
-                
-                # Build prefixed mapping for config remapping
-                # Template-local refs become external refs ($ref:saved_id)
-                prefixed_mapping = {k: f"$ref:{v}" for k, v in id_mapping.items()}
-                
-                # Remap internal refs in config
-                remapped_config = RefRemapper.remap(res.config, prefixed_mapping)
-                
-                # Store remapped config back for use in final blueprint
-                res.config = remapped_config
-                
-                # Save via service
-                saved_doc = self._resources.create(
-                    user_id=user_id,
-                    category=res.category.value,
-                    type=res.type,
-                    name=res.unique_name,
-                    config=remapped_config,
-                )
-                
-                saved_ids.append(saved_doc.rid)
-                id_mapping[rid] = saved_doc.rid
-                
-        except Exception as e:
-            self._rollback(saved_ids)
-            raise MaterializationError(
-                f"Save failed, rolled back {len(saved_ids)} resource(s): {e}",
-                errors=[{"message": str(e), "rolled_back": saved_ids}],
-            )
-        
-        return id_mapping
-    
-    def _rollback(self, saved_ids: List[str]) -> None:
-        """Delete resources that were saved before failure."""
-        for rid in saved_ids:
+            self._resources.save_resource(resource)
+            saved_rids.append(resource.rid)
+
+        return saved_rids
+
+    def _rollback(self, rids: List[str]) -> None:
+        """Best-effort cleanup of saved resources."""
+        for rid in rids:
             try:
                 self._resources.delete(rid)
             except Exception:
-                pass  # Best effort rollback
-    
-    def _build_final_draft(
-        self,
-        draft: BlueprintDraft,
-        saved_resources: Dict[str, ResourceToSave],
-        id_mapping: Dict[str, str],
-    ) -> BlueprintDraft:
-        """
-        Build final blueprint with only nodes and conditions.
-        
-        - nodes/conditions: Include with $ref:saved_id or inline (system nodes)
-        - Other categories (llms, tools, providers, retrievers): Empty
-          (they are embedded as $refs in the saved node/condition configs)
-        """
-        # Categories to include in blueprint (plan-referenced)
-        PLAN_CATEGORIES = {ResourceCategory.NODE, ResourceCategory.CONDITION}
-        
-        result: Dict[str, Any] = {}
-        
-        for category in ResourceCategory:
-            if category in PLAN_CATEGORIES:
-                entries = []
-                for resource in getattr(draft, category.value, []):
-                    rid = resource.rid.ref
-                    
-                    if rid in saved_resources:
-                        # Was saved - use saved resource with remapped config
-                        saved = saved_resources[rid]
-                        entries.append({
-                            "rid": f"$ref:{id_mapping[rid]}",
-                            "name": saved.name,
-                            "type": saved.type,
-                            "config": saved.config,
-                        })
-                    else:
-                        # Not saved (system nodes) - keep as-is from draft
-                        entries.append(resource.model_dump(mode="json"))
-                
-                result[category.value] = entries
-            else:
-                # Other categories: empty (embedded in saved configs)
-                result[category.value] = []
-        
-        # Remap plan refs
-        remapped_plan = self._remap_plan(draft, id_mapping)
-        
+                pass
+
+    # ─────────────────────────────────────────────────────────────────────
+    #  Step 4: Build Final Draft
+    # ─────────────────────────────────────────────────────────────────────
+    def _build_final_draft(self, draft: BlueprintDraft, id_mapping: Dict[str, str]) -> BlueprintDraft:
+        """Build draft with $ref entries for saved resources."""
         return BlueprintDraft(
-            **result,
-            plan=remapped_plan,
+            nodes=self._remap_entries(draft.nodes, id_mapping),
+            conditions=self._remap_entries(draft.conditions, id_mapping),
+            llms=[],
+            retrievers=[],
+            tools=[],
+            providers=[],
+            plan=self._remap_plan(draft.plan, id_mapping),
             name=draft.name,
             description=draft.description,
         )
-    
-    def _remap_plan(
-        self,
-        draft: BlueprintDraft,
-        id_mapping: Dict[str, str],
-    ) -> List[Dict[str, Any]]:
-        """Remap plan step references to saved resource IDs (bare IDs, no $ref: prefix)."""
-        remapped_plan = []
-        
-        for step in draft.plan:
-            step_dict = step.model_dump(mode="json")
-            
-            # Remap node ref - bare ID (no $ref: prefix)
-            node_rid = step.node.ref
-            if node_rid in id_mapping:
-                step_dict["node"] = id_mapping[node_rid]
-            
-            # Remap exit_condition if present - bare ID
-            if step.exit_condition:
-                cond_rid = step.exit_condition.ref
-                if cond_rid in id_mapping:
-                    step_dict["exit_condition"] = id_mapping[cond_rid]
-            
-            remapped_plan.append(step_dict)
-        
-        return remapped_plan
+
+    def _remap_entries(
+            self,
+            entries: List[BlueprintResource],
+            id_mapping: Dict[str, str],
+    ) -> List[BlueprintResource]:
+        """Replace saved resources with $ref, keep system nodes inline."""
+        result = []
+        for entry in entries:
+            template_rid = entry.rid.ref
+            if template_rid in id_mapping:
+                # Saved → $ref entry using clean method
+                result.append(BlueprintResource(
+                    rid=entry.rid.to_external(id_mapping[template_rid])
+                ))
+            else:
+                # System node → keep as-is
+                result.append(entry)
+        return result
+
+    def _remap_plan(self, plan: List[StepDef], id_mapping: Dict[str, str]) -> List[StepDef]:
+        """Remap plan refs to final_rids."""
+        return [self._remap_step(step, id_mapping) for step in plan]
+
+    def _remap_step(self, step: StepDef, id_mapping: Dict[str, str]) -> StepDef:
+        """Remap a single step's references."""
+        node_rid = step.node.ref
+        new_node = type(step.node)(id_mapping.get(node_rid, node_rid))
+
+        new_condition = None
+        if step.exit_condition:
+            cond_rid = step.exit_condition.ref
+            new_condition = type(step.exit_condition)(id_mapping.get(cond_rid, cond_rid))
+
+        return StepDef(
+            uid=step.uid,
+            after=step.after,
+            node=new_node,
+            exit_condition=new_condition,
+            branches=step.branches,
+            meta=step.meta,
+        )

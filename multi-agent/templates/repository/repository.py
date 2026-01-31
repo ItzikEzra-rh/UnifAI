@@ -5,7 +5,7 @@ Defines the contract for template persistence.
 Following the Repository Pattern (DIP - Dependency Inversion Principle).
 """
 from abc import ABC, abstractmethod
-from typing import List, Mapping, Any, Optional, Dict
+from typing import List, Optional
 
 from templates.models.template import Template
 
@@ -55,15 +55,6 @@ class TemplateRepository(ABC):
         """
 
     @abstractmethod
-    def get_dict(self, template_id: str) -> Mapping[str, Any]:
-        """
-        Load raw template document by ID.
-        
-        Useful for lightweight reads without full model instantiation.
-        Raises KeyError if not found.
-        """
-
-    @abstractmethod
     def exists(self, template_id: str) -> bool:
         """Check if a template exists."""
 
@@ -92,20 +83,6 @@ class TemplateRepository(ABC):
             
         Returns:
             List of matching templates
-        """
-
-    @abstractmethod
-    def list_ids(
-        self,
-        *,
-        is_public: Optional[bool] = None,
-        skip: int = 0,
-        limit: int = 100,
-    ) -> List[str]:
-        """
-        List template IDs with optional filtering.
-        
-        Lightweight method for catalog listings.
         """
 
     @abstractmethod
