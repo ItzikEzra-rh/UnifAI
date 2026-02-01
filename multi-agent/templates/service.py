@@ -383,6 +383,7 @@ class TemplateService:
             *,
             is_public: Optional[bool] = True,
             category: Optional[str] = None,
+            tags: Optional[List[str]] = None,
             skip: int = 0,
             limit: int = 100,
     ) -> List[TemplateSummary]:
@@ -390,6 +391,7 @@ class TemplateService:
         templates = self.list_templates(
             is_public=is_public,
             category=category,
+            tags=tags,
             skip=skip,
             limit=limit,
         )

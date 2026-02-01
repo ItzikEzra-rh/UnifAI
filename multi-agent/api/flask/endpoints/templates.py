@@ -49,6 +49,7 @@ def list_templates(is_public, category, tags, skip, limit):
         summaries = svc.list_template_summaries(
             is_public=is_public,
             category=category,
+            tags=tags,
             skip=skip,
             limit=limit,
         )
