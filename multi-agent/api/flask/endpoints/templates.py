@@ -324,33 +324,33 @@ def materialize_template(template_id, user_id, input, blueprint_name=None, skip_
         fields_filled: Number of fields that were filled
         name: Blueprint name
     """
-    # try:
-    svc = current_app.container.template_service
-    result = svc.materialize(
-        template_id=template_id,
-        user_id=user_id,
-        user_input=input,
-        blueprint_name=blueprint_name,
-        skip_validation=skip_validation,
-    )
-    return jsonify({
-        "status": "success",
-        **result.model_dump(),
-    }), 201
-    # except TemplateNotFoundError as e:
-    #     return jsonify({"error": str(e)}), 404
-    # except InstantiationError as e:
-    #     return jsonify({
-    #         "error": str(e),
-    #         "errors": e.to_dict_list(),
-    #     }), 400
-    # except MaterializationError as e:
-    #     return jsonify({
-    #         "error": str(e),
-    #         "errors": e.to_dict_list(),
-    #     }), 400
-    # except RuntimeError as e:
-    #     return jsonify({"error": str(e)}), 500
-    # except Exception as e:
-    #     logger.exception(f"Error materializing template {template_id}")
-    #     return jsonify({"error": str(e)}), 500
+    try:
+        svc = current_app.container.template_service
+        result = svc.materialize(
+            template_id=template_id,
+            user_id=user_id,
+            user_input=input,
+            blueprint_name=blueprint_name,
+            skip_validation=skip_validation,
+        )
+        return jsonify({
+            "status": "success",
+            **result.model_dump(),
+        }), 201
+    except TemplateNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
+    except InstantiationError as e:
+        return jsonify({
+            "error": str(e),
+            "errors": e.to_dict_list(),
+        }), 400
+    except MaterializationError as e:
+        return jsonify({
+            "error": str(e),
+            "errors": e.to_dict_list(),
+        }), 400
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        logger.exception(f"Error materializing template {template_id}")
+        return jsonify({"error": str(e)}), 500
