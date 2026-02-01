@@ -136,7 +136,7 @@ export const TemplateCatalog: React.FC<TemplateCatalogProps> = ({
         }>
           {filteredTemplates.map((template, index) => (
             <TemplateCard
-              key={template.id}
+              key={template.template_id}
               template={template}
               index={index}
               onSelect={onSelectTemplate}
