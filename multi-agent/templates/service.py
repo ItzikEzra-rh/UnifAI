@@ -298,9 +298,15 @@ class TemplateService:
         if self._blueprint_service is None:
             raise RuntimeError("BlueprintService not configured")
 
+        if save_resources and self._resources_service is None:
+            raise RuntimeError("ResourcesService not configured but save_resources=True")
+
         # Instantiate template
         template = self.get_template(template_id)
-        result = self._instantiator.instantiate(template, user_input)
+        try:
+            result = self._instantiator.instantiate(template, user_input)
+        except MergeError as e:
+            raise InstantiationError(str(e), errors=e.errors)
 
         if blueprint_name:
             result.blueprint.name = blueprint_name
