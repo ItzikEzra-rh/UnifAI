@@ -139,8 +139,8 @@ function buildInputPayloadFromFields(
   for (const field of normalizedFields) {
     const value = formData[field.key];
     
-    // Skip undefined/empty values unless they have a default
-    if (value === undefined || value === null || value === '') {
+    // Skip only undefined/null values; empty string may be intentional
+    if (value === undefined || value === null) {
       continue;
     }
     
