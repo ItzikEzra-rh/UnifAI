@@ -56,17 +56,17 @@ class TemplateService:
     """
 
     def __init__(
-        self,
-        repository: TemplateRepository,
-        element_registry: ElementRegistry,
-        blueprint_service=None,  # Optional: BlueprintService
-        resources_service=None,  # Optional: ResourcesService
+            self,
+            repository: TemplateRepository,
+            element_registry: ElementRegistry,
+            blueprint_service=None,  # Optional: BlueprintService
+            resources_service=None,  # Optional: ResourcesService
     ):
         self._repo = repository
         self._element_registry = element_registry
         self._blueprint_service = blueprint_service
         self._resources_service = resources_service
-        
+
         # Internal components
         self._analyzer = PlaceholderAnalyzer(element_registry)
         self._instantiator = TemplateInstantiator()
@@ -75,10 +75,10 @@ class TemplateService:
     #  Template CRUD
     # ─────────────────────────────────────────────────────────────────────
     def create_template(
-        self,
-        draft: Dict[str, Any],
-        placeholders: Dict[str, Any],
-        metadata: Optional[Dict[str, Any]] = None,
+            self,
+            draft: Dict[str, Any],
+            placeholders: Dict[str, Any],
+            metadata: Optional[Dict[str, Any]] = None,
     ) -> str:
         """
         Create a new template from raw dicts.
@@ -92,7 +92,7 @@ class TemplateService:
             Generated template ID
         """
         template_id = str(uuid4())
-        
+
         template = Template(
             template_id=template_id,
             draft=BlueprintDraft(**draft),
@@ -101,7 +101,7 @@ class TemplateService:
             created_at=datetime.utcnow(),
             updated_at=datetime.utcnow(),
         )
-        
+
         return self._repo.save(template)
 
     def get_template(self, template_id: str) -> Template:
@@ -144,13 +144,13 @@ class TemplateService:
     #  Template Listing
     # ─────────────────────────────────────────────────────────────────────
     def list_templates(
-        self,
-        *,
-        is_public: Optional[bool] = True,
-        category: Optional[str] = None,
-        tags: Optional[List[str]] = None,
-        skip: int = 0,
-        limit: int = 100,
+            self,
+            *,
+            is_public: Optional[bool] = True,
+            category: Optional[str] = None,
+            tags: Optional[List[str]] = None,
+            skip: int = 0,
+            limit: int = 100,
     ) -> List[Template]:
         """
         List templates with optional filtering.
@@ -166,29 +166,29 @@ class TemplateService:
         )
 
     def search_templates(
-        self,
-        query: str,
-        *,
-        limit: int = 20,
+            self,
+            query: str,
+            *,
+            limit: int = 20,
     ) -> List[Template]:
         """Search templates by name/description."""
         return self._repo.search(query, is_public=True, limit=limit)
 
     def search_template_summaries(
-        self,
-        query: str,
-        *,
-        limit: int = 20,
+            self,
+            query: str,
+            *,
+            limit: int = 20,
     ) -> List[TemplateSummary]:
         """Search templates and return summaries."""
         templates = self.search_templates(query=query, limit=limit)
         return [TemplateSummary.from_template(t) for t in templates]
 
     def count_templates(
-        self,
-        *,
-        is_public: Optional[bool] = True,
-        category: Optional[str] = None,
+            self,
+            *,
+            is_public: Optional[bool] = True,
+            category: Optional[str] = None,
     ) -> int:
         """Count templates matching criteria."""
         return self._repo.count(is_public=is_public, category=category)
@@ -210,9 +210,9 @@ class TemplateService:
         return self._analyzer.get_json_schema(template)
 
     def validate_input(
-        self,
-        template_id: str,
-        user_input: Dict[str, Any],
+            self,
+            template_id: str,
+            user_input: Dict[str, Any],
     ) -> InputValidationResult:
         """
         Validate user input against the template's input schema.
@@ -240,9 +240,9 @@ class TemplateService:
     #  Template Instantiation
     # ─────────────────────────────────────────────────────────────────────
     def instantiate(
-        self,
-        template_id: str,
-        user_input: Dict[str, Any],
+            self,
+            template_id: str,
+            user_input: Dict[str, Any],
     ) -> InstantiationResult:
         """
         Instantiate a template with user input.
@@ -255,7 +255,7 @@ class TemplateService:
         Raises InstantiationError if instantiation fails.
         """
         template = self.get_template(template_id)
-        
+
         try:
             return self._instantiator.instantiate(template, user_input)
         except MergeError as e:
@@ -267,13 +267,13 @@ class TemplateService:
     #  Full Materialization (Blueprint + Resources)
     # ─────────────────────────────────────────────────────────────────────
     def materialize(
-        self,
-        template_id: str,
-        user_id: str,
-        user_input: Dict[str, Any],
-        blueprint_name: Optional[str] = None,
-        save_resources: bool = True,
-        skip_validation: bool = False,
+            self,
+            template_id: str,
+            user_id: str,
+            user_input: Dict[str, Any],
+            blueprint_name: Optional[str] = None,
+            save_resources: bool = True,
+            skip_validation: bool = False,
     ) -> MaterializeResult:
         """
         Instantiate template and save blueprint + resources to user's account.
@@ -297,18 +297,18 @@ class TemplateService:
         """
         if self._blueprint_service is None:
             raise RuntimeError("BlueprintService not configured")
-        
+
         # Instantiate template
         template = self.get_template(template_id)
         result = self._instantiator.instantiate(template, user_input)
-        
+
         if blueprint_name:
             result.blueprint.name = blueprint_name
-        
+
         # Validate
         if not skip_validation:
             self._validate_blueprint(result.blueprint)
-        
+
         # Save blueprint (and optionally resources)
         blueprint_id, resource_ids = self._save_blueprint(
             blueprint=result.blueprint,
@@ -316,7 +316,7 @@ class TemplateService:
             user_id=user_id,
             save_resources=save_resources,
         )
-        
+
         return MaterializeResult(
             blueprint_id=blueprint_id,
             template_id=template_id,
@@ -328,25 +328,22 @@ class TemplateService:
 
     def _validate_blueprint(self, blueprint: BlueprintDraft) -> None:
         """Validate blueprint, raise InstantiationError if invalid."""
-        validation_result = self._blueprint_service.validate_draft(
+        result = self._blueprint_service.validate_draft(
             blueprint.model_dump(mode="json")
         )
-        if not validation_result.is_valid:
-            errors = [
-                elem_result.to_dict()
-                for elem_result in validation_result.element_results.values()
-                if not elem_result.is_valid
-            ]
+        if not result.is_valid:
+            failed = [r for r in result.element_results.values() if not r.is_valid]
             raise InstantiationError(
-                f"Blueprint validation failed with {len(errors)} error(s)",
+                f"Blueprint validation failed for {len(failed)} element(s)",
+                errors=failed,
             )
 
     def _save_blueprint(
-        self,
-        blueprint: BlueprintDraft,
-        template: Template,
-        user_id: str,
-        save_resources: bool,
+            self,
+            blueprint: BlueprintDraft,
+            template: Template,
+            user_id: str,
+            save_resources: bool,
     ) -> Tuple[str, List[str]]:
         """Save blueprint (and optionally resources). Returns (blueprint_id, resource_ids)."""
         metadata = {
@@ -354,11 +351,11 @@ class TemplateService:
             "template_id": template.template_id,
             "template_name": template.name,
         }
-        
+
         if save_resources and self._resources_service is not None:
             materializer = ResourceMaterializer(self._resources_service)
             mat_result = materializer.materialize(blueprint, user_id)
-            
+
             blueprint_id = self._blueprint_service.save_draft(
                 user_id=user_id,
                 draft_dict=mat_result.blueprint_draft.model_dump(mode="json"),
@@ -382,12 +379,12 @@ class TemplateService:
         return TemplateSummary.from_template(template)
 
     def list_template_summaries(
-        self,
-        *,
-        is_public: Optional[bool] = True,
-        category: Optional[str] = None,
-        skip: int = 0,
-        limit: int = 100,
+            self,
+            *,
+            is_public: Optional[bool] = True,
+            category: Optional[str] = None,
+            skip: int = 0,
+            limit: int = 100,
     ) -> List[TemplateSummary]:
         """Get summaries for template listing."""
         templates = self.list_templates(

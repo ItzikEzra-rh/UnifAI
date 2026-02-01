@@ -68,12 +68,12 @@ class MaterializationFieldError(BaseModel):
 
     @classmethod
     def from_resource(
-        cls,
-        rid: str,
-        category: str,
-        element_type: str,
-        error_type: MaterializationErrorType,
-        message: str,
+            cls,
+            rid: str,
+            category: str,
+            element_type: str,
+            error_type: MaterializationErrorType,
+            message: str,
     ) -> "MaterializationFieldError":
         """Create error from resource attributes."""
         return cls(
@@ -120,7 +120,7 @@ class TemplateSaveError(Exception):
 class InstantiationError(Exception):
     """Raised when template instantiation fails."""
 
-    def __init__(self, message: str, errors: Optional[List[MergeFieldError]] = None):
+    def __init__(self, message: str, errors: List = None):
         super().__init__(message)
         self.message = message
         self.errors = errors or []
@@ -130,4 +130,15 @@ class InstantiationError(Exception):
 
     def to_dict_list(self) -> List[Dict[str, Any]]:
         """Convert errors to dict list for API responses."""
-        return [e.model_dump() for e in self.errors]
+        return [self._serialize(e) for e in self.errors]
+
+    @staticmethod
+    def _serialize(obj) -> Dict[str, Any]:
+        """Serialize any object to dict."""
+        if isinstance(obj, dict):
+            return obj
+        if hasattr(obj, 'model_dump'):
+            return obj.model_dump()
+        if hasattr(obj, 'to_dict'):
+            return obj.to_dict()
+        return {"error": str(obj)}
