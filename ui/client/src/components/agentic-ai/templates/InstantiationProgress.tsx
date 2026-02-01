@@ -78,9 +78,15 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const [isNavigatingToChat, setIsNavigatingToChat] = useState(false);
   const [selectedValidationResult, setSelectedValidationResult] = useState<ElementValidationResult | null>(null);
-  const currentStepIndex = getStepIndex(status);
+  const [lastActiveStepIndex, setLastActiveStepIndex] = useState(0);
+  const currentStepIndex = status === 'failed' ? lastActiveStepIndex : getStepIndex(status);
   const progressValue = getProgressValue(status);
 
+  useEffect(() => {
+    if (status === 'validating' || status === 'submitting') {
+      setLastActiveStepIndex(getStepIndex(status));
+    }
+  }, [status]);
   const handleOpenChat = async () => {
     setIsNavigatingToChat(true);
     try {
@@ -99,6 +105,11 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
   const handleClose = () => {
     setIsOpen(false);
     onClose();
+  };
+
+  const handleRetry = () => {
+    setIsOpen(false);
+    onRetry();
   };
 
   const handleViewDetails = (result: ElementValidationResult) => {
@@ -293,11 +304,11 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
 
                 <div className="flex gap-2">
                   <Button 
-                    onClick={onRetry}
+                    onClick={handleRetry}
                     className="flex-1 bg-primary hover:bg-primary/90"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Retry
+                    Reset & Retry
                   </Button>
                   <Button 
                     onClick={handleClose}

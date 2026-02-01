@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useImperativeHandle, forwardRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,10 @@ interface TemplateDetailViewProps {
   onBack: () => void;
   onGenerate: (data: TemplateFormData) => void;
   isSubmitting?: boolean;
+}
+
+export interface TemplateDetailViewRef {
+  resetForm: () => void;
 }
 
 /**
@@ -236,27 +240,39 @@ const FieldsSection: React.FC<FieldsSectionProps> = ({
   );
 };
 
-export const TemplateDetailView: React.FC<TemplateDetailViewProps> = ({
+export const TemplateDetailView = forwardRef<TemplateDetailViewRef, TemplateDetailViewProps>(({
   template,
   fields,
   onBack,
   onGenerate,
   isSubmitting = false
-}) => {
+}, ref) => {
   const [isEditingRequired, setIsEditingRequired] = useState(false);
   const [isEditingOptional, setIsEditingOptional] = useState(false);
   const [formData, setFormData] = useState<TemplateFormData>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  // Initialize form data with defaults
-  useEffect(() => {
+  // Reset form to default values
+  const resetForm = useCallback(() => {
     const initial = fields.reduce<TemplateFormData>((acc, field) => {
       acc[field.key] = getFieldDefaultValue(field);
       return acc;
     }, {});
     setFormData(initial);
     setErrors({});
+    setIsEditingRequired(false);
+    setIsEditingOptional(false);
   }, [fields]);
+
+  // Expose resetForm to parent via ref
+  useImperativeHandle(ref, () => ({
+    resetForm
+  }), [resetForm]);
+
+  // Initialize form data with defaults
+  useEffect(() => {
+    resetForm();
+  }, [resetForm]);
 
   const handleFieldChange = useCallback((key: string, value: any) => {
     setFormData(prev => ({ ...prev, [key]: value }));
@@ -452,6 +468,8 @@ export const TemplateDetailView: React.FC<TemplateDetailViewProps> = ({
       </Card>
     </motion.div>
   );
-};
+});
+
+TemplateDetailView.displayName = 'TemplateDetailView';
 
 export default TemplateDetailView;

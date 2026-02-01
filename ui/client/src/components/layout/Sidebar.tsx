@@ -156,6 +156,14 @@ export default function Sidebar() {
             isCollapsed={isCollapsed}
           />
           <NavItem 
+            icon={<FaPuzzlePiece className="sidebar-icon" />} 
+            label="Agentic AI Templates" 
+            to="/templates"
+            isActive={location === '/templates'}
+            status={null}
+            isCollapsed={isCollapsed}
+          />
+          <NavItem 
               icon={<FaFile className="sidebar-icon" />} 
               label="Agentic Inventory" 
               to="/inventory"
@@ -177,14 +185,6 @@ export default function Sidebar() {
             label="Agentic Chats" 
             to="/agentic-chats"
             isActive={location === '/agentic-chats'}
-            status={null}
-            isCollapsed={isCollapsed}
-          />
-          <NavItem 
-            icon={<FaPuzzlePiece className="sidebar-icon" />} 
-            label="Agentic AI Templates" 
-            to="/templates"
-            isActive={location === '/templates'}
             status={null}
             isCollapsed={isCollapsed}
           />

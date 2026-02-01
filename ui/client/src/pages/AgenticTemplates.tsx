@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation } from 'wouter';
-import axios from "../http/axiosAgentConfig";
 import Sidebar from '@/components/layout/Sidebar';
 import Header from '@/components/layout/Header';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -9,9 +8,11 @@ import {
   TemplateDetailView,
   InstantiationProgress
 } from '@/components/agentic-ai/templates';
+import type { TemplateDetailViewRef } from '@/components/agentic-ai/templates';
 import { useTemplates } from '@/hooks/use-templates';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { createSession } from '@/api/sessions';
 import { TemplateListItem, TemplateFormData } from '@/types/templates';
 
 type ViewMode = 'catalog' | 'detail';
@@ -21,6 +22,7 @@ export default function AgenticTemplates() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('catalog');
   const [isCreatingSession, setIsCreatingSession] = useState(false);
+  const templateDetailRef = useRef<TemplateDetailViewRef>(null);
   const { user } = useAuth();
   const { toast } = useToast();
 
@@ -68,6 +70,8 @@ export default function AgenticTemplates() {
 
   const handleRetryInstantiation = useCallback(() => {
     resetInstantiation();
+    // Reset form fields to defaults
+    templateDetailRef.current?.resetForm();
   }, [resetInstantiation]);
 
   const handleNavigateToWorkflow = useCallback(() => {
@@ -88,11 +92,7 @@ export default function AgenticTemplates() {
     setIsCreatingSession(true);
     try {
       // Create a new chat session with the blueprint
-      await axios.post('/sessions/user.session.create', {
-        blueprintId: instantiationResult.blueprint_id,
-        userId: user.username,
-      });
-
+      await createSession({ blueprintId: instantiationResult.blueprint_id, userId: user.username });
       resetInstantiation();
       setLocation('/agentic-chats');
     } catch (err) {
@@ -160,6 +160,7 @@ export default function AgenticTemplates() {
               <AnimatePresence mode="wait">
                 {viewMode === 'detail' && selectedTemplate && (
                   <TemplateDetailView
+                    ref={templateDetailRef}
                     key="detail"
                     template={selectedTemplate}
                     fields={normalizedFields}
