@@ -192,13 +192,6 @@ def delete_template(template_id):
     # TODO: Add authorization check - verify user has permission to delete this template
     try:
         svc = current_app.container.template_service
-        
-        if not svc.exists(template_id):
-            return jsonify({
-                "status": "error",
-                "error": f"Template '{template_id}' not found",
-            }), 404
-        
         deleted = svc.delete_template(template_id)
         
         if deleted:
@@ -211,6 +204,8 @@ def delete_template(template_id):
                 "status": "error",
                 "error": "Failed to delete template",
             }), 500
+    except TemplateNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
     except Exception as e:
         logger.exception(f"Error deleting template {template_id}")
         return jsonify({"error": str(e)}), 500
