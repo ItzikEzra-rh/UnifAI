@@ -15,8 +15,8 @@ class CelerySlackEventDispatcher(SlackEventDispatcher):
     using Celery for async task dispatch to RabbitMQ.
     """
 
-    # Task name registered in Celery worker
-    SLACK_EVENT_TASK = "celery_app.tasks.slack_event_subscription_tasks.process_slack_events_task"
+    # Task name registered in Celery worker (matches rag hexagonal architecture path)
+    SLACK_EVENT_TASK = "infrastructure.celery.workers.slack_event_tasks.process_slack_events_task"
     
     # Dedicated queue for Slack events
     QUEUE = "slack_events_queue"
