@@ -190,8 +190,8 @@ def validate_resources(resource_ids, timeout_seconds, max_workers):
     if not resource_ids:
         return jsonify([]), 200
     
-    # Cap max_workers to prevent resource exhaustion
-    max_workers = min(max_workers, 20)
+    # Cap max_workers and ensure a positive value
+    max_workers = max(1, min(max_workers, 20))
     
     try:
         results = svc.validate_resources(
