@@ -109,6 +109,7 @@ def update_resource(resource_id, config, name=None):
     "resource_id": fields.Str(data_key="resourceId", required=True),
 })
 def delete_resource(resource_id):
+    # TODO: Add authorization check - verify user has permission to delete this resource
     svc = current_app.container.resources_service
     try:
         svc.delete(resource_id)

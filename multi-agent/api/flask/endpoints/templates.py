@@ -189,6 +189,7 @@ def delete_template(template_id):
     """
     Delete a template by ID.
     """
+    # TODO: Add authorization check - verify user has permission to delete this template
     try:
         svc = current_app.container.template_service
         
