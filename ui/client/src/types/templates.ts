@@ -209,7 +209,6 @@ export interface NormalizedField {
   // UI hints
   isSecret?: boolean;
   isMultiline?: boolean;
-  rows?: number;
 }
 
 export interface TemplateFormData {

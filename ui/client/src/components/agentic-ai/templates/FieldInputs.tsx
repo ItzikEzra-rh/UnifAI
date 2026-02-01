@@ -195,15 +195,15 @@ export const FieldInput: React.FC<FieldInputProps> = ({ field, value, onChange, 
         );
       
       default:
-        // String type
-        if (field.isMultiline && field.rows && field.rows > 1) {
+        // String type - use Textarea for multiline fields
+        if (field.isMultiline) {
           return (
             <Textarea
               value={value || ''}
               onChange={(e) => onChange(e.target.value)}
               placeholder={`Enter ${field.label.toLowerCase()}`}
               className="bg-background-dark border-gray-700"
-              rows={field.rows}
+              rows={4}
             />
           );
         }

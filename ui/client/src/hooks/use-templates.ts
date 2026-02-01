@@ -115,9 +115,8 @@ function normalizeSchemaToFields(
           minimum: field.minimum,
           maximum: field.maximum,
           enumOptions: field.enum,
-          isSecret: !!hints.secret,
-          isMultiline: !!(hints as any).multiline,
-          rows: (hints as any).multiline?.rows
+          isSecret: hints.secret?.hint_type === 'secret',
+          isMultiline: hints.multiline?.hint_type === 'multiline'
         });
       }
     }
