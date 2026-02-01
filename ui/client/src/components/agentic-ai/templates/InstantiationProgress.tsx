@@ -116,8 +116,12 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
     setSelectedValidationResult(result);
   };
 
-  const hasValidationErrors = validationResults.length > 0;
-  const totalErrorCount = validationResults.reduce((sum, r) => sum + r.messages.length, 0);
+  const failedResults = validationResults.filter(r => !r.is_valid);
+  const hasValidationErrors = failedResults.length > 0;
+  const totalErrorCount = failedResults.reduce(
+    (sum, r) => sum + r.messages.filter(m => m.severity === 'error').length,
+    0
+  );
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
@@ -271,7 +275,7 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
                   {hasValidationErrors && (
                     <div className="mt-3 space-y-2 max-h-40 overflow-y-auto">
                       <p className="text-xs text-gray-500 font-medium mb-2">Failed Elements:</p>
-                      {validationResults.map((result, idx) => (
+                      {failedResults.map((result, idx) => (
                         <div 
                           key={result.element_rid || idx}
                           className="flex items-center justify-between p-2 bg-gray-900/50 rounded border border-gray-800 hover:border-red-500/30 transition-colors"
@@ -283,7 +287,7 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
                                 {result.name || result.element_rid}
                               </p>
                               <p className="text-xs text-gray-500">
-                                {result.element_type} • {result.messages.length} error{result.messages.length !== 1 ? 's' : ''}
+                              {result.element_type} • {result.messages.filter(m => m.severity === 'error').length} error{result.messages.filter(m => m.severity === 'error').length !== 1 ? 's' : ''}
                               </p>
                             </div>
                           </div>

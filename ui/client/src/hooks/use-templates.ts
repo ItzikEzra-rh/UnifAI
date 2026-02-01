@@ -115,9 +115,8 @@ function normalizeSchemaToFields(
           minimum: field.minimum,
           maximum: field.maximum,
           enumOptions: field.enum,
-          isSecret: !!hints.secret,
-          isMultiline: !!(hints as any).multiline,
-          rows: (hints as any).multiline?.rows
+          isSecret: hints.secret?.hint_type === 'secret',
+          isMultiline: hints.multiline?.hint_type === 'multiline'
         });
       }
     }
@@ -139,8 +138,8 @@ function buildInputPayloadFromFields(
   for (const field of normalizedFields) {
     const value = formData[field.key];
     
-    // Skip undefined/empty values unless they have a default
-    if (value === undefined || value === null || value === '') {
+    // Skip only undefined/null values; empty string may be intentional
+    if (value === undefined || value === null) {
       continue;
     }
     
