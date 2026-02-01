@@ -101,6 +101,11 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
     onClose();
   };
 
+  const handleRetry = () => {
+    setIsOpen(false);
+    onRetry();
+  };
+
   const handleViewDetails = (result: ElementValidationResult) => {
     setSelectedValidationResult(result);
   };
@@ -293,11 +298,11 @@ export const InstantiationProgress: React.FC<InstantiationProgressProps> = ({
 
                 <div className="flex gap-2">
                   <Button 
-                    onClick={onRetry}
+                    onClick={handleRetry}
                     className="flex-1 bg-primary hover:bg-primary/90"
                   >
                     <RefreshCw className="h-4 w-4 mr-2" />
-                    Retry
+                    Reset & Retry
                   </Button>
                   <Button 
                     onClick={handleClose}
