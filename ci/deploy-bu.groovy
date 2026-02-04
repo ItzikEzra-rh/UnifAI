@@ -211,8 +211,7 @@ pipeline {
                                         def version = params.RAG_VERSION?.trim() ?: params.VERSION?.trim()
                                         updateChartVersions("${buildParams.DevRoot}/${params.BRANCH}/helm/rag/", version)
                                         updateValuesYaml("${buildParams.DevRoot}/${params.BRANCH}/helm/values/rag-resource-values.yaml", version)
-                                        deployModules('rag
-                                        ')
+                                        deployModules('rag')
                                         break
 
                                     case 'multiagent':
