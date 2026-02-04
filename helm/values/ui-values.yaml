@@ -16,10 +16,6 @@ ui:
   env:
     NGINX_PORT: "8443"
     VERSION: ""
-    # DATAPIPELINEHUB_PORT: ""
-    # DATAPIPELINEHUB_HOST: "https://unifai-rag-server-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
-    # MULTIAGENT_PORT: ""
-    # MULTIAGENT_HOST: "http://unifai-multiagent-be-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
 
   image:
     repository: images.paas.redhat.com/unifai/ui

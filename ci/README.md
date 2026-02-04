@@ -55,7 +55,7 @@ This pipeline performs the following tasks:
 This pipeline takes the images built by the first pipeline and deploys them to an environment using **Helm**.
 
 > **Note:** You typically won't run this pipeline manually. It's designed to be triggered automatically by the Image Builder pipeline. Manual runs are for special cases like rollbacks or redeploying an existing version.
-***if that was the case, please make sure to set the proper Versions (DF_VERSION, MA_VERSION) and avoid VERSION***
+***if that was the case, please make sure to set the proper Versions (RAG_VERSION, MA_VERSION) and avoid VERSION***
 
 ### ⚙️ How It Works
 
@@ -81,7 +81,7 @@ This pipeline takes the images built by the first pipeline and deploys them to a
 |---------------------|------------------------------------------------------------------------------|
 | `MODULES_TO_DEPLOY` | Comma-separated list of components to deploy (e.g., `rag,multiagent`). |
 | `VERSION`           | DONT set this value when Manual Runs.                                     |
-| `DF_VERSION`, `MA_VERSION` | (Optional) Use to specify a different version per module.         |
+| `RAG_VERSION`, `MA_VERSION` | (Optional) Use to specify a different version per module.         |
 | `deploy_location`   | Target environment (`STAGING` or `PRODUCTION`).                              |
 | `deploy_type`       | Deployment strategy: `FRESH_INSTALL` or `APPLICATION_UPGRADE`.               |
 | `debug_mode`        | If `true`, pods will run with debug settings enabled.                        |
@@ -169,7 +169,7 @@ This pipeline takes the images built by the first pipeline and deploys them to a
 ### Manual Deployment
 If you need to manually deploy without building:
 1. **Don't set** the `VERSION` parameter in deployment pipeline
-2. **Do set** the component-specific versions (`DF_VERSION`, `MA_VERSION`, etc.)
+2. **Do set** the component-specific versions (`RAG_VERSION`, `MA_VERSION`, etc.)
 3. Specify `MODULES_TO_DEPLOY` (e.g., `rag,ui,sso`)
 
 ---

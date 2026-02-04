@@ -1,5 +1,5 @@
 """
-Data source types and validation models for the DataPipelineHub backend.
+Data source types and validation models for the RAG backend.
 
 This module contains type definitions and validation models for different data sources:
 - Metadata dataclasses for pipeline execution (SlackMetadata, DocumentMetadata)
