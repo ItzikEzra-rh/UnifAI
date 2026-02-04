@@ -1,5 +1,5 @@
 """
-Response models for Dataflow API.
+Response models for RAG API.
 """
 from typing import List, Optional, ClassVar
 from pydantic import BaseModel

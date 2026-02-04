@@ -1,2 +1,2 @@
-# from .spec import DataflowProviderElementSpec
+# from .spec import RagProviderElementSpec
 

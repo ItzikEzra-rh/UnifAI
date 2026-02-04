@@ -3,35 +3,35 @@ from typing import Optional, Dict, Any
 from pydantic import HttpUrl
 from actions.common.base_action import BaseAction
 from actions.common.action_models import BaseActionInput, BaseActionOutput, ActionType
-from elements.providers.dataflow_client.client import DataflowClient, DataflowClientError
-from elements.providers.dataflow_client.identifiers import Identifier
+from elements.providers.rag_client.client import RagClient, RagClientError
+from elements.providers.rag_client.identifiers import Identifier
 from core.enums import ResourceCategory
 
 
 class ValidateConnectionInput(BaseActionInput):
-    """Input for Dataflow connection validation"""
+    """Input for RAG connection validation"""
     base_url: HttpUrl
 
 
 class ValidateConnectionOutput(BaseActionOutput):
-    """Output for Dataflow connection validation"""
+    """Output for RAG connection validation"""
     is_reachable: bool = False
     response_time_ms: float = 0.0
 
 
 class ValidateConnectionAction(BaseAction):
     """
-    Validates Dataflow server connection.
+    Validates RAG server connection.
     """
 
-    uid = "dataflow.validate_connection"
+    uid = "rag.validate_connection"
     name = "validate_connection"
-    description = "Validate that the Dataflow server endpoint is reachable"
+    description = "Validate that the RAG server endpoint is reachable"
     action_type = ActionType.VALIDATION
     input_schema = ValidateConnectionInput
     output_schema = ValidateConnectionOutput
     version = "1.0.0"
-    tags = {"dataflow", "validation", "connectivity"}
+    tags = {"rag", "validation", "connectivity"}
     elements = {(ResourceCategory.PROVIDER.value, Identifier.TYPE)}
 
     def execute(
@@ -43,7 +43,7 @@ class ValidateConnectionAction(BaseAction):
         start_time = time.time()
 
         try:
-            with DataflowClient(input_data.base_url, timeout=10.0) as client:
+            with RagClient(input_data.base_url, timeout=10.0) as client:
                 health = client.health_check()
 
             response_time = (time.time() - start_time) * 1000
@@ -55,7 +55,7 @@ class ValidateConnectionAction(BaseAction):
                 response_time_ms=response_time
             )
 
-        except DataflowClientError as e:
+        except RagClientError as e:
             return ValidateConnectionOutput(
                 success=False,
                 message=f"Connection failed: {str(e)}",

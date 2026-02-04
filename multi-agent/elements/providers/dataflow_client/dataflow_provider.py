@@ -1,12 +1,12 @@
 """
-DataflowProvider - High-level synchronous interface for Dataflow service.
+RagProvider - High-level synchronous interface for RAG service.
 """
 import logging
 from typing import Optional, Dict, List
 
 from pydantic import HttpUrl
 
-from .client import DataflowClient
+from .client import RagClient
 from .models import (
     AvailableTagsResponse,
     AvailableDocsResponse,
@@ -16,9 +16,9 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
-class DataflowProvider:
+class RagProvider:
     """
-    High-level synchronous Dataflow interface.
+    High-level synchronous RAG interface.
 
     Provides a clean API for:
     - Querying vector database
@@ -34,10 +34,10 @@ class DataflowProvider:
             headers: Optional[Dict[str, str]] = None,
     ):
         """
-        Initialize Dataflow provider.
+        Initialize RAG provider.
 
         Args:
-            base_url: Dataflow service URL
+            base_url: RAG service URL
             top_k: Default number of results for queries
             timeout: Request timeout in seconds
             headers: Optional HTTP headers
@@ -47,9 +47,9 @@ class DataflowProvider:
         self.timeout = timeout
         self.headers = headers or {}
 
-    def _create_client(self) -> DataflowClient:
+    def _create_client(self) -> RagClient:
         """Create a new client instance."""
-        return DataflowClient(
+        return RagClient(
             base_url=self.base_url,
             timeout=self.timeout,
             headers=self.headers,
@@ -138,6 +138,6 @@ class DataflowProvider:
 
     def __repr__(self) -> str:
         return (
-            f"DataflowProvider(base_url='{self.base_url}', "
+            f"RagProvider(base_url='{self.base_url}', "
             f"top_k={self.top_k}, timeout={self.timeout})"
         )

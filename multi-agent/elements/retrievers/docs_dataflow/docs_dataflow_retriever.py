@@ -1,13 +1,13 @@
 from typing import Dict, List, Optional
 from elements.retrievers.common.base_retriever import BaseRetriever
-from elements.providers.dataflow_client.config import DataflowProviderConfig
-from elements.providers.dataflow_client.dataflow_provider_factory import DataflowProviderFactory
+from elements.providers.rag_client.config import RagProviderConfig
+from elements.providers.rag_client.rag_provider_factory import RagProviderFactory
 from core.context import get_current_context
 
 
-class DocsDataflowRetriever(BaseRetriever):
+class DocsRagRetriever(BaseRetriever):
     """
-    Retrieves document passages via Dataflow vector database.
+    Retrieves document passages via RAG vector database.
     """
 
     def __init__(
@@ -21,11 +21,11 @@ class DocsDataflowRetriever(BaseRetriever):
         self.threshold = threshold
         self.docs = docs
         self.tags = tags
-        config = DataflowProviderConfig(
+        config = RagProviderConfig(
             top_k=top_k_results,
             timeout=timeout,
         )
-        factory = DataflowProviderFactory()
+        factory = RagProviderFactory()
         self._provider = factory.create(config)
 
     def retrieve(self, query: str) -> List[dict]:

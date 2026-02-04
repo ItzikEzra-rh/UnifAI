@@ -5,18 +5,18 @@ from core.field_hints import ActionHint, HintType
 from .identifiers import Identifier
 
 
-class DataflowProviderConfig(ProviderBaseConfig):
+class RagProviderConfig(ProviderBaseConfig):
     """
-    Configuration for Dataflow service client.
-    Connects to a Dataflow server for vector database queries and document retrieval.
+    Configuration for RAG service client.
+    Connects to a RAG server for vector database queries and document retrieval.
     """
     type: Literal[Identifier.TYPE] = Identifier.TYPE
 
     base_url: HttpUrl = Field(
-        default="http://unifai-dataflow-server:13456",
-        description="Base URL of the Dataflow service",
+        default="http://unifai-rag-server:13456",
+        description="Base URL of the RAG service",
         json_schema_extra=ActionHint(
-            action_uid="dataflow.validate_connection",
+            action_uid="rag.validate_connection",
             hint_type=HintType.VALIDATE,
             field_mapping="is_reachable"
         ).to_hints()

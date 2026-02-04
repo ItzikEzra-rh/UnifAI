@@ -1,2 +1,2 @@
-from .spec import DocsDataflowRetrieverElementSpec
+from .spec import DocsRagRetrieverElementSpec
 

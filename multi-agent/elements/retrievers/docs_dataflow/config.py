@@ -5,9 +5,9 @@ from core.field_hints import ActionHint, HintType, SelectionType
 from .identifiers import Identifier
 
 
-class DocsDataflowRetrieverConfig(BaseRetrieverConfig):
+class DocsRagRetrieverConfig(BaseRetrieverConfig):
     """
-    Retrieves document passages via Dataflow service.
+    Retrieves document passages via RAG service.
     """
     type: Literal[Identifier.TYPE] = Identifier.TYPE
 
@@ -35,7 +35,7 @@ class DocsDataflowRetrieverConfig(BaseRetrieverConfig):
         default=None,
         description="Filter results to specific documents",
         json_schema_extra=ActionHint(
-            action_uid="dataflow.get_available_docs",
+            action_uid="rag.get_available_docs",
             display_name="documents",
             hint_type=HintType.POPULATE,
             selection_type=SelectionType.MANUAL,
@@ -51,7 +51,7 @@ class DocsDataflowRetrieverConfig(BaseRetrieverConfig):
         default=None,
         description="Filter results by tags",
         json_schema_extra=ActionHint(
-            action_uid="dataflow.get_available_tags",
+            action_uid="rag.get_available_tags",
             hint_type=HintType.POPULATE,
             selection_type=SelectionType.MANUAL,
             field_mapping="tags",

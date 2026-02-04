@@ -1,7 +1,7 @@
 """
-elements/retrievers/docs_dataflow/validator.py
+elements/retrievers/docs_rag/validator.py
 
-Validator for DocsDataflow Retriever - checks Dataflow service health.
+Validator for DocsRag Retriever - checks RAG service health.
 """
 
 from typing import List
@@ -13,45 +13,45 @@ from elements.common.validator import (
     ValidationMessage,
     ValidationCode,
 )
-from elements.retrievers.docs_dataflow.config import DocsDataflowRetrieverConfig
-from elements.providers.dataflow_client.config import DataflowProviderConfig
-from elements.providers.dataflow_client.client import (
-    DataflowClient,
-    DataflowClientError,
-    DataflowConnectionError,
+from elements.retrievers.docs_rag.config import DocsRagRetrieverConfig
+from elements.providers.rag_client.config import RagProviderConfig
+from elements.providers.rag_client.client import (
+    RagClient,
+    RagClientError,
+    RagConnectionError,
 )
 
 
-class DocsDataflowRetrieverValidator(BaseElementValidator):
+class DocsRagRetrieverValidator(BaseElementValidator):
     """
-    Validates DocsDataflow Retriever configuration.
+    Validates DocsRag Retriever configuration.
     
     Checks:
-    - Dataflow service reachability
-    - Dataflow service health
+    - RAG service reachability
+    - RAG service health
     """
 
     def validate(
         self,
-        config: DocsDataflowRetrieverConfig,
+        config: DocsRagRetrieverConfig,
         context: ValidationContext,
     ) -> ValidatorReport:
         """
-        Validate DocsDataflow Retriever config.
+        Validate DocsRag Retriever config.
         
-        The retriever uses the default Dataflow service URL.
+        The retriever uses the default RAG service URL.
         We check if that service is healthy.
         
         Returns ValidatorReport (service adds metadata).
         """
         messages: List[ValidationMessage] = []
 
-        # Get default dataflow URL from provider config
-        provider_config = DataflowProviderConfig()
+        # Get default RAG URL from provider config
+        provider_config = RagProviderConfig()
         base_url = provider_config.base_url
 
         try:
-            with DataflowClient(
+            with RagClient(
                 base_url=base_url,
                 timeout=context.timeout_seconds,
             ) as client:
@@ -60,23 +60,23 @@ class DocsDataflowRetrieverValidator(BaseElementValidator):
             if health.is_healthy:
                 messages.append(self._info(
                     "CONNECTION_OK",
-                    f"Dataflow service is healthy at {base_url}",
+                    f"RAG service is healthy at {base_url}",
                 ))
             else:
                 messages.append(self._error(
                     ValidationCode.ENDPOINT_UNREACHABLE.value,
-                    f"Dataflow service unhealthy: {health.message}",
+                    f"RAG service unhealthy: {health.message}",
                 ))
 
-        except DataflowConnectionError as e:
+        except RagConnectionError as e:
             messages.append(self._error(
                 ValidationCode.ENDPOINT_UNREACHABLE.value,
-                f"Cannot connect to Dataflow service: {str(e)}",
+                f"Cannot connect to RAG service: {str(e)}",
             ))
-        except DataflowClientError as e:
+        except RagClientError as e:
             messages.append(self._error(
                 ValidationCode.NETWORK_ERROR.value,
-                f"Dataflow error: {str(e)}",
+                f"RAG error: {str(e)}",
             ))
         except Exception as e:
             messages.append(self._error(

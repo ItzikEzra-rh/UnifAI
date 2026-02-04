@@ -1,12 +1,12 @@
-from .docs_dataflow_retriever import DocsDataflowRetriever
-from .docs_dataflow_retriever_factory import DocsDataflowRetrieverFactory
-from .config import DocsDataflowRetrieverConfig
+from .docs_rag_retriever import DocsRagRetriever
+from .docs_rag_retriever_factory import DocsRagRetrieverFactory
+from .config import DocsRagRetrieverConfig
 from .identifiers import Identifier, META
 
 __all__ = [
-    "DocsDataflowRetriever",
-    "DocsDataflowRetrieverFactory",
-    "DocsDataflowRetrieverConfig",
+    "DocsRagRetriever",
+    "DocsRagRetrieverFactory",
+    "DocsRagRetrieverConfig",
     "Identifier",
     "META",
 ]

@@ -1,17 +1,17 @@
-# Dataflow Provider
+# RAG Provider
 
-Client for communicating with the Dataflow service (vector database) for document queries and metadata retrieval.
+Client for communicating with the RAG service (vector database) for document queries and metadata retrieval.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              DATAFLOW ECOSYSTEM                                  │
+│                              RAG ECOSYSTEM                                  │
 └─────────────────────────────────────────────────────────────────────────────────┘
 
                          ┌──────────────────────────┐
-                         │   Dataflow Service       │
-                         │ (unifai-dataflow-server) │
+                         │   RAG Service       │
+                         │ (unifai-rag-server) │
                          │       :13456             │
                          └───────────┬──────────────┘
                                      │
@@ -29,48 +29,48 @@ Client for communicating with the Dataflow service (vector database) for documen
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                            DataflowClient (client.py)                           │
-│  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐     │
-│  │ get_available_tags  │  │ get_available_docs  │  │    query_match      │     │
-│  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘     │
+│                            RagClient (client.py)                                │
+│  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐      │
+│  │ get_available_tags  │  │ get_available_docs  │  │    query_match      │      │
+│  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘      │
 └─────────────────────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                         DataflowProvider (dataflow_provider.py)                  │
-│                                                                                  │
-│  High-level sync API wrapping DataflowClient                                    │
-│  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐     │
-│  │ get_available_tags  │  │ get_available_docs  │  │       query         │     │
-│  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘     │
+│                         RagProvider (rag_provider.py)                           │
+│                                                                                 │
+│  High-level sync API wrapping RagClient                                         │
+│  ┌─────────────────────┐  ┌─────────────────────┐  ┌─────────────────────┐      │
+│  │ get_available_tags  │  │ get_available_docs  │  │       query         │      │
+│  └─────────────────────┘  └─────────────────────┘  └─────────────────────┘      │
 └─────────────────────────────────────────────────────────────────────────────────┘
                                   │
                                   ▼
 ┌─────────────────────────────────────────────────────────────────────────────────┐
-│                    DataflowProviderFactory + DataflowProviderConfig              │
-│                                                                                  │
-│  Config defaults:                                                                │
-│    base_url: http://unifai-dataflow-server:13456                                │
-│    top_k: 10                                                                     │
-│    timeout: 30.0                                                                 │
+│                    RagProviderFactory + RagProviderConfig                       │
+│                                                                                 │
+│  Config defaults:                                                               │
+│    base_url: http://unifai-rag-server:13456                                     │
+│    top_k: 10                                                                    │
+│    timeout: 30.0                                                                │
 └─────────────────────────────────────────────────────────────────────────────────┘
                                   │
                  ┌────────────────┴────────────────┐
                  │                                 │
                  ▼                                 ▼
 ┌────────────────────────────┐     ┌────────────────────────────────────────────┐
-│   DocsDataflowRetriever    │     │              ACTIONS                        │
-│                            │     │                                             │
+│   DocsRagRetriever         │     │              ACTIONS                       │
+│                            │     │                                            │
 │  - Uses factory internally │     │  ┌─────────────────────────────────────┐   │
-│  - Filters by threshold    │     │  │ dataflow.validate_connection        │   │
-│  - Gets scope/user from    │     │  │ (uses DataflowClient directly)      │   │
+│  - Filters by threshold    │     │  │ rag.validate_connection             │   │
+│  - Gets scope/user from    │     │  │ (uses RagClient directly)           │   │
 │    context                 │     │  └─────────────────────────────────────┘   │
 │                            │     │  ┌─────────────────────────────────────┐   │
-│  retrieve(query) → matches │     │  │ dataflow.get_available_tags         │   │
+│  retrieve(query) → matches │     │  │ rag.get_available_tags              │   │
 └────────────────────────────┘     │  │ (uses factory)                      │   │
                                    │  └─────────────────────────────────────┘   │
                                    │  ┌─────────────────────────────────────┐   │
-                                   │  │ dataflow.get_available_docs         │   │
+                                   │  │ rag.get_available_docs              │   │
                                    │  │ (uses factory)                      │   │
                                    │  └─────────────────────────────────────┘   │
                                    └────────────────────────────────────────────┘
@@ -89,10 +89,10 @@ Client for communicating with the Dataflow service (vector database) for documen
 ### Using the Provider directly
 
 ```python
-from elements.providers.dataflow_client import DataflowProvider
+from elements.providers.rag_client import RagProvider
 
-provider = DataflowProvider(
-    base_url="http://unifai-dataflow-server:13456",
+provider = RagProvider(
+    base_url="http://unifai-rag-server:13456",
     top_k=10,
     timeout=30.0,
 )
@@ -114,11 +114,11 @@ docs = provider.get_available_docs(limit=50)
 ### Using the Factory (recommended)
 
 ```python
-from elements.providers.dataflow_client.config import DataflowProviderConfig
-from elements.providers.dataflow_client.dataflow_provider_factory import DataflowProviderFactory
+from elements.providers.rag_client.config import RagProviderConfig
+from elements.providers.rag_client.rag_provider_factory import RagProviderFactory
 
-config = DataflowProviderConfig(top_k=5)
-factory = DataflowProviderFactory()
+config = RagProviderConfig(top_k=5)
+factory = RagProviderFactory()
 provider = factory.create(config)
 
 response = provider.query(query="my search query")
@@ -130,9 +130,9 @@ response = provider.query(query="my search query")
 |------|---------|
 | `identifiers.py` | Provider type key and metadata |
 | `models.py` | Pydantic response models |
-| `config.py` | `DataflowProviderConfig` with defaults |
-| `client.py` | `DataflowClient` - sync HTTP client |
-| `dataflow_provider.py` | `DataflowProvider` - high-level API |
-| `dataflow_provider_factory.py` | Factory for creating provider from config |
+| `config.py` | `RagProviderConfig` with defaults |
+| `client.py` | `RagClient` - sync HTTP client |
+| `rag_provider.py` | `RagProvider` - high-level API |
+| `rag_provider_factory.py` | Factory for creating provider from config |
 | `spec/spec.py` | Element spec for auto-discovery |
 

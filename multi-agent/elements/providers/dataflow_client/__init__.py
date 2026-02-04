@@ -1,14 +1,14 @@
 """
-Dataflow Client Provider
+RAG Client Provider
 
-This package provides synchronous Dataflow service integration for vector database
+This package provides synchronous RAG service integration for vector database
 queries and document retrieval.
 """
 
-from .dataflow_provider import DataflowProvider
-from .dataflow_provider_factory import DataflowProviderFactory
-from .client import DataflowClient, DataflowClientError, DataflowConnectionError
-from .config import DataflowProviderConfig
+from .rag_provider import RagProvider
+from .rag_provider_factory import RagProviderFactory
+from .client import RagClient, RagClientError, RagConnectionError
+from .config import RagProviderConfig
 from .identifiers import Identifier, META
 from .models import (
     TagOption,
@@ -21,12 +21,12 @@ from .models import (
 )
 
 __all__ = [
-    "DataflowProvider",
-    "DataflowProviderFactory",
-    "DataflowClient",
-    "DataflowClientError",
-    "DataflowConnectionError",
-    "DataflowProviderConfig",
+    "RagProvider",
+    "RagProviderFactory",
+    "RagClient",
+    "RagClientError",
+    "RagConnectionError",
+    "RagProviderConfig",
     "Identifier",
     "META",
     "TagOption",

@@ -4,7 +4,7 @@ from typing import List
 
 
 class Identifier(str, Enum):
-    TYPE = "docs_dataflow"
+    TYPE = "docs_rag"
 
 
 @dataclass(frozen=True)
@@ -15,8 +15,8 @@ class Meta:
 
 
 META = Meta(
-    name="Docs Dataflow Retriever",
-    description="Retrieves document passages via Dataflow vector database",
-    tags=["retriever", "docs", "dataflow", "vector", "search"],
+    name="Docs RAG Retriever",
+    description="Retrieves document passages via RAG vector database",
+    tags=["retriever", "docs", "rag", "vector", "search"],
 )
 

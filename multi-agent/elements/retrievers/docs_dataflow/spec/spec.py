@@ -1,25 +1,25 @@
 from typing import ClassVar
 from elements.common.base_element_spec import BaseElementSpec
 from core.enums import ResourceCategory
-from ..config import DocsDataflowRetrieverConfig
-from ..docs_dataflow_retriever_factory import DocsDataflowRetrieverFactory
+from ..config import DocsRagRetrieverConfig
+from ..docs_rag_retriever_factory import DocsRagRetrieverFactory
 from ..identifiers import Identifier, META
-from ..validator import DocsDataflowRetrieverValidator
+from ..validator import DocsRagRetrieverValidator
 
 
-class DocsDataflowRetrieverElementSpec(BaseElementSpec):
+class DocsRagRetrieverElementSpec(BaseElementSpec):
     """
-    Element specification for Docs Dataflow Retriever.
+    Element specification for Docs RAG Retriever.
 
-    Retrieves document passages via Dataflow vector database.
+    Retrieves document passages via RAG vector database.
     """
 
     category: ClassVar[ResourceCategory] = ResourceCategory.RETRIEVER
     type_key = Identifier.TYPE
     name = META.name
     description = META.description
-    config_schema = DocsDataflowRetrieverConfig
-    factory_cls = DocsDataflowRetrieverFactory
+    config_schema = DocsRagRetrieverConfig
+    factory_cls = DocsRagRetrieverFactory
     tags = META.tags
-    validator_cls = DocsDataflowRetrieverValidator
+    validator_cls = DocsRagRetrieverValidator
 

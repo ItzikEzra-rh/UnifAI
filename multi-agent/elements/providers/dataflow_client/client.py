@@ -1,5 +1,5 @@
 """
-DataflowClient - Synchronous HTTP client for Dataflow service communication.
+RagClient - Synchronous HTTP client for RAG service communication.
 """
 import logging
 from typing import Optional, Dict, Any, List
@@ -18,19 +18,19 @@ from .models import (
 logger = logging.getLogger(__name__)
 
 
-class DataflowClientError(Exception):
-    """Base error for Dataflow client operations."""
+class RagClientError(Exception):
+    """Base error for RAG client operations."""
     pass
 
 
-class DataflowConnectionError(DataflowClientError):
+class RagConnectionError(RagClientError):
     """Connection-related errors."""
     pass
 
 
-class DataflowClient:
+class RagClient:
     """
-    Synchronous HTTP client for Dataflow service.
+    Synchronous HTTP client for RAG service.
 
     Provides methods for:
     - Fetching available tags
@@ -50,10 +50,10 @@ class DataflowClient:
             headers: Optional[Dict[str, str]] = None,
     ):
         """
-        Initialize Dataflow client.
+        Initialize RAG client.
 
         Args:
-            base_url: Dataflow server base URL
+            base_url: RAG server base URL
             timeout: Request timeout in seconds
             headers: Optional HTTP headers
         """
@@ -62,7 +62,7 @@ class DataflowClient:
         self._headers = headers or {}
         self._client: Optional[httpx.Client] = None
 
-    def __enter__(self) -> "DataflowClient":
+    def __enter__(self) -> "RagClient":
         """Establish HTTP client connection."""
         self._client = httpx.Client(
             headers=self._headers,
@@ -84,7 +84,7 @@ class DataflowClient:
     def _require_connected(self) -> None:
         """Ensure client is connected."""
         if not self._client:
-            raise DataflowConnectionError(
+            raise RagConnectionError(
                 "Not connected. Use 'with' context manager."
             )
 
@@ -99,7 +99,7 @@ class DataflowClient:
             search_regex: Optional[str] = None,
     ) -> AvailableTagsResponse:
         """
-        Fetch available tags from Dataflow service.
+        Fetch available tags from RAG service.
 
         Args:
             limit: Number of tags per page (default 50)
@@ -125,11 +125,11 @@ class DataflowClient:
             response.raise_for_status()
             return AvailableTagsResponse.model_validate(response.json())
         except httpx.HTTPStatusError as e:
-            raise DataflowClientError(
+            raise RagClientError(
                 f"Failed to fetch tags: {e.response.status_code}"
             ) from e
         except httpx.RequestError as e:
-            raise DataflowConnectionError(f"Connection error: {e}") from e
+            raise RagConnectionError(f"Connection error: {e}") from e
 
     def get_available_docs(
             self,
@@ -138,7 +138,7 @@ class DataflowClient:
             search_regex: Optional[str] = None,
     ) -> AvailableDocsResponse:
         """
-        Fetch available documents from Dataflow service.
+        Fetch available documents from RAG service.
 
         Args:
             limit: Number of documents per page (default 50)
@@ -164,11 +164,11 @@ class DataflowClient:
             response.raise_for_status()
             return AvailableDocsResponse.model_validate(response.json())
         except httpx.HTTPStatusError as e:
-            raise DataflowClientError(
+            raise RagClientError(
                 f"Failed to fetch docs: {e.response.status_code}"
             ) from e
         except httpx.RequestError as e:
-            raise DataflowConnectionError(f"Connection error: {e}") from e
+            raise RagConnectionError(f"Connection error: {e}") from e
 
     def query_match(
             self,
@@ -216,15 +216,15 @@ class DataflowClient:
             response.raise_for_status()
             return QueryMatchResponse.model_validate(response.json())
         except httpx.HTTPStatusError as e:
-            raise DataflowClientError(
+            raise RagClientError(
                 f"Query failed: {e.response.status_code}"
             ) from e
         except httpx.RequestError as e:
-            raise DataflowConnectionError(f"Connection error: {e}") from e
+            raise RagConnectionError(f"Connection error: {e}") from e
 
     def health_check(self) -> HealthResponse:
         """
-        Check Dataflow service health.
+        Check RAG service health.
 
         Returns:
             HealthResponse with status and message
@@ -238,11 +238,11 @@ class DataflowClient:
             response.raise_for_status()
             return HealthResponse.model_validate(response.json())
         except httpx.HTTPStatusError as e:
-            raise DataflowClientError(
+            raise RagClientError(
                 f"Health check failed: {e.response.status_code}"
             ) from e
         except httpx.RequestError as e:
-            raise DataflowConnectionError(f"Connection error: {e}") from e
+            raise RagConnectionError(f"Connection error: {e}") from e
 
     @property
     def is_connected(self) -> bool:

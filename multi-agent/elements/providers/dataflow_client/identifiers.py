@@ -4,7 +4,7 @@ from typing import List
 
 
 class Identifier(str, Enum):
-    TYPE = "dataflow_client"
+    TYPE = "rag_client"
 
 
 @dataclass(frozen=True)
@@ -15,8 +15,8 @@ class Meta:
 
 
 META = Meta(
-    name="Dataflow Provider",
-    description="Client for querying vector database and document metadata via Dataflow service",
-    tags=["provider", "dataflow", "vector", "documents", "retrieval"],
+    name="RAG Provider",
+    description="Client for querying vector database and document metadata via RAG service",
+    tags=["provider", "rag", "vector", "documents", "retrieval"],
 )
 
