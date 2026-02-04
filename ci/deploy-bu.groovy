@@ -4,10 +4,10 @@ properties([
         choice(name: 'deploy_type', choices: ['FRESH_INSTALL', 'APPLICATION_UPGRADE'], description: 'Deployment type'),
         string(name: "BRANCH", defaultValue: "main", description: "Branch to deploy from."),
         string(name: "VERSION", defaultValue: "", description: "DONT SET THIS VALUE!"),
-        string(name: "DF_VERSION", defaultValue: "", description: "Image tag for dataflow"),
+        string(name: "RAG_VERSION", defaultValue: "", description: "Image tag for rag"),
         string(name: "MA_VERSION", defaultValue: "", description: "Image tag for multi-agent"),
         string(name: "GUI_VERSION", defaultValue: "", description: "Image tag for UI"),
-        string(name: "MODULES_TO_DEPLOY", defaultValue: "", description: "Comma-separated list of modules to update (e.g. dataflow,multiagent,gui)"),
+        string(name: "MODULES_TO_DEPLOY", defaultValue: "", description: "Comma-separated list of modules to update (e.g. rag,multiagent,gui)"),
         booleanParam(name: 'debug_mode', defaultValue: false, description: 'debug the pods'),
     ])
 ])
@@ -98,7 +98,7 @@ def deployModules(module){
 
 def deleteRunningApplication(){
     echo("Removing running UnifAI application")
-    sh("podman exec -t helmfile bash -c 'helmfile destroy -f dataflow.yaml.gotmpl --deleteWait'")
+    sh("podman exec -t helmfile bash -c 'helmfile destroy -f rag.yaml.gotmpl --deleteWait'")
     sh("podman exec -t helmfile bash -c 'helmfile destroy -f multiagent.yaml.gotmpl --deleteWait'")
     sh("podman exec -t helmfile bash -c 'helmfile destroy -f shared-resources.yaml.gotmpl --deleteWait'")
     echo("Wait for resource deletion...")
@@ -207,15 +207,16 @@ pipeline {
                                         deployModules('shared-resources')
                                         break
 
-                                    case 'dataflow':
-                                        def version = params.DF_VERSION?.trim() ?: params.VERSION?.trim()
-                                        updateChartVersions("${buildParams.DevRoot}/${params.BRANCH}/helm/dataflow/", version)
-                                        updateValuesYaml("${buildParams.DevRoot}/${params.BRANCH}/helm/values/dataflow-resource-values.yaml", version)
-                                        deployModules('dataflow')
+                                    case 'rag':
+                                        def version = params.RAG_VERSION?.trim() ?: params.VERSION?.trim()
+                                        updateChartVersions("${buildParams.DevRoot}/${params.BRANCH}/helm/rag/", version)
+                                        updateValuesYaml("${buildParams.DevRoot}/${params.BRANCH}/helm/values/rag-resource-values.yaml", version)
+                                        deployModules('rag
+                                        ')
                                         break
 
                                     case 'multiagent':
-                                        def version = params.DF_VERSION?.trim() ?: params.VERSION?.trim()
+                                        def version = params.MA_VERSION?.trim() ?: params.VERSION?.trim()
                                         updateChartVersions("${buildParams.DevRoot}/${params.BRANCH}/helm/multiagent/", version)
                                         updateValuesYaml("${buildParams.DevRoot}/${params.BRANCH}/helm/values/multiagent-resource-values.yaml", version)
                                         deployModules('multiagent')

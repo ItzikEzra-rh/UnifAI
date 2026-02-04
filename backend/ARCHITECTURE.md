@@ -1289,9 +1289,9 @@ docker run -d \
 **See `helm/` directory and CI/CD pipeline documentation**
 
 The backend is deployed as part of the UnifAI Helm chart:
-- Deployment: `unifai-dataflow-server`
-- Service: `unifai-dataflow-service`
-- Workers: `unifai-dataflow-celery-workers` (separate pods)
+- Deployment: `unifai-rag-server`
+- Service: `unifai-rag-service`
+- Workers: `unifai-rag-celery-workers` (separate pods)
 
 ---
 

@@ -42,7 +42,7 @@ This pipeline performs the following tasks:
 |-----------------------|-----------------------------------------------------------------------------|------------------------------|
 | `BRANCH`              | The Git branch to build the images from.                                    | `main`                      |
 | `VERSION`             | A unique tag for the new images. ( use as it is )                                           | Today's date (`yyyy.MM.dd`) |
-| `build_...`           | Check the boxes for the components you want to build (e.g., `build_dataflow_backend`). | `false`                     |
+| `build_...`           | Check the boxes for the components you want to build (e.g., `build_rag_backend`). | `false`                     |
 | `set_image_canidate`  | If checked, the new image will also be tagged as `latest` in the registry.  | `false`                     |
 | `deploy_unifai`       | **Most Important!** Triggers the Application Deployer pipeline after build. | `false`                     |
 | `deploy_location`     | Target cluster for deployment.                                          | `STAGING` `PRODUCTION`                  |
@@ -79,7 +79,7 @@ This pipeline takes the images built by the first pipeline and deploys them to a
 
 | Parameter           | Description                                                                  |
 |---------------------|------------------------------------------------------------------------------|
-| `MODULES_TO_DEPLOY` | Comma-separated list of components to deploy (e.g., `dataflow,multiagent`). |
+| `MODULES_TO_DEPLOY` | Comma-separated list of components to deploy (e.g., `rag,multiagent`). |
 | `VERSION`           | DONT set this value when Manual Runs.                                     |
 | `DF_VERSION`, `MA_VERSION` | (Optional) Use to specify a different version per module.         |
 | `deploy_location`   | Target environment (`STAGING` or `PRODUCTION`).                              |
@@ -121,7 +121,7 @@ This pipeline takes the images built by the first pipeline and deploys them to a
    - `BRANCH`: `main`
    - `build_sso_image`: ✓
    - `build_gui`: ✓
-   - `build_dataflow_backend`: ✓
+   - `build_rag_backend`: ✓
    - `build_multiagent_backend`: ✓
    - `set_image_candidate`: ✓
    - `deploy_unifai`: ✓
@@ -170,7 +170,7 @@ This pipeline takes the images built by the first pipeline and deploys them to a
 If you need to manually deploy without building:
 1. **Don't set** the `VERSION` parameter in deployment pipeline
 2. **Do set** the component-specific versions (`DF_VERSION`, `MA_VERSION`, etc.)
-3. Specify `MODULES_TO_DEPLOY` (e.g., `dataflow,ui,sso`)
+3. Specify `MODULES_TO_DEPLOY` (e.g., `rag,ui,sso`)
 
 ---
 
