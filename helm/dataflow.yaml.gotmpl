@@ -1,7 +1,7 @@
 environments:
   default:
     values:
-      - ./values/dataflow-resource-values.yaml
+      - ./values/rag-resource-values.yaml
 ---
 
 helmDefaults:
@@ -10,37 +10,37 @@ helmDefaults:
 
 releases:
 
-  - name: unifai-dataflow-server
-    chart: ./dataflow/unifai-dataflow-server
+  - name: unifai-rag-server
+    chart: ./rag/unifai-rag-server
     wait: true
     hooks:
       - events: ["presync"]
         showlogs: true
         command: bash
         args:
-          - "./scripts/dataflow-presync.sh"
+          - "./scripts/rag-presync.sh"
     values:
-      - {{- toYaml .Values.unifai_dataflow_server | nindent 8 }}
+      - {{- toYaml .Values.unifai_rag_server | nindent 8 }}
       - ./values/global-config.yaml
 
 
-  - name: unifai-dataflow-celery
-    chart: ./dataflow/unifai-dataflow-celery
+  - name: unifai-rag-celery
+    chart: ./rag/unifai-rag-celery
     wait: true
     values:
-      - {{- toYaml .Values.unifai_dataflow_celery | nindent 8 }}
+      - {{- toYaml .Values.unifai_rag_celery | nindent 8 }}
       - ./values/global-config.yaml
 
 
-  - name: unifai-dataflow-config
-    chart: ./dataflow/unifai-dataflow-config
+  - name: unifai-rag-config
+    chart: ./rag/unifai-rag-config
     wait: true
     needs:
-      - unifai-dataflow-server
-      - unifai-dataflow-celery
+      - unifai-rag-server
+      - unifai-rag-celery
     hooks:
       - events: ["postsync"]
         showlogs: true
         command: bash
         args:
-        - "./scripts/dataflow-postsync.sh"
+        - "./scripts/rag-postsync.sh"

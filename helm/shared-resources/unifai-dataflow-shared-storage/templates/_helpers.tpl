@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "unifai-dataflow-shared-storage.name" -}}
+{{- define "unifai-rag-shared-storage.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "unifai-dataflow-shared-storage.fullname" -}}
+{{- define "unifai-rag-shared-storage.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "unifai-dataflow-shared-storage.chart" -}}
+{{- define "unifai-rag-shared-storage.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "unifai-dataflow-shared-storage.labels" -}}
-helm.sh/chart: {{ include "unifai-dataflow-shared-storage.chart" . }}
-{{ include "unifai-dataflow-shared-storage.selectorLabels" . }}
+{{- define "unifai-rag-shared-storage.labels" -}}
+helm.sh/chart: {{ include "unifai-rag-shared-storage.chart" . }}
+{{ include "unifai-rag-shared-storage.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "unifai-dataflow-shared-storage.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "unifai-dataflow-shared-storage.name" . }}
+{{- define "unifai-rag-shared-storage.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "unifai-rag-shared-storage.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "unifai-dataflow-shared-storage.serviceAccountName" -}}
+{{- define "unifai-rag-shared-storage.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "unifai-dataflow-shared-storage.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "unifai-rag-shared-storage.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

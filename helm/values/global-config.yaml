@@ -1,6 +1,6 @@
 env:
   FRONTEND_URL: "https://unifai-ui-tag-ai--pipeline.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
-  DATAPIPELINEHUB_HOST:  "unifai-dataflow-server"
+  DATAPIPELINEHUB_HOST:  "unifai-rag-server"
   DATAPIPELINEHUB_PORT: "13456"
   MULTIAGENT_HOST: "unifai-multiagent-be"
   MULTIAGENT_PORT: "8003"

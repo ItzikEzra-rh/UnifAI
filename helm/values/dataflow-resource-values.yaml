@@ -3,7 +3,7 @@ env:
     qdrant_port: "6333"
     SHARED_STORAGE: "/app/shared"
 
-unifai_dataflow_server:
+unifai_rag_server:
   debug: false
   replicaCount: 1
   image:
@@ -27,7 +27,7 @@ unifai_dataflow_server:
       memory: 12Gi
 
 
-unifai_dataflow_celery:
+unifai_rag_celery:
   debug: false
   replicaCount: 1
   image:

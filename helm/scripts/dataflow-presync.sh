@@ -5,7 +5,7 @@ set -o pipefail  # Exit on pipe failure
 
 source "$(dirname "$0")/postsync-lib.sh"
 
-log_info "Starting presync hook for dataflow"
+log_info "Starting presync hook for rag"
 
 # Validate that required environment variables are set
 MISSING_VARS=()
@@ -29,9 +29,9 @@ if [[ ${#MISSING_VARS[@]} -gt 0 ]]; then
 fi
 
 # Create Secret with Slack tokens from environment variables
-log_info "Creating/updating Secret 'unifai-dataflow-secrets'..."
+log_info "Creating/updating Secret 'unifai-rag-secrets'..."
 
-SECRET_NAME="unifai-dataflow-secrets"
+SECRET_NAME="unifai-rag-secrets"
 
 # Check if secret already exists
 if kubectl get secret "$SECRET_NAME" &>/dev/null; then

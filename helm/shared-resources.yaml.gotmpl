@@ -10,8 +10,8 @@ helmDefaults:
 
 releases:
 
-  - name: unifai-dataflow-shared-storage
-    chart: ./shared-resources/unifai-dataflow-shared-storage
+  - name: unifai-rag-shared-storage
+    chart: ./shared-resources/unifai-rag-shared-storage
     wait: true
     values:
       - {{- toYaml .Values.storage | nindent 8 }}

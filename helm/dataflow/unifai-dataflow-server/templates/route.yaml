@@ -4,8 +4,8 @@ metadata:
   annotations:
     openshift.io/host.generated: "true"
   labels:
-    {{- include "dataflow.labels" . | nindent 4 }}
-  name: {{ include "dataflow.fullname" . }}
+    {{- include "rag.labels" . | nindent 4 }}
+  name: {{ include "rag.fullname" . }}
 spec:
   host: 
   port:
@@ -16,7 +16,7 @@ spec:
 
   to:
     kind: Service
-    name: {{ include "dataflow.fullname" . }}
+    name: {{ include "rag.fullname" . }}
     weight: 100
   wildcardPolicy: None
 

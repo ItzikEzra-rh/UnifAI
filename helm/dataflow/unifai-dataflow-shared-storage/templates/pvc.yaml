@@ -3,9 +3,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "unifai-dataflow-shared-storage.fullname" . }}
+  name: {{ include "unifai-rag-shared-storage.fullname" . }}
   labels:
-    {{- include "unifai-dataflow-shared-storage.labels" . | nindent 4 }}
+    {{- include "unifai-rag-shared-storage.labels" . | nindent 4 }}
     {{- with .Values.storage.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}

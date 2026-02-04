@@ -2,14 +2,14 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: {{ include "unifai-dataflow-celery.fullname" . }}
+  name: {{ include "unifai-rag-celery.fullname" . }}
   labels:
-    {{- include "unifai-dataflow-celery.labels" . | nindent 4 }}
+    {{- include "unifai-rag-celery.labels" . | nindent 4 }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: {{ include "unifai-dataflow-celery.fullname" . }}
+    name: {{ include "unifai-rag-celery.fullname" . }}
   minReplicas: {{ .Values.autoscaling.minReplicas }}
   maxReplicas: {{ .Values.autoscaling.maxReplicas }}
   metrics:

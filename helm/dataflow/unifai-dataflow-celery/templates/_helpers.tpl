@@ -1,7 +1,7 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "unifai-dataflow-celery.name" -}}
+{{- define "unifai-rag-celery.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
@@ -10,7 +10,7 @@ Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 If release name contains chart name it will be used as a full name.
 */}}
-{{- define "unifai-dataflow-celery.fullname" -}}
+{{- define "unifai-rag-celery.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -26,16 +26,16 @@ If release name contains chart name it will be used as a full name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "unifai-dataflow-celery.chart" -}}
+{{- define "unifai-rag-celery.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "unifai-dataflow-celery.labels" -}}
-helm.sh/chart: {{ include "unifai-dataflow-celery.chart" . }}
-{{ include "unifai-dataflow-celery.selectorLabels" . }}
+{{- define "unifai-rag-celery.labels" -}}
+helm.sh/chart: {{ include "unifai-rag-celery.chart" . }}
+{{ include "unifai-rag-celery.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -45,17 +45,17 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "unifai-dataflow-celery.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "unifai-dataflow-celery.name" . }}
+{{- define "unifai-rag-celery.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "unifai-rag-celery.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "unifai-dataflow-celery.serviceAccountName" -}}
+{{- define "unifai-rag-celery.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "unifai-dataflow-celery.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "unifai-rag-celery.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}

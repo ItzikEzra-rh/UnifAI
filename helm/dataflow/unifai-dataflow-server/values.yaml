@@ -1,4 +1,4 @@
-# Default values for dataflow.
+# Default values for rag.
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 env:
@@ -118,12 +118,12 @@ autoscaling:
 
 # Additional volumes on the output Deployment definition.
 volumes:
-  - name: unifai-dataflow-shared-storage
+  - name: unifai-rag-shared-storage
     persistentVolumeClaim:
-      claimName: unifai-dataflow-shared-storage
+      claimName: unifai-rag-shared-storage
 
 volumeMounts:
-  - name: unifai-dataflow-shared-storage
+  - name: unifai-rag-shared-storage
     mountPath: /app/shared
 
 nodeSelector: {}
