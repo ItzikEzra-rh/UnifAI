@@ -21,6 +21,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { NormalizedField } from '@/types/templates';
+import { getFieldDisplayType } from '@/utils/templateHelpers';
 
 interface FieldInputProps {
   field: NormalizedField;
@@ -219,13 +220,6 @@ export const FieldInput: React.FC<FieldInputProps> = ({ field, value, onChange, 
     }
   };
 
-  // Get display type for badge
-  const getDisplayType = () => {
-    if (field.isSecret) return 'secret';
-    if (field.type === 'array') return 'list';
-    return field.type;
-  };
-
   return (
     <div className="space-y-2">
       {field.type !== 'boolean' && !compact && (
@@ -235,7 +229,7 @@ export const FieldInput: React.FC<FieldInputProps> = ({ field, value, onChange, 
             {field.required && <span className="text-red-500 ml-1">*</span>}
           </Label>
           <Badge variant="outline" className="text-xs px-1.5 py-0">
-            {getDisplayType()}
+            {getFieldDisplayType(field)}
           </Badge>
         </div>
       )}
