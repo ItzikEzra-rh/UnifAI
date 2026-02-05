@@ -120,7 +120,7 @@ export default function Documents() {
             selectedCount={selectedCount}
             onClick={handleBulkDeleteClick}
             disabled={bulkDeleteLoading || deleteLoading}
-            itemName="document"
+            itemName={selectedCount === 1 ? "document" : "documents"}
           />
         )}
         <UmamiTrack 
