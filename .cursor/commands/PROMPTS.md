@@ -106,4 +106,4 @@ TBDs:
 # push
 
 WIP - connect to jira and upload files to the jira ticket in question, if not possible add a comment with the specified header (for example ADR / Design etc.)
-currently the limitation is that the mcp is remote to the local fil system so files that are created locally can't be uploaded to jira.
+currently the limitation is that the mcp is remote to the local file system so files that are created locally can't be uploaded to jira.
