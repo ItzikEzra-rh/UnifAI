@@ -53,7 +53,7 @@ CRITICAL RULES:
 ❌ DON'T: Create migration analysis unless explicitly requested
 ```
 
-3. resulted in the right structure, but the prompt was too ling, in addition since there's a template file to follow there's no reason to write it all into the prompt
+3. resulted in the right structure, but the prompt was too long, in addition since there's a template file to follow there's no reason to write it all into the prompt
 
 ```
 following this command please follow these steps:
