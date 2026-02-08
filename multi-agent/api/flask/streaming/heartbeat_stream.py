@@ -67,20 +67,15 @@ class HeartbeatStream:
 
     def _consume_source(self) -> None:
         """Drain the source iterator into the queue, then clean up."""
-        print("[HeartbeatStream] Producer thread started")
         try:
             for item in self._source:
                 if self._stop.is_set():
-                    print("[HeartbeatStream] Stop event set — breaking out of source loop")
                     break
-                print("[HeartbeatStream] Received data chunk from source, pushing to queue")
                 self._queue.put(("data", item))
         except Exception as e:
-            print(f"[HeartbeatStream] Source raised exception: {e}")
             if not self._stop.is_set():
                 self._queue.put(("error", e))
         finally:
-            print("[HeartbeatStream] Producer finishing — closing source iterator")
             # Close the source generator in *this* thread so that
             # GeneratorExit propagates correctly through the
             # SessionExecutor.stream() → _post_run / _error_run chain.
@@ -90,7 +85,6 @@ class HeartbeatStream:
                 except Exception:
                     logger.debug("Error closing source iterator", exc_info=True)
             self._queue.put((_END, None))
-            print("[HeartbeatStream] Producer thread done")
 
     # ── consumer (main / Flask thread) ────────────────────────
 
@@ -103,16 +97,12 @@ class HeartbeatStream:
                 tag, value = self._queue.get(timeout=self._interval)
             except queue.Empty:
                 # No data for `interval` seconds → heartbeat
-                print(f"[HeartbeatStream] No data for {self._interval}s — sending heartbeat")
                 return self._heartbeat_factory()
 
             if tag is _END:
-                print("[HeartbeatStream] Received END sentinel — stream complete")
                 raise StopIteration
             if tag == "error":
-                print(f"[HeartbeatStream] Received error from producer: {value}")
                 raise value
-            print("[HeartbeatStream] Yielding data chunk to Flask response")
             return value  # tag == "data"
 
     # ── teardown (called on client disconnect) ────────────────
