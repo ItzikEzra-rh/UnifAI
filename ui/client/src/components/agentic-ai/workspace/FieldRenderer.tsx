@@ -88,6 +88,12 @@ const NumberFieldInput: React.FC<NumberFieldInputProps> = ({
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const strValue = e.target.value;
+    
+    // For integer fields, reject any input containing a decimal point
+    if (!isFloatField && strValue.includes('.')) {
+      return; // Don't update - reject decimal input for integers
+    }
+    
     setLocalNumStr(strValue);
     
     // Parse and notify parent
@@ -639,8 +645,13 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
   if (isNumberField) {
     return (
       <div key={fieldName} className="space-y-2">
-        <Label htmlFor={fieldName} className="flex items-center">
+        <Label htmlFor={fieldName} className="flex items-center flex-wrap gap-1">
           {fieldName} {isRequired && <span className="text-red-400">*</span>}
+          {isFloatField && (
+            <Badge variant="outline" className="ml-2 text-xs">
+              float
+            </Badge>
+          )}
           {hasFieldError && <XCircle className="h-4 w-4 text-red-500 inline-block ml-2" />}
         </Label>
         <NumberFieldInput
