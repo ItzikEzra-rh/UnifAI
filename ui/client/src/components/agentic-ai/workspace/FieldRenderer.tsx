@@ -562,6 +562,12 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
           option.type === "integer" || option.type === "number",
       ));
 
+  // Determine if the field should accept float values (step="any") or only integers (step="1")
+  const isFloatField =
+    fieldSchema.type === "number" ||
+    (fieldSchema.anyOf &&
+      fieldSchema.anyOf.some((option: any) => option.type === "number"));
+
   if (isNumberField) {
     return (
       <div key={fieldName} className="space-y-2">
@@ -570,9 +576,11 @@ export const FieldRenderer: React.FC<FieldRendererProps> = ({
           {hasFieldError && <XCircle className="h-4 w-4 text-red-500 inline-block ml-2" />}
         </Label>
         <Input
+          key={`${fieldName}-${editingElement?.rid || 'new'}`}
           id={fieldName}
           type="number"
-          value={value || ""}
+          step={isFloatField ? "0.1" : "1"}
+          defaultValue={value ?? ""}
           onChange={(e) => {
             const numValue =
               e.target.value === "" ? null : parseFloat(e.target.value);
