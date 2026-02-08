@@ -21,7 +21,6 @@ import { getBlueprintInfo } from '@/api/blueprints'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
-import { useAgenticAI } from "@/contexts/AgenticAIContext";
 import WorkflowsPanel from "./WorkflowsPanel";
 import { ReactFlowProvider } from "reactflow";
 import {
@@ -108,7 +107,6 @@ export default function ExecutionTab({
 
   const { nodeListRef, forceUpdate } = useStreamingData();
   const { user } = useAuth();
-  const { cacheBlueprintValidationResults } = useAgenticAI();
   
   // Derived state: Chat-only mode is active for shared link sessions
   // This single flag drives all chat-only experience behaviors (no graph, no resize, etc.)
@@ -121,7 +119,6 @@ export default function ExecutionTab({
     isValid: isBlueprintValid,
     validateBlueprint: validateSelectedBlueprint,
   } = useBlueprintValidation({
-    onCacheResults: cacheBlueprintValidationResults,
     showToastOnFailure: true,
   });
 
