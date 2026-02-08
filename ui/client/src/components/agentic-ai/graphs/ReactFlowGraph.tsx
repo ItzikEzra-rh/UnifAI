@@ -293,7 +293,7 @@ const AgentNode: React.FC<NodeProps<EnhancedNodeData>> = ({
             <div className={`text-xs text-gray-400 mb-1`}>
               Resources:
             </div>
-            <div className="flex flex-wrap gap-1">
+            <div className="grid grid-cols-3 gap-1">
               {Object.entries(references).map(([key, refId]) => (
                 <InnerRefElement
                   key={`${key}-${refId}`}

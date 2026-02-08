@@ -46,7 +46,7 @@ interface AgenticAIContextType {
   // Blueprint validation cache functions
   validateBlueprintWithCache: (request: BlueprintValidationRequest, skipCache?: boolean) => Promise<BlueprintValidationResult>;
   getCachedBlueprintValidation: (blueprintId: string) => CachedBlueprintValidationResult | null;
-  isBlueprintValidationFresh: (blueprintId: string) => boolean;
+  isBlueprintValidationCacheHit: (blueprintId: string) => boolean;
   invalidateBlueprintValidation: (blueprintId: string) => void;
   getBlueprintValidationStatus: (blueprintId: string) => ValidationStatus;
 }
@@ -549,7 +549,7 @@ return String(ref);
     Object.values(blueprintResult.element_results).forEach(elementResult => {
       cacheElementAndDependencies(elementResult);
     });
-  }, [cacheValidationResult, updateDependencyParentMap]);
+  }, [cacheValidationResult]);
 
   // ==================== Blueprint Validation Cache Functions ====================
 
@@ -587,7 +587,7 @@ return String(ref);
   }, [blueprintValidationCache]);
 
   // Check if a cached blueprint validation is fresh (within TTL and valid)
-  const isBlueprintValidationFresh = useCallback((blueprintId: string): boolean => {
+  const isBlueprintValidationCacheHit = useCallback((blueprintId: string): boolean => {
     const cached = blueprintValidationCacheRef.current.get(blueprintId);
     if (!cached) return false;
     
@@ -699,7 +699,7 @@ return String(ref);
     cacheBlueprintValidationResults,
     validateBlueprintWithCache,
     getCachedBlueprintValidation,
-    isBlueprintValidationFresh,
+    isBlueprintValidationCacheHit,
     invalidateBlueprintValidation,
     getBlueprintValidationStatus,
   };
