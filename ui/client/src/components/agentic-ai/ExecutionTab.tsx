@@ -15,7 +15,7 @@ import { motion } from "framer-motion";
 import { MessageSquare, Users, Clock, Trash2, Plus } from "lucide-react";
 import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
-import ReactFlowGraph from "./graphs/ReactFlowGraph";
+import GraphDisplay from "./graphs/GraphDisplay";
 import axios from '../../http/axiosAgentConfig'
 import { getBlueprintInfo } from '@/api/blueprints'
 import { useStreamingData } from './StreamingDataContext'
@@ -23,7 +23,6 @@ import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParse
 import { useAuth } from "@/contexts/AuthContext";
 import { useAgenticAI } from "@/contexts/AgenticAIContext";
 import WorkflowsPanel from "./WorkflowsPanel";
-import { ReactFlowProvider } from "reactflow";
 import {
   Dialog,
   DialogContent,
@@ -891,19 +890,18 @@ export default function ExecutionTab({
                   )}
                 </div>
               ) : selectedSession?.blueprintId ? (
-                <ReactFlowProvider key={`main-graph-${selectedSession.blueprintId}`}>
-                  <ReactFlowGraph
-                    blueprintId={selectedSession.blueprintId}
-                    height="100%"
-                    showControls={true}
-                    showMiniMap={false}
-                    showBackground={true}
-                    interactive={true}
-                    isLiveRequest={isLiveRequest}
-                    validationResults={blueprintValidationResults}
-                    isValidating={isValidatingBlueprint}
-                  />
-                </ReactFlowProvider>
+                <GraphDisplay
+                  key={`main-graph-${selectedSession.blueprintId}`}
+                  blueprintId={selectedSession.blueprintId}
+                  height="100%"
+                  showControls={true}
+                  showBackground={true}
+                  interactive={true}
+                  centerInView={true}
+                  animated={true}
+                  validationResults={blueprintValidationResults}
+                  isValidating={isValidatingBlueprint}
+                />
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm">
                   {selectedSession ? 'No blueprint available for this session' : 'Select a chat session to view blueprint'}
@@ -924,7 +922,7 @@ export default function ExecutionTab({
             <DialogTitle className="text-lg">Add New Chat from Flow</DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 overflow-hidden">
-            <ReactFlowProvider key={`new-chat-graph-${showAddFlowModal}`}>
+            <div key={`new-chat-graph-${showAddFlowModal}`}>
               <WorkflowsPanel
                 selectedFlow={selectedFlowForModal}
                 onFlowSelect={handleFlowSelect}
@@ -939,7 +937,7 @@ export default function ExecutionTab({
                   isLiveRequest: false,
                 }}
               />
-            </ReactFlowProvider>
+            </div>
           </div>
           <DialogFooter className="flex-shrink-0 pt-4 border-t border-gray-800">
             <Button

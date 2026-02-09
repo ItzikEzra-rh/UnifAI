@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { EdgeProps, getSmoothStepPath } from 'reactflow';
 import { X } from 'lucide-react';
+import { useTheme } from "@/contexts/ThemeContext";
+import { deriveThemeColors } from "@/lib/colorUtils";
 
 interface BidirectionalOffsetEdgeProps extends EdgeProps {
   onDelete?: (edgeId: string) => void;
@@ -18,6 +20,12 @@ const BidirectionalOffsetEdge: React.FC<BidirectionalOffsetEdgeProps> = ({
   data,
   onDelete,
 }) => {
+  const { primaryHex } = useTheme();
+
+  const { primaryLight: bidiColor, primaryDark: bidiColorDark } = useMemo(
+    () => deriveThemeColors(primaryHex),
+    [primaryHex],
+  );
   // Calculate offset amount based on direction
   const offsetAmount = 15;
   const offsetDirection = data?.offsetDirection || 'right';
@@ -81,14 +89,14 @@ const BidirectionalOffsetEdge: React.FC<BidirectionalOffsetEdgeProps> = ({
           <path
             d="M2,2 L18,10 L2,18 L6,10 Z"
             fill="#FFFFFF"
-            stroke="#065F46"
+            stroke={bidiColorDark}
             strokeWidth="1"
           />
           {/* Main arrow body */}
           <path
             d="M3,4 L16,10 L3,16 L6,10 Z"
-            fill="#10B981"
-            stroke="#10B981"
+            fill={bidiColor}
+            stroke={bidiColor}
             strokeWidth="0.5"
           />
         </marker>
@@ -99,7 +107,7 @@ const BidirectionalOffsetEdge: React.FC<BidirectionalOffsetEdgeProps> = ({
         id={id}
         style={{
           ...style,
-          stroke: '#10B981',
+          stroke: bidiColor,
           strokeWidth: 2.5,
           fill: 'none',
           strokeLinecap: 'round',
@@ -121,7 +129,8 @@ const BidirectionalOffsetEdge: React.FC<BidirectionalOffsetEdgeProps> = ({
       >
         <div className="flex items-center justify-center">
           <button
-            className="group opacity-0 hover:opacity-100 transition-opacity duration-200 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full w-5 h-5 flex items-center justify-center border border-emerald-500 shadow-sm"
+            className="group opacity-0 hover:opacity-100 transition-opacity duration-200 text-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm"
+            style={{ backgroundColor: bidiColor, borderColor: bidiColorDark, borderWidth: 1 }}
             onClick={handleDelete}
             title={`Delete edge ${id}`}
           >
@@ -140,7 +149,8 @@ const BidirectionalOffsetEdge: React.FC<BidirectionalOffsetEdgeProps> = ({
           className="edge-label-foreignobject"
           requiredExtensions="http://www.w3.org/1999/xhtml"
         >
-          <div className="text-xs bg-emerald-800 text-white px-2 py-1 rounded border border-emerald-600 text-center shadow-sm">
+          <div className="text-xs text-white px-2 py-1 rounded text-center shadow-sm"
+            style={{ backgroundColor: bidiColorDark, borderColor: bidiColor, borderWidth: 1 }}>
             {data.label}
           </div>
         </foreignObject>

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Node,
   Edge,
@@ -12,6 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { CurrentGraph, BuildingBlock } from "@/types/graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { deriveThemeColors } from "@/lib/colorUtils";
 import axios from "../http/axiosAgentConfig";
 import * as yaml from "js-yaml";
 import { useLocation } from "wouter";
@@ -84,6 +86,13 @@ export const useGraphLogic = () => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [nodeId, setNodeId] = useState(1);
+  const { primaryHex } = useTheme();
+
+  // Derive a condition-edge color from the shared theme helper
+  const conditionEdgeColor = useMemo(
+    () => deriveThemeColors(primaryHex).conditionEdge,
+    [primaryHex],
+  );
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
   const [buildingBlocksData, setBuildingBlocksData] = useState<BuildingBlock[]>(
@@ -925,14 +934,15 @@ export const useGraphLogic = () => {
     
     event.dataTransfer.effectAllowed = isCondition ? "copy" : "move";
 
-    // Create a simpler drag preview
+    // Create a simpler drag preview using the primary theme color
+    const previewColor = primaryHex?.startsWith("#") ? primaryHex : `#${primaryHex || "6B7280"}`;
     const dragPreview = document.createElement("div");
     dragPreview.style.cssText = `
       position: absolute;
       top: -1000px;
       left: -1000px;
       padding: 8px 12px;
-      background: ${block.color || "#6B7280"};
+      background: ${previewColor};
       color: white;
       border-radius: 6px;
       font-size: 14px;
@@ -1077,7 +1087,7 @@ export const useGraphLogic = () => {
   const createConditionalEdge = (params: Connection, branchConfig: any) => {
     const edgeStyle = {
       strokeDasharray: "5,5",
-      stroke: "#10b981",
+      stroke: conditionEdgeColor,
     };
 
     const edgeId = `${params.source}-${params.target}-${branchConfig.branch || Date.now()}`;
@@ -1089,7 +1099,7 @@ export const useGraphLogic = () => {
       style: edgeStyle,
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: "#10b981",
+        color: conditionEdgeColor,
       },
       data: {
         ...branchConfig,

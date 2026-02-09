@@ -4,13 +4,15 @@ import { DirectedGraph } from "@joint/layout-directed-graph";
 import type { GraphFlow } from "./interfaces";
 import { graphFlowToLayoutData, type ResolvedElement } from "@/utils/graphFlowLayout";
 import { useTheme } from "@/contexts/ThemeContext";
-import { hexToHsl, hslToHex } from "@/lib/colorUtils";
 import axios from "@/http/axiosAgentConfig";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import type { BuildingBlock } from "@/types/graph";
 import ResourceDetailsModal from "@/workspace/ResourceDetailsModal";
+import NodeValidationIndicator from "./NodeValidationIndicator";
+import { ValidationResultModal } from "../workspace/ValidationResultModal";
+import type { ElementValidationResult } from "@/types/validation";
 
 const NODE_WIDTH = 220;
 const NODE_HEADER_HEIGHT = 32;
@@ -48,20 +50,22 @@ interface OverlayHeader {
   width: number;
   /** Full node height so we know the rendered size. */
   nodeHeight: number;
+  /** Node RID from its definition – used for validation result lookups. */
+  nodeRid: string | undefined;
 }
 
 /** Returns an emoji icon matching the node type – same as used in the graph canvas. */
 function nodeIconForType(nodeType: string): string {
   if (nodeType === "user_question_node") return "\uD83D\uDCAC"; // 💬
   if (nodeType === "final_answer_node") return "\uD83E\uDD16";  // 🤖
-  // Deterministic pick from a set based on type name hash (same approach as ReactFlowGraph)
+  // Deterministic pick from a set based on type name hash
   const icons = ["\uD83D\uDD0D", "\uD83D\uDCDA", "\uD83E\uDDE0", "\uD83D\uDD0E", "\uD83D\uDD27", "\u270D\uFE0F"];
   // 🔍 📚 🧠 🔎 🔧 ✍️
   const hash = nodeType.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
   return icons[hash % icons.length];
 }
 
-export type JointJSGraphViewProps = {
+export type GraphDisplayProps = {
   blueprintId?: string;
   height?: string;
   showControls?: boolean;
@@ -71,9 +75,13 @@ export type JointJSGraphViewProps = {
   centerInView?: boolean;
   /** When true, enable subtle animations. */
   animated?: boolean;
+  /** Per-node validation results keyed by node RID. */
+  validationResults?: Record<string, ElementValidationResult>;
+  /** Whether validation is currently in progress. */
+  isValidating?: boolean;
 };
 
-export default function JointJSGraphView({
+export default function GraphDisplay({
   blueprintId,
   height = "100%",
   showControls = true,
@@ -81,7 +89,9 @@ export default function JointJSGraphView({
   interactive = false,
   centerInView = false,
   animated = false,
-}: JointJSGraphViewProps): React.ReactElement {
+  validationResults,
+  isValidating = false,
+}: GraphDisplayProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
   const elementBlockRef = useRef<Map<string, BuildingBlock>>(new Map());
   /** Refs to JointJS graph and layout node data so we can rebuild overlays on drag. */
@@ -96,6 +106,9 @@ export default function JointJSGraphView({
   const [overlayHeaders, setOverlayHeaders] = useState<OverlayHeader[]>([]);
   /** Paper transform (scale + translate) so overlays match SVG coordinates. */
   const [paperTransform, setPaperTransform] = useState({ sx: 1, sy: 1, tx: 0, ty: 0 });
+  /** Validation modal state. */
+  const [selectedValidationResult, setSelectedValidationResult] = useState<ElementValidationResult | null>(null);
+  const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const { user } = useAuth();
   const { primaryHex } = useTheme();
   const { fetchResourceById } = useWorkspaceData();
@@ -163,6 +176,7 @@ export default function JointJSGraphView({
         y: pos.y,
         width: NODE_WIDTH,
         nodeHeight: size.height,
+        nodeRid: n.nodeDefinition?.rid,
       });
 
       if (!hasElements) continue;
@@ -202,6 +216,15 @@ export default function JointJSGraphView({
       interactive: interactive ? { elementMove: true } : false,
       background: showBackground ? { color: "transparent" } : undefined,
       gridSize: 16,
+      drawGrid: showBackground
+        ? {
+            name: "doubleMesh",
+            args: [
+              { color: "rgba(255,255,255,0.06)", thickness: 1 },
+              { color: "rgba(255,255,255,0.12)", scaleFactor: 4, thickness: 1 },
+            ],
+          }
+        : false,
     });
 
     containerRef.current.innerHTML = "";
@@ -229,7 +252,7 @@ export default function JointJSGraphView({
         elementBlockRef.current.clear();
         layoutNodes.forEach((n) => {
           n.resolvedElements.forEach((el) => {
-            const category = el.type === "llm" ? "llms" : el.type === "tool" ? "tools" : "retrievers";
+            const category = el.type === "llm" ? "llms" : el.type === "tool" ? "tools" : el.type === "provider" ? "providers" : "retrievers";
             const catList = (spec as Record<string, unknown[]>)[category];
             const def = catList?.find((d: { rid?: string }) => refId(d) === el.id || d.rid === el.id);
             if (def) {
@@ -264,10 +287,11 @@ export default function JointJSGraphView({
         }
 
         const primaryNow = primaryHexRef.current || "#8b5cf6";
-        const hslNow = hexToHsl(primaryNow.startsWith("#") ? primaryNow : `#${primaryNow}`);
-        const primaryDarkNow = hslToHex(hslNow.h, hslNow.s, Math.max(18, hslNow.l - 22));
+        // Dark slate base – mirrors the dark theme background (from-accent is undefined
+        // in CSS so it resolves to transparent/dark, giving the grey-to-color look).
+        const darkSlate = "#1a1f2e";
 
-        // Add SVG defs: gradient + shadow filter
+        // Add SVG defs: gradients + shadow filter
         const svg = paper.el.tagName === "svg" ? paper.el : paper.el.querySelector("svg");
         if (svg) {
           let defs = svg.querySelector("defs");
@@ -275,6 +299,7 @@ export default function JointJSGraphView({
             defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
             svg.insertBefore(defs, svg.firstChild);
           }
+          // Main gradient: dark slate → primary (matches ReactFlow's from-accent to-primary look)
           const gradId = "agentGradient";
           const existing = defs.querySelector(`#${gradId}`);
           if (existing) existing.remove();
@@ -284,8 +309,22 @@ export default function JointJSGraphView({
           gradient.setAttribute("y1", "0%");
           gradient.setAttribute("x2", "100%");
           gradient.setAttribute("y2", "100%");
-          gradient.innerHTML = `<stop offset="0%" stop-color="${primaryNow}"/><stop offset="100%" stop-color="${primaryDarkNow}"/>`;
+          gradient.innerHTML = `<stop offset="0%" stop-color="${darkSlate}"/><stop offset="100%" stop-color="${primaryNow}"/>`;
           defs.appendChild(gradient);
+
+          // Special node gradient: dark slate → dark teal (matches from-accent to-[#003f5c])
+          const specialGradId = "agentGradientSpecial";
+          const existingSpecial = defs.querySelector(`#${specialGradId}`);
+          if (existingSpecial) existingSpecial.remove();
+          const specialGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
+          specialGradient.setAttribute("id", specialGradId);
+          specialGradient.setAttribute("x1", "0%");
+          specialGradient.setAttribute("y1", "0%");
+          specialGradient.setAttribute("x2", "100%");
+          specialGradient.setAttribute("y2", "100%");
+          specialGradient.innerHTML = `<stop offset="0%" stop-color="${darkSlate}"/><stop offset="100%" stop-color="#003f5c"/>`;
+          defs.appendChild(specialGradient);
+
           if (!defs.querySelector("#nodeShadow")) {
             const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
             filter.setAttribute("id", "nodeShadow");
@@ -305,7 +344,7 @@ export default function JointJSGraphView({
         }
 
         const nodeFillForType = (type: string): string => {
-          if (type === "user_question_node" || type === "final_answer_node") return primaryDarkNow;
+          if (type === "user_question_node" || type === "final_answer_node") return "url(#agentGradientSpecial)";
           return "url(#agentGradient)";
         };
 
@@ -469,18 +508,11 @@ export default function JointJSGraphView({
     };
   }, [blueprintId, user?.username, showBackground, interactive, centerInView, primaryHex, openElementDetails, rebuildOverlays]);
 
-  // Derive badge accent color: shift hue from primary by +30° and boost saturation/lightness
-  // so badges stand out from the primary-colored nodes but stay theme-cohesive.
-  const rawPrimary = primaryHex?.startsWith("#") ? primaryHex : `#${primaryHex || "8b5cf6"}`;
-  const hsl = hexToHsl(rawPrimary);
-  const badgeAccent = hslToHex(
-    (hsl.h + 30) % 360,
-    Math.min(100, hsl.s + 10),
-    Math.min(80, Math.max(55, hsl.l + 15))
-  );
-  const badgeBg = badgeAccent + "18";
-  const badgeBorder = badgeAccent + "40";
-  const badgeHover = badgeAccent + "35";
+  // Badge styling – clean frosted-glass look on dark nodes.
+  // Subtle dark background, thin border, white text/icons.
+  const badgeBg = "rgba(0,0,0,0.28)";
+  const badgeBorder = "rgba(255,255,255,0.10)";
+  const badgeHover = "rgba(255,255,255,0.10)";
 
   return (
     <>
@@ -520,7 +552,8 @@ export default function JointJSGraphView({
                   ? NODE_HEADER_HEIGHT * paperTransform.sy
                   : hdr.nodeHeight * paperTransform.sy;
                 const icon = nodeIconForType(hdr.nodeType);
-                const iconSize = Math.max(14, 18 * paperTransform.sx);
+                const circleSize = Math.max(20, 26 * paperTransform.sx);
+                const iconFontSize = Math.max(12, 14 * paperTransform.sx);
                 return (
                   <div
                     key={`hdr-${hdr.nodeId}`}
@@ -533,13 +566,20 @@ export default function JointJSGraphView({
                       display: "flex",
                       alignItems: "center",
                       justifyContent: "center",
-                      gap: 5 * paperTransform.sx,
+                      gap: 6 * paperTransform.sx,
                       borderBottom: hdr.hasElements ? "1px solid rgba(255,255,255,0.12)" : "none",
                     }}
                   >
                     <span
                       style={{
-                        fontSize: iconSize,
+                        width: circleSize,
+                        height: circleSize,
+                        borderRadius: "50%",
+                        background: "rgba(255,255,255,0.25)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: iconFontSize,
                         lineHeight: 1,
                         flexShrink: 0,
                       }}
@@ -565,19 +605,55 @@ export default function JointJSGraphView({
                 );
               })}
 
+              {/* Validation indicators (top-right corner of each node) */}
+              {overlayHeaders.map((hdr) => {
+                const vResult = hdr.nodeRid && validationResults
+                  ? validationResults[hdr.nodeRid]
+                  : undefined;
+                const showIndicator = isValidating || (vResult && !vResult.is_valid);
+                if (!showIndicator) return null;
+                const left = (hdr.x + hdr.width) * paperTransform.sx + paperTransform.tx - 12;
+                const top = hdr.y * paperTransform.sy + paperTransform.ty - 6;
+                return (
+                  <div
+                    key={`val-${hdr.nodeId}`}
+                    className="absolute z-10 pointer-events-auto"
+                    style={{ left, top }}
+                  >
+                    <NodeValidationIndicator
+                      validationResult={vResult}
+                      isValidating={isValidating}
+                      onClick={() => {
+                        if (vResult) {
+                          setSelectedValidationResult(vResult);
+                          setIsValidationModalOpen(true);
+                        }
+                      }}
+                    />
+                  </div>
+                );
+              })}
+
               {/* Element badges */}
               {overlayBadges.map((badge, i) => {
-                const category = badge.element.type === "llm" ? "llms" : badge.element.type === "tool" ? "tools" : badge.element.type === "retriever" ? "retrievers" : "default";
+                const categoryMap: Record<string, string> = {
+                  llm: "llms",
+                  tool: "tools",
+                  retriever: "retrievers",
+                  provider: "providers",
+                };
+                const category = categoryMap[badge.element.type] || "default";
                 const display = getCategoryDisplay(category);
                 const left = badge.x * paperTransform.sx + paperTransform.tx;
                 const top = badge.y * paperTransform.sy + paperTransform.ty;
                 const width = badge.width * paperTransform.sx;
                 const bHeight = ELEMENT_BADGE_HEIGHT * paperTransform.sy;
+                const iconSize = Math.max(12, 14 * paperTransform.sx);
                 return (
                   <button
                     key={`${badge.nodeId}-${badge.element.id}-${i}`}
                     type="button"
-                    className="absolute flex items-center gap-1.5 rounded-md border transition-colors duration-150 pointer-events-auto"
+                    className="absolute flex items-center rounded-full border transition-all duration-150 pointer-events-auto"
                     style={{
                       left,
                       top,
@@ -585,10 +661,12 @@ export default function JointJSGraphView({
                       height: bHeight,
                       background: badgeBg,
                       borderColor: badgeBorder,
-                      color: badgeAccent,
+                      backdropFilter: "blur(6px)",
+                      WebkitBackdropFilter: "blur(6px)",
                       fontSize: Math.max(9, 11 * paperTransform.sx),
-                      paddingLeft: 5 * paperTransform.sx,
-                      paddingRight: 6 * paperTransform.sx,
+                      paddingLeft: 4 * paperTransform.sx,
+                      paddingRight: 8 * paperTransform.sx,
+                      gap: 5 * paperTransform.sx,
                       cursor: interactive ? "pointer" : "default",
                     }}
                     onClick={(e) => {
@@ -596,21 +674,37 @@ export default function JointJSGraphView({
                       if (interactive) openElementDetails(badge.element.id);
                     }}
                     onMouseEnter={(e) => {
-                      if (interactive) (e.currentTarget as HTMLElement).style.background = badgeHover;
+                      if (interactive) {
+                        (e.currentTarget as HTMLElement).style.background = badgeHover;
+                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.22)";
+                      }
                     }}
                     onMouseLeave={(e) => {
                       (e.currentTarget as HTMLElement).style.background = badgeBg;
+                      (e.currentTarget as HTMLElement).style.borderColor = badgeBorder;
                     }}
                     tabIndex={interactive ? 0 : -1}
                   >
-                    <span style={{ flexShrink: 0, display: "flex", alignItems: "center", color: badgeAccent }}>
+                    {/* Category icon – plain white, no background */}
+                    <span
+                      style={{
+                        flexShrink: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: "#fff",
+                      }}
+                      className="[&>svg]:w-3.5 [&>svg]:h-3.5"
+                    >
                       {display.icon}
                     </span>
                     <span
-                      className="truncate font-medium"
+                      className="truncate"
                       style={{
-                        color: "rgba(255,255,255,0.92)",
-                        maxWidth: width - 30 * paperTransform.sx,
+                        color: "rgba(255,255,255,0.88)",
+                        fontWeight: 500,
+                        letterSpacing: "0.01em",
+                        maxWidth: width - 40 * paperTransform.sx,
                       }}
                     >
                       {badge.element.name}
@@ -627,6 +721,13 @@ export default function JointJSGraphView({
         isOpen={resourceDetailsOpen}
         onClose={setResourceDetailsOpen}
         element={resourceDetailsElement}
+      />
+
+      <ValidationResultModal
+        validationResult={selectedValidationResult}
+        isOpen={isValidationModalOpen}
+        onOpenChange={setIsValidationModalOpen}
+        showRefreshButton={false}
       />
     </>
   );

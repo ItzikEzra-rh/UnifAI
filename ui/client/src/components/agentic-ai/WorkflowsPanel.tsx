@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
-import JointJSGraphView from "./graphs/JointJSGraphView";
+import GraphDisplay from "./graphs/GraphDisplay";
 import { fetchActiveSessions } from "@/api/agentic";
 import { fetchBlueprints, fetchResolvedBlueprints, deleteBlueprint } from "@/api/blueprints";
 import { convertGraphFlowToFlowObject } from "@/utils/blueprintHelpers";
@@ -316,7 +316,7 @@ export default function WorkflowsPanel({
                   isValidating={isValidating}
                 />
               </div>
-            <JointJSGraphView
+            <GraphDisplay
               blueprintId={selectedFlow.id}
               height="100%"
               showControls={graphProps?.showControls}
@@ -324,6 +324,8 @@ export default function WorkflowsPanel({
               interactive={graphProps?.interactive}
               centerInView={true}
               animated={true}
+              validationResults={validationResults}
+              isValidating={isValidating}
             />
             </>
           ) : (

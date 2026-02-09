@@ -7,14 +7,11 @@ import type {
   GraphFlow,
   NodeDefinition,
   PlanItem,
-  LLMDefinition,
-  ToolDefinition,
-  RetrieverDefinition,
 } from "@/components/agentic-ai/graphs/interfaces";
 
 /** Resolved reference: display name + id for modal/details. */
 export interface ResolvedElement {
-  type: "llm" | "tool" | "retriever";
+  type: "llm" | "tool" | "retriever" | "provider";
   name: string;
   id: string;
 }
@@ -67,42 +64,65 @@ function getElementDetails(nodeDef: NodeDefinition): Record<string, unknown> {
   return details;
 }
 
-function extractRefId(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  return value.startsWith("$ref:") ? value.substring(5) : value;
+/** Definition-list entry – minimal shape shared by all resource types. */
+interface DefEntry { rid: string; name: string; }
+
+/**
+ * Recursively extract all $ref: IDs from a config object.
+ * Same generic approach used by CustomNode.tsx – future-proof for new resource types.
+ */
+function extractAllRefs(config: Record<string, unknown>): string[] {
+  const refs: string[] = [];
+  const seen = new Set<string>();
+
+  const traverse = (obj: unknown) => {
+    if (typeof obj === "string" && obj.startsWith("$ref:")) {
+      const id = obj.substring(5);
+      if (!seen.has(id)) { seen.add(id); refs.push(id); }
+    } else if (Array.isArray(obj)) {
+      obj.forEach(traverse);
+    } else if (obj && typeof obj === "object") {
+      Object.values(obj).forEach(traverse);
+    }
+  };
+
+  traverse(config);
+  return refs;
 }
 
 /**
- * Resolve config refs to { type, name, id } using graphFlow.llms/tools/retrievers (names only for display).
+ * Resolve config refs to { type, name, id } by generically extracting every $ref:
+ * from the node config and then determining its type by checking which definition
+ * list (llms, tools, retrievers, providers) it belongs to.
  */
 function getResolvedElements(graphFlow: GraphFlow, nodeDef: NodeDefinition | null): ResolvedElement[] {
-  const out: ResolvedElement[] = [];
-  if (!nodeDef?.config) return out;
-  const config = nodeDef.config;
-  const llms = graphFlow.llms || [];
-  const tools = graphFlow.tools || [];
-  const retrievers = graphFlow.retrievers || [];
+  if (!nodeDef?.config) return [];
 
-  const llmRef = extractRefId(config.llm);
-  if (llmRef) {
-    const llm = llms.find((l: LLMDefinition) => extractUidFromRef(l.rid) === llmRef || l.rid === llmRef);
-    out.push({ type: "llm", name: llm?.name ?? llmRef, id: llmRef });
-  }
-  const retrieverRef = extractRefId(config.retriever);
-  if (retrieverRef) {
-    const ret = retrievers.find(
-      (r: RetrieverDefinition) => extractUidFromRef(r.rid) === retrieverRef || r.rid === retrieverRef
-    );
-    out.push({ type: "retriever", name: ret?.name ?? retrieverRef, id: retrieverRef });
-  }
-  const toolRefs = Array.isArray(config.tools)
-    ? config.tools.map((t) => extractRefId(t)).filter((id): id is string => id != null)
-    : [];
-  for (const ref of toolRefs) {
-    const tool = tools.find((t: ToolDefinition) => extractUidFromRef(t.rid) === ref || t.rid === ref);
-    out.push({ type: "tool", name: tool?.name ?? ref, id: ref });
-  }
-  return out;
+  const refIds = extractAllRefs(nodeDef.config as Record<string, unknown>);
+  if (refIds.length === 0) return [];
+
+  // Build a lookup: refId → { type, name } from every definition list.
+  const lookup = new Map<string, { type: ResolvedElement["type"]; name: string }>();
+  const register = (list: DefEntry[] | undefined, type: ResolvedElement["type"]) => {
+    (list || []).forEach((d) => {
+      const id = extractUidFromRef(d.rid);
+      lookup.set(id, { type, name: d.name });
+      if (id !== d.rid) lookup.set(d.rid, { type, name: d.name });
+    });
+  };
+  register(graphFlow.llms as DefEntry[] | undefined, "llm");
+  register(graphFlow.tools as DefEntry[] | undefined, "tool");
+  register(graphFlow.retrievers as DefEntry[] | undefined, "retriever");
+  register(graphFlow.providers as DefEntry[] | undefined, "provider");
+
+  return refIds.map((id) => {
+    const match = lookup.get(id);
+    return {
+      type: match?.type ?? "tool",
+      name: match?.name ?? id,
+      id,
+    };
+  });
 }
 
 /**

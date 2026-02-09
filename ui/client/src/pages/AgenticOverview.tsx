@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Workflow, Database, Zap, TrendingUp } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import JointJSGraphView from "@/components/agentic-ai/graphs/JointJSGraphView";
+import GraphDisplay from "@/components/agentic-ai/graphs/GraphDisplay";
 
 // Custom hooks
 import { useAgenticData } from "@/hooks/use-agentic-data";
@@ -252,7 +252,7 @@ export default function AgenticOverview() {
           <div className="flex-1 overflow-hidden p-6 min-h-0">
             {selectedWorkflow && (
               <div className="h-full w-full">
-                <JointJSGraphView
+                <GraphDisplay
                   blueprintId={selectedWorkflow.blueprint_id}
                   height="100%"
                   showControls={true}
