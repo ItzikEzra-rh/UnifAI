@@ -72,6 +72,7 @@ export const StringArrayInput: React.FC<{
           variant="outline"
           size="sm"
           className="border-gray-700 shrink-0"
+          aria-label="Add item"
         >
           <Plus className="h-4 w-4" />
         </Button>
@@ -89,6 +90,7 @@ export const StringArrayInput: React.FC<{
                 type="button"
                 onClick={() => handleRemove(index)}
                 className="ml-1 hover:text-red-400"
+                aria-label={`Remove ${item}`}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -121,6 +123,8 @@ export const SecretInput: React.FC<{
         type="button"
         onClick={() => setShowSecret(!showSecret)}
         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+        aria-label={showSecret ? 'Hide secret' : 'Show secret'}
+        aria-pressed={showSecret}
       >
         {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>

@@ -32,13 +32,17 @@ export interface TemplateDetailViewRef {
 /**
  * Get default value for a field based on its type
  */
-const defaultValueByType: Record<string, any> = {
-  array: [],
-  boolean: false,
+const defaultValueByType: Record<string, () => any> = {
+  array: () => [],
+  boolean: () => false,
 };
 
-const getFieldDefaultValue = (field: NormalizedField): any => 
-  field.default !== undefined ? field.default : (defaultValueByType[field.type] ?? undefined);
+const getFieldDefaultValue = (field: NormalizedField): any => {
+  if (field.default !== undefined) {
+    return Array.isArray(field.default) ? [...field.default] : field.default;
+  }
+  return defaultValueByType[field.type]?.() ?? undefined;
+};
 
 interface FieldCardProps {
   field: NormalizedField;
