@@ -31,7 +31,7 @@ import InnerRefElement from "./InnerRefElement";
 import NodeValidationIndicator from "./NodeValidationIndicator";
 import { ValidationResultModal } from "../workspace/ValidationResultModal";
 import { ElementValidationResult } from "@/types/validation";
-import axios from "../../../http/axiosAgentConfig";
+import { getBlueprintInfo } from "@/api/blueprints";
 
 // Node status enum
 type NodeStatus = "IDLE" | "PROGRESS" | "DONE";
@@ -719,6 +719,7 @@ const parseGraphFlow = (
 
 type ReactFlowGraphProps = {
   blueprintId?: string;
+  specDict?: any;
   height?: string;
   showControls?: boolean;
   showMiniMap?: boolean;
@@ -732,6 +733,7 @@ type ReactFlowGraphProps = {
 
 export default function ReactFlowGraph({
   blueprintId,
+  specDict,
   height = "400px",
   showControls = true,
   showMiniMap = true,
@@ -857,60 +859,58 @@ export default function ReactFlowGraph({
     }
   }, [isLiveRequest, setNodes]);
 
-  // Function to convert graph flow JSON to ReactFlow format
-  const convertGraphFlowToReactFlow = async (graphId: string) => {
+  // Helper function to parse spec_dict and set nodes/edges
+  const loadGraphFromSpecDict = (graphSpecDict: any) => {
+    const { nodes: newNodes, edges: newEdges } =
+      parseGraphFlow(graphSpecDict, fetchResourceById);
+
+    // Apply validation data directly to nodes during loading
+    // This handles the case where validation finished before graph loading
+    const currentValidationResults = validationResultsRef.current;
+    const currentIsValidating = isValidatingRef.current;
+    
+    const nodesWithValidation = newNodes.map((node) => {
+      // Only validationResult is node-specific (looked up by node's rid)
+      const nodeRid = node.data.workspaceData?.rid;
+      const validationResult = nodeRid && currentValidationResults 
+        ? currentValidationResults[nodeRid] 
+        : undefined;
+      
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          validationResult,
+          isValidating: currentIsValidating,
+          onShowValidationDetails: handleShowValidationDetails,
+        },
+      };
+    });
+
+    setNodes(nodesWithValidation);
+    setEdges(newEdges);
+
+    // Auto-fit and zoom after loading
+    setTimeout(() => {
+      fitView({ padding: 0.2 });
+      setTimeout(() => {
+        zoomOut();
+      }, 200);
+    }, 100);
+  };
+
+  // Function to fetch a single blueprint by ID and convert to ReactFlow format
+  const fetchAndConvertGraphFlow = async (graphId: string) => {
     try {
       setIsLoading(true);
-      const response = await axios.get(
-        `/blueprints/available.blueprints.resolved.get?userId=${user?.username || "default"}`,
-      );
-      const blueprintObjects = response.data;
-
-      // Find the specific graph flow by blueprint_id
-      const targetBlueprintObj = blueprintObjects.find(
-        (blueprintObj: any) =>
-          blueprintObj.blueprint_id === graphId
-      );
-
-      if (targetBlueprintObj) {
-        const { nodes: newNodes, edges: newEdges } =
-          parseGraphFlow(targetBlueprintObj.spec_dict, fetchResourceById);
-
-        // Apply validation data directly to nodes during loading
-        // This handles the case where validation finished before graph loading
-        const currentValidationResults = validationResultsRef.current;
-        const currentIsValidating = isValidatingRef.current;
-        
-        const nodesWithValidation = newNodes.map((node) => {
-          // Only validationResult is node-specific (looked up by node's rid)
-          const nodeRid = node.data.workspaceData?.rid;
-          const validationResult = nodeRid && currentValidationResults 
-            ? currentValidationResults[nodeRid] 
-            : undefined;
-          
-          return {
-            ...node,
-            data: {
-              ...node.data,
-              validationResult,
-              isValidating: currentIsValidating,
-              onShowValidationDetails: handleShowValidationDetails,
-            },
-          };
-        });
-
-        setNodes(nodesWithValidation);
-        setEdges(newEdges);
-
-        // Auto-fit and zoom after loading
-        setTimeout(() => {
-          fitView({ padding: 0.2 });
-          setTimeout(() => {
-            zoomOut();
-          }, 200);
-        }, 100);
+      
+      // Fetch only the specific blueprint by ID
+      const blueprintInfo = await getBlueprintInfo(graphId);
+      
+      if (blueprintInfo?.spec_dict) {
+        loadGraphFromSpecDict(blueprintInfo.spec_dict);
       } else {
-        console.warn(`Graph flow with ID ${graphId} not found`);
+        console.warn(`Graph flow with ID ${graphId} not found or has no spec_dict`);
       }
     } catch (error) {
       console.error("Error loading graph flow:", error);
@@ -919,12 +919,18 @@ export default function ReactFlowGraph({
     }
   };
 
-  // Load graph when blueprintId changes
+  // Load graph when blueprintId or specDict changes
   useEffect(() => {
-    if (blueprintId) {
-      convertGraphFlowToReactFlow(blueprintId);
+    if (specDict) {
+      // Use provided specDict directly - no API call needed
+      setIsLoading(true);
+      loadGraphFromSpecDict(specDict);
+      setIsLoading(false);
+    } else if (blueprintId) {
+      // Fallback: fetch blueprint data if specDict not provided
+      fetchAndConvertGraphFlow(blueprintId);
     }
-  }, [blueprintId]);
+  }, [blueprintId, specDict]);
 
   // Auto-fit view when nodes/edges are loaded
   useEffect(() => {
