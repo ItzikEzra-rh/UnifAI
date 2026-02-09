@@ -945,7 +945,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     event.dataTransfer.effectAllowed = isCondition ? "copy" : "move";
 
     // Create a simpler drag preview using the primary theme color
-    const previewColor = primaryHex?.startsWith("#") ? primaryHex : `#${primaryHex || "6B7280"}`;
+    const previewColor = deriveThemeColors(primaryHex).primary;
     const dragPreview = document.createElement("div");
     dragPreview.style.cssText = `
       position: absolute;

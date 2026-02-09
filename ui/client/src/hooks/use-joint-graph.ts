@@ -79,6 +79,8 @@ export function useJointGraph({
   const graphRef = useRef<dia.Graph | null>(null);
   const layoutNodesRef = useRef<LayoutNode[]>([]);
   const elementBlockRef = useRef<Map<string, BuildingBlock>>(new Map());
+  const paperRef = useRef<dia.Paper | null>(null);
+  const conditionalLinkIdsRef = useRef<Set<string>>(new Set());
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -173,10 +175,13 @@ export function useJointGraph({
     containerRef.current.innerHTML = "";
     containerRef.current.appendChild(paper.el);
     paper.el.classList.add("joint-paper");
+    paperRef.current = paper;
 
+    let cancelled = false;
     (async () => {
       try {
         const list = await fetchResolvedBlueprints(username);
+        if (cancelled) return;
         const blueprint = list.find(
           (b: { blueprint_id: string }) => b.blueprint_id === blueprintId,
         );
@@ -235,10 +240,11 @@ export function useJointGraph({
           type: "circle" as const, r, fill: color,
         });
 
+        conditionalLinkIdsRef.current.clear();
         for (const e of layoutEdges) {
           const isCond = e.isConditional;
           const c = isCond ? "#94a3b8" : linkColor;
-          new shapes.standard.Link({
+          const link = new shapes.standard.Link({
             source: { id: e.source },
             target: { id: e.target },
             attrs: {
@@ -251,6 +257,7 @@ export function useJointGraph({
               },
             },
           }).addTo(graph);
+          if (isCond) conditionalLinkIdsRef.current.add(link.id as string);
         }
 
         // Auto-layout
@@ -274,7 +281,8 @@ export function useJointGraph({
 
         // Size paper and optionally center
         const padding = 40;
-        const container = containerRef.current!;
+        const container = containerRef.current;
+        if (!container) return;
         const cw = container.clientWidth ?? 0;
         const ch = container.clientHeight ?? 0;
 
@@ -313,15 +321,35 @@ export function useJointGraph({
     })();
 
     return () => {
+      cancelled = true;
       graph.off("change:position");
       removeLinkAnimations(paper.el);
       paper.remove();
       graph.clear();
       graphRef.current = null;
+      paperRef.current = null;
       layoutNodesRef.current = [];
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blueprintId, username, showBackground, interactive, centerInView, animated, primaryHex, rebuildOverlays]);
+  }, [blueprintId, username, showBackground, interactive, centerInView, animated, rebuildOverlays]);
+
+  // ── Lightweight theme-color update (avoids full graph rebuild) ──────
+  useEffect(() => {
+    const paper = paperRef.current;
+    const graph = graphRef.current;
+    if (!paper || !graph) return;
+
+    const primaryNow = primaryHex || "#8b5cf6";
+    injectSvgDefs(paper.el, primaryNow);
+
+    const linkColor = primaryNow.startsWith("#") ? primaryNow : `#${primaryNow}`;
+    for (const link of graph.getLinks()) {
+      if (conditionalLinkIdsRef.current.has(link.id as string)) continue;
+      link.attr("line/stroke", linkColor);
+      link.attr("line/sourceMarker/fill", linkColor);
+      link.attr("line/targetMarker/fill", linkColor);
+    }
+  }, [primaryHex]);
 
   return {
     containerRef,

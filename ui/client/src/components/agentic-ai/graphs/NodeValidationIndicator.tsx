@@ -40,7 +40,7 @@ export const NodeValidationIndicator: React.FC<NodeValidationIndicatorProps> = (
   }
 
   // Don't show anything if no validation result
-  if (!validationResult) {
+  if (!validationResult || validationResult.is_valid) {
     return null;
   }
 
@@ -65,7 +65,7 @@ export const NodeValidationIndicator: React.FC<NodeValidationIndicatorProps> = (
       <SimpleTooltip content={<p>{tooltipContent}</p>}>
           <div
             className={`p-2 rounded-full bg-yellow-500/25 hover:bg-yellow-500/20 ring-1 ring-yellow-500/30 shadow-lg`}>
-            {!isValid && <AlertTriangle className={`h-6 w-6 text-yellow-500 drop-shadow-[0_0_3px_rgba(234,179,8,0.4)]`} />}
+            <AlertTriangle className={`h-6 w-6 text-yellow-500 drop-shadow-[0_0_3px_rgba(234,179,8,0.4)]`} />
           </div>
       </SimpleTooltip>
     </div>

@@ -161,7 +161,7 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({
                           key={condition.id}
                           className={`transition-colors ${
                             isUsed
-                              ? 'opacity-50 cursor-not-allowed'
+                              ? 'bg-gray-900 border-gray-800 opacity-50 cursor-not-allowed'
                               : 'cursor-grab active:cursor-grabbing'
                           }`}
                           style={{

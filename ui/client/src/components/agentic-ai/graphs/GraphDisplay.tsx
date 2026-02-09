@@ -94,6 +94,7 @@ export default function GraphDisplay({
     useState<ElementValidationResult | null>(null);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [nodeStatusMap, setNodeStatusMap] = useState<Record<string, NodeStatus>>({});
+  const nodeStatusMapRef = useRef<Record<string, NodeStatus>>({});
 
   // ── Hooks / context ─────────────────────────────────────────────────
   const { fetchResourceById } = useWorkspaceData();
@@ -128,10 +129,16 @@ export default function GraphDisplay({
       else newStatusMap[nodeId] = "IDLE";
     });
 
+    // Shallow-compare against ref to avoid expensive JSON.stringify
+    const prevMap = nodeStatusMapRef.current;
+    const newKeys = Object.keys(newStatusMap);
+    const prevKeys = Object.keys(prevMap);
     const hasChanges =
-      JSON.stringify(newStatusMap) !== JSON.stringify(nodeStatusMap);
+      newKeys.length !== prevKeys.length ||
+      newKeys.some((k) => newStatusMap[k] !== prevMap[k]);
 
     if (hasChanges) {
+      nodeStatusMapRef.current = newStatusMap;
       setNodeStatusMap(newStatusMap);
 
       const graph = graphRef.current;
@@ -141,13 +148,13 @@ export default function GraphDisplay({
         }
       }
     }
-  }, [streamingContext, nodeStatusMap, applyNodeVisual, graphRef]);
+  }, [streamingContext, applyNodeVisual, graphRef]);
 
-  // Poll streaming data every 100 ms while live tracking is active
+  // Poll streaming data every 250 ms while live tracking is active
   useEffect(() => {
     if (!isLiveRequest || !streamingContext) return;
     updateNodeStatuses();
-    const id = setInterval(updateNodeStatuses, 100);
+    const id = setInterval(updateNodeStatuses, 250);
     return () => clearInterval(id);
   }, [isLiveRequest, streamingContext, updateNodeStatuses]);
 
@@ -159,7 +166,7 @@ export default function GraphDisplay({
         for (const el of graph.getElements()) {
           const nodeId = el.id as string;
           const finalStatus: NodeStatus =
-            nodeStatusMap[nodeId] != "IDLE" ? "DONE" : "IDLE";
+            nodeStatusMap[nodeId] !== "IDLE" ? "DONE" : "IDLE";
           applyNodeVisual(el, finalStatus);
         }
       }
@@ -205,7 +212,7 @@ export default function GraphDisplay({
           setResourceDetailsElement(built);
           setResourceDetailsOpen(true);
         })
-        .catch(() => { /* resource not found – silent */ })
+        .catch((err) => { console.debug("[GraphDisplay] resource fetch failed:", err); })
         .finally(() => setLoadingResource(false));
     },
     [fetchResourceById, elementBlockRef],
