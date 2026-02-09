@@ -520,12 +520,12 @@ export default function ExecutionTab({
         }
         break;
 
-      // case 'complete':
-      //   existing.stream = 'DONE';
-      //   if (state?.user_prompt && existing.text.trim() === '') {
-      //     existing.text = state.user_prompt;
-      //   }
-      //   break;
+      case 'complete':
+        existing.stream = 'DONE';
+        if (state?.user_prompt && existing.text.trim() === '') {
+          existing.text = state.user_prompt;
+        }
+        break;
 
       case 'tool_calling':
         if (call_id && tool) {
@@ -897,6 +897,7 @@ export default function ExecutionTab({
                   animated={true}
                   validationResults={blueprintValidationResults}
                   isValidating={isValidatingBlueprint}
+                  isLiveRequest={isLiveRequest}
                 />
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-400 text-sm">

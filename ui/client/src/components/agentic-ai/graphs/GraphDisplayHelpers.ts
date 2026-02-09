@@ -15,8 +15,8 @@ import type { BuildingBlock } from "@/types/graph";
 // Layout constants
 // ---------------------------------------------------------------------------
 
-export const NODE_WIDTH = 220;
-export const NODE_HEADER_HEIGHT = 32;
+export const NODE_WIDTH = 320;
+export const NODE_HEADER_HEIGHT = 52;
 export const ELEMENT_BADGE_HEIGHT = 26;
 export const ELEMENT_GAP = 4;
 export const NODE_BODY_PADDING = 8;
@@ -190,6 +190,84 @@ export function injectSvgDefs(
     filter.appendChild(feDrop);
     defs.appendChild(filter);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Live-status visual constants
+// ---------------------------------------------------------------------------
+
+export const STATUS_STYLES = {
+  PROGRESS: {
+    stroke: "rgba(59, 130, 246, 0.85)",
+    strokeWidth: 2.5,
+    filter: "url(#progressGlow)",
+    dotColor: "rgb(59, 130, 246)",
+    bgColor: "rgba(59, 130, 246, 0.2)",
+    label: "Processing",
+  },
+  DONE: {
+    stroke: "rgba(34, 197, 94, 0.7)",
+    strokeWidth: 2,
+    filter: "url(#doneGlow)",
+    dotColor: "rgb(34, 197, 94)",
+    bgColor: "rgba(34, 197, 94, 0.2)",
+    label: "Complete",
+  },
+  IDLE: {
+    stroke: "rgba(255,255,255,0.12)",
+    strokeWidth: 1,
+    filter: "url(#nodeShadow)",
+    dotColor: "",
+    bgColor: "",
+    label: "",
+  },
+} as const;
+
+// ---------------------------------------------------------------------------
+// Live-status SVG glow filter injection
+// ---------------------------------------------------------------------------
+
+/**
+ * Inject `progressGlow` and `doneGlow` SVG filter defs into the paper.
+ * Idempotent – safe to call multiple times.
+ */
+export function injectStatusGlowFilters(paperEl: HTMLElement): void {
+  const svg =
+    paperEl.tagName === "svg" ? paperEl : paperEl.querySelector("svg");
+  if (!svg) return;
+
+  const defs = svg.querySelector("defs");
+  if (!defs) return;
+
+  const upsertFilter = (
+    id: string,
+    bounds: { x: string; y: string; w: string; h: string },
+    drops: string,
+  ) => {
+    if (defs.querySelector(`#${id}`)) return;
+    const f = document.createElementNS("http://www.w3.org/2000/svg", "filter");
+    f.setAttribute("id", id);
+    f.setAttribute("x", bounds.x);
+    f.setAttribute("y", bounds.y);
+    f.setAttribute("width", bounds.w);
+    f.setAttribute("height", bounds.h);
+    f.innerHTML = drops;
+    defs.appendChild(f);
+  };
+
+  upsertFilter(
+    "progressGlow",
+    { x: "-30%", y: "-30%", w: "160%", h: "160%" },
+    `<feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="rgba(59,130,246,0.5)" flood-opacity="0.8"/>
+     <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.25"/>`,
+  );
+
+  upsertFilter(
+    "doneGlow",
+    { x: "-20%", y: "-20%", w: "140%", h: "140%" },
+    `<feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="rgba(34,197,94,0.4)" flood-opacity="0.6"/>
+     <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.25"/>`,
+  );
 }
 
 // ---------------------------------------------------------------------------

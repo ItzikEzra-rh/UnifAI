@@ -31,8 +31,8 @@ export const NodeValidationIndicator: React.FC<NodeValidationIndicatorProps> = (
         }}
       >
         <SimpleTooltip content={<p>Validating...</p>}>
-          <div className="p-1 rounded-full bg-gray-700/50">
-            <Loader2 className="h-3.5 w-3.5 text-gray-400 animate-spin" />
+          <div className={`p-2 rounded-full bg-gray-700/50`}>
+            <Loader2 className={`h-6 w-6 text-gray-400 animate-spin`} />
           </div>
         </SimpleTooltip>
       </div>
@@ -63,19 +63,10 @@ export const NodeValidationIndicator: React.FC<NodeValidationIndicatorProps> = (
       }}
     >
       <SimpleTooltip content={<p>{tooltipContent}</p>}>
-        <div
-          className={`p-1 rounded-full ${
-            isValid
-              ? 'bg-green-500/20 hover:bg-green-500/30'
-              : 'bg-yellow-500/20 hover:bg-yellow-500/30'
-          }`}
-        >
-          {isValid ? (
-            <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
-          ) : (
-            <AlertTriangle className="h-3.5 w-3.5 text-yellow-500" />
-          )}
-        </div>
+          <div
+            className={`p-2 rounded-full bg-yellow-500/25 hover:bg-yellow-500/20 ring-1 ring-yellow-500/30 shadow-lg`}>
+            {!isValid && <AlertTriangle className={`h-6 w-6 text-yellow-500 drop-shadow-[0_0_3px_rgba(234,179,8,0.4)]`} />}
+          </div>
       </SimpleTooltip>
     </div>
   );
