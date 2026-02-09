@@ -155,6 +155,7 @@ def delete_session(session_id):
     Delete a session by session_id.
     Returns success: true if deleted, false if not found.
     """
+    # TODO: Add authorization check - verify user has permission to delete this session
     try:
         svc = current_app.container.session_service
         deleted = svc.delete(run_id=session_id)

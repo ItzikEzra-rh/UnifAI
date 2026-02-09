@@ -194,6 +194,7 @@ def remove_blueprint(blueprint_id):
     """
     Delete a blueprint by its ID.
     """
+    # TODO: Add authorization check - verify user has permission to delete this blueprint
     try:
         svc = current_app.container.blueprint_service
         
