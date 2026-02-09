@@ -40,7 +40,7 @@ export function useBlueprintValidation(
   } = options;
   
   const { toast } = useToast();
-  const { validateBlueprintWithCache, isBlueprintValidationFresh } = useAgenticAI();
+  const { validateBlueprintWithCache, isBlueprintValidationCacheHit } = useAgenticAI();
   
   const [isValidating, setIsValidating] = useState<boolean>(false);
   const [validationResults, setValidationResults] = useState<Record<string, ElementValidationResult>>({});
@@ -53,15 +53,14 @@ export function useBlueprintValidation(
   }, [onValidationChange]);
 
   const validate = useCallback(async (blueprintId: string) => {
-    // Check if we have a fresh valid cache (only relevant if not skipping cache)
-    const hasFreshCache = !skipCache && isBlueprintValidationFresh(blueprintId);
+    // Check if we have a cache hit (valid result within TTL)
+    const isCacheHit = !skipCache && isBlueprintValidationCacheHit(blueprintId);
     
-    setIsValidating(true);
-    setValidationResults({});
-    setIsValid(true); // Assume valid until proven otherwise
-    
-    // Notify parent that validation is starting (unless using cached result)
-    if (!hasFreshCache) {
+    // Only show loading state if we're actually going to fetch from API (no cache hit)
+    if (!isCacheHit) {
+      setIsValidating(true);
+      setValidationResults({});
+      setIsValid(true); // Assume valid until proven otherwise
       onValidationChange?.(true, null, true);
     }
     
@@ -103,7 +102,7 @@ export function useBlueprintValidation(
     }
   }, [
     skipCache,
-    isBlueprintValidationFresh,
+    isBlueprintValidationCacheHit,
     validateBlueprintWithCache,
     onValidationChange, 
     showToastOnFailure, 
