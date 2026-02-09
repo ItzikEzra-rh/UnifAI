@@ -270,7 +270,7 @@ export default function GraphDisplay({
     <>
       <div className="relative overflow-auto" style={{ height }}>
         {/* Live Tracking Indicator */}
-        {isLiveRequest && (
+        {isLiveRequest && streamingContext && (
           <div className="absolute top-2 right-2 z-50 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs flex items-center gap-2">
             <motion.div
               className="w-2 h-2 bg-green-400 rounded-full"
@@ -282,7 +282,7 @@ export default function GraphDisplay({
         )}
 
         {/* Active Nodes Status Bar */}
-        {isLiveRequest && Object.keys(nodeStatusMap).length > 0 && (
+        {isLiveRequest && streamingContext && Object.keys(nodeStatusMap).length > 0 && (
           <div className="absolute bottom-2 left-2 right-2 z-50 bg-black bg-opacity-80 text-white px-3 py-2 rounded-lg">
             <div className="flex flex-wrap gap-2 text-xs">
               {Object.entries(nodeStatusMap).map(([nodeId, status]) => {

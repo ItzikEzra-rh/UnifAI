@@ -49,11 +49,8 @@ export default function WorkflowsPanel({
   height = "100%",
   useResolvedEndpoint = false,
   graphProps = {
-    showControls: true,
-    showMiniMap: false,
     showBackground: true,
     interactive: true,
-    isLiveRequest: false,
   },
 }: WorkflowsPanelProps): React.ReactElement {
   // State for available graph flows

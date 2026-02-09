@@ -98,11 +98,12 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
   const [nodeId, setNodeId] = useState(1);
   const { primaryHex } = useTheme();
 
-  // Derive a condition-edge color from the shared theme helper
-  const conditionEdgeColor = useMemo(
-    () => deriveThemeColors(primaryHex).conditionEdge,
+  // Derive all theme colors once – reused by edge styling and drag preview
+  const themeColors = useMemo(
+    () => deriveThemeColors(primaryHex),
     [primaryHex],
   );
+  const conditionEdgeColor = themeColors.conditionEdge;
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
   const [buildingBlocksData, setBuildingBlocksData] = useState<BuildingBlock[]>(
@@ -945,7 +946,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     event.dataTransfer.effectAllowed = isCondition ? "copy" : "move";
 
     // Create a simpler drag preview using the primary theme color
-    const previewColor = deriveThemeColors(primaryHex).primary;
+    const previewColor = themeColors.primary;
     const dragPreview = document.createElement("div");
     dragPreview.style.cssText = `
       position: absolute;

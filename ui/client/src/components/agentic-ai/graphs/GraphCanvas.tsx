@@ -157,7 +157,10 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   );
 
   // Process edges to detect and transform bidirectional connections
-  const processedEdges = processBidirectionalEdges(edges, bidiEdgeColor);
+  const processedEdges = useMemo(
+    () => processBidirectionalEdges(edges, bidiEdgeColor),
+    [edges, bidiEdgeColor],
+  );
 
   // Apply current theme colors to ALL edges so they react to primary color changes.
   // Edges created in use-graph-logic have styles baked at creation time; this ensures

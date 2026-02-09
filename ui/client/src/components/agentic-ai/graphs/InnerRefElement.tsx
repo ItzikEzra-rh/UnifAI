@@ -45,6 +45,7 @@ const InnerRefElement: React.FC<InnerRefElementProps> = ({
         </span>
         <button
           onClick={handleViewDetails}
+          aria-label="View details"
           className="w-4 h-4 text-gray-400 hover:text-white transition-colors flex-shrink-0"
         >
           <Eye className="w-3.5 h-3.5" />

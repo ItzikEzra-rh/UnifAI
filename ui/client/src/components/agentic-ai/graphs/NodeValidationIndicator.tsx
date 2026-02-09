@@ -1,5 +1,5 @@
 import React from 'react';
-import { CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { ElementValidationResult } from '@/types/validation';
 import SimpleTooltip from '@/components/shared/SimpleTooltip';
 
@@ -12,7 +12,7 @@ interface NodeValidationIndicatorProps {
 
 /**
  * A compact validation indicator component for displaying on graph nodes.
- * Shows a green checkmark for valid nodes, yellow warning for invalid nodes,
+ * Returns null for valid nodes, shows a yellow warning for invalid nodes,
  * and a spinner while validation is in progress.
  */
 export const NodeValidationIndicator: React.FC<NodeValidationIndicatorProps> = ({
@@ -44,15 +44,11 @@ export const NodeValidationIndicator: React.FC<NodeValidationIndicatorProps> = (
     return null;
   }
 
-  const isValid = validationResult.is_valid;
-
   // Count issues by severity
   const errorCount = validationResult.messages.filter(m => m.severity === 'error').length;
   const warningCount = validationResult.messages.filter(m => m.severity === 'warning').length;
 
-  const tooltipContent = isValid
-    ? 'Validation passed'
-    : `${errorCount} error${errorCount !== 1 ? 's' : ''}${warningCount > 0 ? `, ${warningCount} warning${warningCount !== 1 ? 's' : ''}` : ''}`;
+  const tooltipContent = `${errorCount} error${errorCount !== 1 ? 's' : ''}${warningCount > 0 ? `, ${warningCount} warning${warningCount !== 1 ? 's' : ''}` : ''}`;
 
   return (
     <div

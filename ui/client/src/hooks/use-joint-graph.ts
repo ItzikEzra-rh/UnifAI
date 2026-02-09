@@ -279,6 +279,20 @@ export function useJointGraph({
           }
         });
 
+        // Recompute bounding box after manual repositioning of final_answer_node
+        let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+        graph.getElements().forEach((el) => {
+          const b = el.getBBox();
+          minX = Math.min(minX, b.x);
+          minY = Math.min(minY, b.y);
+          maxX = Math.max(maxX, b.x + b.width);
+          maxY = Math.max(maxY, b.y + b.height);
+        });
+        const actualBbox = {
+          width: maxX - (Number.isFinite(minX) ? minX : 0),
+          height: maxY - (Number.isFinite(minY) ? minY : 0),
+        };
+
         // Size paper and optionally center
         const padding = 40;
         const container = containerRef.current;
@@ -297,8 +311,8 @@ export function useJointGraph({
           });
         } else {
           paper.setDimensions(
-            Math.max(bbox.width + padding * 2, cw > 0 ? cw : 400),
-            Math.max(bbox.height + padding * 2, ch > 0 ? ch : 300),
+            Math.max(actualBbox.width + padding * 2, cw > 0 ? cw : 400),
+            Math.max(actualBbox.height + padding * 2, ch > 0 ? ch : 300),
           );
         }
 
