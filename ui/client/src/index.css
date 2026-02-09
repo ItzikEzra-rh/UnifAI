@@ -294,4 +294,11 @@
       box-shadow: 0 6px 28px rgba(0, 0, 0, 0.45), 0 0 20px rgba(255, 255, 255, 0.03);
     }
   }
+
+  /* Respect users' reduced-motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .workflow-graph-animated {
+      animation: none;
+    }
+  }
 }

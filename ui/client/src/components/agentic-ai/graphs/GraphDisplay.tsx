@@ -1,44 +1,27 @@
-import React, { useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { dia, shapes } from "@joint/core";
-import { DirectedGraph } from "@joint/layout-directed-graph";
+import React, { useContext, useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { dia } from "@joint/core";
 import { motion } from "framer-motion";
-import type { GraphFlow } from "./interfaces";
-import {
-  graphFlowToLayoutData,
-  type LayoutNode,
-} from "@/utils/graphFlowLayout";
 import { useTheme } from "@/contexts/ThemeContext";
-import axios from "@/http/axiosAgentConfig";
 import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
+import { useJointGraph } from "@/hooks/use-joint-graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import type { BuildingBlock } from "@/types/graph";
 import ResourceDetailsModal from "@/workspace/ResourceDetailsModal";
 import NodeValidationIndicator from "./NodeValidationIndicator";
 import { ValidationResultModal } from "../workspace/ValidationResultModal";
 import type { ElementValidationResult } from "@/types/validation";
-import { useStreamingData } from "../StreamingDataContext";
+import { StreamingDataContext } from "../StreamingDataContext";
 import {
   NODE_WIDTH,
   NODE_HEADER_HEIGHT,
   ELEMENT_BADGE_HEIGHT,
-  ELEMENT_GAP,
-  NODE_BODY_PADDING,
-  LAYOUT_OPTS,
   BADGE_BG,
   BADGE_BORDER,
   BADGE_HOVER_BG,
   CATEGORY_TYPE_TO_PLURAL,
   STATUS_STYLES,
   nodeIconForType,
-  computeNodeHeight,
-  nodeFillForType,
-  injectSvgDefs,
-  injectStatusGlowFilters,
-  injectLinkAnimations,
-  buildElementBlockMap,
-  type OverlayBadge,
-  type OverlayHeader,
 } from "./GraphDisplayHelpers";
 
 // ---------------------------------------------------------------------------
@@ -79,38 +62,45 @@ export default function GraphDisplay({
   isValidating = false,
   isLiveRequest = false,
 }: GraphDisplayProps): React.ReactElement {
-  // ── Refs ────────────────────────────────────────────────────────────
-  const containerRef = useRef<HTMLDivElement>(null);
-  const elementBlockRef = useRef<Map<string, BuildingBlock>>(new Map());
-  const graphRef = useRef<dia.Graph | null>(null);
-  const layoutNodesRef = useRef<LayoutNode[]>([]);
+  // ── JointJS graph hook (imperative init, layout, SVG injection) ─────
+  const { user } = useAuth();
+  const { primaryHex } = useTheme();
 
-  // ── State ───────────────────────────────────────────────────────────
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const {
+    containerRef,
+    graphRef,
+    elementBlockRef,
+    loading,
+    error,
+    overlayBadges,
+    overlayHeaders,
+    paperTransform,
+  } = useJointGraph({
+    blueprintId,
+    username: user?.username,
+    primaryHex,
+    showBackground,
+    interactive,
+    centerInView,
+    animated,
+  });
+
+  // ── Component-level state ──────────────────────────────────────────
   const [resourceDetailsOpen, setResourceDetailsOpen] = useState(false);
   const [resourceDetailsElement, setResourceDetailsElement] =
     useState<BuildingBlock | null>(null);
   const [loadingResource, setLoadingResource] = useState(false);
-  const [overlayBadges, setOverlayBadges] = useState<OverlayBadge[]>([]);
-  const [overlayHeaders, setOverlayHeaders] = useState<OverlayHeader[]>([]);
-  const [paperTransform, setPaperTransform] = useState({
-    sx: 1, sy: 1, tx: 0, ty: 0,
-  });
   const [selectedValidationResult, setSelectedValidationResult] =
     useState<ElementValidationResult | null>(null);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
   const [nodeStatusMap, setNodeStatusMap] = useState<Record<string, NodeStatus>>({});
 
   // ── Hooks / context ─────────────────────────────────────────────────
-  const { user } = useAuth();
-  const { primaryHex } = useTheme();
   const { fetchResourceById } = useWorkspaceData();
-  const primaryHexRef = useRef(primaryHex);
-  primaryHexRef.current = primaryHex;
 
-  // Always called (rules of hooks); guarded by isLiveRequest at usage sites
-  const streamingContext = useStreamingData();
+  // Safe context access – returns null when no StreamingDataProvider is mounted
+  // (e.g. AgenticOverview), avoiding the throw from useStreamingData().
+  const streamingContext = useContext(StreamingDataContext);
 
   // ── Helper: apply status visual to a single JointJS element ────────
 
@@ -151,7 +141,7 @@ export default function GraphDisplay({
         }
       }
     }
-  }, [streamingContext, nodeStatusMap, applyNodeVisual]);
+  }, [streamingContext, nodeStatusMap, applyNodeVisual, graphRef]);
 
   // Poll streaming data every 100 ms while live tracking is active
   useEffect(() => {
@@ -218,249 +208,15 @@ export default function GraphDisplay({
         .catch(() => { /* resource not found – silent */ })
         .finally(() => setLoadingResource(false));
     },
-    [fetchResourceById],
+    [fetchResourceById, elementBlockRef],
   );
-
-  // ── Rebuild overlay positions from current graph element positions ──
-
-  const rebuildOverlays = useCallback(() => {
-    const graph = graphRef.current;
-    const nodes = layoutNodesRef.current;
-    if (!graph || nodes.length === 0) return;
-
-    const headers: OverlayHeader[] = [];
-    const badges: OverlayBadge[] = [];
-
-    for (const n of nodes) {
-      const el = graph.getCell(n.id);
-      if (!el) continue;
-      const pos = (el as dia.Element).position();
-      const size = (el as dia.Element).size();
-      const hasElements = n.resolvedElements.length > 0;
-
-      headers.push({
-        nodeId: n.id,
-        label: n.label,
-        nodeType: n.type,
-        hasElements,
-        x: pos.x,
-        y: pos.y,
-        width: NODE_WIDTH,
-        nodeHeight: size.height,
-        nodeRid: n.nodeDefinition?.rid,
-      });
-
-      if (!hasElements) continue;
-      const bodyStartY = pos.y + NODE_HEADER_HEIGHT + NODE_BODY_PADDING;
-      const badgeInnerWidth = NODE_WIDTH - NODE_BODY_PADDING * 2;
-      n.resolvedElements.forEach((re, i) => {
-        badges.push({
-          nodeId: n.id,
-          element: re,
-          x: pos.x + NODE_BODY_PADDING,
-          y: bodyStartY + i * (ELEMENT_BADGE_HEIGHT + ELEMENT_GAP),
-          width: badgeInnerWidth,
-        });
-      });
-    }
-
-    setOverlayHeaders(headers);
-    setOverlayBadges(badges);
-  }, []);
-
-  // ── Main effect: fetch blueprint → build JointJS graph → layout ────
-
-  useEffect(() => {
-    if (!blueprintId || !containerRef.current) return;
-
-    setLoading(true);
-    setError(null);
-    setOverlayBadges([]);
-    setOverlayHeaders([]);
-
-    const namespace = { ...shapes };
-    const graph = new dia.Graph({}, { cellNamespace: namespace });
-    graphRef.current = graph;
-
-    const paper = new dia.Paper({
-      model: graph,
-      cellViewNamespace: namespace,
-      width: "100%",
-      height: "100%",
-      interactive: interactive ? { elementMove: true } : false,
-      background: showBackground ? { color: "transparent" } : undefined,
-      gridSize: 16,
-      drawGrid: showBackground
-        ? {
-            name: "doubleMesh",
-            args: [
-              { color: "rgba(255,255,255,0.06)", thickness: 1 },
-              { color: "rgba(255,255,255,0.12)", scaleFactor: 4, thickness: 1 },
-            ],
-          }
-        : false,
-    });
-
-    containerRef.current.innerHTML = "";
-    containerRef.current.appendChild(paper.el);
-    paper.el.classList.add("joint-paper");
-
-    (async () => {
-      try {
-        const response = await axios.get(
-          `/blueprints/available.blueprints.resolved.get?userId=${user?.username || "default"}`,
-        );
-        const list = response.data || [];
-        const blueprint = list.find(
-          (b: { blueprint_id: string }) => b.blueprint_id === blueprintId,
-        );
-        if (!blueprint?.spec_dict) {
-          setError("Workflow not found");
-          setLoading(false);
-          return;
-        }
-
-        const spec = blueprint.spec_dict as GraphFlow;
-        const { nodes: layoutNodes, edges: layoutEdges } =
-          graphFlowToLayoutData(spec);
-        layoutNodesRef.current = layoutNodes;
-        elementBlockRef.current = buildElementBlockMap(layoutNodes, spec);
-
-        if (layoutNodes.length === 0) {
-          setError("No steps in workflow");
-          setLoading(false);
-          return;
-        }
-
-        // SVG defs: gradients + shadow + status glow filters
-        const primaryNow = primaryHexRef.current || "#8b5cf6";
-        injectSvgDefs(paper.el, primaryNow);
-        injectStatusGlowFilters(paper.el);
-
-        // Create JointJS nodes
-        for (const n of layoutNodes) {
-          new shapes.standard.Rectangle({
-            id: n.id,
-            position: { x: 0, y: 0 },
-            size: {
-              width: NODE_WIDTH,
-              height: computeNodeHeight(n.resolvedElements.length),
-            },
-            attrs: {
-              body: {
-                fill: nodeFillForType(n.type),
-                stroke: STATUS_STYLES.IDLE.stroke,
-                strokeWidth: STATUS_STYLES.IDLE.strokeWidth,
-                rx: 12,
-                ry: 12,
-                filter: STATUS_STYLES.IDLE.filter,
-              },
-              label: { text: "" },
-            },
-          }).addTo(graph);
-        }
-
-        // Create edges
-        const linkColor = primaryHexRef.current?.startsWith("#")
-          ? primaryHexRef.current
-          : `#${primaryHexRef.current || "8b5cf6"}`;
-
-        const mkMarker = (color: string, r: number) => ({
-          type: "circle" as const, r, fill: color,
-        });
-
-        for (const e of layoutEdges) {
-          const isCond = e.isConditional;
-          const c = isCond ? "#94a3b8" : linkColor;
-          new shapes.standard.Link({
-            source: { id: e.source },
-            target: { id: e.target },
-            attrs: {
-              line: {
-                stroke: isCond ? "rgba(148, 163, 184, 0.8)" : c,
-                strokeWidth: isCond ? 1.5 : 2,
-                opacity: isCond ? 1 : 0.9,
-                sourceMarker: mkMarker(c, isCond ? 3 : 4),
-                targetMarker: { type: "classic", size: isCond ? 10 : 12, fill: c },
-              },
-            },
-          }).addTo(graph);
-        }
-
-        // Auto-layout
-        const bbox = DirectedGraph.layout(graph, LAYOUT_OPTS);
-
-        // Force final_answer_node to the bottom
-        const typeById = new Map(layoutNodes.map((n) => [n.id, n.type]));
-        let maxBottom = 0;
-        graph.getElements().forEach((el) => {
-          if (typeById.get(el.id as string) !== "final_answer_node") {
-            const b = el.getBBox();
-            maxBottom = Math.max(maxBottom, b.y + b.height);
-          }
-        });
-        graph.getElements().forEach((el) => {
-          if (typeById.get(el.id as string) === "final_answer_node") {
-            const pos = el.position();
-            el.position(pos.x, maxBottom + LAYOUT_OPTS.rankSep);
-          }
-        });
-
-        // Size paper and optionally center
-        const padding = 40;
-        const container = containerRef.current!;
-        const cw = container.clientWidth ?? 0;
-        const ch = container.clientHeight ?? 0;
-
-        if (centerInView && cw > 0 && ch > 0) {
-          paper.setDimensions(cw, ch);
-          paper.scaleContentToFit({
-            padding,
-            preserveAspectRatio: true,
-            verticalAlign: "middle",
-            horizontalAlign: "middle",
-            useModelGeometry: true,
-          });
-        } else {
-          paper.setDimensions(
-            Math.max(bbox.width + padding * 2, cw > 0 ? cw : 400),
-            Math.max(bbox.height + padding * 2, ch > 0 ? ch : 300),
-          );
-        }
-
-        injectLinkAnimations(paper.el);
-
-        const scale = paper.scale();
-        const translate = paper.translate();
-        setPaperTransform({ sx: scale.sx, sy: scale.sy, tx: translate.tx, ty: translate.ty });
-
-        rebuildOverlays();
-        if (interactive) graph.on("change:position", rebuildOverlays);
-
-        setLoading(false);
-      } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Failed to load workflow");
-        setLoading(false);
-      }
-    })();
-
-    return () => {
-      graph.off("change:position");
-      paper.remove();
-      graph.clear();
-      graphRef.current = null;
-      layoutNodesRef.current = [];
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blueprintId, user?.username, showBackground, interactive, centerInView, primaryHex, rebuildOverlays]);
 
   // ── Derived data for render ─────────────────────────────────────────
 
   const nodeLabelsMap = useMemo(() => {
     const map: Record<string, string> = {};
-    for (const n of layoutNodesRef.current) map[n.id] = n.label;
+    for (const h of overlayHeaders) map[h.nodeId] = h.label;
     return map;
-    // Recompute when overlayHeaders changes (signals layout rebuild)
   }, [overlayHeaders]);
 
   // ── Render helpers ──────────────────────────────────────────────────
@@ -593,6 +349,44 @@ export default function GraphDisplay({
               className="absolute inset-0 pointer-events-none"
               style={{ overflow: "hidden" }}
             >
+              {/* Node status border overlays (colored ring + glow around active nodes) */}
+              {overlayHeaders.map((hdr) => {
+                const nodeStatus = nodeStatusMap[hdr.nodeId];
+                if (nodeStatus !== "PROGRESS" && nodeStatus !== "DONE") return null;
+                const s = STATUS_STYLES[nodeStatus];
+                const left = hdr.x * paperTransform.sx + paperTransform.tx;
+                const top = hdr.y * paperTransform.sy + paperTransform.ty;
+                const width = hdr.width * paperTransform.sx;
+                const fullHeight = hdr.nodeHeight * paperTransform.sy;
+                const borderRadius = 12 * Math.min(paperTransform.sx, paperTransform.sy);
+                const borderStyle = {
+                  left,
+                  top,
+                  width,
+                  height: fullHeight,
+                  borderRadius,
+                  border: `${s.strokeWidth}px solid ${s.stroke}`,
+                  boxShadow: s.boxShadow,
+                };
+
+                // PROGRESS nodes get a subtle pulsing glow; DONE nodes are static
+                return nodeStatus === "PROGRESS" ? (
+                  <motion.div
+                    key={`status-border-${hdr.nodeId}`}
+                    className="absolute"
+                    style={borderStyle}
+                    animate={{ opacity: [1, 0.6, 1] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                ) : (
+                  <div
+                    key={`status-border-${hdr.nodeId}`}
+                    className="absolute transition-all duration-300"
+                    style={borderStyle}
+                  />
+                );
+              })}
+
               {/* Node headers (icon + title + status pill) */}
               {overlayHeaders.map((hdr) => {
                 const left = hdr.x * paperTransform.sx + paperTransform.tx;

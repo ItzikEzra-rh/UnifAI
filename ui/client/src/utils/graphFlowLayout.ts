@@ -145,21 +145,32 @@ export function graphFlowToLayoutData(graphFlow: GraphFlow): GraphFlowLayoutData
   const nodesByLevel: Record<number, string[]> = {};
   const nodeLevel: Record<string, number> = {};
 
-  // First pass: build predecessor map
+  // First pass: build predecessor map (includes both after- and branch-derived edges)
   graphFlow.plan.forEach((item: PlanItem) => {
     const nodeId = item.uid;
     if (item.after) {
       const predecessors = Array.isArray(item.after) ? item.after : [item.after];
-      nodePredecessors[nodeId] = predecessors;
-    } else {
+      nodePredecessors[nodeId] = [...(nodePredecessors[nodeId] || []), ...predecessors];
+    } else if (!nodePredecessors[nodeId]) {
       nodePredecessors[nodeId] = [];
+    }
+
+    // Also register branch targets – they have item.uid as a predecessor
+    if (item.branches) {
+      Object.values(item.branches).forEach((targetId) => {
+        const tid = targetId as string;
+        if (!nodePredecessors[tid]) nodePredecessors[tid] = [];
+        if (!nodePredecessors[tid].includes(nodeId)) {
+          nodePredecessors[tid].push(nodeId);
+        }
+      });
     }
   });
 
   // Level 0: user_question_node
   graphFlow.plan.forEach((item: PlanItem) => {
     const nodeId = item.uid;
-    const nodeDef = nodeMap[item.node];
+    const nodeDef = nodeMap[extractUidFromRef(item.node)];
     const nodeType = nodeDef?.type || "custom_agent_node";
     if (nodeType === "user_question_node") {
       nodeLevel[nodeId] = 0;
@@ -170,11 +181,16 @@ export function graphFlowToLayoutData(graphFlow: GraphFlow): GraphFlowLayoutData
 
   // Assign levels for non-final nodes
   let allAssigned = false;
+  const MAX_LEVEL_ITERATIONS = graphFlow.plan.length * graphFlow.plan.length + 1;
+  let iterations = 0;
   while (!allAssigned) {
     allAssigned = true;
+    let madeProgress = false;
+    iterations++;
+
     graphFlow.plan.forEach((item: PlanItem) => {
       const nodeId = item.uid;
-      const nodeDef = nodeMap[item.node];
+      const nodeDef = nodeMap[extractUidFromRef(item.node)];
       const nodeType = nodeDef?.type || "custom_agent_node";
       if (nodeLevel[nodeId] !== undefined) return;
       if (nodeType === "final_answer_node") return;
@@ -192,13 +208,41 @@ export function graphFlowToLayoutData(graphFlow: GraphFlow): GraphFlowLayoutData
       nodeLevel[nodeId] = level;
       if (!nodesByLevel[level]) nodesByLevel[level] = [];
       nodesByLevel[level].push(nodeId);
+      madeProgress = true;
     });
+
+    // Safety guard: break if no progress was made (missing predecessors or cycles)
+    if (!allAssigned && !madeProgress) {
+      console.warn(
+        "[graphFlowLayout] Level assignment stuck – unresolved predecessors or cycle detected. " +
+        "Assigning fallback levels for remaining nodes.",
+      );
+      const existingLevels = Object.values(nodeLevel);
+      const fallbackLevel = existingLevels.length > 0 ? Math.max(...existingLevels) + 1 : 1;
+      graphFlow.plan.forEach((item: PlanItem) => {
+        if (nodeLevel[item.uid] === undefined) {
+          const nd = nodeMap[extractUidFromRef(item.node)];
+          if ((nd?.type || "custom_agent_node") !== "final_answer_node") {
+            nodeLevel[item.uid] = fallbackLevel;
+            if (!nodesByLevel[fallbackLevel]) nodesByLevel[fallbackLevel] = [];
+            nodesByLevel[fallbackLevel].push(item.uid);
+          }
+        }
+      });
+      break;
+    }
+
+    // Hard cap: prevent truly infinite loops even if madeProgress flickers
+    if (iterations >= MAX_LEVEL_ITERATIONS) {
+      console.warn("[graphFlowLayout] Max iterations reached during level assignment.");
+      break;
+    }
   }
 
   // Final layer: final_answer_node
   graphFlow.plan.forEach((item: PlanItem) => {
     const nodeId = item.uid;
-    const nodeDef = nodeMap[item.node];
+    const nodeDef = nodeMap[extractUidFromRef(item.node)];
     const nodeType = nodeDef?.type || "custom_agent_node";
     if (nodeType === "final_answer_node") {
       const levels = Object.keys(nodesByLevel).map(Number);
@@ -211,7 +255,7 @@ export function graphFlowToLayoutData(graphFlow: GraphFlow): GraphFlowLayoutData
   });
 
   const nodes: LayoutNode[] = graphFlow.plan.map((item: PlanItem) => {
-    const nodeDef = nodeMap[item.node] || null;
+    const nodeDef = nodeMap[extractUidFromRef(item.node)] || null;
     const nodeType = nodeDef?.type || "custom_agent_node";
     const label = nodeDef?.name || item.meta?.display_name || "Node";
     const description = item.meta?.description || null;

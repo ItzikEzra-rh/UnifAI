@@ -131,9 +131,37 @@ export interface DerivedThemeColors {
  * Every component that needs theme-aware colors should use this function
  * instead of doing inline hsl transforms.
  */
+/** Validate that a string is a well-formed 3- or 6-char hex colour. */
+function isValidHex(value: string): boolean {
+  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(value);
+}
+
+/** Expand short-hand 3-char hex (#abc) to full 6-char (#aabbcc). */
+function expandHex(hex: string): string {
+  if (hex.length === 4) {
+    // #abc → #aabbcc
+    return `#${hex[1]}${hex[1]}${hex[2]}${hex[2]}${hex[3]}${hex[3]}`;
+  }
+  return hex;
+}
+
 export function deriveThemeColors(primaryHex: string | undefined): DerivedThemeColors {
-  const hex = primaryHex?.startsWith("#") ? primaryHex : `#${primaryHex || "8A2BE2"}`;
-  const hsl = hexToHsl(hex);
+  const DEFAULT_HEX = "#8A2BE2";
+
+  // Sanitize: ensure it starts with '#' and is valid hex
+  let hex = primaryHex?.startsWith("#") ? primaryHex : `#${primaryHex || "8A2BE2"}`;
+  if (!isValidHex(hex)) {
+    hex = DEFAULT_HEX;
+  }
+  hex = expandHex(hex);
+
+  let hsl = hexToHsl(hex);
+
+  // Guard against NaN from malformed input slipping through
+  if (Number.isNaN(hsl.h) || Number.isNaN(hsl.s) || Number.isNaN(hsl.l)) {
+    hsl = hexToHsl(DEFAULT_HEX);
+  }
+
   const condHue = (hsl.h + 30) % 360;
 
   const conditionAccent = hslToHex(condHue, Math.min(100, hsl.s), Math.max(30, hsl.l - 5));

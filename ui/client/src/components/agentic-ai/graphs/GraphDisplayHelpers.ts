@@ -143,7 +143,7 @@ export function injectSvgDefs(
     svg.insertBefore(defs, svg.firstChild);
   }
 
-  // Helper to upsert a linear gradient
+  // Helper to upsert a linear gradient (uses DOM APIs instead of innerHTML)
   const upsertGradient = (id: string, stopColors: [string, string]) => {
     const existing = defs!.querySelector(`#${id}`);
     if (existing) existing.remove();
@@ -156,9 +156,15 @@ export function injectSvgDefs(
     g.setAttribute("y1", "0%");
     g.setAttribute("x2", "100%");
     g.setAttribute("y2", "100%");
-    g.innerHTML =
-      `<stop offset="0%" stop-color="${stopColors[0]}"/>` +
-      `<stop offset="100%" stop-color="${stopColors[1]}"/>`;
+
+    const offsets = ["0%", "100%"];
+    stopColors.forEach((color, i) => {
+      const stop = document.createElementNS("http://www.w3.org/2000/svg", "stop");
+      stop.setAttribute("offset", offsets[i]);
+      stop.setAttribute("stop-color", color);
+      g.appendChild(stop);
+    });
+
     defs!.appendChild(g);
   };
 
@@ -204,6 +210,8 @@ export const STATUS_STYLES = {
     dotColor: "rgb(59, 130, 246)",
     bgColor: "rgba(59, 130, 246, 0.2)",
     label: "Processing",
+    /** CSS box-shadow for the HTML overlay border glow. */
+    boxShadow: "0 0 12px rgba(59,130,246,0.5), 0 0 4px rgba(59,130,246,0.3)",
   },
   DONE: {
     stroke: "rgba(34, 197, 94, 0.7)",
@@ -212,6 +220,7 @@ export const STATUS_STYLES = {
     dotColor: "rgb(34, 197, 94)",
     bgColor: "rgba(34, 197, 94, 0.2)",
     label: "Complete",
+    boxShadow: "0 0 8px rgba(34,197,94,0.4), 0 0 3px rgba(34,197,94,0.25)",
   },
   IDLE: {
     stroke: "rgba(255,255,255,0.12)",
@@ -220,6 +229,7 @@ export const STATUS_STYLES = {
     dotColor: "",
     bgColor: "",
     label: "",
+    boxShadow: "none",
   },
 } as const;
 
@@ -239,10 +249,17 @@ export function injectStatusGlowFilters(paperEl: HTMLElement): void {
   const defs = svg.querySelector("defs");
   if (!defs) return;
 
+  // Helper to create an SVG feDropShadow element via DOM APIs
+  const mkDropShadow = (attrs: Record<string, string>) => {
+    const fe = document.createElementNS("http://www.w3.org/2000/svg", "feDropShadow");
+    for (const [k, v] of Object.entries(attrs)) fe.setAttribute(k, v);
+    return fe;
+  };
+
   const upsertFilter = (
     id: string,
     bounds: { x: string; y: string; w: string; h: string },
-    drops: string,
+    shadows: Record<string, string>[],
   ) => {
     if (defs.querySelector(`#${id}`)) return;
     const f = document.createElementNS("http://www.w3.org/2000/svg", "filter");
@@ -251,22 +268,26 @@ export function injectStatusGlowFilters(paperEl: HTMLElement): void {
     f.setAttribute("y", bounds.y);
     f.setAttribute("width", bounds.w);
     f.setAttribute("height", bounds.h);
-    f.innerHTML = drops;
+    shadows.forEach((s) => f.appendChild(mkDropShadow(s)));
     defs.appendChild(f);
   };
 
   upsertFilter(
     "progressGlow",
     { x: "-30%", y: "-30%", w: "160%", h: "160%" },
-    `<feDropShadow dx="0" dy="0" stdDeviation="6" flood-color="rgba(59,130,246,0.5)" flood-opacity="0.8"/>
-     <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.25"/>`,
+    [
+      { dx: "0", dy: "0", stdDeviation: "6", "flood-color": "rgba(59,130,246,0.5)", "flood-opacity": "0.8" },
+      { dx: "0", dy: "2", stdDeviation: "4", "flood-color": "#000", "flood-opacity": "0.25" },
+    ],
   );
 
   upsertFilter(
     "doneGlow",
     { x: "-20%", y: "-20%", w: "140%", h: "140%" },
-    `<feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="rgba(34,197,94,0.4)" flood-opacity="0.6"/>
-     <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.25"/>`,
+    [
+      { dx: "0", dy: "0", stdDeviation: "4", "flood-color": "rgba(34,197,94,0.4)", "flood-opacity": "0.6" },
+      { dx: "0", dy: "2", stdDeviation: "4", "flood-color": "#000", "flood-opacity": "0.25" },
+    ],
   );
 }
 
@@ -292,6 +313,20 @@ export function injectLinkAnimations(paperEl: HTMLElement): void {
     animate.setAttribute("dur", "0.8s");
     animate.setAttribute("repeatCount", "indefinite");
     path.appendChild(animate);
+  });
+}
+
+/** Remove link animations previously injected by injectLinkAnimations. */
+export function removeLinkAnimations(paperEl: HTMLElement): void {
+  const svgEl = paperEl.querySelector("svg");
+  if (!svgEl) return;
+
+  const linkPaths = svgEl.querySelectorAll("[joint-selector='line']");
+  linkPaths.forEach((path) => {
+    path.removeAttribute("stroke-dasharray");
+    // Remove all <animate> children
+    const animates = path.querySelectorAll("animate");
+    animates.forEach((a) => a.remove());
   });
 }
 
