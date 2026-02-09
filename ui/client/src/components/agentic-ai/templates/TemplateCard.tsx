@@ -3,44 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
-import { 
-  FileText, 
-  MessageSquare, 
-  Database, 
-  GitBranch,
-  Clock,
-  ArrowRight,
-  Zap
-} from 'lucide-react';
+import { Clock, ArrowRight } from 'lucide-react';
 import { TemplateListItem } from '@/types/templates';
+import { getCategoryIcon } from '@/utils/templateHelpers';
 
 interface TemplateCardProps {
   template: TemplateListItem;
   index: number;
   onSelect: (template: TemplateListItem) => void;
 }
-
-/**
- * Get icon based on template category
- */
-const getCategoryIcon = (category: string) => {
-  switch (category.toLowerCase()) {
-    case 'devops':
-    case 'git':
-      return <GitBranch className="h-6 w-6" />;
-    case 'data':
-    case 'database':
-      return <Database className="h-6 w-6" />;
-    case 'chat':
-    case 'bot':
-      return <MessageSquare className="h-6 w-6" />;
-    case 'automation':
-    case 'workflow':
-      return <Zap className="h-6 w-6" />;
-    default:
-      return <FileText className="h-6 w-6" />;
-  }
-};
 
 export const TemplateCard: React.FC<TemplateCardProps> = ({ 
   template, 

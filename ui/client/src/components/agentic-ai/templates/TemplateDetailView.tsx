@@ -5,15 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft,
-  FileText, 
-  MessageSquare, 
-  Database, 
-  GitBranch,
-  Clock,
   Zap,
   CheckCircle,
-  Key,
-  List,
   Settings,
   Pencil,
   Eye,
@@ -21,6 +14,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { TemplateListItem, NormalizedField, TemplateFormData } from '@/types/templates';
+import { getFieldDisplayType, getCategoryIcon, getFieldTypeIcon } from '@/utils/templateHelpers';
 import { FieldInput } from './FieldInputs';
 
 interface TemplateDetailViewProps {
@@ -36,23 +30,6 @@ export interface TemplateDetailViewRef {
 }
 
 /**
- * Category to icon mapping
- */
-const categoryIconMap: Record<string, React.ReactNode> = {
-  devops: <GitBranch className="h-8 w-8" />,
-  git: <GitBranch className="h-8 w-8" />,
-  data: <Database className="h-8 w-8" />,
-  database: <Database className="h-8 w-8" />,
-  chat: <MessageSquare className="h-8 w-8" />,
-  bot: <MessageSquare className="h-8 w-8" />,
-  automation: <Zap className="h-8 w-8" />,
-  workflow: <Zap className="h-8 w-8" />,
-};
-
-const getCategoryIcon = (category: string) => 
-  categoryIconMap[category.toLowerCase()] || <FileText className="h-8 w-8" />;
-
-/**
  * Get default value for a field based on its type
  */
 const defaultValueByType: Record<string, any> = {
@@ -62,22 +39,6 @@ const defaultValueByType: Record<string, any> = {
 
 const getFieldDefaultValue = (field: NormalizedField): any => 
   field.default !== undefined ? field.default : (defaultValueByType[field.type] ?? undefined);
-
-const getFieldTypeIcon = (type: string, isSecret?: boolean) => {
-  if (isSecret) {
-    return <Key className="h-4 w-4 text-yellow-500" />;
-  }
-  switch (type) {
-    case 'secret':
-      return <Key className="h-4 w-4 text-yellow-500" />;
-    case 'array':
-      return <List className="h-4 w-4 text-blue-500" />;
-    case 'boolean':
-      return <CheckCircle className="h-4 w-4 text-green-500" />;
-    default:
-      return <Settings className="h-4 w-4 text-gray-500" />;
-  }
-};
 
 interface FieldCardProps {
   field: NormalizedField;
@@ -96,12 +57,6 @@ const FieldCard: React.FC<FieldCardProps> = ({
   error,
   onClickToEdit
 }) => {
-  // Get display type for badge
-  const getDisplayType = () => {
-    if (field.isSecret) return 'secret';
-    if (field.type === 'array') return 'list';
-    return field.type;
-  };
 
   return (
     <div className="relative h-auto min-h-[72px]" style={{ perspective: '1000px' }}>
@@ -133,7 +88,7 @@ const FieldCard: React.FC<FieldCardProps> = ({
                   </Badge>
                 )}
                 <Badge variant="outline" className="text-xs px-1.5 py-0">
-                  {getDisplayType()}
+                  {getFieldDisplayType(field)}
                 </Badge>
               </div>
               {error ? (
@@ -368,7 +323,7 @@ export const TemplateDetailView = forwardRef<TemplateDetailViewRef, TemplateDeta
         <CardHeader className="border-b border-gray-800">
           <div className="flex items-start gap-4">
             <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center text-white">
-              {getCategoryIcon(template.category)}
+              {getCategoryIcon(template.category, "h-8 w-8")}
             </div>
             <div className="flex-1">
               <div className="flex items-start justify-between">
