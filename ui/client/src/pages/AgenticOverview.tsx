@@ -255,7 +255,6 @@ export default function AgenticOverview() {
                 <GraphDisplay
                   blueprintId={selectedWorkflow.blueprint_id}
                   height="100%"
-                  showControls={true}
                   showBackground={true}
                   interactive={true}
                   centerInView={true}

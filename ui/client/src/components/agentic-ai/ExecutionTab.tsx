@@ -894,7 +894,6 @@ export default function ExecutionTab({
                   key={`main-graph-${selectedSession.blueprintId}`}
                   blueprintId={selectedSession.blueprintId}
                   height="100%"
-                  showControls={true}
                   showBackground={true}
                   interactive={true}
                   centerInView={true}
@@ -930,11 +929,8 @@ export default function ExecutionTab({
                 showDeleteButton={false}
                 height="100%"
                 graphProps={{
-                  showControls: true,
-                  showMiniMap: true,
                   showBackground: true,
                   interactive: true,
-                  isLiveRequest: false,
                 }}
               />
             </div>

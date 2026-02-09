@@ -2,7 +2,10 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { dia, shapes } from "@joint/core";
 import { DirectedGraph } from "@joint/layout-directed-graph";
 import type { GraphFlow } from "./interfaces";
-import { graphFlowToLayoutData, type ResolvedElement } from "@/utils/graphFlowLayout";
+import {
+  graphFlowToLayoutData,
+  type LayoutNode,
+} from "@/utils/graphFlowLayout";
 import { useTheme } from "@/contexts/ThemeContext";
 import axios from "@/http/axiosAgentConfig";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,62 +16,30 @@ import ResourceDetailsModal from "@/workspace/ResourceDetailsModal";
 import NodeValidationIndicator from "./NodeValidationIndicator";
 import { ValidationResultModal } from "../workspace/ValidationResultModal";
 import type { ElementValidationResult } from "@/types/validation";
-
-const NODE_WIDTH = 220;
-const NODE_HEADER_HEIGHT = 32;
-const ELEMENT_BADGE_HEIGHT = 26;
-const ELEMENT_GAP = 4;
-const NODE_BODY_PADDING = 8;
-const LAYOUT_OPTS = {
-  rankDir: "TB" as const,
-  nodeSep: 60,
-  edgeSep: 40,
-  rankSep: 80,
-  marginX: 32,
-  marginY: 32,
-  setVertices: true,
-  disableOptimalOrderHeuristic: false,
-};
-
-/** Positioned element badge data for overlay rendering. */
-interface OverlayBadge {
-  nodeId: string;
-  element: ResolvedElement;
-  x: number;
-  y: number;
-  width: number;
-}
-
-/** Header overlay data (title text + icon + separator). */
-interface OverlayHeader {
-  nodeId: string;
-  label: string;
-  nodeType: string;
-  hasElements: boolean;
-  x: number;
-  y: number;
-  width: number;
-  /** Full node height so we know the rendered size. */
-  nodeHeight: number;
-  /** Node RID from its definition – used for validation result lookups. */
-  nodeRid: string | undefined;
-}
-
-/** Returns an emoji icon matching the node type – same as used in the graph canvas. */
-function nodeIconForType(nodeType: string): string {
-  if (nodeType === "user_question_node") return "\uD83D\uDCAC"; // 💬
-  if (nodeType === "final_answer_node") return "\uD83E\uDD16";  // 🤖
-  // Deterministic pick from a set based on type name hash
-  const icons = ["\uD83D\uDD0D", "\uD83D\uDCDA", "\uD83E\uDDE0", "\uD83D\uDD0E", "\uD83D\uDD27", "\u270D\uFE0F"];
-  // 🔍 📚 🧠 🔎 🔧 ✍️
-  const hash = nodeType.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
-  return icons[hash % icons.length];
-}
+import {
+  NODE_WIDTH,
+  NODE_HEADER_HEIGHT,
+  ELEMENT_BADGE_HEIGHT,
+  ELEMENT_GAP,
+  NODE_BODY_PADDING,
+  LAYOUT_OPTS,
+  BADGE_BG,
+  BADGE_BORDER,
+  BADGE_HOVER_BG,
+  CATEGORY_TYPE_TO_PLURAL,
+  nodeIconForType,
+  computeNodeHeight,
+  nodeFillForType,
+  injectSvgDefs,
+  injectLinkAnimations,
+  buildElementBlockMap,
+  type OverlayBadge,
+  type OverlayHeader,
+} from "./GraphDisplayHelpers";
 
 export type GraphDisplayProps = {
   blueprintId?: string;
   height?: string;
-  showControls?: boolean;
   showBackground?: boolean;
   interactive?: boolean;
   /** When true, scale and center the graph in the container. */
@@ -84,7 +55,6 @@ export type GraphDisplayProps = {
 export default function GraphDisplay({
   blueprintId,
   height = "100%",
-  showControls = true,
   showBackground = true,
   interactive = false,
   centerInView = false,
@@ -94,38 +64,49 @@ export default function GraphDisplay({
 }: GraphDisplayProps): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
   const elementBlockRef = useRef<Map<string, BuildingBlock>>(new Map());
-  /** Refs to JointJS graph and layout node data so we can rebuild overlays on drag. */
   const graphRef = useRef<dia.Graph | null>(null);
-  const layoutNodesRef = useRef<import("@/utils/graphFlowLayout").LayoutNode[]>([]);
+  const layoutNodesRef = useRef<LayoutNode[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [resourceDetailsOpen, setResourceDetailsOpen] = useState(false);
-  const [resourceDetailsElement, setResourceDetailsElement] = useState<BuildingBlock | null>(null);
+  const [resourceDetailsElement, setResourceDetailsElement] =
+    useState<BuildingBlock | null>(null);
   const [loadingResource, setLoadingResource] = useState(false);
   const [overlayBadges, setOverlayBadges] = useState<OverlayBadge[]>([]);
   const [overlayHeaders, setOverlayHeaders] = useState<OverlayHeader[]>([]);
   /** Paper transform (scale + translate) so overlays match SVG coordinates. */
-  const [paperTransform, setPaperTransform] = useState({ sx: 1, sy: 1, tx: 0, ty: 0 });
-  /** Validation modal state. */
-  const [selectedValidationResult, setSelectedValidationResult] = useState<ElementValidationResult | null>(null);
+  const [paperTransform, setPaperTransform] = useState({
+    sx: 1,
+    sy: 1,
+    tx: 0,
+    ty: 0,
+  });
+  const [selectedValidationResult, setSelectedValidationResult] =
+    useState<ElementValidationResult | null>(null);
   const [isValidationModalOpen, setIsValidationModalOpen] = useState(false);
+
   const { user } = useAuth();
   const { primaryHex } = useTheme();
   const { fetchResourceById } = useWorkspaceData();
   const primaryHexRef = useRef(primaryHex);
   primaryHexRef.current = primaryHex;
 
-  /** Open ResourceDetailsModal for a given element id. */
-  const openElementDetails = useCallback((elementId: string) => {
-    const block = elementBlockRef.current.get(elementId);
-    if (block) {
-      setResourceDetailsElement(block);
-      setResourceDetailsOpen(true);
-    } else {
+  // ── Open resource details modal ──────────────────────────────────────
+
+  const openElementDetails = useCallback(
+    (elementId: string) => {
+      const block = elementBlockRef.current.get(elementId);
+      if (block) {
+        setResourceDetailsElement(block);
+        setResourceDetailsOpen(true);
+        return;
+      }
+
       setLoadingResource(true);
-      fetchResourceById(elementId).then((resource) => {
-        setLoadingResource(false);
-        if (resource) {
+      fetchResourceById(elementId)
+        .then((resource) => {
+          if (!resource) return;
           const display = getCategoryDisplay(resource.category);
           const built: BuildingBlock = {
             id: resource.rid,
@@ -147,12 +128,17 @@ export default function GraphDisplay({
           };
           setResourceDetailsElement(built);
           setResourceDetailsOpen(true);
-        }
-      });
-    }
-  }, [fetchResourceById]);
+        })
+        .catch(() => {
+          /* resource not found – silent */
+        })
+        .finally(() => setLoadingResource(false));
+    },
+    [fetchResourceById],
+  );
 
-  /** Rebuild overlay positions from current graph element positions. */
+  // ── Rebuild overlay positions from current graph element positions ───
+
   const rebuildOverlays = useCallback(() => {
     const graph = graphRef.current;
     const nodes = layoutNodesRef.current;
@@ -160,6 +146,7 @@ export default function GraphDisplay({
 
     const headers: OverlayHeader[] = [];
     const badges: OverlayBadge[] = [];
+
     for (const n of nodes) {
       const el = graph.getCell(n.id);
       if (!el) continue;
@@ -192,9 +179,12 @@ export default function GraphDisplay({
         });
       });
     }
+
     setOverlayHeaders(headers);
     setOverlayBadges(badges);
   }, []);
+
+  // ── Main effect: fetch blueprint → build JointJS graph → layout ─────
 
   useEffect(() => {
     if (!blueprintId || !containerRef.current) return;
@@ -221,7 +211,11 @@ export default function GraphDisplay({
             name: "doubleMesh",
             args: [
               { color: "rgba(255,255,255,0.06)", thickness: 1 },
-              { color: "rgba(255,255,255,0.12)", scaleFactor: 4, thickness: 1 },
+              {
+                color: "rgba(255,255,255,0.12)",
+                scaleFactor: 4,
+                thickness: 1,
+              },
             ],
           }
         : false,
@@ -234,10 +228,12 @@ export default function GraphDisplay({
     (async () => {
       try {
         const response = await axios.get(
-          `/blueprints/available.blueprints.resolved.get?userId=${user?.username || "default"}`
+          `/blueprints/available.blueprints.resolved.get?userId=${user?.username || "default"}`,
         );
         const list = response.data || [];
-        const blueprint = list.find((b: { blueprint_id: string }) => b.blueprint_id === blueprintId);
+        const blueprint = list.find(
+          (b: { blueprint_id: string }) => b.blueprint_id === blueprintId,
+        );
         if (!blueprint?.spec_dict) {
           setError("Workflow not found");
           setLoading(false);
@@ -245,40 +241,12 @@ export default function GraphDisplay({
         }
 
         const spec = blueprint.spec_dict as GraphFlow;
-        const { nodes: layoutNodes, edges: layoutEdges } = graphFlowToLayoutData(spec);
+        const { nodes: layoutNodes, edges: layoutEdges } =
+          graphFlowToLayoutData(spec);
         layoutNodesRef.current = layoutNodes;
 
-        const refId = (r: { rid?: string }) => (r.rid || "").replace(/^\$ref:/, "");
-        elementBlockRef.current.clear();
-        layoutNodes.forEach((n) => {
-          n.resolvedElements.forEach((el) => {
-            const category = el.type === "llm" ? "llms" : el.type === "tool" ? "tools" : el.type === "provider" ? "providers" : "retrievers";
-            const catList = (spec as Record<string, unknown[]>)[category];
-            const def = catList?.find((d: { rid?: string }) => refId(d) === el.id || d.rid === el.id);
-            if (def) {
-              const d = def as { rid: string; name: string; type: string; config?: unknown; nested_refs?: string[] };
-              const display = getCategoryDisplay(category);
-              elementBlockRef.current.set(el.id, {
-                id: d.rid,
-                type: d.type,
-                label: d.name,
-                color: display.color,
-                description: `${category}/${d.type} - ${d.name}`,
-                workspaceData: {
-                  rid: d.rid,
-                  name: d.name,
-                  category,
-                  type: d.type,
-                  config: d.config ?? {},
-                  version: 1,
-                  created: "",
-                  updated: "",
-                  nested_refs: d.nested_refs ?? [],
-                },
-              });
-            }
-          });
-        });
+        // Build element → BuildingBlock lookup for overlay badges
+        elementBlockRef.current = buildElementBlockMap(layoutNodes, spec);
 
         if (layoutNodes.length === 0) {
           setError("No steps in workflow");
@@ -286,83 +254,19 @@ export default function GraphDisplay({
           return;
         }
 
+        // Inject SVG gradient defs + shadow filter
         const primaryNow = primaryHexRef.current || "#8b5cf6";
-        // Dark slate base – mirrors the dark theme background (from-accent is undefined
-        // in CSS so it resolves to transparent/dark, giving the grey-to-color look).
-        const darkSlate = "#1a1f2e";
+        injectSvgDefs(paper.el, primaryNow);
 
-        // Add SVG defs: gradients + shadow filter
-        const svg = paper.el.tagName === "svg" ? paper.el : paper.el.querySelector("svg");
-        if (svg) {
-          let defs = svg.querySelector("defs");
-          if (!defs) {
-            defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
-            svg.insertBefore(defs, svg.firstChild);
-          }
-          // Main gradient: dark slate → primary (matches ReactFlow's from-accent to-primary look)
-          const gradId = "agentGradient";
-          const existing = defs.querySelector(`#${gradId}`);
-          if (existing) existing.remove();
-          const gradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-          gradient.setAttribute("id", gradId);
-          gradient.setAttribute("x1", "0%");
-          gradient.setAttribute("y1", "0%");
-          gradient.setAttribute("x2", "100%");
-          gradient.setAttribute("y2", "100%");
-          gradient.innerHTML = `<stop offset="0%" stop-color="${darkSlate}"/><stop offset="100%" stop-color="${primaryNow}"/>`;
-          defs.appendChild(gradient);
-
-          // Special node gradient: dark slate → dark teal (matches from-accent to-[#003f5c])
-          const specialGradId = "agentGradientSpecial";
-          const existingSpecial = defs.querySelector(`#${specialGradId}`);
-          if (existingSpecial) existingSpecial.remove();
-          const specialGradient = document.createElementNS("http://www.w3.org/2000/svg", "linearGradient");
-          specialGradient.setAttribute("id", specialGradId);
-          specialGradient.setAttribute("x1", "0%");
-          specialGradient.setAttribute("y1", "0%");
-          specialGradient.setAttribute("x2", "100%");
-          specialGradient.setAttribute("y2", "100%");
-          specialGradient.innerHTML = `<stop offset="0%" stop-color="${darkSlate}"/><stop offset="100%" stop-color="#003f5c"/>`;
-          defs.appendChild(specialGradient);
-
-          if (!defs.querySelector("#nodeShadow")) {
-            const filter = document.createElementNS("http://www.w3.org/2000/svg", "filter");
-            filter.setAttribute("id", "nodeShadow");
-            filter.setAttribute("x", "-20%");
-            filter.setAttribute("y", "-20%");
-            filter.setAttribute("width", "140%");
-            filter.setAttribute("height", "140%");
-            const feDrop = document.createElementNS("http://www.w3.org/2000/svg", "feDropShadow");
-            feDrop.setAttribute("dx", "0");
-            feDrop.setAttribute("dy", "4");
-            feDrop.setAttribute("stdDeviation", "8");
-            feDrop.setAttribute("flood-color", "#000");
-            feDrop.setAttribute("flood-opacity", "0.35");
-            filter.appendChild(feDrop);
-            defs.appendChild(filter);
-          }
-        }
-
-        const nodeFillForType = (type: string): string => {
-          if (type === "user_question_node" || type === "final_answer_node") return "url(#agentGradientSpecial)";
-          return "url(#agentGradient)";
-        };
-
-        // Build nodes using plain Rectangle (single rounded rect – no corner artifacts).
-        // Title + separator rendered as HTML overlay for clean look.
-        // Nodes with NO elements are compact (header-only, single line).
+        // Create JointJS rectangle nodes
         for (const n of layoutNodes) {
-          const elementCount = n.resolvedElements.length;
-          const hasElements = elementCount > 0;
-          const bodyContentHeight = hasElements
-            ? NODE_BODY_PADDING * 2 + elementCount * ELEMENT_BADGE_HEIGHT + Math.max(0, elementCount - 1) * ELEMENT_GAP
-            : 0;
-          const totalHeight = NODE_HEADER_HEIGHT + bodyContentHeight;
-
           const rect = new shapes.standard.Rectangle({
             id: n.id,
             position: { x: 0, y: 0 },
-            size: { width: NODE_WIDTH, height: totalHeight },
+            size: {
+              width: NODE_WIDTH,
+              height: computeNodeHeight(n.resolvedElements.length),
+            },
             attrs: {
               body: {
                 fill: nodeFillForType(n.type),
@@ -372,15 +276,13 @@ export default function GraphDisplay({
                 ry: 12,
                 filter: "url(#nodeShadow)",
               },
-              label: {
-                text: "",
-              },
+              label: { text: "" },
             },
           });
           rect.addTo(graph);
         }
 
-        // Build edges (no dash here — dash + animation added after layout via SVG <animate>)
+        // Create edges
         const linkColor = primaryHexRef.current?.startsWith("#")
           ? primaryHexRef.current
           : `#${primaryHexRef.current || "8b5cf6"}`;
@@ -408,19 +310,19 @@ export default function GraphDisplay({
           },
         };
 
-        layoutEdges.forEach((e) => {
+        for (const e of layoutEdges) {
           const link = new shapes.standard.Link({
             source: { id: e.source },
             target: { id: e.target },
             ...(e.isConditional ? conditionalLinkStyle : linkStyle),
           });
           link.addTo(graph);
-        });
+        }
 
-        // Layout
+        // Auto-layout
         const bbox = DirectedGraph.layout(graph, LAYOUT_OPTS);
 
-        // Force final_answer_node to bottom layer
+        // Force final_answer_node to the bottom layer
         const typeById = new Map(layoutNodes.map((n) => [n.id, n.type]));
         let maxBottom = 0;
         graph.getElements().forEach((el) => {
@@ -452,49 +354,38 @@ export default function GraphDisplay({
             useModelGeometry: true,
           });
         } else {
-          const fallbackW = cw > 0 ? cw : 400;
-          const fallbackH = ch > 0 ? ch : 300;
           paper.setDimensions(
-            Math.max(bbox.width + padding * 2, fallbackW),
-            Math.max(bbox.height + padding * 2, fallbackH)
+            Math.max(bbox.width + padding * 2, cw > 0 ? cw : 400),
+            Math.max(bbox.height + padding * 2, ch > 0 ? ch : 300),
           );
         }
 
-        // Inject flowing dash animation directly into each link <path> via SVG <animate>.
-        // This avoids CSS/inline-attribute conflicts and produces a perfectly smooth loop.
-        const svgEl = paper.el.querySelector("svg");
-        if (svgEl) {
-          const linkPaths = svgEl.querySelectorAll("[joint-selector='line']");
-          linkPaths.forEach((path) => {
-            path.setAttribute("stroke-dasharray", "8 4");
-            const animate = document.createElementNS("http://www.w3.org/2000/svg", "animate");
-            animate.setAttribute("attributeName", "stroke-dashoffset");
-            animate.setAttribute("from", "0");
-            animate.setAttribute("to", "-12");    // 8+4=12 → exactly one pattern cycle
-            animate.setAttribute("dur", "0.8s");
-            animate.setAttribute("repeatCount", "indefinite");
-            path.appendChild(animate);
-          });
-        }
+        // Animate link paths with flowing dashes
+        injectLinkAnimations(paper.el);
 
         // Read paper transform so overlays align with SVG nodes
         const scale = paper.scale();
         const translate = paper.translate();
-        setPaperTransform({ sx: scale.sx, sy: scale.sy, tx: translate.tx, ty: translate.ty });
+        setPaperTransform({
+          sx: scale.sx,
+          sy: scale.sy,
+          tx: translate.tx,
+          ty: translate.ty,
+        });
 
         // Build initial overlay positions
         rebuildOverlays();
 
         // When user drags a node, rebuild overlays so they follow
         if (interactive) {
-          graph.on("change:position", () => {
-            rebuildOverlays();
-          });
+          graph.on("change:position", rebuildOverlays);
         }
 
         setLoading(false);
       } catch (err: unknown) {
-        setError(err instanceof Error ? err.message : "Failed to load workflow");
+        setError(
+          err instanceof Error ? err.message : "Failed to load workflow",
+        );
         setLoading(false);
       }
     })();
@@ -506,13 +397,20 @@ export default function GraphDisplay({
       graphRef.current = null;
       layoutNodesRef.current = [];
     };
-  }, [blueprintId, user?.username, showBackground, interactive, centerInView, primaryHex, openElementDetails, rebuildOverlays]);
+    // Note: openElementDetails is intentionally excluded – it is only used by
+    // overlay click handlers (rendered via JSX), not inside this effect body.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    blueprintId,
+    user?.username,
+    showBackground,
+    interactive,
+    centerInView,
+    primaryHex,
+    rebuildOverlays,
+  ]);
 
-  // Badge styling – clean frosted-glass look on dark nodes.
-  // Subtle dark background, thin border, white text/icons.
-  const badgeBg = "rgba(0,0,0,0.28)";
-  const badgeBorder = "rgba(255,255,255,0.10)";
-  const badgeHover = "rgba(255,255,255,0.10)";
+  // ── Render ───────────────────────────────────────────────────────────
 
   return (
     <>
@@ -532,22 +430,29 @@ export default function GraphDisplay({
             Loading resource...
           </div>
         )}
+
         <div
-          className={`workflow-graph-wrap h-full min-h-[280px] rounded-2xl relative ${animated ? "workflow-graph-animated" : ""}`}
+          className={`workflow-graph-wrap h-full min-h-[280px] rounded-2xl relative ${
+            animated ? "workflow-graph-animated" : ""
+          }`}
         >
-          <div ref={containerRef} className="min-h-full min-w-full h-full" style={{ height }} />
+          <div
+            ref={containerRef}
+            className="min-h-full min-w-full h-full"
+            style={{ height }}
+          />
+
           {/* HTML overlay for node headers + element badges */}
           {(overlayHeaders.length > 0 || overlayBadges.length > 0) && (
             <div
               className="absolute inset-0 pointer-events-none"
               style={{ overflow: "hidden" }}
             >
-              {/* Node headers (icon + title, separator only if node has elements) */}
+              {/* Node headers (icon + title) */}
               {overlayHeaders.map((hdr) => {
                 const left = hdr.x * paperTransform.sx + paperTransform.tx;
                 const top = hdr.y * paperTransform.sy + paperTransform.ty;
                 const width = hdr.width * paperTransform.sx;
-                // For compact nodes (no elements), fill the full node height
                 const hdrHeight = hdr.hasElements
                   ? NODE_HEADER_HEIGHT * paperTransform.sy
                   : hdr.nodeHeight * paperTransform.sy;
@@ -567,7 +472,9 @@ export default function GraphDisplay({
                       alignItems: "center",
                       justifyContent: "center",
                       gap: 6 * paperTransform.sx,
-                      borderBottom: hdr.hasElements ? "1px solid rgba(255,255,255,0.12)" : "none",
+                      borderBottom: hdr.hasElements
+                        ? "1px solid rgba(255,255,255,0.12)"
+                        : "none",
                     }}
                   >
                     <span
@@ -596,7 +503,7 @@ export default function GraphDisplay({
                         whiteSpace: "nowrap",
                         overflow: "hidden",
                         textOverflow: "ellipsis",
-                        maxWidth: width - (40 * paperTransform.sx),
+                        maxWidth: width - 40 * paperTransform.sx,
                       }}
                     >
                       {hdr.label}
@@ -607,13 +514,18 @@ export default function GraphDisplay({
 
               {/* Validation indicators (top-right corner of each node) */}
               {overlayHeaders.map((hdr) => {
-                const vResult = hdr.nodeRid && validationResults
-                  ? validationResults[hdr.nodeRid]
-                  : undefined;
-                const showIndicator = isValidating || (vResult && !vResult.is_valid);
-                if (!showIndicator) return null;
-                const left = (hdr.x + hdr.width) * paperTransform.sx + paperTransform.tx - 12;
-                const top = hdr.y * paperTransform.sy + paperTransform.ty - 6;
+                const vResult =
+                  hdr.nodeRid && validationResults
+                    ? validationResults[hdr.nodeRid]
+                    : undefined;
+                if (!isValidating && !(vResult && !vResult.is_valid))
+                  return null;
+                const left =
+                  (hdr.x + hdr.width) * paperTransform.sx +
+                  paperTransform.tx -
+                  12;
+                const top =
+                  hdr.y * paperTransform.sy + paperTransform.ty - 6;
                 return (
                   <div
                     key={`val-${hdr.nodeId}`}
@@ -636,19 +548,15 @@ export default function GraphDisplay({
 
               {/* Element badges */}
               {overlayBadges.map((badge, i) => {
-                const categoryMap: Record<string, string> = {
-                  llm: "llms",
-                  tool: "tools",
-                  retriever: "retrievers",
-                  provider: "providers",
-                };
-                const category = categoryMap[badge.element.type] || "default";
+                const category =
+                  CATEGORY_TYPE_TO_PLURAL[badge.element.type] || "default";
                 const display = getCategoryDisplay(category);
-                const left = badge.x * paperTransform.sx + paperTransform.tx;
-                const top = badge.y * paperTransform.sy + paperTransform.ty;
+                const left =
+                  badge.x * paperTransform.sx + paperTransform.tx;
+                const top =
+                  badge.y * paperTransform.sy + paperTransform.ty;
                 const width = badge.width * paperTransform.sx;
                 const bHeight = ELEMENT_BADGE_HEIGHT * paperTransform.sy;
-                const iconSize = Math.max(12, 14 * paperTransform.sx);
                 return (
                   <button
                     key={`${badge.nodeId}-${badge.element.id}-${i}`}
@@ -659,8 +567,8 @@ export default function GraphDisplay({
                       top,
                       width,
                       height: bHeight,
-                      background: badgeBg,
-                      borderColor: badgeBorder,
+                      background: BADGE_BG,
+                      borderColor: BADGE_BORDER,
                       backdropFilter: "blur(6px)",
                       WebkitBackdropFilter: "blur(6px)",
                       fontSize: Math.max(9, 11 * paperTransform.sx),
@@ -675,17 +583,22 @@ export default function GraphDisplay({
                     }}
                     onMouseEnter={(e) => {
                       if (interactive) {
-                        (e.currentTarget as HTMLElement).style.background = badgeHover;
-                        (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.22)";
+                        (e.currentTarget as HTMLElement).style.background =
+                          BADGE_HOVER_BG;
+                        (
+                          e.currentTarget as HTMLElement
+                        ).style.borderColor = "rgba(255,255,255,0.22)";
                       }
                     }}
                     onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = badgeBg;
-                      (e.currentTarget as HTMLElement).style.borderColor = badgeBorder;
+                      (e.currentTarget as HTMLElement).style.background =
+                        BADGE_BG;
+                      (e.currentTarget as HTMLElement).style.borderColor =
+                        BADGE_BORDER;
                     }}
                     tabIndex={interactive ? 0 : -1}
                   >
-                    {/* Category icon – plain white, no background */}
+                    {/* Category icon */}
                     <span
                       style={{
                         flexShrink: 0,

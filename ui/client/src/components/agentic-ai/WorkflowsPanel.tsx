@@ -33,11 +33,8 @@ export interface WorkflowsPanelProps {
   height?: string;
   useResolvedEndpoint?: boolean; // If true, uses resolved endpoint, otherwise uses regular get endpoint
   graphProps?: {
-    showControls?: boolean;
-    showMiniMap?: boolean;
     showBackground?: boolean;
     interactive?: boolean;
-    isLiveRequest?: boolean;
   };
 }
 
@@ -319,7 +316,6 @@ export default function WorkflowsPanel({
             <GraphDisplay
               blueprintId={selectedFlow.id}
               height="100%"
-              showControls={graphProps?.showControls}
               showBackground={graphProps?.showBackground}
               interactive={graphProps?.interactive}
               centerInView={true}

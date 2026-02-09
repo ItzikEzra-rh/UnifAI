@@ -47,11 +47,8 @@ export default function AgentFlowGraph({
             useResolvedEndpoint={true}
             height="100%"
             graphProps={{
-              showControls: true,
-              showMiniMap: false,
               showBackground: true,
               interactive: true,
-              isLiveRequest: false,
             }}
           />
         </StreamingDataProvider>

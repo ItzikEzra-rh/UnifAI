@@ -1,0 +1,281 @@
+/**
+ * Pure helpers and constants for GraphDisplay.
+ *
+ * Keeps the main component lean – all layout constants, SVG DOM logic, and
+ * element-block-map building live here. Nothing in this file depends on React
+ * state or hooks.
+ */
+
+import type { GraphFlow } from "./interfaces";
+import type { LayoutNode, ResolvedElement } from "@/utils/graphFlowLayout";
+import { getCategoryDisplay } from "@/components/shared/helpers";
+import type { BuildingBlock } from "@/types/graph";
+
+// ---------------------------------------------------------------------------
+// Layout constants
+// ---------------------------------------------------------------------------
+
+export const NODE_WIDTH = 220;
+export const NODE_HEADER_HEIGHT = 32;
+export const ELEMENT_BADGE_HEIGHT = 26;
+export const ELEMENT_GAP = 4;
+export const NODE_BODY_PADDING = 8;
+
+export const LAYOUT_OPTS = {
+  rankDir: "TB" as const,
+  nodeSep: 60,
+  edgeSep: 40,
+  rankSep: 80,
+  marginX: 32,
+  marginY: 32,
+  setVertices: true,
+  disableOptimalOrderHeuristic: false,
+};
+
+// ---------------------------------------------------------------------------
+// Badge styling constants (frosted-glass look on dark nodes)
+// ---------------------------------------------------------------------------
+
+export const BADGE_BG = "rgba(0,0,0,0.28)";
+export const BADGE_BORDER = "rgba(255,255,255,0.10)";
+export const BADGE_HOVER_BG = "rgba(255,255,255,0.10)";
+
+// ---------------------------------------------------------------------------
+// Overlay data interfaces
+// ---------------------------------------------------------------------------
+
+/** Positioned element badge data for overlay rendering. */
+export interface OverlayBadge {
+  nodeId: string;
+  element: ResolvedElement;
+  x: number;
+  y: number;
+  width: number;
+}
+
+/** Header overlay data (title text + icon + separator). */
+export interface OverlayHeader {
+  nodeId: string;
+  label: string;
+  nodeType: string;
+  hasElements: boolean;
+  x: number;
+  y: number;
+  width: number;
+  /** Full node height so we know the rendered size. */
+  nodeHeight: number;
+  /** Node RID from its definition – used for validation result lookups. */
+  nodeRid: string | undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Category type → plural key mapping (used by overlay badges & block map)
+// ---------------------------------------------------------------------------
+
+export const CATEGORY_TYPE_TO_PLURAL: Record<string, string> = {
+  llm: "llms",
+  tool: "tools",
+  retriever: "retrievers",
+  provider: "providers",
+};
+
+// ---------------------------------------------------------------------------
+// Node helpers
+// ---------------------------------------------------------------------------
+
+/** Returns an emoji icon matching the node type. */
+export function nodeIconForType(nodeType: string): string {
+  if (nodeType === "user_question_node") return "\uD83D\uDCAC"; // 💬
+  if (nodeType === "final_answer_node") return "\uD83E\uDD16"; // 🤖
+  // Deterministic pick from a set based on type-name hash
+  const icons = [
+    "\uD83D\uDD0D", // 🔍
+    "\uD83D\uDCDA", // 📚
+    "\uD83E\uDDE0", // 🧠
+    "\uD83D\uDD0E", // 🔎
+    "\uD83D\uDD27", // 🔧
+    "\u270D\uFE0F", // ✍️
+  ];
+  const hash = nodeType
+    .split("")
+    .reduce((acc, ch) => acc + ch.charCodeAt(0), 0);
+  return icons[hash % icons.length];
+}
+
+/** Compute the total pixel height of a node given its element count. */
+export function computeNodeHeight(elementCount: number): number {
+  if (elementCount === 0) return NODE_HEADER_HEIGHT;
+  const bodyHeight =
+    NODE_BODY_PADDING * 2 +
+    elementCount * ELEMENT_BADGE_HEIGHT +
+    Math.max(0, elementCount - 1) * ELEMENT_GAP;
+  return NODE_HEADER_HEIGHT + bodyHeight;
+}
+
+/** Returns the SVG gradient fill reference for a node type. */
+export function nodeFillForType(type: string): string {
+  if (type === "user_question_node" || type === "final_answer_node") {
+    return "url(#agentGradientSpecial)";
+  }
+  return "url(#agentGradient)";
+}
+
+// ---------------------------------------------------------------------------
+// SVG defs injection (gradients + shadow filter)
+// ---------------------------------------------------------------------------
+
+/**
+ * Inject SVG `<defs>` (gradients + drop-shadow filter) into the JointJS
+ * paper SVG element. Idempotent – safe to call on the same element twice.
+ */
+export function injectSvgDefs(
+  paperEl: HTMLElement,
+  primaryHex: string,
+  darkSlate = "#1a1f2e",
+): void {
+  const svg =
+    paperEl.tagName === "svg" ? paperEl : paperEl.querySelector("svg");
+  if (!svg) return;
+
+  let defs = svg.querySelector("defs");
+  if (!defs) {
+    defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+    svg.insertBefore(defs, svg.firstChild);
+  }
+
+  // Helper to upsert a linear gradient
+  const upsertGradient = (id: string, stopColors: [string, string]) => {
+    const existing = defs!.querySelector(`#${id}`);
+    if (existing) existing.remove();
+    const g = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "linearGradient",
+    );
+    g.setAttribute("id", id);
+    g.setAttribute("x1", "0%");
+    g.setAttribute("y1", "0%");
+    g.setAttribute("x2", "100%");
+    g.setAttribute("y2", "100%");
+    g.innerHTML =
+      `<stop offset="0%" stop-color="${stopColors[0]}"/>` +
+      `<stop offset="100%" stop-color="${stopColors[1]}"/>`;
+    defs!.appendChild(g);
+  };
+
+  // Main gradient: dark slate → primary
+  upsertGradient("agentGradient", [darkSlate, primaryHex]);
+  // Special gradient: dark slate → dark teal (user_question / final_answer)
+  upsertGradient("agentGradientSpecial", [darkSlate, "#003f5c"]);
+
+  // Drop-shadow filter (only added once)
+  if (!defs.querySelector("#nodeShadow")) {
+    const filter = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "filter",
+    );
+    filter.setAttribute("id", "nodeShadow");
+    filter.setAttribute("x", "-20%");
+    filter.setAttribute("y", "-20%");
+    filter.setAttribute("width", "140%");
+    filter.setAttribute("height", "140%");
+    const feDrop = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "feDropShadow",
+    );
+    feDrop.setAttribute("dx", "0");
+    feDrop.setAttribute("dy", "4");
+    feDrop.setAttribute("stdDeviation", "8");
+    feDrop.setAttribute("flood-color", "#000");
+    feDrop.setAttribute("flood-opacity", "0.35");
+    filter.appendChild(feDrop);
+    defs.appendChild(filter);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Link animation injection
+// ---------------------------------------------------------------------------
+
+/** Add a flowing stroke-dasharray animation to every link path in the SVG. */
+export function injectLinkAnimations(paperEl: HTMLElement): void {
+  const svgEl = paperEl.querySelector("svg");
+  if (!svgEl) return;
+
+  const linkPaths = svgEl.querySelectorAll("[joint-selector='line']");
+  linkPaths.forEach((path) => {
+    path.setAttribute("stroke-dasharray", "8 4");
+    const animate = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "animate",
+    );
+    animate.setAttribute("attributeName", "stroke-dashoffset");
+    animate.setAttribute("from", "0");
+    animate.setAttribute("to", "-12"); // 8+4 = 12 → one pattern cycle
+    animate.setAttribute("dur", "0.8s");
+    animate.setAttribute("repeatCount", "indefinite");
+    path.appendChild(animate);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Element block map builder
+// ---------------------------------------------------------------------------
+
+/** Strip `$ref:` prefix from a RID string. */
+function stripRefPrefix(rid: string): string {
+  return rid.startsWith("$ref:") ? rid.substring(5) : rid;
+}
+
+/**
+ * Build a `Map<elementId, BuildingBlock>` from the layout nodes and the
+ * original GraphFlow spec. Used by overlay badges to show resource details.
+ */
+export function buildElementBlockMap(
+  layoutNodes: LayoutNode[],
+  spec: GraphFlow,
+): Map<string, BuildingBlock> {
+  const map = new Map<string, BuildingBlock>();
+
+  layoutNodes.forEach((n) => {
+    n.resolvedElements.forEach((el) => {
+      const category = CATEGORY_TYPE_TO_PLURAL[el.type] || "retrievers";
+      const catList = (spec as Record<string, unknown[]>)[category];
+      const def = catList?.find((d: unknown) => {
+        const entry = d as { rid?: string };
+        return (
+          stripRefPrefix(entry.rid || "") === el.id || entry.rid === el.id
+        );
+      });
+      if (!def) return;
+
+      const d = def as {
+        rid: string;
+        name: string;
+        type: string;
+        config?: unknown;
+        nested_refs?: string[];
+      };
+      const display = getCategoryDisplay(category);
+      map.set(el.id, {
+        id: d.rid,
+        type: d.type,
+        label: d.name,
+        color: display.color,
+        description: `${category}/${d.type} - ${d.name}`,
+        workspaceData: {
+          rid: d.rid,
+          name: d.name,
+          category,
+          type: d.type,
+          config: d.config ?? {},
+          version: 1,
+          created: "",
+          updated: "",
+          nested_refs: d.nested_refs ?? [],
+        },
+      });
+    });
+  });
+
+  return map;
+}

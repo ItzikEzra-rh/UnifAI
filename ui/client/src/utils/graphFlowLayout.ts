@@ -142,20 +142,15 @@ export function graphFlowToLayoutData(graphFlow: GraphFlow): GraphFlowLayoutData
   }
 
   const nodePredecessors: Record<string, string[]> = {};
-  const nodeSuccessors: Record<string, string[]> = {};
   const nodesByLevel: Record<number, string[]> = {};
   const nodeLevel: Record<string, number> = {};
 
-  // First pass: predecessors/successors
+  // First pass: build predecessor map
   graphFlow.plan.forEach((item: PlanItem) => {
     const nodeId = item.uid;
     if (item.after) {
       const predecessors = Array.isArray(item.after) ? item.after : [item.after];
       nodePredecessors[nodeId] = predecessors;
-      predecessors.forEach((predId) => {
-        if (!nodeSuccessors[predId]) nodeSuccessors[predId] = [];
-        nodeSuccessors[predId].push(nodeId);
-      });
     } else {
       nodePredecessors[nodeId] = [];
     }
