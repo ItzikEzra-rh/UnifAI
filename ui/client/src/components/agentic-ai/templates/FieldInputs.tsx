@@ -123,6 +123,8 @@ export const SecretInput: React.FC<{
         type="button"
         onClick={() => setShowSecret(!showSecret)}
         className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-white"
+        aria-label={showSecret ? 'Hide secret' : 'Show secret'}
+        aria-pressed={showSecret}
       >
         {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
       </button>
