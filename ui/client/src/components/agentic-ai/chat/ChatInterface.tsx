@@ -147,6 +147,26 @@ export default function ChatInterface({
     setIsExpanded(prev => !prev);
   }, []);
 
+  /**
+   * Returns the appropriate placeholder text for the chat input based on current state.
+   * Priority order: deleted > sharing disabled > validating > invalid > default
+   */
+  const getInputPlaceholder = useCallback((): string => {
+    if (!blueprintExists) {
+      return "This chat cannot be continued - workflow was deleted";
+    }
+    if (isSharingDisabled) {
+      return "Chat sharing has been disabled for this workflow";
+    }
+    if (isValidatingBlueprint) {
+      return "Validating workflow...";
+    }
+    if (!blueprintValid) {
+      return "This chat cannot be continued - workflow validation failed";
+    }
+    return "Ask a question about your data...";
+  }, [blueprintExists, isSharingDisabled, isValidatingBlueprint, blueprintValid]);
+
   // Transform backend messages to frontend format (streamLogs/workPlans, managed separately)
   const transformBackendMessagesToFrontend = useCallback(
     (backendMessages: BackendMessage[]): Message[] => {
@@ -1036,17 +1056,7 @@ export default function ChatInterface({
                 value={inputMessage}
                 onChange={(e) => setInputMessage(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder={
-                  !blueprintExists 
-                    ? "This chat cannot be continued - workflow was deleted" 
-                    : isSharingDisabled
-                      ? "Chat sharing has been disabled for this workflow"
-                      : isValidatingBlueprint
-                        ? "Validating workflow..."
-                        : !blueprintValid 
-                          ? "This chat cannot be continued - workflow validation failed" 
-                          : "Ask a question about your data..."
-                }
+                placeholder={getInputPlaceholder()}
                 className={`bg-background-dark resize-none transition-[height] duration-200 ease-out w-full ${
                   (!blueprintExists || isSharingDisabled || !blueprintValid || isValidatingBlueprint) 
                     ? 'opacity-50 cursor-not-allowed' 
