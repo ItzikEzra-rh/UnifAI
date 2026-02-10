@@ -96,8 +96,8 @@ export default function ExecutionTab({
   const [isLoadingBlueprintName, setIsLoadingBlueprintName] = useState<boolean>(false);
   const [isSharingDisabled, setIsSharingDisabled] = useState<boolean>(false);
   // Three panel widths: Available Chats, ChatInterface, Blueprint Graph
-  const [chatSidebarWidth, setChatSidebarWidth] = useState(20);
-  const [chatInterfaceWidth, setChatInterfaceWidth] = useState(50);
+  const [chatSidebarWidth, setChatSidebarWidth] = useState(15);
+  const [chatInterfaceWidth, setChatInterfaceWidth] = useState(55);
   const [blueprintGraphWidth, setBlueprintGraphWidth] = useState(30);
   const [isResizing, setIsResizing] = useState(false);
   const [activeResizer, setActiveResizer] = useState<'left' | 'right' | null>(null);
@@ -427,8 +427,8 @@ export default function ExecutionTab({
       // Fetch updated sessions
       const userId = user?.username || "default";
       const response = await axios.get(`/sessions/session.user.chat.get?userId=${userId}`);
-      const transformedSessions = transformApiDataToSessions(response.data);
-      const sortedSessions = transformedSessions.sort((firstSession, secondSession) => secondSession.timestamp.getTime() - firstSession.timestamp.getTime());
+      const transformedSessions = await transformApiDataToSessions(response.data);
+      const sortedSessions = sortSessionsByTimestamp(transformedSessions);
       setChatSessions(sortedSessions);
 
       // Auto-select the newly created session

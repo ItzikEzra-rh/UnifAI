@@ -2,7 +2,6 @@ import React, { useContext, useEffect, useRef, useState, useCallback, useMemo } 
 import { dia } from "@joint/core";
 import { motion } from "framer-motion";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useAuth } from "@/contexts/AuthContext";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
 import { useJointGraph } from "@/hooks/use-joint-graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
@@ -32,6 +31,8 @@ type NodeStatus = "IDLE" | "PROGRESS" | "DONE";
 
 export type GraphDisplayProps = {
   blueprintId?: string;
+  /** Pre-fetched spec_dict – when provided, skips the network fetch entirely. */
+  specDict?: any;
   height?: string;
   showBackground?: boolean;
   interactive?: boolean;
@@ -53,6 +54,7 @@ export type GraphDisplayProps = {
 
 export default function GraphDisplay({
   blueprintId,
+  specDict,
   height = "100%",
   showBackground = true,
   interactive = false,
@@ -63,7 +65,6 @@ export default function GraphDisplay({
   isLiveRequest = false,
 }: GraphDisplayProps): React.ReactElement {
   // ── JointJS graph hook (imperative init, layout, SVG injection) ─────
-  const { user } = useAuth();
   const { primaryHex } = useTheme();
 
   const {
@@ -77,8 +78,8 @@ export default function GraphDisplay({
     paperTransform,
   } = useJointGraph({
     blueprintId,
-    username: user?.username,
     primaryHex,
+    specDict,
     showBackground,
     interactive,
     centerInView,

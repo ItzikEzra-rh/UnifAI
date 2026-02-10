@@ -15,7 +15,7 @@ import {
   graphFlowToLayoutData,
   type LayoutNode,
 } from "@/utils/graphFlowLayout";
-import { fetchResolvedBlueprints } from "@/api/blueprints";
+import { getBlueprintInfo } from "@/api/blueprints";
 import type { BuildingBlock } from "@/types/graph";
 import {
   NODE_WIDTH,
@@ -42,8 +42,9 @@ import {
 
 export interface UseJointGraphOptions {
   blueprintId?: string;
-  username?: string;
   primaryHex?: string;
+  /** Pre-fetched spec_dict – when provided, skips the network fetch entirely. */
+  specDict?: any;
   showBackground?: boolean;
   interactive?: boolean;
   centerInView?: boolean;
@@ -68,8 +69,8 @@ export interface UseJointGraphReturn {
 
 export function useJointGraph({
   blueprintId,
-  username,
   primaryHex,
+  specDict,
   showBackground = true,
   interactive = false,
   centerInView = false,
@@ -90,9 +91,11 @@ export function useJointGraph({
     sx: 1, sy: 1, tx: 0, ty: 0,
   });
 
-  // Keep a mutable ref for primaryHex so the async callback reads the latest.
+  // Keep mutable refs so the async callback always reads the latest values.
   const primaryHexRef = useRef(primaryHex);
   primaryHexRef.current = primaryHex;
+  const specDictRef = useRef(specDict);
+  specDictRef.current = specDict;
 
   // ── Rebuild overlay positions from current graph element positions ──
   const rebuildOverlays = useCallback(() => {
@@ -180,18 +183,23 @@ export function useJointGraph({
     let cancelled = false;
     (async () => {
       try {
-        const list = await fetchResolvedBlueprints(username);
-        if (cancelled) return;
-        const blueprint = list.find(
-          (b: { blueprint_id: string }) => b.blueprint_id === blueprintId,
-        );
-        if (!blueprint?.spec_dict) {
-          setError("Workflow not found");
+        // Use provided specDict directly if available, otherwise fetch single blueprint
+        let spec: GraphFlow;
+        if (specDictRef.current) {
+          spec = specDictRef.current as GraphFlow;
+        } else if (blueprintId) {
+          const blueprintInfo = await getBlueprintInfo(blueprintId);
+          if (cancelled) return;
+          if (!blueprintInfo?.spec_dict) {
+            setError("Workflow not found");
+            setLoading(false);
+            return;
+          }
+          spec = blueprintInfo.spec_dict as GraphFlow;
+        } else {
           setLoading(false);
           return;
         }
-
-        const spec = blueprint.spec_dict as GraphFlow;
         const { nodes: layoutNodes, edges: layoutEdges } =
           graphFlowToLayoutData(spec);
         layoutNodesRef.current = layoutNodes;
@@ -345,7 +353,7 @@ export function useJointGraph({
       layoutNodesRef.current = [];
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blueprintId, username, showBackground, interactive, centerInView, animated, rebuildOverlays]);
+  }, [blueprintId, showBackground, interactive, centerInView, animated, rebuildOverlays]);
 
   // ── Lightweight theme-color update (avoids full graph rebuild) ──────
   useEffect(() => {
