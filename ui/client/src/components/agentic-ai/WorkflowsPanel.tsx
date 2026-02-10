@@ -16,7 +16,7 @@ import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import ReactFlowGraph from "./graphs/ReactFlowGraph";
 import { fetchActiveSessions } from "@/api/agentic";
-import { fetchBlueprints, fetchResolvedBlueprints, deleteBlueprint, getBlueprintInfo } from "@/api/blueprints";
+import { fetchBlueprints, fetchResolvedBlueprints, deleteBlueprint, fetchResolvedBlueprint } from "@/api/blueprints";
 import { convertGraphFlowToFlowObject } from "@/utils/blueprintHelpers";
 import ShareWorkflow from "./ShareWorkflow";
 import { BlueprintValidationResult } from "@/types/validation";
@@ -162,11 +162,14 @@ export default function WorkflowsPanel({
 
     const fetchBlueprintData = async () => {
       try {
-        const blueprintInfo = await getBlueprintInfo(selectedFlow.id);
-        setSelectedBlueprintData({
-          specDict: blueprintInfo.spec_dict,
-          sharingEnabled: blueprintInfo.metadata?.usageScope === "public",
-        });
+        const userId = user?.username || 'default';
+        const blueprint = await fetchResolvedBlueprint(selectedFlow.id, userId);
+        if (blueprint) {
+          setSelectedBlueprintData({
+            specDict: blueprint.spec_dict,
+            sharingEnabled: blueprint.metadata?.usageScope === "public",
+          });
+        }
       } catch (error) {
         console.error("Error fetching blueprint data:", error);
         setSelectedBlueprintData(null);
@@ -174,7 +177,7 @@ export default function WorkflowsPanel({
     };
 
     fetchBlueprintData();
-  }, [selectedFlow?.id]);
+  }, [selectedFlow?.id, user?.username]);
 
   const handleFlowSelect = (flow: FlowObject): void => {
     onFlowSelect(flow);
@@ -347,7 +350,6 @@ export default function WorkflowsPanel({
               </div>
             <ReactFlowGraph
               blueprintId={selectedFlow.id}
-              specDict={selectedBlueprintData?.specDict}
               height="100%"
               validationResults={validationResults}
               isValidating={isValidating}
