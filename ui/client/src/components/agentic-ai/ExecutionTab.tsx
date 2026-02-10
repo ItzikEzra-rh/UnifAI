@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Users, Clock, Trash2, Plus, Columns3 } from "lucide-react";
+import { MessageSquare, Users, Clock, Trash2, Plus, Columns3, GitBranch } from "lucide-react";
 import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import GraphDisplay from "./graphs/GraphDisplay";
@@ -123,37 +123,36 @@ export default function ExecutionTab({
     showToastOnFailure: true,
   });
 
-  // Toggle carousel mode: cycles through normal -> chat-full -> graph-full -> normal
-  // Creates a carousel effect between ChatInterface and Blueprint Graph
-  const toggleCarouselMode = () => {
-    // Don't allow carousel for chat-only sessions
+  // Set carousel mode directly: allows switching between normal/chat/graph views
+  const handleSetCarouselMode = useCallback((mode: 'normal' | 'chat' | 'graph') => {
+    // Don't allow carousel changes for chat-only sessions
     if (isChatOnlyMode) {
       return;
     }
     
     const availableWidth = 100 - chatSidebarWidth;
     
-    switch (carouselMode) {
+    switch (mode) {
       case 'normal':
-        // Switch to chat-full: ChatInterface takes full width
-        setCarouselMode('chat');
-        setChatInterfaceWidth(availableWidth);
-        setBlueprintGraphWidth(0);
-        break;
-      case 'chat':
-        // Switch to graph-full: Blueprint Graph takes full width
-        setCarouselMode('graph');
-        setChatInterfaceWidth(0);
-        setBlueprintGraphWidth(availableWidth);
-        break;
-      case 'graph':
-        // Switch back to normal: Both visible with default widths
+        // Split view: Both visible with default widths
         setCarouselMode('normal');
         setChatInterfaceWidth(55);
         setBlueprintGraphWidth(availableWidth - 55);
         break;
+      case 'chat':
+        // Full chat: ChatInterface takes full width
+        setCarouselMode('chat');
+        setChatInterfaceWidth(availableWidth);
+        setBlueprintGraphWidth(0);
+        break;
+      case 'graph':
+        // Full graph: Blueprint Graph takes full width
+        setCarouselMode('graph');
+        setChatInterfaceWidth(0);
+        setBlueprintGraphWidth(availableWidth);
+        break;
     }
-  };
+  }, [isChatOnlyMode, chatSidebarWidth]);
 
   // Resizable panel handlers
   const handleMouseDown = (resizer: 'left' | 'right') => (e: React.MouseEvent) => {
@@ -850,7 +849,7 @@ export default function ExecutionTab({
                   isValidatingBlueprint={isValidatingBlueprint}
                   isBlueprintGraphHidden={carouselMode === 'chat'}
                   isChatOnlyMode={isChatOnlyMode}
-                  onToggleCarousel={toggleCarouselMode}
+                  onSetCarouselMode={handleSetCarouselMode}
                   carouselMode={carouselMode}
                 />
               </div>
@@ -911,7 +910,7 @@ export default function ExecutionTab({
               style={{ width: `${blueprintGraphWidth}%` }}
             >
               <Card className="bg-background-card shadow-card border-gray-800 h-full flex flex-col ml-0 relative">
-            {/* Carousel toggle button - shown when in graph-only mode */}
+            {/* Carousel mode switch - shown when in graph-only mode */}
             {carouselMode === 'graph' && !isChatOnlyMode && (
               <motion.div
                 initial={{ opacity: 0, scale: 0.8 }}
@@ -919,16 +918,32 @@ export default function ExecutionTab({
                 transition={{ delay: 0.3, duration: 0.2 }}
                 className="absolute top-3 right-3 z-10"
               >
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={toggleCarouselMode}
-                  className="bg-primary/20 border-primary text-primary hover:bg-primary/30 hover:text-primary shadow-lg shadow-primary/20 transition-all duration-200"
-                  title="Return to Split View"
-                >
-                  <Columns3 className="h-4 w-4 mr-2" />
-                  <span className="text-xs">Split View</span>
-                </Button>
+                <div className="flex items-center bg-background-surface border border-gray-700 rounded-lg p-0.5 shadow-lg">
+                  {/* Split View - not selected in graph mode */}
+                  <button
+                    onClick={() => handleSetCarouselMode('normal')}
+                    className="p-1.5 rounded-md transition-all duration-200 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50"
+                    title="Split View"
+                  >
+                    <Columns3 className="h-4 w-4" />
+                  </button>
+                  {/* Full Chat View - not selected in graph mode */}
+                  <button
+                    onClick={() => handleSetCarouselMode('chat')}
+                    className="p-1.5 rounded-md transition-all duration-200 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50"
+                    title="Full Chat View"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                  </button>
+                  {/* Full Graph View - always selected in graph mode */}
+                  <button
+                    onClick={() => handleSetCarouselMode('graph')}
+                    className="p-1.5 rounded-md transition-all duration-200 bg-primary text-white shadow-sm"
+                    title="Full Graph View"
+                  >
+                    <GitBranch className="h-4 w-4" />
+                  </button>
+                </div>
               </motion.div>
             )}
             {/* TODO: Add below general component that gets 'blueprintId' and showing his title and uid - can be called from multiple places */}
