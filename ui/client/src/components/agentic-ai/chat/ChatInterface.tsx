@@ -959,7 +959,7 @@ export default function ChatInterface({
           <div className="flex items-start gap-2 mt-2 px-1">
             <Info className="h-3.5 w-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-gray-500">
-              AI agent responses may be inaccurate or incomplete. Verify important information.
+              AI agent responses may be inaccurate or incomplete. Always review AI generated content prior to use.
             </p>
           </div>
         </div>
