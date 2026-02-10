@@ -37,7 +37,7 @@ class UserSessionManager:
             return {}
         try:
             bp_doc = self._bp_service.get_blueprint_draft_doc(blueprint_id)
-            return bp_doc.get("metadata", {})
+            return bp_doc.metadata
         except KeyError:
             return {}
 

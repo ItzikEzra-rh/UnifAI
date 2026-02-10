@@ -1,6 +1,6 @@
-from typing import Any, Dict, List, Mapping, Optional
+from typing import Any, Dict, List, Optional
 
-from blueprints.models.blueprint import BlueprintSpec, BlueprintDraft
+from blueprints.models.blueprint import BlueprintSpec, BlueprintDraft, BlueprintDocument
 from blueprints.repository.repository import BlueprintRepository
 from blueprints.resolver import BlueprintResolver
 from blueprints.validation.collector import BlueprintConfigCollector
@@ -36,9 +36,9 @@ class BlueprintService:
     # ────────── Single-blueprint reads (ID is globally unique) ──────────
     def load_draft(self, blueprint_id: str) -> BlueprintDraft:
         doc = self._repo.load(blueprint_id)
-        return BlueprintDraft(**doc["spec_dict"])
+        return BlueprintDraft(**doc.spec_dict)
 
-    def get_blueprint_draft_doc(self, blueprint_id: str) -> Mapping[str, Any]:
+    def get_blueprint_draft_doc(self, blueprint_id: str) -> BlueprintDocument:
         """Get blueprint document with metadata for sharing operations."""
         return self._repo.load(blueprint_id)
 
@@ -82,28 +82,25 @@ class BlueprintService:
         Return pure-dict drafts (as saved) in one DB round-trip.
         """
         docs = self._repo.list_docs(user_id=user_id, **pg)
-        return [doc["spec_dict"] for doc in docs]
+        return [doc.spec_dict for doc in docs]
 
     def list_draft_docs(
             self, *, user_id: str | None = None, **pg
-    ) -> List[Mapping[str, Any]]:
+    ) -> List[BlueprintDocument]:
         """
-        Return pure-dict drafts (as saved) in one DB round-trip.
+        Return blueprint documents (as saved) in one DB round-trip.
         """
-        docs = self._repo.list_docs(user_id=user_id, **pg)
-        return [doc for doc in docs]
+        return self._repo.list_docs(user_id=user_id, **pg)
 
-    def _resolve_doc(self, doc: Mapping[str, Any]) -> Mapping[str, Any]:
+    def _resolve_doc(self, doc: BlueprintDocument) -> BlueprintDocument:
         """Resolve a single document's spec_dict from draft to fully resolved form."""
-        draft = BlueprintDraft(**doc["spec_dict"])
+        draft = BlueprintDraft(**doc.spec_dict)
         resolved_spec = self._resolver.resolve(draft)
-        resolved_doc = dict(doc)
-        resolved_doc["spec_dict"] = resolved_spec.model_dump(mode="json")
-        return resolved_doc
+        return doc.model_copy(update={"spec_dict": resolved_spec.model_dump(mode="json")})
 
     def list_resolved_docs(
             self, *, user_id: str | None = None, **pg
-    ) -> List[Mapping[str, Any]]:
+    ) -> List[BlueprintDocument]:
         """
         Return documents with resolved spec_dict instead of draft spec_dict.
         """
@@ -119,7 +116,7 @@ class BlueprintService:
 
         return resolved_docs
 
-    def get_resolved_doc(self, blueprint_id: str) -> Mapping[str, Any]:
+    def get_resolved_doc(self, blueprint_id: str) -> BlueprintDocument:
         """
         Return a single document with its spec_dict resolved.
 
