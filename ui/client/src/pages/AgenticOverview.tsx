@@ -254,6 +254,7 @@ export default function AgenticOverview() {
               <div className="h-full w-full">
                 <GraphDisplay
                   blueprintId={selectedWorkflow.blueprint_id}
+                  specDict={selectedWorkflow.spec_dict}
                   height="100%"
                   showBackground={true}
                   interactive={true}

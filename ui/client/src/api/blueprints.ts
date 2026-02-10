@@ -8,6 +8,10 @@ import { BlueprintValidationResult, BlueprintValidationRequest } from '@/types/v
 export interface WorkflowBlueprint {
   blueprint_id: string;
   spec_dict: any;
+  metadata?: {
+    usageScope?: "public" | "private";
+    [key: string]: any;
+  };
   name?: string;
   created_at?: string;
   updated_at?: string;

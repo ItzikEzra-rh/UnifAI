@@ -51,6 +51,23 @@ function extractUidFromRef(value: string): string {
 }
 
 /**
+ * Resolve node definition from either draft (`$ref:` string) or resolved
+ * (inline object) plan item format.
+ */
+function resolveNodeDef(
+  nodeRef: unknown,
+  nodeMap: Record<string, NodeDefinition>,
+): NodeDefinition | null {
+  if (typeof nodeRef === "object" && nodeRef !== null) {
+    return nodeRef as NodeDefinition;
+  }
+  if (typeof nodeRef === "string") {
+    return nodeMap[extractUidFromRef(nodeRef)] || null;
+  }
+  return null;
+}
+
+/**
  * Build a short summary of element config for display (legacy).
  */
 function getElementDetails(nodeDef: NodeDefinition): Record<string, unknown> {
@@ -102,18 +119,20 @@ function getResolvedElements(graphFlow: GraphFlow, nodeDef: NodeDefinition | nul
   if (refIds.length === 0) return [];
 
   // Build a lookup: refId → { type, name } from every definition list.
+  // Entries may be full objects (resolved) or $ref: strings (draft) – skip strings.
   const lookup = new Map<string, { type: ResolvedElement["type"]; name: string }>();
-  const register = (list: DefEntry[] | undefined, type: ResolvedElement["type"]) => {
-    (list || []).forEach((d) => {
+  const register = (list: unknown[] | undefined, type: ResolvedElement["type"]) => {
+    (list || []).forEach((d: any) => {
+      if (!d || typeof d !== "object" || !d.rid) return;
       const id = extractUidFromRef(d.rid);
-      lookup.set(id, { type, name: d.name });
-      if (id !== d.rid) lookup.set(d.rid, { type, name: d.name });
+      lookup.set(id, { type, name: d.name || id });
+      if (id !== d.rid) lookup.set(d.rid, { type, name: d.name || id });
     });
   };
-  register(graphFlow.llms as DefEntry[] | undefined, "llm");
-  register(graphFlow.tools as DefEntry[] | undefined, "tool");
-  register(graphFlow.retrievers as DefEntry[] | undefined, "retriever");
-  register(graphFlow.providers as DefEntry[] | undefined, "provider");
+  register(graphFlow.llms as unknown[] | undefined, "llm");
+  register(graphFlow.tools as unknown[] | undefined, "tool");
+  register(graphFlow.retrievers as unknown[] | undefined, "retriever");
+  register(graphFlow.providers as unknown[] | undefined, "provider");
 
   return refIds.map((id) => {
     const match = lookup.get(id);
@@ -170,7 +189,7 @@ export function graphFlowToLayoutData(graphFlow: GraphFlow): GraphFlowLayoutData
   // Level 0: user_question_node
   graphFlow.plan.forEach((item: PlanItem) => {
     const nodeId = item.uid;
-    const nodeDef = nodeMap[extractUidFromRef(item.node)];
+    const nodeDef = resolveNodeDef(item.node, nodeMap);
     const nodeType = nodeDef?.type || "custom_agent_node";
     if (nodeType === "user_question_node") {
       nodeLevel[nodeId] = 0;
@@ -190,7 +209,7 @@ export function graphFlowToLayoutData(graphFlow: GraphFlow): GraphFlowLayoutData
 
     graphFlow.plan.forEach((item: PlanItem) => {
       const nodeId = item.uid;
-      const nodeDef = nodeMap[extractUidFromRef(item.node)];
+      const nodeDef = resolveNodeDef(item.node, nodeMap);
       const nodeType = nodeDef?.type || "custom_agent_node";
       if (nodeLevel[nodeId] !== undefined) return;
       if (nodeType === "final_answer_node") return;
@@ -221,7 +240,7 @@ export function graphFlowToLayoutData(graphFlow: GraphFlow): GraphFlowLayoutData
       const fallbackLevel = existingLevels.length > 0 ? Math.max(...existingLevels) + 1 : 1;
       graphFlow.plan.forEach((item: PlanItem) => {
         if (nodeLevel[item.uid] === undefined) {
-          const nd = nodeMap[extractUidFromRef(item.node)];
+          const nd = resolveNodeDef(item.node, nodeMap);
           if ((nd?.type || "custom_agent_node") !== "final_answer_node") {
             nodeLevel[item.uid] = fallbackLevel;
             if (!nodesByLevel[fallbackLevel]) nodesByLevel[fallbackLevel] = [];
@@ -242,7 +261,7 @@ export function graphFlowToLayoutData(graphFlow: GraphFlow): GraphFlowLayoutData
   // Final layer: final_answer_node
   graphFlow.plan.forEach((item: PlanItem) => {
     const nodeId = item.uid;
-    const nodeDef = nodeMap[extractUidFromRef(item.node)];
+    const nodeDef = resolveNodeDef(item.node, nodeMap);
     const nodeType = nodeDef?.type || "custom_agent_node";
     if (nodeType === "final_answer_node") {
       const levels = Object.keys(nodesByLevel).map(Number);
@@ -254,10 +273,19 @@ export function graphFlowToLayoutData(graphFlow: GraphFlow): GraphFlowLayoutData
     }
   });
 
+  /** Humanize a code-like name: "docs_agent" → "Docs Agent" */
+  const humanize = (s: string) =>
+    s.replace(/[-_]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
+
   const nodes: LayoutNode[] = graphFlow.plan.map((item: PlanItem) => {
-    const nodeDef = nodeMap[extractUidFromRef(item.node)] || null;
+    const nodeDef = resolveNodeDef(item.node, nodeMap);
     const nodeType = nodeDef?.type || "custom_agent_node";
-    const label = nodeDef?.name || item.meta?.display_name || "Node";
+    // Prefer step-level display_name → humanized node def name → humanized UID → fallback
+    const label =
+      item.meta?.display_name ||
+      (nodeDef?.name ? humanize(nodeDef.name) : null) ||
+      humanize(item.uid) ||
+      "Node";
     const description = item.meta?.description || null;
     const level = nodeLevel[item.uid] ?? 0;
     return {

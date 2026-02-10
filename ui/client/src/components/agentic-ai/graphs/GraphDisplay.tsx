@@ -160,15 +160,22 @@ export default function GraphDisplay({
   }, [isLiveRequest, streamingContext, updateNodeStatuses]);
 
   // When live tracking ends, mark remaining non-IDLE nodes as DONE
+  const wasLiveRef = useRef(false);
+
   useEffect(() => {
-    if (!isLiveRequest) {
+    if (isLiveRequest) {
+      wasLiveRef.current = true;
+    }
+  }, [isLiveRequest]);
+
+  useEffect(() => {
+    if (!isLiveRequest && wasLiveRef.current) {
+      // Stream just ended → mark ALL nodes as DONE
+      wasLiveRef.current = false;
       const graph = graphRef.current;
       if (graph) {
         for (const el of graph.getElements()) {
-          const nodeId = el.id as string;
-          const finalStatus: NodeStatus =
-            nodeStatusMap[nodeId] !== "IDLE" ? "DONE" : "IDLE";
-          applyNodeVisual(el, finalStatus);
+          applyNodeVisual(el, "DONE");
         }
       }
       setNodeStatusMap({});

@@ -273,7 +273,7 @@ export default function PublicChat() {
                     size="sm"
                     className="h-6 w-6 p-0 text-primary hover:bg-primary/20"
                     onClick={handleNewChat}
-                    disabled={isCreatingSession}
+                    disabled={isCreatingSession || isSharingDisabled || !isBlueprintValid || isValidatingBlueprint}
                     title="Start new chat"
                   >
                     <Plus className="h-4 w-4" />

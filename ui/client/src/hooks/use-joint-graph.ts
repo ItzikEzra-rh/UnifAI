@@ -91,11 +91,9 @@ export function useJointGraph({
     sx: 1, sy: 1, tx: 0, ty: 0,
   });
 
-  // Keep mutable refs so the async callback always reads the latest values.
+  // Keep mutable ref so the async callback always reads the latest primary color.
   const primaryHexRef = useRef(primaryHex);
   primaryHexRef.current = primaryHex;
-  const specDictRef = useRef(specDict);
-  specDictRef.current = specDict;
 
   // ── Rebuild overlay positions from current graph element positions ──
   const rebuildOverlays = useCallback(() => {
@@ -145,7 +143,10 @@ export function useJointGraph({
 
   // ── Main effect: fetch blueprint → build JointJS graph → layout ────
   useEffect(() => {
-    if (!blueprintId || !containerRef.current) return;
+    if (!blueprintId || !containerRef.current) {
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -185,8 +186,8 @@ export function useJointGraph({
       try {
         // Use provided specDict directly if available, otherwise fetch single blueprint
         let spec: GraphFlow;
-        if (specDictRef.current) {
-          spec = specDictRef.current as GraphFlow;
+        if (specDict) {
+          spec = specDict as GraphFlow;
         } else if (blueprintId) {
           const blueprintInfo = await getBlueprintInfo(blueprintId);
           if (cancelled) return;
@@ -353,7 +354,7 @@ export function useJointGraph({
       layoutNodesRef.current = [];
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [blueprintId, showBackground, interactive, centerInView, animated, rebuildOverlays]);
+  }, [blueprintId, specDict, showBackground, interactive, centerInView, animated, rebuildOverlays]);
 
   // ── Lightweight theme-color update (avoids full graph rebuild) ──────
   useEffect(() => {

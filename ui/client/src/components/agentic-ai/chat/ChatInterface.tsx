@@ -159,8 +159,6 @@ export default function ChatInterface({
 
         // Process each entry from nodeListRef for stream logs only
         list.forEach((entry) => {
-          if (entry.node_uid === 'user_input' || entry.node_uid === 'final_answer') return;
-          
           // Process stream logs
           const existingLog = currentLogs.find(
             (log) => log.nodeId === entry.node_name,

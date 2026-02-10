@@ -16,7 +16,7 @@ import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import GraphDisplay from "./graphs/GraphDisplay";
 import { fetchActiveSessions } from "@/api/agentic";
-import { fetchBlueprints, fetchResolvedBlueprints, deleteBlueprint, getBlueprintInfo } from "@/api/blueprints";
+import { fetchBlueprints, fetchResolvedBlueprints, deleteBlueprint } from "@/api/blueprints";
 import { convertGraphFlowToFlowObject } from "@/utils/blueprintHelpers";
 import ShareWorkflow from "./ShareWorkflow";
 import { BlueprintValidationResult } from "@/types/validation";
@@ -64,6 +64,11 @@ export default function WorkflowsPanel({
     specDict: any;
     sharingEnabled: boolean;
   } | null>(null);
+  // Cache: spec_dict + metadata from the initial bulk fetch, keyed by blueprint_id.
+  // Avoids per-selection getBlueprintInfo calls and preserves resolved data (with names).
+  const [blueprintCacheMap, setBlueprintCacheMap] = useState<
+    Map<string, { specDict: any; metadata: any }>
+  >(new Map());
   
   const { user } = useAuth();
   const { openShareForItem } = useShared();
@@ -89,6 +94,13 @@ export default function WorkflowsPanel({
       const blueprints = useResolvedEndpoint 
         ? await fetchResolvedBlueprints(userId)
         : await fetchBlueprints(userId);
+
+      // Cache spec_dict + metadata from the bulk fetch
+      const cache = new Map<string, { specDict: any; metadata: any }>();
+      blueprints.forEach((bp) => {
+        cache.set(bp.blueprint_id, { specDict: bp.spec_dict, metadata: bp.metadata || {} });
+      });
+      setBlueprintCacheMap(cache);
 
       // Convert the blueprints to the format expected by the component
       const processedFlows = blueprints
@@ -146,32 +158,24 @@ export default function WorkflowsPanel({
     }
   }, [selectedFlow?.id, validateSelectedBlueprint, clearValidation]);
 
-  // Fetch blueprint metadata (sharing status) when selected flow changes
-  // This consolidates API calls - data is fetched once and passed to child components
+  // Derive blueprint data from cache when selected flow changes.
+  // Data was already fetched in the initial bulk load – no extra API call needed.
   useEffect(() => {
     if (!selectedFlow?.id) {
       setSelectedBlueprintData(null);
       return;
     }
 
-    // Reset immediately to avoid stale data from the previous selection
-    setSelectedBlueprintData(null);
-
-    const fetchBlueprintData = async () => {
-      try {
-        const blueprintInfo = await getBlueprintInfo(selectedFlow.id);
-        setSelectedBlueprintData({
-          specDict: blueprintInfo.spec_dict,
-          sharingEnabled: blueprintInfo.metadata?.usageScope === "public",
-        });
-      } catch (error) {
-        console.error("Error fetching blueprint data:", error);
-        setSelectedBlueprintData(null);
-      }
-    };
-
-    fetchBlueprintData();
-  }, [selectedFlow?.id]);
+    const cached = blueprintCacheMap.get(selectedFlow.id);
+    if (cached) {
+      setSelectedBlueprintData({
+        specDict: cached.specDict,
+        sharingEnabled: cached.metadata?.usageScope === "public",
+      });
+    } else {
+      setSelectedBlueprintData(null);
+    }
+  }, [selectedFlow?.id, blueprintCacheMap]);
 
   const handleFlowSelect = (flow: FlowObject): void => {
     onFlowSelect(flow);
@@ -342,17 +346,23 @@ export default function WorkflowsPanel({
                   initialSharingEnabled={selectedBlueprintData?.sharingEnabled ?? false}
                 />
               </div>
-            <GraphDisplay
-              blueprintId={selectedFlow.id}
-              specDict={selectedBlueprintData?.specDict}
-              height="100%"
-              showBackground={graphProps?.showBackground}
-              interactive={graphProps?.interactive}
-              centerInView={true}
-              animated={true}
-              validationResults={validationResults}
-              isValidating={isValidating}
-            />
+            {selectedBlueprintData?.specDict ? (
+              <GraphDisplay
+                blueprintId={selectedFlow.id}
+                specDict={selectedBlueprintData.specDict}
+                height="100%"
+                showBackground={graphProps?.showBackground}
+                interactive={graphProps?.interactive}
+                centerInView={true}
+                animated={true}
+                validationResults={validationResults}
+                isValidating={isValidating}
+              />
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-400">
+                Loading graph...
+              </div>
+            )}
             </>
           ) : (
             <div className="flex items-center justify-center h-full text-gray-400">

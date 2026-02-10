@@ -17,7 +17,7 @@ import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import GraphDisplay from "./graphs/GraphDisplay";
 import axios from '../../http/axiosAgentConfig'
-import { getBlueprintInfo } from '@/api/blueprints'
+import { getBlueprintInfo, fetchResolvedBlueprints } from '@/api/blueprints'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
@@ -37,7 +37,6 @@ import { useBlueprintValidation } from "@/hooks/use-blueprint-validation";
 
 import { ChatSession, ChatMessage, ChatSessionData, SessionStateData } from "@/types/session";
 import {transformSessionData, sortSessionsByTimestamp} from "@/utils/sessionHelpers";
-import { checkSessionSharingStatus } from "@/hooks/use-sharing-status";
 import { useSessionManagement } from "@/hooks/use-session-management";
 
 
@@ -92,9 +91,6 @@ export default function ExecutionTab({
   const [showAddFlowModal, setShowAddFlowModal] = useState(false);
   const [selectedFlowForModal, setSelectedFlowForModal] = useState<FlowObject | null>(null);
   const [isCreatingSession, setIsCreatingSession] = useState(false);
-  const [sharedLinkBlueprintName, setSharedLinkBlueprintName] = useState<string>("");
-  const [isLoadingBlueprintName, setIsLoadingBlueprintName] = useState<boolean>(false);
-  const [isSharingDisabled, setIsSharingDisabled] = useState<boolean>(false);
   // Three panel widths: Available Chats, ChatInterface, Blueprint Graph
   const [chatSidebarWidth, setChatSidebarWidth] = useState(15);
   const [chatInterfaceWidth, setChatInterfaceWidth] = useState(55);
@@ -103,6 +99,8 @@ export default function ExecutionTab({
   const [activeResizer, setActiveResizer] = useState<'left' | 'right' | null>(null);
   const [isBlueprintGraphHidden, setIsBlueprintGraphHidden] = useState(false);
   const [savedBlueprintGraphWidth, setSavedBlueprintGraphWidth] = useState(30);
+  // Cache: resolved spec_dict per blueprintId for the side GraphDisplay (contains resource names)
+  const [blueprintSpecCache, setBlueprintSpecCache] = useState<Map<string, any>>(new Map());
 
   const { nodeListRef, forceUpdate } = useStreamingData();
   const { user } = useAuth();
@@ -224,25 +222,47 @@ export default function ExecutionTab({
   };
 
   const transformApiDataToSessions = async (apiData: ChatSessionData[]): Promise<ChatSession[]> => {
-    // Transform sessions and fetch fresh public_usage_scope status for shared link sessions
-    const sessions = await Promise.all(
-      apiData.map(async (sessionData, index) => {
-        const baseSession = transformSessionData(sessionData, index);
+    // Build base sessions first (no API calls)
+    const baseSessions = apiData.map((sessionData, index) => ({
+      base: transformSessionData(sessionData, index),
+      metadata: sessionData.metadata,
+    }));
 
-        // Fetch fresh public_usage_scope status for shared link sessions to ensure accuracy
-        const isSharingDisabled = await checkSessionSharingStatus(
-          baseSession.blueprintId,
-          baseSession.fromSharedLink ?? false,
-          baseSession.blueprintExists,
-          sessionData.metadata?.public_usage_scope
-        );
+    // Single resolved-endpoint call: returns all blueprints with resource names inline
+    const userId = user?.username || "default";
+    const blueprintInfoMap = new Map<string, { name: string; isPublic: boolean; specDict: any }>();
+    try {
+      const resolved = await fetchResolvedBlueprints(userId);
+      resolved.forEach((bp) => {
+        blueprintInfoMap.set(bp.blueprint_id, {
+          name: bp.spec_dict?.name || "",
+          isPublic: bp.metadata?.usageScope === "public",
+          specDict: bp.spec_dict,
+        });
+      });
+    } catch {
+      console.error("Error fetching resolved blueprints");
+    }
 
-        return {
-          ...baseSession,
-          isSharingDisabled,
-        };
-      })
-    );
+    // Cache resolved spec_dicts for the side GraphDisplay (resource names preserved)
+    const specCache = new Map<string, any>();
+    blueprintInfoMap.forEach((info, bpId) => {
+      if (info.specDict) specCache.set(bpId, info.specDict);
+    });
+    setBlueprintSpecCache(specCache);
+
+    // Enrich sessions with blueprint name and sharing status
+    const sessions: ChatSession[] = baseSessions.map(({ base, metadata }) => {
+      const bpInfo = blueprintInfoMap.get(base.blueprintId);
+      const blueprintName = bpInfo?.name || "";
+
+      let isSharingDisabled = false;
+      if (base.fromSharedLink && base.blueprintExists && base.blueprintId) {
+        isSharingDisabled = !(bpInfo?.isPublic ?? metadata?.public_usage_scope ?? false);
+      }
+
+      return { ...base, blueprintName, isSharingDisabled };
+    });
 
     return sessions;
   };
@@ -277,82 +297,42 @@ export default function ExecutionTab({
 
   // Handle session selection
   const handleSessionSelect = async (session: ChatSession) => {
-    setSelectedSession(session);
+    let currentSession = session;
+    setSelectedSession(currentSession);
     
-    // Trigger blueprint validation
-    if (session.blueprintId) {
-      validateSelectedBlueprint(session.blueprintId);
+    if (currentSession.blueprintId) {
+      validateSelectedBlueprint(currentSession.blueprintId);
     }
     
-    // Reset blueprint name and loading state when switching sessions
-    setSharedLinkBlueprintName("");
-    setIsLoadingBlueprintName(false);
-    
-    // For chat-only sessions (shared links), configure panel layout for message area
-    // Note: Using session.fromSharedLink here (not isChatOnlyMode) because state hasn't updated yet
-    if (session.fromSharedLink) {
-      setIsBlueprintGraphHidden(false); // Ensure right panel is visible for message
-      setBlueprintGraphWidth(30); // Set width for the chat-only message area
-      const remainingWidth = 100 - chatSidebarWidth - 30;
-      setChatInterfaceWidth(remainingWidth);
-    }
-    // For regular sessions, keep current graph visibility state
-    
-    // Fetch blueprint info once and extract both sharing status and name
-    // This consolidates two API calls into one (getBlueprintInfo contains usageScope in metadata)
-    if (!session.blueprintExists) {
-      // If workflow is deleted, reset sharing disabled state (deleted message will show instead)
-      setIsSharingDisabled(false);
-    } else if (session.blueprintId) {
-      setIsLoadingBlueprintName(true);
-      try {
-        const blueprintInfo = await getBlueprintInfo(session.blueprintId);
-        
-        // Extract sharing status from metadata.usageScope
-        if (session.fromSharedLink) {
-          const isPublic = blueprintInfo.metadata?.usageScope === "public";
-          const disabled = !isPublic;
-          setIsSharingDisabled(disabled);
-          // Update the session with the current sharing status
+    // For shared link sessions, configure panel layout and fetch fresh sharing status
+    if (currentSession.fromSharedLink) {
+      setIsBlueprintGraphHidden(false);
+      setBlueprintGraphWidth(30);
+      setChatInterfaceWidth(100 - chatSidebarWidth - 30);
+      
+      if (currentSession.blueprintExists && currentSession.blueprintId) {
+        try {
+          const info = await getBlueprintInfo(currentSession.blueprintId);
+          const disabled = !(info.metadata?.usageScope === "public");
+          const name = info.spec_dict?.name || currentSession.blueprintName || "";
+          currentSession = { ...currentSession, isSharingDisabled: disabled, blueprintName: name };
+          setSelectedSession(currentSession);
           setChatSessions(prev => prev.map(s => 
-            s.id === session.id ? { ...s, isSharingDisabled: disabled } : s
+            s.id === currentSession.id ? { ...s, isSharingDisabled: disabled, blueprintName: name } : s
           ));
-        } else {
-          // For non-shared-link sessions, sharing status doesn't matter
-          setIsSharingDisabled(false);
+        } catch {
+          // Keep defaults from initial load
         }
-        
-        // Extract blueprint name
-        if (blueprintInfo.spec_dict?.name) {
-          setSharedLinkBlueprintName(blueprintInfo.spec_dict.name);
-        } else {
-          console.warn('Blueprint name not found in response:', blueprintInfo);
-          setSharedLinkBlueprintName("Unknown");
-        }
-      } catch (error: any) {
-        console.error('Error fetching blueprint info:', error);
-        // On error, assume sharing is disabled for safety and set name to Unknown
-        if (session.fromSharedLink) {
-          setIsSharingDisabled(true);
-          setChatSessions(prev => prev.map(s => 
-            s.id === session.id ? { ...s, isSharingDisabled: true } : s
-          ));
-          setSharedLinkBlueprintName("Unknown");
-        }
-      } finally {
-        setIsLoadingBlueprintName(false);
       }
     }
     
-    // Load session messages using the shared hook
-    const updatedSession = await loadSessionMessages(session);
+    // Load session messages
+    const updatedSession = await loadSessionMessages(currentSession);
     if (updatedSession) {
       setSelectedSession(updatedSession);
       setCurrentSessionMessages(updatedSession.messages);
-
-      // Update the session in the list as well
       setChatSessions(prevSessions =>
-        prevSessions.map(s => (s.id === session.id ? updatedSession : s))
+        prevSessions.map(s => (s.id === currentSession.id ? updatedSession : s))
       );
     } else {
       setCurrentSessionMessages([]);
@@ -449,11 +429,6 @@ export default function ExecutionTab({
   const handleCancelAddFlow = () => {
     setShowAddFlowModal(false);
     setSelectedFlowForModal(null);
-    // Force a small delay to ensure proper cleanup of ReactFlow state
-    setTimeout(() => {
-      // This timeout helps ensure the modal ReactFlow instance is properly unmounted
-      // before potentially affecting other ReactFlow instances
-    }, 100);
   };
 
   // Initialize component with API call
@@ -520,12 +495,12 @@ export default function ExecutionTab({
         }
         break;
 
-      case 'complete':
-        existing.stream = 'DONE';
-        if (state?.user_prompt && existing.text.trim() === '') {
-          existing.text = state.user_prompt;
-        }
-        break;
+      // case 'complete':
+      //   existing.stream = 'DONE';
+      //   if (state?.user_prompt && existing.text.trim() === '') {
+      //     existing.text = state.user_prompt;
+      //   }
+      //   break;
 
       case 'tool_calling':
         if (call_id && tool) {
@@ -814,7 +789,7 @@ export default function ExecutionTab({
               triggerExecution={triggerExecution}
               initialMessages={currentSessionMessages}
               blueprintExists={selectedSession?.blueprintExists ?? true}
-              isSharingDisabled={isSharingDisabled}
+              isSharingDisabled={selectedSession?.isSharingDisabled ?? false}
               blueprintValid={isBlueprintValid}
               isValidatingBlueprint={isValidatingBlueprint}
               onToggleBlueprintGraph={toggleBlueprintGraph}
@@ -876,11 +851,11 @@ export default function ExecutionTab({
                   <p className="mb-2 text-base">This session was created from a shared chat link</p>
                   <p className="text-xs text-gray-500 mb-1">
                     Workflow: <span className="font-medium text-gray-300">
-                      {isLoadingBlueprintName ? "Loading..." : (sharedLinkBlueprintName || "Unknown")}
+                      {selectedSession?.blueprintName || "Unknown"}
                     </span>
                   </p>
                   <p className="text-xs text-gray-500">Workflow details are not available in shared link sessions</p>
-                  {isSharingDisabled && (
+                  {selectedSession?.isSharingDisabled && (
                     <div className="mt-4 p-3 bg-red-900/20 border border-red-800 rounded-md">
                       <p className="text-xs text-red-400">Chat sharing has been disabled for this workflow</p>
                     </div>
@@ -890,6 +865,7 @@ export default function ExecutionTab({
                 <GraphDisplay
                   key={`main-graph-${selectedSession.blueprintId}`}
                   blueprintId={selectedSession.blueprintId}
+                  specDict={blueprintSpecCache.get(selectedSession.blueprintId)}
                   height="100%"
                   showBackground={true}
                   interactive={true}
@@ -925,6 +901,7 @@ export default function ExecutionTab({
                 onFlowSelect={handleFlowSelect}
                 showActiveStatus={false}
                 showDeleteButton={false}
+                useResolvedEndpoint={true}
                 height="100%"
                 graphProps={{
                   showBackground: true,
