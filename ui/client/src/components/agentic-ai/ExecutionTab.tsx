@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { MessageSquare, Users, Clock, Trash2, Plus, Columns3, Network } from "lucide-react";
 import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
@@ -809,57 +809,58 @@ export default function ExecutionTab({
           title="Drag to resize panels"
         />
 
-        {/* ChatInterface Area - Dynamic width with carousel animations */}
-        <AnimatePresence mode="wait">
-          {carouselMode !== 'graph' && (
-            <motion.div 
-              key="chat-panel"
-              initial={{ opacity: 0, x: -50, scale: 0.95 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -50, scale: 0.95 }}
-              transition={{ 
-                type: "spring", 
-                stiffness: 300, 
-                damping: 30,
-                duration: 0.4 
-              }}
-              className="flex-shrink-0 flex flex-col"
-              style={{ 
-                width: `${chatInterfaceWidth}%`,
-                // Carousel-like width transition when expanding to full width (normal → chat)
-                transition: carouselMode === 'chat' 
-                  ? 'width 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)' // Bounce-out effect for carousel feel
-                  : 'width 0.4s ease-out'
-              }}
-            >
-              <div className="flex-grow">
-                <ChatInterface
-                  runId={selectedSession?.id || ''}
-                  triggerExecution={triggerExecution}
-                  initialMessages={currentSessionMessages}
-                  blueprintExists={selectedSession?.blueprintExists ?? true}
-                  isSharingDisabled={isSharingDisabled}
-                  blueprintValid={isBlueprintValid}
-                  isValidatingBlueprint={isValidatingBlueprint}
-                  isBlueprintGraphHidden={carouselMode === 'chat'}
-                  isChatOnlyMode={isChatOnlyMode}
-                  onSetCarouselMode={handleSetCarouselMode}
-                  carouselMode={carouselMode}
-                />
-              </div>
-              
-              {/* ExecutionStream - conditionally rendered within ChatInterface area */}
-              {selectedSession && showExecutionStream && (
-                <div className="h-1/3 border-t border-gray-800 mt-2">
-                  <ExecutionStream
-                    blueprintId={selectedSession.blueprintId}
-                    isLiveRequest={isLiveRequest}
-                  />
-                </div>
-              )}
-            </motion.div>
+        {/* ChatInterface Area - Always mounted, hidden when in graph mode to preserve streaming state */}
+        <motion.div 
+          key="chat-panel"
+          initial={false}
+          animate={{ 
+            opacity: carouselMode === 'graph' ? 0 : 1,
+            x: carouselMode === 'graph' ? -30 : 0,
+            scale: carouselMode === 'graph' ? 0.98 : 1
+          }}
+          transition={{ 
+            type: "spring", 
+            stiffness: 300, 
+            damping: 30,
+            duration: 0.4 
+          }}
+          className="flex-shrink-0 flex flex-col"
+          style={{ 
+            width: carouselMode === 'graph' ? 0 : `${chatInterfaceWidth}%`,
+            overflow: carouselMode === 'graph' ? 'hidden' : 'visible',
+            pointerEvents: carouselMode === 'graph' ? 'none' : 'auto',
+            // Carousel-like width transition
+            transition: carouselMode === 'chat' 
+              ? 'width 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out'
+              : 'width 0.4s ease-out, opacity 0.3s ease-out'
+          }}
+        >
+          <div className="flex-grow">
+            <ChatInterface
+              runId={selectedSession?.id || ''}
+              triggerExecution={triggerExecution}
+              initialMessages={currentSessionMessages}
+              blueprintExists={selectedSession?.blueprintExists ?? true}
+              isSharingDisabled={isSharingDisabled}
+              blueprintValid={isBlueprintValid}
+              isValidatingBlueprint={isValidatingBlueprint}
+              isBlueprintGraphHidden={carouselMode === 'chat'}
+              isChatOnlyMode={isChatOnlyMode}
+              onSetCarouselMode={handleSetCarouselMode}
+              carouselMode={carouselMode}
+            />
+          </div>
+          
+          {/* ExecutionStream - conditionally rendered within ChatInterface area */}
+          {selectedSession && showExecutionStream && (
+            <div className="h-1/3 border-t border-gray-800 mt-2">
+              <ExecutionStream
+                blueprintId={selectedSession.blueprintId}
+                isLiveRequest={isLiveRequest}
+              />
+            </div>
           )}
-        </AnimatePresence>
+        </motion.div>
 
         {/* Second Resizable divider - only show when both panels are visible (normal mode) */}
         {/* For chat-only sessions: always show (displays message). For regular: show in normal mode */}
@@ -878,32 +879,33 @@ export default function ExecutionTab({
           />
         )}
 
-        {/* Blueprint Graph Visualization or Chat-Only Message - Dynamic width with carousel animations */}
-        <AnimatePresence mode="wait">
-          {(isChatOnlyMode || carouselMode !== 'chat') && (
-            <motion.div 
-              key="graph-panel"
-              initial={{ opacity: 0, x: 50, scale: 0.95 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ 
-                opacity: 0, 
-                x: 150, // Slide further right for carousel effect when hiding
-                scale: 0.9,
-                transition: {
-                  duration: 0.5,
-                  ease: [0.4, 0, 0.2, 1] // Smooth ease-out for carousel slide-off
-                }
-              }}
-              transition={{ 
-                type: "spring", 
-                stiffness: 300, 
-                damping: 30,
-                duration: 0.4 
-              }}
-              className="flex-shrink-0" 
-              style={{ width: `${blueprintGraphWidth}%` }}
-            >
-              <Card className="bg-background-card shadow-card border-gray-800 h-full flex flex-col ml-0 relative">
+        {/* Blueprint Graph Visualization or Chat-Only Message - Always mounted, hidden when in chat mode to preserve node state */}
+        <motion.div 
+          key="graph-panel"
+          initial={false}
+          animate={{ 
+            opacity: (!isChatOnlyMode && carouselMode === 'chat') ? 0 : 1,
+            x: (!isChatOnlyMode && carouselMode === 'chat') ? 30 : 0,
+            scale: (!isChatOnlyMode && carouselMode === 'chat') ? 0.98 : 1
+          }}
+          transition={{ 
+            type: "spring", 
+            stiffness: 300, 
+            damping: 30,
+            duration: 0.4 
+          }}
+          className="flex-shrink-0" 
+          style={{ 
+            width: (!isChatOnlyMode && carouselMode === 'chat') ? 0 : `${blueprintGraphWidth}%`,
+            overflow: (!isChatOnlyMode && carouselMode === 'chat') ? 'hidden' : 'visible',
+            pointerEvents: (!isChatOnlyMode && carouselMode === 'chat') ? 'none' : 'auto',
+            // Carousel-like width transition
+            transition: carouselMode === 'graph' 
+              ? 'width 0.7s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.3s ease-out'
+              : 'width 0.4s ease-out, opacity 0.3s ease-out'
+          }}
+        >
+          <Card className="bg-background-card shadow-card border-gray-800 h-full flex flex-col ml-0 relative">
             {/* Carousel mode switch - shown when in graph-only mode */}
             {carouselMode === 'graph' && !isChatOnlyMode && (
               <motion.div
@@ -992,9 +994,7 @@ export default function ExecutionTab({
               )}
             </CardContent>
           </Card>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </motion.div>
       </div>
 
       {/* Add Flow Modal */}
