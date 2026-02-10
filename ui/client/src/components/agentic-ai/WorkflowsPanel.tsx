@@ -16,7 +16,7 @@ import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import GraphDisplay from "./graphs/GraphDisplay";
 import { fetchActiveSessions } from "@/api/agentic";
-import { fetchBlueprints, fetchResolvedBlueprints, deleteBlueprint } from "@/api/blueprints";
+import { fetchBlueprints, fetchResolvedBlueprints, deleteBlueprint, fetchResolvedBlueprint } from "@/api/blueprints";
 import { convertGraphFlowToFlowObject } from "@/utils/blueprintHelpers";
 import ShareWorkflow from "./ShareWorkflow";
 import { BlueprintValidationResult } from "@/types/validation";
@@ -64,11 +64,6 @@ export default function WorkflowsPanel({
     specDict: any;
     sharingEnabled: boolean;
   } | null>(null);
-  // Cache: spec_dict + metadata from the initial bulk fetch, keyed by blueprint_id.
-  // Avoids per-selection getBlueprintInfo calls and preserves resolved data (with names).
-  const [blueprintCacheMap, setBlueprintCacheMap] = useState<
-    Map<string, { specDict: any; metadata: any }>
-  >(new Map());
   
   const { user } = useAuth();
   const { openShareForItem } = useShared();
@@ -158,41 +153,32 @@ export default function WorkflowsPanel({
     }
   }, [selectedFlow?.id, validateSelectedBlueprint, clearValidation]);
 
-  // Derive blueprint data from cache when selected flow changes.
-  // Data was already fetched in the initial bulk load – no extra API call needed.
+  // Fetch blueprint data (spec_dict + metadata) when selected flow changes
+  // This consolidates API calls - data is fetched once and passed to child components
   useEffect(() => {
     if (!selectedFlow?.id) {
       setSelectedBlueprintData(null);
       return;
     }
 
-    const cached = blueprintCacheMap.get(selectedFlow.id);
-    if (cached) {
-      setSelectedBlueprintData({
-        specDict: cached.specDict,
-        sharingEnabled: cached.metadata?.usageScope === "public",
-      });
-    } else {
-      setSelectedBlueprintData(null);
-    }
-  }, [selectedFlow?.id, blueprintCacheMap]);
+    const fetchBlueprintData = async () => {
+      try {
+        const userId = user?.username || 'default';
+        const blueprint = await fetchResolvedBlueprint(selectedFlow.id, userId);
+        if (blueprint) {
+          setSelectedBlueprintData({
+            specDict: blueprint.spec_dict,
+            sharingEnabled: blueprint.metadata?.usageScope === "public",
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching blueprint data:", error);
+        setSelectedBlueprintData(null);
+      }
+    };
 
-  // Callback for ShareWorkflow: update the blueprint cache when usageScope changes
-  const handleSharingChange = useCallback(
-    (bpId: string, newScope: "public" | "private") => {
-      setBlueprintCacheMap((prev) => {
-        const entry = prev.get(bpId);
-        if (!entry) return prev;
-        const next = new Map(prev);
-        next.set(bpId, {
-          ...entry,
-          metadata: { ...entry.metadata, usageScope: newScope },
-        });
-        return next;
-      });
-    },
-    [],
-  );
+    fetchBlueprintData();
+  }, [selectedFlow?.id, user?.username]);
 
   const handleFlowSelect = (flow: FlowObject): void => {
     onFlowSelect(flow);
@@ -361,7 +347,6 @@ export default function WorkflowsPanel({
                   isValid={isValid}
                   isValidating={isValidating}
                   initialSharingEnabled={selectedBlueprintData?.sharingEnabled ?? false}
-                  onSharingChange={handleSharingChange}
                 />
               </div>
             {selectedBlueprintData?.specDict ? (

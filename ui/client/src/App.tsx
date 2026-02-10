@@ -24,7 +24,6 @@ import SlackAddSourcePage from "./features/slack/SlackAddSourcePage";
 import GuidesPage from "./components/guides/GuidesPage";
 import PublicChat from "./components/agentic-ai/chat/PublicChat";
 
-
 // Routes component that conditionally wraps agentic routes with the shared provider
 function AppRoutes() {
   const [isChat] = useRoute("/chat/:token");
@@ -50,6 +49,7 @@ function AppRoutes() {
       </AgenticAIProvider>
     );
   }
+
 
   return (
     <Switch>

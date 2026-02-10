@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Trash2, ChevronLeft, ChevronRight, Loader2, Sparkles, Info, Copy, RotateCcw, ThumbsUp, ThumbsDown, Check } from "lucide-react";
+import { Send, Trash2, Loader2, Sparkles, Info, Copy, RotateCcw, ThumbsUp, ThumbsDown, Check, Columns3, MessageSquare, GitBranch } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -39,9 +39,10 @@ interface ChatInterfaceProps {
   isSharingDisabled?: boolean; // If true, sharing is disabled for this blueprint
   blueprintValid?: boolean;
   isValidatingBlueprint?: boolean;
-  onToggleBlueprintGraph?: () => void;
   isBlueprintGraphHidden?: boolean;
   isChatOnlyMode?: boolean; // If true, hide agent thinking and workflow details
+  onToggleCarousel?: () => void; // Carousel toggle handler
+  carouselMode?: 'normal' | 'chat' | 'graph'; // Current carousel mode
 }
 
 export default function ChatInterface({
@@ -52,9 +53,10 @@ export default function ChatInterface({
   isSharingDisabled = false,
   blueprintValid = true,
   isValidatingBlueprint = false,
-  onToggleBlueprintGraph,
   isBlueprintGraphHidden = false,
   isChatOnlyMode = false,
+  onToggleCarousel,
+  carouselMode = 'normal',
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -828,7 +830,7 @@ export default function ChatInterface({
     <Card className="bg-background-card shadow-card border-gray-800 flex flex-col h-full max-h-[82.5vh]">
       <CardHeader className="py-4 px-6 flex flex-row justify-between items-center flex-shrink-0">
         <CardTitle className="text-lg font-heading">AI Assistant</CardTitle>
-        <div className="flex space-x-2">
+        <div className="flex space-x-1 items-center">
           {!isChatOnlyMode && (
             <>
               <Button
@@ -836,21 +838,43 @@ export default function ChatInterface({
                 size="sm"
                 onClick={clearChat}
                 className="text-gray-400 hover:text-gray-100"
+                title="Clear chat"
               >
                 <Trash2 className="h-4 w-4" />
               </Button>
-              {onToggleBlueprintGraph && !isChatOnlyMode && (
+              {/* Carousel Toggle Button - cycles through view modes with visual feedback */}
+              {onToggleCarousel && !isChatOnlyMode && (
                 <Button
-                  variant="ghost"
+                  variant={carouselMode === 'normal' ? 'ghost' : 'outline'}
                   size="sm"
-                  onClick={onToggleBlueprintGraph}
-                  className="text-gray-400 hover:text-gray-100"
-                  title={isBlueprintGraphHidden ? "Show Blueprint Graph" : "Hide Blueprint Graph"}
+                  onClick={onToggleCarousel}
+                  className={`transition-all duration-300 ${
+                    carouselMode === 'normal' 
+                      ? 'text-gray-400 hover:text-primary hover:bg-primary/10' 
+                      : carouselMode === 'chat'
+                        ? 'text-primary border-primary bg-primary/10 hover:bg-primary/20 shadow-sm shadow-primary/20'
+                        : 'text-primary border-primary bg-primary/10 hover:bg-primary/20 shadow-sm shadow-primary/20'
+                  }`}
+                  title={
+                    carouselMode === 'normal' 
+                      ? 'Expand Chat (Full Width)' 
+                      : carouselMode === 'chat'
+                        ? 'Switch to Workflow View'
+                        : 'Return to Split View'
+                  }
                 >
-                  {isBlueprintGraphHidden ? (
-                    <ChevronLeft className="h-4 w-4" />
+                  {carouselMode === 'normal' ? (
+                    <MessageSquare className="h-4 w-4" />
+                  ) : carouselMode === 'chat' ? (
+                    <>
+                      <GitBranch className="h-4 w-4 mr-1.5" />
+                      <span className="text-xs">Workflow</span>
+                    </>
                   ) : (
-                    <ChevronRight className="h-4 w-4" />
+                    <>
+                      <Columns3 className="h-4 w-4 mr-1.5" />
+                      <span className="text-xs">Split</span>
+                    </>
                   )}
                 </Button>
               )}

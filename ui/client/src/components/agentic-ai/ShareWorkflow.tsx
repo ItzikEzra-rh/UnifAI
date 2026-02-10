@@ -21,8 +21,6 @@ interface ShareWorkflowProps {
   isValidating?: boolean;
   /** Initial sharing status (provided by parent component) */
   initialSharingEnabled: boolean;
-  /** Called after a successful usageScope toggle with the new scope value. */
-  onSharingChange?: (blueprintId: string, newScope: "public" | "private") => void;
 }
 
 export default function ShareWorkflow({
@@ -31,7 +29,6 @@ export default function ShareWorkflow({
   isValid = true,
   isValidating = false,
   initialSharingEnabled,
-  onSharingChange,
 }: ShareWorkflowProps) {
   const [enabled, setEnabled] = useState(initialSharingEnabled);
   const [shareLink, setShareLink] = useState<string | null>(
@@ -61,7 +58,6 @@ export default function ShareWorkflow({
       await setBlueprintMetadata(blueprintId, { usageScope: newScope }, user?.username || "");
       setEnabled(checked);
       setShareLink(checked ? constructShareLink(blueprintId) : null);
-      onSharingChange?.(blueprintId, newScope);
       toast({
         title: checked ? "Sharing Enabled" : "Sharing Disabled",
         description: checked 

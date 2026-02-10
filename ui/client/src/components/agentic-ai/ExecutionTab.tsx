@@ -11,8 +11,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { motion } from "framer-motion";
-import { MessageSquare, Users, Clock, Trash2, Plus } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { MessageSquare, Users, Clock, Trash2, Plus, Columns3 } from "lucide-react";
 import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import GraphDisplay from "./graphs/GraphDisplay";
@@ -97,10 +97,14 @@ export default function ExecutionTab({
   const [blueprintGraphWidth, setBlueprintGraphWidth] = useState(30);
   const [isResizing, setIsResizing] = useState(false);
   const [activeResizer, setActiveResizer] = useState<'left' | 'right' | null>(null);
+  const [isSharingDisabled, setIsSharingDisabled] = useState<boolean>(false);
+  const [sharedLinkBlueprintName, setSharedLinkBlueprintName] = useState<string>("");
+  const [isLoadingBlueprintName, setIsLoadingBlueprintName] = useState<boolean>(false);
   const [isBlueprintGraphHidden, setIsBlueprintGraphHidden] = useState(false);
   const [savedBlueprintGraphWidth, setSavedBlueprintGraphWidth] = useState(30);
   // Cache: resolved spec_dict per blueprintId for the side GraphDisplay (contains resource names)
   const [blueprintSpecCache, setBlueprintSpecCache] = useState<Map<string, any>>(new Map());
+  const [carouselMode, setCarouselMode] = useState<'normal' | 'chat' | 'graph'>('normal');
 
   const { nodeListRef, forceUpdate } = useStreamingData();
   const { user } = useAuth();
@@ -119,31 +123,35 @@ export default function ExecutionTab({
     showToastOnFailure: true,
   });
 
-  // Toggle Blueprint Graph visibility
-  // For chat-only sessions (shared links), toggling is disabled
-  const toggleBlueprintGraph = () => {
-    // Don't allow toggling for chat-only sessions
+  // Toggle carousel mode: cycles through normal -> chat-full -> graph-full -> normal
+  // Creates a carousel effect between ChatInterface and Blueprint Graph
+  const toggleCarouselMode = () => {
+    // Don't allow carousel for chat-only sessions
     if (isChatOnlyMode) {
       return;
     }
     
-    if (isBlueprintGraphHidden) {
-      // Show the Blueprint Graph - restore to saved width
-      const availableWidth = 100 - chatSidebarWidth;
-      const restoredGraphWidth = savedBlueprintGraphWidth;
-      const newChatInterfaceWidth = availableWidth - restoredGraphWidth;
-      
-      setChatInterfaceWidth(newChatInterfaceWidth);
-      setBlueprintGraphWidth(restoredGraphWidth);
-      setIsBlueprintGraphHidden(false);
-    } else {
-      // Hide the Blueprint Graph - expand ChatInterface
-      setSavedBlueprintGraphWidth(blueprintGraphWidth); // Save current width
-      const availableWidth = 100 - chatSidebarWidth;
-      
-      setChatInterfaceWidth(availableWidth);
-      setBlueprintGraphWidth(0);
-      setIsBlueprintGraphHidden(true);
+    const availableWidth = 100 - chatSidebarWidth;
+    
+    switch (carouselMode) {
+      case 'normal':
+        // Switch to chat-full: ChatInterface takes full width
+        setCarouselMode('chat');
+        setChatInterfaceWidth(availableWidth);
+        setBlueprintGraphWidth(0);
+        break;
+      case 'chat':
+        // Switch to graph-full: Blueprint Graph takes full width
+        setCarouselMode('graph');
+        setChatInterfaceWidth(0);
+        setBlueprintGraphWidth(availableWidth);
+        break;
+      case 'graph':
+        // Switch back to normal: Both visible with default widths
+        setCarouselMode('normal');
+        setChatInterfaceWidth(55);
+        setBlueprintGraphWidth(availableWidth - 55);
+        break;
     }
   };
 
@@ -304,25 +312,46 @@ export default function ExecutionTab({
       validateSelectedBlueprint(currentSession.blueprintId);
     }
     
-    // For shared link sessions, configure panel layout and fetch fresh sharing status
-    if (currentSession.fromSharedLink) {
-      setIsBlueprintGraphHidden(false);
-      setBlueprintGraphWidth(30);
-      setChatInterfaceWidth(100 - chatSidebarWidth - 30);
-      
-      if (currentSession.blueprintExists && currentSession.blueprintId) {
-        try {
-          const info = await getBlueprintInfo(currentSession.blueprintId);
-          const disabled = !(info.metadata?.usageScope === "public");
-          const name = info.spec_dict?.name || currentSession.blueprintName || "";
-          currentSession = { ...currentSession, isSharingDisabled: disabled, blueprintName: name };
-          setSelectedSession(currentSession);
+    // Reset blueprint name and loading state when switching sessions
+    setSharedLinkBlueprintName("");
+    setIsLoadingBlueprintName(false);
+    
+    // For chat-only sessions (shared links), configure panel layout for message area
+    // Note: Using session.fromSharedLink here (not isChatOnlyMode) because state hasn't updated yet
+    if (session.fromSharedLink) {
+      setCarouselMode('normal'); // Ensure normal mode for chat-only sessions
+      setBlueprintGraphWidth(30); // Set width for the chat-only message area
+      const remainingWidth = 100 - chatSidebarWidth - 30;
+      setChatInterfaceWidth(remainingWidth);
+    }
+    // For regular sessions, keep current carousel mode
+    
+    // Fetch blueprint info once and extract both sharing status and name
+    // This consolidates two API calls into one (getBlueprintInfo contains usageScope in metadata)
+    if (!session.blueprintExists) {
+      // If workflow is deleted, reset sharing disabled state (deleted message will show instead)
+      setIsSharingDisabled(false);
+    } else if (session.blueprintId) {
+      setIsLoadingBlueprintName(true);
+      try {
+        const blueprintInfo = await getBlueprintInfo(session.blueprintId);
+        
+        // Extract sharing status from metadata.usageScope
+        if (session.fromSharedLink) {
+          const isPublic = blueprintInfo.metadata?.usageScope === "public";
+          const disabled = !isPublic;
+          setIsSharingDisabled(disabled);
+          // Update the session with the current sharing status
           setChatSessions(prev => prev.map(s => 
-            s.id === currentSession.id ? { ...s, isSharingDisabled: disabled, blueprintName: name } : s
+            s.id === currentSession.id ? { ...s, isSharingDisabled: disabled} : s
           ));
-        } catch {
-          // Keep defaults from initial load
-        }
+        } 
+      } catch (error) {
+        // Keep defaults from initial load
+        console.error("Error fetching blueprint info:", error);
+      }
+      finally {
+        setIsLoadingBlueprintName(false);
       }
     }
     
@@ -783,37 +812,61 @@ export default function ExecutionTab({
           title="Drag to resize panels"
         />
 
-        {/* ChatInterface Area - Dynamic width */}
-        <div className="flex-shrink-0 flex flex-col" style={{ width: `${chatInterfaceWidth}%` }}>
-          <div className="flex-grow">
-            <ChatInterface
-              runId={selectedSession?.id || ''}
-              triggerExecution={triggerExecution}
-              initialMessages={currentSessionMessages}
-              blueprintExists={selectedSession?.blueprintExists ?? true}
-              isSharingDisabled={selectedSession?.isSharingDisabled ?? false}
-              blueprintValid={isBlueprintValid}
-              isValidatingBlueprint={isValidatingBlueprint}
-              onToggleBlueprintGraph={toggleBlueprintGraph}
-              isBlueprintGraphHidden={isBlueprintGraphHidden}
-              isChatOnlyMode={isChatOnlyMode}
-            />
-          </div>
-          
-          {/* ExecutionStream - conditionally rendered within ChatInterface area */}
-          {selectedSession && showExecutionStream && (
-            <div className="h-1/3 border-t border-gray-800 mt-2">
-              <ExecutionStream
-                blueprintId={selectedSession.blueprintId}
-                isLiveRequest={isLiveRequest}
-              />
-            </div>
+        {/* ChatInterface Area - Dynamic width with carousel animations */}
+        <AnimatePresence mode="wait">
+          {carouselMode !== 'graph' && (
+            <motion.div 
+              key="chat-panel"
+              initial={{ opacity: 0, x: -50, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -50, scale: 0.95 }}
+              transition={{ 
+                type: "spring", 
+                stiffness: 300, 
+                damping: 30,
+                duration: 0.4 
+              }}
+              className="flex-shrink-0 flex flex-col"
+              style={{ 
+                width: `${chatInterfaceWidth}%`,
+                // Carousel-like width transition when expanding to full width (normal → chat)
+                transition: carouselMode === 'chat' 
+                  ? 'width 0.7s cubic-bezier(0.34, 1.56, 0.64, 1)' // Bounce-out effect for carousel feel
+                  : 'width 0.4s ease-out'
+              }}
+            >
+              <div className="flex-grow">
+                <ChatInterface
+                  runId={selectedSession?.id || ''}
+                  triggerExecution={triggerExecution}
+                  initialMessages={currentSessionMessages}
+                  blueprintExists={selectedSession?.blueprintExists ?? true}
+                  isSharingDisabled={isSharingDisabled}
+                  blueprintValid={isBlueprintValid}
+                  isValidatingBlueprint={isValidatingBlueprint}
+                  isBlueprintGraphHidden={carouselMode === 'chat'}
+                  isChatOnlyMode={isChatOnlyMode}
+                  onToggleCarousel={toggleCarouselMode}
+                  carouselMode={carouselMode}
+                />
+              </div>
+              
+              {/* ExecutionStream - conditionally rendered within ChatInterface area */}
+              {selectedSession && showExecutionStream && (
+                <div className="h-1/3 border-t border-gray-800 mt-2">
+                  <ExecutionStream
+                    blueprintId={selectedSession.blueprintId}
+                    isLiveRequest={isLiveRequest}
+                  />
+                </div>
+              )}
+            </motion.div>
           )}
-        </div>
+        </AnimatePresence>
 
-        {/* Second Resizable divider - only show when right panel is visible */}
-        {/* For chat-only sessions: always show (displays message). For regular: show when graph not hidden */}
-        {(isChatOnlyMode || !isBlueprintGraphHidden) && (
+        {/* Second Resizable divider - only show when both panels are visible (normal mode) */}
+        {/* For chat-only sessions: always show (displays message). For regular: show in normal mode */}
+        {(isChatOnlyMode || carouselMode === 'normal') && (
           <div
             className={`w-1 transition-colors duration-200 flex-shrink-0 ${
               isChatOnlyMode ? 'cursor-default' : 'cursor-col-resize'
@@ -828,10 +881,52 @@ export default function ExecutionTab({
           />
         )}
 
-        {/* Blueprint Graph Visualization or Chat-Only Message - Dynamic width */}
-        {(isChatOnlyMode || !isBlueprintGraphHidden) && (
-          <div className="flex-shrink-0" style={{ width: `${blueprintGraphWidth}%` }}>
-            <Card className="bg-background-card shadow-card border-gray-800 h-full flex flex-col ml-0">
+        {/* Blueprint Graph Visualization or Chat-Only Message - Dynamic width with carousel animations */}
+        <AnimatePresence mode="wait">
+          {(isChatOnlyMode || carouselMode !== 'chat') && (
+            <motion.div 
+              key="graph-panel"
+              initial={{ opacity: 0, x: 50, scale: 0.95 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ 
+                opacity: 0, 
+                x: 150, // Slide further right for carousel effect when hiding
+                scale: 0.9,
+                transition: {
+                  duration: 0.5,
+                  ease: [0.4, 0, 0.2, 1] // Smooth ease-out for carousel slide-off
+                }
+              }}
+              transition={{ 
+                type: "spring", 
+                stiffness: 300, 
+                damping: 30,
+                duration: 0.4 
+              }}
+              className="flex-shrink-0" 
+              style={{ width: `${blueprintGraphWidth}%` }}
+            >
+              <Card className="bg-background-card shadow-card border-gray-800 h-full flex flex-col ml-0 relative">
+            {/* Carousel toggle button - shown when in graph-only mode */}
+            {carouselMode === 'graph' && !isChatOnlyMode && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.3, duration: 0.2 }}
+                className="absolute top-3 right-3 z-10"
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={toggleCarouselMode}
+                  className="bg-primary/20 border-primary text-primary hover:bg-primary/30 hover:text-primary shadow-lg shadow-primary/20 transition-all duration-200"
+                  title="Return to Split View"
+                >
+                  <Columns3 className="h-4 w-4 mr-2" />
+                  <span className="text-xs">Split View</span>
+                </Button>
+              </motion.div>
+            )}
             {/* TODO: Add below general component that gets 'blueprintId' and showing his title and uid - can be called from multiple places */}
             {/* <CardHeader className="py-3 px-4 border-b border-gray-800">
               {selectedSession && (
@@ -884,8 +979,9 @@ export default function ExecutionTab({
               )}
             </CardContent>
           </Card>
-        </div>
-        )}
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       {/* Add Flow Modal */}
