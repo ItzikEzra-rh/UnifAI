@@ -100,12 +100,35 @@ def available_doc_list(user_id):
 
 @blueprints_bp.route("/available.blueprints.resolved.get", methods=["GET"])
 @from_query({
-    "user_id": fields.Str(data_key="userId", required=True)
+    "user_id": fields.Str(data_key="userId", required=True),
+    "blueprint_id": fields.Str(data_key="blueprintId", required=False, load_default=None),
+    "skip": fields.Int(data_key="skip", required=False, load_default=0),
+    "limit": fields.Int(data_key="limit", required=False, load_default=100),
+    "sort_desc": fields.Bool(data_key="sortDesc", required=False, load_default=True),
 })
-def available_resolved_doc_list(user_id):
+def available_resolved_doc_list(user_id, blueprint_id=None, skip=0, limit=100, sort_desc=True):
     try:
         svc = current_app.container.blueprint_service
-        return jsonify(svc.list_resolved_docs(user_id=user_id)), 200
+
+        # Single blueprint by ID
+        if blueprint_id:
+            resolved = svc.get_resolved_doc(blueprint_id=blueprint_id)
+            return jsonify(resolved), 200
+
+        # Paginated list
+        total = svc.count(user_id=user_id)
+        items = svc.list_resolved_docs(
+            user_id=user_id, skip=skip, limit=limit, sort_desc=sort_desc
+        )
+        return jsonify({
+            "items": items,
+            "total": total,
+            "skip": skip,
+            "limit": limit,
+        }), 200
+
+    except BlueprintNotFoundError as e:
+        return jsonify({"error": str(e)}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
