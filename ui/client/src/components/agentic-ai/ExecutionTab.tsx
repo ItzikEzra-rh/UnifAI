@@ -12,7 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { motion, AnimatePresence } from "framer-motion";
-import { MessageSquare, Users, Clock, Trash2, Plus, Columns3, GitBranch } from "lucide-react";
+import { MessageSquare, Users, Clock, Trash2, Plus, Columns3, Network } from "lucide-react";
 import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import GraphDisplay from "./graphs/GraphDisplay";
@@ -941,7 +941,7 @@ export default function ExecutionTab({
                     className="p-1.5 rounded-md transition-all duration-200 bg-primary text-white shadow-sm"
                     title="Full Graph View"
                   >
-                    <GitBranch className="h-4 w-4" />
+                    <Network className="h-4 w-4" />
                   </button>
                 </div>
               </motion.div>

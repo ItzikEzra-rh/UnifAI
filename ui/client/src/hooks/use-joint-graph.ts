@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
+import { flushSync } from "react-dom";
 import { dia, shapes } from "@joint/core";
 import { DirectedGraph } from "@joint/layout-directed-graph";
 import type { GraphFlow } from "@/components/agentic-ai/graphs/interfaces";
@@ -54,6 +55,7 @@ export interface UseJointGraphOptions {
 export interface UseJointGraphReturn {
   containerRef: React.RefObject<HTMLDivElement>;
   graphRef: React.MutableRefObject<dia.Graph | null>;
+  paperRef: React.MutableRefObject<dia.Paper | null>;
   layoutNodesRef: React.MutableRefObject<LayoutNode[]>;
   elementBlockRef: React.MutableRefObject<Map<string, BuildingBlock>>;
   loading: boolean;
@@ -61,6 +63,8 @@ export interface UseJointGraphReturn {
   overlayBadges: OverlayBadge[];
   overlayHeaders: OverlayHeader[];
   paperTransform: { sx: number; sy: number; tx: number; ty: number };
+  setPaperTransform: React.Dispatch<React.SetStateAction<{ sx: number; sy: number; tx: number; ty: number }>>;
+  rebuildOverlays: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -180,6 +184,50 @@ export function useJointGraph({
     containerRef.current.appendChild(paper.el);
     paper.el.classList.add("joint-paper");
     paperRef.current = paper;
+
+    // ── Panning support (drag on blank area to translate the canvas) ──
+    let panMoveHandler: ((e: PointerEvent) => void) | null = null;
+    let panUpHandler: (() => void) | null = null;
+
+    if (interactive) {
+      let isPanning = false;
+      let panStartX = 0;
+      let panStartY = 0;
+
+      paper.el.style.cursor = "grab";
+
+      paper.on("blank:pointerdown", (evt: dia.Event) => {
+        isPanning = true;
+        const ne = (evt as any).originalEvent ?? evt;
+        panStartX = ne.clientX;
+        panStartY = ne.clientY;
+        paper.el.style.cursor = "grabbing";
+      });
+
+      panMoveHandler = (evt: PointerEvent) => {
+        if (!isPanning) return;
+        const dx = evt.clientX - panStartX;
+        const dy = evt.clientY - panStartY;
+        panStartX = evt.clientX;
+        panStartY = evt.clientY;
+        const t = paper.translate();
+        paper.translate(t.tx + dx, t.ty + dy);
+        const s = paper.scale();
+        const tr = paper.translate();
+        flushSync(() => {
+          setPaperTransform({ sx: s.sx, sy: s.sy, tx: tr.tx, ty: tr.ty });
+        });
+      };
+
+      panUpHandler = () => {
+        if (!isPanning) return;
+        isPanning = false;
+        paper.el.style.cursor = "grab";
+      };
+
+      document.addEventListener("pointermove", panMoveHandler);
+      document.addEventListener("pointerup", panUpHandler);
+    }
 
     let cancelled = false;
     (async () => {
@@ -334,7 +382,7 @@ export function useJointGraph({
         setPaperTransform({ sx: scale.sx, sy: scale.sy, tx: translate.tx, ty: translate.ty });
 
         rebuildOverlays();
-        if (interactive) graph.on("change:position", rebuildOverlays);
+        if (interactive) graph.on("change:position", () => { flushSync(() => rebuildOverlays()); });
 
         setLoading(false);
       } catch (err: unknown) {
@@ -345,6 +393,8 @@ export function useJointGraph({
 
     return () => {
       cancelled = true;
+      if (panMoveHandler) document.removeEventListener("pointermove", panMoveHandler);
+      if (panUpHandler) document.removeEventListener("pointerup", panUpHandler);
       graph.off("change:position");
       removeLinkAnimations(paper.el);
       paper.remove();
@@ -420,6 +470,7 @@ export function useJointGraph({
   return {
     containerRef,
     graphRef,
+    paperRef,
     layoutNodesRef,
     elementBlockRef,
     loading,
@@ -427,5 +478,7 @@ export function useJointGraph({
     overlayBadges,
     overlayHeaders,
     paperTransform,
+    setPaperTransform,
+    rebuildOverlays,
   };
 }

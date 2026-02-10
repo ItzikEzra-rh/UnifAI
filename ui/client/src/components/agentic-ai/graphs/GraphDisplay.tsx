@@ -1,6 +1,8 @@
 import React, { useContext, useEffect, useRef, useState, useCallback, useMemo } from "react";
+import { flushSync } from "react-dom";
 import { dia } from "@joint/core";
 import { motion } from "framer-motion";
+import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
 import { useJointGraph } from "@/hooks/use-joint-graph";
@@ -70,12 +72,15 @@ export default function GraphDisplay({
   const {
     containerRef,
     graphRef,
+    paperRef,
     elementBlockRef,
     loading,
     error,
     overlayBadges,
     overlayHeaders,
     paperTransform,
+    setPaperTransform,
+    rebuildOverlays,
   } = useJointGraph({
     blueprintId,
     primaryHex,
@@ -226,6 +231,50 @@ export default function GraphDisplay({
     [fetchResourceById, elementBlockRef],
   );
 
+  // ── Zoom / fit-to-view handlers ─────────────────────────────────────
+
+  const syncTransform = useCallback(() => {
+    const paper = paperRef.current;
+    if (!paper) return;
+    const scale = paper.scale();
+    const translate = paper.translate();
+    flushSync(() => {
+      setPaperTransform({ sx: scale.sx, sy: scale.sy, tx: translate.tx, ty: translate.ty });
+      rebuildOverlays();
+    });
+  }, [paperRef, setPaperTransform, rebuildOverlays]);
+
+  const handleZoomIn = useCallback(() => {
+    const paper = paperRef.current;
+    if (!paper) return;
+    const { sx } = paper.scale();
+    const newScale = sx * 1.2;
+    paper.scale(newScale, newScale);
+    syncTransform();
+  }, [paperRef, syncTransform]);
+
+  const handleZoomOut = useCallback(() => {
+    const paper = paperRef.current;
+    if (!paper) return;
+    const { sx } = paper.scale();
+    const newScale = Math.max(sx * (1 / 1.2), 0.1);
+    paper.scale(newScale, newScale);
+    syncTransform();
+  }, [paperRef, syncTransform]);
+
+  const handleFitToView = useCallback(() => {
+    const paper = paperRef.current;
+    if (!paper) return;
+    paper.scaleContentToFit({
+      padding: 40,
+      preserveAspectRatio: true,
+      verticalAlign: "middle",
+      horizontalAlign: "middle",
+      useModelGeometry: true,
+    });
+    syncTransform();
+  }, [paperRef, syncTransform]);
+
   // ── Derived data for render ─────────────────────────────────────────
 
   const nodeLabelsMap = useMemo(() => {
@@ -236,22 +285,27 @@ export default function GraphDisplay({
 
   // ── Render helpers ──────────────────────────────────────────────────
 
-  /** Inline status pill ("Processing" / "Complete") shown on node headers. */
+  /**
+   * Inline status pill ("Processing" / "Complete") shown on node headers.
+   * Values are in model-space; the parent CSS-transform wrapper handles
+   * visual scaling so sizes here are divided by sx where a minimum visual
+   * pixel size is desired.
+   */
   const renderStatusPill = (
     status: NodeStatus,
-    scale: number,
+    sx: number,
   ): React.ReactNode => {
     if (status !== "PROGRESS" && status !== "DONE") return null;
     const s = STATUS_STYLES[status];
-    const dotSize = Math.max(4, 6 * scale);
-    const fontSize = Math.max(8, 10 * scale);
+    const dotSize = Math.max(4 / sx, 6);
+    const fontSize = Math.max(8 / sx, 10);
 
     return (
       <div
         className="flex items-center rounded-full"
         style={{
-          gap: 3 * scale,
-          padding: `${Math.max(1, 2 * scale)}px ${Math.max(4, 6 * scale)}px`,
+          gap: 3,
+          padding: `${Math.max(1 / sx, 2)}px ${Math.max(4 / sx, 6)}px`,
           background: s.bgColor,
           flexShrink: 0,
         }}
@@ -286,6 +340,36 @@ export default function GraphDisplay({
               transition={{ duration: 1.5, repeat: Infinity }}
             />
             Live Tracking
+          </div>
+        )}
+
+        {/* Zoom Controls */}
+        {interactive && (
+          <div className="absolute bottom-3 right-3 z-40 flex flex-col rounded-lg bg-black/70 backdrop-blur-sm">
+            <button
+              type="button"
+              className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 rounded-t-lg transition-colors"
+              onClick={handleZoomIn}
+              aria-label="Zoom in"
+            >
+              <ZoomIn size={16} />
+            </button>
+            <button
+              type="button"
+              className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+              onClick={handleZoomOut}
+              aria-label="Zoom out"
+            >
+              <ZoomOut size={16} />
+            </button>
+            <button
+              type="button"
+              className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 rounded-b-lg transition-colors"
+              onClick={handleFitToView}
+              aria-label="Fit to view"
+            >
+              <Maximize2 size={16} />
+            </button>
           </div>
         )}
 
@@ -358,28 +442,32 @@ export default function GraphDisplay({
             style={{ height }}
           />
 
-          {/* HTML overlay for node headers + element badges */}
+          {/* HTML overlay for node headers + element badges.
+              A CSS-transform wrapper mirrors the JointJS paper viewport so
+              overlays move in the exact same paint cycle as the SVG elements
+              – no React-state lag for zoom, pan, or drag. */}
           {(overlayHeaders.length > 0 || overlayBadges.length > 0) && (
             <div
               className="absolute inset-0 pointer-events-none"
               style={{ overflow: "hidden" }}
             >
+              <div
+                style={{
+                  transformOrigin: "0 0",
+                  transform: `matrix(${paperTransform.sx}, 0, 0, ${paperTransform.sy}, ${paperTransform.tx}, ${paperTransform.ty})`,
+                }}
+              >
               {/* Node status border overlays (colored ring + glow around active nodes) */}
               {overlayHeaders.map((hdr) => {
                 const nodeStatus = nodeStatusMap[hdr.nodeId];
                 if (nodeStatus !== "PROGRESS" && nodeStatus !== "DONE") return null;
                 const s = STATUS_STYLES[nodeStatus];
-                const left = hdr.x * paperTransform.sx + paperTransform.tx;
-                const top = hdr.y * paperTransform.sy + paperTransform.ty;
-                const width = hdr.width * paperTransform.sx;
-                const fullHeight = hdr.nodeHeight * paperTransform.sy;
-                const borderRadius = 12 * Math.min(paperTransform.sx, paperTransform.sy);
                 const borderStyle = {
-                  left,
-                  top,
-                  width,
-                  height: fullHeight,
-                  borderRadius,
+                  left: hdr.x,
+                  top: hdr.y,
+                  width: hdr.width,
+                  height: hdr.nodeHeight,
+                  borderRadius: 12,
                   border: `${s.strokeWidth}px solid ${s.stroke}`,
                   boxShadow: s.boxShadow,
                 };
@@ -396,23 +484,21 @@ export default function GraphDisplay({
                 ) : (
                   <div
                     key={`status-border-${hdr.nodeId}`}
-                    className="absolute transition-all duration-300"
-                    style={borderStyle}
+                    className="absolute"
+                    style={{ ...borderStyle, transition: "border-color 300ms, box-shadow 300ms" }}
                   />
                 );
               })}
 
               {/* Node headers (icon + title + status pill) */}
               {overlayHeaders.map((hdr) => {
-                const left = hdr.x * paperTransform.sx + paperTransform.tx;
-                const top = hdr.y * paperTransform.sy + paperTransform.ty;
-                const width = hdr.width * paperTransform.sx;
+                const sx = paperTransform.sx;
                 const hdrHeight = hdr.hasElements
-                  ? NODE_HEADER_HEIGHT * paperTransform.sy
-                  : hdr.nodeHeight * paperTransform.sy;
+                  ? NODE_HEADER_HEIGHT
+                  : hdr.nodeHeight;
                 const icon = nodeIconForType(hdr.nodeType);
-                const circleSize = Math.max(20, 26 * paperTransform.sx);
-                const iconFontSize = Math.max(12, 14 * paperTransform.sx);
+                const circleSize = Math.max(20 / sx, 26);
+                const iconFontSize = Math.max(12 / sx, 14);
                 const nodeStatus = nodeStatusMap[hdr.nodeId];
                 const hasStatus = nodeStatus === "PROGRESS" || nodeStatus === "DONE";
 
@@ -421,9 +507,9 @@ export default function GraphDisplay({
                     key={`hdr-${hdr.nodeId}`}
                     className="absolute"
                     style={{
-                      left, top, width, height: hdrHeight,
+                      left: hdr.x, top: hdr.y, width: hdr.width, height: hdrHeight,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      gap: 6 * paperTransform.sx,
+                      gap: 6,
                       borderBottom: hdr.hasElements ? "1px solid rgba(255,255,255,0.12)" : "none",
                     }}
                   >
@@ -443,19 +529,19 @@ export default function GraphDisplay({
                     <span
                       style={{
                         color: "rgba(255,255,255,0.95)",
-                        fontSize: Math.max(9, 12 * paperTransform.sx),
+                        fontSize: Math.max(9 / sx, 12),
                         fontWeight: 600,
                         fontFamily: "system-ui, -apple-system, sans-serif",
                         whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                         maxWidth: hasStatus
-                          ? width - 120 * paperTransform.sx
-                          : width - 40 * paperTransform.sx,
+                          ? hdr.width - 120
+                          : hdr.width - 40,
                       }}
                     >
                       {hdr.label}
                     </span>
                     {/* Status pill */}
-                    {hasStatus && renderStatusPill(nodeStatus, paperTransform.sx)}
+                    {hasStatus && renderStatusPill(nodeStatus, sx)}
                   </div>
                 );
               })}
@@ -467,11 +553,10 @@ export default function GraphDisplay({
                     ? validationResults[hdr.nodeRid]
                     : undefined;
                 if (!isValidating && !(vResult && !vResult.is_valid)) return null;
-                const indicatorSize = Math.max(24, 28 * paperTransform.sx);
-                const left =
-                  (hdr.x + hdr.width) * paperTransform.sx + paperTransform.tx - indicatorSize * 0.45;
-                const top =
-                  hdr.y * paperTransform.sy + paperTransform.ty - indicatorSize * 0.35;
+                const sx = paperTransform.sx;
+                const indicatorSize = Math.max(24 / sx, 28);
+                const left = hdr.x + hdr.width - indicatorSize * 0.45;
+                const top = hdr.y - indicatorSize * 0.35;
                 return (
                   <div
                     key={`val-${hdr.nodeId}`}
@@ -494,25 +579,22 @@ export default function GraphDisplay({
 
               {/* Element badges */}
               {overlayBadges.map((badge, i) => {
+                const sx = paperTransform.sx;
                 const category = CATEGORY_TYPE_TO_PLURAL[badge.element.type] || "default";
                 const display = getCategoryDisplay(category);
-                const left = badge.x * paperTransform.sx + paperTransform.tx;
-                const top = badge.y * paperTransform.sy + paperTransform.ty;
-                const width = badge.width * paperTransform.sx;
-                const bHeight = ELEMENT_BADGE_HEIGHT * paperTransform.sy;
                 return (
                   <button
                     key={`${badge.nodeId}-${badge.element.id}-${i}`}
                     type="button"
-                    className="absolute flex items-center rounded-full border transition-all duration-150 pointer-events-auto"
+                    className="absolute flex items-center rounded-full border transition-colors duration-150 pointer-events-auto"
                     style={{
-                      left, top, width, height: bHeight,
+                      left: badge.x, top: badge.y, width: badge.width, height: ELEMENT_BADGE_HEIGHT,
                       background: BADGE_BG, borderColor: BADGE_BORDER,
                       backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
-                      fontSize: Math.max(9, 11 * paperTransform.sx),
-                      paddingLeft: 4 * paperTransform.sx,
-                      paddingRight: 8 * paperTransform.sx,
-                      gap: 5 * paperTransform.sx,
+                      fontSize: Math.max(9 / sx, 11),
+                      paddingLeft: 4,
+                      paddingRight: 8,
+                      gap: 5,
                       cursor: interactive ? "pointer" : "default",
                     }}
                     onClick={(e) => { e.stopPropagation(); if (interactive) openElementDetails(badge.element.id); }}
@@ -537,7 +619,7 @@ export default function GraphDisplay({
                       className="truncate"
                       style={{
                         color: "rgba(255,255,255,0.88)", fontWeight: 500,
-                        letterSpacing: "0.01em", maxWidth: width - 40 * paperTransform.sx,
+                        letterSpacing: "0.01em", maxWidth: badge.width - 40,
                       }}
                     >
                       {badge.element.name}
@@ -545,6 +627,7 @@ export default function GraphDisplay({
                   </button>
                 );
               })}
+              </div>
             </div>
           )}
         </div>
