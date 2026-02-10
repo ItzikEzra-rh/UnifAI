@@ -110,8 +110,8 @@ class BlueprintService:
         for doc in docs:
             try:
                 resolved_docs.append(self._resolve_doc(doc))
-            except Exception:
-                # If resolution fails, skip this document
+            except Exception as e:
+                print(f"Skipping blueprint '{doc.blueprint_id}': resolution failed — {e}")
                 continue
 
         return resolved_docs
