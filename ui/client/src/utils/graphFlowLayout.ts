@@ -108,18 +108,13 @@ function extractAllRefs(config: Record<string, unknown>): string[] {
 }
 
 /**
- * Resolve config refs to { type, name, id } by generically extracting every $ref:
- * from the node config and then determining its type by checking which definition
- * list (llms, tools, retrievers, providers) it belongs to.
+ * Build a lookup: refId → { type, name } from every definition list in the
+ * GraphFlow spec. Pre-computed once per graph so that per-node resolution is
+ * a cheap map lookup rather than a full scan each time.
  */
-function getResolvedElements(graphFlow: GraphFlow, nodeDef: NodeDefinition | null): ResolvedElement[] {
-  if (!nodeDef?.config) return [];
-
-  const refIds = extractAllRefs(nodeDef.config as Record<string, unknown>);
-  if (refIds.length === 0) return [];
-
-  // Build a lookup: refId → { type, name } from every definition list.
-  // Entries may be full objects (resolved) or $ref: strings (draft) – skip strings.
+function buildDefinitionLookup(
+  graphFlow: GraphFlow,
+): Map<string, { type: ResolvedElement["type"]; name: string }> {
   const lookup = new Map<string, { type: ResolvedElement["type"]; name: string }>();
   const register = (list: unknown[] | undefined, type: ResolvedElement["type"]) => {
     (list || []).forEach((d: any) => {
@@ -133,6 +128,22 @@ function getResolvedElements(graphFlow: GraphFlow, nodeDef: NodeDefinition | nul
   register(graphFlow.tools as unknown[] | undefined, "tool");
   register(graphFlow.retrievers as unknown[] | undefined, "retriever");
   register(graphFlow.providers as unknown[] | undefined, "provider");
+  return lookup;
+}
+
+/**
+ * Resolve config refs to { type, name, id } by generically extracting every $ref:
+ * from the node config and then determining its type via the pre-built definition
+ * lookup.
+ */
+function getResolvedElements(
+  lookup: Map<string, { type: ResolvedElement["type"]; name: string }>,
+  nodeDef: NodeDefinition | null,
+): ResolvedElement[] {
+  if (!nodeDef?.config) return [];
+
+  const refIds = extractAllRefs(nodeDef.config as Record<string, unknown>);
+  if (refIds.length === 0) return [];
 
   return refIds.map((id) => {
     const match = lookup.get(id);
@@ -277,6 +288,9 @@ export function graphFlowToLayoutData(graphFlow: GraphFlow): GraphFlowLayoutData
   const humanize = (s: string) =>
     s.replace(/[-_]/g, " ").replace(/\b\w/g, (l) => l.toUpperCase());
 
+  // Pre-build definition lookup once for the entire graph
+  const defLookup = buildDefinitionLookup(graphFlow);
+
   const nodes: LayoutNode[] = graphFlow.plan.map((item: PlanItem) => {
     const nodeDef = resolveNodeDef(item.node, nodeMap);
     const nodeType = nodeDef?.type || "custom_agent_node";
@@ -295,7 +309,7 @@ export function graphFlowToLayoutData(graphFlow: GraphFlow): GraphFlowLayoutData
       type: nodeType,
       level,
       elementDetails: nodeDef ? getElementDetails(nodeDef) : {},
-      resolvedElements: getResolvedElements(graphFlow, nodeDef),
+      resolvedElements: getResolvedElements(defLookup, nodeDef),
       nodeDefinition: nodeDef,
     };
   });

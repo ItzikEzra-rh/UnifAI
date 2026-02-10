@@ -143,7 +143,7 @@ export function useJointGraph({
 
   // ── Main effect: fetch blueprint → build JointJS graph → layout ────
   useEffect(() => {
-    if (!blueprintId || !containerRef.current) {
+    if ((!blueprintId && !specDict) || !containerRef.current) {
       setLoading(false);
       return;
     }

@@ -295,13 +295,21 @@ export function injectStatusGlowFilters(paperEl: HTMLElement): void {
 // Link animation injection
 // ---------------------------------------------------------------------------
 
-/** Add a flowing stroke-dasharray animation to every link path in the SVG. */
+/**
+ * Add a flowing stroke-dasharray animation to every link path in the SVG.
+ * Idempotent – existing `<animate>` children are removed before appending new
+ * ones so that calling this function multiple times on the same SVG does not
+ * stack duplicate animations.
+ */
 export function injectLinkAnimations(paperEl: HTMLElement): void {
   const svgEl = paperEl.querySelector("svg");
   if (!svgEl) return;
 
   const linkPaths = svgEl.querySelectorAll("[joint-selector='line']");
   linkPaths.forEach((path) => {
+    // Remove any existing <animate> elements to prevent duplication
+    path.querySelectorAll("animate").forEach((a) => a.remove());
+
     path.setAttribute("stroke-dasharray", "8 4");
     const animate = document.createElementNS(
       "http://www.w3.org/2000/svg",

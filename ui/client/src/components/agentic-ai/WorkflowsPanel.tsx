@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { Trash2, Users } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -177,6 +177,23 @@ export default function WorkflowsPanel({
     }
   }, [selectedFlow?.id, blueprintCacheMap]);
 
+  // Callback for ShareWorkflow: update the blueprint cache when usageScope changes
+  const handleSharingChange = useCallback(
+    (bpId: string, newScope: "public" | "private") => {
+      setBlueprintCacheMap((prev) => {
+        const entry = prev.get(bpId);
+        if (!entry) return prev;
+        const next = new Map(prev);
+        next.set(bpId, {
+          ...entry,
+          metadata: { ...entry.metadata, usageScope: newScope },
+        });
+        return next;
+      });
+    },
+    [],
+  );
+
   const handleFlowSelect = (flow: FlowObject): void => {
     onFlowSelect(flow);
   };
@@ -344,6 +361,7 @@ export default function WorkflowsPanel({
                   isValid={isValid}
                   isValidating={isValidating}
                   initialSharingEnabled={selectedBlueprintData?.sharingEnabled ?? false}
+                  onSharingChange={handleSharingChange}
                 />
               </div>
             {selectedBlueprintData?.specDict ? (

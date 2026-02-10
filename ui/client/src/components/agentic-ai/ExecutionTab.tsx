@@ -326,13 +326,15 @@ export default function ExecutionTab({
       }
     }
     
-    // Load session messages
+    // Load session messages, merging with currentSession to preserve derived
+    // fields (blueprintName, isSharingDisabled) that loadSessionMessages may not return.
     const updatedSession = await loadSessionMessages(currentSession);
     if (updatedSession) {
-      setSelectedSession(updatedSession);
-      setCurrentSessionMessages(updatedSession.messages);
+      const merged = { ...currentSession, ...updatedSession };
+      setSelectedSession(merged);
+      setCurrentSessionMessages(merged.messages);
       setChatSessions(prevSessions =>
-        prevSessions.map(s => (s.id === currentSession.id ? updatedSession : s))
+        prevSessions.map(s => (s.id === currentSession.id ? merged : s))
       );
     } else {
       setCurrentSessionMessages([]);
