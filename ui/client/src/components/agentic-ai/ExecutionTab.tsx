@@ -17,7 +17,7 @@ import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import GraphDisplay from "./graphs/GraphDisplay";
 import axios from '../../http/axiosAgentConfig'
-import { getBlueprintInfo, fetchResolvedBlueprints } from '@/api/blueprints'
+import { fetchBlueprints, fetchResolvedBlueprint } from '@/api/blueprints'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
@@ -236,28 +236,21 @@ export default function ExecutionTab({
       metadata: sessionData.metadata,
     }));
 
-    // Single resolved-endpoint call: returns all blueprints with resource names inline
+    // Lightweight endpoint – returns names + metadata without resolving references
+    // Resolved spec_dicts are fetched on-demand per-session in handleSessionSelect
     const userId = user?.username || "default";
-    const blueprintInfoMap = new Map<string, { name: string; isPublic: boolean; specDict: any }>();
+    const blueprintInfoMap = new Map<string, { name: string; isPublic: boolean }>();
     try {
-      const resolved = await fetchResolvedBlueprints(userId);
-      resolved.forEach((bp) => {
+      const blueprints = await fetchBlueprints(userId);
+      blueprints.forEach((bp) => {
         blueprintInfoMap.set(bp.blueprint_id, {
           name: bp.spec_dict?.name || "",
           isPublic: bp.metadata?.usageScope === "public",
-          specDict: bp.spec_dict,
         });
       });
     } catch {
-      console.error("Error fetching resolved blueprints");
+      console.error("Error fetching blueprints for session enrichment");
     }
-
-    // Cache resolved spec_dicts for the side GraphDisplay (resource names preserved)
-    const specCache = new Map<string, any>();
-    blueprintInfoMap.forEach((info, bpId) => {
-      if (info.specDict) specCache.set(bpId, info.specDict);
-    });
-    setBlueprintSpecCache(specCache);
 
     // Enrich sessions with blueprint name and sharing status
     const sessions: ChatSession[] = baseSessions.map(({ base, metadata }) => {
@@ -326,29 +319,40 @@ export default function ExecutionTab({
     }
     // For regular sessions, keep current carousel mode
     
-    // Fetch blueprint info once and extract both sharing status and name
-    // This consolidates two API calls into one (getBlueprintInfo contains usageScope in metadata)
+    // Fetch resolved blueprint by ID – serves two purposes:
+    // 1. Extract sharing status from metadata.usageScope
+    // 2. Cache resolved spec_dict for the side GraphDisplay (resource names preserved)
     if (!session.blueprintExists) {
       // If workflow is deleted, reset sharing disabled state (deleted message will show instead)
       setIsSharingDisabled(false);
     } else if (session.blueprintId) {
       setIsLoadingBlueprintName(true);
       try {
-        const blueprintInfo = await getBlueprintInfo(session.blueprintId);
-        
-        // Extract sharing status from metadata.usageScope
-        if (session.fromSharedLink) {
-          const isPublic = blueprintInfo.metadata?.usageScope === "public";
-          const disabled = !isPublic;
-          setIsSharingDisabled(disabled);
-          // Update the session with the current sharing status
-          setChatSessions(prev => prev.map(s => 
-            s.id === currentSession.id ? { ...s, isSharingDisabled: disabled} : s
-          ));
-        } 
+        const userId = user?.username || "default";
+        const resolvedBlueprint = await fetchResolvedBlueprint(session.blueprintId, userId);
+
+        if (resolvedBlueprint) {
+          // Cache the resolved spec_dict for the GraphDisplay
+          setBlueprintSpecCache(prev => {
+            const next = new Map(prev);
+            next.set(session.blueprintId, resolvedBlueprint.spec_dict);
+            return next;
+          });
+
+          // Extract sharing status from metadata.usageScope
+          if (session.fromSharedLink) {
+            const isPublic = resolvedBlueprint.metadata?.usageScope === "public";
+            const disabled = !isPublic;
+            setIsSharingDisabled(disabled);
+            // Update the session with the current sharing status
+            setChatSessions(prev => prev.map(s => 
+              s.id === currentSession.id ? { ...s, isSharingDisabled: disabled} : s
+            ));
+          }
+        }
       } catch (error) {
         // Keep defaults from initial load
-        console.error("Error fetching blueprint info:", error);
+        console.error("Error fetching resolved blueprint:", error);
       }
       finally {
         setIsLoadingBlueprintName(false);
@@ -999,7 +1003,6 @@ export default function ExecutionTab({
                 onFlowSelect={handleFlowSelect}
                 showActiveStatus={false}
                 showDeleteButton={false}
-                useResolvedEndpoint={true}
                 height="100%"
                 graphProps={{
                   showBackground: true,

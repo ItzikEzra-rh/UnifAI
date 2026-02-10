@@ -44,7 +44,6 @@ export default function AgentFlowGraph({
             onValidationChange={onValidationChange}
             showActiveStatus={true}
             showDeleteButton={true}
-            useResolvedEndpoint={true}
             height="100%"
             graphProps={{
               showBackground: true,

@@ -16,7 +16,7 @@ import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import GraphDisplay from "./graphs/GraphDisplay";
 import { fetchActiveSessions } from "@/api/agentic";
-import { fetchBlueprints, fetchResolvedBlueprints, deleteBlueprint, fetchResolvedBlueprint } from "@/api/blueprints";
+import { fetchBlueprints, deleteBlueprint, fetchResolvedBlueprint } from "@/api/blueprints";
 import { convertGraphFlowToFlowObject } from "@/utils/blueprintHelpers";
 import ShareWorkflow from "./ShareWorkflow";
 import { BlueprintValidationResult } from "@/types/validation";
@@ -31,7 +31,6 @@ export interface WorkflowsPanelProps {
   showDeleteButton?: boolean;
   className?: string;
   height?: string;
-  useResolvedEndpoint?: boolean; // If true, uses resolved endpoint, otherwise uses regular get endpoint
   graphProps?: {
     showBackground?: boolean;
     interactive?: boolean;
@@ -47,7 +46,6 @@ export default function WorkflowsPanel({
   showDeleteButton = false,
   className = "",
   height = "100%",
-  useResolvedEndpoint = false,
   graphProps = {
     showBackground: true,
     interactive: true,
@@ -80,22 +78,12 @@ export default function WorkflowsPanel({
     showToastOnFailure: true,
   });
 
-  // Fetch available blueprints from API
+  // Fetch available blueprints from API (lightweight – no resolved references)
   const fetchAvailableFlows = async (): Promise<void> => {
     try {
       const userId = user?.username || "default";
-      // Use resolved endpoint if requested (returns blueprints with all references resolved)
-      // Otherwise use regular endpoint (returns blueprints as stored, may contain unresolved references)
-      const blueprints = useResolvedEndpoint 
-        ? await fetchResolvedBlueprints(userId)
-        : await fetchBlueprints(userId);
-
-      // Cache spec_dict + metadata from the bulk fetch
-      const cache = new Map<string, { specDict: any; metadata: any }>();
-      blueprints.forEach((bp) => {
-        cache.set(bp.blueprint_id, { specDict: bp.spec_dict, metadata: bp.metadata || {} });
-      });
-      setBlueprintCacheMap(cache);
+      // Use lightweight endpoint for the list – resolved data is fetched per-flow on selection
+      const blueprints = await fetchBlueprints(userId);
 
       // Convert the blueprints to the format expected by the component
       const processedFlows = blueprints
@@ -141,7 +129,7 @@ export default function WorkflowsPanel({
     ]).finally(() => {
       setIsLoading(false);
     });
-  }, [user, useResolvedEndpoint]);
+  }, [user]);
 
   // Trigger validation when selected flow changes
   useEffect(() => {

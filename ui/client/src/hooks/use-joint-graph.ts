@@ -374,6 +374,49 @@ export function useJointGraph({
     }
   }, [primaryHex]);
 
+  // ── Auto-fit paper when container resizes (e.g. console open/close) ─
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !centerInView) return;
+
+    const padding = 40;
+    let resizeRafId: number | null = null;
+
+    const observer = new ResizeObserver(() => {
+      // Debounce with rAF to avoid excessive recalculations
+      if (resizeRafId) cancelAnimationFrame(resizeRafId);
+      resizeRafId = requestAnimationFrame(() => {
+        const paper = paperRef.current;
+        const graph = graphRef.current;
+        if (!paper || !graph || graph.getElements().length === 0) return;
+
+        const cw = container.clientWidth;
+        const ch = container.clientHeight;
+        if (cw <= 0 || ch <= 0) return;
+
+        paper.setDimensions(cw, ch);
+        paper.scaleContentToFit({
+          padding,
+          preserveAspectRatio: true,
+          verticalAlign: "middle",
+          horizontalAlign: "middle",
+          useModelGeometry: true,
+        });
+
+        const scale = paper.scale();
+        const translate = paper.translate();
+        setPaperTransform({ sx: scale.sx, sy: scale.sy, tx: translate.tx, ty: translate.ty });
+        rebuildOverlays();
+      });
+    });
+
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      if (resizeRafId) cancelAnimationFrame(resizeRafId);
+    };
+  }, [centerInView, rebuildOverlays]);
+
   return {
     containerRef,
     graphRef,
