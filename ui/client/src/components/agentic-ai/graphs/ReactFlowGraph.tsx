@@ -862,7 +862,6 @@ export default function ReactFlowGraph({
     try {
       setIsLoading(true);
       
-      // Fetch only the specific resolved blueprint by ID
       const userId = user?.username || 'default';
       const blueprint = await fetchResolvedBlueprint(graphId, userId);
 
