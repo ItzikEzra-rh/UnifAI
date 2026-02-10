@@ -60,24 +60,11 @@ class MongoBlueprintRepository(BlueprintRepository):
         )
         return res.modified_count == 1
 
-    @staticmethod
-    def _to_document(raw: dict) -> BlueprintDocument:
-        """Convert a raw pymongo document to a BlueprintDocument."""
-        return BlueprintDocument(
-            blueprint_id=raw["blueprint_id"],
-            user_id=raw["user_id"],
-            created_at=raw.get("created_at"),
-            updated_at=raw.get("updated_at"),
-            spec_dict=raw["spec_dict"],
-            rid_refs=raw.get("rid_refs", []),
-            metadata=raw.get("metadata", {}),
-        )
-
     def load(self, blueprint_id: str) -> BlueprintDocument:
         doc = self._col.find_one({"blueprint_id": blueprint_id})
         if not doc:
             raise KeyError(f"No blueprint with id={blueprint_id}")
-        return self._to_document(doc)
+        return BlueprintDocument(**doc)
 
     def delete(self, blueprint_id: str) -> bool:
         res = self._col.delete_one({"blueprint_id": blueprint_id})
@@ -116,7 +103,7 @@ class MongoBlueprintRepository(BlueprintRepository):
             .skip(skip)
             .limit(limit)
         )
-        return [self._to_document(raw) for raw in cursor]
+        return [BlueprintDocument(**raw) for raw in cursor]
 
     def list_direct_usage(self, rid: str) -> List[str]:
         cur = self._col.find({"rid_refs": rid}, {"blueprint_id": 1})
