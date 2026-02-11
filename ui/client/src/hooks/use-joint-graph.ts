@@ -185,6 +185,14 @@ export function useJointGraph({
     paper.el.classList.add("joint-paper");
     paperRef.current = paper;
 
+    // Freeze the paper immediately so that adding nodes/edges does NOT
+    // trigger SVG transform calculations.  This prevents the
+    // "SVGMatrix is not invertible" error that occurs when the container
+    // is inside an animating dialog (or any element with near-zero
+    // dimensions at mount time).  We unfreeze once the layout is
+    // complete and the container has valid dimensions.
+    paper.freeze();
+
     // ── Panning support (drag on blank area to translate the canvas) ──
     let panMoveHandler: ((e: PointerEvent) => void) | null = null;
     let panUpHandler: (() => void) | null = null;
@@ -230,6 +238,39 @@ export function useJointGraph({
     }
 
     let cancelled = false;
+
+    /**
+     * Wait until a container element has non-trivial dimensions.
+     * Useful when the component is mounted inside an animating dialog
+     * whose container starts at near-zero size.  Returns `true` when
+     * valid dimensions are detected, `false` if cancelled or timed-out.
+     */
+    const waitForValidSize = (
+      el: HTMLElement,
+      minDim = 50,
+      timeoutMs = 3000,
+    ): Promise<boolean> =>
+      new Promise((resolve) => {
+        if (el.clientWidth >= minDim && el.clientHeight >= minDim) {
+          resolve(true);
+          return;
+        }
+        const ro = new ResizeObserver(() => {
+          if (cancelled) { ro.disconnect(); resolve(false); return; }
+          if (el.clientWidth >= minDim && el.clientHeight >= minDim) {
+            ro.disconnect();
+            clearTimeout(timer);
+            resolve(true);
+          }
+        });
+        ro.observe(el);
+        const timer = setTimeout(() => {
+          ro.disconnect();
+          // Last-ditch check — container may be big enough now
+          resolve(el.clientWidth >= minDim && el.clientHeight >= minDim);
+        }, timeoutMs);
+      });
+
     (async () => {
       try {
         // Use provided specDict directly if available, otherwise fetch single blueprint
@@ -350,12 +391,24 @@ export function useJointGraph({
           height: maxY - (Number.isFinite(minY) ? minY : 0),
         };
 
-        // Size paper and optionally center
+        // ── Ensure container has real dimensions before unfreezing ──
+        // When the graph lives inside an animating dialog the container
+        // may still be near-zero size at this point.  We MUST wait for
+        // valid dimensions before unfreezing the paper, otherwise
+        // JointJS link-view routing will hit "SVGMatrix is not invertible".
         const padding = 40;
         const container = containerRef.current;
         if (!container) return;
-        const cw = container.clientWidth ?? 0;
-        const ch = container.clientHeight ?? 0;
+
+        let cw = container.clientWidth ?? 0;
+        let ch = container.clientHeight ?? 0;
+
+        if (cw < 50 || ch < 50) {
+          const ok = await waitForValidSize(container);
+          if (cancelled || !ok) return;
+          cw = container.clientWidth;
+          ch = container.clientHeight;
+        }
 
         try {
           if (centerInView && cw > 0 && ch > 0) {
@@ -377,6 +430,10 @@ export function useJointGraph({
           // Container may not be visible yet (e.g. carousel panel is collapsed).
           // The ResizeObserver will handle fitting once it gains a valid size.
         }
+
+        // All geometry is settled — unfreeze the paper so JointJS renders
+        // the SVG elements with valid transforms.
+        paper.unfreeze();
 
         if (animated) {
           injectLinkAnimations(paper.el);
