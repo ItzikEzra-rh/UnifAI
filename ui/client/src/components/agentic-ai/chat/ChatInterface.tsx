@@ -82,7 +82,10 @@ export default function ChatInterface({
   // ────────────────────────────────────────────────────────────────────────────────
   const TEXTAREA_MIN_HEIGHT = 44;  // Starting height (single line + padding)
   const TEXTAREA_MAX_HEIGHT = 200; // Maximum expansion height (normal mode)
-  const TEXTAREA_EXPANDED_HEIGHT = 400; // Expanded height when user clicks expand icon
+  
+  const getExpandedHeight = useCallback(() => {
+    return Math.floor(window.innerHeight * 0.65);
+  }, []);
   
   const [isAtMaxHeight, setIsAtMaxHeight] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -95,9 +98,9 @@ export default function ChatInterface({
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    // If in expanded mode, use expanded height
+    // If in expanded mode, use 80% of viewport height
     if (isExpanded) {
-      textarea.style.height = `${TEXTAREA_EXPANDED_HEIGHT}px`;
+      textarea.style.height = `${getExpandedHeight()}px`;
       textarea.style.overflowY = 'auto';
       return;
     }
@@ -125,7 +128,7 @@ export default function ChatInterface({
     
     // Enable scrolling only when content exceeds max height
     textarea.style.overflowY = reachedMax ? 'auto' : 'hidden';
-  }, [isExpanded]);
+  }, [isExpanded, getExpandedHeight]);
 
   /**
    * Resets textarea to initial compact state
@@ -1107,7 +1110,7 @@ export default function ChatInterface({
           <div className="flex items-start gap-2 mt-2 px-1">
             <Info className="h-3.5 w-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-gray-500">
-              AI agent responses may be inaccurate or incomplete. Verify important information.
+              AI agent responses may be inaccurate or incomplete. Always review AI generated content prior to use.
             </p>
           </div>
         </div>
