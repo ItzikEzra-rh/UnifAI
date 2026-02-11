@@ -357,20 +357,25 @@ export function useJointGraph({
         const cw = container.clientWidth ?? 0;
         const ch = container.clientHeight ?? 0;
 
-        if (centerInView && cw > 0 && ch > 0) {
-          paper.setDimensions(cw, ch);
-          paper.scaleContentToFit({
-            padding,
-            preserveAspectRatio: true,
-            verticalAlign: "middle",
-            horizontalAlign: "middle",
-            useModelGeometry: true,
-          });
-        } else {
-          paper.setDimensions(
-            Math.max(actualBbox.width + padding * 2, cw > 0 ? cw : 400),
-            Math.max(actualBbox.height + padding * 2, ch > 0 ? ch : 300),
-          );
+        try {
+          if (centerInView && cw > 0 && ch > 0) {
+            paper.setDimensions(cw, ch);
+            paper.scaleContentToFit({
+              padding,
+              preserveAspectRatio: true,
+              verticalAlign: "middle",
+              horizontalAlign: "middle",
+              useModelGeometry: true,
+            });
+          } else {
+            paper.setDimensions(
+              Math.max(actualBbox.width + padding * 2, cw > 0 ? cw : 400),
+              Math.max(actualBbox.height + padding * 2, ch > 0 ? ch : 300),
+            );
+          }
+        } catch {
+          // Container may not be visible yet (e.g. carousel panel is collapsed).
+          // The ResizeObserver will handle fitting once it gains a valid size.
         }
 
         if (animated) {
@@ -424,46 +429,65 @@ export function useJointGraph({
     }
   }, [primaryHex]);
 
-  // ── Auto-fit paper when container resizes (e.g. console open/close) ─
+  // ── Auto-fit paper when container resizes (e.g. console open/close, carousel mode switch) ─
   useEffect(() => {
     const container = containerRef.current;
     if (!container || !centerInView) return;
 
     const padding = 40;
-    let resizeRafId: number | null = null;
+    // Minimum container size required to attempt fitting.  Prevents
+    // non-invertible SVGMatrix errors when the container is mid-CSS-transition
+    // or collapsed to near-zero during carousel mode switches.
+    const MIN_DIMENSION = 50;
+    let resizeTimerId: ReturnType<typeof setTimeout> | null = null;
 
     const observer = new ResizeObserver(() => {
-      // Debounce with rAF to avoid excessive recalculations
-      if (resizeRafId) cancelAnimationFrame(resizeRafId);
-      resizeRafId = requestAnimationFrame(() => {
+      // Debounce resize events briefly.  The MIN_DIMENSION guard below already
+      // filters out the dangerous tiny-container frames during CSS transitions,
+      // so we only need a short debounce to batch rapid-fire ResizeObserver
+      // callbacks without adding perceptible delay.
+      if (resizeTimerId) clearTimeout(resizeTimerId);
+      resizeTimerId = setTimeout(() => {
         const paper = paperRef.current;
         const graph = graphRef.current;
         if (!paper || !graph || graph.getElements().length === 0) return;
 
         const cw = container.clientWidth;
         const ch = container.clientHeight;
-        if (cw <= 0 || ch <= 0) return;
+        if (cw < MIN_DIMENSION || ch < MIN_DIMENSION) return;
 
-        paper.setDimensions(cw, ch);
-        paper.scaleContentToFit({
-          padding,
-          preserveAspectRatio: true,
-          verticalAlign: "middle",
-          horizontalAlign: "middle",
-          useModelGeometry: true,
-        });
+        try {
+          // Reset to identity transform first.  If the paper was previously
+          // scaled to near-zero (e.g. the panel was collapsed), the internal
+          // SVGMatrix is singular and any setDimensions / scaleContentToFit
+          // call would throw "The matrix is not invertible".
+          paper.scale(1, 1);
+          paper.translate(0, 0);
+          paper.setDimensions(cw, ch);
+          paper.scaleContentToFit({
+            padding,
+            preserveAspectRatio: true,
+            verticalAlign: "middle",
+            horizontalAlign: "middle",
+            useModelGeometry: true,
+          });
+        } catch {
+          // Transition-related SVGMatrix error — safe to ignore; the next
+          // resize event (after the transition finishes) will succeed.
+          return;
+        }
 
         const scale = paper.scale();
         const translate = paper.translate();
         setPaperTransform({ sx: scale.sx, sy: scale.sy, tx: translate.tx, ty: translate.ty });
         rebuildOverlays();
-      });
+      }, 10);
     });
 
     observer.observe(container);
     return () => {
       observer.disconnect();
-      if (resizeRafId) cancelAnimationFrame(resizeRafId);
+      if (resizeTimerId) clearTimeout(resizeTimerId);
     };
   }, [centerInView, rebuildOverlays]);
 

@@ -264,16 +264,34 @@ export default function GraphDisplay({
 
   const handleFitToView = useCallback(() => {
     const paper = paperRef.current;
+    const container = containerRef.current;
     if (!paper) return;
-    paper.scaleContentToFit({
-      padding: 40,
-      preserveAspectRatio: true,
-      verticalAlign: "middle",
-      horizontalAlign: "middle",
-      useModelGeometry: true,
-    });
+    try {
+      // Reset to identity transform first so we don't hit a non-invertible
+      // SVGMatrix when the previous scale was degenerate (e.g. after panel collapse).
+      paper.scale(1, 1);
+      paper.translate(0, 0);
+      // Re-set dimensions to current container size
+      if (container) {
+        const cw = container.clientWidth;
+        const ch = container.clientHeight;
+        if (cw > 0 && ch > 0) {
+          paper.setDimensions(cw, ch);
+        }
+      }
+      paper.scaleContentToFit({
+        padding: 40,
+        preserveAspectRatio: true,
+        verticalAlign: "middle",
+        horizontalAlign: "middle",
+        useModelGeometry: true,
+      });
+    } catch {
+      // SVGMatrix error — ignore, user can retry
+      return;
+    }
     syncTransform();
-  }, [paperRef, syncTransform]);
+  }, [paperRef, containerRef, syncTransform]);
 
   // ── Derived data for render ─────────────────────────────────────────
 
