@@ -30,22 +30,6 @@ const BidirectionalOffsetEdge: React.FC<BidirectionalOffsetEdgeProps> = ({
   const offsetAmount = 15;
   const offsetDirection = data?.offsetDirection || 'right';
   const isRightOffset = offsetDirection === 'right';
-  
-  // Calculate the perpendicular offset vector
-  const dx = targetX - sourceX;
-  const dy = targetY - sourceY;
-  const length = Math.sqrt(dx * dx + dy * dy);
-  
-  // Normalize and create perpendicular vector
-  const normalizedDx = dx / length;
-  const normalizedDy = dy / length;
-  
-  // Perpendicular vector (rotated 90 degrees)
-  const perpX = -normalizedDy * offsetAmount * (isRightOffset ? 1 : -1);
-  const perpY = normalizedDx * offsetAmount * (isRightOffset ? 1 : -1);
-  
-  // Apply offset to intermediate points, not connection points
-  // We want same connection points but different path curves
   const intermediateOffset = offsetAmount * 2;
   
   // Calculate smooth step path with offset

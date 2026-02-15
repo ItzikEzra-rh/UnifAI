@@ -409,7 +409,7 @@ export function useJointGraph({
         });
 
         // Recompute bounding box after manual repositioning of final_answer_node
-        let minX = Infinity, minY = Infinity, maxX = 0, maxY = 0;
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         graph.getElements().forEach((el) => {
           const b = el.getBBox();
           minX = Math.min(minX, b.x);

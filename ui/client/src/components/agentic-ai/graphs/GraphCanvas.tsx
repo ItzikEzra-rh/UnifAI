@@ -204,7 +204,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
       markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: edgeColor },
       data: { ...edge.data, onDelete: onDeleteEdge },
     };
-  }), [processedEdges, edgeColor, condEdgeColor, bidiEdgeColor, onDeleteEdge]);
+  }), [processedEdges, edgeColor, condEdgeColor, onDeleteEdge]);
 
   return (
     <div className="flex-1 relative">

@@ -273,15 +273,34 @@ export default function GraphDisplay({
 
   useEffect(() => {
     if (!isLiveRequest && wasLiveRef.current) {
-      // Stream just ended → mark ALL nodes as DONE
+      // Stream just ended → mark ALL nodes as DONE visually (both SVG + overlay).
+      // We populate nodeStatusMap with DONE for every node so the overlay border
+      // rings and status pills stay consistent with the SVG stroke styling, then
+      // clear both layers after a short delay so the user sees "Complete" briefly.
       wasLiveRef.current = false;
       const graph = graphRef.current;
       if (graph) {
+        const doneMap: Record<string, NodeStatus> = {};
         for (const el of graph.getElements()) {
           applyNodeVisual(el, "DONE");
+          doneMap[el.id as string] = "DONE";
         }
+        nodeStatusMapRef.current = doneMap;
+        setNodeStatusMap(doneMap);
+
+        // After a brief pause, reset both SVG visuals and overlay state to IDLE
+        const timer = setTimeout(() => {
+          const g = graphRef.current;
+          if (g) {
+            for (const el of g.getElements()) {
+              applyNodeVisual(el, "IDLE");
+            }
+          }
+          nodeStatusMapRef.current = {};
+          setNodeStatusMap({});
+        }, 1500);
+        return () => clearTimeout(timer);
       }
-      setNodeStatusMap({});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLiveRequest]);
