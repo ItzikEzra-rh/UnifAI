@@ -38,7 +38,6 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({
     return {
       iconBg: t.primary,
       conditionBg: t.conditionAccent,
-      hoverBorder: t.hoverBorder,
       conditionCardBg: t.conditionCardBg,
       conditionCardBorder: t.conditionCardBorder,
     };

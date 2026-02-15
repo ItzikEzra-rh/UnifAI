@@ -295,6 +295,12 @@
     }
   }
 
+  /* Element badge hover state (frosted-glass look) */
+  .graph-badge-interactive:hover {
+    background: rgba(255, 255, 255, 0.10) !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+  }
+
   /* Respect users' reduced-motion preferences */
   @media (prefers-reduced-motion: reduce) {
     .workflow-graph-animated {

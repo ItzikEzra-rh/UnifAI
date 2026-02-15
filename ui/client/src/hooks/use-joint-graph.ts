@@ -182,8 +182,7 @@ export function useJointGraph({
         : false,
     });
 
-    containerRef.current.innerHTML = "";
-    containerRef.current.appendChild(paper.el);
+    containerRef.current.replaceChildren(paper.el);
     paper.el.classList.add("joint-paper");
     paperRef.current = paper;
 

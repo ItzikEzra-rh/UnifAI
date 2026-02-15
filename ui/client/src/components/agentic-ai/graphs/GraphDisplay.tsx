@@ -20,7 +20,6 @@ import {
   SCALE_CONTENT_TO_FIT_OPTS,
   BADGE_BG,
   BADGE_BORDER,
-  BADGE_HOVER_BG,
   CATEGORY_TYPE_TO_PLURAL,
   STATUS_STYLES,
   nodeIconForType,
@@ -642,7 +641,9 @@ export default function GraphDisplay({
                   <button
                     key={`${badge.nodeId}-${badge.element.id}-${i}`}
                     type="button"
-                    className="absolute flex items-center rounded-full border transition-colors duration-150 pointer-events-auto"
+                    className={`absolute flex items-center rounded-full border transition-colors duration-150 pointer-events-auto ${
+                      interactive ? "graph-badge-interactive" : ""
+                    }`}
                     style={{
                       left: badge.x, top: badge.y, width: badge.width, height: ELEMENT_BADGE_HEIGHT,
                       background: BADGE_BG, borderColor: BADGE_BORDER,
@@ -654,15 +655,6 @@ export default function GraphDisplay({
                       cursor: interactive ? "pointer" : "default",
                     }}
                     onClick={(e) => { e.stopPropagation(); if (interactive) openElementDetails(badge.element.id); }}
-                    onMouseEnter={(e) => {
-                      if (!interactive) return;
-                      (e.currentTarget as HTMLElement).style.background = BADGE_HOVER_BG;
-                      (e.currentTarget as HTMLElement).style.borderColor = "rgba(255,255,255,0.22)";
-                    }}
-                    onMouseLeave={(e) => {
-                      (e.currentTarget as HTMLElement).style.background = BADGE_BG;
-                      (e.currentTarget as HTMLElement).style.borderColor = BADGE_BORDER;
-                    }}
                     tabIndex={interactive ? 0 : -1}
                   >
                     <span
