@@ -8,6 +8,7 @@
 
 import type { GraphFlow } from "./interfaces";
 import type { LayoutNode, ResolvedElement } from "@/utils/graphFlowLayout";
+import { extractUidFromRef } from "@/utils/graphFlowLayout";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import type { BuildingBlock } from "@/types/graph";
 
@@ -30,6 +31,18 @@ export const LAYOUT_OPTS = {
   marginY: 32,
   setVertices: true,
   disableOptimalOrderHeuristic: false,
+};
+
+/** Shared padding used when fitting the graph into the viewport. */
+export const FIT_PADDING = 40;
+
+/** Shared options passed to `paper.transformToFitContent()`. */
+export const SCALE_CONTENT_TO_FIT_OPTS = {
+  padding: FIT_PADDING,
+  preserveAspectRatio: true,
+  verticalAlign: "middle" as const,
+  horizontalAlign: "middle" as const,
+  useModelGeometry: true,
 };
 
 // ---------------------------------------------------------------------------
@@ -342,11 +355,6 @@ export function removeLinkAnimations(paperEl: HTMLElement): void {
 // Element block map builder
 // ---------------------------------------------------------------------------
 
-/** Strip `$ref:` prefix from a RID string. */
-function stripRefPrefix(rid: string): string {
-  return rid.startsWith("$ref:") ? rid.substring(5) : rid;
-}
-
 /**
  * Build a `Map<elementId, BuildingBlock>` from the layout nodes and the
  * original GraphFlow spec. Used by overlay badges to show resource details.
@@ -360,11 +368,11 @@ export function buildElementBlockMap(
   layoutNodes.forEach((n) => {
     n.resolvedElements.forEach((el) => {
       const category = CATEGORY_TYPE_TO_PLURAL[el.type] || "retrievers";
-      const catList = (spec as Record<string, unknown[]>)[category];
+      const catList = (spec as unknown as Record<string, unknown[]>)[category];
       const def = catList?.find((d: unknown) => {
         const entry = d as { rid?: string };
         return (
-          stripRefPrefix(entry.rid || "") === el.id || entry.rid === el.id
+          extractUidFromRef(entry.rid || "") === el.id || entry.rid === el.id
         );
       });
       if (!def) return;

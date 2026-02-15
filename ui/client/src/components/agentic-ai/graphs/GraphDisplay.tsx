@@ -17,6 +17,7 @@ import {
   NODE_WIDTH,
   NODE_HEADER_HEIGHT,
   ELEMENT_BADGE_HEIGHT,
+  SCALE_CONTENT_TO_FIT_OPTS,
   BADGE_BG,
   BADGE_BORDER,
   BADGE_HOVER_BG,
@@ -30,6 +31,104 @@ import {
 // ---------------------------------------------------------------------------
 
 type NodeStatus = "IDLE" | "PROGRESS" | "DONE";
+
+// ---------------------------------------------------------------------------
+// Extracted sub-components (keep co-located — only used by GraphDisplay)
+// ---------------------------------------------------------------------------
+
+/** Compact zoom / fit-to-view button group. */
+function ZoomControls({
+  onZoomIn,
+  onZoomOut,
+  onFitToView,
+}: {
+  onZoomIn: () => void;
+  onZoomOut: () => void;
+  onFitToView: () => void;
+}) {
+  return (
+    <div className="absolute bottom-3 right-3 z-40 flex flex-col rounded-lg bg-black/70 backdrop-blur-sm">
+      <button
+        type="button"
+        className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 rounded-t-lg transition-colors"
+        onClick={onZoomIn}
+        aria-label="Zoom in"
+      >
+        <ZoomIn size={16} />
+      </button>
+      <button
+        type="button"
+        className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+        onClick={onZoomOut}
+        aria-label="Zoom out"
+      >
+        <ZoomOut size={16} />
+      </button>
+      <button
+        type="button"
+        className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 rounded-b-lg transition-colors"
+        onClick={onFitToView}
+        aria-label="Fit to view"
+      >
+        <Maximize2 size={16} />
+      </button>
+    </div>
+  );
+}
+
+/** Bottom status bar showing per-node progress during live execution. */
+function ActiveNodesStatusBar({
+  nodeStatusMap,
+  nodeLabelsMap,
+}: {
+  nodeStatusMap: Record<string, NodeStatus>;
+  nodeLabelsMap: Record<string, string>;
+}) {
+  return (
+    <div className="absolute bottom-2 left-2 right-2 z-50 bg-black bg-opacity-80 text-white px-3 py-2 rounded-lg">
+      <div className="flex flex-wrap gap-2 text-xs">
+        {Object.entries(nodeStatusMap).map(([nodeId, status]) => {
+          if (status === "IDLE") return null;
+          const nodeName = nodeLabelsMap[nodeId] || nodeId;
+          return (
+            <div
+              key={nodeId}
+              className={`flex items-center gap-1 px-2 py-1 rounded ${
+                status === "PROGRESS"
+                  ? "bg-blue-500 bg-opacity-50"
+                  : "bg-green-500 bg-opacity-50"
+              }`}
+            >
+              <motion.div
+                className={`w-2 h-2 rounded-full ${
+                  status === "PROGRESS" ? "bg-blue-400" : "bg-green-400"
+                }`}
+                animate={
+                  status === "PROGRESS"
+                    ? { scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }
+                    : undefined
+                }
+                transition={
+                  status === "PROGRESS"
+                    ? { duration: 1, repeat: Infinity }
+                    : undefined
+                }
+              />
+              <span className="truncate max-w-20">{nodeName}</span>
+              <span className="text-xs opacity-75">
+                {status === "PROGRESS" ? "Running" : "Done"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Props
+// ---------------------------------------------------------------------------
 
 export type GraphDisplayProps = {
   blueprintId?: string;
@@ -279,13 +378,7 @@ export default function GraphDisplay({
           paper.setDimensions(cw, ch);
         }
       }
-      paper.scaleContentToFit({
-        padding: 40,
-        preserveAspectRatio: true,
-        verticalAlign: "middle",
-        horizontalAlign: "middle",
-        useModelGeometry: true,
-      });
+      paper.transformToFitContent(SCALE_CONTENT_TO_FIT_OPTS);
     } catch {
       // SVGMatrix error — ignore, user can retry
       return;
@@ -363,74 +456,19 @@ export default function GraphDisplay({
 
         {/* Zoom Controls */}
         {interactive && (
-          <div className="absolute bottom-3 right-3 z-40 flex flex-col rounded-lg bg-black/70 backdrop-blur-sm">
-            <button
-              type="button"
-              className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 rounded-t-lg transition-colors"
-              onClick={handleZoomIn}
-              aria-label="Zoom in"
-            >
-              <ZoomIn size={16} />
-            </button>
-            <button
-              type="button"
-              className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-              onClick={handleZoomOut}
-              aria-label="Zoom out"
-            >
-              <ZoomOut size={16} />
-            </button>
-            <button
-              type="button"
-              className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 rounded-b-lg transition-colors"
-              onClick={handleFitToView}
-              aria-label="Fit to view"
-            >
-              <Maximize2 size={16} />
-            </button>
-          </div>
+          <ZoomControls
+            onZoomIn={handleZoomIn}
+            onZoomOut={handleZoomOut}
+            onFitToView={handleFitToView}
+          />
         )}
 
         {/* Active Nodes Status Bar */}
         {isLiveRequest && streamingContext && Object.keys(nodeStatusMap).length > 0 && (
-          <div className="absolute bottom-2 left-2 right-2 z-50 bg-black bg-opacity-80 text-white px-3 py-2 rounded-lg">
-            <div className="flex flex-wrap gap-2 text-xs">
-              {Object.entries(nodeStatusMap).map(([nodeId, status]) => {
-                if (status === "IDLE") return null;
-                const nodeName = nodeLabelsMap[nodeId] || nodeId;
-                return (
-                  <div
-                    key={nodeId}
-                    className={`flex items-center gap-1 px-2 py-1 rounded ${
-                      status === "PROGRESS"
-                        ? "bg-blue-500 bg-opacity-50"
-                        : "bg-green-500 bg-opacity-50"
-                    }`}
-                  >
-                    <motion.div
-                      className={`w-2 h-2 rounded-full ${
-                        status === "PROGRESS" ? "bg-blue-400" : "bg-green-400"
-                      }`}
-                      animate={
-                        status === "PROGRESS"
-                          ? { scale: [1, 1.2, 1], opacity: [1, 0.7, 1] }
-                          : undefined
-                      }
-                      transition={
-                        status === "PROGRESS"
-                          ? { duration: 1, repeat: Infinity }
-                          : undefined
-                      }
-                    />
-                    <span className="truncate max-w-20">{nodeName}</span>
-                    <span className="text-xs opacity-75">
-                      {status === "PROGRESS" ? "Running" : "Done"}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
+          <ActiveNodesStatusBar
+            nodeStatusMap={nodeStatusMap}
+            nodeLabelsMap={nodeLabelsMap}
+          />
         )}
 
         {loading && (

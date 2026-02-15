@@ -25,6 +25,8 @@ import {
   ELEMENT_GAP,
   NODE_BODY_PADDING,
   LAYOUT_OPTS,
+  FIT_PADDING,
+  SCALE_CONTENT_TO_FIT_OPTS,
   STATUS_STYLES,
   computeNodeHeight,
   nodeFillForType,
@@ -235,6 +237,36 @@ export function useJointGraph({
 
       document.addEventListener("pointermove", panMoveHandler);
       document.addEventListener("pointerup", panUpHandler);
+
+      // ── Mouse-wheel zoom (restores ReactFlow-like scroll-to-zoom) ──
+      const ZOOM_FACTOR = 1.1;
+      const MIN_ZOOM = 0.1;
+      const MAX_ZOOM = 4;
+
+      const onMouseWheel = (_evt: dia.Event, ox: number, oy: number, delta: number) => {
+        const oldScale = paper.scale().sx;
+        const newScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, delta > 0 ? oldScale * ZOOM_FACTOR : oldScale / ZOOM_FACTOR));
+        if (newScale === oldScale) return;
+
+        // Zoom towards the cursor position (ox, oy are local coordinates)
+        const t = paper.translate();
+        const scaleDiff = newScale / oldScale;
+        const tx = t.tx - ox * (scaleDiff - 1) * oldScale;
+        const ty = t.ty - oy * (scaleDiff - 1) * oldScale;
+
+        paper.scale(newScale, newScale);
+        paper.translate(tx, ty);
+        const s = paper.scale();
+        const tr = paper.translate();
+        flushSync(() => {
+          setPaperTransform({ sx: s.sx, sy: s.sy, tx: tr.tx, ty: tr.ty });
+        });
+      };
+
+      paper.on("blank:mousewheel", onMouseWheel);
+      paper.on("cell:mousewheel", (_cellView: unknown, evt: dia.Event, ox: number, oy: number, delta: number) => {
+        onMouseWheel(evt, ox, oy, delta);
+      });
     }
 
     let cancelled = false;
@@ -359,7 +391,7 @@ export function useJointGraph({
         }
 
         // Auto-layout
-        const bbox = DirectedGraph.layout(graph, LAYOUT_OPTS);
+        DirectedGraph.layout(graph, LAYOUT_OPTS);
 
         // Force final_answer_node to the bottom
         const typeById = new Map(layoutNodes.map((n) => [n.id, n.type]));
@@ -396,7 +428,6 @@ export function useJointGraph({
         // may still be near-zero size at this point.  We MUST wait for
         // valid dimensions before unfreezing the paper, otherwise
         // JointJS link-view routing will hit "SVGMatrix is not invertible".
-        const padding = 40;
         const container = containerRef.current;
         if (!container) return;
 
@@ -413,17 +444,11 @@ export function useJointGraph({
         try {
           if (centerInView && cw > 0 && ch > 0) {
             paper.setDimensions(cw, ch);
-            paper.scaleContentToFit({
-              padding,
-              preserveAspectRatio: true,
-              verticalAlign: "middle",
-              horizontalAlign: "middle",
-              useModelGeometry: true,
-            });
+            paper.transformToFitContent(SCALE_CONTENT_TO_FIT_OPTS);
           } else {
             paper.setDimensions(
-              Math.max(actualBbox.width + padding * 2, cw > 0 ? cw : 400),
-              Math.max(actualBbox.height + padding * 2, ch > 0 ? ch : 300),
+              Math.max(actualBbox.width + FIT_PADDING * 2, cw > 0 ? cw : 400),
+              Math.max(actualBbox.height + FIT_PADDING * 2, ch > 0 ? ch : 300),
             );
           }
         } catch {
@@ -491,7 +516,6 @@ export function useJointGraph({
     const container = containerRef.current;
     if (!container || !centerInView) return;
 
-    const padding = 40;
     // Minimum container size required to attempt fitting.  Prevents
     // non-invertible SVGMatrix errors when the container is mid-CSS-transition
     // or collapsed to near-zero during carousel mode switches.
@@ -516,18 +540,12 @@ export function useJointGraph({
         try {
           // Reset to identity transform first.  If the paper was previously
           // scaled to near-zero (e.g. the panel was collapsed), the internal
-          // SVGMatrix is singular and any setDimensions / scaleContentToFit
+          // SVGMatrix is singular and any setDimensions / transformToFitContent
           // call would throw "The matrix is not invertible".
           paper.scale(1, 1);
           paper.translate(0, 0);
           paper.setDimensions(cw, ch);
-          paper.scaleContentToFit({
-            padding,
-            preserveAspectRatio: true,
-            verticalAlign: "middle",
-            horizontalAlign: "middle",
-            useModelGeometry: true,
-          });
+          paper.transformToFitContent(SCALE_CONTENT_TO_FIT_OPTS);
         } catch {
           // Transition-related SVGMatrix error — safe to ignore; the next
           // resize event (after the transition finishes) will succeed.

@@ -43,7 +43,7 @@ export interface GraphFlowLayoutData {
   edges: LayoutEdge[];
 }
 
-function extractUidFromRef(value: string): string {
+export function extractUidFromRef(value: string): string {
   if (typeof value === "string" && value.startsWith("$ref:")) {
     return value.substring(5);
   }
