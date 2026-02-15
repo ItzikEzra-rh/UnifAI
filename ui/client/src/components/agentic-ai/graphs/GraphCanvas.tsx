@@ -32,7 +32,14 @@ const edgeTypes: EdgeTypes = {
   bidirectionalOffset: BidirectionalOffsetEdge,
 };
 
-// Helper function to detect and mark bidirectional edge pairs
+/**
+ * Detect bidirectional edge pairs (A→B and B→A) and transform them into
+ * offset edges so they render as two visually separated paths.
+ *
+ * @param edges - The full list of graph edges.
+ * @param bidiColor - Stroke color for bidirectional edges.  Callers should
+ *   pass the theme-derived `primaryLight` color; the default is a fallback.
+ */
 const processBidirectionalEdges = (edges: Edge[], bidiColor: string = "#10B981"): Edge[] => {
   const edgeMap = new Map<string, Edge[]>();
   const processedEdges: Edge[] = [];

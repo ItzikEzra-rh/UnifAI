@@ -141,18 +141,26 @@ export default function WorkflowsPanel({
     }
   }, [selectedFlow?.id, validateSelectedBlueprint, clearValidation]);
 
-  // Fetch blueprint data (spec_dict + metadata) when selected flow changes
-  // This consolidates API calls - data is fetched once and passed to child components
+  // Fetch blueprint data (spec_dict + metadata) when selected flow changes.
+  // This consolidates API calls - data is fetched once and passed to child components.
+  // A `cancelled` flag prevents stale responses from overwriting state when the
+  // user switches flows quickly.
   useEffect(() => {
     if (!selectedFlow?.id) {
       setSelectedBlueprintData(null);
       return;
     }
 
+    let cancelled = false;
+    // Clear previous data immediately so the UI shows a loading state
+    // instead of the previous flow's graph while the new fetch is in-flight.
+    setSelectedBlueprintData(null);
+
     const fetchBlueprintData = async () => {
       try {
         const userId = user?.username || 'default';
         const blueprint = await fetchResolvedBlueprint(selectedFlow.id, userId);
+        if (cancelled) return;
         if (blueprint) {
           setSelectedBlueprintData({
             specDict: blueprint.spec_dict,
@@ -160,12 +168,14 @@ export default function WorkflowsPanel({
           });
         }
       } catch (error) {
+        if (cancelled) return;
         console.error("Error fetching blueprint data:", error);
         setSelectedBlueprintData(null);
       }
     };
 
     fetchBlueprintData();
+    return () => { cancelled = true; };
   }, [selectedFlow?.id, user?.username]);
 
   const handleFlowSelect = (flow: FlowObject): void => {

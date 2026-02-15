@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -108,6 +108,10 @@ export default function ExecutionTab({
 
   const { nodeListRef, forceUpdate } = useStreamingData();
   const { user } = useAuth();
+
+  // Guard: incremented on every session selection so stale async responses
+  // from a previous selection are silently discarded.
+  const sessionSelectRequestId = useRef(0);
   
   // Derived state: Chat-only mode is active for shared link sessions
   // This single flag drives all chat-only experience behaviors (no graph, no resize, etc.)
@@ -297,6 +301,10 @@ export default function ExecutionTab({
 
   // Handle session selection
   const handleSessionSelect = async (session: ChatSession) => {
+    // Increment request id so that any in-flight async work from a previous
+    // selection is silently discarded when it resolves.
+    const requestId = ++sessionSelectRequestId.current;
+
     let currentSession = session;
     setSelectedSession(currentSession);
     
@@ -330,6 +338,9 @@ export default function ExecutionTab({
         const userId = user?.username || "default";
         const resolvedBlueprint = await fetchResolvedBlueprint(session.blueprintId, userId);
 
+        // Bail out if the user switched to a different session while we were fetching
+        if (sessionSelectRequestId.current !== requestId) return;
+
         if (resolvedBlueprint) {
           // Cache the resolved spec_dict for the GraphDisplay
           setBlueprintSpecCache(prev => {
@@ -354,13 +365,22 @@ export default function ExecutionTab({
         console.error("Error fetching resolved blueprint:", error);
       }
       finally {
-        setIsLoadingBlueprintName(false);
+        if (sessionSelectRequestId.current === requestId) {
+          setIsLoadingBlueprintName(false);
+        }
       }
     }
+
+    // Bail out if the user switched to a different session while we were fetching
+    if (sessionSelectRequestId.current !== requestId) return;
     
     // Load session messages, merging with currentSession to preserve derived
     // fields (blueprintName, isSharingDisabled) that loadSessionMessages may not return.
     const updatedSession = await loadSessionMessages(currentSession);
+
+    // Final stale check before applying message state
+    if (sessionSelectRequestId.current !== requestId) return;
+
     if (updatedSession) {
       const merged = { ...currentSession, ...updatedSession };
       setSelectedSession(merged);

@@ -17,10 +17,6 @@ export interface WorkflowBlueprint {
   created_at?: string;
   updated_at?: string;
   rid_refs?: string[];
-  metadata?: {
-    usageScope?: "public" | "private";
-    [key: string]: any;
-  };
 }
 
 export interface BlueprintInfoResponse {
