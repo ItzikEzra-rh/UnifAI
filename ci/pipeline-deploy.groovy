@@ -138,8 +138,8 @@ def deployModules(module){
 
 def deleteRunningApplication(){
     echo("Removing running UnifAI application")
-
-    def charts = ["dataflow", "rag", "multiagent", "shared-resources","ui", "sso"]
+    cleanOldDataflow()
+    def charts = ["rag", "multiagent", "shared-resources","ui", "sso"]
 
     charts.each { chart ->
         sh("podman exec -t helmfile bash -c 'helmfile destroy -f ${chart}.yaml.gotmpl --deleteWait'")
@@ -154,6 +154,25 @@ def deleteRunningApplication(){
     """)
     echo("UnifAi application successfully deleted")
     sh("sleep 10")
+}
+
+def cleanOldDataflow(){
+    echo("Removing old dataflow application")
+    sh("helm ls | grep 'dataflow'")
+    if(result.length() > 0) {
+        def releaseName = result.split('\n')[0].split(' ')[0]
+        releaseName.each { name ->
+            sh("helm delete ${name}")
+        }
+        sh("""
+        until ! oc get deployment,statefulset,svc | grep 'dataflow'; do
+            echo 'Waiting for deployment deletion...'
+            sleep 5
+        done
+        """)
+        echo("Dataflow application successfully deleted")
+        sh("sleep 5")
+    }
 }
 
 def cleanWorkspace() {
