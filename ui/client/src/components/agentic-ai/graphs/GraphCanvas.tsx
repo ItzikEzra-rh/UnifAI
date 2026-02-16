@@ -174,10 +174,10 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   // the rendered colors always reflect the current theme.
   const themedEdges = useMemo(() => processedEdges.map(edge => {
     const isConditional = edge.data?.isConditional;
-    const isBidi = edge.type === 'bidirectionalOffset';
+    const isBidirectional = edge.type === 'bidirectionalOffset';
 
     // Bidirectional edges already get themed via processBidirectionalEdges
-    if (isBidi) {
+    if (isBidirectional) {
       return {
         ...edge,
         type: edge.type || 'custom',
