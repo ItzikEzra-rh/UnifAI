@@ -139,7 +139,22 @@ export function nodeFillForType(type: string): string {
 
 /**
  * Inject SVG `<defs>` (gradients + drop-shadow filter) into the JointJS
- * paper SVG element. Idempotent – safe to call on the same element twice.
+ * paper SVG element.  Idempotent – safe to call on the same element twice.
+ *
+ * **Why direct SVG DOM manipulation is necessary here:**
+ *
+ * SVG `fill` with gradients (`url(#agentGradient)`) requires a
+ * `<linearGradient>` definition inside the same SVG's `<defs>`.  There is
+ * no CSS-only alternative for SVG gradient fills.  JointJS does not expose
+ * a public API for injecting custom `<defs>`, so we add them directly.
+ *
+ * This is safe because:
+ * 1. We only *append* to `<defs>` – never remove or modify existing JointJS
+ *    elements.
+ * 2. All injected elements use stable IDs that JointJS does not use
+ *    (`agentGradient`, `agentGradientSpecial`, `nodeShadow`).
+ * 3. The function is idempotent (upsert pattern) so repeated calls are
+ *    harmless (e.g. on theme change).
  */
 export function injectSvgDefs(
   paperEl: HTMLElement,
@@ -253,6 +268,17 @@ export const STATUS_STYLES = {
 /**
  * Inject `progressGlow` and `doneGlow` SVG filter defs into the paper.
  * Idempotent – safe to call multiple times.
+ *
+ * **Why SVG filters instead of CSS `filter`:**
+ *
+ * JointJS sets the SVG `filter` *attribute* on `<rect>` elements (via
+ * `el.attr("body/filter", …)`).  The SVG `filter` attribute only accepts
+ * `url(#…)` references to SVG `<filter>` elements – it cannot take CSS
+ * filter functions like `drop-shadow(…)`.  (CSS `filter` is a *property*
+ * that can be set via `style`, but JointJS attrs target SVG attributes.)
+ *
+ * As with gradients, we only append to `<defs>` and use stable IDs that
+ * don't collide with JointJS internals, so this is safe for upgrades.
  */
 export function injectStatusGlowFilters(paperEl: HTMLElement): void {
   const svg =

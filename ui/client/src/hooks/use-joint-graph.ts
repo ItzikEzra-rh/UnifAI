@@ -9,6 +9,19 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { flushSync } from "react-dom";
+
+/**
+ * Runs `fn` synchronously within React's commit phase when possible.
+ * Falls back to a normal invocation if flushSync throws (e.g. when called
+ * during an already-flushing render or when the SVG context is invalid).
+ */
+function safeFlushSync(fn: () => void): void {
+  try {
+    flushSync(fn);
+  } catch {
+    fn();
+  }
+}
 import { dia, shapes } from "@joint/core";
 import { DirectedGraph } from "@joint/layout-directed-graph";
 import type { GraphFlow } from "@/components/agentic-ai/graphs/interfaces";
@@ -223,7 +236,7 @@ export function useJointGraph({
         paper.translate(t.tx + dx, t.ty + dy);
         const s = paper.scale();
         const tr = paper.translate();
-        flushSync(() => {
+        safeFlushSync(() => {
           setPaperTransform({ sx: s.sx, sy: s.sy, tx: tr.tx, ty: tr.ty });
         });
       };
@@ -237,7 +250,7 @@ export function useJointGraph({
       document.addEventListener("pointermove", panMoveHandler);
       document.addEventListener("pointerup", panUpHandler);
 
-      // ── Mouse-wheel zoom (restores ReactFlow-like scroll-to-zoom) ──
+      // ── Mouse-wheel zoom ──
       const ZOOM_FACTOR = 1.1;
       const MIN_ZOOM = 0.1;
       const MAX_ZOOM = 4;
@@ -257,7 +270,7 @@ export function useJointGraph({
         paper.translate(tx, ty);
         const s = paper.scale();
         const tr = paper.translate();
-        flushSync(() => {
+        safeFlushSync(() => {
           setPaperTransform({ sx: s.sx, sy: s.sy, tx: tr.tx, ty: tr.ty });
         });
       };
@@ -468,7 +481,7 @@ export function useJointGraph({
         setPaperTransform({ sx: scale.sx, sy: scale.sy, tx: translate.tx, ty: translate.ty });
 
         rebuildOverlays();
-        if (interactive) graph.on("change:position", () => { flushSync(() => rebuildOverlays()); });
+        if (interactive) graph.on("change:position", () => { safeFlushSync(() => rebuildOverlays()); });
 
         setLoading(false);
       } catch (err: unknown) {

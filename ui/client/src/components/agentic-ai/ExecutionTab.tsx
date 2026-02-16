@@ -17,7 +17,7 @@ import ChatInterface from "./chat/ChatInterface";
 import ExecutionStream from "./ExecutionStream";
 import GraphDisplay from "./graphs/GraphDisplay";
 import axios from '../../http/axiosAgentConfig'
-import { fetchBlueprints, fetchResolvedBlueprint } from '@/api/blueprints'
+import { fetchResolvedBlueprint } from '@/api/blueprints'
 import { useStreamingData } from './StreamingDataContext'
 import { EnhancedStreamReader } from '@/components/shared/stream/StreamJsonParser'
 import { useAuth } from "@/contexts/AuthContext";
@@ -232,43 +232,23 @@ export default function ExecutionTab({
     setGlobalScope(prevScope => prevScope === 'public' ? 'private' : 'public');
   };
 
-  const transformApiDataToSessions = async (apiData: ChatSessionData[]): Promise<ChatSession[]> => {
-    // Build base sessions first (no API calls)
-    const baseSessions = apiData.map((sessionData, index) => ({
-      base: transformSessionData(sessionData, index),
-      metadata: sessionData.metadata,
-    }));
+  // Derives sessions from the sessions API data only – no extra API calls.
+  // Blueprint names and fresh sharing status are loaded on-demand
+  // in handleSessionSelect via fetchResolvedBlueprint.
+  // (Will simplify further once Odai's lightweight resolved API lands.)
+  const transformApiDataToSessions = (apiData: ChatSessionData[]): ChatSession[] => {
+    return apiData.map((sessionData, index) => {
+      const base = transformSessionData(sessionData, index);
 
-    // Lightweight endpoint – returns names + metadata without resolving references
-    // Resolved spec_dicts are fetched on-demand per-session in handleSessionSelect
-    const userId = user?.username || "default";
-    const blueprintInfoMap = new Map<string, { name: string; isPublic: boolean }>();
-    try {
-      const blueprints = await fetchBlueprints(userId);
-      blueprints.forEach((bp) => {
-        blueprintInfoMap.set(bp.blueprint_id, {
-          name: bp.spec_dict?.name || "",
-          isPublic: bp.metadata?.usageScope === "public",
-        });
-      });
-    } catch {
-      console.error("Error fetching blueprints for session enrichment");
-    }
-
-    // Enrich sessions with blueprint name and sharing status
-    const sessions: ChatSession[] = baseSessions.map(({ base, metadata }) => {
-      const bpInfo = blueprintInfoMap.get(base.blueprintId);
-      const blueprintName = bpInfo?.name || "";
-
+      // Derive initial sharing status from session metadata.
+      // Re-verified against the blueprint in handleSessionSelect.
       let isSharingDisabled = false;
       if (base.fromSharedLink && base.blueprintExists && base.blueprintId) {
-        isSharingDisabled = !(bpInfo?.isPublic ?? metadata?.public_usage_scope ?? false);
+        isSharingDisabled = !(sessionData.metadata?.public_usage_scope ?? false);
       }
 
-      return { ...base, blueprintName, isSharingDisabled };
+      return { ...base, isSharingDisabled };
     });
-
-    return sessions;
   };
 
   // Fetch chat sessions from API
@@ -279,7 +259,7 @@ export default function ExecutionTab({
 
       const userId = user?.username || "default";
       const response = await axios.get(`/sessions/session.user.chat.get?userId=${userId}`);
-      const transformedSessions = await transformApiDataToSessions(response.data);
+      const transformedSessions = transformApiDataToSessions(response.data);
 
       // Sort chat sessions based on the latest date
       const sortedSessions = sortSessionsByTimestamp(transformedSessions);
@@ -307,6 +287,10 @@ export default function ExecutionTab({
 
     let currentSession = session;
     setSelectedSession(currentSession);
+
+    // Reset sharing-disabled state immediately so a previously disabled session
+    // doesn't bleed into the newly selected (possibly valid) session.
+    setIsSharingDisabled(false);
     
     if (currentSession.blueprintId) {
       validateSelectedBlueprint(currentSession.blueprintId);
@@ -330,8 +314,7 @@ export default function ExecutionTab({
     // 1. Extract sharing status from metadata.usageScope
     // 2. Cache resolved spec_dict for the side GraphDisplay (resource names preserved)
     if (!session.blueprintExists) {
-      // If workflow is deleted, reset sharing disabled state (deleted message will show instead)
-      setIsSharingDisabled(false);
+      // Workflow deleted – sharing state already reset above; deleted message will show instead.
     } else if (session.blueprintId) {
       setIsLoadingBlueprintName(true);
       try {
@@ -349,16 +332,25 @@ export default function ExecutionTab({
             return next;
           });
 
+          // Extract blueprint name (only available from the resolved response)
+          const blueprintName = resolvedBlueprint.spec_dict?.name || "";
+          currentSession = { ...currentSession, blueprintName };
+
           // Extract sharing status from metadata.usageScope
           if (session.fromSharedLink) {
             const isPublic = resolvedBlueprint.metadata?.usageScope === "public";
             const disabled = !isPublic;
             setIsSharingDisabled(disabled);
-            // Update the session with the current sharing status
+            currentSession = { ...currentSession, isSharingDisabled: disabled };
             setChatSessions(prev => prev.map(s => 
-              s.id === currentSession.id ? { ...s, isSharingDisabled: disabled} : s
+              s.id === currentSession.id ? { ...s, blueprintName, isSharingDisabled: disabled } : s
+            ));
+          } else if (blueprintName) {
+            setChatSessions(prev => prev.map(s => 
+              s.id === currentSession.id ? { ...s, blueprintName } : s
             ));
           }
+          setSelectedSession(currentSession);
         }
       } catch (error) {
         // Keep defaults from initial load
@@ -461,7 +453,7 @@ export default function ExecutionTab({
       // Fetch updated sessions
       const userId = user?.username || "default";
       const response = await axios.get(`/sessions/session.user.chat.get?userId=${userId}`);
-      const transformedSessions = await transformApiDataToSessions(response.data);
+      const transformedSessions = transformApiDataToSessions(response.data);
       const sortedSessions = sortSessionsByTimestamp(transformedSessions);
       setChatSessions(sortedSessions);
 
@@ -1001,7 +993,7 @@ export default function ExecutionTab({
                 </div>
               ) : selectedSession?.blueprintId ? (
                 <GraphDisplay
-                  key={`main-graph-${selectedSession.blueprintId}`}
+                  key={`main-graph-${selectedSession.id}`}
                   blueprintId={selectedSession.blueprintId}
                   specDict={blueprintSpecCache.get(selectedSession.blueprintId)}
                   height="100%"

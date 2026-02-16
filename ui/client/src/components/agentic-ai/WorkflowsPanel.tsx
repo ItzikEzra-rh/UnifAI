@@ -16,7 +16,7 @@ import SimpleTooltip from "@/components/shared/SimpleTooltip";
 import { GraphFlow, FlowObject } from "./graphs/interfaces";
 import GraphDisplay from "./graphs/GraphDisplay";
 import { fetchActiveSessions } from "@/api/agentic";
-import { fetchBlueprints, deleteBlueprint, fetchResolvedBlueprint } from "@/api/blueprints";
+import { fetchResolvedBlueprints, deleteBlueprint, fetchResolvedBlueprint } from "@/api/blueprints";
 import { convertGraphFlowToFlowObject } from "@/utils/blueprintHelpers";
 import ShareWorkflow from "./ShareWorkflow";
 import { BlueprintValidationResult } from "@/types/validation";
@@ -78,12 +78,13 @@ export default function WorkflowsPanel({
     showToastOnFailure: true,
   });
 
-  // Fetch available blueprints from API (lightweight – no resolved references)
+  // Fetch available blueprints from API (resolved – references replaced with actual data)
   const fetchAvailableFlows = async (): Promise<void> => {
     try {
       const userId = user?.username || "default";
-      // Use lightweight endpoint for the list – resolved data is fetched per-flow on selection
-      const blueprints = await fetchBlueprints(userId);
+      // Resolved endpoint so spec_dict contains actual resource names (not $ref: pointers).
+      // Per-flow resolved data is still fetched on selection for the graph + sharing status.
+      const blueprints = await fetchResolvedBlueprints(userId);
 
       // Convert the blueprints to the format expected by the component
       const processedFlows = blueprints

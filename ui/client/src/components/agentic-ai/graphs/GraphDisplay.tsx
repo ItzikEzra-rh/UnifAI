@@ -2,34 +2,31 @@ import React, { useContext, useEffect, useRef, useState, useCallback, useMemo } 
 import { flushSync } from "react-dom";
 import { dia } from "@joint/core";
 import { motion } from "framer-motion";
-import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react";
+
+/** Safely wraps flushSync – falls back to a normal call if React throws. */
+function safeFlushSync(fn: () => void): void {
+  try {
+    flushSync(fn);
+  } catch {
+    fn();
+  }
+}
+import { ZoomIn, ZoomOut, Maximize2, Loader2 } from "lucide-react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
 import { useJointGraph } from "@/hooks/use-joint-graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import type { BuildingBlock } from "@/types/graph";
 import ResourceDetailsModal from "@/workspace/ResourceDetailsModal";
-import NodeValidationIndicator from "./NodeValidationIndicator";
 import { ValidationResultModal } from "../workspace/ValidationResultModal";
 import type { ElementValidationResult } from "@/types/validation";
 import { StreamingDataContext } from "../StreamingDataContext";
 import {
-  NODE_WIDTH,
-  NODE_HEADER_HEIGHT,
-  ELEMENT_BADGE_HEIGHT,
   SCALE_CONTENT_TO_FIT_OPTS,
-  BADGE_BG,
-  BADGE_BORDER,
-  CATEGORY_TYPE_TO_PLURAL,
   STATUS_STYLES,
-  nodeIconForType,
+  type OverlayBadge,
 } from "./GraphDisplayHelpers";
-
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-type NodeStatus = "IDLE" | "PROGRESS" | "DONE";
+import { AgentNodeOverlay, NodeStatus } from "./AgentNodeOverlay";
 
 // ---------------------------------------------------------------------------
 // Extracted sub-components (keep co-located — only used by GraphDisplay)
@@ -262,22 +259,37 @@ export default function GraphDisplay({
     return () => clearInterval(id);
   }, [isLiveRequest, streamingContext, updateNodeStatuses]);
 
-  // When live tracking ends, mark remaining non-IDLE nodes as DONE
+  // Track execution lifecycle for persistent completion state.
+  // DONE states persist until the user starts a new execution or switches sessions
+  // (switching sessions remounts the component via key change).
   const wasLiveRef = useRef(false);
+  const [executionComplete, setExecutionComplete] = useState(false);
 
+  // When a NEW execution starts → clear previous completion state and reset nodes
   useEffect(() => {
     if (isLiveRequest) {
       wasLiveRef.current = true;
+      setExecutionComplete(false);
+
+      // Reset any lingering DONE states from a previous execution
+      const graph = graphRef.current;
+      if (graph) {
+        for (const el of graph.getElements()) {
+          applyNodeVisual(el, "IDLE");
+        }
+      }
+      nodeStatusMapRef.current = {};
+      setNodeStatusMap({});
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLiveRequest]);
 
+  // When execution ends → mark all nodes as DONE and keep them visible
   useEffect(() => {
     if (!isLiveRequest && wasLiveRef.current) {
-      // Stream just ended → mark ALL nodes as DONE visually (both SVG + overlay).
-      // We populate nodeStatusMap with DONE for every node so the overlay border
-      // rings and status pills stay consistent with the SVG stroke styling, then
-      // clear both layers after a short delay so the user sees "Complete" briefly.
       wasLiveRef.current = false;
+      setExecutionComplete(true);
+
       const graph = graphRef.current;
       if (graph) {
         const doneMap: Record<string, NodeStatus> = {};
@@ -287,19 +299,6 @@ export default function GraphDisplay({
         }
         nodeStatusMapRef.current = doneMap;
         setNodeStatusMap(doneMap);
-
-        // After a brief pause, reset both SVG visuals and overlay state to IDLE
-        const timer = setTimeout(() => {
-          const g = graphRef.current;
-          if (g) {
-            for (const el of g.getElements()) {
-              applyNodeVisual(el, "IDLE");
-            }
-          }
-          nodeStatusMapRef.current = {};
-          setNodeStatusMap({});
-        }, 1500);
-        return () => clearTimeout(timer);
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -355,7 +354,7 @@ export default function GraphDisplay({
     if (!paper) return;
     const scale = paper.scale();
     const translate = paper.translate();
-    flushSync(() => {
+    safeFlushSync(() => {
       setPaperTransform({ sx: scale.sx, sy: scale.sy, tx: translate.tx, ty: translate.ty });
       rebuildOverlays();
     });
@@ -412,63 +411,40 @@ export default function GraphDisplay({
     return map;
   }, [overlayHeaders]);
 
-  // ── Render helpers ──────────────────────────────────────────────────
-
-  /**
-   * Inline status pill ("Processing" / "Complete") shown on node headers.
-   * Values are in model-space; the parent CSS-transform wrapper handles
-   * visual scaling so sizes here are divided by sx where a minimum visual
-   * pixel size is desired.
-   */
-  const renderStatusPill = (
-    status: NodeStatus,
-    sx: number,
-  ): React.ReactNode => {
-    if (status !== "PROGRESS" && status !== "DONE") return null;
-    const s = STATUS_STYLES[status];
-    const dotSize = Math.max(4 / sx, 6);
-    const fontSize = Math.max(8 / sx, 10);
-
-    return (
-      <div
-        className="flex items-center rounded-full"
-        style={{
-          gap: 3,
-          padding: `${Math.max(1 / sx, 2)}px ${Math.max(4 / sx, 6)}px`,
-          background: s.bgColor,
-          flexShrink: 0,
-        }}
-      >
-        {status === "PROGRESS" ? (
-          <motion.div
-            style={{ width: dotSize, height: dotSize, borderRadius: "50%", background: s.dotColor }}
-            animate={{ opacity: [1, 0.3, 1] }}
-            transition={{ duration: 1, repeat: Infinity, ease: "easeInOut" }}
-          />
-        ) : (
-          <div style={{ width: dotSize, height: dotSize, borderRadius: "50%", background: s.dotColor }} />
-        )}
-        <span style={{ fontSize, fontWeight: 500, color: "rgba(255,255,255,0.85)", whiteSpace: "nowrap" }}>
-          {s.label}
-        </span>
-      </div>
-    );
-  };
+  /** Pre-computed badges grouped by node ID for O(1) lookup. */
+  const badgesByNode = useMemo(() => {
+    const map = new Map<string, OverlayBadge[]>();
+    for (const b of overlayBadges) {
+      const list = map.get(b.nodeId);
+      if (list) list.push(b);
+      else map.set(b.nodeId, [b]);
+    }
+    return map;
+  }, [overlayBadges]);
 
   // ── JSX ─────────────────────────────────────────────────────────────
 
   return (
     <>
       <div className="relative overflow-auto" style={{ height }}>
-        {/* Live Tracking Indicator */}
-        {isLiveRequest && streamingContext && (
+        {/* Live Tracking / Execution Complete Indicator */}
+        {streamingContext && (isLiveRequest || executionComplete) && (
           <div className="absolute top-2 left-2 z-50 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs flex items-center gap-2">
-            <motion.div
-              className="w-2 h-2 bg-green-400 rounded-full"
-              animate={{ opacity: [1, 0.3, 1] }}
-              transition={{ duration: 1.5, repeat: Infinity }}
-            />
-            Live Tracking
+            {isLiveRequest ? (
+              <>
+                <motion.div
+                  className="w-2 h-2 bg-green-400 rounded-full"
+                  animate={{ opacity: [1, 0.3, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                />
+                Live Tracking
+              </>
+            ) : (
+              <>
+                <div className="w-2 h-2 bg-green-400 rounded-full" />
+                Execution Complete
+              </>
+            )}
           </div>
         )}
 
@@ -481,8 +457,8 @@ export default function GraphDisplay({
           />
         )}
 
-        {/* Active Nodes Status Bar */}
-        {isLiveRequest && streamingContext && Object.keys(nodeStatusMap).length > 0 && (
+        {/* Active Nodes Status Bar – persists after execution so user sees final state */}
+        {streamingContext && (isLiveRequest || executionComplete) && Object.keys(nodeStatusMap).length > 0 && (
           <ActiveNodesStatusBar
             nodeStatusMap={nodeStatusMap}
             nodeLabelsMap={nodeLabelsMap}
@@ -499,9 +475,14 @@ export default function GraphDisplay({
             {error}
           </div>
         )}
+        {/* Toast-style indicator while a single resource is being fetched
+            (e.g. user clicked a badge whose data isn't cached yet).
+            This is intentionally graph-level because we don't track *which*
+            badge was clicked, and the modal appears immediately once loaded. */}
         {loadingResource && (
-          <div className="absolute bottom-4 left-4 z-20 text-xs text-gray-400 bg-background-dark/90 px-3 py-1.5 rounded-md">
-            Loading resource...
+          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 text-xs text-gray-400 bg-background-dark/90 border border-white/10 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
+            <Loader2 className="h-3 w-3 animate-spin" />
+            Loading resource details…
           </div>
         )}
 
@@ -531,169 +512,27 @@ export default function GraphDisplay({
                   transform: `matrix(${paperTransform.sx}, 0, 0, ${paperTransform.sy}, ${paperTransform.tx}, ${paperTransform.ty})`,
                 }}
               >
-              {/* Node status border overlays (colored ring + glow around active nodes) */}
-              {overlayHeaders.map((hdr) => {
-                const nodeStatus = nodeStatusMap[hdr.nodeId];
-                if (nodeStatus !== "PROGRESS" && nodeStatus !== "DONE") return null;
-                const s = STATUS_STYLES[nodeStatus];
-                const borderStyle = {
-                  left: hdr.x,
-                  top: hdr.y,
-                  width: hdr.width,
-                  height: hdr.nodeHeight,
-                  borderRadius: 12,
-                  border: `${s.strokeWidth}px solid ${s.stroke}`,
-                  boxShadow: s.boxShadow,
-                };
-
-                // PROGRESS nodes get a subtle pulsing glow; DONE nodes are static
-                return nodeStatus === "PROGRESS" ? (
-                  <motion.div
-                    key={`status-border-${hdr.nodeId}`}
-                    className="absolute"
-                    style={borderStyle}
-                    animate={{ opacity: [1, 0.6, 1] }}
-                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                  />
-                ) : (
-                  <div
-                    key={`status-border-${hdr.nodeId}`}
-                    className="absolute"
-                    style={{ ...borderStyle, transition: "border-color 300ms, box-shadow 300ms" }}
-                  />
-                );
-              })}
-
-              {/* Node headers (icon + title + status pill) */}
-              {overlayHeaders.map((hdr) => {
-                const sx = paperTransform.sx;
-                const hdrHeight = hdr.hasElements
-                  ? NODE_HEADER_HEIGHT
-                  : hdr.nodeHeight;
-                const icon = nodeIconForType(hdr.nodeType);
-                const circleSize = Math.max(20 / sx, 26);
-                const iconFontSize = Math.max(12 / sx, 14);
-                const nodeStatus = nodeStatusMap[hdr.nodeId];
-                const hasStatus = nodeStatus === "PROGRESS" || nodeStatus === "DONE";
-
-                return (
-                  <div
-                    key={`hdr-${hdr.nodeId}`}
-                    className="absolute"
-                    style={{
-                      left: hdr.x, top: hdr.y, width: hdr.width, height: hdrHeight,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      gap: 6,
-                      borderBottom: hdr.hasElements ? "1px solid rgba(255,255,255,0.12)" : "none",
+                {overlayHeaders.map((hdr) => (
+                  <AgentNodeOverlay
+                    key={hdr.nodeId}
+                    hdr={hdr}
+                    badges={badgesByNode.get(hdr.nodeId) || []}
+                    nodeStatus={nodeStatusMap[hdr.nodeId]}
+                    sx={paperTransform.sx}
+                    validationResult={
+                      hdr.nodeRid && validationResults
+                        ? validationResults[hdr.nodeRid]
+                        : undefined
+                    }
+                    isValidating={isValidating}
+                    interactive={interactive}
+                    onValidationClick={(result) => {
+                      setSelectedValidationResult(result);
+                      setIsValidationModalOpen(true);
                     }}
-                  >
-                    {/* Icon */}
-                    <span
-                      style={{
-                        width: circleSize, height: circleSize, borderRadius: "50%",
-                        background: "rgba(255,255,255,0.25)",
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: iconFontSize, lineHeight: 1, flexShrink: 0,
-                      }}
-                      aria-hidden="true"
-                    >
-                      {icon}
-                    </span>
-                    {/* Label */}
-                    <span
-                      style={{
-                        color: "rgba(255,255,255,0.95)",
-                        fontSize: Math.max(9 / sx, 12),
-                        fontWeight: 600,
-                        fontFamily: "system-ui, -apple-system, sans-serif",
-                        whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                        maxWidth: hasStatus
-                          ? hdr.width - 120
-                          : hdr.width - 40,
-                      }}
-                    >
-                      {hdr.label}
-                    </span>
-                    {/* Status pill */}
-                    {hasStatus && renderStatusPill(nodeStatus, sx)}
-                  </div>
-                );
-              })}
-
-              {/* Validation indicators (top-right corner of each node) */}
-              {overlayHeaders.map((hdr) => {
-                const vResult =
-                  hdr.nodeRid && validationResults
-                    ? validationResults[hdr.nodeRid]
-                    : undefined;
-                if (!isValidating && !(vResult && !vResult.is_valid)) return null;
-                const sx = paperTransform.sx;
-                const indicatorSize = Math.max(24 / sx, 28);
-                const left = hdr.x + hdr.width - indicatorSize * 0.45;
-                const top = hdr.y - indicatorSize * 0.35;
-                return (
-                  <div
-                    key={`val-${hdr.nodeId}`}
-                    className="absolute z-10 pointer-events-auto"
-                    style={{ left, top }}
-                  >
-                    <NodeValidationIndicator
-                      validationResult={vResult}
-                      isValidating={isValidating}
-                      onClick={() => {
-                        if (vResult) {
-                          setSelectedValidationResult(vResult);
-                          setIsValidationModalOpen(true);
-                        }
-                      }}
-                    />
-                  </div>
-                );
-              })}
-
-              {/* Element badges */}
-              {overlayBadges.map((badge, i) => {
-                const sx = paperTransform.sx;
-                const category = CATEGORY_TYPE_TO_PLURAL[badge.element.type] || "default";
-                const display = getCategoryDisplay(category);
-                return (
-                  <button
-                    key={`${badge.nodeId}-${badge.element.id}-${i}`}
-                    type="button"
-                    className={`absolute flex items-center rounded-full border transition-colors duration-150 pointer-events-auto ${
-                      interactive ? "graph-badge-interactive" : ""
-                    }`}
-                    style={{
-                      left: badge.x, top: badge.y, width: badge.width, height: ELEMENT_BADGE_HEIGHT,
-                      background: BADGE_BG, borderColor: BADGE_BORDER,
-                      backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
-                      fontSize: Math.max(9 / sx, 11),
-                      paddingLeft: 4,
-                      paddingRight: 8,
-                      gap: 5,
-                      cursor: interactive ? "pointer" : "default",
-                    }}
-                    onClick={(e) => { e.stopPropagation(); if (interactive) openElementDetails(badge.element.id); }}
-                    tabIndex={interactive ? 0 : -1}
-                  >
-                    <span
-                      style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "#fff" }}
-                      className="[&>svg]:w-3.5 [&>svg]:h-3.5"
-                    >
-                      {display.icon}
-                    </span>
-                    <span
-                      className="truncate"
-                      style={{
-                        color: "rgba(255,255,255,0.88)", fontWeight: 500,
-                        letterSpacing: "0.01em", maxWidth: badge.width - 40,
-                      }}
-                    >
-                      {badge.element.name}
-                    </span>
-                  </button>
-                );
-              })}
+                    onBadgeClick={openElementDetails}
+                  />
+                ))}
               </div>
             </div>
           )}
