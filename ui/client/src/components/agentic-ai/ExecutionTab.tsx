@@ -109,8 +109,17 @@ export default function ExecutionTab({
   const { nodeListRef, forceUpdate } = useStreamingData();
   const { user } = useAuth();
 
-  // Guard: incremented on every session selection so stale async responses
-  // from a previous selection are silently discarded.
+  // Race-condition guard for session switching.
+  //
+  // handleSessionSelect performs multiple async calls (fetchResolvedBlueprint,
+  // loadSessionMessages).  If the user clicks Session A and then quickly clicks
+  // Session B before A's fetches resolve, A's responses would arrive *after*
+  // we've already moved to B – overwriting B's state with A's data (wrong graph,
+  // wrong messages, wrong sharing status).
+  //
+  // We increment this counter at the start of every selection.  Each async step
+  // checks "is this still the active request?" before writing state.  If the user
+  // switched away in the meantime, the stale response is silently discarded.
   const sessionSelectRequestId = useRef(0);
   
   // Derived state: Chat-only mode is active for shared link sessions

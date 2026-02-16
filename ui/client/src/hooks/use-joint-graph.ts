@@ -14,11 +14,13 @@ import { flushSync } from "react-dom";
  * Runs `fn` synchronously within React's commit phase when possible.
  * Falls back to a normal invocation if flushSync throws (e.g. when called
  * during an already-flushing render or when the SVG context is invalid).
+ * Logs a warning so we can identify root causes instead of silently swallowing.
  */
 function safeFlushSync(fn: () => void): void {
   try {
     flushSync(fn);
-  } catch {
+  } catch (err) {
+    console.warn("[useJointGraph] flushSync failed, falling back to batched update:", err);
     fn();
   }
 }

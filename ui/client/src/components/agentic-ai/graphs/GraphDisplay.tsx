@@ -3,11 +3,13 @@ import { flushSync } from "react-dom";
 import { dia } from "@joint/core";
 import { motion } from "framer-motion";
 
-/** Safely wraps flushSync – falls back to a normal call if React throws. */
+/** Safely wraps flushSync – falls back to a normal call if React throws.
+ *  Logs a warning so we can identify root causes instead of silently swallowing. */
 function safeFlushSync(fn: () => void): void {
   try {
     flushSync(fn);
-  } catch {
+  } catch (err) {
+    console.warn("[GraphDisplay] flushSync failed, falling back to batched update:", err);
     fn();
   }
 }
