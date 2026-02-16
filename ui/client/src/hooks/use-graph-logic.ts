@@ -109,9 +109,24 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
   const [buildingBlocksData, setBuildingBlocksData] = useState<BuildingBlock[]>(
     [],
   );
+  const [orchestratorsData, setOrchestratorsData] = useState<BuildingBlock[]>(
+    [],
+  );
   const [allBlocksData, setAllBlocksData] = useState<BuildingBlock[]>([]);
   const [conditionsData, setConditionsData] = useState<BuildingBlock[]>([]);
   const [isLoadingBlocks, setIsLoadingBlocks] = useState(true);
+
+  // Click-to-connect state
+  const [pendingConnectionSource, setPendingConnectionSource] = useState<string | null>(null);
+
+  // Edge type modal state (uni/bidirectional choice)
+  const [edgeTypeModal, setEdgeTypeModal] = useState({
+    isOpen: false,
+    sourceNodeId: "",
+    targetNodeId: "",
+    sourceNodeName: "",
+    targetNodeName: "",
+  });
 
   // Conditional edge modal state
   const [conditionalEdgeModal, setConditionalEdgeModal] = useState({
@@ -592,16 +607,36 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
       // Store all blocks for reference lookup
       setAllBlocksData(allBlocks);
 
-      // Filter to show only blocks with category "nodes"
-      const nodeBlocks = allBlocks.filter(
-        (block: BuildingBlock) => block.workspaceData?.category === "nodes",
-      );
+      // Filter to show only blocks with category "nodes" and sort alphabetically
+      const nodeBlocks = allBlocks
+        .filter(
+          (block: BuildingBlock) => block.workspaceData?.category === "nodes",
+        )
+        .sort((a: BuildingBlock, b: BuildingBlock) =>
+          a.label.localeCompare(b.label),
+        );
       setBuildingBlocksData(nodeBlocks);
 
-      // Filter to show only blocks with category "conditions"
-      const conditionBlocks = allBlocks.filter(
-        (block: BuildingBlock) => block.workspaceData?.category === "conditions",
-      );
+      // Filter to show only blocks with category "orchestrators" and sort alphabetically
+      const orchestratorBlocks = allBlocks
+        .filter(
+          (block: BuildingBlock) =>
+            block.workspaceData?.category === "orchestrators",
+        )
+        .sort((a: BuildingBlock, b: BuildingBlock) =>
+          a.label.localeCompare(b.label),
+        );
+      setOrchestratorsData(orchestratorBlocks);
+
+      // Filter to show only blocks with category "conditions" and sort alphabetically
+      const conditionBlocks = allBlocks
+        .filter(
+          (block: BuildingBlock) =>
+            block.workspaceData?.category === "conditions",
+        )
+        .sort((a: BuildingBlock, b: BuildingBlock) =>
+          a.label.localeCompare(b.label),
+        );
       setConditionsData(conditionBlocks);
     } catch (error) {
       console.error("Error loading workspace resources:", error);
@@ -1237,11 +1272,275 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     });
   };
 
+  // --- Click-to-connect logic ---
+
+  const cancelConnectionMode = useCallback(() => {
+    setPendingConnectionSource(null);
+    setNodes((prevNodes) =>
+      prevNodes.map((n) => ({
+        ...n,
+        data: {
+          ...n.data,
+          isConnectionSource: false,
+        },
+      })),
+    );
+  }, [setNodes]);
+
+  const handleNodeClickForConnection = useCallback(
+    (event: React.MouseEvent, node: Node) => {
+      // Don't trigger connection mode if clicking on buttons within the node
+      const target = event.target as HTMLElement;
+      if (target.closest("button")) {
+        return;
+      }
+
+      if (pendingConnectionSource === null) {
+        // First click — set this node as the connection source
+        setPendingConnectionSource(node.id);
+        setNodes((prevNodes) =>
+          prevNodes.map((n) => ({
+            ...n,
+            data: {
+              ...n.data,
+              isConnectionSource: n.id === node.id,
+            },
+          })),
+        );
+      } else if (pendingConnectionSource === node.id) {
+        // Clicking the same node — cancel connection mode
+        cancelConnectionMode();
+      } else {
+        // Second click on a different node — determine which dialog to show
+        const sourceNode = nodes.find(
+          (n) => n.id === pendingConnectionSource,
+        );
+        const hasCondition =
+          sourceNode?.data?.referencedConditions &&
+          sourceNode.data.referencedConditions.length > 0;
+
+        if (hasCondition) {
+          // Source has a condition — open the conditional edge modal
+          const condition = sourceNode.data.referencedConditions[0];
+          const conditionType =
+            condition.workspaceData?.type || condition.type;
+          const existingEdgesFromSource = edges.filter(
+            (edge) => edge.source === pendingConnectionSource,
+          );
+          const existingBranches = existingEdgesFromSource
+            .map((edge) => edge.data?.branch)
+            .filter(Boolean);
+
+          setConditionalEdgeModal({
+            isOpen: true,
+            sourceNodeId: pendingConnectionSource,
+            targetNodeId: node.id,
+            conditionType: conditionType,
+            existingBranches: existingBranches,
+          });
+        } else {
+          // No condition — open the edge type modal (uni/bi)
+          setEdgeTypeModal({
+            isOpen: true,
+            sourceNodeId: pendingConnectionSource,
+            targetNodeId: node.id,
+            sourceNodeName:
+              sourceNode?.data?.label || pendingConnectionSource,
+            targetNodeName: node.data?.label || node.id,
+          });
+        }
+
+        // Clear connection source visual state
+        cancelConnectionMode();
+      }
+    },
+    [pendingConnectionSource, nodes, edges, setNodes, cancelConnectionMode],
+  );
+
+  const handlePaneClick = useCallback(() => {
+    // Clicking on empty canvas cancels connection mode
+    if (pendingConnectionSource !== null) {
+      cancelConnectionMode();
+    }
+  }, [pendingConnectionSource, cancelConnectionMode]);
+
+  const handleEdgeTypeConfirm = useCallback(
+    (edgeType: "unidirectional" | "bidirectional") => {
+      const { sourceNodeId, targetNodeId } = edgeTypeModal;
+
+      // Check for existing edges to avoid duplicates
+      const hasExistingForward = edges.some(
+        (e) => e.source === sourceNodeId && e.target === targetNodeId,
+      );
+      const hasExistingReverse = edges.some(
+        (e) => e.source === targetNodeId && e.target === sourceNodeId,
+      );
+
+      const newEdges: Edge[] = [];
+
+      // Create forward edge (source → target) if it doesn't exist
+      if (!hasExistingForward) {
+        newEdges.push({
+          id: `${sourceNodeId}-${targetNodeId}`,
+          source: sourceNodeId,
+          target: targetNodeId,
+          type: "custom",
+          animated: true,
+          style: { stroke: "#8A2BE2", strokeWidth: 2 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 20,
+            height: 20,
+            color: "#8A2BE2",
+          },
+        });
+      }
+
+      // Create reverse edge (target → source) for bidirectional
+      if (edgeType === "bidirectional" && !hasExistingReverse) {
+        newEdges.push({
+          id: `${targetNodeId}-${sourceNodeId}`,
+          source: targetNodeId,
+          target: sourceNodeId,
+          type: "custom",
+          animated: true,
+          style: { stroke: "#8A2BE2", strokeWidth: 2 },
+          markerEnd: {
+            type: MarkerType.ArrowClosed,
+            width: 20,
+            height: 20,
+            color: "#8A2BE2",
+          },
+        });
+      }
+
+      if (newEdges.length === 0) {
+        toast({
+          title: "Connection Already Exists",
+          description:
+            "The connection between these nodes already exists.",
+          variant: "destructive",
+        });
+        setEdgeTypeModal({
+          isOpen: false,
+          sourceNodeId: "",
+          targetNodeId: "",
+          sourceNodeName: "",
+          targetNodeName: "",
+        });
+        return;
+      }
+
+      setEdges((prevEdges) => [...prevEdges, ...newEdges]);
+
+      // Update YAML flow with the new connection(s)
+      setYamlFlow((prevFlow) => {
+        let updatedPlan = [...prevFlow.plan];
+
+        // Forward connection: target step's "after" includes source
+        if (!hasExistingForward) {
+          updatedPlan = updatedPlan.map((step) => {
+            if (step.uid === targetNodeId) {
+              const existingAfter = step.after;
+              let newAfter;
+              if (!existingAfter) {
+                newAfter = sourceNodeId;
+              } else if (Array.isArray(existingAfter)) {
+                newAfter = existingAfter.includes(sourceNodeId)
+                  ? existingAfter
+                  : [...existingAfter, sourceNodeId];
+              } else {
+                newAfter =
+                  existingAfter === sourceNodeId
+                    ? existingAfter
+                    : [existingAfter, sourceNodeId];
+              }
+              return { ...step, after: newAfter };
+            }
+            return step;
+          });
+        }
+
+        // Reverse connection for bidirectional: source step's "after" includes target
+        if (edgeType === "bidirectional" && !hasExistingReverse) {
+          updatedPlan = updatedPlan.map((step) => {
+            if (step.uid === sourceNodeId) {
+              const existingAfter = step.after;
+              let newAfter;
+              if (!existingAfter) {
+                newAfter = targetNodeId;
+              } else if (Array.isArray(existingAfter)) {
+                newAfter = existingAfter.includes(targetNodeId)
+                  ? existingAfter
+                  : [...existingAfter, targetNodeId];
+              } else {
+                newAfter =
+                  existingAfter === targetNodeId
+                    ? existingAfter
+                    : [existingAfter, targetNodeId];
+              }
+              return { ...step, after: newAfter };
+            }
+            return step;
+          });
+        }
+
+        return {
+          nodes: prevFlow.nodes,
+          conditions: prevFlow.conditions || [],
+          plan: updatedPlan,
+        };
+      });
+
+      setCurrentGraph((prev) => ({
+        ...prev,
+        edges: [...prev.edges, ...newEdges],
+        metadata: {
+          ...prev.metadata,
+          lastModified: new Date(),
+          edgeCount: prev.edges.length + newEdges.length,
+        },
+      }));
+
+      // Close modal
+      setEdgeTypeModal({
+        isOpen: false,
+        sourceNodeId: "",
+        targetNodeId: "",
+        sourceNodeName: "",
+        targetNodeName: "",
+      });
+    },
+    [edgeTypeModal, edges, setEdges, toast],
+  );
+
+  const handleEdgeTypeCancel = useCallback(() => {
+    setEdgeTypeModal({
+      isOpen: false,
+      sourceNodeId: "",
+      targetNodeId: "",
+      sourceNodeName: "",
+      targetNodeName: "",
+    });
+  }, []);
+
+  // ESC key handler for connection mode
+  useEffect(() => {
+    const handleEsc = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && pendingConnectionSource !== null) {
+        cancelConnectionMode();
+      }
+    };
+    window.addEventListener("keydown", handleEsc);
+    return () => window.removeEventListener("keydown", handleEsc);
+  }, [pendingConnectionSource, cancelConnectionMode]);
+
   return {
     nodes,
     edges,
     currentGraph,
     buildingBlocksData,
+    orchestratorsData,
     conditionsData,
     allBlocksData,
     isLoadingBlocks,
@@ -1262,6 +1561,15 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     conditionalEdgeModal,
     handleConditionalEdgeConfirm,
     handleConditionalEdgeCancel,
+    // Click-to-connect
+    pendingConnectionSource,
+    handleNodeClickForConnection,
+    handlePaneClick,
+    cancelConnectionMode,
+    // Edge type modal
+    edgeTypeModal,
+    handleEdgeTypeConfirm,
+    handleEdgeTypeCancel,
     // Drag state
     isDraggingCondition,
     // Validation state

@@ -3,6 +3,7 @@ import { useGraphLogic, SavedBlueprintInfo } from "@/hooks/use-graph-logic";
 import GraphCanvas from "@/components/agentic-ai/graphs/GraphCanvas";
 import BuildingBlocksSidebar from "./BuildingBlocksSidebar";
 import ConditionalEdgeModal from "@/components/agentic-ai/graphs/ConditionalEdgeModal";
+import EdgeTypeModal from "@/components/agentic-ai/graphs/EdgeTypeModal";
 import GraphValidationPanel from "@/components/agentic-ai/graphs/GraphValidationPanel";
 import SaveBlueprintModal from "@/components/agentic-ai/graphs/SaveBlueprintModal";
 
@@ -17,13 +18,13 @@ export default function NewGraph({ onBack }: NewGraphProps) {
     nodes,
     edges,
     buildingBlocksData,
+    orchestratorsData,
     conditionsData,
     allBlocksData,
     isLoadingBlocks,
     yamlFlow,
     handleNodesChange,
     handleEdgesChange,
-    onConnect,
     onDrop,
     onDragOver,
     onDragStart,
@@ -35,6 +36,15 @@ export default function NewGraph({ onBack }: NewGraphProps) {
     conditionalEdgeModal,
     handleConditionalEdgeConfirm,
     handleConditionalEdgeCancel,
+    // Click-to-connect
+    pendingConnectionSource,
+    handleNodeClickForConnection,
+    handlePaneClick,
+    cancelConnectionMode,
+    // Edge type modal
+    edgeTypeModal,
+    handleEdgeTypeConfirm,
+    handleEdgeTypeCancel,
     isGraphValid,
     validationResult,
     fixSuggestions,
@@ -47,11 +57,12 @@ export default function NewGraph({ onBack }: NewGraphProps) {
   // Track which building blocks are currently used on the canvas
   const usedElementIds = useMemo(() => {
     const usedIds = new Set<string>();
+    const allSidebarBlocks = [...buildingBlocksData, ...orchestratorsData, ...conditionsData];
     
     nodes.forEach(node => {
       // 1. Track the node itself by workspaceData.rid
       if (node.data?.workspaceData?.rid) {
-        const matchingBlock = [...buildingBlocksData, ...conditionsData].find(
+        const matchingBlock = allSidebarBlocks.find(
           block => block.workspaceData?.rid === node.data.workspaceData?.rid
         );
         if (matchingBlock) {
@@ -75,7 +86,7 @@ export default function NewGraph({ onBack }: NewGraphProps) {
     });
     
     return usedIds;
-  }, [nodes, buildingBlocksData, conditionsData]);
+  }, [nodes, buildingBlocksData, orchestratorsData, conditionsData]);
 
   const handleSaveGraph = async () => {
     setSaveModalOpen(true);
@@ -91,6 +102,7 @@ export default function NewGraph({ onBack }: NewGraphProps) {
       <div className="w-80 h-full">
         <BuildingBlocksSidebar
           buildingBlocks={buildingBlocksData}
+          orchestrators={orchestratorsData}
           conditions={conditionsData}
           isLoading={isLoadingBlocks}
           onDragStart={onDragStart}
@@ -106,7 +118,6 @@ export default function NewGraph({ onBack }: NewGraphProps) {
           yamlFlow={yamlFlow}
           onNodesChange={handleNodesChange}
           onEdgesChange={handleEdgesChange}
-          onConnect={onConnect}
           onDrop={onDrop}
           onDragOver={onDragOver}
           onClearGraph={handleClearGraph}
@@ -116,6 +127,10 @@ export default function NewGraph({ onBack }: NewGraphProps) {
           onAttachCondition={attachConditionToNode}
           onRemoveCondition={removeConditionFromNode}
           isGraphValid={isGraphValid}
+          onNodeClick={handleNodeClickForConnection}
+          onPaneClick={handlePaneClick}
+          pendingConnectionSource={pendingConnectionSource}
+          onCancelConnection={cancelConnectionMode}
         />
       </div>
 
@@ -127,6 +142,15 @@ export default function NewGraph({ onBack }: NewGraphProps) {
           isValidating={isValidating}
         />
       </div>
+
+      {/* Edge Type Modal (uni/bidirectional choice) */}
+      <EdgeTypeModal
+        isOpen={edgeTypeModal.isOpen}
+        onClose={handleEdgeTypeCancel}
+        onConfirm={handleEdgeTypeConfirm}
+        sourceNodeName={edgeTypeModal.sourceNodeName}
+        targetNodeName={edgeTypeModal.targetNodeName}
+      />
 
       {/* Conditional Edge Modal */}
       <ConditionalEdgeModal

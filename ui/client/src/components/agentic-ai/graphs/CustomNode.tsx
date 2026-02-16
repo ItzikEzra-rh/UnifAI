@@ -80,7 +80,8 @@ const CustomNode: React.FC<CustomNodeProps> = ({ id, data, selected }) => {
     onDelete, 
     referencedConditions = [],
     onAttachCondition,
-    onRemoveCondition 
+    onRemoveCondition,
+    isConnectionSource = false,
   } = data;
 
   const [isDragOver, setIsDragOver] = useState(false);
@@ -120,9 +121,14 @@ const CustomNode: React.FC<CustomNodeProps> = ({ id, data, selected }) => {
   return (
     <div
       className={`px-4 py-3 shadow-lg rounded-lg border-2 bg-gray-800 text-white min-w-[200px] ${
-        selected ? "border-blue-500" : "border-gray-600"
-      } hover:border-gray-500 transition-colors`}
-      style={isDragOver ? { borderColor: conditionColors.dragOverBorder, borderStyle: "dashed", backgroundColor: conditionColors.dragOverBg } : undefined}
+        isConnectionSource
+          ? "border-purple-400 ring-2 ring-purple-400/50 animate-pulse"
+          : selected
+            ? "border-blue-500"
+            : "border-gray-600"
+      } hover:border-gray-500 transition-colors ${
+        isDragOver ? 'border-orange-500 border-dashed bg-orange-900/20' : ''
+      } ${isConnectionSource ? 'cursor-pointer' : ''}`}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

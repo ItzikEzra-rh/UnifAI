@@ -4,7 +4,6 @@ import {
   ReactFlow,
   Node,
   Edge,
-  Connection,
   Background,
   Controls,
   NodeTypes,
@@ -14,7 +13,7 @@ import {
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus } from "lucide-react";
+import { Plus, Link2, X } from "lucide-react";
 import CustomNode from "./CustomNode";
 import CustomEdge from "./CustomEdge";
 import BidirectionalOffsetEdge from "./BidirectionalOffsetEdge";
@@ -125,7 +124,6 @@ interface GraphCanvasProps {
   yamlFlow?: any;
   onNodesChange: (changes: any[]) => void;
   onEdgesChange: (changes: any[]) => void;
-  onConnect: (params: Connection) => void;
   onDrop: (event: React.DragEvent) => void;
   onDragOver: (event: React.DragEvent) => void;
   onClearGraph: () => void;
@@ -135,6 +133,11 @@ interface GraphCanvasProps {
   onAttachCondition?: (nodeId: string, condition: any) => void;
   onRemoveCondition?: (nodeId: string, conditionRid: string) => void;
   isGraphValid?: boolean;
+  // Click-to-connect props
+  onNodeClick?: (event: React.MouseEvent, node: Node) => void;
+  onPaneClick?: () => void;
+  pendingConnectionSource?: string | null;
+  onCancelConnection?: () => void;
 }
 
 const GraphCanvas: React.FC<GraphCanvasProps> = ({
@@ -143,7 +146,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   yamlFlow,
   onNodesChange,
   onEdgesChange,
-  onConnect,
   onDrop,
   onDragOver,
   onClearGraph,
@@ -153,6 +155,10 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   onAttachCondition,
   onRemoveCondition,
   isGraphValid = false,
+  onNodeClick,
+  onPaneClick,
+  pendingConnectionSource = null,
+  onCancelConnection,
 }) => {
   const [showYamlDebug, setShowYamlDebug] = useState(false);
   const { primaryHex } = useTheme();
@@ -243,13 +249,36 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
           </button>
 
           <div className="h-full" style={{ height: "calc(100vh - 180px)" }}>
+            {/* Connection mode banner */}
+            {pendingConnectionSource && (
+              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-3 bg-purple-900/90 border border-purple-500 text-white px-4 py-2 rounded-lg shadow-lg backdrop-blur-sm">
+                <Link2 className="w-4 h-4 text-purple-300 animate-pulse" />
+                <span className="text-sm">
+                  Click another node to connect from{" "}
+                  <strong>
+                    {nodes.find((n) => n.id === pendingConnectionSource)
+                      ?.data?.label || pendingConnectionSource}
+                  </strong>
+                </span>
+                <button
+                  onClick={onCancelConnection}
+                  className="ml-2 text-gray-300 hover:text-white transition-colors"
+                  title="Cancel connection (ESC)"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            )}
+
             <ReactFlowProvider>
               <ReactFlow
                 nodes={nodes}
                 edges={themedEdges}
                 onNodesChange={onNodesChange}
                 onEdgesChange={onEdgesChange}
-                onConnect={onConnect}
+                onNodeClick={onNodeClick}
+                onPaneClick={onPaneClick}
+                nodesConnectable={false}
                 onDrop={onDrop}
                 onDragOver={onDragOver}
                 nodeTypes={nodeTypes}

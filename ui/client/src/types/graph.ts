@@ -54,4 +54,5 @@ export interface CustomNodeData {
   referencedConditions?: BuildingBlock[];
   onAttachCondition?: (nodeId: string, condition: BuildingBlock) => void;
   onRemoveCondition?: (nodeId: string, conditionRid: string) => void;
+  isConnectionSource?: boolean;
 }
