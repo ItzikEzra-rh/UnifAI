@@ -134,7 +134,7 @@ const NumberFieldInput: React.FC<NumberFieldInputProps> = ({
  * Checks if a $ref (pydantic mode) resolves to a string enum definition.
  * Returns the resolved enum definition if found, null otherwise.
  */
-const getStringEnumFromRef = (
+export const getStringEnumFromRef = (
   fieldSchema: any,
   resolveSchemaRef?: (ref: string) => any | null
 ): ResolvedStringEnum | null => {

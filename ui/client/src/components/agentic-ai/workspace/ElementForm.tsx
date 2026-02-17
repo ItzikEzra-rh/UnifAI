@@ -14,7 +14,7 @@ import {
   ElementSchema,
   ElementInstance,
 } from "../../../types/workspace";
-import { FieldRenderer } from "./FieldRenderer";
+import { FieldRenderer, getStringEnumFromRef } from "./FieldRenderer";
 import { ItemValidationResult } from "./FieldValidation";
 import { UmamiTrack } from '@/components/ui/umamitrack';
 import { UmamiEvents } from '@/config/umamiEvents';
@@ -321,17 +321,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
 
   // Helper function to check if a $ref resolves to a string enum (not a resource reference)
   const isStringEnumRef = (fieldSchema: any): boolean => {
-    if (!fieldSchema?.$ref) {
-      return false;
-    }
-
-    const resolved = resolveRef(fieldSchema.$ref);
-    if (!resolved) {
-      return false;
-    }
-
-    // Check if resolved definition is a string enum
-    return resolved.type === "string" && Array.isArray(resolved.enum) && resolved.enum.length > 0;
+    return getStringEnumFromRef(fieldSchema, resolveRef) !== null;
   };
 
   // Helper function to extract category from $ref field or anyOf structure
