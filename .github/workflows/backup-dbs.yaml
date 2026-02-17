@@ -23,7 +23,11 @@ on:
       target_cluster:
         description: 'Which cluster do you want to backup?'
         required: true
-        default: 'PRE-PRODUCTION'
+        type: choice
+        default: 'PRODUCTION'
+        options:
+          - PRE-PRODUCTION
+          - PRODUCTION
       target_namespace:
         description: 'Which namespace do you want to backup?'
         required: true
@@ -119,3 +123,33 @@ jobs:
         run: |
           rm -rf /tmp/mongo_backup_*.tar.gz
           rm -rf /tmp/snapshots
+
+  analyze:
+    needs: [verify_agent_deps, setup_environment, backup_mongo, backup_qdrant, upload_to_gitlab]
+    if: always() && contains(needs.*.result, 'failure')
+    runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+    steps:
+
+      - name: Generate Token
+        id: generate_token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id: ${{ secrets.LOG_ANALYZER_APP_ID }}
+          private_key: ${{ secrets.LOG_ANALYZER_PRIVATE_KEY }}
+
+      - name: GitHub Actions Failure Analysis
+        uses: calebevans/gha-failure-analysis@v0.1.9
+        # env:
+        #   #HOME: /tmp
+        #   USER: root
+        with:
+          run-id: ${{ github.event.workflow_run.id }}
+          llm-provider: gemini
+          llm-model: gemini-3-pro-preview
+          llm-api-key: ${{ secrets.GEMINI_API_KEY }}
+          github-token: ${{ steps.generate_token.outputs.token }}
+          post-pr-comment: false

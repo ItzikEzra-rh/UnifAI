@@ -1,5 +1,6 @@
 import os
 import subprocess
+import json
 from datetime import datetime
 from kubernetes import client, config
 from kubernetes.stream import stream
@@ -43,8 +44,11 @@ def setup_k8s_connection():
         }],
         "current-context": CLUSTER
     }
-    
-    config.load_kube_config_from_dict(kube_config)
+    kubeconfig_path = '/tmp/kubeconfig'
+    with open(kubeconfig_path, 'w') as f:
+        json.dump(kube_config, f)
+    os.environ['KUBECONFIG'] = kubeconfig_path
+    config.load_kube_config(kubeconfig_path)
     print(f"✓ Connected to {CLUSTER}")
     return client.CoreV1Api()
 
