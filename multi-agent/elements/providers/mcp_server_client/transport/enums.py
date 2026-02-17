@@ -16,4 +16,4 @@ class McpTransportType(str, Enum):
     that handles the protocol-specific connection details.
     """
     SSE = "sse"
-    STREAMABLE_HTTP = "streamable_http"
+    STREAMABLE_HTTP = "streamable http"
