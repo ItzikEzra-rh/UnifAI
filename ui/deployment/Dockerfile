@@ -21,7 +21,7 @@ COPY README.md /README.md
 
 # Install all dependencies (including devDependencies needed for the build).
 # `--frozen-lockfile` ensures reproducible builds based on pnpm-lock.yaml.
-RUN pnpm install --no-frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
 # Run our combined build command.
 # As per your package.json, this builds:
