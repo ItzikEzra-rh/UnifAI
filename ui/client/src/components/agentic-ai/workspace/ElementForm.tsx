@@ -673,6 +673,7 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         isArrayWithRefItems={isArrayWithRefItems}
         getArrayItemsSchema={getArrayItemsSchema}
         extractCategoryFromField={extractCategoryFromField}
+        resolveSchemaRef={resolveRef}
         onInputChange={handleInputChange}
         onArrayChange={handleArrayChange}
         onAddArrayItem={addArrayItem}
