@@ -319,6 +319,21 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     return null;
   };
 
+  // Helper function to check if a $ref resolves to a string enum (not a resource reference)
+  const isStringEnumRef = (fieldSchema: any): boolean => {
+    if (!fieldSchema?.$ref) {
+      return false;
+    }
+
+    const resolved = resolveRef(fieldSchema.$ref);
+    if (!resolved) {
+      return false;
+    }
+
+    // Check if resolved definition is a string enum
+    return resolved.type === "string" && Array.isArray(resolved.enum) && resolved.enum.length > 0;
+  };
+
   // Helper function to extract category from $ref field or anyOf structure
   const extractCategoryFromField = (fieldSchema: any): string | null => {
     // Handle direct $ref by resolving it
@@ -561,8 +576,8 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             else if (isArrayWithRefItems(fieldSchema) && Array.isArray(value)) {
               processedValue = value.map((rid: string) => `$ref:${rid}`);
             }
-            // Handle single $ref fields - only add $ref: prefix for string values (RIDs)
-            else if (fieldSchema.$ref && typeof value === "string" && value !== "") {
+            // Handle single $ref fields - only add $ref: prefix for resource references (RIDs), exclude string enums
+            else if (fieldSchema.$ref && typeof value === "string" && value !== "" && !isStringEnumRef(fieldSchema)) {
               processedValue = `$ref:${value}`;
             }
             // Handle anyOf with $ref (single select) - only add $ref: prefix for string values (RIDs)
