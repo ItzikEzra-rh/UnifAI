@@ -13,7 +13,7 @@ class McpProviderConfig(ProviderBaseConfig):
     type: Literal[Identifier.TYPE] = Identifier.TYPE
     transport_type: McpTransportType = Field(
         default=McpTransportType.STREAMABLE_HTTP,
-        description="Transport protocol to use for MCP server communication (sse or streamable_http)"
+        description="Transport protocol to use for MCP server communication (sse or streamable http)"
     )
     sse_endpoint: HttpUrl = Field(
         description="MCP server endpoint URL",

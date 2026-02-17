@@ -17,9 +17,8 @@ class SseTransportManager(BaseTransportManager):
     """
     MCP transport over Server-Sent Events (SSE).
 
-    The SSE transport does not support custom HTTP headers.
-    Authentication must be handled at a different layer
-    (e.g. query parameters or proxy).
+    Supports custom HTTP headers (e.g. Bearer token authentication)
+    passed through to the underlying HTTP client.
     """
 
     @property
@@ -31,7 +30,7 @@ class SseTransportManager(BaseTransportManager):
         return "SSE"
 
     def _create_transport_context(self) -> Any:
-        return sse_client(url=self.endpoint)
+        return sse_client(url=self.endpoint, headers=self.headers)
 
     async def _enter_transport_context(self, ctx: Any) -> Tuple:
         read_stream, write_stream = await ctx.__aenter__()
