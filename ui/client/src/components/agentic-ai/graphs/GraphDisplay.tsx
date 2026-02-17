@@ -477,16 +477,6 @@ export default function GraphDisplay({
             {error}
           </div>
         )}
-        {/* Toast-style indicator while a single resource is being fetched
-            (e.g. user clicked a badge whose data isn't cached yet).
-            This is intentionally graph-level because we don't track *which*
-            badge was clicked, and the modal appears immediately once loaded. */}
-        {loadingResource && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 text-xs text-gray-400 bg-background-dark/90 border border-white/10 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2">
-            <Loader2 className="h-3 w-3 animate-spin" />
-            Loading resource details…
-          </div>
-        )}
 
         <div
           className={`workflow-graph-wrap h-full min-h-[280px] rounded-2xl relative ${
