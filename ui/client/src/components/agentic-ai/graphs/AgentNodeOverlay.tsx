@@ -160,6 +160,7 @@ export function AgentNodeOverlay({
             onClick={() => {
               if (validationResult) onValidationClick(validationResult);
             }}
+            displayValid={false}
           />
         </div>
       )}
