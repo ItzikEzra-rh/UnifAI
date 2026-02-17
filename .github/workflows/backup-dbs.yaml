@@ -22,7 +22,7 @@ on:
       target_branch:
         description: 'Which branch do you want to use?'
         required: true
-        default: 'main'
+        default: 'GENIE-1159_backup_improvements'
       target_cluster:
         description: 'Which cluster do you want to backup?'
         required: true
