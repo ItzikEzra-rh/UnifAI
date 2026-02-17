@@ -156,22 +156,38 @@ def deleteRunningApplication(){
     sh("sleep 10")
 }
 
+// temporary fix for dataflow deployment deletion, after we move completely to the new rag naming this function is obsolete
 def cleanOldDataflow(){
     echo("Removing old dataflow application")
-    sh("helm ls | grep 'dataflow'")
+    
+    // Capture the output properly
+    def result = sh(
+        script: "helm ls | grep 'dataflow' || true",
+        returnStdout: true
+    ).trim()
+    
     if(result.length() > 0) {
-        def releaseName = result.split('\n')[0].split(' ')[0]
-        releaseName.each { name ->
-            sh("helm delete ${name}")
+        // Split by newlines to get all releases, not just the first one
+        def releases = result.split('\n')
+        
+        releases.each { release ->
+            // Extract the release name (first column in helm ls output)
+            def releaseName = release.split(/\s+/)[0]
+            echo("Deleting helm release: ${releaseName}")
+            sh("helm delete ${releaseName}")
         }
+        
+        // Wait for all dataflow resources to be deleted
         sh("""
-        until ! oc get deployment,statefulset,svc | grep 'dataflow'; do
-            echo 'Waiting for deployment deletion...'
-            sleep 5
-        done
+            until ! oc get deployment,statefulset,svc 2>/dev/null | grep 'dataflow'; do
+                echo 'Waiting for dataflow deployment deletion...'
+                sleep 5
+            done
         """)
-        echo("Dataflow application successfully deleted")
+        echo("All dataflow applications successfully deleted")
         sh("sleep 5")
+    } else {
+        echo("No dataflow releases found")
     }
 }
 
