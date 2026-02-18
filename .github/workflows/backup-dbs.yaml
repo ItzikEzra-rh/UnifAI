@@ -7,7 +7,7 @@ env:
   QDRANT_SNAPSHOTS_DIR: "/tmp/snapshots"
   BRANCH: ${{ inputs.target_branch || 'main' }}
   CLUSTER: ${{ inputs.target_cluster || 'PRE-PRODUCTION' }}
-  NAMESPACE: ${{ inputs.target_namespace || 'tag-ai--pipeline' }}
+  #NAMESPACE: ${{ inputs.target_namespace || 'tag-ai--pipeline' }}
   BACKUP_REPO: ${{ vars.BACKUP_REPO_URL }}
   BACKUP_REPO_NAME: ${{ vars.BACKUP_REPO_NAME }}
 
@@ -28,10 +28,10 @@ on:
         options:
           - PRE-PRODUCTION
           - PRODUCTION
-      target_namespace:
-        description: 'Which namespace do you want to backup?'
-        required: true
-        default: 'tag-ai--pipeline'
+      # target_namespace:
+      #   description: 'Which namespace do you want to backup?'
+      #   required: true
+      #   default: 'tag-ai--pipeline'
 
 jobs:
 
@@ -46,14 +46,16 @@ jobs:
     outputs:
       BRANCH: ${{ steps.vars.outputs.branch }}
       CLUSTER: ${{ steps.vars.outputs.cluster }}
-      NAMESPACE: ${{ steps.vars.outputs.namespace }}
+      #NAMESPACE: ${{ steps.vars.outputs.namespace }}
     steps:
 
       - id: vars
         run: |
-          echo "branch=${{ inputs.target_branch || 'GENIE-1071/backup_dbs' }}" >> $GITHUB_OUTPUT
-          echo "cluster=${{ inputs.target_cluster || 'PRE-PRODUCTION' }}" >> $GITHUB_OUTPUT
-          echo "namespace=${{ inputs.target_namespace || 'tag-ai--pipeline' }}" >> $GITHUB_OUTPUT
+          echo "branch=${{ inputs.target_branch || 'main' }}" >> $GITHUB_OUTPUT
+          echo "cluster=${{ inputs.target_cluster || 'PRODUCTION' }}" >> $GITHUB_OUTPUT
+          
+          
+#echo "namespace=${{ inputs.target_namespace || 'tag-ai--pipeline' }}" >> $GITHUB_OUTPUT
 
 
   backup_mongo:
@@ -64,7 +66,7 @@ jobs:
     env:
       BRANCH: ${{ needs.setup_environment.outputs.BRANCH }}
       CLUSTER: ${{ needs.setup_environment.outputs.CLUSTER }}
-      NAMESPACE: ${{ needs.setup_environment.outputs.NAMESPACE }}
+      NAMESPACE: ${{ vars.NAMESPACE }}
       VERIFY_TLS: ${{ vars.VERIFY_TLS }}
       API_URL: ${{ vars.API_URL }}
       ACCESS_TOKEN: ${{ secrets.ACCESS_TOKEN }}
