@@ -7,7 +7,6 @@ env:
   QDRANT_SNAPSHOTS_DIR: "/tmp/snapshots"
   BRANCH: ${{ inputs.target_branch || 'main' }}
   CLUSTER: ${{ inputs.target_cluster || 'PRE-PRODUCTION' }}
-  #NAMESPACE: ${{ inputs.target_namespace || 'tag-ai--pipeline' }}
   BACKUP_REPO: ${{ vars.BACKUP_REPO_URL }}
   BACKUP_REPO_NAME: ${{ vars.BACKUP_REPO_NAME }}
 
@@ -28,10 +27,6 @@ on:
         options:
           - PRE-PRODUCTION
           - PRODUCTION
-      # target_namespace:
-      #   description: 'Which namespace do you want to backup?'
-      #   required: true
-      #   default: 'tag-ai--pipeline'
 
 jobs:
 
@@ -46,17 +41,12 @@ jobs:
     outputs:
       BRANCH: ${{ steps.vars.outputs.branch }}
       CLUSTER: ${{ steps.vars.outputs.cluster }}
-      #NAMESPACE: ${{ steps.vars.outputs.namespace }}
     steps:
 
       - id: vars
         run: |
           echo "branch=${{ inputs.target_branch || 'main' }}" >> $GITHUB_OUTPUT
           echo "cluster=${{ inputs.target_cluster || 'PRODUCTION' }}" >> $GITHUB_OUTPUT
-          
-          
-#echo "namespace=${{ inputs.target_namespace || 'tag-ai--pipeline' }}" >> $GITHUB_OUTPUT
-
 
   backup_mongo:
     runs-on: linux
@@ -145,9 +135,6 @@ jobs:
 
       - name: GitHub Actions Failure Analysis
         uses: calebevans/gha-failure-analysis@v0.1.9
-        # env:
-        #   #HOME: /tmp
-        #   USER: root
         with:
           run-id: ${{ github.event.workflow_run.id }}
           llm-provider: gemini
