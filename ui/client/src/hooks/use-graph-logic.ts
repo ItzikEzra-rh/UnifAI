@@ -325,18 +325,22 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
             if (step.uid === edgeToDelete.target && !isConditional) {
               if (step.after) {
                 if (Array.isArray(step.after)) {
+                  // Remove the source from the array
                   const updatedAfter = step.after.filter(
                     (afterId) => afterId !== edgeToDelete.source,
                   );
                   if (updatedAfter.length === 0) {
+                    // Remove the after property if array becomes empty
                     const { after, ...stepWithoutAfter } = step;
                     return stepWithoutAfter;
                   } else if (updatedAfter.length === 1) {
+                    // Convert single-item array back to string
                     return { ...step, after: updatedAfter[0] };
                   } else {
                     return { ...step, after: updatedAfter };
                   }
                 } else if (step.after === edgeToDelete.source) {
+                  // Remove the after property if it matches the source
                   const { after, ...stepWithoutAfter } = step;
                   return stepWithoutAfter;
                 }
