@@ -9,14 +9,14 @@ export interface WorkflowBlueprint {
   blueprint_id: string;
   user_id?: string;
   spec_dict: any;
-  metadata?: {
-    usageScope?: "public" | "private";
-    [key: string]: any;
-  };
   name?: string;
   created_at?: string;
   updated_at?: string;
   rid_refs?: string[];
+  metadata?: {
+    usageScope?: "public" | "private";
+    [key: string]: any;
+  };
 }
 
 export interface BlueprintInfoResponse {
