@@ -1,19 +1,8 @@
 import React, { useContext, useEffect, useRef, useState, useCallback, useMemo } from "react";
-import { flushSync } from "react-dom";
 import { dia } from "@joint/core";
 import { motion } from "framer-motion";
-
-/** Safely wraps flushSync – falls back to a normal call if React throws.
- *  Logs a warning so we can identify root causes instead of silently swallowing. */
-function safeFlushSync(fn: () => void): void {
-  try {
-    flushSync(fn);
-  } catch (err) {
-    console.warn("[GraphDisplay] flushSync failed, falling back to batched update:", err);
-    fn();
-  }
-}
 import { ZoomIn, ZoomOut, Maximize2, Loader2 } from "lucide-react";
+import { safeFlushSync } from "@/lib/reactUtils";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
 import { useJointGraph } from "@/hooks/use-joint-graph";

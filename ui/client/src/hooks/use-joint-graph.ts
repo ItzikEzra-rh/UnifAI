@@ -8,22 +8,6 @@
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import { flushSync } from "react-dom";
-
-/**
- * Runs `fn` synchronously within React's commit phase when possible.
- * Falls back to a normal invocation if flushSync throws (e.g. when called
- * during an already-flushing render or when the SVG context is invalid).
- * Logs a warning so we can identify root causes instead of silently swallowing.
- */
-function safeFlushSync(fn: () => void): void {
-  try {
-    flushSync(fn);
-  } catch (err) {
-    console.warn("[useJointGraph] flushSync failed, falling back to batched update:", err);
-    fn();
-  }
-}
 import { dia, shapes } from "@joint/core";
 import { DirectedGraph } from "@joint/layout-directed-graph";
 import type { GraphFlow } from "@/components/agentic-ai/graphs/interfaces";
@@ -33,6 +17,7 @@ import {
 } from "@/utils/graphFlowLayout";
 import { getBlueprintInfo } from "@/api/blueprints";
 import type { BuildingBlock } from "@/types/graph";
+import { safeFlushSync } from "@/lib/reactUtils";
 import {
   NODE_WIDTH,
   NODE_HEADER_HEIGHT,
@@ -82,6 +67,12 @@ export interface UseJointGraphReturn {
   paperTransform: { sx: number; sy: number; tx: number; ty: number };
   setPaperTransform: React.Dispatch<React.SetStateAction<{ sx: number; sy: number; tx: number; ty: number }>>;
   rebuildOverlays: () => void;
+}
+
+/** Ensure the primary hex value is `#`-prefixed with a sensible default. */
+function normalizePrimaryHex(raw: string | undefined | null): string {
+  if (!raw) return "#8b5cf6";
+  return raw.startsWith("#") ? raw : `#${raw}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -348,7 +339,7 @@ export function useJointGraph({
         }
 
         // SVG defs: gradients + shadow + status glow filters
-        const primaryNow = primaryHexRef.current || "#8b5cf6";
+        const primaryNow = normalizePrimaryHex(primaryHexRef.current);
         injectSvgDefs(paper.el, primaryNow);
         injectStatusGlowFilters(paper.el);
 
@@ -376,9 +367,7 @@ export function useJointGraph({
         }
 
         // Create edges
-        const linkColor = primaryHexRef.current?.startsWith("#")
-          ? primaryHexRef.current
-          : `#${primaryHexRef.current || "8b5cf6"}`;
+        const linkColor = normalizePrimaryHex(primaryHexRef.current);
 
         const mkMarker = (color: string, r: number) => ({
           type: "circle" as const, r, fill: color,

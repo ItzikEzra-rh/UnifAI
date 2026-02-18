@@ -393,7 +393,8 @@ export function buildElementBlockMap(
 
   layoutNodes.forEach((n) => {
     n.resolvedElements.forEach((el) => {
-      const category = CATEGORY_TYPE_TO_PLURAL[el.type] || "retrievers";
+      const category = CATEGORY_TYPE_TO_PLURAL[el.type];
+      if (!category) return;
       const catList = (spec as unknown as Record<string, unknown[]>)[category];
       const def = catList?.find((d: unknown) => {
         const entry = d as { rid?: string };
