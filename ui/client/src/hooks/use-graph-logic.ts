@@ -317,33 +317,34 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
         const updatedEdges = currentEdges.filter((edge) => edge.id !== edgeId);
 
         // Update YAML flow to remove the connection
+        const isConditional = edgeToDelete.data?.isConditional;
+
         setYamlFlow((prevFlow) => {
           const updatedPlan = prevFlow.plan.map((step) => {
-            if (step.uid === edgeToDelete.target) {
+            // Regular edges: connection stored on the target step's `after`
+            if (step.uid === edgeToDelete.target && !isConditional) {
               if (step.after) {
                 if (Array.isArray(step.after)) {
-                  // Remove the source from the array
                   const updatedAfter = step.after.filter(
                     (afterId) => afterId !== edgeToDelete.source,
                   );
                   if (updatedAfter.length === 0) {
-                    // Remove the after property if array becomes empty
                     const { after, ...stepWithoutAfter } = step;
                     return stepWithoutAfter;
                   } else if (updatedAfter.length === 1) {
-                    // Convert single-item array back to string
                     return { ...step, after: updatedAfter[0] };
                   } else {
                     return { ...step, after: updatedAfter };
                   }
                 } else if (step.after === edgeToDelete.source) {
-                  // Remove the after property if it matches the source
                   const { after, ...stepWithoutAfter } = step;
                   return stepWithoutAfter;
                 }
               }
+            }
 
-              // Handle conditional branches if they exist
+            // Conditional edges: branches stored on the source step
+            if (step.uid === edgeToDelete.source && isConditional) {
               if (step.branches) {
                 const updatedBranches = { ...step.branches };
                 Object.keys(updatedBranches).forEach((branchKey) => {
@@ -351,16 +352,16 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
                     delete updatedBranches[branchKey];
                   }
                 });
-                
-                // If no branches remain, remove the branches property
+
                 if (Object.keys(updatedBranches).length === 0) {
-                  const { branches, ...stepWithoutBranches } = step;
-                  return stepWithoutBranches;
+                  const { branches, exit_condition, ...rest } = step;
+                  return rest;
                 } else {
                   return { ...step, branches: updatedBranches };
                 }
               }
             }
+
             return step;
           });
 
@@ -1111,7 +1112,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
       id: edgeId,
       source: params.source!,
       target: params.target!,
-      type: "default",
+      type: "custom",
       style: edgeStyle,
       markerEnd: {
         type: MarkerType.ArrowClosed,
