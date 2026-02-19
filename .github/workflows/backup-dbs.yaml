@@ -44,8 +44,10 @@ jobs:
     steps:
 
       - id: vars
+        env:
+          INPUT_BRANCH: ${{ inputs.target_branch || 'main' }}
         run: |
-          echo "branch=${{ inputs.target_branch || 'main' }}" >> $GITHUB_OUTPUT
+          echo "branch=${INPUT_BRANCH}" >> $GITHUB_OUTPUT
           echo "cluster=${{ inputs.target_cluster || 'PRODUCTION' }}" >> $GITHUB_OUTPUT
 
   backup_mongo:
