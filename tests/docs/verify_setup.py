@@ -85,7 +85,7 @@ def check_api_availability() -> bool:
     print_info("Checking backend API...")
     
     api_url = os.getenv("API_BASE_URL", "http://localhost:13457/api")
-    health_url = api_url.replace("/api", "") + "/api/health"
+    health_url = api_url.replace("/api", "") + "/api/health/"
     
     try:
         import urllib.request
