@@ -1,12 +1,14 @@
-from typing import List, Mapping, Any
+from datetime import datetime
+from typing import List, Mapping, Any, Dict, Optional
 from session.repository.repository import SessionRepository
 from session.workflow_session_factory import WorkflowSessionFactory
 from session.workflow_session import WorkflowSession
 from core.run_context import RunContext
+from core.dto import GroupedCount
 from graph.state.graph_state import GraphState
 from session.status import SessionStatus
 from blueprints.service import BlueprintService
-from session.models import SessionMeta
+from session.models import SessionMeta, TimeSeriesPoint, SystemAnalyticsData
 from .exceptions import BlueprintNotFoundError
 
 
@@ -29,6 +31,16 @@ class UserSessionManager:
     def blueprint_exists(self, blueprint_id: str) -> bool:
         """Check if blueprint exists without loading it."""
         return self._bp_service.exists(blueprint_id)
+
+    def get_blueprint_metadata(self, blueprint_id: str) -> Dict[str, Any]:
+        """Get blueprint metadata dict, empty dict if not found."""
+        if not blueprint_id:
+            return {}
+        try:
+            bp_doc = self._bp_service.get_blueprint_draft_doc(blueprint_id)
+            return bp_doc.metadata
+        except KeyError:
+            return {}
 
     def create_session(
             self,
@@ -98,3 +110,60 @@ class UserSessionManager:
     def delete_session(self, run_id: str) -> bool:
         """Delete a session by run_id. Returns True if deleted, False if not found."""
         return self._repo.delete(run_id)
+
+    # ---------- statistics ----------
+    def count(self, user_id: str, filter: Dict[str, Any] = None) -> int:
+        """Count sessions matching filter criteria for a user."""
+        return self._repo.count(user_id, filter or {})
+
+    def group_count(
+        self, 
+        user_id: str, 
+        group_by: List[str],
+        filter: Dict[str, Any] = None
+    ) -> List[GroupedCount]:
+        """
+        Group sessions by specified fields and return counts.
+        Performs efficient server-side grouping via the repository.
+        
+        Args:
+            user_id: The user ID to filter by
+            group_by: List of field names to group by (e.g., ["blueprint_id"])
+            filter: Optional additional filter criteria
+            
+        Returns:
+            List of GroupedCount DTOs with grouped field values and count.
+        """
+        return self._repo.group_count(user_id, group_by, filter)
+
+# ---------- Statistics (system-wide for admin analytics) ----------
+
+    def count_system(self, since: Optional[datetime] = None) -> int:
+        """Count all sessions system-wide (no user_id constraint)."""
+        return self._repo.count_system(since)
+
+    def get_distinct_users(self, since: Optional[datetime] = None) -> List[str]:
+        """Get distinct user IDs from all sessions."""
+        return self._repo.get_distinct_users(since)
+
+    def group_count_system(
+        self,
+        group_by: List[str],
+        since: Optional[datetime] = None
+    ) -> List[GroupedCount]:
+        """Group all sessions by specified fields and return counts (system-wide)."""
+        return self._repo.group_count_system(group_by, since)
+
+    def get_session_activity_series(
+        self,
+        since: Optional[datetime] = None
+    ) -> List[TimeSeriesPoint]:
+        """Get session activity data grouped by appropriate time intervals."""
+        return self._repo.get_session_activity_series(since)
+
+    def get_system_analytics(
+        self,
+        since: Optional[datetime] = None
+    ) -> SystemAnalyticsData:
+        """Get aggregated system analytics data for admin dashboards."""
+        return self._repo.get_system_analytics(since)

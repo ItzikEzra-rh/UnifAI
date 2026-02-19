@@ -1,10 +1,12 @@
-from typing import Any, Dict, Iterator, List
+from typing import Any, Dict, Iterator, List, Optional, Union
+from datetime import datetime
 from .user_session_manager import UserSessionManager
 from .session_executor import SessionExecutor
 from .workflow_session import WorkflowSession
 from .dto import ChatHistoryItem
-from .models import SessionMeta
-
+from .models import SessionMeta, TimeSeriesPoint, SystemAnalyticsData
+from .exceptions import BlueprintNotFoundError
+from core.dto import GroupedCount
 
 class SessionService:
     """
@@ -15,15 +17,14 @@ class SessionService:
         self._manager = manager
         self._executor = executor
 
-    def create(self, user_id: str, blueprint_id: str, metadata: SessionMeta = None) -> WorkflowSession:
+    def create(self, user_id: str, blueprint_id: str, metadata: Dict[str, Any] | SessionMeta | None = None) -> WorkflowSession:
         """
         Create a new session and return its object (with run_id).
         """
-        # TODO, should metadata get from UI? maybe just tags
         return self._manager.create_session(
             user_id=user_id,
             blueprint_id=blueprint_id,
-            metadata=metadata or SessionMeta()
+            metadata=SessionMeta.model_validate(metadata or {})
         )
 
     def run(self, session: WorkflowSession, inputs: Dict[str, Any], scope: str = "public", logged_in_user="") -> Any:
@@ -100,15 +101,21 @@ class SessionService:
         """
         docs = self._manager.list_docs(user_id)
         chat_items = []
-        
+
         for doc in docs:
             blueprint_id = doc.get("blueprint_id", "")
-            # Check if blueprint still exists
             blueprint_exists = self._manager.blueprint_exists(blueprint_id) if blueprint_id else False
-            
-            chat_item = ChatHistoryItem.from_doc(doc, blueprint_exists=blueprint_exists)
+            bp_metadata = self._manager.get_blueprint_metadata(blueprint_id) if blueprint_exists else {}
+
+            public_usage_scope = False
+            if blueprint_exists and blueprint_id:
+                source = doc.get("metadata", {}).get("source", "")
+                if source == "public_link":
+                    public_usage_scope = bp_metadata.get("usageScope") == "public"
+
+            chat_item = ChatHistoryItem.from_doc(doc, blueprint_exists=blueprint_exists, public_usage_scope=public_usage_scope, blueprint_metadata=bp_metadata)
             chat_items.append(chat_item)
-        
+
         return chat_items
 
     def get_user_blueprints(self, user_id) -> List[str]:
@@ -118,8 +125,99 @@ class SessionService:
         docs = self._manager.list_docs(user_id)
         return list({d.get("blueprint_id") for d in docs})
 
+    def group_count(
+        self,
+        user_id: str,
+        group_by: List[str],
+        filter: Dict[str, Any] = None
+    ) -> List[GroupedCount]:
+        """
+        Group sessions by specified fields and return counts.
+        Performs efficient server-side grouping via the session manager.
+        
+        Args:
+            user_id: The user ID to filter by
+            group_by: List of field names to group by (e.g., ["blueprint_id"])
+            filter: Optional additional filter criteria
+            
+        Returns:
+            List of GroupedCount DTOs with grouped field values and count.
+            Example: [GroupedCount(fields={"blueprint_id": "bp-123"}, count=10), ...]
+        """
+        return self._manager.group_count(user_id, group_by, filter)
+
+    def count(self, user_id: str, filter: Dict[str, Any] = None) -> int:
+        """Count sessions matching filter criteria for a user."""
+        return self._manager.count(user_id, filter)
+
     def delete(self, run_id: str) -> bool:
         """
         Delete a session by run_id. Returns True if deleted, False if not found.
         """
         return self._manager.delete_session(run_id)
+
+# ---------- System-wide methods (for admin analytics) ----------
+
+    def count_system(self, since: Optional[datetime] = None) -> int:
+        """
+        Count all sessions system-wide (no user_id constraint).
+        
+        Args:
+            since: Optional cutoff datetime - only count sessions after this time.
+                   None means count all sessions.
+        """
+        return self._manager.count_system(since)
+
+    def get_distinct_users(self, since: Optional[datetime] = None) -> List[str]:
+        """
+        Get distinct user IDs from all sessions.
+        
+        Args:
+            since: Optional cutoff datetime - only include sessions after this time.
+                   None means include all sessions.
+        """
+        return self._manager.get_distinct_users(since)
+
+    def group_count_system(
+        self,
+        group_by: List[str],
+        since: Optional[datetime] = None
+    ) -> List[GroupedCount]:
+        """
+        Group all sessions by specified fields and return counts (system-wide).
+        No user_id constraint - for admin analytics.
+        
+        Args:
+            group_by: List of field names to group by
+            since: Optional cutoff datetime - only include sessions after this time.
+                   None means include all sessions.
+        """
+        return self._manager.group_count_system(group_by, since)
+
+    def get_session_activity_series(
+        self,
+        since: Optional[datetime] = None
+    ) -> List[TimeSeriesPoint]:
+        """
+        Get session activity data grouped by appropriate time intervals.
+        For admin analytics dashboards.
+        
+        Args:
+            since: Optional cutoff datetime. None means all-time data.
+        """
+        return self._manager.get_session_activity_series(since)
+
+    def get_system_analytics(
+        self,
+        since: Optional[datetime] = None
+    ) -> SystemAnalyticsData:
+        """
+        Get aggregated system analytics data for admin dashboards.
+        
+        Returns grouped session data for building user activity
+        and top blueprints views.
+        
+        Args:
+            since: Optional cutoff datetime. None means all-time data.
+        """
+        return self._manager.get_system_analytics(since)

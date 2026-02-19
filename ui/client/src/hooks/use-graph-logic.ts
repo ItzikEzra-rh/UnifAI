@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import {
   Node,
   Edge,
@@ -12,9 +12,11 @@ import { useToast } from "@/hooks/use-toast";
 import { CurrentGraph, BuildingBlock } from "@/types/graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTheme } from "@/contexts/ThemeContext";
+import { deriveThemeColors } from "@/lib/colorUtils";
 import axios from "../http/axiosAgentConfig";
 import * as yaml from "js-yaml";
-import { useLocation } from "wouter";
+import { saveBlueprint } from "@/api/blueprints";
 
 interface YamlFlowNode {
   rid: string;
@@ -77,12 +79,31 @@ const defaulYmlState: YamlFlowState = {
   ],
 };
 
-export const useGraphLogic = () => {
+export interface SavedBlueprintInfo {
+  blueprintId: string;
+  name: string;
+  description: string;
+}
+
+interface UseGraphLogicOptions {
+  /** Callback to execute after a successful save (e.g., navigate back to workflow list) */
+  onSaveComplete?: (savedBlueprint?: SavedBlueprintInfo) => void;
+}
+
+export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
+  const { onSaveComplete } = options;
   const { toast } = useToast();
-  const [location, setLocation] = useLocation();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [nodeId, setNodeId] = useState(1);
+  const { primaryHex } = useTheme();
+
+  // Derive all theme colors once – reused by edge styling and drag preview
+  const themeColors = useMemo(
+    () => deriveThemeColors(primaryHex),
+    [primaryHex],
+  );
+  const conditionEdgeColor = themeColors.conditionEdge;
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
   const [buildingBlocksData, setBuildingBlocksData] = useState<BuildingBlock[]>(
@@ -296,9 +317,12 @@ export const useGraphLogic = () => {
         const updatedEdges = currentEdges.filter((edge) => edge.id !== edgeId);
 
         // Update YAML flow to remove the connection
+        const isConditional = edgeToDelete.data?.isConditional;
+
         setYamlFlow((prevFlow) => {
           const updatedPlan = prevFlow.plan.map((step) => {
-            if (step.uid === edgeToDelete.target) {
+            // Regular edges: connection stored on the target step's `after`
+            if (step.uid === edgeToDelete.target && !isConditional) {
               if (step.after) {
                 if (Array.isArray(step.after)) {
                   // Remove the source from the array
@@ -321,8 +345,10 @@ export const useGraphLogic = () => {
                   return stepWithoutAfter;
                 }
               }
+            }
 
-              // Handle conditional branches if they exist
+            // Conditional edges: branches stored on the source step
+            if (step.uid === edgeToDelete.source && isConditional) {
               if (step.branches) {
                 const updatedBranches = { ...step.branches };
                 Object.keys(updatedBranches).forEach((branchKey) => {
@@ -330,16 +356,16 @@ export const useGraphLogic = () => {
                     delete updatedBranches[branchKey];
                   }
                 });
-                
-                // If no branches remain, remove the branches property
+
                 if (Object.keys(updatedBranches).length === 0) {
-                  const { branches, ...stepWithoutBranches } = step;
-                  return stepWithoutBranches;
+                  const { branches, exit_condition, ...rest } = step;
+                  return rest;
                 } else {
                   return { ...step, branches: updatedBranches };
                 }
               }
             }
+
             return step;
           });
 
@@ -768,7 +794,6 @@ export const useGraphLogic = () => {
 
       if (blockData) {
         const block = JSON.parse(blockData);
-        console.log(block);
         const position = {
           x: event.clientX - reactFlowBounds.left - 75,
           y: event.clientY - reactFlowBounds.top - 25,
@@ -924,14 +949,15 @@ export const useGraphLogic = () => {
     
     event.dataTransfer.effectAllowed = isCondition ? "copy" : "move";
 
-    // Create a simpler drag preview
+    // Create a simpler drag preview using the primary theme color
+    const previewColor = themeColors.primary;
     const dragPreview = document.createElement("div");
     dragPreview.style.cssText = `
       position: absolute;
       top: -1000px;
       left: -1000px;
       padding: 8px 12px;
-      background: ${block.color || "#6B7280"};
+      background: ${previewColor};
       color: white;
       border-radius: 6px;
       font-size: 14px;
@@ -1018,12 +1044,9 @@ export const useGraphLogic = () => {
           sortKeys: false,
         });
 
-        const response = await axios.post("/blueprints/blueprint.save", {
-          blueprintRaw: yamlString,
-          userId: USER_ID,
-        });
+        const response = await saveBlueprint(yamlString, USER_ID);
 
-        if (response.data.status === "success") {
+        if (response.status === "success") {
           // Show success toast
           toast({
             title: "✅ Blueprint Saved Successfully",
@@ -1035,13 +1058,19 @@ export const useGraphLogic = () => {
           setSaveModalOpen(false);
           setIsSaving(false);
 
-          // Force navigation to reset component state
-          // Use window.location to ensure component remounts and resets to Agent Flow tab
-          setTimeout(() => {
-            window.location.href = "/agentic-ai";
-          }, 100);
+          // Call the onSaveComplete callback to navigate back (if provided)
+          // Pass the saved blueprint info so it can be selected in the workflow list
+          if (onSaveComplete) {
+            setTimeout(() => {
+              onSaveComplete({
+                blueprintId: response.blueprint_id,
+                name,
+                description,
+              });
+            }, 100);
+          }
         } else {
-          throw new Error(response.data.error || "Unknown error occurred");
+          throw new Error("Unknown error occurred while saving blueprint");
         }
       } catch (error) {
         console.error("Error saving graph:", error);
@@ -1053,7 +1082,7 @@ export const useGraphLogic = () => {
         setIsSaving(false);
       }
     },
-    [yamlFlow, toast, setLocation],
+    [yamlFlow, toast, onSaveComplete],
   );
 
   useEffect(() => {
@@ -1079,7 +1108,7 @@ export const useGraphLogic = () => {
   const createConditionalEdge = (params: Connection, branchConfig: any) => {
     const edgeStyle = {
       strokeDasharray: "5,5",
-      stroke: "#10b981",
+      stroke: conditionEdgeColor,
     };
 
     const edgeId = `${params.source}-${params.target}-${branchConfig.branch || Date.now()}`;
@@ -1087,11 +1116,11 @@ export const useGraphLogic = () => {
       id: edgeId,
       source: params.source!,
       target: params.target!,
-      type: "default",
+      type: "custom",
       style: edgeStyle,
       markerEnd: {
         type: MarkerType.ArrowClosed,
-        color: "#10b981",
+        color: conditionEdgeColor,
       },
       data: {
         ...branchConfig,

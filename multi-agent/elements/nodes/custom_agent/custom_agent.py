@@ -16,6 +16,7 @@ from elements.nodes.common.agent.execution import ExecutionMode
 from elements.nodes.common.agent.constants import StrategyType
 from elements.tools.common.execution.models import ExecutorConfig
 from elements.tools.builtin.time import GetCurrentTimeTool
+from elements.tools.builtin.retriever import RetrieverTool
 
 
 class CustomAgentNode(
@@ -48,7 +49,7 @@ class CustomAgentNode(
             retriever: Any = None,
             tools: List[BaseTool] = None,
             system_message: str = "",
-            mcp_provider: McpProvider = None,
+            mcp_providers: List[McpProvider] = None,
             max_rounds: Optional[int] = 15,
             strategy_type: str = StrategyType.REACT.value,
             include_builtin_tools: bool = True,
@@ -60,7 +61,7 @@ class CustomAgentNode(
             system_message=system_message,
             **kwargs
         )
-        self.mcp_provider = mcp_provider
+        self.mcp_providers = mcp_providers or []
         self.max_rounds = max_rounds
         self.strategy_type = strategy_type
 
@@ -99,9 +100,9 @@ class CustomAgentNode(
         if self._include_builtin_tools:
             all_tools.extend(self._create_builtin_tools())
 
-        # 3. MCP tools (if provider available)
-        if self.mcp_provider:
-            all_tools.extend(self.mcp_provider.get_tools())
+        # 3. MCP tools from all providers
+        for provider in self.mcp_providers:
+            all_tools.extend(provider.get_tools())
 
         return all_tools
 
@@ -122,14 +123,10 @@ class CustomAgentNode(
         # Time tool (no dependencies needed)
         builtin_tools.append(GetCurrentTimeTool())
 
-        # Future builtin tools can be added here with their dependencies:
-        # Example with dependencies (when needed):
-        # get_uid = lambda: self.uid
-        # get_thread = lambda: self._current_thread
-        # builtin_tools.append(SomeToolWithDeps(
-        #     get_uid=get_uid,
-        #     get_thread=get_thread
-        # ))
+        # Retriever as tool (if available)
+        # Allows agent to decide when to retrieve context
+        if self.retriever is not None:
+            builtin_tools.append(RetrieverTool(self.retriever))
 
         return builtin_tools
 
@@ -210,10 +207,10 @@ class CustomAgentNode(
         if agent_results_context:
             context_messages.append(agent_results_context)
 
-        # 4. Add current task with retriever context if available
+        # 4. Add current task
+        # Note: Retriever is now exposed as a tool (RetrieverTool) so the agent
+        # can decide when to retrieve context rather than always augmenting
         user_msg = ChatMessage(role=Role.USER, content=task.content)
-        if self.retriever:
-            user_msg = self.augment_with_context(user_msg)
         context_messages.append(user_msg)
 
         return context_messages

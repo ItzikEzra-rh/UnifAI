@@ -1,18 +1,37 @@
-import asyncio
+"""
+MCP validate_connection action.
+
+Validates MCP server connection reachability.
+"""
+
+import anyio
 import time
 from typing import Optional, Dict, Any
-from pydantic import BaseModel, HttpUrl
+
+from pydantic import HttpUrl, Field
+
 from actions.common.base_action import BaseAction
 from actions.common.action_models import BaseActionInput, BaseActionOutput, ActionType
-from elements.providers.mcp_server_client.mcp_server_client import McpServerClient
+from elements.providers.mcp_server_client.mcp_provider_factory import McpProviderFactory
+from elements.providers.mcp_server_client.config import McpProviderConfig
 from elements.providers.mcp_server_client.identifiers import Identifier
+from elements.providers.mcp_server_client.transport.enums import McpTransportType
 from core.enums import ResourceCategory
+from core.field_hints import SecretHint
 
 
 # Input/Output models for this action
 class ValidateConnectionInput(BaseActionInput):
     """Input for MCP connection validation"""
     sse_endpoint: HttpUrl
+    bearer_token: Optional[str] = Field(
+        default=None,
+        description="Bearer token for MCP server authentication"
+    )
+    transport_type: McpTransportType = Field(
+        default=McpTransportType.STREAMABLE_HTTP,
+        description="Transport protocol for MCP server communication"
+    )
 
 
 class ValidateConnectionOutput(BaseActionOutput):
@@ -39,27 +58,75 @@ class ValidateConnectionAction(BaseAction):
     tags = {"mcp", "validation", "connectivity"}
     elements = {(ResourceCategory.PROVIDER.value, Identifier.TYPE)}
     
-    async def execute(self, input_data: ValidateConnectionInput, 
-                     context: Optional[Dict[str, Any]] = None) -> ValidateConnectionOutput:
+    def __init__(self, factory: McpProviderFactory = None):
         """
-        Execute connection validation with optional context.
+        Initialize action with optional factory injection.
         
         Args:
+            factory: McpProviderFactory instance (creates default if not provided)
+        """
+        super().__init__()
+        self._factory = factory or McpProviderFactory()
+
+    def execute_sync(
+        self,
+        input_data: ValidateConnectionInput,
+        context: Optional[Dict[str, Any]] = None
+    ) -> ValidateConnectionOutput:
+        """
+        Override execute_sync to handle MCP library's cancel scope corruption.
+        
+        The MCP library's streamablehttp_client has a bug where it corrupts
+        anyio's cancel scope stack during connection failures. This causes a
+        RuntimeError to be raised during the AsyncBridge's portal cleanup -
+        AFTER the async code has finished executing.
+        
+        Because this error occurs outside the async execution context, it cannot
+        be caught inside the async execute() method. We must catch it here at
+        the sync boundary.
+        
+        This is a workaround for a third-party library bug, not a flaw in our
+        AsyncBridge implementation.
+        """
+        try:
+            return super().execute_sync(input_data, context)
+        except RuntimeError as e:
+            # Cancel scope errors from MCP library indicate connection failure
+            return ValidateConnectionOutput(
+                success=False,
+                message=f"Connection failed: {e}",
+                is_reachable=False,
+                response_time_ms=0.0
+            )
+
+    async def execute(
+        self,
+        input_data: ValidateConnectionInput,
+        context: Optional[Dict[str, Any]] = None
+    ) -> ValidateConnectionOutput:
+        """
+        Execute connection validation.
+
+        Args:
             input_data: Validated connection input
-            context: Optional execution context (element configs, etc.)
-            
+            context: Optional execution context
+
         Returns:
             Validation result with connection status and timing
         """
         start_time = time.time()
         
         try:
-            # Create client and test connection
-            client = McpServerClient(input_data.sse_endpoint)
+            # Create config from input data
+            config = McpProviderConfig(
+                sse_endpoint=input_data.sse_endpoint,
+                bearer_token=input_data.bearer_token,
+                transport_type=input_data.transport_type,
+            )
             
-            async with client:
-                # Test connection by listing tools with timeout
-                await asyncio.wait_for(client.tools.get_tools(), timeout=10.0)
+            # Create provider using factory - validates connection by fetching tools during init
+            with anyio.fail_after(10.0):
+                await self._factory.create_async(config)
             
             response_time = (time.time() - start_time) * 1000
             
@@ -70,7 +137,7 @@ class ValidateConnectionAction(BaseAction):
                 response_time_ms=response_time
             )
             
-        except asyncio.TimeoutError:
+        except TimeoutError:
             return ValidateConnectionOutput(
                 success=False,
                 message="Connection timeout - server may be unreachable",

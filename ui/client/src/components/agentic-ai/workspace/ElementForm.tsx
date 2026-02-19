@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,7 +14,10 @@ import {
   ElementSchema,
   ElementInstance,
 } from "../../../types/workspace";
-import { FieldRenderer } from "./FieldRenderer";
+import { FieldRenderer, getStringEnumFromRef } from "./FieldRenderer";
+import { ItemValidationResult } from "./FieldValidation";
+import { UmamiTrack } from '@/components/ui/umamitrack';
+import { UmamiEvents } from '@/config/umamiEvents';
 
 interface ElementFormProps {
   isOpen: boolean;
@@ -41,34 +44,64 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     {},
   );
   const [fieldValidationStates, setFieldValidationStates] = useState<{ [fieldName: string]: boolean }>({});
+  const [itemValidationStates, setItemValidationStates] = useState<{ [fieldName: string]: ItemValidationResult[] }>({});
+  const [validatingFields, setValidatingFields] = useState<Set<string>>(new Set());
   const [populateResults, setPopulateResults] = useState<{ [fieldName: string]: string[] | any }>({});
 
   const { fetchResourcesForCategory } = useWorkspaceData();
 
-  const handleValidationChange = (fieldName: string, isValid: boolean) => {
+  // Helper to check if a field has validation hint
+  const fieldHasValidation = useCallback((fieldName: string): boolean => {
+    const fieldSchema = elementSchema?.config_schema.properties[fieldName];
+    if (!fieldSchema) return false;
+    return fieldSchema.hints?.action?.hint_type === 'validate' || 
+           fieldSchema.hints?.api?.hint_type === 'validate';
+  }, [elementSchema]);
+
+  const handleValidationChange = (fieldName: string, isValid: boolean, itemResults?: ItemValidationResult[]) => {
     setFieldValidationStates(prev => ({
       ...prev,
       [fieldName]: isValid
     }));
+    // Store per-item validation results if provided (for list fields)
+    if (itemResults) {
+      setItemValidationStates(prev => ({
+        ...prev,
+        [fieldName]: itemResults
+      }));
+    }
+    // Remove from validating set when validation completes
+    setValidatingFields(prev => {
+      const next = new Set(prev);
+      next.delete(fieldName);
+      return next;
+    });
   };
 
-  const handlePopulateResult = (fieldName: string, results: string[] | any, multiSelect: boolean) => {
+  const handlePopulateResult = (fieldName: string, results: any[], multiSelect: boolean) => {
     setPopulateResults(prev => ({
       ...prev,
       [fieldName]: results
     }));
     
-    // For multi-select, set the array of selected values
-    // For single select, set the first (and only) selected value
-    handleInputChange(fieldName, multiSelect || typeof results === 'object' ? results : results.length > 0 ? results[0] : "");
+    // For multi-select fields, store the full array of objects (or strings)
+    // For single select, store just the first item (can be object or string)
+    if (multiSelect) {
+      // Multi-select: always store as array
+      handleInputChange(fieldName, results);
+    } else {
+      // Single select: store single item (first in array, or empty string)
+      const singleResult = results.length > 0 ? results[0] : "";
+      handleInputChange(fieldName, singleResult);
+    }
   };
-
 
 
   // Initialize form data
   useEffect(() => {
     if (elementSchema && isOpen) {
       const initialData: any = {};
+      const fieldsToValidate = new Set<string>();
 
       // Set default values from combined schema, excluding hidden fields
       Object.entries(elementSchema.config_schema.properties).forEach(
@@ -124,11 +157,31 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             } else {
               initialData[key] = value;
             }
+
+            // Track fields with validation hints that have values - these will trigger validation
+            // and Save button should be disabled until validation completes
+            const hasValidationHint = fieldSchema?.hints?.action?.hint_type === 'validate' || 
+                                      fieldSchema?.hints?.api?.hint_type === 'validate';
+            if (hasValidationHint) {
+              const processedValue = initialData[key];
+              const hasValue = Array.isArray(processedValue) 
+                ? processedValue.length > 0 
+                : processedValue !== undefined && processedValue !== null && processedValue !== '';
+              if (hasValue) {
+                fieldsToValidate.add(key);
+              }
+            }
           });
         }
       }
 
       setFormData(initialData);
+      
+      // In edit mode, mark fields with validation hints and values as "validating"
+      // This ensures Save button is disabled until all validation API calls complete
+      if (editingElement && fieldsToValidate.size > 0) {
+        setValidatingFields(fieldsToValidate);
+      }
     }
   }, [elementSchema, editingElement, isOpen]);
 
@@ -266,6 +319,11 @@ export const ElementForm: React.FC<ElementFormProps> = ({
     return null;
   };
 
+  // Helper function to check if a $ref resolves to a string enum (not a resource reference)
+  const isStringEnumRef = (fieldSchema: any): boolean => {
+    return getStringEnumFromRef(fieldSchema, resolveRef) !== null;
+  };
+
   // Helper function to extract category from $ref field or anyOf structure
   const extractCategoryFromField = (fieldSchema: any): string | null => {
     // Handle direct $ref by resolving it
@@ -366,6 +424,11 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       ...prev,
       [field]: value,
     }));
+    // If field has validation hint, mark it as validating immediately
+    // This prevents the save button from being enabled during the validation delay
+    if (fieldHasValidation(field)) {
+      setValidatingFields(prev => new Set(prev).add(field));
+    }
   };
 
   const handleArrayChange = (field: string, index: number, value: any) => {
@@ -395,9 +458,12 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   const isFormValid = () => {
     if (!elementSchema) return false;
 
+    // If any field is currently being validated, form is not valid yet
+    if (validatingFields.size > 0) return false;
+
     // Check all required fields from combined schema, excluding hidden fields
     const required = elementSchema.config_schema.required || [];
-    return required.every((field) => {
+    const allRequiredFieldsValid = required.every((field) => {
       const fieldSchema = elementSchema.config_schema.properties[field];
       
       // Skip validation for hidden fields
@@ -407,8 +473,9 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       
       const value = formData[field];
       
-      // Check if field has validation hint
-      const hasValidationHint = fieldSchema?.hints?.action?.hint_type === 'validate';
+      // Check if field has validation hint (supports both ActionHint and ApiHint)
+      const hasValidationHint = fieldSchema?.hints?.action?.hint_type === 'validate' || 
+                                fieldSchema?.hints?.api?.hint_type === 'validate';
       
       // Basic value validation
       let hasValue = false;
@@ -427,6 +494,12 @@ export const ElementForm: React.FC<ElementFormProps> = ({
       // Otherwise, just check if value exists
       return hasValue;
     });
+
+    // Additionally, check that no field validation has returned false
+    // This handles both required and non-required fields with validation hints (ActionHint or ApiHint)
+    const noFailedValidations = !Object.values(fieldValidationStates).some(isValid => isValid === false);
+
+    return allRequiredFieldsValid && noFailedValidations;
   };
 
   const handleSave = async () => {
@@ -485,31 +558,26 @@ export const ElementForm: React.FC<ElementFormProps> = ({
 
           // Convert reference fields back to $ref:rid format and handle empty values
           if (fieldSchema) {
-            if (typeof value === "object" && value !== null) {
+            // Handle non-ref objects as-is FIRST (before $ref processing)
+            if (typeof value === "object" && value !== null && !Array.isArray(value)) {
               processedValue = value;
             }
-            else if (
-              fieldSchema.$ref &&
-              value &&
-              value !== ""
-            ) {
+            // Handle array fields with $ref items
+            else if (isArrayWithRefItems(fieldSchema) && Array.isArray(value)) {
+              processedValue = value.map((rid: string) => `$ref:${rid}`);
+            }
+            // Handle single $ref fields - only add $ref: prefix for resource references (RIDs), exclude string enums
+            else if (fieldSchema.$ref && typeof value === "string" && value !== "" && !isStringEnumRef(fieldSchema)) {
               processedValue = `$ref:${value}`;
             }
-            // Handle anyOf with $ref
+            // Handle anyOf with $ref (single select) - only add $ref: prefix for string values (RIDs)
             else if (
               fieldSchema.anyOf &&
               fieldSchema.anyOf.some((option: any) => option.$ref) &&
-              value &&
+              typeof value === "string" &&
               value !== ""
             ) {
               processedValue = `$ref:${value}`;
-            }
-            // Handle array fields with $ref items
-            else if (
-              isArrayWithRefItems(fieldSchema) &&
-              Array.isArray(value)
-            ) {
-              processedValue = value.map((rid: string) => `$ref:${rid}`);
             }
             // Handle empty values based on field type
             else {
@@ -578,8 +646,17 @@ export const ElementForm: React.FC<ElementFormProps> = ({
   const renderFormField = (fieldName: string, fieldSchema: any) => {
     const isRequired = elementSchema.config_schema.required?.includes(fieldName);
     const value = formData[fieldName] || "";
-    const validationHint = fieldSchema.hints?.action?.hint_type === 'validate' ? fieldSchema.hints.action : null;
-    const populateHint = fieldSchema.hints?.action?.hint_type === 'populate' ? fieldSchema.hints.action : null;
+    
+    // Check for validation hints - supports both ActionHint and ApiHint
+    const actionValidationHint = fieldSchema.hints?.action?.hint_type === 'validate' ? fieldSchema.hints.action : null;
+    const apiValidationHint = fieldSchema.hints?.api?.hint_type === 'validate' ? fieldSchema.hints.api : null;
+    const validationHint = actionValidationHint || apiValidationHint;
+
+    // Check for populate hints - supports both ActionHint and ApiHint
+    const actionPopulateHint = fieldSchema.hints?.action?.hint_type === 'populate' ? fieldSchema.hints.action : null;
+    const apiPopulateHint = fieldSchema.hints?.api?.hint_type === 'populate' ? fieldSchema.hints.api : null;
+    const populateHint = actionPopulateHint || apiPopulateHint;
+    
     const isSecret = fieldSchema?.hints?.secret?.hint_type === "secret";
 
     return (
@@ -597,9 +674,11 @@ export const ElementForm: React.FC<ElementFormProps> = ({
         refOptions={refOptions}
         fieldType={isSecret ? "secret" : "public"}
         fieldValidationStates={fieldValidationStates}
+        itemValidationStates={itemValidationStates}
         isArrayWithRefItems={isArrayWithRefItems}
         getArrayItemsSchema={getArrayItemsSchema}
         extractCategoryFromField={extractCategoryFromField}
+        resolveSchemaRef={resolveRef}
         onInputChange={handleInputChange}
         onArrayChange={handleArrayChange}
         onAddArrayItem={addArrayItem}
@@ -685,13 +764,17 @@ export const ElementForm: React.FC<ElementFormProps> = ({
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              className="bg-primary hover:bg-opacity-80"
-              disabled={isSaving || !isFormValid()}
+            <UmamiTrack 
+              event={UmamiEvents.AGENT_REPOSITORY_SAVE_ELEMENT_BUTTON}
             >
-              {isSaving ? "Saving..." : "Save"}
-            </Button>
+              <Button
+                type="submit"
+                className="bg-primary hover:bg-opacity-80"
+                disabled={isSaving || !isFormValid()}
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </Button>
+            </UmamiTrack>
           </DialogFooter>
         </form>
       </DialogContent>

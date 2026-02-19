@@ -2,21 +2,19 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { StreamingDataProvider } from "@/components/agentic-ai/StreamingDataContext";
 import { FlowObject } from "./graphs/interfaces";
-import AvailableFlows from "./AvailableFlows";
-
-// Create a ReactFlow provider wrapper
-import { ReactFlowProvider } from "reactflow";
-
-
+import WorkflowsPanel from "./WorkflowsPanel";
+import { BlueprintValidationResult } from "@/types/validation";
 
 type AgentFlowGraphProps = {
   selectedFlow: FlowObject | null;
   setSelectedFlow: (flow: FlowObject | null) => void;
+  onValidationChange?: (isValid: boolean, validationResult: BlueprintValidationResult | null, isValidating: boolean) => void;
 };
 
 export default function AgentFlowGraph({
   selectedFlow,
   setSelectedFlow,
+  onValidationChange,
 }: AgentFlowGraphProps): React.ReactElement {
   
   const handleFlowSelect = (flow: FlowObject | null): void => {
@@ -39,24 +37,19 @@ export default function AgentFlowGraph({
       </CardHeader>
       <CardContent className="p-0" style={{ height: "73.5vh" }}>
         <StreamingDataProvider>
-          <ReactFlowProvider>
-            <AvailableFlows
-              selectedFlow={selectedFlow}
-              onFlowSelect={handleFlowSelect}
-              onFlowDelete={handleFlowDelete}
-              showActiveStatus={true}
-              showDeleteButton={true}
-              useResolvedEndpoint={true}
-              height="100%"
-              graphProps={{
-                showControls: true,
-                showMiniMap: false,
-                showBackground: true,
-                interactive: true,
-                isLiveRequest: false,
-              }}
-            />
-          </ReactFlowProvider>
+          <WorkflowsPanel
+            selectedFlow={selectedFlow}
+            onFlowSelect={handleFlowSelect}
+            onFlowDelete={handleFlowDelete}
+            onValidationChange={onValidationChange}
+            showActiveStatus={true}
+            showDeleteButton={true}
+            height="100%"
+            graphProps={{
+              showBackground: true,
+              interactive: true,
+            }}
+          />
         </StreamingDataProvider>
       </CardContent>
     </Card>

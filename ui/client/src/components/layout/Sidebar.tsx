@@ -4,9 +4,9 @@ import { useProject } from "@/contexts/ProjectContext";
 import { 
   FaTachometerAlt, FaCogs, FaFileAlt, 
   FaChartLine, FaUserShield, FaCog, FaSignOutAlt,
-  FaRobot, FaFile, FaChevronLeft, FaChevronRight 
+  FaRobot, FaFile, FaChevronLeft, FaChevronRight,
+  FaInfoCircle, FaBook, FaComment, FaPuzzlePiece
 } from "react-icons/fa";
-import { MessageSquare, Info } from "lucide-react";
 import { FaJira, FaSlack, FaBars } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { useState } from "react";
@@ -109,12 +109,12 @@ export default function Sidebar() {
         <ul>
           <NavItem 
             icon={<FaTachometerAlt className="sidebar-icon" />} 
-            label="Overview" 
-            to="/overview"
-            isActive={location === '/overview'}
+            label="RAG Overview" 
+            to="/rag-overview"
+            isActive={location === '/rag-overview'}
             status={null}
             isCollapsed={isCollapsed}
-            disabled={true}
+            disabled={false}
           />
           <NavItem 
             icon={<FaSlack className="sidebar-icon" />} 
@@ -132,7 +132,7 @@ export default function Sidebar() {
             isActive={location === '/documents'}
             status={null}
             isCollapsed={isCollapsed}
-            disabled={true}
+            disabled={false}
           />
         </ul>
 
@@ -147,6 +147,22 @@ export default function Sidebar() {
           </motion.div>
         )}
         <ul>
+          <NavItem 
+            icon={<FaTachometerAlt className="sidebar-icon" />} 
+            label="Agentic AI Overview" 
+            to="/agentic-overview"
+            isActive={location === '/agentic-overview'}
+            status={null}
+            isCollapsed={isCollapsed}
+          />
+          <NavItem 
+            icon={<FaPuzzlePiece className="sidebar-icon" />} 
+            label="Agentic AI Templates" 
+            to="/templates"
+            isActive={location === '/templates'}
+            status={null}
+            isCollapsed={isCollapsed}
+          />
           <NavItem 
               icon={<FaFile className="sidebar-icon" />} 
               label="Agentic Inventory" 
@@ -165,7 +181,7 @@ export default function Sidebar() {
             isCollapsed={isCollapsed}
           />
           <NavItem 
-            icon={<MessageSquare className="sidebar-icon" />} 
+            icon={<FaComment className="sidebar-icon" />} 
             label="Agentic Chats" 
             to="/agentic-chats"
             isActive={location === '/agentic-chats'}
@@ -186,13 +202,31 @@ export default function Sidebar() {
         )}
         <ul>
           <NavItem 
+            icon={<FaInfoCircle className="sidebar-icon" />} 
+            label="Getting Started" 
+            to="/get-to-know"
+            isActive={location === '/get-to-know'}
+            status={null}
+            isCollapsed={isCollapsed}
+          />
+          <NavItem 
+            icon={<FaBook className="sidebar-icon" />} 
+            label="How-To Guides" 
+            to="/guides"
+            isActive={location === '/guides'}
+            status={null}
+            isCollapsed={isCollapsed}
+          />
+          <NavItem 
             icon={<FaCogs className="sidebar-icon" />} 
             label="Configuration" 
             to="/configuration"
             isActive={location === '/configuration'}
             status={null}
             isCollapsed={isCollapsed}
+            disabled={true}
           />
+          {user?.is_admin && (
           <NavItem 
             icon={<FaChartLine className="sidebar-icon" />} 
             label="Analytics" 
@@ -200,8 +234,8 @@ export default function Sidebar() {
             isActive={location === '/analytics'}
             status={null}
             isCollapsed={isCollapsed}
-            disabled={true}
           />
+          )}
           <NavItem 
             icon={<FaUserShield className="sidebar-icon" />} 
             label="User Management" 
@@ -210,14 +244,6 @@ export default function Sidebar() {
             status={null}
             isCollapsed={isCollapsed}
             disabled={true}
-          />
-          <NavItem 
-            icon={<Info className="sidebar-icon" />} 
-            label="How-To Guides" 
-            to="/guides"
-            isActive={location === '/guides'}
-            status={null}
-            isCollapsed={isCollapsed}
           />
           <NavItem 
             icon={<FaCog className="sidebar-icon" />} 

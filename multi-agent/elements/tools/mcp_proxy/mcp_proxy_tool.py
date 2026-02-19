@@ -3,6 +3,7 @@ from pydantic import BaseModel, HttpUrl
 from global_utils.utils.util import validate_arguments
 from global_utils.utils.async_bridge import get_async_bridge
 from elements.providers.mcp_server_client.mcp_server_client import McpServerClient
+from elements.providers.mcp_server_client.transport.enums import McpTransportType
 from elements.tools.common.base_tool import BaseTool
 
 from global_utils.utils.util import json_schema_model
@@ -24,10 +25,14 @@ class McpProxyTool(BaseTool):
             self,
             mcp_tool_name: str,
             sse_endpoint: HttpUrl,
+            headers: Optional[Dict[str, str]] = None,
+            transport_type: McpTransportType = McpTransportType.STREAMABLE_HTTP,
     ):
         self.name = mcp_tool_name
         self.mcp_tool_name = mcp_tool_name
         self.sse_endpoint = sse_endpoint  # Store endpoint instead of client
+        self.headers = headers or {}  # Store headers for authentication
+        self.transport_type = transport_type  # Store transport protocol
         self._tool_info = None
         self._schema_initialized = False
 
@@ -80,8 +85,12 @@ class McpProxyTool(BaseTool):
         
         This approach eliminates cross-event-loop thread safety issues.
         """
-        # 1) Create fresh client in current event loop/portal
-        client = McpServerClient(sse_endpoint=self.sse_endpoint)
+        # 1) Create fresh client in current event loop/portal with auth headers
+        client = McpServerClient(
+            sse_endpoint=self.sse_endpoint,
+            headers=self.headers,
+            transport_type=self.transport_type,
+        )
         
         # 2) Use the fresh client for all operations
         async with client:
@@ -174,28 +183,48 @@ class McpProxyTool(BaseTool):
         return f"McpProxyTool(name='{self.name}', mcp_tool='{self.mcp_tool_name}')"
 
     @classmethod
-    async def create_async(cls, mcp_tool_name: str, sse_endpoint: HttpUrl) -> "McpProxyTool":
+    async def create_async(
+        cls,
+        mcp_tool_name: str,
+        sse_endpoint: HttpUrl,
+        headers: Optional[Dict[str, str]] = None,
+        transport_type: McpTransportType = McpTransportType.STREAMABLE_HTTP,
+    ) -> "McpProxyTool":
         """
         Async factory method for creating a fully initialized McpProxyTool.
         
         Args:
             mcp_tool_name: Name of the MCP tool to proxy
             sse_endpoint: MCP server HTTP endpoint
+            headers: Optional HTTP headers for authentication
+            transport_type: Transport protocol to use (SSE or Streamable HTTP)
             
         Returns:
             Fully initialized McpProxyTool instance
         """
-        tool = cls(mcp_tool_name, sse_endpoint)
+        tool = cls(
+            mcp_tool_name, sse_endpoint,
+            headers=headers, transport_type=transport_type,
+        )
         
-        # Initialize schema using a fresh client
-        client = McpServerClient(sse_endpoint=sse_endpoint)
+        # Initialize schema using a fresh client with headers
+        client = McpServerClient(
+            sse_endpoint=sse_endpoint, headers=headers,
+            transport_type=transport_type,
+        )
         async with client:
             await tool._ensure_tool_info(client)
         
         return tool
 
     @classmethod
-    def create_sync(cls, mcp_tool_name: str, sse_endpoint: HttpUrl) -> "McpProxyTool":
+    def create_sync(
+        cls,
+        mcp_tool_name: str,
+        sse_endpoint: HttpUrl,
+        headers: Optional[Dict[str, str]] = None,
+        transport_type: McpTransportType = McpTransportType.STREAMABLE_HTTP,
+    ) -> "McpProxyTool":
         """
         Sync factory method for creating a fully initialized McpProxyTool.
         Uses AsyncBridge internally to handle the async initialization.
@@ -203,16 +232,27 @@ class McpProxyTool(BaseTool):
         Args:
             mcp_tool_name: Name of the MCP tool to proxy
             sse_endpoint: MCP server HTTP endpoint
+            headers: Optional HTTP headers for authentication
+            transport_type: Transport protocol to use (SSE or Streamable HTTP)
             
         Returns:
             Fully initialized McpProxyTool instance
         """
         with get_async_bridge() as bridge:
-            return bridge.run(cls.create_async(mcp_tool_name, sse_endpoint))
+            return bridge.run(cls.create_async(
+                mcp_tool_name, sse_endpoint,
+                headers, transport_type=transport_type,
+            ))
 
     @classmethod
-    def create_with_cached_schema(cls, mcp_tool_name: str, sse_endpoint: HttpUrl, 
-                                 tool_info) -> "McpProxyTool":
+    def create_with_cached_schema(
+        cls,
+        mcp_tool_name: str,
+        sse_endpoint: HttpUrl,
+        tool_info,
+        headers: Optional[Dict[str, str]] = None,
+        transport_type: McpTransportType = McpTransportType.STREAMABLE_HTTP,
+    ) -> "McpProxyTool":
         """
         Create tool with pre-cached schema (no connection needed).
         This is the optimization - tool creation without connection.
@@ -221,11 +261,16 @@ class McpProxyTool(BaseTool):
             mcp_tool_name: Name of the MCP tool to proxy
             sse_endpoint: MCP server HTTP endpoint
             tool_info: Pre-fetched Tool object with schema information
+            headers: Optional HTTP headers for authentication
+            transport_type: Transport protocol to use (SSE or Streamable HTTP)
             
         Returns:
             Fully initialized McpProxyTool instance
         """
-        tool = cls(mcp_tool_name, sse_endpoint)
+        tool = cls(
+            mcp_tool_name, sse_endpoint,
+            headers=headers, transport_type=transport_type,
+        )
         
         # Use cached tool info
         tool._tool_info = tool_info
@@ -239,5 +284,6 @@ class McpProxyTool(BaseTool):
         desc = (self.description[:50] + "...") if self.description else "No description"
         return (
             f"McpProxyTool(name='{self.name}', mcp_tool_name='{self.mcp_tool_name}', "
+            f"transport={self.transport_type.value}, "
             f"description='{desc}', endpoint='{self.sse_endpoint}')"
         )

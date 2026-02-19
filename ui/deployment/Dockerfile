@@ -14,7 +14,11 @@ RUN corepack enable
 RUN corepack prepare pnpm@latest --activate # Install pnpm via Corepack
 
 #copy the entire project to the working folder
-COPY . .
+COPY ui/ .
+
+# Copy README.md to the expected location (one level above /ui) to match the import path
+COPY README.md /README.md
+
 # Install all dependencies (including devDependencies needed for the build).
 # `--frozen-lockfile` ensures reproducible builds based on pnpm-lock.yaml.
 RUN pnpm install --frozen-lockfile
@@ -30,20 +34,20 @@ FROM registry.access.redhat.com/ubi9/nginx-120 as serve
 
 USER root
 #Install debugging tools ( telnet is out-of-ubi9 for nginx ncat instead)
-RUN dnf update -y && dnf install -y vim less iputils nmap-ncat && dnf clean all
+RUN dnf update -y && dnf install -y vim less iputils && dnf clean all
 
 # Copy and set permissions for entrypoint.sh while still root
-COPY /deployment/entrypoint.sh /opt/app-root/src/entrypoint.sh
+COPY ui/deployment/entrypoint.sh /opt/app-root/src/entrypoint.sh
 RUN chmod +x /opt/app-root/src/entrypoint.sh
 RUN chmod -R 7777 /opt/app-root/src/
 RUN chown default:root /opt/app-root/src/
 
 #copy certificate files from the cred repo
-COPY genie-cred-data/certificates/* /etc/nginx/ssl/
+COPY ui/genie-cred-data/certificates/* /etc/nginx/ssl/
 
 COPY --from=build /ui/build /usr/share/nginx/html
 RUN chown -R default:root /usr/share/nginx/html && chmod -R 775 /usr/share/nginx/html
-COPY deployment/nginx.conf.template /etc/nginx/nginx.conf.template
+COPY ui/deployment/nginx.conf.template /etc/nginx/nginx.conf.template
 
 USER default
 

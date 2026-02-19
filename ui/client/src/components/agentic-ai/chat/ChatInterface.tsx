@@ -6,11 +6,10 @@ import React, {
   useMemo,
 } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { motion, AnimatePresence } from "framer-motion";
-import { Send, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Send, Trash2, Loader2, Sparkles, Info, Copy, RotateCcw, ThumbsUp, ThumbsDown, Check, Columns3, MessageSquare, Network, Maximize2, Minimize2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -21,6 +20,10 @@ import { useStreamingData } from "../StreamingDataContext";
 import { Message, StreamLogEntry, WorkPlanSnapshot } from "./types";
 import { StreamLogDisplay } from "./StreamLogDisplay";
 import { useToast } from "@/hooks/use-toast";
+import { UmamiTrack } from '@/components/ui/umamitrack';
+import { UmamiEvents } from '@/config/umamiEvents';
+import WorkflowStatusBanner, { WorkflowBannerMessages } from '@/components/shared/WorkflowStatusBanner';
+
 
 // Backend message format
 interface BackendMessage {
@@ -33,8 +36,13 @@ interface ChatInterfaceProps {
   triggerExecution: (sessionPayload: SessionPayload) => Promise<string>;
   initialMessages?: BackendMessage[];
   blueprintExists?: boolean;
-  onToggleBlueprintGraph?: () => void;
+  isSharingDisabled?: boolean; // If true, sharing is disabled for this blueprint
+  blueprintValid?: boolean;
+  isValidatingBlueprint?: boolean;
   isBlueprintGraphHidden?: boolean;
+  isChatOnlyMode?: boolean; // If true, hide agent thinking and workflow details
+  onSetCarouselMode?: (mode: 'normal' | 'chat' | 'graph') => void; // Carousel mode setter
+  carouselMode?: 'normal' | 'chat' | 'graph'; // Current carousel mode
 }
 
 export default function ChatInterface({
@@ -42,8 +50,13 @@ export default function ChatInterface({
   triggerExecution,
   initialMessages = [],
   blueprintExists = true,
-  onToggleBlueprintGraph,
+  isSharingDisabled = false,
+  blueprintValid = true,
+  isValidatingBlueprint = false,
   isBlueprintGraphHidden = false,
+  isChatOnlyMode = false,
+  onSetCarouselMode,
+  carouselMode = 'normal',
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputMessage, setInputMessage] = useState("");
@@ -61,6 +74,101 @@ export default function ChatInterface({
   const streamLogDataRef = useRef<Record<string, StreamLogEntry[]>>({});
   const { nodeListRef, clearStream } = useStreamingData();
   const { toast } = useToast();
+  const [userPromptsMap, setUserPromptsMap] = useState<Record<string, string>>({});
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+
+  // ────────────────────────────────────────────────────────────────────────────────
+  // Auto-expanding textarea configuration
+  // ────────────────────────────────────────────────────────────────────────────────
+  const TEXTAREA_MIN_HEIGHT = 44;  // Starting height (single line + padding)
+  const TEXTAREA_MAX_HEIGHT = 200; // Maximum expansion height (normal mode)
+  
+  const getExpandedHeight = useCallback(() => {
+    return Math.floor(window.innerHeight * 0.65);
+  }, []);
+  
+  const [isAtMaxHeight, setIsAtMaxHeight] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  /**
+   * Adjusts textarea height dynamically based on content.
+   * Resets to minimum when empty, expands up to max as content grows.
+   */
+  const adjustTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    // If in expanded mode, use 80% of viewport height
+    if (isExpanded) {
+      textarea.style.height = `${getExpandedHeight()}px`;
+      textarea.style.overflowY = 'auto';
+      return;
+    }
+
+    // If content is empty, reset to minimum height immediately
+    if (!textarea.value || textarea.value.trim() === '') {
+      textarea.style.height = `${TEXTAREA_MIN_HEIGHT}px`;
+      textarea.style.overflowY = 'hidden';
+      setIsAtMaxHeight(false);
+      return;
+    }
+
+    // Reset height to 'auto' to get accurate scrollHeight measurement
+    textarea.style.height = 'auto';
+    
+    // Calculate new height based on content
+    const scrollHeight = textarea.scrollHeight;
+    const newHeight = Math.min(Math.max(scrollHeight, TEXTAREA_MIN_HEIGHT), TEXTAREA_MAX_HEIGHT);
+    
+    textarea.style.height = `${newHeight}px`;
+    
+    // Track if we've reached max height (for expand icon)
+    const reachedMax = scrollHeight > TEXTAREA_MAX_HEIGHT;
+    setIsAtMaxHeight(reachedMax);
+    
+    // Enable scrolling only when content exceeds max height
+    textarea.style.overflowY = reachedMax ? 'auto' : 'hidden';
+  }, [isExpanded, getExpandedHeight]);
+
+  /**
+   * Resets textarea to initial compact state
+   */
+  const resetTextareaHeight = useCallback(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    textarea.style.height = `${TEXTAREA_MIN_HEIGHT}px`;
+    textarea.style.overflowY = 'hidden';
+    setIsAtMaxHeight(false);
+    setIsExpanded(false);
+  }, []);
+
+  /**
+   * Toggles between normal and expanded textarea height
+   */
+  const toggleExpandedHeight = useCallback(() => {
+    setIsExpanded(prev => !prev);
+  }, []);
+
+  /**
+   * Returns the appropriate placeholder text for the chat input based on current state.
+   * Priority order: deleted > sharing disabled > validating > invalid > default
+   */
+  const getInputPlaceholder = useCallback((): string => {
+    if (!blueprintExists) {
+      return "This chat cannot be continued - workflow was deleted";
+    }
+    if (isSharingDisabled) {
+      return "Chat sharing has been disabled for this workflow";
+    }
+    if (isValidatingBlueprint) {
+      return "Validating workflow...";
+    }
+    if (!blueprintValid) {
+      return "This chat cannot be continued - workflow validation failed";
+    }
+    return "Ask a question about your data...";
+  }, [blueprintExists, isSharingDisabled, isValidatingBlueprint, blueprintValid]);
 
   // Transform backend messages to frontend format (streamLogs/workPlans, managed separately)
   const transformBackendMessagesToFrontend = useCallback(
@@ -100,6 +208,11 @@ export default function ChatInterface({
   // useEffect(() => {
   //   scrollToBottom();
   // }, [messages]);
+
+  // Adjust textarea height when input or expanded state changes
+  useEffect(() => {
+    adjustTextareaHeight();
+  }, [inputMessage, isExpanded, adjustTextareaHeight]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -160,13 +273,14 @@ export default function ChatInterface({
             existingLog.status !== newStatus ||
             existingLog.message !== newMessage
           ) {
-            if (newMessage) {
+            // Show stream log if there's text content OR if there are tool calls
+            if (newMessage || (entry?.tools && entry.tools.length > 0)) {
               updatedStreamLogs.push({
                 nodeId: entry.node_name,
                 nodeName: entry.node_name
                   .replace(/_/g, " ")
                   .replace(/\b\w/g, (l: string) => l.toUpperCase()),
-                message: newMessage,
+                message: newMessage || "", // Allow empty message when showing tools
                 tools: entry?.tools || [],
                 status: newStatus,
                 isExpanded: existingLog?.isExpanded || false,
@@ -422,8 +536,9 @@ export default function ChatInterface({
   // User interaction → Can expand/collapse individual node logs
   // Completion → Final answer appears and streaming stops
   // Cleanup → All intervals are properly cleared
-  const handleSendMessage = async () => {
-    if (inputMessage.trim() === "") return;
+  const handleSendMessage = async (messageToSend?: string) => {
+    const messageContent = messageToSend || inputMessage;
+    if (messageContent.trim() === "") return;
 
     // Check if flow is loaded (runId should not be empty or null)
     if (!runId || runId.trim() === "") {
@@ -438,7 +553,7 @@ export default function ChatInterface({
     // Add user message
     const userMessage: Message = {
       id: Date.now().toString(),
-      content: inputMessage,
+      content: messageContent,
       sender: "user",
     };
 
@@ -446,8 +561,9 @@ export default function ChatInterface({
     setInputMessage("");
     setIsTyping(true);
 
-    // Reset textarea cursor to start position after clearing
+    // Reset textarea to compact state and focus
     setTimeout(() => {
+      resetTextareaHeight();
       if (textareaRef.current) {
         textareaRef.current.focus();
         textareaRef.current.setSelectionRange(0, 0);
@@ -466,6 +582,11 @@ export default function ChatInterface({
     clearStream();
     setCurrentStreamingMessageId(streamingMessageId);
 
+    setUserPromptsMap(prev => ({
+      ...prev,
+      [streamingMessageId]: messageContent
+    }));
+
     // Start streaming logs and workplans
     startStreamingLogs(streamingMessageId);
     startStreamingWorkPlans(streamingMessageId);
@@ -473,7 +594,7 @@ export default function ChatInterface({
     try {
       const sessionPayload: SessionPayload = {
         sessionId: runId || "",
-        inputs: { user_prompt: inputMessage },
+        inputs: { user_prompt: messageContent },
         stream: true,
         scope: "public",
         loggedInUser: "default",
@@ -536,6 +657,8 @@ export default function ChatInterface({
     workPlanDataRef.current = {};
     setStreamLogData({});
     streamLogDataRef.current = {};
+    setUserPromptsMap({});
+    setCopiedMessageId(null);
     stopStreamingLogs();
   };
 
@@ -560,6 +683,23 @@ export default function ChatInterface({
         className="flex justify-start"
       >
         <div className="bg-background-dark border border-gray-800 rounded-2xl rounded-tl-none p-3 max-w-[80%]">
+          {/* AI-generated indicator for typing state */}
+          <div 
+            className="mb-2.5 pb-2 border-b border-gray-700/30"
+            role="status"
+            aria-label="AI-generated content"
+          >
+            <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border" style={{ borderColor: `hsl(var(--primary) / 0.3)` }}>
+              <Sparkles 
+                className="h-3.5 w-3.5" 
+                style={{ color: `hsl(var(--primary) / 0.85)` }}
+                aria-hidden="true" 
+              />
+              <span className="text-xs font-medium text-gray-300/90 tracking-wide">
+                AI Generated
+              </span>
+            </div>
+          </div>
           <div className="flex space-x-1">
             <motion.div
               className="w-2 h-2 bg-gray-400 rounded-full"
@@ -597,6 +737,117 @@ export default function ChatInterface({
     [],
   );
 
+  // Loader for chat-only mode (simpler, cleaner loader)
+  const ChatOnlyLoader = useMemo(
+    () => (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="flex justify-start"
+      >
+        <div className="bg-background-dark border border-gray-800 rounded-2xl rounded-tl-none p-4 max-w-[80%]">
+          <div className="flex items-center space-x-3">
+            <Loader2 className="h-5 w-5 animate-spin text-primary" />
+            <span className="text-sm text-gray-400">Processing your request...</span>
+          </div>
+        </div>
+      </motion.div>
+    ),
+    [],
+  );
+
+  // Component for AI message action buttons
+  const MessageActions = ({ message }: { message: Message }) => {
+    const handleCopy = async () => {
+      if (message.finalAnswer) {
+        try {
+          await navigator.clipboard.writeText(message.finalAnswer);
+          setCopiedMessageId(message.id);
+          setTimeout(() => setCopiedMessageId(null), 2000);
+        } catch (error) {
+          console.error("Failed to copy:", error);
+          toast({
+            title: "Copy failed",
+            description: "Failed to copy to clipboard",
+            variant: "destructive",
+          });
+        }
+      }
+    };
+
+    const handleTryAgain = async () => {
+      const originalPrompt = userPromptsMap[message.id];
+      if (!originalPrompt) {
+        toast({
+          title: "Error",
+          description: "Could not find original prompt",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Directly send the message with the original prompt
+      await handleSendMessage(originalPrompt);
+    };
+
+    const isCopied = copiedMessageId === message.id;
+
+    return (
+      <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-700/30">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleCopy}
+          disabled={!message.finalAnswer}
+          className="h-7 px-2 text-gray-400 hover:text-gray-100 hover:bg-gray-800/50"
+          title="Copy response"
+        >
+          {isCopied ? (
+            <Check className="h-3.5 w-3.5 mr-1.5" />
+          ) : (
+            <Copy className="h-3.5 w-3.5 mr-1.5" />
+          )}
+          <span className="text-xs">{isCopied ? "Copied!" : "Copy"}</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleTryAgain}
+          disabled={!userPromptsMap[message.id] || isTyping}
+          className="h-7 px-2 text-gray-400 hover:text-gray-100 hover:bg-gray-800/50"
+          title="Try again with the same prompt"
+        >
+          <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Try Again</span>
+        </Button>
+
+        <div className="flex-1" />
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-gray-400 hover:text-green-400 hover:bg-gray-800/50"
+          title="Good response"
+        >
+          <ThumbsUp className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Good</span>
+        </Button>
+
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-gray-400 hover:text-red-400 hover:bg-gray-800/50"
+          title="Bad response"
+        >
+          <ThumbsDown className="h-3.5 w-3.5 mr-1.5" />
+          <span className="text-xs">Bad</span>
+        </Button>
+      </div>
+    );
+  };
+
   // Component for rendering message content with markdown support
   const MessageContent = ({ message }: { message: Message }) => {
     // Get stream logs and workplans from separate states
@@ -629,12 +880,14 @@ export default function ChatInterface({
     ) {
       return (
         <div className="space-y-3 w-full">
-          {/* Stream logs display */}
-          <StreamLogDisplay
-            message={messageWithStreamingData}
-            onToggleExpansion={toggleNodeExpansion}
-            onToggleWorkPlanExpansion={toggleWorkPlanExpansion}
-          />
+          {/* Stream logs display - hidden in chat-only mode */}
+          {!isChatOnlyMode && (
+            <StreamLogDisplay
+              message={messageWithStreamingData}
+              onToggleExpansion={toggleNodeExpansion}
+              onToggleWorkPlanExpansion={toggleWorkPlanExpansion}
+            />
+          )}
 
           {/* Final answer with markdown rendering */}
           {message.finalAnswer && (
@@ -676,29 +929,60 @@ export default function ChatInterface({
     <Card className="bg-background-card shadow-card border-gray-800 flex flex-col h-full max-h-[82.5vh]">
       <CardHeader className="py-4 px-6 flex flex-row justify-between items-center flex-shrink-0">
         <CardTitle className="text-lg font-heading">AI Assistant</CardTitle>
-        <div className="flex space-x-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={clearChat}
-            className="text-gray-400 hover:text-gray-100"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
-          {onToggleBlueprintGraph && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={onToggleBlueprintGraph}
-              className="text-gray-400 hover:text-gray-100"
-              title={isBlueprintGraphHidden ? "Show Blueprint Graph" : "Hide Blueprint Graph"}
-            >
-              {isBlueprintGraphHidden ? (
-                <ChevronLeft className="h-4 w-4" />
-              ) : (
-                <ChevronRight className="h-4 w-4" />
+        <div className="flex space-x-1 items-center">
+          {!isChatOnlyMode && (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={clearChat}
+                className="text-gray-400 hover:text-gray-100"
+                title="Clear chat"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+              {/* Carousel Mode Switch - 3 icons for Split/Chat/Graph views */}
+              {onSetCarouselMode && !isChatOnlyMode && (
+                <div className="flex items-center bg-background-surface border border-gray-700 rounded-lg p-0.5">
+                  {/* Split View */}
+                  <button
+                    onClick={() => onSetCarouselMode('normal')}
+                    className={`p-1.5 rounded-md transition-all duration-200 ${
+                      carouselMode === 'normal'
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                    }`}
+                    title="Split View"
+                  >
+                    <Columns3 className="h-4 w-4" />
+                  </button>
+                  {/* Full Chat View */}
+                  <button
+                    onClick={() => onSetCarouselMode('chat')}
+                    className={`p-1.5 rounded-md transition-all duration-200 ${
+                      carouselMode === 'chat'
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                    }`}
+                    title="Full Chat View"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                  </button>
+                  {/* Full Graph View */}
+                  <button
+                    onClick={() => onSetCarouselMode('graph')}
+                    className={`p-1.5 rounded-md transition-all duration-200 ${
+                      carouselMode === 'graph'
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                    }`}
+                    title="Full Graph View"
+                  >
+                    <Network className="h-4 w-4" />
+                  </button>
+                </div>
               )}
-            </Button>
+            </>
           )}
         </div>
       </CardHeader>
@@ -720,45 +1004,114 @@ export default function ChatInterface({
                       : "bg-background-dark border border-gray-800 rounded-tl-none"
                   }`}
                 >
+                  {/* AI-generated indicator inside message bubble */}
+                  {message.sender === "ai" && (
+                    <div 
+                      className="mb-2.5 pb-2 border-b border-gray-700/30"
+                      role="status"
+                      aria-label="AI-generated content"
+                    >
+                      <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md border" style={{ borderColor: `hsl(var(--primary) / 0.3)` }}>
+                        <Sparkles 
+                          className="h-3.5 w-3.5" 
+                          style={{ color: `hsl(var(--primary) / 0.85)` }}
+                          aria-hidden="true" 
+                        />
+                        <span className="text-xs font-medium text-gray-300/90 tracking-wide">
+                          AI Generated
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   <MessageContent message={message} />
+                  {/* Action buttons for AI messages */}
+                  {message.sender === "ai" && message.finalAnswer && (
+                    <MessageActions message={message} />
+                  )}
                 </div>
               </motion.div>
             ))}
-            {isTyping && TypingIndicator}
+            {isTyping && (isChatOnlyMode ? ChatOnlyLoader : TypingIndicator)}
           </AnimatePresence>
           <div ref={messagesEndRef} />
         </div>
         <div className="p-4 border-t border-gray-800 flex-shrink-0">
+          {/* Status banners - priority order: deleted > sharing disabled > invalid > validating */}
           {!blueprintExists && (
-            <div className="mb-4 p-3 bg-orange-900/20 border border-orange-500/50 rounded-lg">
-              <div className="flex items-center text-orange-200">
-                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <span className="text-sm font-medium">
-                  Workflow Unavailable: The workflow associated with this chat has been deleted and can no longer be continued.
-                </span>
-              </div>
-            </div>
+            <WorkflowStatusBanner {...WorkflowBannerMessages.deleted} />
           )}
+          {blueprintExists && isSharingDisabled && (
+            <WorkflowStatusBanner {...WorkflowBannerMessages.sharingDisabled} />
+          )}
+          {blueprintExists && !isSharingDisabled && !blueprintValid && !isValidatingBlueprint && (
+            <WorkflowStatusBanner {...WorkflowBannerMessages.validationFailed} />
+          )}
+          {blueprintExists && !isSharingDisabled && isValidatingBlueprint && (
+            <WorkflowStatusBanner {...WorkflowBannerMessages.validating} />
+          )}
+          
+          {/* Input area */}
           <div className="flex space-x-2 items-end">
-            <Textarea
-              ref={textareaRef}
-              value={inputMessage}
-              onChange={(e) => setInputMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder={blueprintExists ? "Ask a question about your data..." : "This chat cannot be continued - workflow was deleted"}
-              className={`bg-background-dark min-h-[80px] resize-none ${!blueprintExists ? 'opacity-50 cursor-not-allowed' : ''}`}
-              rows={3}
-              disabled={!blueprintExists}
-            />
-            <Button
-              onClick={handleSendMessage}
-              disabled={inputMessage.trim() === "" || isTyping || !blueprintExists}
-              className="bg-primary hover:bg-[#7525c9] mb-0"
+            {/* Textarea container with expand/collapse icon */}
+            <div className="relative flex-1">
+              <Textarea
+                ref={textareaRef}
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={getInputPlaceholder()}
+                className={`bg-background-dark resize-none transition-[height] duration-200 ease-out w-full ${
+                  (!blueprintExists || isSharingDisabled || !blueprintValid || isValidatingBlueprint) 
+                    ? 'opacity-50 cursor-not-allowed' 
+                    : ''
+                } ${(isAtMaxHeight || isExpanded) ? 'pr-10' : ''}`}
+                style={{ height: `${TEXTAREA_MIN_HEIGHT}px` }}
+                rows={1}
+                disabled={!blueprintExists || isSharingDisabled || !blueprintValid || isValidatingBlueprint}
+              />
+              {/* Expand/Collapse icon - shows when textarea is at max height or expanded */}
+              <AnimatePresence>
+                {(isAtMaxHeight || isExpanded) && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.15 }}
+                    onClick={toggleExpandedHeight}
+                    className={`absolute top-2 right-2 p-1.5 rounded-md transition-colors border ${
+                      isExpanded 
+                        ? 'bg-primary/20 text-primary border-primary/50 hover:bg-primary/30' 
+                        : 'bg-background-surface/90 hover:bg-primary/20 text-gray-400 hover:text-primary border-gray-700 hover:border-primary/50'
+                    }`}
+                    title={isExpanded ? "Collapse input area" : "Expand input area"}
+                    type="button"
+                  >
+                    {isExpanded ? (
+                      <Minimize2 className="h-3.5 w-3.5" />
+                    ) : (
+                      <Maximize2 className="h-3.5 w-3.5" />
+                    )}
+                  </motion.button>
+                )}
+              </AnimatePresence>
+            </div>
+            <UmamiTrack 
+              event={UmamiEvents.AGENT_CHAT_SEND_MESSAGE_BUTTON}
             >
-              <Send className="h-4 w-4" />
-            </Button>
+              <Button
+                onClick={() => handleSendMessage()}
+                disabled={inputMessage.trim() === "" || isTyping || !blueprintExists || isSharingDisabled || !blueprintValid || isValidatingBlueprint}
+                className="bg-primary hover:bg-[#7525c9] mb-0"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </UmamiTrack>
+          </div>
+          <div className="flex items-start gap-2 mt-2 px-1">
+            <Info className="h-3.5 w-3.5 text-gray-400 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-gray-500">
+              AI agent responses may be inaccurate or incomplete. Always review AI generated content prior to use.
+            </p>
           </div>
         </div>
       </CardContent>

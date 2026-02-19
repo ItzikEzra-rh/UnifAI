@@ -116,6 +116,30 @@ def updateValuesYaml(String filePath , String version) {
     echo "✅ Updated ${filePath} successfully"
 }
 
+def updateDeployerEnv() {
+    echo "🔄 updating deployer env with new values"
+    if (params.deploy_location == 'PRODUCTION') {
+        updateEnvFile("./genie-cred-data/.env", "umami_website_name", "unifai-production")
+    } else if(params.deploy_location == 'STAGING') {
+        updateEnvFile("./genie-cred-data/.env", "umami_website_name", "unifai-staging")
+    }
+
+    echo "✅ Deployer env updated successfully"
+}
+
+
+def updateEnvFile(String filePath, String key, String value) {
+    if (!fileExists(filePath)) {
+        error "❌ File not found: ${filePath}"
+    }
+    
+    echo "🔧 Updating ${key} in ${filePath}..."
+    def content = readFile(filePath)
+    // Safe replacement
+    def newContent = content.replaceFirst(/(?m)^${key}=.*/, "${key}=${value}")
+    writeFile(file: filePath, text: newContent)
+}
+
 def deployModules(module){
     echo "deploying modules: ${module}"
     sh("podman exec -t helmfile bash -lc 'helmfile -f ${module}.yaml.gotmpl apply'")
@@ -228,6 +252,7 @@ pipeline {
                             echo("Creating helm deployment pod")
                             sh("oc login --token=${token} --server=${ClusterAddress}")
                             sh("oc project ${NameSpace}")
+                            updateDeployerEnv()
                             echo("Deploy Helm container")
                             sh("podman run --replace -dt --env-file=./genie-cred-data/.env --workdir /helm/charts -v .:/helm/charts:Z -v ~/.kube/:/helm/.kube:Z --name helmfile ghcr.io/helmfile/helmfile:latest bash")
                             
