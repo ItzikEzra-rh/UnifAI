@@ -123,12 +123,12 @@ jobs:
     permissions:
       actions: read
       contents: read
-      pull-requests: write
     steps:
 
       - name: Generate Token
         id: generate_token
-        uses: tibdex/github-app-token@v2
+        #uses: tibdex/github-app-token@v2
+        uses: actions/create-github-app-token@v2
         with:
           app_id: ${{ secrets.LOG_ANALYZER_APP_ID }}
           private_key: ${{ secrets.LOG_ANALYZER_PRIVATE_KEY }}
@@ -136,7 +136,6 @@ jobs:
       - name: GitHub Actions Failure Analysis
         uses: calebevans/gha-failure-analysis@v0.1.9
         with:
-          run-id: ${{ github.event.workflow_run.id }}
           llm-provider: gemini
           llm-model: gemini-3-pro-preview
           llm-api-key: ${{ secrets.GEMINI_API_KEY }}
