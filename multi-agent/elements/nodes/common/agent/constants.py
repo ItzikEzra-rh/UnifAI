@@ -409,6 +409,7 @@ class ToolCategory(str, Enum):
     WORKSPACE = "workspace"
     DOMAIN = "domain"
     SUMMARIZATION = "summarization"
+    WEB = "web"
 
 
 class ToolNames:
@@ -436,6 +437,9 @@ class ToolNames:
     
     # Time tools
     TIME_GET_CURRENT = "time.get_current_time"
+
+    # Web tools
+    WEB_FETCH = "web_fetch"
 
 
 class ToolKeywords:

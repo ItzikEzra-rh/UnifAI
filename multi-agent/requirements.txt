@@ -18,6 +18,8 @@ paramiko
 openshift-client
 yarl
 jsonschema
+html2text
+httpx
 anyio
 typing-inspection
 a2a-sdk[all]
