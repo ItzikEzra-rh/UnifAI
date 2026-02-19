@@ -18,7 +18,7 @@ paramiko
 openshift-client
 yarl
 jsonschema
-html2text
+html-to-markdown
 httpx
 anyio
 typing-inspection

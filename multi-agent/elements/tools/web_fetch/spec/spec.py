@@ -2,12 +2,10 @@ from elements.common.base_element_spec import BaseElementSpec
 from core.enums import ResourceCategory
 from ..config import WebFetchToolConfig
 from ..identifiers import Identifier, META
-from ..validator import WebFetchToolValidator
 from ..web_fetch_factory import WebFetchToolFactory
 
 
 class WebFetchToolElementSpec(BaseElementSpec):
-    """Element specification for the Web Fetch tool."""
 
     category = ResourceCategory.TOOL
     type_key = Identifier.TYPE
@@ -16,4 +14,3 @@ class WebFetchToolElementSpec(BaseElementSpec):
     config_schema = WebFetchToolConfig
     factory_cls = WebFetchToolFactory
     tags = META.tags
-    validator_cls = WebFetchToolValidator

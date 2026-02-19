@@ -10,7 +10,6 @@ class WebFetchArgs(BaseModel):
 class WebFetchResponse(BaseModel):
     success: bool
     url: str
-    title: Optional[str] = None
     content: Optional[str] = None
     error: Optional[str] = None
 
