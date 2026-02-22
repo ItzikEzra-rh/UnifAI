@@ -200,9 +200,15 @@ export default function GraphDisplay({
   const applyNodeVisual = useCallback(
     (el: dia.Element, status: NodeStatus | undefined) => {
       const s = STATUS_STYLES[status ?? "IDLE"];
-      el.attr("body/stroke", s.stroke);
-      el.attr("body/strokeWidth", s.strokeWidth);
-      el.attr("body/filter", s.filter);
+      try {
+        el.attr("body/stroke", s.stroke);
+        el.attr("body/strokeWidth", s.strokeWidth);
+        el.attr("body/filter", s.filter);
+      } catch {
+        // SVGMatrix non-invertible — the container is collapsed to zero width
+        // (e.g. chat carousel mode). The ResizeObserver effect below will
+        // re-apply the correct visuals once the container becomes visible.
+      }
     },
     [],
   );
@@ -294,6 +300,35 @@ export default function GraphDisplay({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLiveRequest]);
+
+  // Re-apply node status visuals when the graph container transitions from
+  // collapsed (zero-width, e.g. chat carousel mode) to visible.  While
+  // collapsed, el.attr() calls silently fail (caught above) so the SVG
+  // elements carry stale visuals.  This observer detects the expansion and
+  // replays the current status map so the graph looks correct immediately.
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let wasCollapsed = container.clientWidth < 50 || container.clientHeight < 50;
+
+    const observer = new ResizeObserver(() => {
+      const isCollapsed = container.clientWidth < 50 || container.clientHeight < 50;
+      if (wasCollapsed && !isCollapsed) {
+        const graph = graphRef.current;
+        if (graph) {
+          const currentMap = nodeStatusMapRef.current;
+          for (const el of graph.getElements()) {
+            applyNodeVisual(el, currentMap[el.id as string] || "IDLE");
+          }
+        }
+      }
+      wasCollapsed = isCollapsed;
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [graphRef, containerRef, applyNodeVisual]);
 
   // ── Open resource details modal ────────────────────────────────────
 
