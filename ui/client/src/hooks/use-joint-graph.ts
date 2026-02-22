@@ -506,11 +506,18 @@ export function useJointGraph({
     injectSvgDefs(paper.el, primaryNow);
 
     const linkColor = primaryNow.startsWith("#") ? primaryNow : `#${primaryNow}`;
-    for (const link of graph.getLinks()) {
-      if (conditionalLinkIdsRef.current.has(link.id as string)) continue;
-      link.attr("line/stroke", linkColor);
-      link.attr("line/sourceMarker/fill", linkColor);
-      link.attr("line/targetMarker/fill", linkColor);
+    try {
+      for (const link of graph.getLinks()) {
+        if (conditionalLinkIdsRef.current.has(link.id as string)) continue;
+        link.attr("line/stroke", linkColor);
+        link.attr("line/sourceMarker/fill", linkColor);
+        link.attr("line/targetMarker/fill", linkColor);
+      }
+    } catch {
+      // SVGMatrix non-invertible when the container is collapsed to zero
+      // width (e.g. carousel chat mode).  The ResizeObserver will re-fit
+      // the paper once the container becomes visible; link colors are
+      // cosmetic and will be correct on next full rebuild.
     }
   }, [primaryHex]);
 

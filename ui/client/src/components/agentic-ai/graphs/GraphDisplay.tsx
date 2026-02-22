@@ -306,28 +306,40 @@ export default function GraphDisplay({
   // collapsed, el.attr() calls silently fail (caught above) so the SVG
   // elements carry stale visuals.  This observer detects the expansion and
   // replays the current status map so the graph looks correct immediately.
+  //
+  // The 60ms delay is intentional: the ResizeObserver in use-joint-graph.ts
+  // re-fits the paper with a 10ms debounce.  We must wait for that to
+  // finish (resetting the SVG transform to a valid, invertible matrix)
+  // before calling el.attr(), otherwise the attr calls silently fail again.
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
     let wasCollapsed = container.clientWidth < 50 || container.clientHeight < 50;
+    let pendingTimer: ReturnType<typeof setTimeout> | null = null;
 
     const observer = new ResizeObserver(() => {
       const isCollapsed = container.clientWidth < 50 || container.clientHeight < 50;
       if (wasCollapsed && !isCollapsed) {
-        const graph = graphRef.current;
-        if (graph) {
-          const currentMap = nodeStatusMapRef.current;
-          for (const el of graph.getElements()) {
-            applyNodeVisual(el, currentMap[el.id as string] || "IDLE");
+        if (pendingTimer) clearTimeout(pendingTimer);
+        pendingTimer = setTimeout(() => {
+          const graph = graphRef.current;
+          if (graph) {
+            const currentMap = nodeStatusMapRef.current;
+            for (const el of graph.getElements()) {
+              applyNodeVisual(el, currentMap[el.id as string] || "IDLE");
+            }
           }
-        }
+        }, 60);
       }
       wasCollapsed = isCollapsed;
     });
 
     observer.observe(container);
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      if (pendingTimer) clearTimeout(pendingTimer);
+    };
   }, [graphRef, containerRef, applyNodeVisual]);
 
   // ── Open resource details modal ────────────────────────────────────
