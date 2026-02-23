@@ -173,19 +173,20 @@ def cleanOldDataflow(){
     
     // Capture the output properly
     def result = sh(
-        script: "helm ls | grep 'dataflow' || true",
+        script: "podman exec -t helmfile bash -c 'helm ls | grep 'dataflow' || true'",
         returnStdout: true
     ).trim()
     
     if(result.length() > 0) {
         // Split by newlines to get all releases, not just the first one
+        echo("found old dataflow releases: ${result}")
         def releases = result.split('\n')
         
         releases.each { release ->
             // Extract the release name (first column in helm ls output)
             def releaseName = release.split(/\s+/)[0]
             echo("Deleting helm release: ${releaseName}")
-            sh("helm delete ${releaseName}")
+            sh("podman exec -t helmfile bash -c 'helm uninstall ${releaseName}'")
         }
         
         // Wait for all dataflow resources to be deleted
