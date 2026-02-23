@@ -19,7 +19,7 @@ display_description: |
 providers:
   - name: mcp
     type: mcp_server
-    sse_endpoint: http://10.46.254.131:8006/servers/mcp-atlassian/sse
+    mcp_url: http://10.46.254.131:8006/servers/mcp-atlassian/sse
 
 # ----------------------------
 # LLM Definitions
