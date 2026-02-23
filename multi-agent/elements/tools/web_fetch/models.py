@@ -1,10 +1,10 @@
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import AnyHttpUrl, BaseModel, Field
 
 
 class WebFetchArgs(BaseModel):
-    url: str = Field(..., description="The URL of the web page to fetch.")
+    url: AnyHttpUrl = Field(..., description="The URL of the web page to fetch.")
 
 
 class WebFetchResponse(BaseModel):
