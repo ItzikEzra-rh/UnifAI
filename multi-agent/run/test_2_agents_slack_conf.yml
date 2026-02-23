@@ -16,7 +16,7 @@ display_description: |
 providers:
   - name: jira_mcp
     type: mcp_server
-    mcp_url: http://10.46.254.131:8007/servers/mcp-atlassian/mcp
+    mcp_url: http://10.46.254.131:8007/servers/mcp-atlassian/sse
 
   - name: confluence_mcp
     type: mcp_server
