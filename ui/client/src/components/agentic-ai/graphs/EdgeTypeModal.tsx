@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo } from "react";
 import {
   Dialog,
   DialogContent,
@@ -7,6 +7,8 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, ArrowLeftRight } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
+import { deriveThemeColors } from "@/lib/colorUtils";
 
 interface EdgeTypeModalProps {
   isOpen: boolean;
@@ -23,6 +25,9 @@ const EdgeTypeModal: React.FC<EdgeTypeModalProps> = ({
   sourceNodeName,
   targetNodeName,
 }) => {
+  const { primaryHex } = useTheme();
+  const colors = useMemo(() => deriveThemeColors(primaryHex), [primaryHex]);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[450px] bg-gray-900 border-gray-700">
@@ -44,10 +49,10 @@ const EdgeTypeModal: React.FC<EdgeTypeModalProps> = ({
 
           <div className="grid grid-cols-2 gap-3">
             <button
-              className="group h-auto py-4 px-3 rounded-lg border border-gray-600 bg-transparent hover:border-purple-500 hover:bg-purple-900/20 transition-all flex flex-col items-center gap-2 cursor-pointer"
+              className="group h-auto py-4 px-3 rounded-lg border border-gray-600 bg-transparent hover:bg-primary/10 hover:border-primary/60 transition-all flex flex-col items-center gap-2 cursor-pointer"
               onClick={() => onConfirm("unidirectional")}
             >
-              <ArrowRight className="w-6 h-6 text-purple-400 group-hover:text-purple-300" />
+              <ArrowRight className="w-6 h-6 text-primary group-hover:text-primary" />
               <div className="text-center">
                 <div className="font-medium text-white text-sm">
                   Unidirectional
@@ -59,10 +64,22 @@ const EdgeTypeModal: React.FC<EdgeTypeModalProps> = ({
             </button>
 
             <button
-              className="group h-auto py-4 px-3 rounded-lg border border-gray-600 bg-transparent hover:border-emerald-500 hover:bg-emerald-900/20 transition-all flex flex-col items-center gap-2 cursor-pointer"
+              className="group h-auto py-4 px-3 rounded-lg border border-gray-600 bg-transparent transition-all flex flex-col items-center gap-2 cursor-pointer"
+              style={{
+                ['--hover-bg' as string]: `${colors.primaryLight}15`,
+                ['--hover-border' as string]: colors.primaryLight,
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.backgroundColor = `${colors.primaryLight}15`;
+                e.currentTarget.style.borderColor = `${colors.primaryLight}99`;
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.backgroundColor = 'transparent';
+                e.currentTarget.style.borderColor = '';
+              }}
               onClick={() => onConfirm("bidirectional")}
             >
-              <ArrowLeftRight className="w-6 h-6 text-emerald-400 group-hover:text-emerald-300" />
+              <ArrowLeftRight className="w-6 h-6" style={{ color: colors.primaryLight }} />
               <div className="text-center">
                 <div className="font-medium text-white text-sm">
                   Bidirectional

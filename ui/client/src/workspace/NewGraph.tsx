@@ -2,8 +2,6 @@ import React, { useState, useMemo } from "react";
 import { useGraphLogic, SavedBlueprintInfo } from "@/hooks/use-graph-logic";
 import GraphCanvas from "@/components/agentic-ai/graphs/GraphCanvas";
 import BuildingBlocksSidebar from "./BuildingBlocksSidebar";
-import ConditionalEdgeModal from "@/components/agentic-ai/graphs/ConditionalEdgeModal";
-import EdgeTypeModal from "@/components/agentic-ai/graphs/EdgeTypeModal";
 import GraphValidationPanel from "@/components/agentic-ai/graphs/GraphValidationPanel";
 import SaveBlueprintModal from "@/components/agentic-ai/graphs/SaveBlueprintModal";
 
@@ -33,18 +31,11 @@ export default function NewGraph({ onBack }: NewGraphProps) {
     deleteEdge,
     attachConditionToNode,
     removeConditionFromNode,
-    conditionalEdgeModal,
-    handleConditionalEdgeConfirm,
-    handleConditionalEdgeCancel,
     // Click-to-connect
     pendingConnectionSource,
     handleNodeClickForConnection,
     handlePaneClick,
     cancelConnectionMode,
-    // Edge type modal
-    edgeTypeModal,
-    handleEdgeTypeConfirm,
-    handleEdgeTypeCancel,
     isGraphValid,
     validationResult,
     fixSuggestions,
@@ -99,7 +90,7 @@ export default function NewGraph({ onBack }: NewGraphProps) {
   return (
     <div className="h-full max-h-[calc(100vh-100px)] flex bg-background overflow-hidden">
       {/* Sidebar */}
-      <div className="w-80 h-full">
+      <div className="h-full flex-shrink-0">
         <BuildingBlocksSidebar
           buildingBlocks={buildingBlocksData}
           orchestrators={orchestratorsData}
@@ -124,8 +115,6 @@ export default function NewGraph({ onBack }: NewGraphProps) {
           onSaveGraph={handleSaveGraph}
           onDeleteEdge={deleteEdge}
           onBack={onBack}
-          onAttachCondition={attachConditionToNode}
-          onRemoveCondition={removeConditionFromNode}
           isGraphValid={isGraphValid}
           onNodeClick={handleNodeClickForConnection}
           onPaneClick={handlePaneClick}
@@ -142,26 +131,6 @@ export default function NewGraph({ onBack }: NewGraphProps) {
           isValidating={isValidating}
         />
       </div>
-
-      {/* Edge Type Modal (uni/bidirectional choice) */}
-      <EdgeTypeModal
-        isOpen={edgeTypeModal.isOpen}
-        onClose={handleEdgeTypeCancel}
-        onConfirm={handleEdgeTypeConfirm}
-        sourceNodeName={edgeTypeModal.sourceNodeName}
-        targetNodeName={edgeTypeModal.targetNodeName}
-      />
-
-      {/* Conditional Edge Modal */}
-      <ConditionalEdgeModal
-        isOpen={conditionalEdgeModal.isOpen}
-        onClose={handleConditionalEdgeCancel}
-        onConfirm={handleConditionalEdgeConfirm}
-        sourceNodeId={conditionalEdgeModal.sourceNodeId}
-        targetNodeId={conditionalEdgeModal.targetNodeId}
-        conditionType={conditionalEdgeModal.conditionType}
-        existingBranches={conditionalEdgeModal.existingBranches}
-      />
 
       {/* Save Blueprint Modal */}
       <SaveBlueprintModal

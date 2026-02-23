@@ -171,7 +171,7 @@
 .react-flow__handle {
   width: 8px !important;
   height: 8px !important;
-  background: #8A2BE2 !important;
+  background: hsl(var(--primary)) !important;
   border: 2px solid #ffffff !important;
 }
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import {
   Node,
   Edge,
@@ -93,17 +93,11 @@ interface UseGraphLogicOptions {
 export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
   const { onSaveComplete } = options;
   const { toast } = useToast();
+  const { primaryHex } = useTheme();
+  const themeColors = useMemo(() => deriveThemeColors(primaryHex), [primaryHex]);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [nodeId, setNodeId] = useState(1);
-  const { primaryHex } = useTheme();
-
-  // Derive all theme colors once – reused by edge styling and drag preview
-  const themeColors = useMemo(
-    () => deriveThemeColors(primaryHex),
-    [primaryHex],
-  );
-  const conditionEdgeColor = themeColors.conditionEdge;
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
   const [buildingBlocksData, setBuildingBlocksData] = useState<BuildingBlock[]>(
@@ -118,24 +112,6 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
   // Click-to-connect state
   const [pendingConnectionSource, setPendingConnectionSource] = useState<string | null>(null);
-
-  // Edge type modal state (uni/bidirectional choice)
-  const [edgeTypeModal, setEdgeTypeModal] = useState({
-    isOpen: false,
-    sourceNodeId: "",
-    targetNodeId: "",
-    sourceNodeName: "",
-    targetNodeName: "",
-  });
-
-  // Conditional edge modal state
-  const [conditionalEdgeModal, setConditionalEdgeModal] = useState({
-    isOpen: false,
-    sourceNodeId: "",
-    targetNodeId: "",
-    conditionType: "",
-    existingBranches: [] as string[],
-  });
 
   const [currentGraph, setCurrentGraph] = useState<CurrentGraph>({
     id: `graph-${Date.now()}`,
@@ -168,6 +144,17 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
   const { user } = useAuth();
   const USER_ID = user?.username || "default";
+
+  // Stable refs for callbacks embedded in node data (avoids stale closures)
+  const deleteNodeRef = useRef<(id: string) => void>(() => {});
+  const attachConditionRef = useRef<(nodeId: string, condition: any) => void>(() => {});
+  const removeConditionRef = useRef<(nodeId: string, conditionRid: string) => void>(() => {});
+  const allBlocksRef = useRef<BuildingBlock[]>([]);
+
+  // Stable callback wrappers that delegate to the latest ref
+  const stableDeleteNode = useCallback((id: string) => deleteNodeRef.current(id), []);
+  const stableAttachCondition = useCallback((nodeId: string, condition: any) => attachConditionRef.current(nodeId, condition), []);
+  const stableRemoveCondition = useCallback((nodeId: string, rid: string) => removeConditionRef.current(nodeId, rid), []);
 
   // Validate graph using the validation API
   const validateGraph = useCallback(async () => {
@@ -322,6 +309,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     },
     [setNodes, setEdges, toast],
   );
+  deleteNodeRef.current = deleteNode;
 
   const deleteEdge = useCallback(
     (edgeId: string) => {
@@ -329,60 +317,67 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
         const edgeToDelete = currentEdges.find((edge) => edge.id === edgeId);
         if (!edgeToDelete) return currentEdges;
 
-        const updatedEdges = currentEdges.filter((edge) => edge.id !== edgeId);
+        // Check for a reverse edge (bidirectional pair: A→B and B→A)
+        const reverseEdge = currentEdges.find(
+          (edge) =>
+            edge.id !== edgeId &&
+            edge.source === edgeToDelete.target &&
+            edge.target === edgeToDelete.source,
+        );
 
-        // Update YAML flow to remove the connection
-        const isConditional = edgeToDelete.data?.isConditional;
+        const edgeIdsToRemove = new Set([edgeId]);
+        if (reverseEdge) {
+          edgeIdsToRemove.add(reverseEdge.id);
+        }
 
+        const edgesToRemove = [edgeToDelete, ...(reverseEdge ? [reverseEdge] : [])];
+        const updatedEdges = currentEdges.filter((edge) => !edgeIdsToRemove.has(edge.id));
+
+        // Update YAML flow to remove connections for all deleted edges
         setYamlFlow((prevFlow) => {
-          const updatedPlan = prevFlow.plan.map((step) => {
-            // Regular edges: connection stored on the target step's `after`
-            if (step.uid === edgeToDelete.target && !isConditional) {
-              if (step.after) {
-                if (Array.isArray(step.after)) {
-                  // Remove the source from the array
-                  const updatedAfter = step.after.filter(
-                    (afterId) => afterId !== edgeToDelete.source,
-                  );
-                  if (updatedAfter.length === 0) {
-                    // Remove the after property if array becomes empty
+          let updatedPlan = [...prevFlow.plan];
+
+          for (const removedEdge of edgesToRemove) {
+            updatedPlan = updatedPlan.map((step) => {
+              if (step.uid === removedEdge.target) {
+                if (step.after) {
+                  if (Array.isArray(step.after)) {
+                    const updatedAfter = step.after.filter(
+                      (afterId) => afterId !== removedEdge.source,
+                    );
+                    if (updatedAfter.length === 0) {
+                      const { after, ...stepWithoutAfter } = step;
+                      return stepWithoutAfter;
+                    } else if (updatedAfter.length === 1) {
+                      return { ...step, after: updatedAfter[0] };
+                    } else {
+                      return { ...step, after: updatedAfter };
+                    }
+                  } else if (step.after === removedEdge.source) {
                     const { after, ...stepWithoutAfter } = step;
                     return stepWithoutAfter;
-                  } else if (updatedAfter.length === 1) {
-                    // Convert single-item array back to string
-                    return { ...step, after: updatedAfter[0] };
+                  }
+                }
+
+                if (step.branches) {
+                  const updatedBranches = { ...step.branches };
+                  Object.keys(updatedBranches).forEach((branchKey) => {
+                    if (updatedBranches[branchKey] === removedEdge.target) {
+                      delete updatedBranches[branchKey];
+                    }
+                  });
+
+                  if (Object.keys(updatedBranches).length === 0) {
+                    const { branches, ...stepWithoutBranches } = step;
+                    return stepWithoutBranches;
                   } else {
-                    return { ...step, after: updatedAfter };
+                    return { ...step, branches: updatedBranches };
                   }
-                } else if (step.after === edgeToDelete.source) {
-                  // Remove the after property if it matches the source
-                  const { after, ...stepWithoutAfter } = step;
-                  return stepWithoutAfter;
                 }
               }
-            }
-
-            // Conditional edges: branches stored on the source step
-            if (step.uid === edgeToDelete.source && isConditional) {
-              if (step.branches) {
-                const updatedBranches = { ...step.branches };
-                Object.keys(updatedBranches).forEach((branchKey) => {
-                  if (updatedBranches[branchKey] === edgeToDelete.target) {
-                    delete updatedBranches[branchKey];
-                  }
-                });
-
-                if (Object.keys(updatedBranches).length === 0) {
-                  const { branches, exit_condition, ...rest } = step;
-                  return rest;
-                } else {
-                  return { ...step, branches: updatedBranches };
-                }
-              }
-            }
-
-            return step;
-          });
+              return step;
+            });
+          }
 
           return {
             nodes: prevFlow.nodes,
@@ -478,6 +473,8 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     });
   };
 
+  attachConditionRef.current = attachConditionToNode;
+
   const removeConditionFromNode = (nodeId: string, conditionRid: string) => {
     setNodes((prevNodes) =>
       prevNodes.map((node) =>
@@ -526,6 +523,11 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     });
   };
 
+  removeConditionRef.current = removeConditionFromNode;
+
+  // Keep allBlocksRef in sync
+  allBlocksRef.current = allBlocksData;
+
   // Initialize canvas with default required nodes
   const initializeDefaultNodes = useCallback(() => {
     const userInputNode: Node = {
@@ -552,11 +554,11 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
           updated: new Date().toISOString(),
           nested_refs: [],
         },
-        onDelete: deleteNode,
-        allBlocks: allBlocksData,
+        onDelete: stableDeleteNode,
+        allBlocks: allBlocksRef.current,
         referencedConditions: [],
-        onAttachCondition: attachConditionToNode,
-        onRemoveCondition: removeConditionFromNode,
+        onAttachCondition: stableAttachCondition,
+        onRemoveCondition: stableRemoveCondition,
       },
     };
 
@@ -584,17 +586,17 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
           updated: new Date().toISOString(),
           nested_refs: [],
         },
-        onDelete: deleteNode,
-        allBlocks: allBlocksData,
+        onDelete: stableDeleteNode,
+        allBlocks: allBlocksRef.current,
         referencedConditions: [],
-        onAttachCondition: attachConditionToNode,
-        onRemoveCondition: removeConditionFromNode,
+        onAttachCondition: stableAttachCondition,
+        onRemoveCondition: stableRemoveCondition,
       },
     };
 
     setNodes([userInputNode, finalizeNode]);
-    setNodeId(3); // Start from 3 since we have 2 default nodes
-  }, [allBlocksData, deleteNode, attachConditionToNode, removeConditionFromNode]);
+    setNodeId(3);
+  }, [stableDeleteNode, stableAttachCondition, stableRemoveCondition]);
 
   const loadBuildingBlocks = useCallback(async () => {
     try {
@@ -604,31 +606,32 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
       );
       const allBlocks = response.data.resources.map(transformResourceToBlock);
 
-      // Store all blocks for reference lookup
       setAllBlocksData(allBlocks);
 
-      // Filter to show only blocks with category "nodes" and sort alphabetically
-      const nodeBlocks = allBlocks
-        .filter(
-          (block: BuildingBlock) => block.workspaceData?.category === "nodes",
-        )
-        .sort((a: BuildingBlock, b: BuildingBlock) =>
-          a.label.localeCompare(b.label),
-        );
-      setBuildingBlocksData(nodeBlocks);
-
-      // Filter to show only blocks with category "orchestrators" and sort alphabetically
+      // Orchestrators are nodes with type "orchestrator_node"
       const orchestratorBlocks = allBlocks
         .filter(
           (block: BuildingBlock) =>
-            block.workspaceData?.category === "orchestrators",
+            block.workspaceData?.category === "nodes" &&
+            block.workspaceData?.type === "orchestrator_node",
         )
         .sort((a: BuildingBlock, b: BuildingBlock) =>
           a.label.localeCompare(b.label),
         );
       setOrchestratorsData(orchestratorBlocks);
 
-      // Filter to show only blocks with category "conditions" and sort alphabetically
+      // Agents are all other nodes (not orchestrators)
+      const nodeBlocks = allBlocks
+        .filter(
+          (block: BuildingBlock) =>
+            block.workspaceData?.category === "nodes" &&
+            block.workspaceData?.type !== "orchestrator_node",
+        )
+        .sort((a: BuildingBlock, b: BuildingBlock) =>
+          a.label.localeCompare(b.label),
+        );
+      setBuildingBlocksData(nodeBlocks);
+
       const conditionBlocks = allBlocks
         .filter(
           (block: BuildingBlock) =>
@@ -654,6 +657,21 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     loadBuildingBlocks();
     initializeDefaultNodes();
   }, [loadBuildingBlocks]);
+
+  // Sync allBlocks data to existing nodes when blocks finish loading
+  useEffect(() => {
+    if (allBlocksData.length > 0) {
+      setNodes((prevNodes) =>
+        prevNodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            allBlocks: allBlocksData,
+          },
+        })),
+      );
+    }
+  }, [allBlocksData, setNodes]);
 
   // Trigger validation whenever yamlFlow changes
   useEffect(() => {
@@ -690,41 +708,6 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
   const onConnect = useCallback(
     async (params: Connection) => {
-      // Comment out connection feasibility check for now
-      // if (isConnectionFeasible(params)) {
-
-      // Check if source node has a condition attached
-      const sourceNode = nodes.find((node) => node.id === params.source);
-      const hasCondition =
-        sourceNode?.data?.referencedConditions &&
-        sourceNode.data.referencedConditions.length > 0;
-
-      if (hasCondition) {
-        // Get condition type and existing branches
-        const condition = sourceNode.data.referencedConditions[0];
-        const conditionType = condition.workspaceData?.type || condition.type;
-
-        // Get existing edges from this source to determine existing branches
-        const existingEdges = edges.filter(
-          (edge) => edge.source === params.source,
-        );
-        const existingBranches = existingEdges
-          .map((edge) => edge.data?.branch)
-          .filter(Boolean);
-
-        // Open conditional edge modal
-        setConditionalEdgeModal({
-          isOpen: true,
-          sourceNodeId: params.source || "",
-          targetNodeId: params.target || "",
-          conditionType: conditionType,
-          existingBranches: existingBranches,
-        });
-
-        return; // Don't create edge immediately, wait for modal confirmation
-      }
-
-      // Regular edge creation for nodes without conditions
       const newEdge = addEdge(params, edges);
 
       setEdges(newEdge);
@@ -783,7 +766,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
       // }
     },
-    [setEdges, edges, nodes, setConditionalEdgeModal],
+    [setEdges, edges, nodes],
   );
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -829,6 +812,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
       if (blockData) {
         const block = JSON.parse(blockData);
+        console.log(block);
         const position = {
           x: event.clientX - reactFlowBounds.left - 75,
           y: event.clientY - reactFlowBounds.top - 25,
@@ -867,7 +851,6 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
           return; // Exit early for condition nodes
         }
 
-        // Regular node creation logic for non-condition blocks
         const nodeUid = `${block.workspaceData?.name || block.label}-${block.workspaceData?.rid || block.id}-${nodeId}`;
         const newNode: Node = {
           id: nodeUid,
@@ -881,11 +864,11 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
             style: `bg-gray-800 text-white border`,
             description: `${block.description}`,
             workspaceData: block.workspaceData,
-            onDelete: deleteNode,
-            allBlocks: allBlocksData,
+            onDelete: stableDeleteNode,
+            allBlocks: allBlocksRef.current,
             referencedConditions: [],
-            onAttachCondition: attachConditionToNode,
-            onRemoveCondition: removeConditionFromNode,
+            onAttachCondition: stableAttachCondition,
+            onRemoveCondition: stableRemoveCondition,
           },
         };
 
@@ -937,7 +920,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
         }));
       }
     },
-    [nodeId, setNodes, nodes, deleteNode, allBlocksData, attachConditionToNode, toast],
+    [nodeId, setNodes, nodes, stableDeleteNode, stableAttachCondition, stableRemoveCondition, toast],
   );
 
   const handleNodesChange = useCallback(
@@ -984,7 +967,6 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     
     event.dataTransfer.effectAllowed = isCondition ? "copy" : "move";
 
-    // Create a simpler drag preview using the primary theme color
     const previewColor = themeColors.primary;
     const dragPreview = document.createElement("div");
     dragPreview.style.cssText = `
@@ -1122,13 +1104,15 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Delete") {
+      if (event.key === "Delete" || event.key === "Backspace") {
+        const target = event.target as HTMLElement;
+        if (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable) {
+          return;
+        }
         event.preventDefault();
-        // Delete selected nodes first
         if (selectedNodes.length > 0) {
           selectedNodes.forEach((nodeId) => deleteNode(nodeId));
         }
-        // Then delete selected edges
         if (selectedEdges.length > 0) {
           selectedEdges.forEach((edgeId) => deleteEdge(edgeId));
         }
@@ -1140,138 +1124,6 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
   }, [selectedNodes, selectedEdges, deleteNode, deleteEdge]);
 
 
-  const createConditionalEdge = (params: Connection, branchConfig: any) => {
-    const edgeStyle = {
-      strokeDasharray: "5,5",
-      stroke: conditionEdgeColor,
-    };
-
-    const edgeId = `${params.source}-${params.target}-${branchConfig.branch || Date.now()}`;
-    const newEdge = {
-      id: edgeId,
-      source: params.source!,
-      target: params.target!,
-      type: "custom",
-      style: edgeStyle,
-      markerEnd: {
-        type: MarkerType.ArrowClosed,
-        color: conditionEdgeColor,
-      },
-      data: {
-        ...branchConfig,
-        isConditional: true,
-      },
-      label: branchConfig.branch || "",
-    };
-
-    setEdges((prevEdges) => [...prevEdges, newEdge]);
-
-    // Update YAML flow for conditional connections
-    setYamlFlow((prevFlow) => {
-      const sourceNode = nodes.find((node) => node.id === params.source);
-      const condition = sourceNode?.data?.referencedConditions?.[0];
-
-      const updatedPlan = prevFlow.plan.map((step) => {
-        if (step.uid === params.source && condition) {
-          // Get existing branches or initialize empty object
-          const existingBranches = step.branches || {};
-
-          // Add new branch mapping based on condition type
-          let newBranches = { ...existingBranches };
-
-          if (branchConfig.conditionType === "router_direct") {
-            // For direct routing, map direct output to target step
-            newBranches[params.target!] = params.target!;
-          } else if (branchConfig.conditionType === "router_boolean") {
-            // For symbolic routing, map symbolic output to target step
-            // Convert boolean values to actual booleans for router_boolean
-            let branchKey =
-              branchConfig.branch === "true"
-                ? true
-                : branchConfig.branch === "false"
-                  ? false
-                  : branchConfig.branch;
-            newBranches[branchKey] = params.target!;
-          }
-
-          return {
-            ...step,
-            exit_condition: condition.workspaceData?.rid || condition.id,
-            branches: newBranches,
-          };
-        }
-        return step;
-      });
-
-      // Add condition definition if not exists
-      const conditionRid = condition?.workspaceData?.rid || condition?.id;
-      const conditionExists = (prevFlow.conditions || []).some(
-        (cond) => cond.rid === `$ref:${conditionRid}`,
-      );
-
-      let updatedConditions = prevFlow.conditions || [];
-      if (condition && !conditionExists) {
-        updatedConditions = [
-          ...updatedConditions,
-          {
-            rid: `$ref:${conditionRid}`,
-            name: condition.workspaceData?.name || condition.label,
-            type: condition.workspaceData?.type,
-            config: condition.workspaceData?.config,
-          },
-        ];
-      }
-
-      return {
-        nodes: prevFlow.nodes,
-        conditions: updatedConditions.length > 0 ? updatedConditions : [],
-        plan: updatedPlan,
-      };
-    });
-
-    setCurrentGraph((prev) => ({
-      ...prev,
-      edges: [...prev.edges, newEdge],
-      metadata: {
-        ...prev.metadata,
-        lastModified: new Date(),
-        edgeCount: prev.edges.length + 1,
-      },
-    }));
-  };
-
-  const handleConditionalEdgeConfirm = (branchConfig: any) => {
-    const params: Connection = {
-      source: conditionalEdgeModal.sourceNodeId,
-      target: conditionalEdgeModal.targetNodeId,
-      sourceHandle: null,
-      targetHandle: null,
-    };
-
-    createConditionalEdge(params, {
-      ...branchConfig,
-      conditionType: conditionalEdgeModal.conditionType,
-    });
-
-    setConditionalEdgeModal({
-      isOpen: false,
-      sourceNodeId: "",
-      targetNodeId: "",
-      conditionType: "",
-      existingBranches: [],
-    });
-  };
-
-  const handleConditionalEdgeCancel = () => {
-    setConditionalEdgeModal({
-      isOpen: false,
-      sourceNodeId: "",
-      targetNodeId: "",
-      conditionType: "",
-      existingBranches: [],
-    });
-  };
-
   // --- Click-to-connect logic ---
 
   const cancelConnectionMode = useCallback(() => {
@@ -1282,6 +1134,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
         data: {
           ...n.data,
           isConnectionSource: false,
+          isConnectionTarget: false,
         },
       })),
     );
@@ -1289,14 +1142,12 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
   const handleNodeClickForConnection = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      // Don't trigger connection mode if clicking on buttons within the node
       const target = event.target as HTMLElement;
       if (target.closest("button")) {
         return;
       }
 
       if (pendingConnectionSource === null) {
-        // First click — set this node as the connection source
         setPendingConnectionSource(node.id);
         setNodes((prevNodes) =>
           prevNodes.map((n) => ({
@@ -1304,53 +1155,80 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
             data: {
               ...n.data,
               isConnectionSource: n.id === node.id,
+              isConnectionTarget: n.id !== node.id,
             },
           })),
         );
       } else if (pendingConnectionSource === node.id) {
-        // Clicking the same node — cancel connection mode
         cancelConnectionMode();
       } else {
-        // Second click on a different node — determine which dialog to show
-        const sourceNode = nodes.find(
-          (n) => n.id === pendingConnectionSource,
+        const hasExisting = edges.some(
+          (e) => e.source === pendingConnectionSource && e.target === node.id,
         );
-        const hasCondition =
-          sourceNode?.data?.referencedConditions &&
-          sourceNode.data.referencedConditions.length > 0;
 
-        if (hasCondition) {
-          // Source has a condition — open the conditional edge modal
-          const condition = sourceNode.data.referencedConditions[0];
-          const conditionType =
-            condition.workspaceData?.type || condition.type;
-          const existingEdgesFromSource = edges.filter(
-            (edge) => edge.source === pendingConnectionSource,
-          );
-          const existingBranches = existingEdgesFromSource
-            .map((edge) => edge.data?.branch)
-            .filter(Boolean);
-
-          setConditionalEdgeModal({
-            isOpen: true,
-            sourceNodeId: pendingConnectionSource,
-            targetNodeId: node.id,
-            conditionType: conditionType,
-            existingBranches: existingBranches,
+        if (hasExisting) {
+          toast({
+            title: "Connection Already Exists",
+            description: "This connection already exists.",
+            variant: "destructive",
           });
         } else {
-          // No condition — open the edge type modal (uni/bi)
-          setEdgeTypeModal({
-            isOpen: true,
-            sourceNodeId: pendingConnectionSource,
-            targetNodeId: node.id,
-            sourceNodeName:
-              sourceNode?.data?.label || pendingConnectionSource,
-            targetNodeName: node.data?.label || node.id,
+          const newEdge: Edge = {
+            id: `${pendingConnectionSource}-${node.id}`,
+            source: pendingConnectionSource,
+            target: node.id,
+            type: "custom",
+            animated: true,
+            style: { stroke: themeColors.primary, strokeWidth: 2 },
+            markerEnd: {
+              type: MarkerType.ArrowClosed,
+              width: 20,
+              height: 20,
+              color: themeColors.primary,
+            },
+          };
+
+          setEdges((prevEdges) => [...prevEdges, newEdge]);
+
+          setYamlFlow((prevFlow) => {
+            const updatedPlan = prevFlow.plan.map((step) => {
+              if (step.uid === node.id) {
+                const existingAfter = step.after;
+                let newAfter;
+                if (!existingAfter) {
+                  newAfter = pendingConnectionSource;
+                } else if (Array.isArray(existingAfter)) {
+                  newAfter = existingAfter.includes(pendingConnectionSource!)
+                    ? existingAfter
+                    : [...existingAfter, pendingConnectionSource!];
+                } else {
+                  newAfter =
+                    existingAfter === pendingConnectionSource
+                      ? existingAfter
+                      : [existingAfter, pendingConnectionSource!];
+                }
+                return { ...step, after: newAfter };
+              }
+              return step;
+            });
+            return {
+              nodes: prevFlow.nodes,
+              conditions: prevFlow.conditions || [],
+              plan: updatedPlan,
+            };
           });
+
+          setCurrentGraph((prev) => ({
+            ...prev,
+            edges: [...prev.edges, newEdge],
+            metadata: {
+              ...prev.metadata,
+              lastModified: new Date(),
+              edgeCount: prev.edges.length + 1,
+            },
+          }));
         }
 
-        // Clear connection source visual state
         cancelConnectionMode();
       }
     },
@@ -1358,171 +1236,10 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
   );
 
   const handlePaneClick = useCallback(() => {
-    // Clicking on empty canvas cancels connection mode
     if (pendingConnectionSource !== null) {
       cancelConnectionMode();
     }
   }, [pendingConnectionSource, cancelConnectionMode]);
-
-  const handleEdgeTypeConfirm = useCallback(
-    (edgeType: "unidirectional" | "bidirectional") => {
-      const { sourceNodeId, targetNodeId } = edgeTypeModal;
-
-      // Check for existing edges to avoid duplicates
-      const hasExistingForward = edges.some(
-        (e) => e.source === sourceNodeId && e.target === targetNodeId,
-      );
-      const hasExistingReverse = edges.some(
-        (e) => e.source === targetNodeId && e.target === sourceNodeId,
-      );
-
-      const newEdges: Edge[] = [];
-
-      // Create forward edge (source → target) if it doesn't exist
-      if (!hasExistingForward) {
-        newEdges.push({
-          id: `${sourceNodeId}-${targetNodeId}`,
-          source: sourceNodeId,
-          target: targetNodeId,
-          type: "custom",
-          animated: true,
-          style: { stroke: "#8A2BE2", strokeWidth: 2 },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: 20,
-            height: 20,
-            color: "#8A2BE2",
-          },
-        });
-      }
-
-      // Create reverse edge (target → source) for bidirectional
-      if (edgeType === "bidirectional" && !hasExistingReverse) {
-        newEdges.push({
-          id: `${targetNodeId}-${sourceNodeId}`,
-          source: targetNodeId,
-          target: sourceNodeId,
-          type: "custom",
-          animated: true,
-          style: { stroke: "#8A2BE2", strokeWidth: 2 },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            width: 20,
-            height: 20,
-            color: "#8A2BE2",
-          },
-        });
-      }
-
-      if (newEdges.length === 0) {
-        toast({
-          title: "Connection Already Exists",
-          description:
-            "The connection between these nodes already exists.",
-          variant: "destructive",
-        });
-        setEdgeTypeModal({
-          isOpen: false,
-          sourceNodeId: "",
-          targetNodeId: "",
-          sourceNodeName: "",
-          targetNodeName: "",
-        });
-        return;
-      }
-
-      setEdges((prevEdges) => [...prevEdges, ...newEdges]);
-
-      // Update YAML flow with the new connection(s)
-      setYamlFlow((prevFlow) => {
-        let updatedPlan = [...prevFlow.plan];
-
-        // Forward connection: target step's "after" includes source
-        if (!hasExistingForward) {
-          updatedPlan = updatedPlan.map((step) => {
-            if (step.uid === targetNodeId) {
-              const existingAfter = step.after;
-              let newAfter;
-              if (!existingAfter) {
-                newAfter = sourceNodeId;
-              } else if (Array.isArray(existingAfter)) {
-                newAfter = existingAfter.includes(sourceNodeId)
-                  ? existingAfter
-                  : [...existingAfter, sourceNodeId];
-              } else {
-                newAfter =
-                  existingAfter === sourceNodeId
-                    ? existingAfter
-                    : [existingAfter, sourceNodeId];
-              }
-              return { ...step, after: newAfter };
-            }
-            return step;
-          });
-        }
-
-        // Reverse connection for bidirectional: source step's "after" includes target
-        if (edgeType === "bidirectional" && !hasExistingReverse) {
-          updatedPlan = updatedPlan.map((step) => {
-            if (step.uid === sourceNodeId) {
-              const existingAfter = step.after;
-              let newAfter;
-              if (!existingAfter) {
-                newAfter = targetNodeId;
-              } else if (Array.isArray(existingAfter)) {
-                newAfter = existingAfter.includes(targetNodeId)
-                  ? existingAfter
-                  : [...existingAfter, targetNodeId];
-              } else {
-                newAfter =
-                  existingAfter === targetNodeId
-                    ? existingAfter
-                    : [existingAfter, targetNodeId];
-              }
-              return { ...step, after: newAfter };
-            }
-            return step;
-          });
-        }
-
-        return {
-          nodes: prevFlow.nodes,
-          conditions: prevFlow.conditions || [],
-          plan: updatedPlan,
-        };
-      });
-
-      setCurrentGraph((prev) => ({
-        ...prev,
-        edges: [...prev.edges, ...newEdges],
-        metadata: {
-          ...prev.metadata,
-          lastModified: new Date(),
-          edgeCount: prev.edges.length + newEdges.length,
-        },
-      }));
-
-      // Close modal
-      setEdgeTypeModal({
-        isOpen: false,
-        sourceNodeId: "",
-        targetNodeId: "",
-        sourceNodeName: "",
-        targetNodeName: "",
-      });
-    },
-    [edgeTypeModal, edges, setEdges, toast],
-  );
-
-  const handleEdgeTypeCancel = useCallback(() => {
-    setEdgeTypeModal({
-      isOpen: false,
-      sourceNodeId: "",
-      targetNodeId: "",
-      sourceNodeName: "",
-      targetNodeName: "",
-    });
-  }, []);
 
   // ESC key handler for connection mode
   useEffect(() => {
@@ -1558,18 +1275,11 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     deleteEdge,
     attachConditionToNode,
     removeConditionFromNode,
-    conditionalEdgeModal,
-    handleConditionalEdgeConfirm,
-    handleConditionalEdgeCancel,
     // Click-to-connect
     pendingConnectionSource,
     handleNodeClickForConnection,
     handlePaneClick,
     cancelConnectionMode,
-    // Edge type modal
-    edgeTypeModal,
-    handleEdgeTypeConfirm,
-    handleEdgeTypeCancel,
     // Drag state
     isDraggingCondition,
     // Validation state

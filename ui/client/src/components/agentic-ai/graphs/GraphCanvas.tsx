@@ -32,85 +32,55 @@ const edgeTypes: EdgeTypes = {
 };
 
 /**
- * Detect bidirectional edge pairs (A→B and B→A) and transform them into
+ * Detect bidirectional edge pairs (A->B and B->A) and transform them into
  * offset edges so they render as two visually separated paths.
- *
- * @param edges - The full list of graph edges.
- * @param bidiColor - Stroke color for bidirectional edges.  Callers should
- *   pass the theme-derived `primaryLight` color; the default is a fallback.
  */
 const processBidirectionalEdges = (edges: Edge[], bidiColor: string = "#10B981"): Edge[] => {
   const edgeMap = new Map<string, Edge[]>();
   const processedEdges: Edge[] = [];
 
-  // Group edges by node pairs (regardless of direction)
   edges.forEach(edge => {
     const key1 = `${edge.source}-${edge.target}`;
     const key2 = `${edge.target}-${edge.source}`;
-    
-    // Check if reverse edge already exists
     const existingKey = edgeMap.has(key1) ? key1 : edgeMap.has(key2) ? key2 : key1;
-    
     if (!edgeMap.has(existingKey)) {
       edgeMap.set(existingKey, []);
     }
     edgeMap.get(existingKey)!.push(edge);
   });
 
-  // Process each edge group
-  edgeMap.forEach((edgeGroup, key) => {
+  edgeMap.forEach((edgeGroup) => {
     if (edgeGroup.length === 2) {
-      // Bidirectional pair detected - keep both edges but mark them
       const [edge1, edge2] = edgeGroup;
-      
-      // Determine which edge goes "up" and which goes "down" based on node positions
-      // For now, we'll use a simple rule: first edge gets offset to the right, second to the left
-      
+
       const offsetEdge1: Edge = {
         ...edge1,
         type: 'bidirectionalOffset',
         data: {
           ...edge1.data,
           bidirectionalPair: true,
-          offsetDirection: 'right', // Offset to the right
+          offsetDirection: 'right',
           pairId: edge2.id,
         },
-        style: {
-          stroke: bidiColor,
-          strokeWidth: 2.5,
-        },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 20,
-          height: 20,
-          color: bidiColor,
-        },
+        style: { stroke: bidiColor, strokeWidth: 2.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: bidiColor },
       };
-      
+
       const offsetEdge2: Edge = {
         ...edge2,
         type: 'bidirectionalOffset',
         data: {
           ...edge2.data,
           bidirectionalPair: true,
-          offsetDirection: 'left', // Offset to the left
+          offsetDirection: 'left',
           pairId: edge1.id,
         },
-        style: {
-          stroke: bidiColor,
-          strokeWidth: 2.5,
-        },
-        markerEnd: {
-          type: MarkerType.ArrowClosed,
-          width: 20,
-          height: 20,
-          color: bidiColor,
-        },
+        style: { stroke: bidiColor, strokeWidth: 2.5 },
+        markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20, color: bidiColor },
       };
-      
+
       processedEdges.push(offsetEdge1, offsetEdge2);
     } else if (edgeGroup.length === 1) {
-      // Single directional edge - keep as is
       processedEdges.push(edgeGroup[0]);
     }
   });
@@ -133,7 +103,6 @@ interface GraphCanvasProps {
   onAttachCondition?: (nodeId: string, condition: any) => void;
   onRemoveCondition?: (nodeId: string, conditionRid: string) => void;
   isGraphValid?: boolean;
-  // Click-to-connect props
   onNodeClick?: (event: React.MouseEvent, node: Node) => void;
   onPaneClick?: () => void;
   pendingConnectionSource?: string | null;
@@ -152,8 +121,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   onSaveGraph,
   onDeleteEdge,
   onBack,
-  onAttachCondition,
-  onRemoveCondition,
   isGraphValid = false,
   onNodeClick,
   onPaneClick,
@@ -163,26 +130,22 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   const [showYamlDebug, setShowYamlDebug] = useState(false);
   const { primaryHex } = useTheme();
 
-  // Derive all edge colors from the shared theme helper (single call)
   const { primary: edgeColor, primaryLight: bidiEdgeColor, conditionEdge: condEdgeColor } = useMemo(
     () => deriveThemeColors(primaryHex),
     [primaryHex],
   );
 
-  // Process edges to detect and transform bidirectional connections
   const processedEdges = useMemo(
     () => processBidirectionalEdges(edges, bidiEdgeColor),
     [edges, bidiEdgeColor],
   );
 
-  // Apply current theme colors to ALL edges so they react to primary color changes.
-  // Edges created in use-graph-logic have styles baked at creation time; this ensures
-  // the rendered colors always reflect the current theme.
+  // Re-theme ALL edges so they always reflect the current primary color,
+  // regardless of what color was baked at creation time.
   const themedEdges = useMemo(() => processedEdges.map(edge => {
     const isConditional = edge.data?.isConditional;
     const isBidirectional = edge.type === 'bidirectionalOffset';
 
-    // Bidirectional edges already get themed via processBidirectionalEdges
     if (isBidirectional) {
       return {
         ...edge,
@@ -191,7 +154,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
       };
     }
 
-    // Conditional edges: use condition color + dashed
     if (isConditional) {
       return {
         ...edge,
@@ -202,7 +164,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
       };
     }
 
-    // Regular edges: use primary color
     return {
       ...edge,
       type: edge.type || 'custom',
@@ -222,7 +183,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
           isGraphValid={isGraphValid}
         />
         <CardContent className="p-0 h-full relative">
-          {/* YAML Debug Panel */}
           {showYamlDebug && yamlFlow && (
             <div className="absolute top-4 right-4 z-50 bg-gray-900 border border-gray-700 rounded-lg p-4 max-w-md max-h-96 overflow-auto">
               <div className="flex justify-between items-center mb-2">
@@ -240,7 +200,6 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
             </div>
           )}
 
-          {/* YAML Debug Toggle Button */}
           <button
             onClick={() => setShowYamlDebug(!showYamlDebug)}
             className="absolute top-4 right-4 z-40 bg-gray-800 hover:bg-gray-700 text-white px-3 py-1 text-xs rounded border border-gray-600"
@@ -251,19 +210,29 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
           <div className="h-full" style={{ height: "calc(100vh - 180px)" }}>
             {/* Connection mode banner */}
             {pendingConnectionSource && (
-              <div className="absolute top-4 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-3 bg-purple-900/90 border border-purple-500 text-white px-4 py-2 rounded-lg shadow-lg backdrop-blur-sm">
-                <Link2 className="w-4 h-4 text-purple-300 animate-pulse" />
-                <span className="text-sm">
-                  Click another node to connect from{" "}
-                  <strong>
-                    {nodes.find((n) => n.id === pendingConnectionSource)
-                      ?.data?.label || pendingConnectionSource}
-                  </strong>
+              <div
+                className="absolute top-4 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-3 text-white px-5 py-3 rounded-xl shadow-xl backdrop-blur-md border"
+                style={{
+                  background: `linear-gradient(to right, ${edgeColor}F2, ${edgeColor}CC)`,
+                  borderColor: `${bidiEdgeColor}60`,
+                }}
+              >
+                <div
+                  className="flex items-center justify-center w-8 h-8 rounded-full border"
+                  style={{ backgroundColor: `${edgeColor}30`, borderColor: `${bidiEdgeColor}40` }}
+                >
+                  <Link2 className="w-4 h-4 animate-pulse" style={{ color: bidiEdgeColor }} />
+                </div>
+                <span className="text-sm font-medium">
+                  Select a target node to connect{" "}
+                  <span className="font-semibold" style={{ color: bidiEdgeColor }}>
+                    {nodes.find((n) => n.id === pendingConnectionSource)?.data?.label || pendingConnectionSource}
+                  </span>
                 </span>
                 <button
                   onClick={onCancelConnection}
-                  className="ml-2 text-gray-300 hover:text-white transition-colors"
-                  title="Cancel connection (ESC)"
+                  className="ml-1 p-1 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+                  title="Cancel (ESC)"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -303,17 +272,12 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
               </ReactFlow>
             </ReactFlowProvider>
 
-            {/* Drop zone overlay when empty */}
             {nodes.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="text-center">
                   <Plus className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-300">
-                    No nodes yet
-                  </h3>
-                  <p className="mt-1 text-sm text-gray-400">
-                    Drag building blocks from the sidebar to get started
-                  </p>
+                  <h3 className="mt-2 text-sm font-medium text-gray-300">No nodes yet</h3>
+                  <p className="mt-1 text-sm text-gray-400">Drag building blocks from the sidebar to get started</p>
                 </div>
               </div>
             )}
