@@ -10,6 +10,13 @@ helmDefaults:
 
 releases:
 
+  - name: unifai-rag-shared-storage
+    chart: ./rag/unifai-rag-shared-storage
+    wait: true
+    values:
+      - {{- toYaml .Values.storage | nindent 8 }}
+      - ./values/global-config.yaml
+
   - name: unifai-rag-server
     chart: ./rag/unifai-rag-server
     wait: true
