@@ -6,7 +6,7 @@ metadata:
   name: {{ include "unifai-rag-shared-storage.fullname" . }}
   {{- if .Values.storage.keepPvc }}
   finalizers:
-    - kubernetes.io/pvc-protection          
+    - kubernetes.io/pvc-protection
   {{- end }}
   labels:
     {{- include "unifai-rag-shared-storage.labels" . | nindent 4 }}
