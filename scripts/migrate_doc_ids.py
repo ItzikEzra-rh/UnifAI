@@ -32,7 +32,7 @@ SOURCES_DB = "data_sources"
 RETRIEVERS_COLLECTION = "resources"
 SOURCES_COLLECTION = "sources"
 
-RETRIEVER_TYPE = "docs_rag"
+RETRIEVER_TYPE = "docs_dataflow"
 CATEGORY = "retrievers"
 
 

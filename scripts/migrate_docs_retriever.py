@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Migrate 'docs' retrievers to 'docs_rag' format.
+Migrate 'docs' retrievers to 'docs_dataflow' format.
 
 Usage:
     # Dry run on resources collection (default query)
@@ -42,7 +42,7 @@ DEFAULT_COLLECTION = "resources"
 
 def transform_cfg_dict(old_cfg: dict) -> dict:
     """
-    Transform old 'docs' cfg_dict to new 'docs_rag' format.
+    Transform old 'docs' cfg_dict to new 'docs_dataflow' format.
     
     Old format:
         type: 'docs'
@@ -51,7 +51,7 @@ def transform_cfg_dict(old_cfg: dict) -> dict:
         threshold: 0.3
     
     New format:
-        type: 'docs_rag'
+        type: 'docs_dataflow'
         top_k_results: 3
         threshold: 0.3
         timeout: 30
@@ -59,7 +59,7 @@ def transform_cfg_dict(old_cfg: dict) -> dict:
         tags: null
     """
     return {
-        "type": "docs_rag",
+        "type": "docs_dataflow",
         "top_k_results": old_cfg.get("top_k_results", 3),
         "threshold": old_cfg.get("threshold", 0.3),
         "timeout": old_cfg.get("timeout", 30.0),
@@ -117,7 +117,7 @@ def migrate(db, collection_name: str, query: dict, dry_run: bool = True) -> dict
                     {"_id": doc["_id"]},
                     {
                         "$set": {
-                            "type": "docs_rag",
+                            "type": "docs_dataflow",
                             "cfg_dict": new_cfg,
                             "updated": datetime.utcnow()
                         }
@@ -145,7 +145,7 @@ def migrate(db, collection_name: str, query: dict, dry_run: bool = True) -> dict
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Migrate 'docs' retrievers to 'docs_rag' format"
+        description="Migrate 'docs' retrievers to 'docs_dataflow' format"
     )
     parser.add_argument(
         "--collection", "-c",
