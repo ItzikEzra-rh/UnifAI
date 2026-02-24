@@ -1,4 +1,5 @@
 import { Node, Edge, MarkerType } from "reactflow";
+import dagre from "@dagrejs/dagre";
 import { BuildingBlock } from "@/types/graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import { getBlueprintInfo } from "@/api/blueprints";
@@ -55,114 +56,59 @@ function findBlockByRid(rid: string, blocks: BuildingBlock[]): BuildingBlock | n
   );
 }
 
+const NODE_WIDTH = 320;
+const NODE_HEIGHT = 80;
+
 /**
- * Compute a hierarchical layout for plan steps using topological levels,
- * matching the display approach used by the workflow list (JointJS layout).
+ * Compute a hierarchical layout for plan steps using dagre,
+ * matching the display produced by JointJS DirectedGraph.layout.
  */
 function computeLayout(
   plan: YamlFlowPlanStep[],
-  specNodes: YamlFlowNode[],
+  _specNodes: YamlFlowNode[],
 ): Map<string, { x: number; y: number }> {
-  const positions = new Map<string, { x: number; y: number }>();
+  const g = new dagre.graphlib.Graph();
+  g.setGraph({
+    rankdir: "TB",
+    nodesep: 60,
+    edgesep: 40,
+    ranksep: 80,
+    marginx: 32,
+    marginy: 32,
+  });
+  g.setDefaultEdgeLabel(() => ({}));
 
-  // Build node-type lookup from spec nodes
-  const nodeDefByRef = new Map<string, YamlFlowNode>();
-  for (const n of specNodes) {
-    nodeDefByRef.set(stripRef(n.rid), n);
-  }
-  const typeByUid = new Map<string, string>();
   for (const step of plan) {
-    const def = nodeDefByRef.get(step.node);
-    typeByUid.set(step.uid, def?.type || "custom_agent_node");
+    g.setNode(step.uid, { width: NODE_WIDTH, height: NODE_HEIGHT });
   }
 
-  // Build predecessor map from `after` + `branches`
-  const predecessors: Record<string, string[]> = {};
+  const edgeSet = new Set<string>();
   for (const step of plan) {
-    if (!predecessors[step.uid]) predecessors[step.uid] = [];
     if (step.after) {
       const afters = Array.isArray(step.after) ? step.after : [step.after];
-      predecessors[step.uid].push(...afters);
+      for (const a of afters) {
+        const key = `${a}->${step.uid}`;
+        if (!edgeSet.has(key)) { g.setEdge(a, step.uid); edgeSet.add(key); }
+      }
     }
     if (step.branches) {
       for (const targetUid of Object.values(step.branches)) {
         const tid = targetUid as string;
-        if (!predecessors[tid]) predecessors[tid] = [];
-        if (!predecessors[tid].includes(step.uid)) {
-          predecessors[tid].push(step.uid);
-        }
+        const key = `${step.uid}->${tid}`;
+        if (!edgeSet.has(key)) { g.setEdge(step.uid, tid); edgeSet.add(key); }
       }
     }
   }
 
-  // Assign levels via iterative BFS
-  const level: Record<string, number> = {};
+  dagre.layout(g);
 
-  // Level 0: user_question_node
+  const positions = new Map<string, { x: number; y: number }>();
   for (const step of plan) {
-    if (typeByUid.get(step.uid) === "user_question_node") {
-      level[step.uid] = 0;
+    const n = g.node(step.uid);
+    if (n) {
+      positions.set(step.uid, { x: n.x - NODE_WIDTH / 2, y: n.y - NODE_HEIGHT / 2 });
     }
   }
-
-  let changed = true;
-  let iterations = 0;
-  const maxIter = plan.length * plan.length + 1;
-  while (changed && iterations < maxIter) {
-    changed = false;
-    iterations++;
-    for (const step of plan) {
-      if (level[step.uid] !== undefined) continue;
-      if (typeByUid.get(step.uid) === "final_answer_node") continue;
-      const preds = predecessors[step.uid] || [];
-      if (preds.length === 0) {
-        level[step.uid] = 1;
-        changed = true;
-      } else if (preds.every((p) => level[p] !== undefined)) {
-        level[step.uid] = Math.max(...preds.map((p) => level[p])) + 1;
-        changed = true;
-      }
-    }
-  }
-
-  // Fallback for any unresolved non-final nodes
-  const maxLvl = Math.max(0, ...Object.values(level).filter((v) => v !== undefined));
-  for (const step of plan) {
-    if (level[step.uid] === undefined && typeByUid.get(step.uid) !== "final_answer_node") {
-      level[step.uid] = maxLvl + 1;
-    }
-  }
-
-  // Final answer always last
-  const finalMaxLvl = Math.max(0, ...Object.values(level).filter((v) => v !== undefined));
-  for (const step of plan) {
-    if (typeByUid.get(step.uid) === "final_answer_node") {
-      level[step.uid] = finalMaxLvl + 1;
-    }
-  }
-
-  // Group by level
-  const nodesByLevel: Record<number, string[]> = {};
-  for (const step of plan) {
-    const l = level[step.uid] ?? 0;
-    if (!nodesByLevel[l]) nodesByLevel[l] = [];
-    nodesByLevel[l].push(step.uid);
-  }
-
-  // Position nodes — spread siblings horizontally, levels vertically
-  const Y_SPACING = 200;
-  const X_SPACING = 300;
-  const X_CENTER = 400;
-
-  for (const [lvl, uids] of Object.entries(nodesByLevel)) {
-    const l = Number(lvl);
-    const totalWidth = (uids.length - 1) * X_SPACING;
-    const startX = X_CENTER - totalWidth / 2;
-    uids.forEach((uid, index) => {
-      positions.set(uid, { x: startX + index * X_SPACING, y: 100 + l * Y_SPACING });
-    });
-  }
-
   return positions;
 }
 
