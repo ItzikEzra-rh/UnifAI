@@ -6,6 +6,10 @@ on:
   pull_request:
     branches:
       - main
+  push:
+    branches:
+      - GENIE-1282/staging_branch
+  workflow_dispatch:
 
 jobs:
   check-staging-merge:
