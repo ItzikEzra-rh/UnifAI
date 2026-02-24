@@ -10,6 +10,7 @@ import {
   EdgeTypes,
   MarkerType,
   ConnectionLineType,
+  useViewport,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { Card, CardContent } from "@/components/ui/card";
@@ -109,6 +110,58 @@ interface GraphCanvasProps {
   onCancelConnection?: () => void;
 }
 
+const ConnectionBanner: React.FC<{
+  pendingConnectionSource: string;
+  nodes: Node[];
+  edgeColor: string;
+  bidiEdgeColor: string;
+  onCancelConnection?: () => void;
+}> = ({ pendingConnectionSource, nodes, edgeColor, bidiEdgeColor, onCancelConnection }) => {
+  const viewport = useViewport();
+  const sourceNode = nodes.find(n => n.id === pendingConnectionSource);
+
+  if (!sourceNode) return null;
+
+  const nodeWidth = sourceNode.width || 200;
+  const centerX = (sourceNode.position.x + nodeWidth / 2) * viewport.zoom + viewport.x;
+  const topY = sourceNode.position.y * viewport.zoom + viewport.y;
+  const sourceLabel = sourceNode.data?.label || pendingConnectionSource;
+
+  return (
+    <div
+      className="absolute z-40 flex items-center gap-3 text-white px-4 py-2.5 rounded-xl shadow-xl backdrop-blur-md border whitespace-nowrap"
+      style={{
+        left: centerX,
+        top: Math.max(topY - 56, 8),
+        transform: 'translateX(-50%)',
+        background: `linear-gradient(to right, ${edgeColor}F2, ${edgeColor}CC)`,
+        borderColor: `${bidiEdgeColor}60`,
+        pointerEvents: 'auto',
+      }}
+    >
+      <div
+        className="flex items-center justify-center w-7 h-7 rounded-full border"
+        style={{ backgroundColor: `${edgeColor}30`, borderColor: `${bidiEdgeColor}40` }}
+      >
+        <Link2 className="w-3.5 h-3.5 animate-pulse" style={{ color: bidiEdgeColor }} />
+      </div>
+      <span className="text-sm font-medium">
+        Select a target to connect{" "}
+        <span className="font-semibold" style={{ color: bidiEdgeColor }}>
+          {sourceLabel}
+        </span>
+      </span>
+      <button
+        onClick={onCancelConnection}
+        className="ml-1 p-1 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
+        title="Cancel (ESC)"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  );
+};
+
 const GraphCanvas: React.FC<GraphCanvasProps> = ({
   nodes,
   edges,
@@ -207,39 +260,18 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
             {showYamlDebug ? 'Hide' : 'Show'} YAML
           </button>
 
-          <div className="h-full" style={{ height: "calc(100vh - 180px)" }}>
-            {/* Connection mode banner */}
-            {pendingConnectionSource && (
-              <div
-                className="absolute top-4 left-1/2 transform -translate-x-1/2 z-40 flex items-center gap-3 text-white px-5 py-3 rounded-xl shadow-xl backdrop-blur-md border"
-                style={{
-                  background: `linear-gradient(to right, ${edgeColor}F2, ${edgeColor}CC)`,
-                  borderColor: `${bidiEdgeColor}60`,
-                }}
-              >
-                <div
-                  className="flex items-center justify-center w-8 h-8 rounded-full border"
-                  style={{ backgroundColor: `${edgeColor}30`, borderColor: `${bidiEdgeColor}40` }}
-                >
-                  <Link2 className="w-4 h-4 animate-pulse" style={{ color: bidiEdgeColor }} />
-                </div>
-                <span className="text-sm font-medium">
-                  Select a target node to connect{" "}
-                  <span className="font-semibold" style={{ color: bidiEdgeColor }}>
-                    {nodes.find((n) => n.id === pendingConnectionSource)?.data?.label || pendingConnectionSource}
-                  </span>
-                </span>
-                <button
-                  onClick={onCancelConnection}
-                  className="ml-1 p-1 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
-                  title="Cancel (ESC)"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            )}
-
+          <div className="h-full relative" style={{ height: "calc(100vh - 180px)" }}>
             <ReactFlowProvider>
+              {pendingConnectionSource && (
+                <ConnectionBanner
+                  pendingConnectionSource={pendingConnectionSource}
+                  nodes={nodes}
+                  edgeColor={edgeColor}
+                  bidiEdgeColor={bidiEdgeColor}
+                  onCancelConnection={onCancelConnection}
+                />
+              )}
+
               <ReactFlow
                 nodes={nodes}
                 edges={themedEdges}

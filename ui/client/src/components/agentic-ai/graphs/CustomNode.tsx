@@ -1,10 +1,11 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Handle, Position } from "reactflow";
 import { X, GitBranch, Trash2 } from "lucide-react";
 import { CustomNodeData } from "@/types/graph";
 import InnerRefElement from "./InnerRefElement";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useTheme } from "@/contexts/ThemeContext";
 
 interface CustomNodeProps {
   id: string;
@@ -13,6 +14,8 @@ interface CustomNodeProps {
 }
 
 const CustomNode: React.FC<CustomNodeProps> = ({ id, data, selected }) => {
+  const { primaryHex } = useTheme();
+
   const handleDelete = () => {
     if (data.onDelete) {
       data.onDelete(id);
@@ -106,15 +109,19 @@ const CustomNode: React.FC<CustomNodeProps> = ({ id, data, selected }) => {
     <div
       className={`px-4 py-3 shadow-lg rounded-lg border-2 bg-gray-800 text-white min-w-[200px] transition-all duration-200 ${
         isConnectionSource
-          ? "border-primary ring-2 ring-primary/50 shadow-xl"
+          ? "border-primary ring-4 ring-primary/40 scale-105"
           : isConnectionTarget
-            ? "border-primary/40 hover:border-primary hover:ring-2 hover:ring-primary/30 cursor-pointer"
+            ? "border-primary/40 hover:border-primary/20 hover:ring-2 hover:ring-primary/30 cursor-pointer hover:scale-[1.02]"
             : selected
               ? "border-primary"
               : "border-gray-600 hover:border-gray-500"
       } ${
         isDragOver ? 'border-orange-500 border-dashed bg-orange-900/20' : ''
       }`}
+      style={isConnectionSource ? {
+        animation: 'node-connection-glow 2s ease-in-out infinite',
+        '--node-glow-color': `${primaryHex}80`,
+      } as React.CSSProperties : undefined}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}

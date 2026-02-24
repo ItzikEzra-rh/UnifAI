@@ -1131,6 +1131,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     setNodes((prevNodes) =>
       prevNodes.map((n) => ({
         ...n,
+        selected: false,
         data: {
           ...n.data,
           isConnectionSource: false,
