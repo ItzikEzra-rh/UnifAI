@@ -99,21 +99,12 @@ export default function AgenticWorkflows() {
     setShowGraphBuilder(true);
   };
 
-  const handleBackToFlowConfig = useCallback((savedBlueprint?: SavedBlueprintInfo) => {
+  const handleBackToFlowConfig = useCallback((_savedBlueprint?: SavedBlueprintInfo) => {
     setShowGraphBuilder(false);
-    
-    // If a blueprint was just saved, select it in the workflow list
-    if (savedBlueprint) {
-      // Create a minimal FlowObject to select the newly saved blueprint
-      // The WorkflowsPanel will fetch the full data and match by ID
-      setSelectedFlow({
-        id: savedBlueprint.blueprintId,
-        name: savedBlueprint.name,
-        description: savedBlueprint.description,
-        icon: null,
-        flow: { nodes: [], edges: [] },
-      } as FlowObject);
-    }
+    // Always reset so WorkflowsPanel follows the same mount path as
+    // initial load: fetch list → auto-select first → resolved fetch.
+    // If a blueprint was just saved it will appear first in the list.
+    setSelectedFlow(null);
   }, []);
 
   return (
