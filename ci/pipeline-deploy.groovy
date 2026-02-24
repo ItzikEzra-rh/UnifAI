@@ -158,7 +158,7 @@ def deleteRunningApplication(){
 
     echo("Wait for resource deletion...")
     sh("""
-        until ! podman exec -t helmfile bash -c "oc get deployment,statefulset,svc | grep 'unifai\\|qdrant\\|mongo\\|rabbitmq'"; do
+        until ! oc get deployment,statefulset,svc | grep 'unifai\\|qdrant\\|mongo\\|rabbitmq'; do
             echo 'Waiting for deployment deletion...'
             sleep 5
         done
@@ -191,7 +191,7 @@ def cleanOldDataflow(){
         
         // Wait for all dataflow resources to be deleted
         sh("""
-            until ! podman exec -t helmfile bash -c "oc get deployment,statefulset,svc 2>/dev/null | grep 'dataflow'"; do
+            until ! oc get deployment,statefulset,svc 2>/dev/null | grep 'dataflow'; do
                 echo 'Waiting for dataflow deployment deletion...'
                 sleep 5
             done
