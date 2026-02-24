@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Node,
   Edge,
@@ -16,37 +16,9 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { deriveThemeColors } from "@/lib/colorUtils";
 import axios from "../http/axiosAgentConfig";
 import * as yaml from "js-yaml";
-import { saveBlueprint } from "@/api/blueprints";
-
-interface YamlFlowNode {
-  rid: string;
-  name: string;
-  type?: string;
-  config?: any;
-}
-
-interface YamlFlowPlanStep {
-  uid: string;
-  node: string;
-  after?: string | string[] | null;
-  branches?: any;
-  exit_condition?: string;
-}
-
-interface YamlFlowCondition {
-  rid: string;
-  name: string;
-  type?: string;
-  config?: any;
-}
-
-interface YamlFlowState {
-  name?: string;
-  description?: string;
-  nodes: YamlFlowNode[];
-  plan: YamlFlowPlanStep[];
-  conditions?: YamlFlowCondition[];
-}
+import { saveBlueprint, deleteBlueprint } from "@/api/blueprints";
+import { loadBlueprintForEditing } from "@/hooks/use-load-blueprint";
+import type { YamlFlowState } from "@/hooks/use-load-blueprint";
 
 const defaulYmlState: YamlFlowState = {
   nodes: [
@@ -88,10 +60,12 @@ export interface SavedBlueprintInfo {
 interface UseGraphLogicOptions {
   /** Callback to execute after a successful save (e.g., navigate back to workflow list) */
   onSaveComplete?: (savedBlueprint?: SavedBlueprintInfo) => void;
+  /** When provided, load this blueprint for editing instead of starting with an empty canvas */
+  editBlueprintId?: string | null;
 }
 
 export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
-  const { onSaveComplete } = options;
+  const { onSaveComplete, editBlueprintId } = options;
   const { toast } = useToast();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -150,6 +124,12 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
   // Drag state to track what type of item is being dragged
   const [isDraggingCondition, setIsDraggingCondition] = useState(false);
+
+  // Edit mode state
+  const [isEditMode, setIsEditMode] = useState(!!editBlueprintId);
+  const [editBlueprintName, setEditBlueprintName] = useState("");
+  const [editBlueprintDescription, setEditBlueprintDescription] = useState("");
+  const blueprintLoadedRef = useRef(false);
 
   const { user } = useAuth();
   const USER_ID = user?.username || "default";
@@ -617,8 +597,51 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
   useEffect(() => {
     loadBuildingBlocks();
-    initializeDefaultNodes();
+    if (!editBlueprintId) {
+      initializeDefaultNodes();
+    }
   }, [loadBuildingBlocks]);
+
+  // Load existing blueprint for editing once building blocks are ready
+  useEffect(() => {
+    if (!editBlueprintId || isLoadingBlocks || blueprintLoadedRef.current) return;
+    blueprintLoadedRef.current = true;
+
+    loadBlueprintForEditing(
+      editBlueprintId,
+      allBlocksData,
+      conditionsData,
+      conditionEdgeColor,
+    )
+      .then((result) => {
+        const nodesWithCallbacks = result.nodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            onDelete: deleteNode,
+            allBlocks: allBlocksData,
+            onAttachCondition: attachConditionToNode,
+            onRemoveCondition: removeConditionFromNode,
+          },
+        }));
+        setNodes(nodesWithCallbacks);
+        setEdges(result.edges);
+        setYamlFlow(result.yamlFlow);
+        setNodeId(result.nextNodeId);
+        setIsEditMode(true);
+        setEditBlueprintName(result.name);
+        setEditBlueprintDescription(result.description);
+      })
+      .catch((err) => {
+        console.error("Failed to load blueprint for editing:", err);
+        toast({
+          title: "Failed to load blueprint",
+          description: "Could not load the blueprint for editing. Starting with a blank canvas.",
+          variant: "destructive",
+        });
+        initializeDefaultNodes();
+      });
+  }, [editBlueprintId, isLoadingBlocks]);
 
   // Trigger validation whenever yamlFlow changes
   useEffect(() => {
@@ -1027,7 +1050,6 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
       try {
         setIsSaving(true);
 
-        // Update yamlFlow with name and description
         const updatedYamlFlow = {
           ...yamlFlow,
           name: name,
@@ -1036,7 +1058,6 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
         setYamlFlow(updatedYamlFlow);
 
-        // Convert to YAML string using js-yaml library
         const yamlString = yaml.dump(updatedYamlFlow, {
           indent: 2,
           lineWidth: -1,
@@ -1047,19 +1068,26 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
         const response = await saveBlueprint(yamlString, USER_ID);
 
         if (response.status === "success") {
-          // Show success toast
+          // In edit mode, remove the old blueprint so we don't end up with duplicates
+          if (isEditMode && editBlueprintId) {
+            try {
+              await deleteBlueprint(editBlueprintId);
+            } catch (delErr) {
+              console.warn("Could not remove previous blueprint version:", delErr);
+            }
+          }
+
           toast({
-            title: "✅ Blueprint Saved Successfully",
-            description: `Blueprint "${name}" saved successfully`,
+            title: isEditMode
+              ? "✅ Blueprint Updated Successfully"
+              : "✅ Blueprint Saved Successfully",
+            description: `Blueprint "${name}" ${isEditMode ? "updated" : "saved"} successfully`,
             variant: "default",
           });
 
-          // Close the save modal immediately & Stop the saving state
           setSaveModalOpen(false);
           setIsSaving(false);
 
-          // Call the onSaveComplete callback to navigate back (if provided)
-          // Pass the saved blueprint info so it can be selected in the workflow list
           if (onSaveComplete) {
             setTimeout(() => {
               onSaveComplete({
@@ -1082,7 +1110,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
         setIsSaving(false);
       }
     },
-    [yamlFlow, toast, onSaveComplete],
+    [yamlFlow, toast, onSaveComplete, isEditMode, editBlueprintId],
   );
 
   useEffect(() => {
@@ -1274,5 +1302,9 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     saveModalOpen,
     setSaveModalOpen,
     isSaving,
+    // Edit mode state
+    isEditMode,
+    editBlueprintName,
+    editBlueprintDescription,
   };
 };
