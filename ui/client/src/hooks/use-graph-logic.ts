@@ -16,7 +16,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { deriveThemeColors } from "@/lib/colorUtils";
 import axios from "../http/axiosAgentConfig";
 import * as yaml from "js-yaml";
-import { saveBlueprint, deleteBlueprint } from "@/api/blueprints";
+import { saveBlueprint, updateBlueprint } from "@/api/blueprints";
 import { loadBlueprintForEditing } from "@/hooks/use-load-blueprint";
 import type { YamlFlowState } from "@/hooks/use-load-blueprint";
 
@@ -1050,7 +1050,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
       try {
         setIsSaving(true);
 
-        // Update yamlFlow with name and description
+         // Update yamlFlow with name and description
         const updatedYamlFlow = {
           ...yamlFlow,
           name: name,
@@ -1067,40 +1067,44 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
           sortKeys: false,
         });
 
-        const response = await saveBlueprint(yamlString, USER_ID);
-
-        if (response.status === "success") {
-          // In edit mode, remove the old blueprint so we don't end up with duplicates
-          if (isEditMode && editBlueprintId) {
-            try {
-              await deleteBlueprint(editBlueprintId);
-            } catch (delErr) {
-              console.warn("Could not remove previous blueprint version:", delErr);
-            }
-          }
-
-          toast({
-            title: isEditMode
-              ? "✅ Blueprint Updated Successfully"
-              : "✅ Blueprint Saved Successfully",
-            description: `Blueprint "${name}" ${isEditMode ? "updated" : "saved"} successfully`,
-            variant: "default",
-          });
-
-          setSaveModalOpen(false);
-          setIsSaving(false);
-
-          if (onSaveComplete) {
-            setTimeout(() => {
-              onSaveComplete({
-                blueprintId: response.blueprint_id,
-                name,
-                description,
-              });
-            }, 100);
-          }
+        let response;
+        let blueprintId;
+        
+        if (isEditMode && editBlueprintId) {
+          response = await updateBlueprint(editBlueprintId, yamlString);
+          blueprintId = editBlueprintId;
         } else {
-          throw new Error("Unknown error occurred while saving blueprint");
+          response = await saveBlueprint(yamlString, USER_ID);
+          blueprintId = response.blueprint_id;
+        }
+
+        if (response.status !== "success") {
+          throw new Error(
+            isEditMode
+              ? "Unknown error occurred while updating blueprint"
+              : "Unknown error occurred while saving blueprint"
+          );
+        }
+
+        toast({
+          title: isEditMode
+            ? "✅ Blueprint Updated Successfully"
+            : "✅ Blueprint Saved Successfully",
+          description: `Blueprint "${name}" ${isEditMode ? "updated" : "saved"} successfully`,
+          variant: "default",
+        });
+
+        setSaveModalOpen(false);
+        setIsSaving(false);
+
+        if (onSaveComplete) {
+          setTimeout(() => {
+            onSaveComplete({
+              blueprintId,
+              name,
+              description,
+            });
+          }, 100);
         }
       } catch (error) {
         console.error("Error saving graph:", error);
