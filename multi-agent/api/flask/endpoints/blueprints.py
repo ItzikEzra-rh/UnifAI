@@ -179,7 +179,7 @@ def save_blueprint(blueprint_raw=None, user_id="alice", metadata=None):
     "blueprint_id": fields.Str(data_key="blueprintId", required=True),
     "blueprint_raw": fields.Str(data_key="blueprintRaw", required=True),
 })
-def update_blueprint(blueprint_id=None, blueprint_raw=None):
+def update_blueprint(blueprint_id, blueprint_raw):
     """Update an existing blueprint in-place, keeping the same ID."""
     try:
         parsed = _extract_blueprint_data(

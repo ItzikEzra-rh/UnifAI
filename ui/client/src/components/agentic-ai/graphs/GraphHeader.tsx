@@ -29,7 +29,7 @@ const GraphHeader: React.FC<GraphHeaderProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => onBack?.()}
+                onClick={() => onBack()}
                 className="flex items-center gap-2"
               >
                 <ArrowLeft className="w-4 h-4" />

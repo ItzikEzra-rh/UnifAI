@@ -258,15 +258,48 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
           const updatedPlan = prevFlow.plan
             .filter((step) => step.uid !== nodeId)
             .map((step) => {
-              if (step.after === nodeId) {
-                const { after, ...stepWithoutAfter } = step;
-                return stepWithoutAfter;
+              let updated = step;
+
+              // Clean up `after` references to the deleted node
+              if (updated.after) {
+                if (Array.isArray(updated.after)) {
+                  const filtered = updated.after.filter((a) => a !== nodeId);
+                  if (filtered.length === 0) {
+                    const { after, ...rest } = updated;
+                    updated = rest as typeof step;
+                  } else if (filtered.length === 1) {
+                    updated = { ...updated, after: filtered[0] };
+                  } else {
+                    updated = { ...updated, after: filtered };
+                  }
+                } else if (updated.after === nodeId) {
+                  const { after, ...rest } = updated;
+                  updated = rest as typeof step;
+                }
               }
-              return step;
+
+              // Clean up `branches` that target the deleted node
+              if (updated.branches) {
+                const cleanedBranches = { ...updated.branches };
+                for (const key of Object.keys(cleanedBranches)) {
+                  if (cleanedBranches[key] === nodeId) {
+                    delete cleanedBranches[key];
+                  }
+                }
+                if (Object.keys(cleanedBranches).length === 0) {
+                  const { branches, exit_condition, ...rest } = updated;
+                  updated = rest as typeof step;
+                } else {
+                  updated = { ...updated, branches: cleanedBranches };
+                }
+              }
+
+              return updated;
             });
 
           return {
-            nodes: prevFlow.nodes,
+            ...prevFlow,
+            nodes: updatedNodes,
             conditions: prevFlow.conditions || [],
             plan: updatedPlan,
           };
@@ -350,7 +383,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
           });
 
           return {
-            nodes: prevFlow.nodes,
+            ...prevFlow,
             conditions: prevFlow.conditions || [],
             plan: updatedPlan,
           };
@@ -634,6 +667,9 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
       })
       .catch((err) => {
         console.error("Failed to load blueprint for editing:", err);
+        setIsEditMode(false);
+        setEditBlueprintName("");
+        setEditBlueprintDescription("");
         toast({
           title: "Failed to load blueprint",
           description: "Could not load the blueprint for editing. Starting with a blank canvas.",
@@ -753,7 +789,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
         });
 
         return {
-          nodes: prevFlow.nodes,
+          ...prevFlow,
           conditions: prevFlow.conditions || [],
           plan: updatedPlan,
         };
@@ -907,6 +943,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
             : [...prevFlow.nodes, newYamlNode];
 
           return {
+            ...prevFlow,
             nodes: updatedNodes,
             conditions: prevFlow.conditions || [],
             plan: [...prevFlow.plan, newPlanStep],
@@ -1222,7 +1259,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
       }
 
       return {
-        nodes: prevFlow.nodes,
+        ...prevFlow,
         conditions: updatedConditions.length > 0 ? updatedConditions : [],
         plan: updatedPlan,
       };

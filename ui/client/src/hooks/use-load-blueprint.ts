@@ -3,6 +3,7 @@ import dagre from "@dagrejs/dagre";
 import { BuildingBlock } from "@/types/graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import { getBlueprintInfo } from "@/api/blueprints";
+import { NODE_WIDTH } from "@/components/agentic-ai/graphs/GraphDisplayHelpers";
 
 export interface YamlFlowNode {
   rid: string;
@@ -56,7 +57,6 @@ function findBlockByRid(rid: string, blocks: BuildingBlock[]): BuildingBlock | n
   );
 }
 
-const NODE_WIDTH = 320;
 const NODE_BASE_HEIGHT = 64;
 const CONDITION_HEADER_HEIGHT = 20;
 const CONDITION_CARD_HEIGHT = 40;
@@ -172,7 +172,7 @@ function computeLayout(
       : NODE_BASE_HEIGHT;
     const avgX =
       nonFinalSteps.length > 0
-        ? [...positions.values()].reduce((s, p) => s + p.x, 0) / positions.size
+        ? Array.from(positions.values()).reduce((s, p) => s + p.x, 0) / positions.size
         : 200;
     positions.set(step.uid, {
       x: avgX,
