@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useGraphLogic, SavedBlueprintInfo } from "@/hooks/use-graph-logic";
-import GraphCanvas from "@/components/agentic-ai/graphs/GraphCanvas";
+import GraphCanvasJoint from "@/components/agentic-ai/graphs/GraphCanvasJoint";
 import BuildingBlocksSidebar from "./BuildingBlocksSidebar";
 import GraphValidationPanel from "@/components/agentic-ai/graphs/GraphValidationPanel";
 import SaveBlueprintModal from "@/components/agentic-ai/graphs/SaveBlueprintModal";
@@ -10,28 +10,22 @@ interface NewGraphProps {
 }
 
 export default function NewGraph({ onBack }: NewGraphProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const {
     nodes,
     edges,
     buildingBlocksData,
     orchestratorsData,
     conditionsData,
-    allBlocksData,
     isLoadingBlocks,
     yamlFlow,
-    handleNodesChange,
-    handleEdgesChange,
     onDrop,
     onDragOver,
     onDragStart,
     clearGraph,
     saveGraph,
+    deleteNode,
     deleteEdge,
-    attachConditionToNode,
-    removeConditionFromNode,
-    // Click-to-connect
+    updateNodePosition,
     pendingConnectionSource,
     handleNodeClickForConnection,
     handlePaneClick,
@@ -103,21 +97,21 @@ export default function NewGraph({ onBack }: NewGraphProps) {
 
       {/* Main Canvas */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <GraphCanvas
+        <GraphCanvasJoint
           nodes={nodes}
           edges={edges}
           yamlFlow={yamlFlow}
-          onNodesChange={handleNodesChange}
-          onEdgesChange={handleEdgesChange}
           onDrop={onDrop}
           onDragOver={onDragOver}
           onClearGraph={handleClearGraph}
           onSaveGraph={handleSaveGraph}
+          onDeleteNode={deleteNode}
           onDeleteEdge={deleteEdge}
           onBack={onBack}
           isGraphValid={isGraphValid}
           onNodeClick={handleNodeClickForConnection}
           onPaneClick={handlePaneClick}
+          onNodePositionChange={updateNodePosition}
           pendingConnectionSource={pendingConnectionSource}
           onCancelConnection={cancelConnectionMode}
         />

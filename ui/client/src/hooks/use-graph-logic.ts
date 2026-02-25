@@ -1,15 +1,6 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
-import {
-  Node,
-  Edge,
-  Connection,
-  addEdge,
-  useNodesState,
-  useEdgesState,
-  MarkerType,
-} from "reactflow";
 import { useToast } from "@/hooks/use-toast";
-import { CurrentGraph, BuildingBlock } from "@/types/graph";
+import { CurrentGraph, BuildingBlock, CanvasNode, CanvasEdge } from "@/types/graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import { useAuth } from "@/contexts/AuthContext";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -95,8 +86,8 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
   const { toast } = useToast();
   const { primaryHex } = useTheme();
   const themeColors = useMemo(() => deriveThemeColors(primaryHex), [primaryHex]);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes] = useState<CanvasNode[]>([]);
+  const [edges, setEdges] = useState<CanvasEdge[]>([]);
   const [nodeId, setNodeId] = useState(1);
   const [selectedNodes, setSelectedNodes] = useState<string[]>([]);
   const [selectedEdges, setSelectedEdges] = useState<string[]>([]);
@@ -530,9 +521,8 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
   // Initialize canvas with default required nodes
   const initializeDefaultNodes = useCallback(() => {
-    const userInputNode: Node = {
+    const userInputNode: CanvasNode = {
       id: "user_input",
-      type: "custom",
       position: { x: 200, y: 100 },
       data: {
         label: "User Input",
@@ -562,9 +552,8 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
       },
     };
 
-    const finalizeNode: Node = {
+    const finalizeNode: CanvasNode = {
       id: "finalize",
-      type: "custom",
       position: { x: 200, y: 900 },
       data: {
         label: "Final Answer",
@@ -687,97 +676,14 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     }
   }, [yamlFlow, validateGraph]);
 
-  const isConnectionFeasible = useCallback(
-    async (params: Connection): Promise<boolean> => {
-      // Commenting out for now to allow all connections
-      // try {
-      //   const response = await axios.post("/graph/connection.feasible", {
-      //     source: params.source,
-      //     target: params.target,
-      //     yamlFlow,
-      //   });
-      //   return response.data.feasible;
-      // } catch (error) {
-      //   console.error("Error checking connection feasibility:", error);
-      //   return false;
-      // }
-      return true; // Allow all connections for now
-    },
-    [yamlFlow],
-  );
-
-  const onConnect = useCallback(
-    async (params: Connection) => {
-      const newEdge = addEdge(params, edges);
-
-      setEdges(newEdge);
-
-      // Update YAML flow with the new connection
-      setYamlFlow((prevFlow) => {
-        const updatedPlan = prevFlow.plan.map((step) => {
-          if (step.uid === params.target) {
-            // Get existing after value
-            const existingAfter = step.after;
-            let newAfter;
-
-            if (!existingAfter) {
-              // No existing after, set as single value
-              newAfter = params.source;
-            } else if (Array.isArray(existingAfter)) {
-              // Already an array, add new source if not already present
-              if (!existingAfter.includes(params.source!)) {
-                newAfter = [...existingAfter, params.source!];
-              } else {
-                newAfter = existingAfter;
-              }
-            } else {
-              // Single value exists, convert to array
-              if (existingAfter !== params.source) {
-                newAfter = [existingAfter, params.source!];
-              } else {
-                newAfter = existingAfter;
-              }
-            }
-
-            return {
-              ...step,
-              after: newAfter,
-            };
-          }
-          return step;
-        });
-
-        return {
-          nodes: prevFlow.nodes,
-          conditions: prevFlow.conditions || [],
-          plan: updatedPlan,
-        };
-      });
-
-      setCurrentGraph((prev) => ({
-        ...prev,
-        edges: newEdge,
-        metadata: {
-          ...prev.metadata,
-          lastModified: new Date(),
-          edgeCount: newEdge.length,
-        },
-      }));
-
-      // }
-    },
-    [setEdges, edges, nodes],
-  );
-
   const onDragOver = useCallback((event: React.DragEvent) => {
     event.preventDefault();
     
     if (isDraggingCondition) {
-      // For condition nodes, check if cursor is over a valid target node
-      const reactFlowBounds = event.currentTarget.getBoundingClientRect();
+      const canvasBoundsRect = event.currentTarget.getBoundingClientRect();
       const position = {
-        x: event.clientX - reactFlowBounds.left - 75,
-        y: event.clientY - reactFlowBounds.top - 25,
+        x: event.clientX - canvasBoundsRect.left - 75,
+        y: event.clientY - canvasBoundsRect.top - 25,
       };
 
       const targetNode = nodes.find((node) => {
@@ -807,15 +713,14 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
       // Reset drag state
       setIsDraggingCondition(false);
 
-      const reactFlowBounds = event.currentTarget.getBoundingClientRect();
+      const canvasBounds = event.currentTarget.getBoundingClientRect();
       const blockData = event.dataTransfer.getData("application/reactflow");
 
       if (blockData) {
         const block = JSON.parse(blockData);
-        console.log(block);
         const position = {
-          x: event.clientX - reactFlowBounds.left - 75,
-          y: event.clientY - reactFlowBounds.top - 25,
+          x: event.clientX - canvasBounds.left - 75,
+          y: event.clientY - canvasBounds.top - 25,
         };
 
         // Check if this is a condition node
@@ -852,9 +757,8 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
         }
 
         const nodeUid = `${block.workspaceData?.name || block.label}-${block.workspaceData?.rid || block.id}-${nodeId}`;
-        const newNode: Node = {
+        const newNode: CanvasNode = {
           id: nodeUid,
-          type: "custom",
           position,
           data: {
             label: block.label,
@@ -923,28 +827,14 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     [nodeId, setNodes, nodes, stableDeleteNode, stableAttachCondition, stableRemoveCondition, toast],
   );
 
-  const handleNodesChange = useCallback(
-    (changes: any[]) => {
-      onNodesChange(changes);
-
-      const selected = nodes
-        .filter((node) => node.selected)
-        .map((node) => node.id);
-      setSelectedNodes(selected);
+  const selectNode = useCallback(
+    (nodeId: string | null) => {
+      setNodes((prev) =>
+        prev.map((n) => ({ ...n, selected: n.id === nodeId })),
+      );
+      setSelectedNodes(nodeId ? [nodeId] : []);
     },
-    [onNodesChange, nodes],
-  );
-
-  const handleEdgesChange = useCallback(
-    (changes: any[]) => {
-      onEdgesChange(changes);
-
-      const selected = edges
-        .filter((edge) => edge.selected)
-        .map((edge) => edge.id);
-      setSelectedEdges(selected);
-    },
-    [onEdgesChange, edges],
+    [setNodes],
   );
 
   const onDragStart = (event: React.DragEvent, block: BuildingBlock) => {
@@ -1142,29 +1032,24 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
   }, [setNodes]);
 
   const handleNodeClickForConnection = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      const target = event.target as HTMLElement;
-      if (target.closest("button")) {
-        return;
-      }
-
+    (clickedNodeId: string) => {
       if (pendingConnectionSource === null) {
-        setPendingConnectionSource(node.id);
+        setPendingConnectionSource(clickedNodeId);
         setNodes((prevNodes) =>
           prevNodes.map((n) => ({
             ...n,
             data: {
               ...n.data,
-              isConnectionSource: n.id === node.id,
-              isConnectionTarget: n.id !== node.id,
+              isConnectionSource: n.id === clickedNodeId,
+              isConnectionTarget: n.id !== clickedNodeId,
             },
           })),
         );
-      } else if (pendingConnectionSource === node.id) {
+      } else if (pendingConnectionSource === clickedNodeId) {
         cancelConnectionMode();
       } else {
         const hasExisting = edges.some(
-          (e) => e.source === pendingConnectionSource && e.target === node.id,
+          (e) => e.source === pendingConnectionSource && e.target === clickedNodeId,
         );
 
         if (hasExisting) {
@@ -1174,26 +1059,17 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
             variant: "destructive",
           });
         } else {
-          const newEdge: Edge = {
-            id: `${pendingConnectionSource}-${node.id}`,
+          const newEdge: CanvasEdge = {
+            id: `${pendingConnectionSource}-${clickedNodeId}`,
             source: pendingConnectionSource,
-            target: node.id,
-            type: "custom",
-            animated: true,
-            style: { stroke: themeColors.primary, strokeWidth: 2 },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 20,
-              height: 20,
-              color: themeColors.primary,
-            },
+            target: clickedNodeId,
           };
 
           setEdges((prevEdges) => [...prevEdges, newEdge]);
 
           setYamlFlow((prevFlow) => {
             const updatedPlan = prevFlow.plan.map((step) => {
-              if (step.uid === node.id) {
+              if (step.uid === clickedNodeId) {
                 const existingAfter = step.after;
                 let newAfter;
                 if (!existingAfter) {
@@ -1233,7 +1109,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
         cancelConnectionMode();
       }
     },
-    [pendingConnectionSource, nodes, edges, setNodes, cancelConnectionMode],
+    [pendingConnectionSource, edges, setNodes, cancelConnectionMode, toast],
   );
 
   const handlePaneClick = useCallback(() => {
@@ -1253,9 +1129,20 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     return () => window.removeEventListener("keydown", handleEsc);
   }, [pendingConnectionSource, cancelConnectionMode]);
 
+  const updateNodePosition = useCallback(
+    (nodeId: string, position: { x: number; y: number }) => {
+      setNodes((prev) =>
+        prev.map((n) => (n.id === nodeId ? { ...n, position } : n)),
+      );
+    },
+    [setNodes],
+  );
+
   return {
     nodes,
     edges,
+    setNodes,
+    setEdges,
     currentGraph,
     buildingBlocksData,
     orchestratorsData,
@@ -1263,9 +1150,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     allBlocksData,
     isLoadingBlocks,
     yamlFlow,
-    handleNodesChange,
-    handleEdgesChange,
-    onConnect,
+    selectNode,
     onDrop,
     onDragOver,
     onDragStart,
@@ -1273,23 +1158,21 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     clearGraph,
     openSaveModal,
     saveGraph,
+    deleteNode,
     deleteEdge,
     attachConditionToNode,
     removeConditionFromNode,
-    // Click-to-connect
+    updateNodePosition,
     pendingConnectionSource,
     handleNodeClickForConnection,
     handlePaneClick,
     cancelConnectionMode,
-    // Drag state
     isDraggingCondition,
-    // Validation state
     isGraphValid,
     validationResult,
     fixSuggestions,
     isValidating,
     validateGraph,
-    // Save modal state
     saveModalOpen,
     setSaveModalOpen,
     isSaving,
