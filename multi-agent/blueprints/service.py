@@ -50,7 +50,7 @@ class BlueprintService:
                 blueprint_id=blueprint_id, spec=draft, rid_refs=rid_refs
             )
         except KeyError:
-            raise BlueprintNotFoundError(blueprint_id)
+            raise BlueprintNotFoundError(blueprint_id) from None
 
     def load_resolved(self, blueprint_id: str) -> BlueprintSpec:
         return self._resolver.resolve(self.load_draft(blueprint_id))

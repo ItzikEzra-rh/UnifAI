@@ -329,9 +329,10 @@ export function reconstructBlueprintGraph(
 
     // Attach conditions from the plan step
     if (step.exit_condition) {
-      const condBlock = findBlockByRid(step.exit_condition, conditionsData);
+      const normalizedRid = stripRef(step.exit_condition);
+      const condBlock = findBlockByRid(normalizedRid, conditionsData);
       const condDef = specConditions.find(
-        (c) => stripRef(c.rid) === step.exit_condition,
+        (c) => stripRef(c.rid) === normalizedRid,
       );
 
       if (condBlock) {
