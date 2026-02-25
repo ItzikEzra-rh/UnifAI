@@ -134,6 +134,10 @@ export type GraphDisplayProps = {
   isValidating?: boolean;
   /** Enable live node status tracking from streaming data. */
   isLiveRequest?: boolean;
+  /** Whether the graph container is actually visible (not collapsed to zero
+   *  width by carousel mode). Drives re-application of node visuals after
+   *  the panel becomes visible again. Defaults to `true`. */
+  isGraphVisible?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -151,6 +155,7 @@ export default function GraphDisplay({
   validationResults,
   isValidating = false,
   isLiveRequest = false,
+  isGraphVisible = true,
 }: GraphDisplayProps): React.ReactElement {
   // ── JointJS graph hook (imperative init, layout, SVG injection) ─────
   const { primaryHex } = useTheme();
@@ -204,10 +209,8 @@ export default function GraphDisplay({
         el.attr("body/stroke", s.stroke);
         el.attr("body/strokeWidth", s.strokeWidth);
         el.attr("body/filter", s.filter);
-      } catch {
-        // SVGMatrix non-invertible — the container is collapsed to zero width
-        // (e.g. chat carousel mode). The ResizeObserver effect below will
-        // re-apply the correct visuals once the container becomes visible.
+      } catch (e) {
+        console.warn("[GraphDisplay] applyNodeVisual: SVGMatrix non-invertible (container likely collapsed to zero width)", e);
       }
     },
     [],
@@ -301,46 +304,38 @@ export default function GraphDisplay({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLiveRequest]);
 
-  // Re-apply node status visuals when the graph container transitions from
-  // collapsed (zero-width, e.g. chat carousel mode) to visible.  While
-  // collapsed, el.attr() calls silently fail (caught above) so the SVG
-  // elements carry stale visuals.  This observer detects the expansion and
-  // replays the current status map so the graph looks correct immediately.
+  // Re-apply node status visuals when the graph transitions from hidden
+  // (e.g. chat carousel mode where the panel is collapsed to width:0) back
+  // to visible.  While hidden, el.attr() calls silently fail because the
+  // SVG transform matrix is non-invertible, so the elements carry stale
+  // visuals.  We use the explicit `isGraphVisible` prop from the parent
+  // (derived from carouselMode) instead of guessing visibility from pixel
+  // widths, which would be fragile if layout thresholds changed.
   //
-  // The 60ms delay is intentional: the ResizeObserver in use-joint-graph.ts
-  // re-fits the paper with a 10ms debounce.  We must wait for that to
-  // finish (resetting the SVG transform to a valid, invertible matrix)
-  // before calling el.attr(), otherwise the attr calls silently fail again.
+  // The delay allows the CSS width transition to progress and the
+  // ResizeObserver in use-joint-graph.ts to re-fit the paper (10ms
+  // debounce) before we call el.attr().
+  const prevGraphVisibleRef = useRef(isGraphVisible);
+
   useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
+    const wasHidden = !prevGraphVisibleRef.current;
+    prevGraphVisibleRef.current = isGraphVisible;
 
-    let wasCollapsed = container.clientWidth < 50 || container.clientHeight < 50;
-    let pendingTimer: ReturnType<typeof setTimeout> | null = null;
+    if (!wasHidden || !isGraphVisible) return;
 
-    const observer = new ResizeObserver(() => {
-      const isCollapsed = container.clientWidth < 50 || container.clientHeight < 50;
-      if (wasCollapsed && !isCollapsed) {
-        if (pendingTimer) clearTimeout(pendingTimer);
-        pendingTimer = setTimeout(() => {
-          const graph = graphRef.current;
-          if (graph) {
-            const currentMap = nodeStatusMapRef.current;
-            for (const el of graph.getElements()) {
-              applyNodeVisual(el, currentMap[el.id as string] || "IDLE");
-            }
-          }
-        }, 60);
+    const timer = setTimeout(() => {
+      const container = containerRef.current;
+      const graph = graphRef.current;
+      if (!container || !graph || container.clientWidth === 0) return;
+
+      const currentMap = nodeStatusMapRef.current;
+      for (const el of graph.getElements()) {
+        applyNodeVisual(el, currentMap[el.id as string] || "IDLE");
       }
-      wasCollapsed = isCollapsed;
-    });
+    }, 150);
 
-    observer.observe(container);
-    return () => {
-      observer.disconnect();
-      if (pendingTimer) clearTimeout(pendingTimer);
-    };
-  }, [graphRef, containerRef, applyNodeVisual]);
+    return () => clearTimeout(timer);
+  }, [isGraphVisible, graphRef, containerRef, applyNodeVisual]);
 
   // ── Open resource details modal ────────────────────────────────────
 
@@ -434,8 +429,8 @@ export default function GraphDisplay({
         }
       }
       paper.transformToFitContent(SCALE_CONTENT_TO_FIT_OPTS);
-    } catch {
-      // SVGMatrix error — ignore, user can retry
+    } catch (e) {
+      console.warn("[GraphDisplay] handleFitToView: SVGMatrix error, user can retry", e);
       return;
     }
     syncTransform();
