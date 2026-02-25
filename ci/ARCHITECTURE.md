@@ -635,7 +635,7 @@ stage("Build Images") {
                 buildDockerImage("ui")
             }
         },
-        "rag Backend": {
+        "RAG Backend": {
             if (params.build_rag_backend) {
                 buildDockerImage("backend")
             }
