@@ -1050,6 +1050,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
       try {
         setIsSaving(true);
 
+        // Update yamlFlow with name and description
         const updatedYamlFlow = {
           ...yamlFlow,
           name: name,
@@ -1058,6 +1059,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
         setYamlFlow(updatedYamlFlow);
 
+        // Convert to YAML string using js-yaml library
         const yamlString = yaml.dump(updatedYamlFlow, {
           indent: 2,
           lineWidth: -1,

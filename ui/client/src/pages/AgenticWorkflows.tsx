@@ -96,13 +96,8 @@ export default function AgenticWorkflows() {
     }
   };
 
-  const handleBuildGraph = () => {
-    setEditingBlueprintId(null);
-    setShowGraphBuilder(true);
-  };
-
-  const handleEditWorkflow = (flow: FlowObject) => {
-    setEditingBlueprintId(flow.id);
+  const handleOpenGraphBuilder = (flow?: FlowObject) => {
+    setEditingBlueprintId(flow?.id ?? null);
     setShowGraphBuilder(true);
   };
 
@@ -197,7 +192,7 @@ export default function AgenticWorkflows() {
                           <Button
                             className="bg-primary hover:bg-opacity-80 flex items-center gap-2"
                             size="sm"
-                            onClick={handleBuildGraph}
+                            onClick={() => handleOpenGraphBuilder()}
                           >
                             <Plus className="h-4 w-4" />
                             Build Workflow
@@ -219,7 +214,7 @@ export default function AgenticWorkflows() {
                   selectedFlow={selectedFlow}
                   setSelectedFlow={setSelectedFlow}
                   onValidationChange={handleValidationChange}
-                  onFlowEdit={handleEditWorkflow}
+                  onFlowEdit={handleOpenGraphBuilder}
                 />
               </motion.div>
             </div>

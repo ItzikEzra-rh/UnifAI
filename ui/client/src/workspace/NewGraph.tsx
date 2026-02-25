@@ -151,8 +151,8 @@ export default function NewGraph({ onBack, editBlueprintId }: NewGraphProps) {
         onSave={saveGraph}
         isLoading={isSaving}
         isEditMode={isEditMode}
-        defaultName={editBlueprintName}
-        defaultDescription={editBlueprintDescription}
+        currentName={editBlueprintName}
+        currentDescription={editBlueprintDescription}
       />
     </div>
   );

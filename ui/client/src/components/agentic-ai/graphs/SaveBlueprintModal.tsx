@@ -20,8 +20,8 @@ interface SaveBlueprintModalProps {
   onSave: (name: string, description: string) => void;
   isLoading?: boolean;
   isEditMode?: boolean;
-  defaultName?: string;
-  defaultDescription?: string;
+  currentName?: string;
+  currentDescription?: string;
 }
 
 const SaveBlueprintModal: React.FC<SaveBlueprintModalProps> = ({
@@ -30,18 +30,18 @@ const SaveBlueprintModal: React.FC<SaveBlueprintModalProps> = ({
   onSave,
   isLoading = false,
   isEditMode = false,
-  defaultName = "",
-  defaultDescription = "",
+  currentName = "",
+  currentDescription = "",
 }) => {
-  const [name, setName] = useState(defaultName);
-  const [description, setDescription] = useState(defaultDescription);
+  const [name, setName] = useState(currentName);
+  const [description, setDescription] = useState(currentDescription);
 
   useEffect(() => {
     if (isEditMode) {
-      setName(defaultName);
-      setDescription(defaultDescription);
+      setName(currentName);
+      setDescription(currentDescription);
     }
-  }, [isEditMode, defaultName, defaultDescription]);
+  }, [isEditMode, currentName, currentDescription]);
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -51,8 +51,8 @@ const SaveBlueprintModal: React.FC<SaveBlueprintModalProps> = ({
   };
 
   const handleClose = () => {
-    setName(isEditMode ? defaultName : "");
-    setDescription(isEditMode ? defaultDescription : "");
+    setName(isEditMode ? currentName : "");
+    setDescription(isEditMode ? currentDescription : "");
     onClose();
   };
 
@@ -74,7 +74,7 @@ const SaveBlueprintModal: React.FC<SaveBlueprintModalProps> = ({
             </Label>
             <Input
               id="blueprint-name"
-              placeholder={isEditMode && defaultName ? defaultName : "e.g., Slack, Docs & Jira Search"}
+              placeholder={isEditMode && currentName ? currentName : "e.g., Slack, Docs & Jira Search"}
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="input-dark-theme bg-input border-border text-foreground"
