@@ -258,6 +258,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 fitView
+                fitViewOptions={{ padding: 0.15, maxZoom: 1.2 }}
                 defaultViewport={{ x: 0, y: 0, zoom: 0.33 }}
                 connectionLineType={ConnectionLineType.SmoothStep}
                 defaultEdgeOptions={{

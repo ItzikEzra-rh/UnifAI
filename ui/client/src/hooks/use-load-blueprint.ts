@@ -57,33 +57,83 @@ function findBlockByRid(rid: string, blocks: BuildingBlock[]): BuildingBlock | n
 }
 
 const NODE_WIDTH = 320;
-const NODE_HEIGHT = 80;
+const NODE_BASE_HEIGHT = 64;
+const CONDITION_HEADER_HEIGHT = 20;
+const CONDITION_CARD_HEIGHT = 40;
+const REF_HEADER_HEIGHT = 24;
+const REF_ROW_HEIGHT = 28;
+const REF_COLS = 3;
+
+const RANK_SEP = 80;
+
+function countConfigRefs(config: any): number {
+  if (!config || typeof config !== "object") return 0;
+  let count = 0;
+  const traverse = (obj: unknown) => {
+    if (typeof obj === "string" && obj.startsWith("$ref:")) count++;
+    else if (Array.isArray(obj)) obj.forEach(traverse);
+    else if (obj && typeof obj === "object") Object.values(obj).forEach(traverse);
+  };
+  traverse(config);
+  return count;
+}
+
+function estimateNodeHeight(
+  conditionCount: number,
+  refCount: number,
+): number {
+  let h = NODE_BASE_HEIGHT;
+  if (conditionCount > 0) {
+    h += CONDITION_HEADER_HEIGHT + conditionCount * CONDITION_CARD_HEIGHT;
+  }
+  if (refCount > 0) {
+    h += REF_HEADER_HEIGHT + Math.ceil(refCount / REF_COLS) * REF_ROW_HEIGHT;
+  }
+  return h;
+}
+
+interface StepLayoutHints {
+  conditionCount: number;
+  refCount: number;
+  isFinalAnswer: boolean;
+}
 
 /**
  * Compute a hierarchical layout for plan steps using dagre,
  * matching the display produced by JointJS DirectedGraph.layout.
+ *
+ * Mirrors the display-graph behaviour:
+ *  - Variable node heights based on conditions & config references.
+ *  - final_answer node forced to the bottom rank.
  */
 function computeLayout(
   plan: YamlFlowPlanStep[],
-  _specNodes: YamlFlowNode[],
+  hints: Map<string, StepLayoutHints>,
 ): Map<string, { x: number; y: number }> {
+  const nonFinalSteps = plan.filter((s) => !hints.get(s.uid)?.isFinalAnswer);
+  const finalSteps = plan.filter((s) => hints.get(s.uid)?.isFinalAnswer);
+
   const g = new dagre.graphlib.Graph();
   g.setGraph({
     rankdir: "TB",
     nodesep: 60,
     edgesep: 40,
-    ranksep: 80,
+    ranksep: RANK_SEP,
     marginx: 32,
     marginy: 32,
   });
   g.setDefaultEdgeLabel(() => ({}));
 
-  for (const step of plan) {
-    g.setNode(step.uid, { width: NODE_WIDTH, height: NODE_HEIGHT });
+  for (const step of nonFinalSteps) {
+    const h = hints.get(step.uid);
+    const height = h
+      ? estimateNodeHeight(h.conditionCount, h.refCount)
+      : NODE_BASE_HEIGHT;
+    g.setNode(step.uid, { width: NODE_WIDTH, height });
   }
 
   const edgeSet = new Set<string>();
-  for (const step of plan) {
+  for (const step of nonFinalSteps) {
     if (step.after) {
       const afters = Array.isArray(step.after) ? step.after : [step.after];
       for (const a of afters) {
@@ -94,6 +144,7 @@ function computeLayout(
     if (step.branches) {
       for (const targetUid of Object.values(step.branches)) {
         const tid = targetUid as string;
+        if (hints.get(tid)?.isFinalAnswer) continue;
         const key = `${step.uid}->${tid}`;
         if (!edgeSet.has(key)) { g.setEdge(step.uid, tid); edgeSet.add(key); }
       }
@@ -103,12 +154,32 @@ function computeLayout(
   dagre.layout(g);
 
   const positions = new Map<string, { x: number; y: number }>();
-  for (const step of plan) {
+
+  let maxBottom = 0;
+  for (const step of nonFinalSteps) {
     const n = g.node(step.uid);
     if (n) {
-      positions.set(step.uid, { x: n.x - NODE_WIDTH / 2, y: n.y - NODE_HEIGHT / 2 });
+      const pos = { x: n.x - NODE_WIDTH / 2, y: n.y - n.height / 2 };
+      positions.set(step.uid, pos);
+      maxBottom = Math.max(maxBottom, pos.y + n.height);
     }
   }
+
+  for (const step of finalSteps) {
+    const h = hints.get(step.uid);
+    const height = h
+      ? estimateNodeHeight(h.conditionCount, h.refCount)
+      : NODE_BASE_HEIGHT;
+    const avgX =
+      nonFinalSteps.length > 0
+        ? [...positions.values()].reduce((s, p) => s + p.x, 0) / positions.size
+        : 200;
+    positions.set(step.uid, {
+      x: avgX,
+      y: maxBottom + RANK_SEP,
+    });
+  }
+
   return positions;
 }
 
@@ -143,7 +214,21 @@ export function reconstructBlueprintGraph(
     nodeDefByRef.set(nodeDef.rid, nodeDef);
   }
 
-  const positions = computeLayout(plan, specNodes);
+  const layoutHints = new Map<string, StepLayoutHints>();
+  for (const step of plan) {
+    const nodeDef = nodeDefByRef.get(step.node);
+    const block = findBlockByRid(step.node, allBlocksData);
+    const nodeType =
+      nodeDef?.type || block?.workspaceData?.type || "unknown";
+    const config = block?.workspaceData?.config || nodeDef?.config;
+    layoutHints.set(step.uid, {
+      conditionCount: step.exit_condition ? 1 : 0,
+      refCount: countConfigRefs(config),
+      isFinalAnswer: nodeType === "final_answer_node" || step.uid === "finalize",
+    });
+  }
+
+  const positions = computeLayout(plan, layoutHints);
 
   const reactFlowNodes: Node[] = [];
   let maxNodeId = plan.length + 1;
