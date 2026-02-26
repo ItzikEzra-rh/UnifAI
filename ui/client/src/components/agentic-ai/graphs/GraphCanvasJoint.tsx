@@ -4,15 +4,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Link2, X, ZoomIn, ZoomOut, Maximize2, GitBranch, Trash2 } from "lucide-react";
 import GraphHeader from "./GraphHeader";
-import InnerRefElement from "./InnerRefElement";
 import * as yaml from "js-yaml";
 import { useTheme } from "@/contexts/ThemeContext";
 import { deriveThemeColors } from "@/lib/colorUtils";
-import {
-  useJointGraphCanvas,
-  type CanvasOverlayHeader,
-} from "@/hooks/use-joint-graph-canvas";
-import { NODE_WIDTH, NODE_HEADER_HEIGHT, nodeIconForType } from "./GraphDisplayHelpers";
+import { useJointGraphCanvas } from "@/hooks/use-joint-graph-canvas";
+import { NODE_WIDTH, NODE_HEADER_HEIGHT } from "./GraphDisplayHelpers";
+import { AgentNodeOverlay } from "./AgentNodeOverlay";
+import type { OverlayBadge } from "./GraphDisplayHelpers";
 import type { CanvasNode, CanvasEdge, BuildingBlock } from "@/types/graph";
 
 // ---------------------------------------------------------------------------
@@ -36,6 +34,8 @@ interface GraphCanvasJointProps {
   onNodePositionChange?: (nodeId: string, pos: { x: number; y: number }) => void;
   pendingConnectionSource?: string | null;
   onCancelConnection?: () => void;
+  onAttachCondition?: (nodeId: string, condition: any) => void;
+  onDragEnd?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -82,7 +82,7 @@ function ZoomControls({
 }
 
 // ---------------------------------------------------------------------------
-// Connection banner (positioned via paper transform, no ReactFlow dependency)
+// Connection banner
 // ---------------------------------------------------------------------------
 
 function ConnectionBanner({
@@ -103,8 +103,9 @@ function ConnectionBanner({
   const sourceNode = nodes.find((n) => n.id === pendingConnectionSource);
   if (!sourceNode) return null;
 
-  const nodeWidth = NODE_WIDTH;
-  const centerX = (sourceNode.position.x + nodeWidth / 2) * paperTransform.sx + paperTransform.tx;
+  const centerX =
+    (sourceNode.position.x + NODE_WIDTH / 2) * paperTransform.sx +
+    paperTransform.tx;
   const topY = sourceNode.position.y * paperTransform.sy + paperTransform.ty;
   const sourceLabel = sourceNode.data?.label || pendingConnectionSource;
 
@@ -122,9 +123,15 @@ function ConnectionBanner({
     >
       <div
         className="flex items-center justify-center w-7 h-7 rounded-full border"
-        style={{ backgroundColor: `${edgeColor}30`, borderColor: `${accentColor}40` }}
+        style={{
+          backgroundColor: `${edgeColor}30`,
+          borderColor: `${accentColor}40`,
+        }}
       >
-        <Link2 className="w-3.5 h-3.5 animate-pulse" style={{ color: accentColor }} />
+        <Link2
+          className="w-3.5 h-3.5 animate-pulse"
+          style={{ color: accentColor }}
+        />
       </div>
       <span className="text-sm font-medium">
         Select a target to connect{" "}
@@ -144,140 +151,164 @@ function ConnectionBanner({
 }
 
 // ---------------------------------------------------------------------------
-// Per-node creation overlay
+// Creation-specific overlays (delete button, glow, conditions, drop zone)
+//
+// ONLY interactive controls get pointer-events-auto — everything else stays
+// pointer-events-none so JointJS receives clicks and drags directly.
 // ---------------------------------------------------------------------------
 
-function CreationNodeOverlay({
-  hdr,
+function CreationControls({
+  nodeId,
   node,
-  sx,
+  x,
+  y,
+  width,
+  nodeHeight,
   selected,
   isConnectionSource,
+  primaryHex,
   onDelete,
+  onAttachCondition,
+  isDraggingCondition,
 }: {
-  hdr: CanvasOverlayHeader;
+  nodeId: string;
   node: CanvasNode;
-  sx: number;
+  x: number;
+  y: number;
+  width: number;
+  nodeHeight: number;
   selected: boolean;
   isConnectionSource: boolean;
+  primaryHex: string;
   onDelete?: (nodeId: string) => void;
+  onAttachCondition?: (nodeId: string, condition: any) => void;
+  isDraggingCondition: boolean;
 }) {
-  const icon = nodeIconForType(hdr.nodeType);
-  const circleSize = Math.max(20 / sx, 26);
-  const iconFontSize = Math.max(12 / sx, 14);
+  const isProtected = nodeId === "user_input" || nodeId === "finalize";
   const conditions: BuildingBlock[] = node.data.referencedConditions || [];
-  const isProtected = node.id === "user_input" || node.id === "finalize";
+  const [isDragOver, setIsDragOver] = useState(false);
 
-  const extractReferences = (config: any): Record<string, string> => {
-    const refs: Record<string, string> = {};
-    if (!config || typeof config !== "object") return refs;
-    const traverse = (obj: any) => {
-      for (const [key, value] of Object.entries(obj)) {
-        if (typeof value === "string" && (value as string).startsWith("$ref:")) {
-          refs[key] = (value as string).substring(5);
-        } else if (Array.isArray(value)) {
-          value.forEach((item, idx) => {
-            if (typeof item === "string" && item.startsWith("$ref:")) {
-              refs[`${key}[${idx}]`] = item.substring(5);
-            }
-          });
-        } else if (typeof value === "object" && value !== null) {
-          traverse(value);
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setIsDragOver(false);
+
+      const blockData = e.dataTransfer.getData("application/reactflow");
+      if (blockData && onAttachCondition) {
+        const condition = JSON.parse(blockData);
+        if (condition.workspaceData?.category === "conditions") {
+          onAttachCondition(nodeId, condition);
         }
       }
-    };
-    traverse(config);
-    return refs;
-  };
-
-  const references = node.data.workspaceData?.config
-    ? extractReferences(node.data.workspaceData.config)
-    : {};
-  const hasRefs = Object.keys(references).length > 0;
+    },
+    [nodeId, onAttachCondition],
+  );
 
   return (
     <>
-      {/* Header row */}
-      <div
-        className="absolute pointer-events-auto"
-        style={{
-          left: hdr.x,
-          top: hdr.y,
-          width: hdr.width,
-          height: NODE_HEADER_HEIGHT,
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: 6,
-          borderBottom:
-            conditions.length > 0 || hasRefs
-              ? "1px solid rgba(255,255,255,0.12)"
-              : "none",
-          cursor: "pointer",
-        }}
-      >
-        <span
+      {/* Pulsing glow ring for connection source node */}
+      {isConnectionSource && (
+        <div
+          className="absolute"
           style={{
-            width: circleSize,
-            height: circleSize,
-            borderRadius: "50%",
-            background: "rgba(255,255,255,0.25)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: iconFontSize,
-            lineHeight: 1,
-            flexShrink: 0,
-          }}
-        >
-          {icon}
-        </span>
-        <span
-          style={{
-            color: "rgba(255,255,255,0.95)",
-            fontSize: Math.max(9 / sx, 12),
-            fontWeight: 600,
-            fontFamily: "system-ui, -apple-system, sans-serif",
-            whiteSpace: "nowrap",
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            maxWidth: hdr.width - 80,
-          }}
-        >
-          {hdr.label}
-        </span>
+            left: x - 4,
+            top: y - 4,
+            width: width + 8,
+            height: nodeHeight + 8,
+            borderRadius: 14,
+            pointerEvents: "none",
+            animation: "node-connection-glow 2s ease-in-out infinite",
+            "--node-glow-color": `${primaryHex}80`,
+          } as React.CSSProperties}
+        />
+      )}
 
-        {isConnectionSource && (
+      {/* Source badge */}
+      {isConnectionSource && (
+        <div
+          className="absolute"
+          style={{
+            left: x + width - 60,
+            top: y + 4,
+            pointerEvents: "none",
+          }}
+        >
           <span
             className="text-xs font-medium px-2 py-0.5 rounded-full"
-            style={{ background: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.9)" }}
+            style={{
+              background: "rgba(255,255,255,0.15)",
+              color: "rgba(255,255,255,0.9)",
+            }}
           >
             Source
           </span>
-        )}
+        </div>
+      )}
 
-        {(selected || isConnectionSource) && !isProtected && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete?.(hdr.nodeId);
-            }}
-            className="w-5 h-5 text-gray-400 hover:text-red-400 transition-colors flex-shrink-0"
-            title="Delete node"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
-      </div>
+      {/* Delete button */}
+      {(selected || isConnectionSource) && !isProtected && (
+        <button
+          className="absolute pointer-events-auto w-5 h-5 text-gray-400 hover:text-red-400 transition-colors flex items-center justify-center"
+          style={{
+            left: x + width - 24,
+            top: y + (NODE_HEADER_HEIGHT - 20) / 2,
+          }}
+          title="Delete node"
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete?.(nodeId);
+          }}
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
 
-      {/* Conditions */}
-      {conditions.length > 0 && (
+      {/* Condition drop zone – activates only during condition drags */}
+      {isDraggingCondition && (
         <div
           className="absolute pointer-events-auto"
           style={{
-            left: hdr.x + 8,
-            top: hdr.y + NODE_HEADER_HEIGHT + 4,
-            width: hdr.width - 16,
+            left: x,
+            top: y,
+            width,
+            height: nodeHeight,
+            borderRadius: 12,
+            border: isDragOver
+              ? "2px dashed #f97316"
+              : "2px dashed transparent",
+            background: isDragOver ? "rgba(249, 115, 22, 0.1)" : "transparent",
+            transition: "border-color 150ms, background 150ms",
+            zIndex: 5,
+          }}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        />
+      )}
+
+      {/* Conditions section */}
+      {conditions.length > 0 && (
+        <div
+          className="absolute"
+          style={{
+            left: x + 8,
+            top: y + NODE_HEADER_HEIGHT + 4,
+            width: width - 16,
+            pointerEvents: "none",
           }}
         >
           <div className="flex items-center gap-2 text-xs font-medium text-orange-400 mb-1">
@@ -298,11 +329,11 @@ function CreationNodeOverlay({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-5 w-5 p-0 text-red-400 hover:text-red-300"
+                className="h-5 w-5 p-0 text-red-400 hover:text-red-300 pointer-events-auto"
                 onClick={(e) => {
                   e.stopPropagation();
                   node.data.onRemoveCondition?.(
-                    hdr.nodeId,
+                    nodeId,
                     cond.workspaceData?.rid || cond.id,
                   );
                 }}
@@ -311,34 +342,6 @@ function CreationNodeOverlay({
               </Button>
             </div>
           ))}
-        </div>
-      )}
-
-      {/* Inner reference elements */}
-      {hasRefs && (
-        <div
-          className="absolute pointer-events-auto"
-          style={{
-            left: hdr.x + 8,
-            top:
-              hdr.y +
-              NODE_HEADER_HEIGHT +
-              (conditions.length > 0 ? 24 + conditions.length * 32 : 0) +
-              4,
-            width: hdr.width - 16,
-          }}
-        >
-          <div className="text-xs text-gray-400 mb-1">Resources:</div>
-          <div className="grid grid-cols-3 gap-1">
-            {Object.entries(references).map(([key, refId]) => (
-              <InnerRefElement
-                key={`${key}-${refId}`}
-                refId={refId}
-                refData={{ key, value: refId }}
-                allBlocks={node.data.allBlocks || []}
-              />
-            ))}
-          </div>
         </div>
       )}
     </>
@@ -366,8 +369,11 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
   onNodePositionChange,
   pendingConnectionSource = null,
   onCancelConnection,
+  onAttachCondition,
+  onDragEnd,
 }) => {
   const [showYamlDebug, setShowYamlDebug] = useState(false);
+  const [isDraggingCondition, setIsDraggingCondition] = useState(false);
   const { primaryHex } = useTheme();
 
   const { primary: edgeColor, primaryLight: accentColor } = useMemo(
@@ -380,11 +386,12 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
     paperRef,
     graphRef,
     overlayHeaders,
+    overlayBadges,
     paperTransform,
     handleZoomIn,
     handleZoomOut,
     handleFitToView,
-    runAutoLayout,
+    clientToLocalPoint,
   } = useJointGraphCanvas({
     nodes,
     edges,
@@ -394,16 +401,15 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
     onNodePositionChange,
   });
 
-  // Run auto-layout once after the initial nodes are placed
-  const didAutoLayoutRef = React.useRef(false);
+  // Fit to view once after initial nodes are placed
+  const didInitialFitRef = React.useRef(false);
   useEffect(() => {
-    if (nodes.length >= 2 && !didAutoLayoutRef.current) {
-      didAutoLayoutRef.current = true;
-      // Slight delay to let JointJS render the elements
-      const t = setTimeout(() => runAutoLayout(), 80);
+    if (nodes.length >= 2 && !didInitialFitRef.current) {
+      didInitialFitRef.current = true;
+      const t = setTimeout(() => handleFitToView(), 80);
       return () => clearTimeout(t);
     }
-  }, [nodes.length, runAutoLayout]);
+  }, [nodes.length, handleFitToView]);
 
   // ── Edge delete tools via JointJS link tools ──
   useEffect(() => {
@@ -435,12 +441,119 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
     };
   }, [paperRef, onDeleteEdge]);
 
-  // Build a quick lookup for nodes by id
+  // ── Wrapped drop handler – converts coordinates to paper-local space
+  //    and handles condition drops via JointJS hit-testing ──
+  const handleCanvasDrop = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+
+      const blockData = event.dataTransfer.getData("application/reactflow");
+      if (!blockData) return;
+
+      const block = JSON.parse(blockData);
+      const isCondition = block.workspaceData?.category === "conditions";
+
+      if (isCondition) {
+        // Use JointJS geometry to find which node the condition was dropped on
+        const graph = graphRef.current;
+        const paper = paperRef.current;
+        if (graph && paper) {
+          const localPoint = paper.clientToLocalPoint({
+            x: event.clientX,
+            y: event.clientY,
+          });
+
+          const targetEl = graph.getElements().find((el) => {
+            const bbox = el.getBBox();
+            return (
+              localPoint.x >= bbox.x &&
+              localPoint.x <= bbox.x + bbox.width &&
+              localPoint.y >= bbox.y &&
+              localPoint.y <= bbox.y + bbox.height
+            );
+          });
+
+          if (targetEl && onAttachCondition) {
+            onAttachCondition(targetEl.id as string, block);
+            setIsDraggingCondition(false);
+            onDragEnd?.();
+            return;
+          }
+        }
+
+        // Fell outside any node – delegate to the original handler for the toast
+        setIsDraggingCondition(false);
+        onDrop(event);
+        return;
+      }
+
+      // Regular node drop – convert to paper-local coordinates.
+      // use-graph-logic.ts computes: position.x = clientX - canvasBounds.left - 75
+      // We override currentTarget.getBoundingClientRect so that formula produces
+      // paper-local coordinates instead of screen-relative ones.
+      const localPoint = clientToLocalPoint(event.clientX, event.clientY);
+      const fakeRect = {
+        left: event.clientX - localPoint.x,
+        top: event.clientY - localPoint.y,
+        right: 0,
+        bottom: 0,
+        width: 0,
+        height: 0,
+        x: event.clientX - localPoint.x,
+        y: event.clientY - localPoint.y,
+        toJSON: () => ({}),
+      };
+      const wrappedEvent = new Proxy(event, {
+        get(target, prop) {
+          if (prop === "currentTarget") {
+            return { getBoundingClientRect: () => fakeRect };
+          }
+          if (prop === "preventDefault") return () => target.preventDefault();
+          if (prop === "stopPropagation") return () => target.stopPropagation();
+          const value = (target as any)[prop];
+          if (typeof value === "function") return value.bind(target);
+          return value;
+        },
+      });
+
+      onDrop(wrappedEvent as unknown as React.DragEvent);
+    },
+    [onDrop, onAttachCondition, onDragEnd, graphRef, paperRef, clientToLocalPoint],
+  );
+
+  // Track condition drag state from dragover events
+  const handleCanvasDragOver = useCallback(
+    (event: React.DragEvent) => {
+      event.preventDefault();
+      // Peek at the data to detect condition drags.
+      // During dragover the data isn't readable (security), so we infer from
+      // the drag effect set by onDragStart in use-graph-logic:
+      // conditions get effectAllowed="copy", nodes get "move".
+      const isCond = event.dataTransfer.effectAllowed === "copy";
+      if (isCond !== isDraggingCondition) {
+        setIsDraggingCondition(isCond);
+      }
+      onDragOver(event);
+    },
+    [onDragOver, isDraggingCondition],
+  );
+
+  // Build quick lookups
   const nodeById = useMemo(() => {
     const map = new Map<string, CanvasNode>();
     for (const n of nodes) map.set(n.id, n);
     return map;
   }, [nodes]);
+
+  const badgesByNode = useMemo(() => {
+    const map = new Map<string, OverlayBadge[]>();
+    for (const b of overlayBadges) {
+      const list = map.get(b.nodeId);
+      if (list) list.push(b);
+      else map.set(b.nodeId, [b]);
+    }
+    return map;
+  }, [overlayBadges]);
 
   return (
     <div className="flex-1 relative">
@@ -456,7 +569,9 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
           {showYamlDebug && yamlFlow && (
             <div className="absolute top-4 right-4 z-50 bg-gray-900 border border-gray-700 rounded-lg p-4 max-w-md max-h-96 overflow-auto">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="text-sm font-medium text-white">YAML Flow State</h3>
+                <h3 className="text-sm font-medium text-white">
+                  YAML Flow State
+                </h3>
                 <button
                   onClick={() => setShowYamlDebug(false)}
                   className="text-gray-400 hover:text-white"
@@ -481,8 +596,8 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
           <div
             className="h-full relative"
             style={{ height: "calc(100vh - 180px)" }}
-            onDrop={onDrop}
-            onDragOver={onDragOver}
+            onDrop={handleCanvasDrop}
+            onDragOver={handleCanvasDragOver}
           >
             {/* Connection banner */}
             {pendingConnectionSource && (
@@ -510,8 +625,11 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
               style={{ height: "100%" }}
             />
 
-            {/* HTML overlay layer – mirrors the paper transform */}
-            {overlayHeaders.length > 0 && (
+            {/* HTML overlay layer – mirrors the paper transform.
+                pointer-events-none on the wrapper lets JointJS receive
+                all clicks and drags. Only specific interactive controls
+                inside CreationControls get pointer-events-auto. */}
+            {(overlayHeaders.length > 0 || overlayBadges.length > 0) && (
               <div
                 className="absolute inset-0 pointer-events-none"
                 style={{ overflow: "hidden" }}
@@ -526,15 +644,32 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
                     const node = nodeById.get(hdr.nodeId);
                     if (!node) return null;
                     return (
-                      <CreationNodeOverlay
-                        key={hdr.nodeId}
-                        hdr={hdr}
-                        node={node}
-                        sx={paperTransform.sx}
-                        selected={!!node.selected}
-                        isConnectionSource={!!node.data.isConnectionSource}
-                        onDelete={onDeleteNode}
-                      />
+                      <React.Fragment key={hdr.nodeId}>
+                        <AgentNodeOverlay
+                          hdr={hdr}
+                          badges={badgesByNode.get(hdr.nodeId) || []}
+                          nodeStatus={undefined}
+                          sx={paperTransform.sx}
+                          isValidating={false}
+                          interactive={false}
+                          onValidationClick={() => {}}
+                          onBadgeClick={() => {}}
+                        />
+                        <CreationControls
+                          nodeId={hdr.nodeId}
+                          node={node}
+                          x={hdr.x}
+                          y={hdr.y}
+                          width={hdr.width}
+                          nodeHeight={hdr.nodeHeight}
+                          selected={!!node.selected}
+                          isConnectionSource={!!node.data.isConnectionSource}
+                          primaryHex={primaryHex}
+                          onDelete={onDeleteNode}
+                          onAttachCondition={onAttachCondition}
+                          isDraggingCondition={isDraggingCondition}
+                        />
+                      </React.Fragment>
                     );
                   })}
                 </div>

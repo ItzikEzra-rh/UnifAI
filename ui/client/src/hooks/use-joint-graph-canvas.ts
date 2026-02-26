@@ -11,33 +11,30 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { dia, shapes } from "@joint/core";
 import { DirectedGraph } from "@joint/layout-directed-graph";
-import type { CanvasNode, CanvasEdge } from "@/types/graph";
+import type { CanvasNode, CanvasEdge, BuildingBlock } from "@/types/graph";
 import { safeFlushSync } from "@/lib/reactUtils";
 import {
   NODE_WIDTH,
   NODE_HEADER_HEIGHT,
+  ELEMENT_BADGE_HEIGHT,
+  ELEMENT_GAP,
+  NODE_BODY_PADDING,
   LAYOUT_OPTS,
-  FIT_PADDING,
   SCALE_CONTENT_TO_FIT_OPTS,
   STATUS_STYLES,
   nodeFillForType,
   injectSvgDefs,
   injectStatusGlowFilters,
 } from "@/components/agentic-ai/graphs/GraphDisplayHelpers";
+import type {
+  OverlayHeader,
+  OverlayBadge,
+} from "@/components/agentic-ai/graphs/GraphDisplayHelpers";
+import type { ResolvedElement } from "@/utils/graphFlowLayout";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-export interface CanvasOverlayHeader {
-  nodeId: string;
-  label: string;
-  nodeType: string;
-  x: number;
-  y: number;
-  width: number;
-  nodeHeight: number;
-}
 
 export interface UseJointGraphCanvasOptions {
   nodes: CanvasNode[];
@@ -52,7 +49,8 @@ export interface UseJointGraphCanvasReturn {
   containerRef: React.RefObject<HTMLDivElement>;
   paperRef: React.MutableRefObject<dia.Paper | null>;
   graphRef: React.MutableRefObject<dia.Graph | null>;
-  overlayHeaders: CanvasOverlayHeader[];
+  overlayHeaders: OverlayHeader[];
+  overlayBadges: OverlayBadge[];
   paperTransform: { sx: number; sy: number; tx: number; ty: number };
   handleZoomIn: () => void;
   handleZoomOut: () => void;
@@ -66,7 +64,93 @@ function normalizePrimaryHex(raw: string | undefined | null): string {
   return raw.startsWith("#") ? raw : `#${raw}`;
 }
 
-const CANVAS_NODE_HEIGHT = NODE_HEADER_HEIGHT;
+// ---------------------------------------------------------------------------
+// Condition layout constants
+// ---------------------------------------------------------------------------
+const CONDITION_LABEL_HEIGHT = 24;
+const CONDITION_ITEM_HEIGHT = 28;
+
+function computeCanvasNodeHeight(elementCount: number, conditionCount: number): number {
+  let h = NODE_HEADER_HEIGHT;
+  if (conditionCount > 0) {
+    h += CONDITION_LABEL_HEIGHT + conditionCount * CONDITION_ITEM_HEIGHT;
+  }
+  if (elementCount > 0) {
+    h += NODE_BODY_PADDING * 2 +
+      elementCount * ELEMENT_BADGE_HEIGHT +
+      Math.max(0, elementCount - 1) * ELEMENT_GAP;
+  }
+  return h;
+}
+
+// ---------------------------------------------------------------------------
+// Resource extraction – resolves $ref: IDs to human-readable names
+// via the allBlocks lookup that each node carries.
+// ---------------------------------------------------------------------------
+
+function extractResolvedElements(
+  config: any,
+  allBlocks: BuildingBlock[],
+): ResolvedElement[] {
+  if (!config || typeof config !== "object") return [];
+  const elements: ResolvedElement[] = [];
+  const seen = new Set<string>();
+
+  const TYPE_MAP: Record<string, ResolvedElement["type"]> = {
+    llm: "llm", llms: "llm",
+    tool: "tool", tools: "tool",
+    retriever: "retriever", retrievers: "retriever",
+    provider: "provider", providers: "provider",
+  };
+
+  const traverse = (obj: any, key?: string) => {
+    if (typeof obj === "string" && obj.startsWith("$ref:")) {
+      const refId = obj.substring(5);
+      if (!seen.has(refId)) {
+        seen.add(refId);
+        const block = allBlocks.find(
+          (b) => b.id === refId || b.workspaceData?.rid === refId,
+        );
+        const matchedType = key ? TYPE_MAP[key.toLowerCase()] : undefined;
+        const guessedType = block?.workspaceData?.category
+          ? TYPE_MAP[block.workspaceData.category]
+          : undefined;
+        elements.push({
+          id: refId,
+          name: block?.label ?? block?.workspaceData?.name ?? refId,
+          type: matchedType || guessedType || "tool",
+        });
+      }
+      return;
+    }
+    if (Array.isArray(obj)) {
+      obj.forEach((item) => traverse(item, key));
+      return;
+    }
+    if (typeof obj === "object" && obj !== null) {
+      for (const [k, v] of Object.entries(obj)) {
+        traverse(v, k);
+      }
+    }
+  };
+
+  traverse(config);
+  return elements;
+}
+
+// ---------------------------------------------------------------------------
+// Bidirectional edge detection
+// ---------------------------------------------------------------------------
+
+function detectBidiPairs(edges: CanvasEdge[]): Set<string> {
+  const bidiIds = new Set<string>();
+  for (const e of edges) {
+    if (edges.some((o) => o.id !== e.id && o.source === e.target && o.target === e.source)) {
+      bidiIds.add(e.id);
+    }
+  }
+  return bidiIds;
+}
 
 // ---------------------------------------------------------------------------
 // Hook
@@ -84,7 +168,8 @@ export function useJointGraphCanvas({
   const graphRef = useRef<dia.Graph | null>(null);
   const paperRef = useRef<dia.Paper | null>(null);
 
-  const [overlayHeaders, setOverlayHeaders] = useState<CanvasOverlayHeader[]>([]);
+  const [overlayHeaders, setOverlayHeaders] = useState<OverlayHeader[]>([]);
+  const [overlayBadges, setOverlayBadges] = useState<OverlayBadge[]>([]);
   const [paperTransform, setPaperTransform] = useState({ sx: 1, sy: 1, tx: 0, ty: 0 });
 
   const primaryHexRef = useRef(primaryHex);
@@ -102,7 +187,6 @@ export function useJointGraphCanvas({
   const onNodePositionChangeRef = useRef(onNodePositionChange);
   onNodePositionChangeRef.current = onNodePositionChange;
 
-  // Suppress position-sync-back while we're programmatically moving elements
   const suppressPositionSyncRef = useRef(false);
 
   // ── Rebuild overlay positions from JointJS element positions ──
@@ -111,26 +195,60 @@ export function useJointGraphCanvas({
     const currentNodes = nodesRef.current;
     if (!graph || currentNodes.length === 0) {
       setOverlayHeaders([]);
+      setOverlayBadges([]);
       return;
     }
 
-    const headers: CanvasOverlayHeader[] = [];
+    const headers: OverlayHeader[] = [];
+    const badges: OverlayBadge[] = [];
+
     for (const n of currentNodes) {
       const el = graph.getCell(n.id) as dia.Element | undefined;
       if (!el) continue;
       const pos = el.position();
       const size = el.size();
+      const nodeType = n.data.workspaceData?.type || "agent_node";
+      const allBlocks: BuildingBlock[] = n.data.allBlocks || [];
+      const resolvedElements = extractResolvedElements(
+        n.data.workspaceData?.config,
+        allBlocks,
+      );
+      const conditionCount = n.data.referencedConditions?.length || 0;
+      const hasElements = resolvedElements.length > 0 || conditionCount > 0;
+
       headers.push({
         nodeId: n.id,
         label: n.data.label,
-        nodeType: n.data.workspaceData?.type || "agent_node",
+        nodeType,
+        hasElements,
         x: pos.x,
         y: pos.y,
         width: NODE_WIDTH,
         nodeHeight: size.height,
+        nodeRid: n.data.workspaceData?.rid,
+      });
+
+      if (resolvedElements.length === 0) continue;
+      const conditionsSectionHeight =
+        conditionCount > 0
+          ? CONDITION_LABEL_HEIGHT + conditionCount * CONDITION_ITEM_HEIGHT
+          : 0;
+      const bodyStartY =
+        pos.y + NODE_HEADER_HEIGHT + conditionsSectionHeight + NODE_BODY_PADDING;
+      const badgeInnerWidth = NODE_WIDTH - NODE_BODY_PADDING * 2;
+      resolvedElements.forEach((re, i) => {
+        badges.push({
+          nodeId: n.id,
+          element: re,
+          x: pos.x + NODE_BODY_PADDING,
+          y: bodyStartY + i * (ELEMENT_BADGE_HEIGHT + ELEMENT_GAP),
+          width: badgeInnerWidth,
+        });
       });
     }
+
     setOverlayHeaders(headers);
+    setOverlayBadges(badges);
   }, []);
 
   // ── Initialise paper once ──
@@ -206,9 +324,17 @@ export function useJointGraphCanvas({
     const MIN_ZOOM = 0.1;
     const MAX_ZOOM = 4;
 
-    const onMouseWheel = (_evt: dia.Event, ox: number, oy: number, delta: number) => {
+    const onMouseWheel = (
+      _evt: dia.Event,
+      ox: number,
+      oy: number,
+      delta: number,
+    ) => {
       const oldScale = paper.scale().sx;
-      const newScale = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, delta > 0 ? oldScale * ZOOM_FACTOR : oldScale / ZOOM_FACTOR));
+      const newScale = Math.min(
+        MAX_ZOOM,
+        Math.max(MIN_ZOOM, delta > 0 ? oldScale * ZOOM_FACTOR : oldScale / ZOOM_FACTOR),
+      );
       if (newScale === oldScale) return;
       const t = paper.translate();
       const scaleDiff = newScale / oldScale;
@@ -220,9 +346,12 @@ export function useJointGraphCanvas({
     };
 
     paper.on("blank:mousewheel", onMouseWheel);
-    paper.on("cell:mousewheel", (_cv: unknown, evt: dia.Event, ox: number, oy: number, delta: number) => {
-      onMouseWheel(evt, ox, oy, delta);
-    });
+    paper.on(
+      "cell:mousewheel",
+      (_cv: unknown, evt: dia.Event, ox: number, oy: number, delta: number) => {
+        onMouseWheel(evt, ox, oy, delta);
+      },
+    );
 
     // ── Click events ──
     paper.on("blank:pointerclick", () => {
@@ -233,7 +362,7 @@ export function useJointGraphCanvas({
       onNodeClickRef.current?.(cellView.model.id as string);
     });
 
-    // ── Drag end: sync position back to React state ──
+    // ── Drag: sync position back to React state ──
     graph.on("change:position", (_el: dia.Element, _newPos: unknown, opt: any) => {
       if (suppressPositionSyncRef.current) return;
       if (opt?.skipSync) return;
@@ -272,10 +401,11 @@ export function useJointGraphCanvas({
 
     suppressPositionSyncRef.current = true;
 
-    const existingElementIds = new Set(graph.getElements().map((el) => el.id as string));
+    const existingElementIds = new Set(
+      graph.getElements().map((el) => el.id as string),
+    );
     const desiredNodeIds = new Set(nodes.map((n) => n.id));
 
-    // Remove elements that no longer exist
     for (const id of existingElementIds) {
       if (!desiredNodeIds.has(id)) {
         const cell = graph.getCell(id);
@@ -283,24 +413,40 @@ export function useJointGraphCanvas({
       }
     }
 
-    // Add or update elements
     for (const n of nodes) {
       const nodeType = n.data.workspaceData?.type || "agent_node";
+      const allBlocks: BuildingBlock[] = n.data.allBlocks || [];
+      const resolvedElements = extractResolvedElements(
+        n.data.workspaceData?.config,
+        allBlocks,
+      );
+      const conditionCount = n.data.referencedConditions?.length || 0;
+      const nodeHeight = computeCanvasNodeHeight(
+        resolvedElements.length,
+        conditionCount,
+      );
       const existing = graph.getCell(n.id) as dia.Element | undefined;
+
       if (existing) {
         const pos = existing.position();
-        if (Math.abs(pos.x - n.position.x) > 1 || Math.abs(pos.y - n.position.y) > 1) {
+        if (
+          Math.abs(pos.x - n.position.x) > 1 ||
+          Math.abs(pos.y - n.position.y) > 1
+        ) {
           existing.position(n.position.x, n.position.y, { skipSync: true });
         }
         existing.attr("body/fill", nodeFillForType(nodeType));
+        existing.resize(NODE_WIDTH, nodeHeight);
 
-        // Update stroke for connection highlighting
         if (n.data.isConnectionSource) {
           existing.attr("body/stroke", normalizePrimaryHex(primaryHexRef.current));
           existing.attr("body/strokeWidth", 3);
           existing.attr("body/filter", "url(#progressGlow)");
         } else if (n.data.isConnectionTarget) {
-          existing.attr("body/stroke", `${normalizePrimaryHex(primaryHexRef.current)}66`);
+          existing.attr(
+            "body/stroke",
+            `${normalizePrimaryHex(primaryHexRef.current)}66`,
+          );
           existing.attr("body/strokeWidth", 2);
           existing.attr("body/filter", STATUS_STYLES.IDLE.filter);
         } else {
@@ -316,12 +462,16 @@ export function useJointGraphCanvas({
           : isTarget
             ? `${normalizePrimaryHex(primaryHexRef.current)}66`
             : STATUS_STYLES.IDLE.stroke;
-        const strokeWidth = isSource ? 3 : isTarget ? 2 : STATUS_STYLES.IDLE.strokeWidth;
+        const strokeWidth = isSource
+          ? 3
+          : isTarget
+            ? 2
+            : STATUS_STYLES.IDLE.strokeWidth;
 
         new shapes.standard.Rectangle({
           id: n.id,
           position: { x: n.position.x, y: n.position.y },
-          size: { width: NODE_WIDTH, height: CANVAS_NODE_HEIGHT },
+          size: { width: NODE_WIDTH, height: nodeHeight },
           attrs: {
             body: {
               fill: nodeFillForType(nodeType),
@@ -329,7 +479,9 @@ export function useJointGraphCanvas({
               strokeWidth,
               rx: 12,
               ry: 12,
-              filter: isSource ? "url(#progressGlow)" : STATUS_STYLES.IDLE.filter,
+              filter: isSource
+                ? "url(#progressGlow)"
+                : STATUS_STYLES.IDLE.filter,
             },
             label: { text: "" },
           },
@@ -341,39 +493,67 @@ export function useJointGraphCanvas({
     rebuildOverlays();
   }, [nodes, rebuildOverlays]);
 
-  // ── Sync edges ──
+  // ── Sync edges (with bidirectional pair rendering) ──
+  // Bidirectional pairs (A→B and B→A) are rendered as two visually
+  // separate parallel edges by offsetting their anchors horizontally.
+  // The primary edge keeps the theme color; the secondary edge is grey.
   useEffect(() => {
     const graph = graphRef.current;
     if (!graph) return;
 
-    const existingLinkIds = new Set(graph.getLinks().map((l) => l.id as string));
-    const desiredEdgeIds = new Set(edges.map((e) => e.id));
+    // Rebuild all links so bidi pairs stay in sync
+    graph.getLinks().forEach((l) => l.remove());
 
-    for (const id of existingLinkIds) {
-      if (!desiredEdgeIds.has(id)) {
-        const cell = graph.getCell(id);
-        if (cell) cell.remove();
-      }
-    }
-
+    const bidiIds = detectBidiPairs(edges);
     const linkColor = normalizePrimaryHex(primaryHexRef.current);
-    for (const e of edges) {
-      if (existingLinkIds.has(e.id)) continue;
+    const BIDI_ANCHOR_OFFSET = 20;
 
+    for (const e of edges) {
       const isCond = e.data?.isConditional;
-      const c = isCond ? "#94a3b8" : linkColor;
+      const isBidi = bidiIds.has(e.id);
+      const isSecondary = isBidi && e.source > e.target;
+
+      const edgeColor = isCond
+        ? "#94a3b8"
+        : isSecondary
+          ? "#94a3b8"
+          : linkColor;
+      const lineStroke = isCond || isSecondary
+        ? "rgba(148, 163, 184, 0.8)"
+        : linkColor;
+
+      // For bidi pairs, shift anchors so the two links run side-by-side.
+      // direction = +1 for the primary edge, -1 for the secondary.
+      const anchorDx = isBidi
+        ? BIDI_ANCHOR_OFFSET * (e.source < e.target ? 1 : -1)
+        : 0;
+
+      const sourceSpec: any = { id: e.source };
+      const targetSpec: any = { id: e.target };
+      if (isBidi) {
+        sourceSpec.anchor = { name: "center", args: { dx: anchorDx } };
+        targetSpec.anchor = { name: "center", args: { dx: anchorDx } };
+      }
 
       new shapes.standard.Link({
         id: e.id,
-        source: { id: e.source },
-        target: { id: e.target },
+        source: sourceSpec,
+        target: targetSpec,
         attrs: {
           line: {
-            stroke: isCond ? "rgba(148, 163, 184, 0.8)" : c,
-            strokeWidth: isCond ? 1.5 : 2,
-            opacity: isCond ? 1 : 0.9,
-            sourceMarker: { type: "circle" as const, r: isCond ? 3 : 4, fill: c },
-            targetMarker: { type: "classic" as const, size: isCond ? 10 : 12, fill: c },
+            stroke: lineStroke,
+            strokeWidth: isCond || isSecondary ? 1.5 : 2,
+            opacity: isCond || isSecondary ? 1 : 0.9,
+            sourceMarker: {
+              type: "circle" as const,
+              r: isCond ? 3 : 4,
+              fill: edgeColor,
+            },
+            targetMarker: {
+              type: "classic" as const,
+              size: isCond ? 10 : 12,
+              fill: edgeColor,
+            },
           },
         },
       }).addTo(graph);
@@ -389,9 +569,16 @@ export function useJointGraphCanvas({
     const primaryNow = normalizePrimaryHex(primaryHex);
     injectSvgDefs(paper.el, primaryNow);
 
+    const bidiIds = detectBidiPairs(edgesRef.current);
     for (const link of graph.getLinks()) {
       const edgeData = edgesRef.current.find((e) => e.id === link.id);
       if (edgeData?.data?.isConditional) continue;
+      // Secondary bidi edges stay grey
+      const isBidi = bidiIds.has(link.id as string);
+      const isSecondary =
+        isBidi && edgeData && edgeData.source > edgeData.target;
+      if (isSecondary) continue;
+
       link.attr("line/stroke", primaryNow);
       link.attr("line/sourceMarker/fill", primaryNow);
       link.attr("line/targetMarker/fill", primaryNow);
@@ -454,9 +641,10 @@ export function useJointGraphCanvas({
     suppressPositionSyncRef.current = true;
     DirectedGraph.layout(graph, LAYOUT_OPTS);
 
-    // Push final_answer_node to the bottom
     const currentNodes = nodesRef.current;
-    const typeById = new Map(currentNodes.map((n) => [n.id, n.data.workspaceData?.type]));
+    const typeById = new Map(
+      currentNodes.map((n) => [n.id, n.data.workspaceData?.type]),
+    );
     let maxBottom = 0;
     graph.getElements().forEach((el) => {
       if (typeById.get(el.id as string) !== "final_answer_node") {
@@ -471,29 +659,34 @@ export function useJointGraphCanvas({
       }
     });
 
-    // Sync positions back to React state
     for (const el of graph.getElements()) {
       const pos = el.position();
-      onNodePositionChangeRef.current?.(el.id as string, { x: pos.x, y: pos.y });
+      onNodePositionChangeRef.current?.(el.id as string, {
+        x: pos.x,
+        y: pos.y,
+      });
     }
 
     suppressPositionSyncRef.current = false;
     rebuildOverlays();
   }, [rebuildOverlays]);
 
-  // ── Paper coordinate helper for drop events ──
-  const clientToLocalPoint = useCallback((clientX: number, clientY: number) => {
-    const paper = paperRef.current;
-    if (!paper) return { x: clientX, y: clientY };
-    const p = paper.clientToLocalPoint({ x: clientX, y: clientY });
-    return { x: p.x, y: p.y };
-  }, []);
+  const clientToLocalPoint = useCallback(
+    (clientX: number, clientY: number) => {
+      const paper = paperRef.current;
+      if (!paper) return { x: clientX, y: clientY };
+      const p = paper.clientToLocalPoint({ x: clientX, y: clientY });
+      return { x: p.x, y: p.y };
+    },
+    [],
+  );
 
   return {
     containerRef,
     paperRef,
     graphRef,
     overlayHeaders,
+    overlayBadges,
     paperTransform,
     handleZoomIn,
     handleZoomOut,

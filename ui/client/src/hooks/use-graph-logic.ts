@@ -330,6 +330,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
           for (const removedEdge of edgesToRemove) {
             updatedPlan = updatedPlan.map((step) => {
+              // Clean up `after` on the target step (forward edges)
               if (step.uid === removedEdge.target) {
                 if (step.after) {
                   if (Array.isArray(step.after)) {
@@ -349,23 +350,25 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
                     return stepWithoutAfter;
                   }
                 }
+              }
 
-                if (step.branches) {
-                  const updatedBranches = { ...step.branches };
-                  Object.keys(updatedBranches).forEach((branchKey) => {
-                    if (updatedBranches[branchKey] === removedEdge.target) {
-                      delete updatedBranches[branchKey];
-                    }
-                  });
-
-                  if (Object.keys(updatedBranches).length === 0) {
-                    const { branches, ...stepWithoutBranches } = step;
-                    return stepWithoutBranches;
-                  } else {
-                    return { ...step, branches: updatedBranches };
+              // Clean up `branches` on the source step (back-edges)
+              if (step.uid === removedEdge.source && step.branches) {
+                const updatedBranches = { ...step.branches };
+                Object.keys(updatedBranches).forEach((branchKey) => {
+                  if (updatedBranches[branchKey] === removedEdge.target) {
+                    delete updatedBranches[branchKey];
                   }
+                });
+
+                if (Object.keys(updatedBranches).length === 0) {
+                  const { branches, ...stepWithoutBranches } = step;
+                  return stepWithoutBranches;
+                } else {
+                  return { ...step, branches: updatedBranches };
                 }
               }
+
               return step;
             });
           }
@@ -1059,57 +1062,162 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
             variant: "destructive",
           });
         } else {
-          const newEdge: CanvasEdge = {
-            id: `${pendingConnectionSource}-${clickedNodeId}`,
-            source: pendingConnectionSource,
-            target: clickedNodeId,
-          };
+          const sourceNode = nodes.find((n) => n.id === pendingConnectionSource);
+          const hasCondition =
+            sourceNode?.data?.referencedConditions &&
+            sourceNode.data.referencedConditions.length > 0;
 
-          setEdges((prevEdges) => [...prevEdges, newEdge]);
+          if (hasCondition) {
+            // Source node has a condition — create a conditional/branch
+            // edge (uses `branches` on the source step, NOT `after` on
+            // the target). This mirrors the old createConditionalEdge.
+            const condition = sourceNode.data.referencedConditions[0];
+            const conditionType =
+              condition.workspaceData?.type || condition.type;
 
-          setYamlFlow((prevFlow) => {
-            const updatedPlan = prevFlow.plan.map((step) => {
-              if (step.uid === clickedNodeId) {
-                const existingAfter = step.after;
-                let newAfter;
-                if (!existingAfter) {
-                  newAfter = pendingConnectionSource;
-                } else if (Array.isArray(existingAfter)) {
-                  newAfter = existingAfter.includes(pendingConnectionSource!)
-                    ? existingAfter
-                    : [...existingAfter, pendingConnectionSource!];
-                } else {
-                  newAfter =
-                    existingAfter === pendingConnectionSource
-                      ? existingAfter
-                      : [existingAfter, pendingConnectionSource!];
-                }
-                return { ...step, after: newAfter };
-              }
-              return step;
-            });
-            return {
-              nodes: prevFlow.nodes,
-              conditions: prevFlow.conditions || [],
-              plan: updatedPlan,
+            const newEdge: CanvasEdge = {
+              id: `${pendingConnectionSource}-${clickedNodeId}`,
+              source: pendingConnectionSource,
+              target: clickedNodeId,
+              data: { isConditional: true },
             };
-          });
 
-          setCurrentGraph((prev) => ({
-            ...prev,
-            edges: [...prev.edges, newEdge],
-            metadata: {
-              ...prev.metadata,
-              lastModified: new Date(),
-              edgeCount: prev.edges.length + 1,
-            },
-          }));
+            setEdges((prevEdges) => [...prevEdges, newEdge]);
+
+            setYamlFlow((prevFlow) => {
+              const conditionRid =
+                condition.workspaceData?.rid || condition.id;
+
+              const updatedPlan = prevFlow.plan.map((step) => {
+                if (step.uid === pendingConnectionSource) {
+                  const existingBranches = step.branches || {};
+                  const newBranches = { ...existingBranches };
+
+                  if (conditionType === "router_direct") {
+                    newBranches[clickedNodeId] = clickedNodeId;
+                  } else if (conditionType === "router_boolean") {
+                    if (!newBranches["true"] && !newBranches[true as any]) {
+                      newBranches["true"] = clickedNodeId;
+                    } else if (
+                      !newBranches["false"] &&
+                      !newBranches[false as any]
+                    ) {
+                      newBranches["false"] = clickedNodeId;
+                    } else {
+                      let n = 2;
+                      while (newBranches[`branch_${n}`]) n++;
+                      newBranches[`branch_${n}`] = clickedNodeId;
+                    }
+                  } else {
+                    // Generic condition type — auto-assign branch keys
+                    const usedKeys = new Set(Object.keys(newBranches));
+                    let branchKey = "true";
+                    if (usedKeys.has("true")) branchKey = "false";
+                    if (usedKeys.has("true") && usedKeys.has("false")) {
+                      let n = 2;
+                      while (usedKeys.has(`branch_${n}`)) n++;
+                      branchKey = `branch_${n}`;
+                    }
+                    newBranches[branchKey] = clickedNodeId;
+                  }
+
+                  return {
+                    ...step,
+                    exit_condition: conditionRid,
+                    branches: newBranches,
+                  };
+                }
+                return step;
+              });
+
+              const conditionExists = (prevFlow.conditions || []).some(
+                (cond: any) => cond.rid === `$ref:${conditionRid}`,
+              );
+
+              let updatedConditions = prevFlow.conditions || [];
+              if (!conditionExists) {
+                updatedConditions = [
+                  ...updatedConditions,
+                  {
+                    rid: `$ref:${conditionRid}`,
+                    name: condition.workspaceData?.name || condition.label,
+                    type: condition.workspaceData?.type,
+                    config: condition.workspaceData?.config,
+                  },
+                ];
+              }
+
+              return {
+                nodes: prevFlow.nodes,
+                conditions:
+                  updatedConditions.length > 0 ? updatedConditions : [],
+                plan: updatedPlan,
+              };
+            });
+
+            setCurrentGraph((prev) => ({
+              ...prev,
+              edges: [...prev.edges, newEdge],
+              metadata: {
+                ...prev.metadata,
+                lastModified: new Date(),
+                edgeCount: prev.edges.length + 1,
+              },
+            }));
+          } else {
+            // Source has no condition — regular edge using `after`.
+            const newEdge: CanvasEdge = {
+              id: `${pendingConnectionSource}-${clickedNodeId}`,
+              source: pendingConnectionSource,
+              target: clickedNodeId,
+            };
+
+            setEdges((prevEdges) => [...prevEdges, newEdge]);
+
+            setYamlFlow((prevFlow) => {
+              const updatedPlan = prevFlow.plan.map((step) => {
+                if (step.uid === clickedNodeId) {
+                  const existingAfter = step.after;
+                  let newAfter;
+                  if (!existingAfter) {
+                    newAfter = pendingConnectionSource;
+                  } else if (Array.isArray(existingAfter)) {
+                    newAfter = existingAfter.includes(pendingConnectionSource!)
+                      ? existingAfter
+                      : [...existingAfter, pendingConnectionSource!];
+                  } else {
+                    newAfter =
+                      existingAfter === pendingConnectionSource
+                        ? existingAfter
+                        : [existingAfter, pendingConnectionSource!];
+                  }
+                  return { ...step, after: newAfter };
+                }
+                return step;
+              });
+              return {
+                nodes: prevFlow.nodes,
+                conditions: prevFlow.conditions || [],
+                plan: updatedPlan,
+              };
+            });
+
+            setCurrentGraph((prev) => ({
+              ...prev,
+              edges: [...prev.edges, newEdge],
+              metadata: {
+                ...prev.metadata,
+                lastModified: new Date(),
+                edgeCount: prev.edges.length + 1,
+              },
+            }));
+          }
         }
 
         cancelConnectionMode();
       }
     },
-    [pendingConnectionSource, edges, setNodes, cancelConnectionMode, toast],
+    [pendingConnectionSource, edges, nodes, setNodes, cancelConnectionMode, toast],
   );
 
   const handlePaneClick = useCallback(() => {

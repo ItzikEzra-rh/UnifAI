@@ -30,6 +30,8 @@ export default function NewGraph({ onBack }: NewGraphProps) {
     handleNodeClickForConnection,
     handlePaneClick,
     cancelConnectionMode,
+    attachConditionToNode,
+    onDragEnd,
     isGraphValid,
     validationResult,
     fixSuggestions,
@@ -114,6 +116,8 @@ export default function NewGraph({ onBack }: NewGraphProps) {
           onNodePositionChange={updateNodePosition}
           pendingConnectionSource={pendingConnectionSource}
           onCancelConnection={cancelConnectionMode}
+          onAttachCondition={attachConditionToNode}
+          onDragEnd={onDragEnd}
         />
       </div>
 
