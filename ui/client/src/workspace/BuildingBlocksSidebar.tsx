@@ -32,6 +32,19 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({
   const [isDetailsModalOpen, setIsDetailsModalOpen] = useState(false);
   const { primaryHex } = useTheme();
 
+  const sortedBlocks = useMemo(
+    () => [...buildingBlocks].sort((a, b) => a.label.localeCompare(b.label)),
+    [buildingBlocks]
+  );
+  const sortedOrchestrators = useMemo(
+    () => [...orchestrators].sort((a, b) => a.label.localeCompare(b.label)),
+    [orchestrators]
+  );
+  const sortedConditions = useMemo(
+    () => [...conditions].sort((a, b) => a.label.localeCompare(b.label)),
+    [conditions]
+  );
+
   const themeColors = useMemo(() => {
     const t = deriveThemeColors(primaryHex);
     return {
@@ -200,7 +213,7 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({
                   <div className="text-center py-8 text-gray-500 text-sm">No agents available</div>
                 ) : (
                   <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 430px)' }}>
-                    {buildingBlocks.map(renderNodeCard)}
+                    {sortedBlocks.map(renderNodeCard)}
                   </div>
                 )}
               </TabsContent>
@@ -215,7 +228,7 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({
                   <div className="text-center py-8 text-gray-500 text-sm">No orchestrators available</div>
                 ) : (
                   <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 430px)' }}>
-                    {orchestrators.map(renderNodeCard)}
+                    {sortedOrchestrators.map(renderNodeCard)}
                   </div>
                 )}
               </TabsContent>
@@ -230,7 +243,7 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({
                   <div className="text-center py-8 text-gray-500 text-sm">No conditions available</div>
                 ) : (
                   <div className="space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 430px)' }}>
-                    {conditions.map(renderConditionCard)}
+                    {sortedConditions.map(renderConditionCard)}
                   </div>
                 )}
               </TabsContent>

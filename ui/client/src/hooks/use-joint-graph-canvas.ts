@@ -142,14 +142,30 @@ function extractResolvedElements(
 // Bidirectional edge detection
 // ---------------------------------------------------------------------------
 
-function detectBidiPairs(edges: CanvasEdge[]): Set<string> {
-  const bidiIds = new Set<string>();
+function detectBidirectionalEdges(edges: CanvasEdge[]): {
+  bidirectionalIds: Set<string>;
+  secondaryIds: Set<string>;
+} {
+  const bidirectionalIds = new Set<string>();
+  const secondaryIds = new Set<string>();
+  const seenPairs = new Set<string>();
+
   for (const e of edges) {
-    if (edges.some((o) => o.id !== e.id && o.source === e.target && o.target === e.source)) {
-      bidiIds.add(e.id);
+    const hasReverse = edges.some(
+      (o) => o.id !== e.id && o.source === e.target && o.target === e.source,
+    );
+    if (hasReverse) {
+      bidirectionalIds.add(e.id);
     }
+
+    const reverseKey = `${e.target}→${e.source}`;
+    if (seenPairs.has(reverseKey)) {
+      secondaryIds.add(e.id);
+    }
+    seenPairs.add(`${e.source}→${e.target}`);
   }
-  return bidiIds;
+
+  return { bidirectionalIds, secondaryIds };
 }
 
 // ---------------------------------------------------------------------------
@@ -501,36 +517,29 @@ export function useJointGraphCanvas({
     const graph = graphRef.current;
     if (!graph) return;
 
-    // Rebuild all links so bidi pairs stay in sync
+    // Rebuild all links so bidirectional pairs stay in sync
     graph.getLinks().forEach((l) => l.remove());
 
-    const bidiIds = detectBidiPairs(edges);
+    const { bidirectionalIds, secondaryIds } = detectBidirectionalEdges(edges);
     const linkColor = normalizePrimaryHex(primaryHexRef.current);
-    const BIDI_ANCHOR_OFFSET = 20;
+    const BIDIRECTIONAL_ANCHOR_OFFSET = 20;
 
     for (const e of edges) {
-      const isCond = e.data?.isConditional;
-      const isBidi = bidiIds.has(e.id);
-      const isSecondary = isBidi && e.source > e.target;
+      const isBidirectional = bidirectionalIds.has(e.id);
+      const isSecondary = secondaryIds.has(e.id);
 
-      const edgeColor = isCond
-        ? "#94a3b8"
-        : isSecondary
-          ? "#94a3b8"
-          : linkColor;
-      const lineStroke = isCond || isSecondary
-        ? "rgba(148, 163, 184, 0.8)"
-        : linkColor;
+      const edgeColor = isSecondary ? "#94a3b8" : linkColor;
+      const lineStroke = isSecondary ? "rgba(148, 163, 184, 0.8)" : linkColor;
 
-      // For bidi pairs, shift anchors so the two links run side-by-side.
-      // direction = +1 for the primary edge, -1 for the secondary.
-      const anchorDx = isBidi
-        ? BIDI_ANCHOR_OFFSET * (e.source < e.target ? 1 : -1)
+      // For bidirectional pairs, shift anchors so the two links run side-by-side.
+      // The primary (first-connected) edge goes one way, the secondary the other.
+      const anchorDx = isBidirectional
+        ? BIDIRECTIONAL_ANCHOR_OFFSET * (isSecondary ? -1 : 1)
         : 0;
 
       const sourceSpec: any = { id: e.source };
       const targetSpec: any = { id: e.target };
-      if (isBidi) {
+      if (isBidirectional) {
         sourceSpec.anchor = { name: "center", args: { dx: anchorDx } };
         targetSpec.anchor = { name: "center", args: { dx: anchorDx } };
       }
@@ -542,16 +551,16 @@ export function useJointGraphCanvas({
         attrs: {
           line: {
             stroke: lineStroke,
-            strokeWidth: isCond || isSecondary ? 1.5 : 2,
-            opacity: isCond || isSecondary ? 1 : 0.9,
+            strokeWidth: isSecondary ? 1.5 : 2,
+            opacity: isSecondary ? 1 : 0.9,
             sourceMarker: {
               type: "circle" as const,
-              r: isCond ? 3 : 4,
+              r: 4,
               fill: edgeColor,
             },
             targetMarker: {
               type: "classic" as const,
-              size: isCond ? 10 : 12,
+              size: 12,
               fill: edgeColor,
             },
           },
@@ -569,15 +578,9 @@ export function useJointGraphCanvas({
     const primaryNow = normalizePrimaryHex(primaryHex);
     injectSvgDefs(paper.el, primaryNow);
 
-    const bidiIds = detectBidiPairs(edgesRef.current);
+    const { secondaryIds } = detectBidirectionalEdges(edgesRef.current);
     for (const link of graph.getLinks()) {
-      const edgeData = edgesRef.current.find((e) => e.id === link.id);
-      if (edgeData?.data?.isConditional) continue;
-      // Secondary bidi edges stay grey
-      const isBidi = bidiIds.has(link.id as string);
-      const isSecondary =
-        isBidi && edgeData && edgeData.source > edgeData.target;
-      if (isSecondary) continue;
+      if (secondaryIds.has(link.id as string)) continue;
 
       link.attr("line/stroke", primaryNow);
       link.attr("line/sourceMarker/fill", primaryNow);
@@ -675,8 +678,12 @@ export function useJointGraphCanvas({
     (clientX: number, clientY: number) => {
       const paper = paperRef.current;
       if (!paper) return { x: clientX, y: clientY };
-      const p = paper.clientToLocalPoint({ x: clientX, y: clientY });
-      return { x: p.x, y: p.y };
+      try {
+        const p = paper.clientToLocalPoint({ x: clientX, y: clientY });
+        return { x: p.x, y: p.y };
+      } catch {
+        return { x: clientX, y: clientY };
+      }
     },
     [],
   );

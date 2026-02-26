@@ -263,24 +263,77 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
         // Update YAML flow to remove references and connections
         setYamlFlow((prevFlow) => {
-          const updatedNodes = prevFlow.nodes.filter(
-            (node) =>
-              !node.rid.includes(nodeId) && node.rid !== `$ref:${nodeId}`,
-          );
-
           const updatedPlan = prevFlow.plan
             .filter((step) => step.uid !== nodeId)
             .map((step) => {
-              if (step.after === nodeId) {
-                const { after, ...stepWithoutAfter } = step;
-                return stepWithoutAfter;
+              let updated = step;
+
+              if (updated.after) {
+                if (Array.isArray(updated.after)) {
+                  const filtered = updated.after.filter((a) => a !== nodeId);
+                  if (filtered.length === 0) {
+                    const { after, ...rest } = updated;
+                    updated = rest as typeof step;
+                  } else if (filtered.length === 1) {
+                    updated = { ...updated, after: filtered[0] };
+                  } else {
+                    updated = { ...updated, after: filtered };
+                  }
+                } else if (updated.after === nodeId) {
+                  const { after, ...rest } = updated;
+                  updated = rest as typeof step;
+                }
               }
-              return step;
+
+              if (updated.branches) {
+                const cleanedBranches = { ...updated.branches };
+                for (const key of Object.keys(cleanedBranches)) {
+                  if (cleanedBranches[key] === nodeId) {
+                    delete cleanedBranches[key];
+                  }
+                }
+                if (Object.keys(cleanedBranches).length === 0) {
+                  const { branches, exit_condition, ...rest } = updated;
+                  updated = rest as typeof step;
+                } else {
+                  updated = { ...updated, branches: cleanedBranches };
+                }
+              }
+
+              return updated;
             });
 
+          // Remove YAML nodes no longer referenced by any remaining plan step
+          const referencedRids = new Set(updatedPlan.map((step) => step.node));
+          const updatedNodes = prevFlow.nodes.filter((node) => {
+            const bareRid = node.rid.startsWith("$ref:")
+              ? node.rid.slice(5)
+              : node.rid;
+            return referencedRids.has(bareRid) || referencedRids.has(node.rid);
+          });
+
+          // Remove orphaned conditions no longer used by any plan step
+          const referencedConditions = new Set(
+            updatedPlan
+              .map((step) => step.exit_condition)
+              .filter(Boolean),
+          );
+          const updatedConditions = (prevFlow.conditions || []).filter(
+            (cond) => {
+              const bareRid = cond.rid.startsWith("$ref:")
+                ? cond.rid.slice(5)
+                : cond.rid;
+              return (
+                referencedConditions.has(bareRid) ||
+                referencedConditions.has(cond.rid)
+              );
+            },
+          );
+
           return {
-            nodes: prevFlow.nodes,
-            conditions: prevFlow.conditions || [],
+            ...prevFlow,
+            nodes: updatedNodes,
+            conditions: updatedConditions,
             plan: updatedPlan,
           };
         });
@@ -374,7 +427,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
           }
 
           return {
-            nodes: prevFlow.nodes,
+            ...prevFlow,
             conditions: prevFlow.conditions || [],
             plan: updatedPlan,
           };
@@ -809,6 +862,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
             : [...prevFlow.nodes, newYamlNode];
 
           return {
+            ...prevFlow,
             nodes: updatedNodes,
             conditions: prevFlow.conditions || [],
             plan: [...prevFlow.plan, newPlanStep],
@@ -1021,6 +1075,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
   const cancelConnectionMode = useCallback(() => {
     setPendingConnectionSource(null);
+    setSelectedNodes([]);
     setNodes((prevNodes) =>
       prevNodes.map((n) => ({
         ...n,
@@ -1038,9 +1093,11 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     (clickedNodeId: string) => {
       if (pendingConnectionSource === null) {
         setPendingConnectionSource(clickedNodeId);
+        setSelectedNodes([clickedNodeId]);
         setNodes((prevNodes) =>
           prevNodes.map((n) => ({
             ...n,
+            selected: n.id === clickedNodeId,
             data: {
               ...n.data,
               isConnectionSource: n.id === clickedNodeId,
@@ -1071,7 +1128,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
             // Source node has a condition — create a conditional/branch
             // edge (uses `branches` on the source step, NOT `after` on
             // the target). This mirrors the old createConditionalEdge.
-            const condition = sourceNode.data.referencedConditions[0];
+            const condition = sourceNode.data.referencedConditions![0];
             const conditionType =
               condition.workspaceData?.type || condition.type;
 
@@ -1148,7 +1205,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
               }
 
               return {
-                nodes: prevFlow.nodes,
+                ...prevFlow,
                 conditions:
                   updatedConditions.length > 0 ? updatedConditions : [],
                 plan: updatedPlan,
@@ -1196,7 +1253,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
                 return step;
               });
               return {
-                nodes: prevFlow.nodes,
+                ...prevFlow,
                 conditions: prevFlow.conditions || [],
                 plan: updatedPlan,
               };
@@ -1224,7 +1281,9 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     if (pendingConnectionSource !== null) {
       cancelConnectionMode();
     }
-  }, [pendingConnectionSource, cancelConnectionMode]);
+    setSelectedNodes([]);
+    setNodes((prev) => prev.map((n) => ({ ...n, selected: false })));
+  }, [pendingConnectionSource, cancelConnectionMode, setNodes]);
 
   // ESC key handler for connection mode
   useEffect(() => {
