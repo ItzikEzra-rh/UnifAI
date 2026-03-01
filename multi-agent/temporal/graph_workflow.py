@@ -173,7 +173,7 @@ class GraphTraversalWorkflow:
                     if chosen:
                         successors.add(chosen)
 
-        if uid in graph.edges:
+        elif uid in graph.edges:
             successors.update(graph.edges[uid])
 
         return successors

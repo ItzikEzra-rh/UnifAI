@@ -95,36 +95,65 @@ def append_iem_packets(
 ) -> List:
     """
     Merge strategy for IEM packets channel.
-    
-    • Appends new packets while avoiding duplicates by packet ID
-    • Maintains insertion order
-    • Handles both single packets and lists of packets
+
+    Handles two scenarios, matching how BinOpChannel.extract_write() feeds data:
+
+    Scenario A — pure increment (new packets added by the node):
+        new_item = [PacketC]  (unseen ID)
+        → appended, insertion order preserved.
+
+    Scenario B — full list with in-place mutations (ack_by changed):
+        new_item = [P1(ack_by={"Jira"}), P2(ack_by={})]  (same IDs, different ack_by)
+        → same-ID packets are MERGED: ack_by = existing.ack_by | incoming.ack_by
+        → acknowledgments written by parallel agents are NEVER lost.
+
+    Called sequentially for each parallel result, exactly like
+    BinaryOperatorAggregate.update() in LangGraph:
+        result = op(op(base, write_jira), write_conf)
+
+    Example — Jira + Confluence agents run in parallel:
+        base       = [P1(ack={}),      P2(ack={})]
+        write_jira = [P1(ack={"Jira"}), P2(ack={})]
+        write_conf = [P1(ack={}),      P2(ack={"Conf"})]
+
+        after Jira : [P1(ack={"Jira"}),       P2(ack={})]
+        after Conf : [P1(ack={"Jira"}),        P2(ack={"Conf"})]  ✓ both acks preserved
     """
     existing = existing or []
 
-    # Normalize new_item to list
     if isinstance(new_item, list):
         incoming = new_item
     else:
         incoming = [new_item] if new_item is not None else []
 
-    # Filter out None values and non-IEMPacket types
     valid_incoming = [p for p in incoming if p is not None and hasattr(p, 'id')]
-
     if not valid_incoming:
         return existing
 
-    # Track existing packet IDs to avoid duplicates
-    existing_ids = {getattr(p, 'id', None) for p in existing if hasattr(p, 'id')}
+    # Build ordered index: packet_id → packet (preserves insertion order)
+    index: Dict = {}
+    order: list = []
+    for p in existing:
+        pid = getattr(p, 'id', None)
+        if pid is not None:
+            index[pid] = p
+            order.append(pid)
 
-    # Append only new packets
-    result = list(existing)
     for packet in valid_incoming:
-        if packet.id not in existing_ids:
-            result.append(packet)
-            existing_ids.add(packet.id)
+        pid = packet.id
+        if pid in index:
+            # Same packet seen from a parallel node.
+            # Union ack_by so no acknowledgment from any parallel branch is lost.
+            # This is the correct reconciliation, NOT a length comparison.
+            merged_ack = index[pid].ack_by | packet.ack_by
+            if merged_ack != index[pid].ack_by:
+                index[pid] = packet.model_copy(update={'ack_by': merged_ack})
+        else:
+            # Truly new packet: append in insertion order.
+            index[pid] = packet
+            order.append(pid)
 
-    return result
+    return [index[pid] for pid in order]
 
 
 def merge_task_threads(

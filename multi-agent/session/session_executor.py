@@ -5,6 +5,7 @@ from session.workflow_session import WorkflowSession
 from graph.state.graph_state import GraphState
 from core.context import set_current_context
 from core.channels import SessionChannel, ChannelFactory
+from engine.executor.temporal_executor import TemporalGraphExecutor
 from .status import SessionStatus
 from .utils import derive_title
 
@@ -170,6 +171,36 @@ class SessionExecutor:
         except Exception as e:
             self._error_run(session, e, streaming=True, channel=channel)
             raise e
+
+    def submit(
+            self,
+            session: WorkflowSession,
+            inputs: Dict[str, Any],
+            scope: str = "public",
+            logged_in_user: str = ""
+    ) -> str:
+        """
+        Non-blocking (fire-and-forget) path for Temporal workflows.
+        Persists the session as RUNNING and returns the Temporal workflow_id
+        immediately, without waiting for the workflow to finish.
+        Only works when the session's executor is a TemporalGraphExecutor.
+        """
+        executor = session.executable_graph
+        if not isinstance(executor, TemporalGraphExecutor):
+            raise TypeError(
+                "submit() is only supported for Temporal-backed sessions. "
+                f"Got executor type: {type(executor).__name__}"
+            )
+
+        self._pre_run(session, inputs, scope, logged_in_user, streaming=False)
+        workflow_id = executor.start(session.graph_state)
+
+        # Record the Temporal workflow_id in the run_context metadata so it
+        # can be returned to the caller and used for polling / status checks.
+        session.run_context = session.run_context.with_metadata(workflow_id=workflow_id)
+        self._repo.save(session)
+
+        return workflow_id
 
     def _create_streaming_channel(self, session: WorkflowSession) -> SessionChannel:
         """

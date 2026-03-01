@@ -96,6 +96,36 @@ def execute_user_session(session_id, inputs, stream_mode, stream, scope, logged_
     #     return jsonify({"error": str(e)}), 500
 
 
+@sessions_bp.route("/user.session.submit", methods=["POST"])
+@from_body({
+    "session_id": fields.Str(data_key="sessionId", required=True),
+    "inputs": fields.Dict(data_key="inputs", required=True),
+    "scope": fields.Str(data_key="scope", load_default="public"),
+    "logged_in_user": fields.Str(data_key="loggedInUser", required=False, load_default=lambda: "")
+})
+def submit_user_session(session_id, inputs, scope, logged_in_user):
+    """
+    Fire-and-forget execute for Temporal-backed sessions.
+    Starts the Temporal workflow in the background and returns HTTP 202
+    immediately with the workflow_id – no blocking until completion.
+
+    Poll /session.status.get?sessionId=<id> for status updates.
+    """
+    try:
+        svc = current_app.container.session_service
+        workflow_id = svc.submit(
+            session_id=session_id,
+            inputs=inputs,
+            scope=scope,
+            logged_in_user=logged_in_user,
+        )
+        return jsonify({"sessionId": session_id, "workflowId": workflow_id}), 202
+    except TypeError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @sessions_bp.route("/session.state.get", methods=["GET"])
 @from_query({
     "session_id": fields.Str(data_key="sessionId", required=True),

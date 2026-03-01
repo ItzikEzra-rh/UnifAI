@@ -53,6 +53,23 @@ class SessionService:
             logged_in_user=logged_in_user
         )
 
+    def submit(self, session_id: str, inputs: Dict[str, Any],
+               scope: str = "public", logged_in_user: str = "") -> str:
+        """
+        Non-blocking submit: start a Temporal workflow in the background and
+        return its workflow_id immediately (HTTP 202 pattern).
+
+        The workflow runs asynchronously; the caller can poll status via
+        /user.session.status or query Temporal directly using the workflow_id.
+        """
+        session = self._manager.get_session(session_id)
+        return self._executor.submit(
+            session=session,
+            inputs=inputs or {},
+            scope=scope,
+            logged_in_user=logged_in_user,
+        )
+
     def execute(self, session_id: str, inputs: Dict[str, Any], stream: bool = False,
                 stream_mode: list = None, scope: str = "public", logged_in_user="") -> Any:
         """
