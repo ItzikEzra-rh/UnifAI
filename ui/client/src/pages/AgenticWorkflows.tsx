@@ -101,15 +101,15 @@ export default function AgenticWorkflows() {
     setShowGraphBuilder(true);
   };
 
-  const handleBackToFlowConfig = useCallback((savedBlueprint?: SavedBlueprintInfo) => {
+  const handleBackToFlowConfig = useCallback((_savedBlueprint?: SavedBlueprintInfo) => {
     setShowGraphBuilder(false);
     setEditingBlueprintId(null);
     
-    if (savedBlueprint?.blueprintId) {
+    if (_savedBlueprint?.blueprintId) {
       setSelectedFlow({
-        id: savedBlueprint.blueprintId,
-        name: savedBlueprint.name,
-        description: savedBlueprint.description,
+        id: _savedBlueprint.blueprintId,
+        name: _savedBlueprint.name,
+        description: _savedBlueprint.description,
         icon: null,
         flow: { nodes: [], edges: [] },
       } as FlowObject);
@@ -151,7 +151,9 @@ export default function AgenticWorkflows() {
                     <div className="flex gap-2">
                       <SimpleTooltip 
                         content={
-                          !isFlowValid && !isValidatingFlow ? (
+                          !selectedFlow ? (
+                            <p>Select a workflow first</p>
+                          ) : !isFlowValid && !isValidatingFlow ? (
                             <p>Cannot load workflow: Validation failed. Fix the issues before loading.</p>
                           ) : isValidatingFlow ? (
                             <p>Validating workflow...</p>
@@ -166,12 +168,12 @@ export default function AgenticWorkflows() {
                             variant="outline"
                             size="sm"
                             onClick={handleLoadFlow}
-                            disabled={isLoadingFlow || !isFlowValid || isValidatingFlow}
+                            disabled={isLoadingFlow || !isFlowValid || isValidatingFlow || !selectedFlow}
                             className={`${
-                              !isFlowValid && !isValidatingFlow
-                              ? 'bg-gray-600 text-gray-400 border-gray-600' 
-                              : isValidatingFlow
+                              !selectedFlow || isValidatingFlow
                               ? 'bg-gray-600 text-gray-300 border-gray-600'
+                              : !isFlowValid
+                              ? 'bg-gray-600 text-gray-400 border-gray-600' 
                               : 'bg-primary hover:bg-primary/80 text-white'
                             } flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed`}
                           >
