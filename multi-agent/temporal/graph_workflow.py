@@ -4,10 +4,6 @@ Temporal workflow that IS the graph engine.
 Traverses the graph topology, executing each node as a Temporal activity.
 Handles sequential chains, parallel fan-out, conditional routing, and
 convergence joins — all with Temporal's built-in durability and retry.
-
-This is the Temporal equivalent of LangGraph's compiled.invoke():
-  LangGraph: for each node in order → call func(state) → apply reducers
-  Temporal:  for each node in order → execute activity → apply merge strategies
 """
 import asyncio
 from datetime import timedelta
@@ -26,8 +22,8 @@ from temporal.graph_models import (
 )
 
 # Activity timeouts
-_NODE_TIMEOUT = timedelta(minutes=5)
-_NODE_HEARTBEAT = timedelta(minutes=2)
+_NODE_TIMEOUT = timedelta(minutes=15)
+_NODE_HEARTBEAT = timedelta(minutes=10)
 _NODE_RETRY = RetryPolicy(maximum_attempts=3)
 
 _CONDITION_TIMEOUT = timedelta(seconds=30)
@@ -45,7 +41,7 @@ class GraphTraversalWorkflow:
       3. Apply merge strategies to reconcile state.
       4. Resolve successors (conditions + edges).
       5. Activate nodes whose ALL predecessors are done.
-      6. Repeat until no nodes are ready.
+      6. Repeat until no nodes are ready or iteration limit reached.
     """
 
     def __init__(self) -> None:
@@ -69,7 +65,7 @@ class GraphTraversalWorkflow:
             self._current_nodes = sorted(active)
 
             # ── Execute ──────────────────────────────────────────
-            results = await self._execute_nodes(active, state)
+            results = await self._execute_nodes(active, state, graph)
             state = merge.apply(state, results)
 
             self._state = state.serialize()
@@ -82,10 +78,6 @@ class GraphTraversalWorkflow:
                     await self._resolve_successors(uid, state, graph)
                 )
 
-            # Activate nodes whose ALL predecessors are done.
-            # No "uid not in executed" guard — nodes CAN re-execute
-            # in cycles (a → b → a → b → final). The iteration
-            # limit prevents infinite loops.
             active = {
                 uid for uid in candidates
                 if all(dep in executed for dep in predecessors.get(uid, set()))
@@ -95,7 +87,7 @@ class GraphTraversalWorkflow:
         return state.serialize()
 
     # ------------------------------------------------------------------ #
-    #  Queries (streaming / observability)
+    #  Queries
     # ------------------------------------------------------------------ #
 
     @workflow.query
@@ -114,17 +106,25 @@ class GraphTraversalWorkflow:
             self,
             uids: Set[str],
             state: GraphState,
+            graph: GraphDefinition,
     ) -> List[GraphState]:
-        """Execute node(s) — sequential if one, parallel if many."""
         if len(uids) == 1:
             uid = next(iter(uids))
-            result = await self._execute_node(uid, state)
+            result = await self._execute_node(uid, state, graph)
             return [result]
-        return await self._execute_nodes_parallel(uids, state)
+        return await self._execute_nodes_parallel(uids, state, graph)
 
-    async def _execute_node(self, uid: str, state: GraphState) -> GraphState:
+    async def _execute_node(
+            self,
+            uid: str,
+            state: GraphState,
+            graph: GraphDefinition,
+    ) -> GraphState:
+        node_def = graph.nodes[uid]
         params = ExecuteNodeParams(
             node_uid=uid,
+            node_blueprint=node_def.node_blueprint,
+            step_context=node_def.step_context,
             state=state.serialize(),
         )
         result_dict = await workflow.execute_activity(
@@ -140,9 +140,10 @@ class GraphTraversalWorkflow:
             self,
             uids: Set[str],
             state: GraphState,
+            graph: GraphDefinition,
     ) -> List[GraphState]:
         tasks = [
-            self._execute_node(uid, state)
+            self._execute_node(uid, state, graph)
             for uid in sorted(uids)
         ]
         return list(await asyncio.gather(*tasks))
@@ -159,14 +160,9 @@ class GraphTraversalWorkflow:
     ) -> Set[str]:
         successors: Set[str] = set()
 
-        # Conditional edge → evaluate, pick branch
         if uid in graph.conditional_edges:
             cond = graph.conditional_edges[uid]
-            outcome = await self._evaluate_condition(state, cond.condition_rid)
-
-            # Condition can return:
-            #   str   → single target ("agent_a")
-            #   list  → multiple targets (Temporal deserializes tuples as lists)
+            outcome = await self._evaluate_condition(state, cond)
             if isinstance(outcome, str):
                 chosen = cond.branches.get(outcome)
                 if chosen:
@@ -177,15 +173,20 @@ class GraphTraversalWorkflow:
                     if chosen:
                         successors.add(chosen)
 
-        # Unconditional edges → all targets
         if uid in graph.edges:
             successors.update(graph.edges[uid])
 
         return successors
 
-    async def _evaluate_condition(self, state: GraphState, condition_rid: str) -> str:
+    async def _evaluate_condition(
+            self,
+            state: GraphState,
+            cond: Any,
+    ) -> str:
         params = EvaluateConditionParams(
-            condition_rid=condition_rid,
+            condition_rid=cond.condition_rid,
+            condition_blueprint=cond.condition_blueprint,
+            step_context=cond.step_context,
             state=state.serialize(),
         )
         return await workflow.execute_activity(

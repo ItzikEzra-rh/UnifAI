@@ -8,22 +8,32 @@ only string identifiers (uid, rid) that are resolved at execution time.
 Used by engines that cannot carry live Python objects across process
 boundaries (e.g., Temporal activities).
 """
-from typing import Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict, Field
 
 
 class NodeDef(BaseModel):
-    """Identity of a single graph node."""
+    """
+    Identity and deployment info for a single graph node.
+
+    Carries the serialized mini-blueprint and step context so that
+    a remote worker can rebuild this specific node without loading
+    the full blueprint from a database.
+    """
     uid: str
-    rid: str  # Resource ID — resolved via SessionRegistry at execution time
+    rid: str
+    node_blueprint: Dict[str, Any] = Field(default_factory=dict)
+    step_context: Dict[str, Any] = Field(default_factory=dict)
 
     model_config = ConfigDict(frozen=True)
 
 
 class ConditionalEdgeDef(BaseModel):
     """A conditional routing rule attached to a node."""
-    condition_rid: str                  # Resource ID for the condition
-    branches: Dict[str, str] = Field(   # outcome string → next node uid
+    condition_rid: str
+    condition_blueprint: Dict[str, Any] = Field(default_factory=dict)
+    step_context: Dict[str, Any] = Field(default_factory=dict)
+    branches: Dict[str, str] = Field(
         default_factory=dict,
     )
 

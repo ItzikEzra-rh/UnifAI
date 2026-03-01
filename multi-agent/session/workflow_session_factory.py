@@ -1,5 +1,6 @@
 from catalog.element_registry import ElementRegistry
 from session.element_builder import SessionElementBuilder
+from session.session_registry import SessionRegistry
 from engine.builder.graph_builder_factory import GraphBuilderFactory
 from session.workflow_session import WorkflowSession
 from graph.state.graph_state import GraphState
@@ -13,27 +14,41 @@ from .models import SessionMeta
 
 class WorkflowSessionFactory:
     """
-    Orchestrates the creation of a WorkflowSession end-to-end:
-      0) Build RunContext & set it
-      1) Load & validate blueprint
-      2) Instantiate atomic elements
-      3) Build GraphPlan
-      4) Compile to ExecutableGraph
-      5) Create logger, saver, modifier
-      6) Wire everything into WorkflowSession
-      7) Persist initial snapshot
+    Orchestrates the creation of a WorkflowSession end-to-end.
+
+    Exposes reusable build methods for Temporal workers:
+      • build_runtime_plan() — full plan with bound callables
+      • build_session_registry() — just the element instances
     """
 
     def __init__(
             self,
             element_registry: ElementRegistry,
             engine_name: str,
-            # logger_factory: Callable[[RunContext], LoggerInterface],
     ):
         self._elements = element_registry
         self._session_builder = SessionElementBuilder(element_registry)
         self._engine_name = engine_name
-        # self._logger_factory = logger_factory
+
+    def build_runtime_plan(self, blueprint_spec: BlueprintSpec) -> RTGraphPlan:
+        """
+        Build an RTGraphPlan from a blueprint spec.
+
+        Creates all session components, binds callables, injects StepContext.
+        Used by create() and Temporal node activities.
+        """
+        logical_plan = PlanBuilder(self._elements).build(blueprint_spec)
+        session_registry = self._session_builder.build(blueprint_spec)
+        return RTGraphPlan(logical_plan, session_registry)
+
+    def build_session_registry(self, blueprint_spec: BlueprintSpec) -> SessionRegistry:
+        """
+        Build a SessionRegistry from a blueprint spec.
+
+        Creates element instances without building a plan or binding callables.
+        Used by Temporal condition activities (conditions don't need a plan).
+        """
+        return self._session_builder.build(blueprint_spec)
 
     def create(
             self,
@@ -44,11 +59,8 @@ class WorkflowSessionFactory:
             metadata: SessionMeta = None,
             graph_state: GraphState = GraphState(),
     ) -> WorkflowSession:
-        # Ensure metadata is a SessionMeta instance
         session_meta = metadata if metadata is not None else SessionMeta()
-        
-        # 0) Build and propagate RunContext ———
-        # RunContext.metadata expects a dict, so convert SessionMeta to dict
+
         ctx = RunContext(
             user_id=user_id,
             engine_name=self._engine_name,
@@ -56,26 +68,17 @@ class WorkflowSessionFactory:
         )
         set_current_context(ctx)
 
-        # 1. Build logical plan
-        plan_builder = PlanBuilder(self._elements)
-        logical_plan = plan_builder.build(blueprint_spec)
+        # 1. Build runtime plan
+        rt_graph_plan = self.build_runtime_plan(blueprint_spec)
+        rt_graph_plan.pretty_print()
 
-        # Optional: visualize
-        logical_plan.pretty_print()
-
-        # 2. Instantiate session‐wide components ———
-        session_registry = self._session_builder.build(blueprint_spec)
-
-        # 3. Compose abstract plan ———
-        rt_graph_plan = RTGraphPlan(logical_plan, session_registry)
-
-        # 4. Compile to executable graph ———
+        # 2. Compile to executable graph
         _engine_builder = GraphBuilderFactory(GraphState).create(self._engine_name)
         executable_graph = _engine_builder.compile_from_plan(rt_graph_plan)
 
-        # 5. Wire into WorkflowSession ———
+        # 3. Wire into WorkflowSession
         session = WorkflowSession(
-            session_registry=session_registry,
+            session_registry=rt_graph_plan._session,
             blueprint_id=blueprint_id,
             rt_graph_plan=rt_graph_plan,
             executable_graph=executable_graph,

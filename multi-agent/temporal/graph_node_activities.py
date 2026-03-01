@@ -1,66 +1,100 @@
 """
-Temporal activity class for graph node execution.
+Temporal activities for graph node execution.
 
-Wraps node callables (from RTGraphPlan) as Temporal activity methods.
-The class instance holds the live callables; the methods are registered
-as activities on an embedded worker.  This mirrors how LangGraph's
-compiled StateGraph holds callables — we just run them through Temporal.
+Each activity rebuilds a single node from its mini-blueprint,
+injects the real StepContext, runs it, and discards it.
+Stateless — like a Flask handler. Any worker can execute any node.
 """
-from typing import Callable, Dict
-
 from temporalio import activity
 
+from blueprints.models.blueprint import BlueprintSpec, StepMeta
+from core.enums import ResourceCategory
+from graph.models import StepContext, AdjacentNodes
 from graph.state.graph_state import GraphState
+from graph.topology.models import StepTopology
+from session.workflow_session_factory import WorkflowSessionFactory
 from temporal.graph_models import ExecuteNodeParams, EvaluateConditionParams
 
 
 class GraphNodeActivities:
     """
-    Holds node and condition callables, exposes them as Temporal activities.
+    Stateless activity class for Temporal workers.
 
-    Created by TemporalGraphBuilder from RTGraphPlan's bound callables.
-    Registered on an embedded worker by TemporalGraphExecutor.
-
-    The callables are the SAME objects that LangGraph would call directly —
-    BaseNode instances with LLM, tools, and StepContext already injected.
+    Created once at worker startup with session_factory (shared infra).
+    Each activity call builds a fresh node from the mini-blueprint
+    in the params. No blueprint_id, no MongoDB lookups.
     """
 
-    def __init__(
-            self,
-            node_funcs: Dict[str, Callable],
-            condition_funcs: Dict[str, Callable],
-    ) -> None:
-        self._nodes = node_funcs
-        self._conditions = condition_funcs
+    def __init__(self, session_factory: WorkflowSessionFactory) -> None:
+        self._factory = session_factory
 
     @activity.defn(name="execute_graph_node")
     def execute_node(self, params: ExecuteNodeParams) -> dict:
         """
-        Run a single graph node.
-
-        Retrieves the callable from self._nodes (injected at construction),
-        deserializes the state, calls the node, and serializes the result.
-        Exactly what LangGraph does in-process — just wrapped in an activity
-        for retry, timeout, and observability.
+        Build ONE node from its mini-blueprint, inject context, run it.
         """
-        func = self._nodes[params.node_uid]
-        graph_state = GraphState.deserialize(params.state)
+        # 1. Build node from mini-blueprint (only this node's deps)
+        mini_bp = BlueprintSpec.model_validate(params.node_blueprint)
+        rt_plan = self._factory.build_runtime_plan(mini_bp)
+        step = rt_plan.get_step(params.node_uid)
 
+        # 2. Inject the REAL context (from the full graph, built at compile time)
+        if params.step_context:
+            real_ctx = _deserialize_step_context(params.step_context)
+            step.func.set_context(real_ctx)
+
+        # 3. Run
         activity.logger.info(f"Executing node: {params.node_uid}")
-        result_state = func(graph_state, config={})
-
-        return result_state.serialize()
+        state = GraphState.deserialize(params.state)
+        result = step.func(state, config={})
+        return result.serialize()
 
     @activity.defn(name="evaluate_condition")
     def evaluate_condition(self, params: EvaluateConditionParams) -> str:
         """
-        Evaluate a graph condition and return the branch key.
-
-        Conditions are lightweight state readers (no LLM, no I/O).
-        Run as activities so the workflow code stays deterministic.
+        Build a condition from its mini-blueprint, inject context, run it.
         """
-        func = self._conditions[params.condition_rid]
-        graph_state = GraphState.deserialize(params.state)
+        mini_bp = BlueprintSpec.model_validate(params.condition_blueprint)
+        registry = self._factory.build_session_registry(mini_bp)
+        condition = registry.get_instance(ResourceCategory.CONDITION, params.condition_rid)
+
+        # Inject the real StepContext (same context as the node that owns this condition)
+        if params.step_context and hasattr(condition, 'set_context'):
+            real_ctx = _deserialize_step_context(params.step_context)
+            condition.set_context(real_ctx)
 
         activity.logger.info(f"Evaluating condition: {params.condition_rid}")
-        return func(graph_state)
+        state = GraphState.deserialize(params.state)
+        return condition(state)
+
+
+def _deserialize_step_context(data: dict) -> StepContext:
+    """Reconstruct a StepContext from a serialized dict."""
+    from core.models import ElementCard
+
+    # Reconstruct AdjacentNodes from serialized cards (instance excluded)
+    adjacent_data = data.get("adjacent_nodes", {})
+    nodes_dict = {}
+    for uid, card_dict in adjacent_data.get("nodes", {}).items():
+        nodes_dict[uid] = ElementCard(
+            uid=card_dict.get("uid", uid),
+            category=ResourceCategory(card_dict.get("category", "nodes")),
+            type_key=card_dict.get("type_key", ""),
+            name=card_dict.get("name", ""),
+            description=card_dict.get("description", ""),
+            capabilities=set(card_dict.get("capabilities", [])),
+            reads=set(card_dict.get("reads", [])),
+            writes=set(card_dict.get("writes", [])),
+            instance=None,
+            config=card_dict.get("config"),
+            skills=card_dict.get("skills", {}),
+            metadata=card_dict.get("metadata"),
+        )
+
+    return StepContext(
+        uid=data.get("uid", ""),
+        metadata=StepMeta.model_validate(data.get("metadata", {})),
+        adjacent_nodes=AdjacentNodes(nodes=nodes_dict),
+        branches=data.get("branches", {}),
+        topology=StepTopology.model_validate(data.get("topology", {})),
+    )

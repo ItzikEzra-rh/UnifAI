@@ -49,51 +49,51 @@ def execute_user_session(session_id, inputs, stream_mode, stream, scope, logged_
     """
     svc = current_app.container.session_service
 
-    try:
-        if not stream:
-            # synchronous run
-            result = svc.execute(
-                session_id=session_id,
-                inputs=inputs,
-                stream=False,
-                scope=scope,
-                logged_in_user=logged_in_user
-            )
-            return json.dumps(result, default=pydantic_encoder), 200
-
-        # streaming run
-        def generate():
-            source = svc.execute(
-                session_id=session_id,
-                inputs=inputs,
-                stream=True,
-                stream_mode=stream_mode,
-                scope=scope,
-                logged_in_user=logged_in_user
-            )
-            heartbeat_stream = HeartbeatStream(source)
-
-            try:
-                for chunk in heartbeat_stream:
-                    yield json.dumps(chunk, default=pydantic_encoder) + "\n"
-            except GeneratorExit:
-                heartbeat_stream.close()
-                raise
-
-        return Response(
-            generate(),
-            mimetype="application/x-ndjson"
+    # try:
+    if not stream:
+        # synchronous run
+        result = svc.execute(
+            session_id=session_id,
+            inputs=inputs,
+            stream=False,
+            scope=scope,
+            logged_in_user=logged_in_user
         )
+        return json.dumps(result, default=pydantic_encoder), 200
+
+    # streaming run
+    def generate():
+        source = svc.execute(
+            session_id=session_id,
+            inputs=inputs,
+            stream=True,
+            stream_mode=stream_mode,
+            scope=scope,
+            logged_in_user=logged_in_user
+        )
+        heartbeat_stream = HeartbeatStream(source)
+
+        try:
+            for chunk in heartbeat_stream:
+                yield json.dumps(chunk, default=pydantic_encoder) + "\n"
+        except GeneratorExit:
+            heartbeat_stream.close()
+            raise
+
+    return Response(
+        generate(),
+        mimetype="application/x-ndjson"
+    )
     
-    except BlueprintNotFoundError as e:
-        return jsonify({
-            "error": str(e), 
-            "error_type": "BLUEPRINT_DELETED",
-            "blueprint_id": e.blueprint_id,
-            "session_id": e.session_id
-        }), 410  # Gone
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    # except BlueprintNotFoundError as e:
+    #     return jsonify({
+    #         "error": str(e),
+    #         "error_type": "BLUEPRINT_DELETED",
+    #         "blueprint_id": e.blueprint_id,
+    #         "session_id": e.session_id
+    #     }), 410  # Gone
+    # except Exception as e:
+    #     return jsonify({"error": str(e)}), 500
 
 
 @sessions_bp.route("/session.state.get", methods=["GET"])

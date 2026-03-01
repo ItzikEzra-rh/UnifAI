@@ -16,10 +16,14 @@ class GraphExecutionParams(BaseModel):
 class ExecuteNodeParams(BaseModel):
     """Input to the execute_graph_node activity."""
     node_uid: str
+    node_blueprint: Dict[str, Any] = Field(default_factory=dict)
+    step_context: Dict[str, Any] = Field(default_factory=dict)
     state: Dict[str, Any] = Field(default_factory=dict)
 
 
 class EvaluateConditionParams(BaseModel):
     """Input to the evaluate_condition activity."""
     condition_rid: str
+    condition_blueprint: Dict[str, Any] = Field(default_factory=dict)
+    step_context: Dict[str, Any] = Field(default_factory=dict)
     state: Dict[str, Any] = Field(default_factory=dict)
