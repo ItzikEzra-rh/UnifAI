@@ -4,6 +4,7 @@ from blueprints.loader.yaml_blueprint_loader import YAMLBlueprintLoader
 from session.workflow_session_factory import WorkflowSessionFactory
 from session.user_session_manager import UserSessionManager
 from session.session_executor import SessionExecutor
+from session.channels import LocalChannelFactory
 from blueprints.service import BlueprintService
 from blueprints.repository.mongo_blueprint_repository import MongoBlueprintRepository
 from resources.service import ResourcesService
@@ -79,8 +80,9 @@ def setup_components():
     repository = MongoSessionRepository(session_factory=session_factory)
 
     # manager + executor
+
     manager = UserSessionManager(repository, session_factory)
-    executor = SessionExecutor(manager, repository)
+    executor = SessionExecutor(manager, repository, channel_factory=LocalChannelFactory())
 
     return manager, executor
 

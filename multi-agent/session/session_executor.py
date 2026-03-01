@@ -4,9 +4,7 @@ from session.repository.repository import SessionRepository
 from session.workflow_session import WorkflowSession
 from graph.state.graph_state import GraphState
 from core.context import set_current_context
-from core.channels import SessionChannel
-from engine.channels import LangGraphEmitter
-from session.channels import LocalSessionChannel
+from core.channels import SessionChannel, ChannelFactory
 from .status import SessionStatus
 from .utils import derive_title
 
@@ -22,10 +20,12 @@ class SessionExecutor:
     def __init__(
             self,
             session_manager: UserSessionManager,
-            repository: SessionRepository
+            repository: SessionRepository,
+            channel_factory: ChannelFactory,
     ):
         self._sessions = session_manager
         self._repo = repository
+        self._channel_factory = channel_factory
 
     def _pre_run(
             self,
@@ -173,11 +173,7 @@ class SessionExecutor:
 
     def _create_streaming_channel(self, session: WorkflowSession) -> SessionChannel:
         """
-        Factory method for creating the streaming channel.
-        Override or extend for different channel types (e.g., Redis).
+        Create a streaming channel for the session.
+        Delegates to the injected ChannelFactory (infrastructure concern).
         """
-        emitter = LangGraphEmitter()
-        return LocalSessionChannel(
-            session_id=session.get_run_id(),
-            emitter=emitter
-        )
+        return self._channel_factory.create(session.get_run_id())

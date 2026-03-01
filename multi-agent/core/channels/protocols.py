@@ -1,8 +1,9 @@
 """
-Channel protocols - abstractions for bidirectional session communication.
+Channel protocols - abstractions for session communication.
 
-SessionChannel: ABC for session-scoped channels (emit, close, future: input)
 StreamEmitter: ABC for emitting data during graph execution
+SessionChannel: ABC for session-scoped channels (emit, close, future: input)
+ChannelFactory: ABC for creating session channels (infrastructure concern, not engine concern)
 """
 from abc import ABC, abstractmethod
 from typing import Any
@@ -11,7 +12,7 @@ from typing import Any
 class StreamEmitter(ABC):
     """
     Abstract base class for emitting data during graph execution.
-    Engine-specific implementations (e.g., LangGraphEmitter).
+    Implementations are infrastructure-specific (e.g., LangGraphEmitter, RedisEmitter).
     """
     
     @abstractmethod
@@ -60,4 +61,28 @@ class SessionChannel(ABC):
         Default: False. Override in RedisSessionChannel.
         """
         return False
+
+
+class ChannelFactory(ABC):
+    """
+    Abstract factory for creating session-scoped streaming channels.
+
+    This is an INFRASTRUCTURE concern, not an engine concern.
+    The same factory (e.g., Redis) can serve any graph engine
+    (LangGraph, Temporal, etc.). Injected into SessionExecutor
+    by the AppContainer based on deployment configuration.
+    """
+
+    @abstractmethod
+    def create(self, session_id: str) -> SessionChannel:
+        """
+        Create a new streaming channel for the given session.
+
+        Args:
+            session_id: Unique session identifier for this channel.
+
+        Returns:
+            A ready-to-use SessionChannel instance.
+        """
+        ...
 

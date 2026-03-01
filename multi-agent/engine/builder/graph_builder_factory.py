@@ -1,6 +1,7 @@
 from typing import Dict, Type
 from engine.builder.base_graph_builder import BaseGraphBuilder
 from engine.builder.langgraph_builder import LangGraphBuilder
+from engine.builder.temporal_builder import TemporalGraphBuilder
 from graph.state.graph_state import GraphState
 
 
@@ -19,8 +20,8 @@ class GraphBuilderFactory:
         self._register_defaults()
 
     def _register_defaults(self) -> None:
-        # register your default builders here
         self.register("langgraph", LangGraphBuilder)
+        self.register("temporal", TemporalGraphBuilder)
 
     def register(self, key: str, builder_cls: Type[BaseGraphBuilder]) -> None:
         """

@@ -21,6 +21,7 @@ from statistics.service import StatisticsService
 from validation.service import ElementValidationService
 from templates.repository.mongo_repository import MongoTemplateRepository
 from templates.service import TemplateService
+from session.channels import LocalChannelFactory
 from config.app_config import AppConfig
 from global_utils.utils.singleton import SingletonMeta
 
@@ -110,9 +111,14 @@ class AppContainer(metaclass=SingletonMeta):
             session_factory=self.session_factory,
             blueprint_service=self.blueprint_service
         )
+        # Streaming channel factory — infrastructure concern, not engine concern.
+        # Swap to RedisChannelFactory for cross-process engines or production.
+        channel_factory = LocalChannelFactory()
+
         self.session_executor = SessionExecutor(
             session_manager=self.session_manager,
-            repository=self.session_repo
+            repository=self.session_repo,
+            channel_factory=channel_factory,
         )
 
         self.session_service = SessionService(

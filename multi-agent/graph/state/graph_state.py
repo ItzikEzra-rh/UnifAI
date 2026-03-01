@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List, Tuple, Set
+from typing import Any, Callable, Dict, Iterator, List, Tuple, Set, get_type_hints
 from typing_extensions import Annotated
 from pydantic import BaseModel, Field, ConfigDict
 from elements.llms.common.chat.message import ChatMessage
@@ -193,6 +193,156 @@ class GraphState(BaseModel):
                 result[field_name] = getattr(self, field_name)
         
         return result
+
+    # —————– Merge Strategy Introspection —————–
+
+    @classmethod
+    def get_merge_strategies(cls) -> Dict[str, Callable]:
+        """
+        Extract the merge function from each Annotated channel field.
+
+        Returns:
+            { field_name: merge_callable } for every channel
+            that declares a merge strategy via Annotated[Type, fn].
+        """
+        strategies: Dict[str, Callable] = {}
+        hints = get_type_hints(cls, include_extras=True)
+        for field_name in cls.model_fields:
+            hint = hints.get(field_name)
+            if hint and hasattr(hint, '__metadata__'):
+                for meta in hint.__metadata__:
+                    if callable(meta):
+                        strategies[field_name] = meta
+                        break
+        return strategies
+
+    # —————– Serialization Boundary —————–
+
+    def serialize(self) -> Dict[str, Any]:
+        """
+        Convert to a JSON-safe dict for cross-process transport.
+
+        Handles types that Pydantic's model_dump() doesn't cover:
+          • ChatMessage (dataclass) → dict via dataclasses.asdict
+          • BaseIEMPacket (Pydantic with subclasses) → dict via model_dump
+          • Everything else → Pydantic default
+        """
+        from dataclasses import asdict, fields as dc_fields
+        from pydantic import BaseModel
+
+        data = {}
+        for field_name in self.__class__.model_fields:
+            value = getattr(self, field_name)
+            data[field_name] = _serialize_value(value)
+
+        # Include dynamic_fields
+        for key, value in self.dynamic_fields.items():
+            data[key] = _serialize_value(value)
+
+        # Remove the raw dynamic_fields dict to avoid duplication
+        data.pop("dynamic_fields", None)
+
+        return data
+
+    @classmethod
+    def deserialize(cls, data: Dict[str, Any]) -> "GraphState":
+        """
+        Reconstruct a GraphState from a serialized dict.
+
+        Handles types that Pydantic's model_validate() can't reconstruct
+        due to List[Any] or dataclass fields:
+          • messages / task_threads → ChatMessage reconstruction
+          • inter_packets → BaseIEMPacket reconstruction via discriminator
+        """
+        from elements.llms.common.chat.message import ChatMessage, Role, ToolCall
+        from core.iem.packets import BaseIEMPacket, TaskPacket, SystemPacket, DebugPacket
+        from core.iem.models import PacketType
+
+        restored = dict(data)
+
+        # Reconstruct messages: List[ChatMessage] from list of dicts
+        if "messages" in restored and isinstance(restored["messages"], list):
+            restored["messages"] = [
+                _dict_to_chat_message(m) if isinstance(m, dict) else m
+                for m in restored["messages"]
+            ]
+
+        # Reconstruct task_threads: Dict[str, List[ChatMessage]]
+        if "task_threads" in restored and isinstance(restored["task_threads"], dict):
+            restored["task_threads"] = {
+                tid: [_dict_to_chat_message(m) if isinstance(m, dict) else m for m in msgs]
+                for tid, msgs in restored["task_threads"].items()
+            }
+
+        # Reconstruct inter_packets: List[BaseIEMPacket] from list of dicts
+        _packet_types = {
+            PacketType.TASK.value: TaskPacket,
+            PacketType.SYSTEM.value: SystemPacket,
+            PacketType.DEBUG.value: DebugPacket,
+        }
+        if "inter_packets" in restored and isinstance(restored["inter_packets"], list):
+            packets = []
+            for p in restored["inter_packets"]:
+                if isinstance(p, dict):
+                    ptype = p.get("type", "")
+                    packet_cls = _packet_types.get(ptype, BaseIEMPacket)
+                    packets.append(packet_cls.model_validate(p))
+                else:
+                    packets.append(p)
+            restored["inter_packets"] = packets
+
+        return cls.model_validate(restored)
+
+
+# —————– Serialization Helpers —————–
+
+def _serialize_value(value: Any) -> Any:
+    """Recursively convert a value to a JSON-safe representation."""
+    from dataclasses import asdict, fields as dc_fields
+    from pydantic import BaseModel
+
+    if value is None:
+        return None
+    if isinstance(value, (str, int, float, bool)):
+        return value
+    if isinstance(value, Enum):
+        return value.value
+    if isinstance(value, BaseModel):
+        return value.model_dump()
+    if hasattr(value, '__dataclass_fields__'):
+        return asdict(value)
+    if isinstance(value, dict):
+        return {k: _serialize_value(v) for k, v in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_serialize_value(item) for item in value]
+    if isinstance(value, set):
+        return [_serialize_value(item) for item in value]
+    # Fallback — let JSON deal with it
+    return value
+
+
+def _dict_to_chat_message(data: dict) -> "ChatMessage":
+    """Reconstruct a ChatMessage dataclass from a plain dict."""
+    from elements.llms.common.chat.message import ChatMessage, Role, ToolCall
+
+    role = data.get("role", "assistant")
+    if isinstance(role, str):
+        role = Role(role)
+
+    tool_calls = None
+    if data.get("tool_calls"):
+        tool_calls = [
+            ToolCall(**tc) if isinstance(tc, dict) else tc
+            for tc in data["tool_calls"]
+        ]
+
+    return ChatMessage(
+        role=role,
+        content=data.get("content", ""),
+        tool_calls=tool_calls,
+        tool_call_id=data.get("tool_call_id"),
+        additional_kwargs=data.get("additional_kwargs"),
+    )
 
 
 def _build_channel_enum() -> Enum:

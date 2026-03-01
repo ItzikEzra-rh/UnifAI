@@ -13,4 +13,8 @@ class AppConfig(SharedConfig):
     version: str = "1.0.0"
     admin_allowed_users: list = []  # Populate with user_ids (usernames) to grant admin access
     # Engine
-    engine_name: str = "langgraph"
+    engine_name: str = "temporal"
+    # Temporal
+    temporal_host: str = "localhost:7233"
+    temporal_namespace: str = "default"
+    temporal_task_queue: str = "graph-engine"

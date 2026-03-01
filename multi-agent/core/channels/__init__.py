@@ -1,4 +1,4 @@
-from .protocols import SessionChannel, StreamEmitter
+from .protocols import SessionChannel, StreamEmitter, ChannelFactory
 
-__all__ = ["SessionChannel", "StreamEmitter"]
+__all__ = ["SessionChannel", "StreamEmitter", "ChannelFactory"]
 
