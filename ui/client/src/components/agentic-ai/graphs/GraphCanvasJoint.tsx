@@ -376,6 +376,16 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
   const [isDraggingCondition, setIsDraggingCondition] = useState(false);
   const { primaryHex } = useTheme();
 
+  // Reset condition-drag state when any drag operation finishes.
+  // Without this, a drop intercepted by CreationControls (which calls
+  // stopPropagation) would leave isDraggingCondition=true, keeping a
+  // pointer-events-auto overlay over the node and blocking interaction.
+  useEffect(() => {
+    const reset = () => setIsDraggingCondition(false);
+    document.addEventListener("dragend", reset);
+    return () => document.removeEventListener("dragend", reset);
+  }, []);
+
   const { primary: edgeColor, primaryLight: accentColor } = useMemo(
     () => deriveThemeColors(primaryHex),
     [primaryHex],
