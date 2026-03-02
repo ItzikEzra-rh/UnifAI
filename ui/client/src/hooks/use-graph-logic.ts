@@ -361,21 +361,8 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
         const edgeToDelete = currentEdges.find((edge) => edge.id === edgeId);
         if (!edgeToDelete) return currentEdges;
 
-        // Check for a reverse edge (bidirectional pair: A→B and B→A)
-        const reverseEdge = currentEdges.find(
-          (edge) =>
-            edge.id !== edgeId &&
-            edge.source === edgeToDelete.target &&
-            edge.target === edgeToDelete.source,
-        );
-
-        const edgeIdsToRemove = new Set([edgeId]);
-        if (reverseEdge) {
-          edgeIdsToRemove.add(reverseEdge.id);
-        }
-
-        const edgesToRemove = [edgeToDelete, ...(reverseEdge ? [reverseEdge] : [])];
-        const updatedEdges = currentEdges.filter((edge) => !edgeIdsToRemove.has(edge.id));
+        const edgesToRemove = [edgeToDelete];
+        const updatedEdges = currentEdges.filter((edge) => edge.id !== edgeId);
 
         // Update YAML flow to remove connections for all deleted edges
         setYamlFlow((prevFlow) => {
