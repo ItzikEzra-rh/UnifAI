@@ -10,6 +10,7 @@ import { deriveThemeColors } from "@/lib/colorUtils";
 import { useJointGraphCanvas } from "@/hooks/use-joint-graph-canvas";
 import { NODE_WIDTH, NODE_HEADER_HEIGHT } from "./GraphDisplayHelpers";
 import { AgentNodeOverlay } from "./AgentNodeOverlay";
+import ResourceDetailsModal from "@/workspace/ResourceDetailsModal";
 import type { OverlayBadge } from "./GraphDisplayHelpers";
 import type { CanvasNode, CanvasEdge, BuildingBlock } from "@/types/graph";
 
@@ -374,6 +375,8 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
 }) => {
   const [showYamlDebug, setShowYamlDebug] = useState(false);
   const [isDraggingCondition, setIsDraggingCondition] = useState(false);
+  const [resourceDetailsOpen, setResourceDetailsOpen] = useState(false);
+  const [resourceDetailsElement, setResourceDetailsElement] = useState<BuildingBlock | null>(null);
   const { primaryHex } = useTheme();
 
   // Reset condition-drag state when any drag operation finishes.
@@ -565,7 +568,25 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
     return map;
   }, [overlayBadges]);
 
+  const openElementDetails = useCallback(
+    (elementId: string) => {
+      for (const n of nodes) {
+        const blocks = n.data.allBlocks || [];
+        const block = blocks.find(
+          (b) => b.id === elementId || b.workspaceData?.rid === elementId,
+        );
+        if (block) {
+          setResourceDetailsElement(block);
+          setResourceDetailsOpen(true);
+          return;
+        }
+      }
+    },
+    [nodes],
+  );
+
   return (
+    <>
     <div className="flex-1 relative">
       <Card className="bg-background-card shadow-card border-gray-800 h-full">
         <GraphHeader
@@ -662,8 +683,9 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
                           sx={paperTransform.sx}
                           isValidating={false}
                           interactive={false}
+                          showEyeIcon
                           onValidationClick={() => {}}
-                          onBadgeClick={() => {}}
+                          onBadgeClick={openElementDetails}
                         />
                         <CreationControls
                           nodeId={hdr.nodeId}
@@ -704,6 +726,13 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
         </CardContent>
       </Card>
     </div>
+
+      <ResourceDetailsModal
+        isOpen={resourceDetailsOpen}
+        onClose={setResourceDetailsOpen}
+        element={resourceDetailsElement}
+      />
+    </>
   );
 };
 
