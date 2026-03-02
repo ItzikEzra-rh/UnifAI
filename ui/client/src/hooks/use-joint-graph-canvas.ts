@@ -283,6 +283,7 @@ export function useJointGraphCanvas({
       interactive: { elementMove: true },
       background: { color: "transparent" },
       gridSize: 16,
+      clickThreshold: 5,
       drawGrid: {
         name: "doubleMesh",
         args: [
@@ -409,6 +410,39 @@ export function useJointGraphCanvas({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rebuildOverlays]);
 
+  // ── Resize: keep paper dimensions in sync with container ──
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const MIN_DIMENSION = 50;
+    let timerId: ReturnType<typeof setTimeout> | null = null;
+
+    const observer = new ResizeObserver(() => {
+      if (timerId) clearTimeout(timerId);
+      timerId = setTimeout(() => {
+        const paper = paperRef.current;
+        if (!paper) return;
+
+        const cw = container.clientWidth;
+        const ch = container.clientHeight;
+        if (cw < MIN_DIMENSION || ch < MIN_DIMENSION) return;
+
+        try {
+          paper.setDimensions(cw, ch);
+        } catch {
+          // SVGMatrix may be non-invertible during CSS transitions
+        }
+      }, 50);
+    });
+
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      if (timerId) clearTimeout(timerId);
+    };
+  }, []);
+
   // ── Sync nodes ──
   useEffect(() => {
     const graph = graphRef.current;
@@ -525,6 +559,8 @@ export function useJointGraphCanvas({
     const BIDIRECTIONAL_ANCHOR_OFFSET = 20;
 
     for (const e of edges) {
+      if (!graph.getCell(e.source) || !graph.getCell(e.target)) continue;
+
       const isBidirectional = bidirectionalIds.has(e.id);
       const isSecondary = secondaryIds.has(e.id);
 
