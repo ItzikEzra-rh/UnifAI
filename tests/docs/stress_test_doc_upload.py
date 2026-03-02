@@ -251,25 +251,6 @@ class CeleryMonitor:
         except Exception as e:
             logger.error(f"Error fetching task {task_id}: {e}")
             return None
-    
-    def get_pipeline_status(self, pipeline_id: str) -> Optional[Dict]:
-        """Get pipeline status from pipelines collection"""
-        try:
-            # Try different common database names
-            for db_name in ['unifai', 'datapipeline', 'backend', 'celery']:
-                try:
-                    db = self.mongo_client[db_name]
-                    collection = db['pipelines']
-                    pipeline = collection.find_one({'pipeline_id': pipeline_id})
-                    if pipeline:
-                        return pipeline
-                except:
-                    continue
-            return None
-        except Exception as e:
-            logger.error(f"Error fetching pipeline {pipeline_id}: {e}")
-            return None
-
 
 class UploadStats:
     """Tracks upload statistics"""
