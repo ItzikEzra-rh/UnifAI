@@ -25,6 +25,8 @@ import {
   nodeFillForType,
   injectSvgDefs,
   injectStatusGlowFilters,
+  injectLinkAnimations,
+  removeLinkAnimations,
 } from "@/components/agentic-ai/graphs/GraphDisplayHelpers";
 import type {
   OverlayHeader,
@@ -406,6 +408,7 @@ export function useGraphCreationCanvas({
       document.removeEventListener("pointermove", panMoveHandler);
       document.removeEventListener("pointerup", panUpHandler);
       graph.off("change:position");
+      removeLinkAnimations(paper.el);
       paper.remove();
       graph.clear();
       graphRef.current = null;
@@ -608,6 +611,11 @@ export function useGraphCreationCanvas({
           },
         },
       }).addTo(graph);
+    }
+
+    const paper = paperRef.current;
+    if (paper) {
+      injectLinkAnimations(paper.el);
     }
   }, [edges]);
 
