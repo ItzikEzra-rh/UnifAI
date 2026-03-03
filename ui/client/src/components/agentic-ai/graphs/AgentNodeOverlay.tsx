@@ -207,7 +207,7 @@ export function AgentNodeOverlay({
           return (
             <div
               key={`${badge.nodeId}-${badge.element.id}-${i}`}
-              className="absolute flex items-center rounded-full border"
+              className="absolute flex items-center rounded-full border pointer-events-none"
               style={badgeStyle}
             >
               {iconSpan}

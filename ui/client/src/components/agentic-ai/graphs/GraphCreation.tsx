@@ -12,7 +12,7 @@ import { NODE_WIDTH, NODE_HEADER_HEIGHT } from "./GraphDisplayHelpers";
 import { AgentNodeOverlay } from "./AgentNodeOverlay";
 import ResourceDetailsModal from "@/workspace/ResourceDetailsModal";
 import type { OverlayBadge } from "./GraphDisplayHelpers";
-import type { CanvasNode, CanvasEdge, BuildingBlock } from "@/types/graph";
+import type { CanvasNode, CanvasEdge, BuildingBlock, YamlFlowState } from "@/types/graph";
 
 // ---------------------------------------------------------------------------
 // Props
@@ -21,7 +21,7 @@ import type { CanvasNode, CanvasEdge, BuildingBlock } from "@/types/graph";
 interface GraphCreationProps {
   nodes: CanvasNode[];
   edges: CanvasEdge[];
-  yamlFlow?: any;
+  yamlFlow?: YamlFlowState;
   onDrop: (event: React.DragEvent, localPosition?: { x: number; y: number }) => void;
   onDragOver: (event: React.DragEvent) => void;
   onClearGraph: () => void;
@@ -35,7 +35,7 @@ interface GraphCreationProps {
   onNodePositionChange?: (nodeId: string, pos: { x: number; y: number }) => void;
   pendingConnectionSource?: string | null;
   onCancelConnection?: () => void;
-  onAttachCondition?: (nodeId: string, condition: any) => void;
+  onAttachCondition?: (nodeId: string, condition: BuildingBlock) => void;
   onDragEnd?: () => void;
 }
 
@@ -144,6 +144,7 @@ function ConnectionBanner({
         onClick={onCancel}
         className="ml-1 p-1 rounded-md text-gray-300 hover:text-white hover:bg-white/10 transition-colors"
         title="Cancel (ESC)"
+        aria-label="Cancel connection"
       >
         <X className="w-4 h-4" />
       </button>
@@ -182,7 +183,7 @@ function CreationControls({
   isConnectionSource: boolean;
   primaryHex: string;
   onDelete?: (nodeId: string) => void;
-  onAttachCondition?: (nodeId: string, condition: any) => void;
+  onAttachCondition?: (nodeId: string, condition: BuildingBlock) => void;
   isDraggingCondition: boolean;
 }) {
   const isProtected = nodeId === "user_input" || nodeId === "finalize";
@@ -210,9 +211,13 @@ function CreationControls({
 
       const blockData = e.dataTransfer.getData("application/reactflow");
       if (blockData && onAttachCondition) {
-        const condition = JSON.parse(blockData);
-        if (condition.workspaceData?.category === "conditions") {
-          onAttachCondition(nodeId, condition);
+        try {
+          const condition = JSON.parse(blockData);
+          if (condition.workspaceData?.category === "conditions") {
+            onAttachCondition(nodeId, condition);
+          }
+        } catch {
+          // Ignore malformed drag data
         }
       }
     },
@@ -224,7 +229,7 @@ function CreationControls({
       {/* Pulsing glow ring for connection source node */}
       {isConnectionSource && (
         <div
-          className="absolute"
+          className="absolute node-glow-animation"
           style={{
             left: x - 4,
             top: y - 4,
@@ -238,12 +243,12 @@ function CreationControls({
         />
       )}
 
-      {/* Source badge */}
+      {/* Source badge – positioned on the left so it doesn't overlap the delete button */}
       {isConnectionSource && (
         <div
           className="absolute"
           style={{
-            left: x + width - 60,
+            left: x + 4,
             top: y + 4,
             pointerEvents: "none",
           }}
@@ -269,6 +274,7 @@ function CreationControls({
             top: y + (NODE_HEADER_HEIGHT - 20) / 2,
           }}
           title="Delete node"
+          aria-label="Delete node"
           onClick={(e) => {
             e.stopPropagation();
             onDelete?.(nodeId);
@@ -463,7 +469,12 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
       const blockData = event.dataTransfer.getData("application/reactflow");
       if (!blockData) return;
 
-      const block = JSON.parse(blockData);
+      let block: any;
+      try {
+        block = JSON.parse(blockData);
+      } catch {
+        return;
+      }
       const isCondition = block.workspaceData?.category === "conditions";
 
       if (isCondition) {

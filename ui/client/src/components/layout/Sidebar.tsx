@@ -3,11 +3,11 @@ import { Link, useLocation } from "wouter";
 import { useProject } from "@/contexts/ProjectContext";
 import { 
   FaTachometerAlt, FaCogs, FaFileAlt, 
-  FaChartLine, FaUserShield, FaCog, FaSignOutAlt,
+  FaChartLine, FaUserShield, FaCog,
   FaRobot, FaFile, FaChevronLeft, FaChevronRight,
   FaInfoCircle, FaBook, FaComment, FaPuzzlePiece
 } from "react-icons/fa";
-import { FaJira, FaSlack, FaBars } from "react-icons/fa";
+import { FaSlack, FaBars } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import SimpleTooltip from "@/components/shared/SimpleTooltip";
@@ -24,7 +24,7 @@ export default function Sidebar() {
     setIsCollapsed(!isCollapsed);
   };
 
-  const { user, logout } = useAuth();
+    const { user, logout } = useAuth();
 
   const getInitials = (name: string): string => {
     return name
@@ -155,7 +155,7 @@ export default function Sidebar() {
             initial={false}
             animate={{ opacity: isCollapsed ? 0 : 1 }}
             transition={{ duration: 0.2 }}
-            className="px-3 mb-2"
+            className="px-3 mt-6 mb-2"
           >
             <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">RAG</span>
           </motion.div>

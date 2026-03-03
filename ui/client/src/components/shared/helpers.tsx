@@ -1,9 +1,6 @@
 import React from "react";
 import {
   Bot,
-  Settings,
-  MessagesSquare,
-  FileText,
   Brain,
   Wrench,
   Circle,

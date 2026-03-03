@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 export interface BuildingBlock {
   id: string;
   type: string;
@@ -25,7 +27,7 @@ export interface WorkspaceData {
 
 export interface CanvasNodeData {
   label: string;
-  icon: React.ReactNode;
+  icon: ReactNode;
   color: string;
   style: string;
   description: string;
@@ -86,7 +88,7 @@ export interface YamlFlowPlanStep {
   uid: string;
   node: string;
   after?: string | string[] | null;
-  branches?: any;
+  branches?: Record<string, string>;
   exit_condition?: string;
 }
 

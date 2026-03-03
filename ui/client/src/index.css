@@ -314,8 +314,10 @@
 
   /* Respect users' reduced-motion preferences */
   @media (prefers-reduced-motion: reduce) {
-    .workflow-graph-animated {
-      animation: none;
+    .workflow-graph-animated,
+    .node-glow-animation {
+      animation: none !important;
+      animation-name: none !important;
     }
   }
 }

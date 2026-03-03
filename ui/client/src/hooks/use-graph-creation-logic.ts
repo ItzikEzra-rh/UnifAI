@@ -102,6 +102,10 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
   const [fixSuggestions, setFixSuggestions] = useState<any[]>([]);
   const [isValidating, setIsValidating] = useState(false);
 
+  // Monotonically increasing counter that invalidates in-flight validation
+  // responses when the graph changes before a response arrives.
+  const validationVersionRef = useRef(0);
+
   // Save modal state
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -114,29 +118,29 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
 
   // Stable refs for callbacks embedded in node data (avoids stale closures)
   const deleteNodeRef = useRef<(id: string) => void>(() => {});
-  const attachConditionRef = useRef<(nodeId: string, condition: any) => void>(() => {});
+  const attachConditionRef = useRef<(nodeId: string, condition: BuildingBlock) => void>(() => {});
   const removeConditionRef = useRef<(nodeId: string, conditionRid: string) => void>(() => {});
   const allBlocksRef = useRef<BuildingBlock[]>([]);
 
   // Stable callback wrappers that delegate to the latest ref
   const stableDeleteNode = useCallback((id: string) => deleteNodeRef.current(id), []);
-  const stableAttachCondition = useCallback((nodeId: string, condition: any) => attachConditionRef.current(nodeId, condition), []);
+  const stableAttachCondition = useCallback((nodeId: string, condition: BuildingBlock) => attachConditionRef.current(nodeId, condition), []);
   const stableRemoveCondition = useCallback((nodeId: string, rid: string) => removeConditionRef.current(nodeId, rid), []);
 
   // Validate graph using the validation API
   const validateGraph = useCallback(async () => {
     if (nodes.length <= 2) {
-      // Don't validate empty or minimal graphs (just default nodes)
       setIsGraphValid(false);
       setValidationResult(null);
       setFixSuggestions([]);
       return;
     }
 
+    const myVersion = validationVersionRef.current;
+
     try {
       setIsValidating(true);
 
-      // Convert YAML flow to YAML string using js-yaml library
       const yamlFlowForValidation = {
         name: yamlFlow.name || "Untitled blueprint",
         description: yamlFlow.description || "default",
@@ -162,21 +166,23 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
         },
       );
 
+      if (validationVersionRef.current !== myVersion) return;
+
       const { validation_result, fix_suggestions } = response.data;
 
       setValidationResult(validation_result);
       setFixSuggestions(fix_suggestions || []);
       setIsGraphValid(validation_result?.is_valid || false);
     } catch (error) {
-      console.error("Error validating graph:", error);
+      if (validationVersionRef.current !== myVersion) return;
+      console.error("Validation failed:", error);
       setIsGraphValid(false);
       setValidationResult(null);
       setFixSuggestions([]);
-
-      // Silent error - validation panel will show the status
-      console.error("Validation failed:", error);
     } finally {
-      setIsValidating(false);
+      if (validationVersionRef.current === myVersion) {
+        setIsValidating(false);
+      }
     }
   }, [yamlFlow, nodes.length]);
 
@@ -368,7 +374,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
     [],
   );
 
-  const attachConditionToNode = (nodeId: string, condition: any) => {
+  const attachConditionToNode = (nodeId: string, condition: BuildingBlock) => {
     // Check if node already has a condition attached
     const targetNode = nodes.find((node) => node.id === nodeId);
     if (
@@ -415,7 +421,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
 
       // Add condition definition to conditions section if not exists
       const conditionExists = (prevFlow.conditions || []).some(
-        (cond: any) => cond.rid === `$ref:${conditionRid}`,
+        (cond) => cond.rid === `$ref:${conditionRid}`,
       );
 
       let updatedConditions = prevFlow.conditions || [];
@@ -452,7 +458,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
                 referencedConditions: (
                   node.data.referencedConditions || []
                 ).filter(
-                  (condition: any) =>
+                  (condition: BuildingBlock) =>
                     (condition.workspaceData?.rid || condition.id) !==
                     conditionRid,
                 ),
@@ -478,7 +484,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
 
       // Remove condition definition from conditions section (if exists)
       const updatedConditions = (prevFlow.conditions || []).filter(
-        (cond: any) => cond.rid !== `$ref:${conditionRid}`,
+        (cond) => cond.rid !== `$ref:${conditionRid}`,
       );
 
       return {
@@ -601,12 +607,12 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
     } finally {
       setIsLoadingBlocks(false);
     }
-  }, [toast]);
+  }, [toast, USER_ID]);
 
   useEffect(() => {
     loadBuildingBlocks();
     initializeDefaultNodes();
-  }, [loadBuildingBlocks]);
+  }, [loadBuildingBlocks, initializeDefaultNodes]);
 
   // Sync allBlocks data to existing nodes when blocks finish loading
   useEffect(() => {
@@ -623,8 +629,12 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
     }
   }, [allBlocksData, setNodes]);
 
-  // Trigger validation whenever yamlFlow changes
+  // Trigger validation whenever yamlFlow changes.
+  // Incrementing the version ensures any in-flight response from a previous
+  // cycle is discarded (see guard inside validateGraph).
   useEffect(() => {
+    validationVersionRef.current += 1;
+
     if (yamlFlow.plan && yamlFlow.plan.length > 2) {
       const validationTimeout = setTimeout(() => {
         validateGraph();
@@ -680,7 +690,12 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
       const blockData = event.dataTransfer.getData("application/reactflow");
 
       if (blockData) {
-        const block = JSON.parse(blockData);
+        let block: any;
+        try {
+          block = JSON.parse(blockData);
+        } catch {
+          return;
+        }
         const position = localPosition ?? (() => {
           const canvasBounds = event.currentTarget.getBoundingClientRect();
           return {
@@ -944,7 +959,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
         setIsSaving(false);
       }
     },
-    [yamlFlow, toast, onSaveComplete],
+    [yamlFlow, toast, onSaveComplete, USER_ID],
   );
 
   useEffect(() => {
@@ -1046,9 +1061,9 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
           if (conditionType === "router_direct") {
             newBranches[targetId] = targetId;
           } else if (conditionType === "router_boolean") {
-            if (!newBranches["true"] && !newBranches[true as any]) {
+            if (!newBranches["true"]) {
               newBranches["true"] = targetId;
-            } else if (!newBranches["false"] && !newBranches[false as any]) {
+            } else if (!newBranches["false"]) {
               newBranches["false"] = targetId;
             } else {
               let n = 2;
@@ -1071,7 +1086,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
         });
 
         const conditionExists = (prevFlow.conditions || []).some(
-          (cond: any) => cond.rid === `$ref:${conditionRid}`,
+          (cond) => cond.rid === `$ref:${conditionRid}`,
         );
         let updatedConditions = prevFlow.conditions || [];
         if (!conditionExists) {

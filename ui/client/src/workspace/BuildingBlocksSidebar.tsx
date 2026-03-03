@@ -112,6 +112,7 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({
                 size="sm"
                 className="flex-shrink-0 h-8 w-8 p-0 text-gray-400 hover:text-white"
                 onClick={() => handleViewDetails(block)}
+                aria-label={`View details for ${block.label}`}
               >
                 <Eye className="h-4 w-4" />
               </Button>
@@ -170,6 +171,7 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({
                 size="sm"
                 className="flex-shrink-0 h-8 w-8 p-0 text-gray-400 hover:text-white"
                 onClick={() => handleViewDetails(condition)}
+                aria-label={`View details for ${condition.label}`}
               >
                 <Eye className="h-4 w-4" />
               </Button>

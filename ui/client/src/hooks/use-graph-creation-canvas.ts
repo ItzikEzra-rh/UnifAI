@@ -124,7 +124,9 @@ function extractResolvedElements(
       return;
     }
     if (Array.isArray(obj)) {
-      obj.forEach((item) => traverse(item, key));
+      for (const item of obj) {
+        traverse(item, key);
+      }
       return;
     }
     if (typeof obj === "object" && obj !== null) {
@@ -552,7 +554,9 @@ export function useGraphCreationCanvas({
     if (!graph) return;
 
     // Rebuild all links so bidirectional pairs stay in sync
-    graph.getLinks().forEach((l) => l.remove());
+    for (const l of graph.getLinks()) {
+      l.remove();
+    }
 
     const { bidirectionalIds, secondaryIds } = detectBidirectionalEdges(edges);
     const linkColor = normalizePrimaryHex(primaryHexRef.current);
@@ -614,6 +618,7 @@ export function useGraphCreationCanvas({
     const primaryNow = normalizePrimaryHex(primaryHex);
     injectSvgDefs(paper.el, primaryNow);
 
+    // Update edge colours
     const { secondaryIds } = detectBidirectionalEdges(edgesRef.current);
     for (const link of graph.getLinks()) {
       if (secondaryIds.has(link.id as string)) continue;
@@ -621,6 +626,18 @@ export function useGraphCreationCanvas({
       link.attr("line/stroke", primaryNow);
       link.attr("line/sourceMarker/fill", primaryNow);
       link.attr("line/targetMarker/fill", primaryNow);
+    }
+
+    // Update node border strokes that derive from the primary colour
+    for (const n of nodesRef.current) {
+      const el = graph.getCell(n.id) as dia.Element | undefined;
+      if (!el) continue;
+
+      if (n.data.isConnectionSource) {
+        el.attr("body/stroke", primaryNow);
+      } else if (n.data.isConnectionTarget) {
+        el.attr("body/stroke", `${primaryNow}66`);
+      }
     }
   }, [primaryHex]);
 
