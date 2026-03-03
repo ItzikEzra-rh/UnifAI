@@ -69,30 +69,29 @@ class OpenAILLMValidator(BaseElementValidator):
         messages: List[ValidationMessage] = []
 
         try:
-            http_client = httpx.Client(
+            with httpx.Client(
                 verify=config.verify_ssl,
                 timeout=context.timeout_seconds,
-            )
-            client = OpenAI(
-                base_url=str(config.base_url),
-                api_key=config.api_key,
-                timeout=context.timeout_seconds,
-                http_client=http_client,
-            )
-            
-            try:
-                client.models.retrieve(config.model_name)
-            except NotFoundError:          
-                # Many OpenAI-compatible APIs don't implement /v1/models/{id}
-                # Fall back to a minimal completion request
-                self._validate_via_completion(client, config.model_name)
+            ) as http_client:
+                client = OpenAI(
+                    base_url=str(config.base_url),
+                    api_key=config.api_key,
+                    timeout=context.timeout_seconds,
+                    http_client=http_client,
+                )
+                
+                try:
+                    client.models.retrieve(config.model_name)
+                except NotFoundError:
+                    # Many OpenAI-compatible APIs don't implement /v1/models/{id}
+                    # Fall back to a minimal completion request
+                    self._validate_via_completion(client, config.model_name)
 
-            
-            messages.append(self._info(
-                "MODEL_AVAILABLE",
-                f"Successfully connected and found model '{config.model_name}'",
-                field="model_name",
-            ))
+                messages.append(self._info(
+                    "MODEL_AVAILABLE",
+                    f"Successfully connected and found model '{config.model_name}'",
+                    field="model_name",
+                ))
 
         except (AuthenticationError, PermissionDeniedError):
             # 401, 403
