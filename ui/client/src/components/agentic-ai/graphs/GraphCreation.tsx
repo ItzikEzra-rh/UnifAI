@@ -8,6 +8,7 @@ import * as yaml from "js-yaml";
 import { useTheme } from "@/contexts/ThemeContext";
 import { deriveThemeColors } from "@/lib/colorUtils";
 import { useGraphCreationCanvas } from "@/hooks/use-graph-creation-canvas";
+import { getCategoryDisplay } from "@/components/shared/helpers";
 import { NODE_WIDTH, NODE_HEADER_HEIGHT, groupBadgesByNode } from "./GraphDisplayHelpers";
 import { AgentNodeOverlay } from "./AgentNodeOverlay";
 import { ZoomControls } from "./ZoomControls";
@@ -145,6 +146,7 @@ function CreationControls({
 }) {
   const isProtected = nodeId === "user_input" || nodeId === "finalize";
   const conditions: BuildingBlock[] = node.data.referencedConditions || [];
+  const condColor = getCategoryDisplay("conditions").color;
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -252,9 +254,9 @@ function CreationControls({
             height: nodeHeight,
             borderRadius: 12,
             border: isDragOver
-              ? "2px dashed #f97316"
+              ? `2px dashed ${condColor}`
               : "2px dashed transparent",
-            background: isDragOver ? "rgba(249, 115, 22, 0.1)" : "transparent",
+            background: isDragOver ? `${condColor}1A` : "transparent",
             transition: "border-color 150ms, background 150ms",
             zIndex: 5,
           }}
@@ -275,17 +277,27 @@ function CreationControls({
             pointerEvents: "none",
           }}
         >
-          <div className="flex items-center gap-2 text-xs font-medium text-orange-400 mb-1">
+          <div
+            className="flex items-center gap-2 text-xs font-medium mb-1"
+            style={{ color: condColor }}
+          >
             <GitBranch className="w-3 h-3" />
             Conditions
           </div>
           {conditions.map((cond) => (
             <div
               key={cond.id}
-              className="bg-orange-900/30 border border-orange-700 rounded px-2 py-1 mb-1 flex items-center justify-between"
+              className="rounded px-2 py-1 mb-1 flex items-center justify-between border"
+              style={{
+                backgroundColor: `${condColor}1A`,
+                borderColor: `${condColor}80`,
+              }}
             >
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-orange-600 flex items-center justify-center">
+                <div
+                  className="w-4 h-4 rounded flex items-center justify-center"
+                  style={{ backgroundColor: condColor }}
+                >
                   <GitBranch className="w-2 h-2 text-white" />
                 </div>
                 <span className="text-xs text-white">{cond.label}</span>
