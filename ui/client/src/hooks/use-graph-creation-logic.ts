@@ -227,6 +227,8 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
         prev.filter((edge) => edge.source !== nodeId && edge.target !== nodeId),
       );
 
+      setPendingConnectionSource(null);
+
       setYamlFlow((prevFlow) => {
         const updatedPlan = prevFlow.plan
           .filter((step) => step.uid !== nodeId)
@@ -611,8 +613,12 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
 
   useEffect(() => {
     loadBuildingBlocks();
+  }, [loadBuildingBlocks]);
+
+  useEffect(() => {
     initializeDefaultNodes();
-  }, [loadBuildingBlocks, initializeDefaultNodes]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Sync allBlocks data to existing nodes when blocks finish loading
   useEffect(() => {
@@ -649,6 +655,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
     setIsGraphValid(false);
     setValidationResult(null);
     setFixSuggestions([]);
+    setIsValidating(false);
   }, [yamlFlow, validateGraph]);
 
   const onDragOver = useCallback((event: React.DragEvent) => {
@@ -758,7 +765,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
         };
 
         setNodes((prev) => [...prev, newNode]);
-        setNodeId(nodeId + 1);
+        setNodeId((prev) => prev + 1);
 
         setYamlFlow((prevFlow) => {
           const nodeRid = `$ref:${block.workspaceData?.rid || block.id}`;
@@ -868,7 +875,8 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
     // Reset YAML flow to default state
     setYamlFlow(defaultYamlState);
 
-    // Reset validation state
+    // Reset validation and connection state
+    setPendingConnectionSource(null);
     setIsGraphValid(false);
     setValidationResult(null);
     setFixSuggestions([]);

@@ -14,7 +14,7 @@ export interface WorkspaceData {
   name: string;
   category: string;
   type: string;
-  config: any;
+  config: Record<string, unknown>;
   version: number;
   created: string;
   updated: string;
@@ -81,7 +81,7 @@ export interface YamlFlowNode {
   rid: string;
   name: string;
   type?: string;
-  config?: any;
+  config?: Record<string, unknown>;
 }
 
 export interface YamlFlowPlanStep {
@@ -96,7 +96,7 @@ export interface YamlFlowCondition {
   rid: string;
   name: string;
   type?: string;
-  config?: any;
+  config?: Record<string, unknown>;
 }
 
 export interface YamlFlowState {

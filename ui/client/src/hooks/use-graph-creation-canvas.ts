@@ -150,21 +150,23 @@ function detectBidirectionalEdges(edges: CanvasEdge[]): {
 } {
   const bidirectionalIds = new Set<string>();
   const secondaryIds = new Set<string>();
-  const seenPairs = new Set<string>();
 
+  const directedPairs = new Set<string>();
   for (const e of edges) {
-    const hasReverse = edges.some(
-      (o) => o.id !== e.id && o.source === e.target && o.target === e.source,
-    );
-    if (hasReverse) {
+    directedPairs.add(`${e.source}::${e.target}`);
+  }
+
+  const seenPairs = new Set<string>();
+  for (const e of edges) {
+    if (directedPairs.has(`${e.target}::${e.source}`)) {
       bidirectionalIds.add(e.id);
     }
 
-    const reverseKey = `${e.target}→${e.source}`;
+    const reverseKey = `${e.target}::${e.source}`;
     if (seenPairs.has(reverseKey)) {
       secondaryIds.add(e.id);
     }
-    seenPairs.add(`${e.source}→${e.target}`);
+    seenPairs.add(`${e.source}::${e.target}`);
   }
 
   return { bidirectionalIds, secondaryIds };
@@ -656,8 +658,10 @@ export function useGraphCreationCanvas({
   const handleZoomIn = useCallback(() => {
     const paper = paperRef.current;
     if (!paper) return;
+    const MAX_SCALE = 4;
     const { sx } = paper.scale();
-    paper.scale(sx * 1.2, sx * 1.2);
+    const newScale = Math.min(sx * 1.2, MAX_SCALE);
+    paper.scale(newScale, newScale);
     syncTransform();
   }, [syncTransform]);
 

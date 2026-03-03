@@ -399,11 +399,14 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
   // Fit to view once after initial nodes are placed
   const didInitialFitRef = React.useRef(false);
   useEffect(() => {
-    if (nodes.length >= 2 && !didInitialFitRef.current) {
-      didInitialFitRef.current = true;
-      const t = setTimeout(() => handleFitToView(), 80);
-      return () => clearTimeout(t);
+    if (nodes.length < 2) {
+      didInitialFitRef.current = false;
+      return;
     }
+    if (didInitialFitRef.current) return;
+    didInitialFitRef.current = true;
+    const t = setTimeout(() => handleFitToView(), 80);
+    return () => clearTimeout(t);
   }, [nodes.length, handleFitToView]);
 
   // ── Edge delete tools via JointJS link tools ──
@@ -560,10 +563,12 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
                   YAML Flow State
                 </h3>
                 <button
+                  type="button"
                   onClick={() => setShowYamlDebug(false)}
                   className="text-gray-400 hover:text-white"
+                  aria-label="Close YAML panel"
                 >
-                  x
+                  <X className="w-4 h-4" />
                 </button>
               </div>
               <pre className="text-xs text-gray-300 overflow-auto">
