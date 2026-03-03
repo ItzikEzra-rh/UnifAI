@@ -7,7 +7,7 @@ import GraphHeader from "./GraphHeader";
 import * as yaml from "js-yaml";
 import { useTheme } from "@/contexts/ThemeContext";
 import { deriveThemeColors } from "@/lib/colorUtils";
-import { useJointGraphCanvas } from "@/hooks/use-joint-graph-canvas";
+import { useGraphCreationCanvas } from "@/hooks/use-graph-creation-canvas";
 import { NODE_WIDTH, NODE_HEADER_HEIGHT } from "./GraphDisplayHelpers";
 import { AgentNodeOverlay } from "./AgentNodeOverlay";
 import ResourceDetailsModal from "@/workspace/ResourceDetailsModal";
@@ -405,7 +405,7 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
     handleZoomOut,
     handleFitToView,
     clientToLocalPoint,
-  } = useJointGraphCanvas({
+  } = useGraphCreationCanvas({
     nodes,
     edges,
     primaryHex,
@@ -514,7 +514,7 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
       event.preventDefault();
       // Peek at the data to detect condition drags.
       // During dragover the data isn't readable (security), so we infer from
-      // the drag effect set by onDragStart in use-graph-logic:
+      // the drag effect set by onDragStart in use-graph-creation-logic:
       // conditions get effectAllowed="copy", nodes get "move".
       const isCond = event.dataTransfer.effectAllowed === "copy";
       if (isCond !== isDraggingCondition) {

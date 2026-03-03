@@ -52,12 +52,12 @@ export interface SavedBlueprintInfo {
   description: string;
 }
 
-interface UseGraphLogicOptions {
+interface UseGraphCreationLogicOptions {
   /** Callback to execute after a successful save (e.g., navigate back to workflow list) */
   onSaveComplete?: (savedBlueprint?: SavedBlueprintInfo) => void;
 }
 
-export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
+export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}) => {
   const { onSaveComplete } = options;
   const { toast } = useToast();
   const { primaryHex } = useTheme();

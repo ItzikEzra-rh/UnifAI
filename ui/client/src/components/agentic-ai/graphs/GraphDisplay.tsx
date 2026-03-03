@@ -5,7 +5,7 @@ import { ZoomIn, ZoomOut, Maximize2, Loader2 } from "lucide-react";
 import { safeFlushSync } from "@/lib/reactUtils";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
-import { useJointGraph } from "@/hooks/use-joint-graph";
+import { useGraphDisplay } from "@/hooks/use-graph-display";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import type { BuildingBlock } from "@/types/graph";
 import ResourceDetailsModal from "@/workspace/ResourceDetailsModal";
@@ -172,7 +172,7 @@ export default function GraphDisplay({
     paperTransform,
     setPaperTransform,
     rebuildOverlays,
-  } = useJointGraph({
+  } = useGraphDisplay({
     blueprintId,
     primaryHex,
     specDict,
@@ -313,7 +313,7 @@ export default function GraphDisplay({
   // widths, which would be fragile if layout thresholds changed.
   //
   // The delay allows the CSS width transition to progress and the
-  // ResizeObserver in use-joint-graph.ts to re-fit the paper (10ms
+  // ResizeObserver in use-graph-display.ts to re-fit the paper (10ms
   // debounce) before we call el.attr().
   const prevGraphVisibleRef = useRef(isGraphVisible);
 

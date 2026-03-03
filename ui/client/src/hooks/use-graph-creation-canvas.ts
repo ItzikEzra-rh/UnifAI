@@ -1,9 +1,9 @@
 /**
- * useJointGraphCanvas – JointJS paper hook for the *creation* canvas.
+ * useGraphCreationCanvas – JointJS paper hook for the graph *creation* canvas.
  *
- * Unlike `useJointGraph` (which loads a saved blueprint), this hook takes
- * live `CanvasNode[]` / `CanvasEdge[]` arrays from `useGraphLogic` and keeps
- * the JointJS graph imperatively synchronised with them.
+ * Unlike `useGraphDisplay` (which loads a saved blueprint), this hook takes
+ * live `CanvasNode[]` / `CanvasEdge[]` arrays from `useGraphCreationLogic`
+ * and keeps the JointJS graph imperatively synchronised with them.
  *
  * Provides: pan, zoom, node drag, overlay data, and paper coordinate helpers.
  */
@@ -36,7 +36,7 @@ import type { ResolvedElement } from "@/utils/graphFlowLayout";
 // Types
 // ---------------------------------------------------------------------------
 
-export interface UseJointGraphCanvasOptions {
+export interface UseGraphCreationCanvasOptions {
   nodes: CanvasNode[];
   edges: CanvasEdge[];
   primaryHex?: string;
@@ -45,7 +45,7 @@ export interface UseJointGraphCanvasOptions {
   onNodePositionChange?: (nodeId: string, position: { x: number; y: number }) => void;
 }
 
-export interface UseJointGraphCanvasReturn {
+export interface UseGraphCreationCanvasReturn {
   containerRef: React.RefObject<HTMLDivElement>;
   paperRef: React.MutableRefObject<dia.Paper | null>;
   graphRef: React.MutableRefObject<dia.Graph | null>;
@@ -172,14 +172,14 @@ function detectBidirectionalEdges(edges: CanvasEdge[]): {
 // Hook
 // ---------------------------------------------------------------------------
 
-export function useJointGraphCanvas({
+export function useGraphCreationCanvas({
   nodes,
   edges,
   primaryHex,
   onNodeClick,
   onPaneClick,
   onNodePositionChange,
-}: UseJointGraphCanvasOptions): UseJointGraphCanvasReturn {
+}: UseGraphCreationCanvasOptions): UseGraphCreationCanvasReturn {
   const containerRef = useRef<HTMLDivElement>(null);
   const graphRef = useRef<dia.Graph | null>(null);
   const paperRef = useRef<dia.Paper | null>(null);

@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useGraphLogic, SavedBlueprintInfo } from "@/hooks/use-graph-logic";
+import { useGraphCreationLogic, SavedBlueprintInfo } from "@/hooks/use-graph-creation-logic";
 import GraphCreation from "@/components/agentic-ai/graphs/GraphCreation";
 import BuildingBlocksSidebar from "./BuildingBlocksSidebar";
 import GraphValidationPanel from "@/components/agentic-ai/graphs/GraphValidationPanel";
@@ -37,7 +37,7 @@ export default function NewGraph({ onBack }: NewGraphProps) {
     fixSuggestions,
     isValidating,
     isSaving,
-  } = useGraphLogic({ onSaveComplete: onBack });
+  } = useGraphCreationLogic({ onSaveComplete: onBack });
 
   const [saveModalOpen, setSaveModalOpen] = useState(false);
 
