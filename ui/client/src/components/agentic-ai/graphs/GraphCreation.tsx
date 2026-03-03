@@ -18,11 +18,11 @@ import type { CanvasNode, CanvasEdge, BuildingBlock } from "@/types/graph";
 // Props
 // ---------------------------------------------------------------------------
 
-interface GraphCanvasJointProps {
+interface GraphCreationProps {
   nodes: CanvasNode[];
   edges: CanvasEdge[];
   yamlFlow?: any;
-  onDrop: (event: React.DragEvent) => void;
+  onDrop: (event: React.DragEvent, localPosition?: { x: number; y: number }) => void;
   onDragOver: (event: React.DragEvent) => void;
   onClearGraph: () => void;
   onSaveGraph: () => void;
@@ -353,7 +353,7 @@ function CreationControls({
 // Main component
 // ---------------------------------------------------------------------------
 
-const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
+const GraphCreation: React.FC<GraphCreationProps> = ({
   nodes,
   edges,
   yamlFlow,
@@ -467,7 +467,6 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
       const isCondition = block.workspaceData?.category === "conditions";
 
       if (isCondition) {
-        // Use JointJS geometry to find which node the condition was dropped on
         const graph = graphRef.current;
         const paper = paperRef.current;
         if (graph && paper) {
@@ -494,42 +493,17 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
           }
         }
 
-        // Fell outside any node – delegate to the original handler for the toast
         setIsDraggingCondition(false);
         onDrop(event);
         return;
       }
 
-      // Regular node drop – convert to paper-local coordinates.
-      // use-graph-logic.ts computes: position.x = clientX - canvasBounds.left - 75
-      // We override currentTarget.getBoundingClientRect so that formula produces
-      // paper-local coordinates instead of screen-relative ones.
+      // Convert screen coordinates to paper-local space and pass directly
+      // to onDrop so it doesn't need to read event.currentTarget.
       const localPoint = clientToLocalPoint(event.clientX, event.clientY);
-      const fakeRect = {
-        left: event.clientX - localPoint.x,
-        top: event.clientY - localPoint.y,
-        right: 0,
-        bottom: 0,
-        width: 0,
-        height: 0,
-        x: event.clientX - localPoint.x,
-        y: event.clientY - localPoint.y,
-        toJSON: () => ({}),
-      };
-      const wrappedEvent = new Proxy(event, {
-        get(target, prop) {
-          if (prop === "currentTarget") {
-            return { getBoundingClientRect: () => fakeRect };
-          }
-          if (prop === "preventDefault") return () => target.preventDefault();
-          if (prop === "stopPropagation") return () => target.stopPropagation();
-          const value = (target as any)[prop];
-          if (typeof value === "function") return value.bind(target);
-          return value;
-        },
-      });
+      const position = { x: localPoint.x - 75, y: localPoint.y - 25 };
 
-      onDrop(wrappedEvent as unknown as React.DragEvent);
+      onDrop(event, position);
     },
     [onDrop, onAttachCondition, onDragEnd, graphRef, paperRef, clientToLocalPoint],
   );
@@ -729,11 +703,11 @@ const GraphCanvasJoint: React.FC<GraphCanvasJointProps> = ({
 
       <ResourceDetailsModal
         isOpen={resourceDetailsOpen}
-        onClose={setResourceDetailsOpen}
+        onClose={() => setResourceDetailsOpen(false)}
         element={resourceDetailsElement}
       />
     </>
   );
 };
 
-export default GraphCanvasJoint;
+export default GraphCreation;

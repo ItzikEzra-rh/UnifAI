@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useGraphLogic, SavedBlueprintInfo } from "@/hooks/use-graph-logic";
-import GraphCanvasJoint from "@/components/agentic-ai/graphs/GraphCanvasJoint";
+import GraphCreation from "@/components/agentic-ai/graphs/GraphCreation";
 import BuildingBlocksSidebar from "./BuildingBlocksSidebar";
 import GraphValidationPanel from "@/components/agentic-ai/graphs/GraphValidationPanel";
 import SaveBlueprintModal from "@/components/agentic-ai/graphs/SaveBlueprintModal";
@@ -99,7 +99,7 @@ export default function NewGraph({ onBack }: NewGraphProps) {
 
       {/* Main Canvas */}
       <div className="flex-1 flex flex-col h-full overflow-hidden">
-        <GraphCanvasJoint
+        <GraphCreation
           nodes={nodes}
           edges={edges}
           yamlFlow={yamlFlow}

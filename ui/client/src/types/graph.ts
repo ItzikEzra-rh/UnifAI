@@ -71,5 +71,36 @@ export interface CurrentGraph {
   };
 }
 
-/** @deprecated Use CanvasNodeData instead */
-export type CustomNodeData = CanvasNodeData;
+// ---------------------------------------------------------------------------
+// YAML flow types (shared by graph-logic, blueprint loading, etc.)
+// ---------------------------------------------------------------------------
+
+export interface YamlFlowNode {
+  rid: string;
+  name: string;
+  type?: string;
+  config?: any;
+}
+
+export interface YamlFlowPlanStep {
+  uid: string;
+  node: string;
+  after?: string | string[] | null;
+  branches?: any;
+  exit_condition?: string;
+}
+
+export interface YamlFlowCondition {
+  rid: string;
+  name: string;
+  type?: string;
+  config?: any;
+}
+
+export interface YamlFlowState {
+  name?: string;
+  description?: string;
+  nodes: YamlFlowNode[];
+  plan: YamlFlowPlanStep[];
+  conditions?: YamlFlowCondition[];
+}
