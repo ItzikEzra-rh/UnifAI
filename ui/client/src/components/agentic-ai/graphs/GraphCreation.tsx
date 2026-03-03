@@ -8,7 +8,6 @@ import * as yaml from "js-yaml";
 import { useTheme } from "@/contexts/ThemeContext";
 import { deriveThemeColors } from "@/lib/colorUtils";
 import { useGraphCreationCanvas } from "@/hooks/use-graph-creation-canvas";
-import { getCategoryDisplay } from "@/components/shared/helpers";
 import { NODE_WIDTH, NODE_HEADER_HEIGHT, groupBadgesByNode } from "./GraphDisplayHelpers";
 import { AgentNodeOverlay } from "./AgentNodeOverlay";
 import { ZoomControls } from "./ZoomControls";
@@ -127,6 +126,9 @@ function CreationControls({
   selected,
   isConnectionSource,
   primaryHex,
+  conditionAccent,
+  conditionCardBg,
+  conditionCardBorder,
   onDelete,
   onAttachCondition,
   isDraggingCondition,
@@ -140,13 +142,15 @@ function CreationControls({
   selected: boolean;
   isConnectionSource: boolean;
   primaryHex: string;
+  conditionAccent: string;
+  conditionCardBg: string;
+  conditionCardBorder: string;
   onDelete?: (nodeId: string) => void;
   onAttachCondition?: (nodeId: string, condition: BuildingBlock) => void;
   isDraggingCondition: boolean;
 }) {
   const isProtected = nodeId === "user_input" || nodeId === "finalize";
   const conditions: BuildingBlock[] = node.data.referencedConditions || [];
-  const condColor = getCategoryDisplay("conditions").color;
   const [isDragOver, setIsDragOver] = useState(false);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -254,9 +258,9 @@ function CreationControls({
             height: nodeHeight,
             borderRadius: 12,
             border: isDragOver
-              ? `2px dashed ${condColor}`
+              ? `2px dashed ${conditionAccent}`
               : "2px dashed transparent",
-            background: isDragOver ? `${condColor}1A` : "transparent",
+            background: isDragOver ? `${conditionAccent}20` : "transparent",
             transition: "border-color 150ms, background 150ms",
             zIndex: 5,
           }}
@@ -279,7 +283,7 @@ function CreationControls({
         >
           <div
             className="flex items-center gap-2 text-xs font-medium mb-1"
-            style={{ color: condColor }}
+            style={{ color: conditionAccent }}
           >
             <GitBranch className="w-3 h-3" />
             Conditions
@@ -289,14 +293,14 @@ function CreationControls({
               key={cond.id}
               className="rounded px-2 py-1 mb-1 flex items-center justify-between border"
               style={{
-                backgroundColor: `${condColor}1A`,
-                borderColor: `${condColor}80`,
+                backgroundColor: conditionCardBg,
+                borderColor: conditionCardBorder,
               }}
             >
               <div className="flex items-center gap-2">
                 <div
                   className="w-4 h-4 rounded flex items-center justify-center"
-                  style={{ backgroundColor: condColor }}
+                  style={{ backgroundColor: conditionAccent }}
                 >
                   <GitBranch className="w-2 h-2 text-white" />
                 </div>
@@ -364,10 +368,13 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
     return () => document.removeEventListener("dragend", reset);
   }, []);
 
-  const { primary: edgeColor, primaryLight: accentColor } = useMemo(
-    () => deriveThemeColors(primaryHex),
-    [primaryHex],
-  );
+  const {
+    primary: edgeColor,
+    primaryLight: accentColor,
+    conditionAccent,
+    conditionCardBg,
+    conditionCardBorder,
+  } = useMemo(() => deriveThemeColors(primaryHex), [primaryHex]);
 
   const {
     containerRef,
@@ -646,6 +653,9 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
                           selected={!!node.selected}
                           isConnectionSource={!!node.data.isConnectionSource}
                           primaryHex={primaryHex}
+                          conditionAccent={conditionAccent}
+                          conditionCardBg={conditionCardBg}
+                          conditionCardBorder={conditionCardBorder}
                           onDelete={onDeleteNode}
                           onAttachCondition={onAttachCondition}
                           isDraggingCondition={isDraggingCondition}
