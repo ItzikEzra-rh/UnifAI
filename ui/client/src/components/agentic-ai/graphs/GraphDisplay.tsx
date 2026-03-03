@@ -1,7 +1,7 @@
 import React, { useContext, useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { dia } from "@joint/core";
 import { motion } from "framer-motion";
-import { ZoomIn, ZoomOut, Maximize2, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { safeFlushSync } from "@/lib/reactUtils";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useWorkspaceData } from "@/hooks/use-workspace-data";
@@ -15,53 +15,14 @@ import { StreamingDataContext } from "../StreamingDataContext";
 import {
   SCALE_CONTENT_TO_FIT_OPTS,
   STATUS_STYLES,
-  type OverlayBadge,
+  groupBadgesByNode,
 } from "./GraphDisplayHelpers";
 import { AgentNodeOverlay, NodeStatus } from "./AgentNodeOverlay";
+import { ZoomControls } from "./ZoomControls";
 
 // ---------------------------------------------------------------------------
 // Extracted sub-components (keep co-located — only used by GraphDisplay)
 // ---------------------------------------------------------------------------
-
-/** Compact zoom / fit-to-view button group. */
-function ZoomControls({
-  onZoomIn,
-  onZoomOut,
-  onFitToView,
-}: {
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onFitToView: () => void;
-}) {
-  return (
-    <div className="absolute bottom-3 right-3 z-40 flex flex-col rounded-lg bg-black/70 backdrop-blur-sm">
-      <button
-        type="button"
-        className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 rounded-t-lg transition-colors"
-        onClick={onZoomIn}
-        aria-label="Zoom in"
-      >
-        <ZoomIn size={16} />
-      </button>
-      <button
-        type="button"
-        className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-        onClick={onZoomOut}
-        aria-label="Zoom out"
-      >
-        <ZoomOut size={16} />
-      </button>
-      <button
-        type="button"
-        className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 rounded-b-lg transition-colors"
-        onClick={onFitToView}
-        aria-label="Fit to view"
-      >
-        <Maximize2 size={16} />
-      </button>
-    </div>
-  );
-}
 
 /** Bottom status bar showing per-node progress during live execution. */
 function ActiveNodesStatusBar({
@@ -444,16 +405,10 @@ export default function GraphDisplay({
     return map;
   }, [overlayHeaders]);
 
-  /** Pre-computed badges grouped by node ID for O(1) lookup. */
-  const badgesByNode = useMemo(() => {
-    const map = new Map<string, OverlayBadge[]>();
-    for (const b of overlayBadges) {
-      const list = map.get(b.nodeId);
-      if (list) list.push(b);
-      else map.set(b.nodeId, [b]);
-    }
-    return map;
-  }, [overlayBadges]);
+  const badgesByNode = useMemo(
+    () => groupBadgesByNode(overlayBadges),
+    [overlayBadges],
+  );
 
   // ── JSX ─────────────────────────────────────────────────────────────
 

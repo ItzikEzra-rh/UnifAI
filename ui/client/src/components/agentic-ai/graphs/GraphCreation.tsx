@@ -2,16 +2,16 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { dia, linkTools } from "@joint/core";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Link2, X, ZoomIn, ZoomOut, Maximize2, GitBranch, Trash2 } from "lucide-react";
+import { Plus, Link2, X, GitBranch, Trash2 } from "lucide-react";
 import GraphHeader from "./GraphHeader";
 import * as yaml from "js-yaml";
 import { useTheme } from "@/contexts/ThemeContext";
 import { deriveThemeColors } from "@/lib/colorUtils";
 import { useGraphCreationCanvas } from "@/hooks/use-graph-creation-canvas";
-import { NODE_WIDTH, NODE_HEADER_HEIGHT } from "./GraphDisplayHelpers";
+import { NODE_WIDTH, NODE_HEADER_HEIGHT, groupBadgesByNode } from "./GraphDisplayHelpers";
 import { AgentNodeOverlay } from "./AgentNodeOverlay";
+import { ZoomControls } from "./ZoomControls";
 import ResourceDetailsModal from "@/workspace/ResourceDetailsModal";
-import type { OverlayBadge } from "./GraphDisplayHelpers";
 import type { CanvasNode, CanvasEdge, BuildingBlock, YamlFlowState } from "@/types/graph";
 
 // ---------------------------------------------------------------------------
@@ -37,49 +37,6 @@ interface GraphCreationProps {
   onCancelConnection?: () => void;
   onAttachCondition?: (nodeId: string, condition: BuildingBlock) => void;
   onDragEnd?: () => void;
-}
-
-// ---------------------------------------------------------------------------
-// Zoom controls
-// ---------------------------------------------------------------------------
-
-function ZoomControls({
-  onZoomIn,
-  onZoomOut,
-  onFitToView,
-}: {
-  onZoomIn: () => void;
-  onZoomOut: () => void;
-  onFitToView: () => void;
-}) {
-  return (
-    <div className="absolute bottom-3 right-3 z-40 flex flex-col rounded-lg bg-black/70 backdrop-blur-sm">
-      <button
-        type="button"
-        className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 rounded-t-lg transition-colors"
-        onClick={onZoomIn}
-        aria-label="Zoom in"
-      >
-        <ZoomIn size={16} />
-      </button>
-      <button
-        type="button"
-        className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-        onClick={onZoomOut}
-        aria-label="Zoom out"
-      >
-        <ZoomOut size={16} />
-      </button>
-      <button
-        type="button"
-        className="flex items-center justify-center w-8 h-8 text-white/80 hover:text-white hover:bg-white/10 rounded-b-lg transition-colors"
-        onClick={onFitToView}
-        aria-label="Fit to view"
-      >
-        <Maximize2 size={16} />
-      </button>
-    </div>
-  );
 }
 
 // ---------------------------------------------------------------------------
@@ -543,15 +500,10 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
     return map;
   }, [nodes]);
 
-  const badgesByNode = useMemo(() => {
-    const map = new Map<string, OverlayBadge[]>();
-    for (const b of overlayBadges) {
-      const list = map.get(b.nodeId);
-      if (list) list.push(b);
-      else map.set(b.nodeId, [b]);
-    }
-    return map;
-  }, [overlayBadges]);
+  const badgesByNode = useMemo(
+    () => groupBadgesByNode(overlayBadges),
+    [overlayBadges],
+  );
 
   const openElementDetails = useCallback(
     (elementId: string) => {
