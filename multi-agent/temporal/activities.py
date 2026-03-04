@@ -1,19 +1,26 @@
 """
 Temporal activities — thin SDK wrappers.
 
-Each @activity.defn method unpacks the DTO and delegates to
-engine.temporal.node_executor.NodeExecutor for the actual
-business logic (blueprint rebuilding, context injection, execution).
+Graph activities delegate to NodeExecutor for business logic.
+Lifecycle activities delegate to SessionLifecycle for session
+state transitions (complete / fail).
 """
 from temporalio import activity
 
 from engine.temporal.node_executor import NodeExecutor
-from temporal.models import ExecuteNodeParams, EvaluateConditionParams
+from session.lifecycle import SessionLifecycle
+from session.user_session_manager import UserSessionManager
+from temporal.models import (
+    ExecuteNodeParams,
+    EvaluateConditionParams,
+    CompleteSessionParams,
+    FailSessionParams,
+)
 
 
 class GraphNodeActivities:
     """
-    Stateless activity class for Temporal workers.
+    Stateless activity class for graph node/condition execution.
 
     Created once at worker startup. Each activity call delegates
     to NodeExecutor which builds a fresh node from the mini-blueprint.
@@ -41,3 +48,32 @@ class GraphNodeActivities:
             step_context=params.step_context,
             state=params.state,
         )
+
+
+class SessionLifecycleActivities:
+    """
+    Activities for session lifecycle transitions.
+
+    Called by SessionWorkflow (parent workflow) to complete or fail
+    a session after the GraphTraversalWorkflow finishes.
+    """
+
+    def __init__(
+        self,
+        session_manager: UserSessionManager,
+        lifecycle: SessionLifecycle,
+    ) -> None:
+        self._manager = session_manager
+        self._lifecycle = lifecycle
+
+    @activity.defn(name="complete_session")
+    def complete_session(self, params: CompleteSessionParams) -> None:
+        activity.logger.info(f"Completing session: {params.run_id}")
+        session = self._manager.get_session(params.run_id)
+        self._lifecycle.complete(session, params.final_state)
+
+    @activity.defn(name="fail_session")
+    def fail_session(self, params: FailSessionParams) -> None:
+        activity.logger.info(f"Failing session: {params.run_id}")
+        session = self._manager.get_session(params.run_id)
+        self._lifecycle.fail(session, RuntimeError(params.error_message))

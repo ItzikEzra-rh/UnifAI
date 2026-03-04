@@ -78,7 +78,7 @@ class HeartbeatStream:
         finally:
             # Close the source generator in *this* thread so that
             # GeneratorExit propagates correctly through the
-            # SessionExecutor.stream() → _post_run / _error_run chain.
+            # SessionExecutor.stream() → lifecycle.complete / fail chain.
             if hasattr(self._source, "close"):
                 try:
                     self._source.close()

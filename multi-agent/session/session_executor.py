@@ -1,209 +1,127 @@
-from typing import Any, Dict, Iterator, Optional, Union
-from session.user_session_manager import UserSessionManager
-from session.repository.repository import SessionRepository
-from session.workflow_session import WorkflowSession
-from graph.state.graph_state import GraphState
-from core.context import set_current_context
-from core.channels import SessionChannel, ChannelFactory
-from .status import SessionStatus
-from .utils import derive_title
+from typing import Any, Dict, Iterator, Optional
 
-SessionOrId = Union[WorkflowSession, str]
+from core.channels import SessionChannel, ChannelFactory
+from core.enums import ResourceCategory
+from engine.domain.background_executor import BackgroundExecutor
+from graph.state.graph_state import GraphState
+from session.lifecycle import SessionLifecycle
+from session.workflow_session import WorkflowSession
 
 
 class SessionExecutor:
     """
-    SRP: only handles "run" and "stream" of a WorkflowSession.
-    Can accept either a WorkflowSession or a run_id string.
+    Orchestrates graph execution with session lifecycle hooks.
+
+    Delegates lifecycle transitions (prepare / complete / fail) to
+    SessionLifecycle.  Streaming channel management lives here because
+    it is an execution concern, not a lifecycle concern.
     """
 
     def __init__(
-            self,
-            session_manager: UserSessionManager,
-            repository: SessionRepository,
-            channel_factory: ChannelFactory,
-    ):
-        self._sessions = session_manager
-        self._repo = repository
+        self,
+        lifecycle: SessionLifecycle,
+        channel_factory: ChannelFactory,
+    ) -> None:
+        self._lifecycle = lifecycle
         self._channel_factory = channel_factory
 
-    def _pre_run(
-            self,
-            session: WorkflowSession,
-            inputs: Dict[str, Any],
-            scope: str,
-            logged_in_user: str,
-            streaming: bool = False
-    ) -> Optional[SessionChannel]:
-        """
-        1) add title to session metadata
-        2) bind RunContext into ContextVar
-        3) seed input into the GraphState
-        4) if streaming, create channel and prepare nodes
-        5) update status
-        6) persist
-        
-        Returns:
-            SessionChannel if streaming=True, None otherwise
-        """
-        if session.metadata.title is None:
-            if title := derive_title(inputs):
-                session.metadata.title = title
-        ctx = session.run_context.change_scope(scope)  # TODO remove scope parameter from context
-        ctx = ctx.set_logged_in_user(logged_in_user)  # TODO remove logged_in_user parameter from context
-        set_current_context(ctx)
-        session.graph_state.update(inputs)
-        
-        # Streaming setup - create channel and prepare nodes
-        channel = None
-        if streaming:
-            channel = self._create_streaming_channel(session)
-            session.prepare_for_streaming(channel)
-        
-        session.update_status(SessionStatus.RUNNING)
-        self._repo.save(session)
-        
-        return channel
-
-    def _post_run(
-            self,
-            session: WorkflowSession,
-            final_state,
-            streaming: bool = False,
-            channel: Optional[SessionChannel] = None
-    ) -> None:
-        """
-        1) attach final state
-        2) if streaming, cleanup channel from nodes and close channel
-        3) mark context finished
-        4) update status
-        5) persist
-        """
-        session.graph_state = GraphState(**final_state)
-        
-        # Streaming cleanup
-        if streaming:
-            session.cleanup_streaming()
-            if channel:
-                channel.close()
-        
-        session.run_context = session.run_context.mark_finished()
-        set_current_context(session.run_context)
-        session.update_status(SessionStatus.COMPLETED)
-        self._repo.save(session)
-
-    def _error_run(
-            self,
-            session: WorkflowSession,
-            error: Exception,
-            streaming: bool = False,
-            channel: Optional[SessionChannel] = None
-    ) -> None:
-        """
-        1) if streaming, cleanup channel from nodes and close channel
-        2) mark context finished
-        3) update status
-        4) persist
-        """
-        if streaming:
-            session.cleanup_streaming()
-            if channel:
-                channel.close()
-        
-        session.run_context = session.run_context.mark_finished()
-        session.update_status(SessionStatus.FAILED)
-        self._repo.save(session)
-
     def run(
-            self,
-            session: WorkflowSession,
-            inputs: Dict[str, Any],
-            scope: str = "public",
-            logged_in_user=""
+        self,
+        session: WorkflowSession,
+        inputs: Dict[str, Any],
+        scope: str = "public",
+        logged_in_user: str = "",
     ) -> GraphState:
-        """
-        Run the graph to completion and return the final GraphState.
-        """
-        self._pre_run(session, inputs, scope, logged_in_user, streaming=False)
+        self._lifecycle.prepare(session, inputs, scope, logged_in_user)
         try:
             final_state = session.executable_graph.run(session.graph_state)
         except Exception as e:
-            self._error_run(session, e, streaming=False)
-            raise e
+            self._lifecycle.fail(session, e)
+            raise
 
-        self._post_run(session, final_state, streaming=False)
+        self._lifecycle.complete(session, final_state)
         return final_state
 
     def stream(
-            self,
-            session: WorkflowSession,
-            inputs: Dict[str, Any],
-            scope: str = "public",
-            logged_in_user: str = "",
-            **stream_kwargs: Any
+        self,
+        session: WorkflowSession,
+        inputs: Dict[str, Any],
+        scope: str = "public",
+        logged_in_user: str = "",
+        **stream_kwargs: Any,
     ) -> Iterator[Any]:
-        """
-        Stream execution chunks, then persist at the end.
-        """
-        channel = self._pre_run(session, inputs, scope, logged_in_user, streaming=True)
+        self._lifecycle.prepare(session, inputs, scope, logged_in_user)
+        channel = self._channel_factory.create(session.get_run_id())
+        self._inject_streaming(session, channel)
 
         try:
             for chunk in session.executable_graph.stream(
-                    session.graph_state,
-                    **stream_kwargs
+                session.graph_state,
+                **stream_kwargs,
             ):
                 yield chunk
                 try:
-                    # will work only if custom is enabled in stream_kwargs
-                    session.graph_state = chunk[1].get("state") if isinstance(chunk, (list, tuple)) and isinstance(
-                        chunk[1], dict) else None
+                    session.graph_state = (
+                        chunk[1].get("state")
+                        if isinstance(chunk, (list, tuple)) and isinstance(chunk[1], dict)
+                        else None
+                    )
                 except Exception as e:
                     raise e
-            
-            # Generator completed normally - finalize
-            self._post_run(session, session.graph_state, streaming=True, channel=channel)
+
+            self._cleanup_streaming(session, channel)
+            self._lifecycle.complete(session, session.graph_state)
 
         except GeneratorExit:
-            # Consumer stopped iterating early - still need to cleanup
-            self._post_run(session, session.graph_state, streaming=True, channel=channel)
+            self._cleanup_streaming(session, channel)
+            self._lifecycle.complete(session, session.graph_state)
             raise
         except Exception as e:
-            self._error_run(session, e, streaming=True, channel=channel)
-            raise e
+            self._cleanup_streaming(session, channel)
+            self._lifecycle.fail(session, e)
+            raise
 
     def submit(
-            self,
-            session: WorkflowSession,
-            inputs: Dict[str, Any],
-            scope: str = "public",
-            logged_in_user: str = ""
+        self,
+        session: WorkflowSession,
+        inputs: Dict[str, Any],
+        scope: str = "public",
+        logged_in_user: str = "",
     ) -> str:
         """
-        Non-blocking (fire-and-forget) path for Temporal workflows.
-        Persists the session as RUNNING and returns the Temporal workflow_id
-        immediately, without waiting for the workflow to finish.
-        Only works when the session's executor is a TemporalGraphExecutor.
+        Fire-and-forget path for background executors (e.g. Temporal).
+
+        Calls lifecycle.prepare() synchronously so the session is marked
+        RUNNING before the 202 is returned.  The background executor's
+        SessionWorkflow handles lifecycle.complete() / fail() when the
+        workflow finishes.
         """
         executor = session.executable_graph
-        if not hasattr(executor, 'start'):
+        if not isinstance(executor, BackgroundExecutor):
             raise TypeError(
-                "submit() requires an executor with a start() method "
-                f"(e.g., Temporal). Got: {type(executor).__name__}"
+                f"submit() requires a BackgroundExecutor, "
+                f"got {type(executor).__name__}"
             )
 
-        self._pre_run(session, inputs, scope, logged_in_user, streaming=False)
-        workflow_id = executor.start(session.graph_state)
+        self._lifecycle.prepare(session, inputs, scope, logged_in_user)
+        workflow_id = executor.start(session.graph_state, run_id=session.get_run_id())
 
-        # Record the Temporal workflow_id in the run_context metadata so it
-        # can be returned to the caller and used for polling / status checks.
         session.run_context = session.run_context.with_metadata(workflow_id=workflow_id)
-        self._repo.save(session)
+        self._lifecycle._repo.save(session)
 
         return workflow_id
 
-    def _create_streaming_channel(self, session: WorkflowSession) -> SessionChannel:
-        """
-        Create a streaming channel for the session.
-        Delegates to the injected ChannelFactory (infrastructure concern).
-        """
-        return self._channel_factory.create(session.get_run_id())
+    # ------------------------------------------------------------------ #
+    #  Streaming helpers (execution concern, not lifecycle concern)
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def _inject_streaming(session: WorkflowSession, channel: Optional[SessionChannel]) -> None:
+        for node in session.session_registry.all_of(ResourceCategory.NODE).values():
+            if hasattr(node, "set_streaming_channel"):
+                node.set_streaming_channel(channel)
+
+    @staticmethod
+    def _cleanup_streaming(session: WorkflowSession, channel: SessionChannel) -> None:
+        SessionExecutor._inject_streaming(session, None)
+        channel.close()

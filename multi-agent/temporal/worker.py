@@ -16,9 +16,11 @@ from temporalio.worker import Worker, UnsandboxedWorkflowRunner
 from config.app_config import AppConfig
 from core.app_container import AppContainer
 from engine.temporal.node_executor import NodeExecutor
+from session.lifecycle import SessionLifecycle
 from temporal.client import get_temporal_client
-from temporal.activities import GraphNodeActivities
+from temporal.activities import GraphNodeActivities, SessionLifecycleActivities
 from temporal.workflow import GraphTraversalWorkflow
+from temporal.session_workflow import SessionWorkflow
 
 
 async def run_worker(threads: int) -> None:
@@ -28,23 +30,28 @@ async def run_worker(threads: int) -> None:
     node_executor = NodeExecutor(
         session_factory=container.session_factory,
     )
-    activities = GraphNodeActivities(node_executor=node_executor)
+    graph_activities = GraphNodeActivities(node_executor=node_executor)
+
+    lifecycle = SessionLifecycle(repository=container.session_repo)
+    lifecycle_activities = SessionLifecycleActivities(
+        session_manager=container.session_manager,
+        lifecycle=lifecycle,
+    )
 
     client = await get_temporal_client()
 
     worker = Worker(
         client,
         task_queue=cfg.temporal_task_queue,
-        workflows=[GraphTraversalWorkflow],
+        workflows=[GraphTraversalWorkflow, SessionWorkflow],
         activities=[
-            activities.execute_node,
-            activities.evaluate_condition,
+            graph_activities.execute_node,
+            graph_activities.evaluate_condition,
+            lifecycle_activities.complete_session,
+            lifecycle_activities.fail_session,
         ],
         activity_executor=ThreadPoolExecutor(max_workers=threads),
         max_concurrent_activities=threads,
-        # Our workflow imports modules that use datetime.utcnow in Pydantic
-        # field defaults. The sandbox blocks this even though the workflow
-        # itself is deterministic. Safe to disable.
         workflow_runner=UnsandboxedWorkflowRunner(),
     )
 

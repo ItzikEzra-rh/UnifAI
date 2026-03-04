@@ -6,6 +6,7 @@ from blueprints.resolver import BlueprintResolver
 from session.workflow_session_factory import WorkflowSessionFactory
 from session.repository.mongo_session_repository import MongoSessionRepository
 from session.user_session_manager import UserSessionManager
+from session.lifecycle import SessionLifecycle
 from session.session_executor import SessionExecutor
 from session.service import SessionService
 from resources.registry import ResourcesRegistry
@@ -111,13 +112,15 @@ class AppContainer(metaclass=SingletonMeta):
             session_factory=self.session_factory,
             blueprint_service=self.blueprint_service
         )
+        # Session lifecycle — portable state-machine transitions.
+        self.session_lifecycle = SessionLifecycle(repository=self.session_repo)
+
         # Streaming channel factory — infrastructure concern, not engine concern.
         # Swap to RedisChannelFactory for cross-process engines or production.
         channel_factory = LocalChannelFactory()
 
         self.session_executor = SessionExecutor(
-            session_manager=self.session_manager,
-            repository=self.session_repo,
+            lifecycle=self.session_lifecycle,
             channel_factory=channel_factory,
         )
 

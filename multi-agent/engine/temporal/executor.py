@@ -1,8 +1,11 @@
 """
 Temporal graph executor.
 
-Starts a GraphTraversalWorkflow on the shared Temporal task queue.
-Holds only the GraphDefinition (topology + node deployment info).
+Starts workflows on the shared Temporal task queue.
+- run()   → blocking: starts GraphTraversalWorkflow and waits for result.
+- start() → fire-and-forget: starts SessionWorkflow (which wraps
+            GraphTraversalWorkflow + lifecycle activities) and returns
+            the workflow_id immediately.
 
 Uses lazy imports for Temporal SDK components to prevent circular
 dependencies and avoid importing temporalio at module load time.
@@ -12,14 +15,15 @@ import uuid
 from typing import Any
 
 from engine.domain.base_executor import BaseGraphExecutor
+from engine.domain.background_executor import BackgroundExecutor
 from engine.temporal.models import GraphDefinition
 from graph.state.graph_state import GraphState
 from config.app_config import AppConfig
 
 
-class TemporalGraphExecutor(BaseGraphExecutor):
+class TemporalGraphExecutor(BaseGraphExecutor, BackgroundExecutor):
     """
-    Starts a Temporal workflow to execute the graph.
+    Starts Temporal workflows to execute the graph.
 
     Holds only the GraphDefinition. Workers pick up activities and
     rebuild nodes from the mini-blueprints stored in each NodeDef.
@@ -37,13 +41,14 @@ class TemporalGraphExecutor(BaseGraphExecutor):
         state_dict = self._to_state_dict(initial_state)
         return asyncio.run(self._execute(state_dict))
 
-    def start(self, initial_state: Any) -> str:
+    def start(self, initial_state: Any, run_id: str) -> str:
         """
-        Non-blocking (fire-and-forget): submit the workflow and return
-        the workflow_id immediately.
+        Fire-and-forget: submit a SessionWorkflow and return the
+        workflow_id immediately.  The SessionWorkflow handles graph
+        traversal AND session lifecycle completion.
         """
         state_dict = self._to_state_dict(initial_state)
-        return asyncio.run(self._start(state_dict))
+        return asyncio.run(self._start_session_workflow(state_dict, run_id))
 
     def stream(self, initial_state: Any, *args, **kwargs):
         final = self.run(initial_state)
@@ -54,6 +59,10 @@ class TemporalGraphExecutor(BaseGraphExecutor):
             return None
         return asyncio.run(self._query_state())
 
+    # ------------------------------------------------------------------ #
+    #  Internal helpers
+    # ------------------------------------------------------------------ #
+
     def _to_state_dict(self, initial_state: Any) -> dict:
         return (
             initial_state.serialize()
@@ -61,24 +70,31 @@ class TemporalGraphExecutor(BaseGraphExecutor):
             else dict(initial_state)
         )
 
-    def _make_params(self, state_dict: dict) -> tuple:
+    def _make_graph_params(self, state_dict: dict) -> dict:
         from temporal.models import GraphExecutionParams
 
-        workflow_id = f"graph-{uuid.uuid4().hex[:12]}"
-        self._workflow_id = workflow_id
         params = GraphExecutionParams(
             state=state_dict,
             graph_definition=self._graph_def.model_dump(mode="json"),
         )
-        return workflow_id, params
+        return params.model_dump(mode="json")
 
     async def _execute(self, state_dict: dict) -> dict:
+        """Blocking: start GraphTraversalWorkflow and wait for the result."""
         from temporal.client import get_temporal_client
         from temporal.workflow import GraphTraversalWorkflow
+        from temporal.models import GraphExecutionParams
 
         cfg = AppConfig.get_instance()
         client = await get_temporal_client()
-        workflow_id, params = self._make_params(state_dict)
+
+        workflow_id = f"graph-{uuid.uuid4().hex[:12]}"
+        self._workflow_id = workflow_id
+
+        params = GraphExecutionParams(
+            state=state_dict,
+            graph_definition=self._graph_def.model_dump(mode="json"),
+        )
         return await client.execute_workflow(
             GraphTraversalWorkflow.run,
             params,
@@ -86,15 +102,29 @@ class TemporalGraphExecutor(BaseGraphExecutor):
             task_queue=cfg.temporal_task_queue,
         )
 
-    async def _start(self, state_dict: dict) -> str:
+    async def _start_session_workflow(self, state_dict: dict, run_id: str) -> str:
+        """Fire-and-forget: start SessionWorkflow (parent) which handles
+        graph traversal + lifecycle completion."""
         from temporal.client import get_temporal_client
-        from temporal.workflow import GraphTraversalWorkflow
+        from temporal.session_workflow import SessionWorkflow
+        from temporal.models import SessionWorkflowParams, GraphExecutionParams
 
         cfg = AppConfig.get_instance()
         client = await get_temporal_client()
-        workflow_id, params = self._make_params(state_dict)
+
+        workflow_id = f"session-{uuid.uuid4().hex[:12]}"
+        self._workflow_id = workflow_id
+
+        graph_params = GraphExecutionParams(
+            state=state_dict,
+            graph_definition=self._graph_def.model_dump(mode="json"),
+        )
+        params = SessionWorkflowParams(
+            run_id=run_id,
+            graph_execution_params=graph_params.model_dump(mode="json"),
+        )
         await client.start_workflow(
-            GraphTraversalWorkflow.run,
+            SessionWorkflow.run,
             params,
             id=workflow_id,
             task_queue=cfg.temporal_task_queue,
