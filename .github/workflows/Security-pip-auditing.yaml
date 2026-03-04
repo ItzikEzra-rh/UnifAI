@@ -68,7 +68,7 @@ jobs:
           virtual-environment: venv/
           summary: true
 
-    scan_multiagent:
+    scan_multi-agent:
       runs-on: ubuntu-latest
       steps:
 
@@ -81,15 +81,15 @@ jobs:
           python-version: '3.11'
           cache: 'pip'
         
-      - name: setup virtual environment (multiagent)
+      - name: setup virtual environment (multi-agent)
         run: python3 -m venv venv
 
-      - name: Install python requirements (multiagent)
+      - name: Install python requirements (multi-agent)
         run: | 
           ./venv/bin/pip install --upgrade pip "setuptools>=70.0.0"
-          ./venv/bin/pip install -r multiagent/requirements.txt
+          ./venv/bin/pip install -r multi-agent/requirements.txt
 
-      - name: Scan dependencies (multiagent)
+      - name: Scan dependencies (multi-agent)
         uses: pypa/gh-action-pip-audit@v1.1.0
         with:
           local: true
