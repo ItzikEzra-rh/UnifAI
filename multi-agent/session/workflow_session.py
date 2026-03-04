@@ -1,7 +1,7 @@
 from session.session_registry import SessionRegistry
 from graph.rt_graph_plan import RTGraphPlan
-from engine.builder.base_graph_builder import BaseGraphBuilder
-from engine.executor.interfaces import GraphExecutor
+from engine.domain.base_builder import BaseGraphBuilder
+from engine.domain.base_executor import BaseGraphExecutor
 from core.run_context import RunContext
 from core.enums import ResourceCategory
 from core.channels import SessionChannel
@@ -28,7 +28,7 @@ class WorkflowSession:
             session_registry: SessionRegistry,
             blueprint_id: str,
             rt_graph_plan: RTGraphPlan,
-            executable_graph: GraphExecutor,
+            executable_graph: BaseGraphExecutor,
             builder: BaseGraphBuilder,
             run_context: RunContext,
             # logger: LoggerInterface,

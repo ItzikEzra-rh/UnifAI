@@ -5,7 +5,6 @@ from session.workflow_session import WorkflowSession
 from graph.state.graph_state import GraphState
 from core.context import set_current_context
 from core.channels import SessionChannel, ChannelFactory
-from engine.executor.temporal_executor import TemporalGraphExecutor
 from .status import SessionStatus
 from .utils import derive_title
 
@@ -186,10 +185,10 @@ class SessionExecutor:
         Only works when the session's executor is a TemporalGraphExecutor.
         """
         executor = session.executable_graph
-        if not isinstance(executor, TemporalGraphExecutor):
+        if not hasattr(executor, 'start'):
             raise TypeError(
-                "submit() is only supported for Temporal-backed sessions. "
-                f"Got executor type: {type(executor).__name__}"
+                "submit() requires an executor with a start() method "
+                f"(e.g., Temporal). Got: {type(executor).__name__}"
             )
 
         self._pre_run(session, inputs, scope, logged_in_user, streaming=False)

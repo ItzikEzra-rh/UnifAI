@@ -165,7 +165,7 @@ def build_channel_registry(state_cls: type) -> dict[str, BaseStateChannel]:
         Annotated[T, reducer_fn]  →  BinOpChannel(reducer_fn)
         plain T                   →  LastValueChannel()
 
-    Called once at MergeApplicator construction time.
+    Called once at GraphTraversal construction time.
     """
     from typing import get_type_hints
 

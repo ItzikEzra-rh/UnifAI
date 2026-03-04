@@ -5,7 +5,7 @@ Creates LocalSessionChannel instances backed by LangGraphEmitter.
 Suitable for development and single-process deployments.
 """
 from core.channels import ChannelFactory, SessionChannel
-from engine.channels import LangGraphEmitter
+from engine.langgraph.emitter import LangGraphEmitter
 from .local_channel import LocalSessionChannel
 
 

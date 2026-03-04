@@ -15,18 +15,20 @@ from temporalio.worker import Worker, UnsandboxedWorkflowRunner
 
 from config.app_config import AppConfig
 from core.app_container import AppContainer
+from engine.temporal.node_executor import NodeExecutor
 from temporal.client import get_temporal_client
-from temporal.graph_node_activities import GraphNodeActivities
-from temporal.graph_workflow import GraphTraversalWorkflow
+from temporal.activities import GraphNodeActivities
+from temporal.workflow import GraphTraversalWorkflow
 
 
 async def run_worker(threads: int) -> None:
     cfg = AppConfig.get_instance()
     container = AppContainer(cfg)
 
-    activities = GraphNodeActivities(
+    node_executor = NodeExecutor(
         session_factory=container.session_factory,
     )
+    activities = GraphNodeActivities(node_executor=node_executor)
 
     client = await get_temporal_client()
 
@@ -39,6 +41,7 @@ async def run_worker(threads: int) -> None:
             activities.evaluate_condition,
         ],
         activity_executor=ThreadPoolExecutor(max_workers=threads),
+        max_concurrent_activities=threads,
         # Our workflow imports modules that use datetime.utcnow in Pydantic
         # field defaults. The sandbox blocks this even though the workflow
         # itself is deterministic. Safe to disable.

@@ -1,7 +1,7 @@
 from catalog.element_registry import ElementRegistry
 from session.element_builder import SessionElementBuilder
 from session.session_registry import SessionRegistry
-from engine.builder.graph_builder_factory import GraphBuilderFactory
+from engine.factory import GraphBuilderFactory
 from session.workflow_session import WorkflowSession
 from graph.state.graph_state import GraphState
 from graph.plan_builder import PlanBuilder
@@ -78,7 +78,7 @@ class WorkflowSessionFactory:
 
         # 3. Wire into WorkflowSession
         session = WorkflowSession(
-            session_registry=rt_graph_plan._session,
+            session_registry=rt_graph_plan.session_registry,
             blueprint_id=blueprint_id,
             rt_graph_plan=rt_graph_plan,
             executable_graph=executable_graph,
