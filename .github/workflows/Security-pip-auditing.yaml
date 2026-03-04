@@ -125,7 +125,7 @@ jobs:
           summary: true
 
     analyze:
-        needs: [scan_rag, scan_multiagent, scan_sso]
+        needs: [scan_rag, scan_multi-agent, scan_sso]
         #change to the line below after new BE is pushed
         #needs: [scan_backend, scan_rag, scan_multiagent, scan_sso]
         if: always() && contains(needs.*.result, 'failure')
