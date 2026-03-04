@@ -28,7 +28,7 @@ jobs:
           run: pip-audit
 
     analyze:
-        needs: [scan
+        needs: [scan]
         if: always() && contains(needs.*.result, 'failure')
         runs-on: ubuntu-latest
         permissions:
