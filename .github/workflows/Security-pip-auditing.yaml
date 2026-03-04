@@ -8,27 +8,124 @@ on:
     workflow_dispatch:
 
 jobs:
-    scan:
-        runs-on: ubuntu-latest
-        steps:
 
-        - name: Checkout code
-          uses: actions/checkout@v4
+    # scan_backend:
+    #     runs-on: ubuntu-latest
+    #     steps:
 
-        - name: Set up Python
-          uses: actions/setup-python@v5
-          with:
-            python-version: '3.11'
+    #     - name: Checkout code
+    #       uses: actions/checkout@v4
 
-        - name: Install pip-audit
-          run: pip install pip-audit
+    #     - name: Set up Python
+    #       uses: actions/setup-python@v5
+    #       with:
+    #         python-version: '3.11'
+    #         cache: 'pip'
 
-        - name: Scan dependencies
-          # This will fail the build if a vulnerability is found
-          run: pip-audit
+    #     - name: setup virtual environment (backend)
+    #       run: python3 -m venv venv
+    
+    #     - name: Install python requirements (backend)
+    #       run: | 
+    #         ./venv/bin/pip install --upgrade pip "setuptools>=70.0.0"
+    #         ./venv/bin/pip install -r rag/requirements.txt
+
+    #     - name: Install python requirements (backend)
+    #       run: pip install -r backend/requirements.txt
+
+    #     - name: Scan dependencies (backend)
+    #       uses: pypa/gh-action-pip-audit@v1.1.0
+    #       with:
+    #         local: true
+    #         virtual-environment: venv/
+    #         summary: true
+
+    scan_rag:
+      runs-on: ubuntu-latest
+      steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+        
+      - name: setup virtual environment (rag)
+        run: python3 -m venv venv
+
+      - name: Install python requirements (rag)
+        run: | 
+          ./venv/bin/pip install --upgrade pip "setuptools>=70.0.0"
+          ./venv/bin/pip install -r rag/requirements.txt
+
+      - name: Scan dependencies (rag)
+        uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          local: true
+          virtual-environment: venv/
+          summary: true
+
+    scan_multiagent:
+      runs-on: ubuntu-latest
+      steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+        
+      - name: setup virtual environment (multiagent)
+        run: python3 -m venv venv
+
+      - name: Install python requirements (multiagent)
+        run: | 
+          ./venv/bin/pip install --upgrade pip "setuptools>=70.0.0"
+          ./venv/bin/pip install -r multiagent/requirements.txt
+
+      - name: Scan dependencies (multiagent)
+        uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          local: true
+          virtual-environment: venv/
+          summary: true
+
+    scan_sso:
+      runs-on: ubuntu-latest
+      steps:
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+        
+      - name: setup virtual environment (sso)
+        run: python3 -m venv venv
+
+      - name: Install python requirements (sso)
+        run: | 
+          ./venv/bin/pip install --upgrade pip "setuptools>=70.0.0"
+          ./venv/bin/pip install -r shared-resources/sso-backend/requirements.txt
+
+      - name: Scan dependencies (sso)
+        uses: pypa/gh-action-pip-audit@v1.1.0
+        with:
+          local: true
+          virtual-environment: venv/
+          summary: true
 
     analyze:
-        needs: [scan]
+        needs: [scan_backend, scan_rag, scan_multiagent, scan_sso]
         if: always() && contains(needs.*.result, 'failure')
         runs-on: ubuntu-latest
         permissions:
