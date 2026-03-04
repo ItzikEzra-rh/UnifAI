@@ -1,5 +1,3 @@
-from .local_channel import LocalSessionChannel
-from .local_channel_factory import LocalChannelFactory
+from infrastructure.channels import LocalSessionChannel, LocalChannelFactory
 
 __all__ = ["LocalSessionChannel", "LocalChannelFactory"]
-

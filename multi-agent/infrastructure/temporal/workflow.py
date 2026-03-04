@@ -2,7 +2,7 @@
 Temporal workflow — thin SDK wrapper.
 
 Defines the @workflow.defn for Temporal registration.
-Delegates graph traversal logic to engine.temporal.traversal.GraphTraversal.
+Delegates graph traversal logic to engine.distributed.traversal.GraphTraversal.
 Activity calls remain explicit here (Temporal requires direct await on
 workflow.execute_activity for deterministic replay).
 """
@@ -12,10 +12,10 @@ from typing import Any, Dict, List
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-from engine.temporal.models import GraphDefinition, ConditionalEdgeDef
-from engine.temporal.traversal import GraphTraversal
+from engine.domain.models import GraphDefinition, ConditionalEdgeDef
+from engine.distributed.traversal import GraphTraversal
 from graph.state.graph_state import GraphState
-from temporal.models import (
+from infrastructure.temporal.models import (
     GraphExecutionParams,
     ExecuteNodeParams,
     EvaluateConditionParams,

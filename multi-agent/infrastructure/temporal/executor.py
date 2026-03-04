@@ -15,8 +15,8 @@ import uuid
 from typing import Any
 
 from engine.domain.base_executor import BaseGraphExecutor
-from engine.domain.background_executor import BackgroundExecutor
-from engine.temporal.models import GraphDefinition
+from engine.domain.background_executor import BackgroundExecutor, ExecutionContext
+from engine.domain.models import GraphDefinition
 from graph.state.graph_state import GraphState
 from config.app_config import AppConfig
 
@@ -41,14 +41,14 @@ class TemporalGraphExecutor(BaseGraphExecutor, BackgroundExecutor):
         state_dict = self._to_state_dict(initial_state)
         return asyncio.run(self._execute(state_dict))
 
-    def start(self, initial_state: Any, run_id: str) -> str:
+    def start(self, initial_state: Any, context: ExecutionContext) -> str:
         """
         Fire-and-forget: submit a SessionWorkflow and return the
-        workflow_id immediately.  The SessionWorkflow handles graph
-        traversal AND session lifecycle completion.
+        workflow_id immediately.  The SessionWorkflow handles the
+        full session lifecycle (prepare → execute → complete/fail).
         """
         state_dict = self._to_state_dict(initial_state)
-        return asyncio.run(self._start_session_workflow(state_dict, run_id))
+        return asyncio.run(self._start_session_workflow(state_dict, context))
 
     def stream(self, initial_state: Any, *args, **kwargs):
         final = self.run(initial_state)
@@ -70,20 +70,11 @@ class TemporalGraphExecutor(BaseGraphExecutor, BackgroundExecutor):
             else dict(initial_state)
         )
 
-    def _make_graph_params(self, state_dict: dict) -> dict:
-        from temporal.models import GraphExecutionParams
-
-        params = GraphExecutionParams(
-            state=state_dict,
-            graph_definition=self._graph_def.model_dump(mode="json"),
-        )
-        return params.model_dump(mode="json")
-
     async def _execute(self, state_dict: dict) -> dict:
         """Blocking: start GraphTraversalWorkflow and wait for the result."""
-        from temporal.client import get_temporal_client
-        from temporal.workflow import GraphTraversalWorkflow
-        from temporal.models import GraphExecutionParams
+        from infrastructure.temporal.client import get_temporal_client
+        from infrastructure.temporal.workflow import GraphTraversalWorkflow
+        from infrastructure.temporal.models import GraphExecutionParams
 
         cfg = AppConfig.get_instance()
         client = await get_temporal_client()
@@ -102,12 +93,14 @@ class TemporalGraphExecutor(BaseGraphExecutor, BackgroundExecutor):
             task_queue=cfg.temporal_task_queue,
         )
 
-    async def _start_session_workflow(self, state_dict: dict, run_id: str) -> str:
+    async def _start_session_workflow(
+        self, state_dict: dict, context: ExecutionContext,
+    ) -> str:
         """Fire-and-forget: start SessionWorkflow (parent) which handles
-        graph traversal + lifecycle completion."""
-        from temporal.client import get_temporal_client
-        from temporal.session_workflow import SessionWorkflow
-        from temporal.models import SessionWorkflowParams, GraphExecutionParams
+        the full session lifecycle (prepare → execute → complete/fail)."""
+        from infrastructure.temporal.client import get_temporal_client
+        from infrastructure.temporal.session_workflow import SessionWorkflow
+        from infrastructure.temporal.models import SessionWorkflowParams, GraphExecutionParams
 
         cfg = AppConfig.get_instance()
         client = await get_temporal_client()
@@ -120,7 +113,10 @@ class TemporalGraphExecutor(BaseGraphExecutor, BackgroundExecutor):
             graph_definition=self._graph_def.model_dump(mode="json"),
         )
         params = SessionWorkflowParams(
-            run_id=run_id,
+            run_id=context.run_id,
+            inputs=context.inputs,
+            scope=context.scope,
+            logged_in_user=context.logged_in_user,
             graph_execution_params=graph_params.model_dump(mode="json"),
         )
         await client.start_workflow(
@@ -132,8 +128,8 @@ class TemporalGraphExecutor(BaseGraphExecutor, BackgroundExecutor):
         return workflow_id
 
     async def _query_state(self) -> dict:
-        from temporal.client import get_temporal_client
-        from temporal.workflow import GraphTraversalWorkflow
+        from infrastructure.temporal.client import get_temporal_client
+        from infrastructure.temporal.workflow import GraphTraversalWorkflow
 
         client = await get_temporal_client()
         handle = client.get_workflow_handle(self._workflow_id)

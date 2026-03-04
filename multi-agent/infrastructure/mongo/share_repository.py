@@ -1,8 +1,8 @@
 import pymongo
 from datetime import datetime, timedelta
 from typing import List, Optional
-from .base import ShareRepository
-from ..models import ShareInvite, ShareStatus, ShareCleanupConfig, ShareCleanupResult
+from sharing.repository.base import ShareRepository
+from sharing.models import ShareInvite, ShareStatus, ShareCleanupConfig, ShareCleanupResult
 from global_utils.utils.util import get_mongo_url
 
 

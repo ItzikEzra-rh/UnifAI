@@ -39,4 +39,3 @@ class LocalSessionChannel(SessionChannel):
     def close(self) -> None:
         """Close the channel."""
         self._closed = True
-

@@ -19,8 +19,8 @@ class GraphBuilderFactory:
     """
 
     _BUILT_IN_BUILDERS: Dict[str, Tuple[str, str]] = {
-        "langgraph": ("engine.langgraph.builder", "LangGraphBuilder"),
-        "temporal": ("engine.temporal.builder", "TemporalGraphBuilder"),
+        "langgraph": ("infrastructure.langgraph.builder", "LangGraphBuilder"),
+        "temporal": ("infrastructure.temporal.builder", "TemporalGraphBuilder"),
     }
 
     def __init__(self, state_cls: Type[GraphState]) -> None:

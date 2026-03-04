@@ -7,12 +7,13 @@ state transitions (complete / fail).
 """
 from temporalio import activity
 
-from engine.temporal.node_executor import NodeExecutor
+from engine.distributed.node_executor import NodeExecutor
 from session.lifecycle import SessionLifecycle
 from session.user_session_manager import UserSessionManager
-from temporal.models import (
+from infrastructure.temporal.models import (
     ExecuteNodeParams,
     EvaluateConditionParams,
+    PrepareSessionParams,
     CompleteSessionParams,
     FailSessionParams,
 )
@@ -65,6 +66,16 @@ class SessionLifecycleActivities:
     ) -> None:
         self._manager = session_manager
         self._lifecycle = lifecycle
+
+    @activity.defn(name="prepare_session")
+    def prepare_session(self, params: PrepareSessionParams) -> dict:
+        """Seed inputs, mark RUNNING, persist. Returns the seeded state."""
+        activity.logger.info(f"Preparing session: {params.run_id}")
+        session = self._manager.get_session(params.run_id)
+        self._lifecycle.prepare(
+            session, params.inputs, params.scope, params.logged_in_user,
+        )
+        return session.graph_state.serialize()
 
     @activity.defn(name="complete_session")
     def complete_session(self, params: CompleteSessionParams) -> None:

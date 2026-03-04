@@ -3,7 +3,7 @@ from langgraph.graph import StateGraph, END
 from engine.domain.base_builder import BaseGraphBuilder
 from engine.domain.base_executor import BaseGraphExecutor
 from graph.state.graph_state import GraphState
-from engine.langgraph.executor import LangGraphExecutor
+from infrastructure.langgraph.executor import LangGraphExecutor
 
 
 class LangGraphBuilder(BaseGraphBuilder):

@@ -2,7 +2,7 @@ from typing import Any, Dict, Iterator, Optional
 
 from core.channels import SessionChannel, ChannelFactory
 from core.enums import ResourceCategory
-from engine.domain.background_executor import BackgroundExecutor
+from engine.domain.background_executor import BackgroundExecutor, ExecutionContext
 from graph.state.graph_state import GraphState
 from session.lifecycle import SessionLifecycle
 from session.workflow_session import WorkflowSession
@@ -91,10 +91,10 @@ class SessionExecutor:
         """
         Fire-and-forget path for background executors (e.g. Temporal).
 
-        Calls lifecycle.prepare() synchronously so the session is marked
-        RUNNING before the 202 is returned.  The background executor's
-        SessionWorkflow handles lifecycle.complete() / fail() when the
-        workflow finishes.
+        Does NOT call lifecycle.prepare() here — the durable
+        SessionWorkflow owns the entire lifecycle (prepare → execute →
+        complete/fail) so there are no orphaned RUNNING sessions if the
+        API process crashes between prepare and start.
         """
         executor = session.executable_graph
         if not isinstance(executor, BackgroundExecutor):
@@ -103,13 +103,13 @@ class SessionExecutor:
                 f"got {type(executor).__name__}"
             )
 
-        self._lifecycle.prepare(session, inputs, scope, logged_in_user)
-        workflow_id = executor.start(session.graph_state, run_id=session.get_run_id())
-
-        session.run_context = session.run_context.with_metadata(workflow_id=workflow_id)
-        self._lifecycle._repo.save(session)
-
-        return workflow_id
+        context = ExecutionContext(
+            run_id=session.get_run_id(),
+            inputs=inputs,
+            scope=scope,
+            logged_in_user=logged_in_user,
+        )
+        return executor.start(session.graph_state, context)
 
     # ------------------------------------------------------------------ #
     #  Streaming helpers (execution concern, not lifecycle concern)

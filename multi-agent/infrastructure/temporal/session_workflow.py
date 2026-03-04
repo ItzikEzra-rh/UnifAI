@@ -1,22 +1,24 @@
 """
 Temporal session workflow — parent workflow.
 
-Orchestrates session lifecycle around graph traversal:
-  1. Run GraphTraversalWorkflow as a child workflow
-  2. On success → complete_session activity (lifecycle.complete)
-  3. On failure → fail_session activity (lifecycle.fail)
+Owns the full session lifecycle for fire-and-forget execution:
+  1. prepare_session activity  → seed inputs, mark RUNNING
+  2. GraphTraversalWorkflow    → child workflow (pure graph logic)
+  3. complete_session activity → mark COMPLETED
+  On error: fail_session activity → mark FAILED
 
 The GraphTraversalWorkflow stays pure (graph logic only).
-Session lifecycle is handled at this layer.
+Session lifecycle is handled entirely at this layer.
 """
 from datetime import timedelta
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-from temporal.models import (
+from infrastructure.temporal.models import (
     SessionWorkflowParams,
     GraphExecutionParams,
+    PrepareSessionParams,
     CompleteSessionParams,
     FailSessionParams,
 )
@@ -32,20 +34,35 @@ class SessionWorkflow:
     """
     Parent workflow for fire-and-forget session execution.
 
-    Composes GraphTraversalWorkflow (child) with lifecycle
-    activities so the session status is properly updated
-    even when the API process has already returned 202.
+    Composes lifecycle activities with GraphTraversalWorkflow (child)
+    so the session status is properly updated even when the API
+    process has already returned 202.  Temporal guarantees all steps
+    execute — no orphaned RUNNING sessions.
     """
 
     @workflow.run
     async def run(self, params: SessionWorkflowParams) -> dict:
-        from temporal.workflow import GraphTraversalWorkflow
-
-        graph_params = GraphExecutionParams.model_validate(
-            params.graph_execution_params,
-        )
+        from infrastructure.temporal.workflow import GraphTraversalWorkflow
 
         try:
+            # ① PREPARE — seed inputs, bind context, mark RUNNING, persist
+            seeded_state = await workflow.execute_activity(
+                "prepare_session",
+                PrepareSessionParams(
+                    run_id=params.run_id,
+                    inputs=params.inputs,
+                    scope=params.scope,
+                    logged_in_user=params.logged_in_user,
+                ),
+                start_to_close_timeout=_LIFECYCLE_TIMEOUT,
+                retry_policy=_LIFECYCLE_RETRY,
+            )
+
+            # ② EXECUTE — graph traversal as child workflow
+            graph_params = GraphExecutionParams(
+                state=seeded_state,
+                graph_definition=params.graph_execution_params["graph_definition"],
+            )
             final_state = await workflow.execute_child_workflow(
                 GraphTraversalWorkflow.run,
                 graph_params,
@@ -53,6 +70,7 @@ class SessionWorkflow:
                 execution_timeout=_GRAPH_WORKFLOW_TIMEOUT,
             )
 
+            # ③ COMPLETE — attach final state, mark COMPLETED, persist
             await workflow.execute_activity(
                 "complete_session",
                 CompleteSessionParams(
@@ -66,6 +84,7 @@ class SessionWorkflow:
             return final_state
 
         except Exception as e:
+            # ④ FAIL — mark FAILED, persist
             await workflow.execute_activity(
                 "fail_session",
                 FailSessionParams(

@@ -1,12 +1,12 @@
 """
-Temporal engine data models for graph topology.
+Engine domain models for graph topology.
 
 GraphDefinition is a fully serializable representation of a graph's
 structure (nodes, edges, conditional routing).  It carries NO callables —
 only string identifiers (uid, rid) that are resolved at execution time.
 
-Used by engines that cannot carry live Python objects across process
-boundaries (e.g., Temporal activities).
+Used by any engine that needs to describe a graph across process
+boundaries (e.g., distributed workers, durable workflows).
 """
 from typing import Any, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict, Field
@@ -58,11 +58,11 @@ class GraphDefinition(BaseModel):
 
     def get_predecessors(self) -> Dict[str, Set[str]]:
         """
-        Compute reverse adjacency: { uid → {nodes that must finish first} }.
+        Compute reverse adjacency: { uid -> {nodes that must finish first} }.
 
         Handles cycle-back edges: if node X routes TO target Y via
         conditional branches, and Y is also in X's predecessors,
-        then Y → X is a back-edge and is removed to prevent deadlock.
+        then Y -> X is a back-edge and is removed to prevent deadlock.
         """
         predecessors: Dict[str, Set[str]] = {uid: set() for uid in self.nodes}
 

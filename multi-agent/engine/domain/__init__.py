@@ -1,7 +1,8 @@
 from .base_executor import BaseGraphExecutor
 from .base_builder import BaseGraphBuilder
-from .background_executor import BackgroundExecutor
+from .background_executor import BackgroundExecutor, ExecutionContext
 from .errors import GraphRecursionError
+from .models import GraphDefinition, NodeDef, ConditionalEdgeDef
 from .types import (
     DEFAULT_RECURSION_LIMIT,
     EvaluateConditionFn,
@@ -13,7 +14,11 @@ __all__ = [
     "BaseGraphExecutor",
     "BaseGraphBuilder",
     "BackgroundExecutor",
+    "ExecutionContext",
     "GraphRecursionError",
+    "GraphDefinition",
+    "NodeDef",
+    "ConditionalEdgeDef",
     "DEFAULT_RECURSION_LIMIT",
     "ExecuteNodeFn",
     "EvaluateConditionFn",

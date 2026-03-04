@@ -1,6 +1,5 @@
 from .service import ShareService
 from .cloner import ShareCloner
-from .repository.mongo_repository import MongoShareRepository
 from .models import (
     ShareInvite, ShareResult, ShareStatus, ShareItemKind,
     ShareCleanupConfig, ShareCleanupResult
@@ -8,12 +7,11 @@ from .models import (
 
 __all__ = [
     'ShareService',
-    'ShareCloner', 
-    'MongoShareRepository',
+    'ShareCloner',
     'ShareInvite',
     'ShareResult',
     'ShareStatus',
     'ShareItemKind',
     'ShareCleanupConfig',
-    'ShareCleanupResult'
+    'ShareCleanupResult',
 ]

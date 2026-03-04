@@ -20,20 +20,20 @@ and conditional edges, combined with a predecessor gate (a node becomes
 active only when *all* its predecessors have executed).
 
 Uses callbacks for node execution and condition evaluation so that the
-Temporal workflow layer can supply its own activity-based implementations
-while reusing the traversal logic.
+infrastructure layer can supply its own implementations (e.g., Temporal
+activities) while reusing the traversal logic.
 """
 import asyncio
 from typing import Any, Dict, List, Optional, Set, Tuple, Type
 
 from engine.domain.errors import GraphRecursionError
+from engine.domain.models import GraphDefinition
 from engine.domain.types import (
     DEFAULT_RECURSION_LIMIT,
     EvaluateConditionFn,
     ExecuteNodeFn,
     OnSuperstepFn,
 )
-from engine.temporal.models import GraphDefinition
 from graph.state.channel_types import _MISSING, build_channel_registry
 from graph.state.graph_state import GraphState
 

@@ -9,8 +9,8 @@ from typing import Any, Callable, Dict, List, Optional, Type
 
 from engine.domain.base_builder import BaseGraphBuilder
 from engine.domain.base_executor import BaseGraphExecutor
-from engine.temporal.models import GraphDefinition, NodeDef, ConditionalEdgeDef
-from engine.temporal.serialization import NodeDeploymentSerializer
+from engine.domain.models import GraphDefinition, NodeDef, ConditionalEdgeDef
+from engine.distributed.serialization import NodeDeploymentSerializer
 from graph.rt_graph_plan import RTGraphPlan
 from graph.state.graph_state import GraphState
 
@@ -57,7 +57,7 @@ class TemporalGraphBuilder(BaseGraphBuilder):
         self._exit = uid
 
     def build_executor(self) -> BaseGraphExecutor:
-        from engine.temporal.executor import TemporalGraphExecutor
+        from infrastructure.temporal.executor import TemporalGraphExecutor
 
         graph_def = GraphDefinition(
             nodes=self._nodes,

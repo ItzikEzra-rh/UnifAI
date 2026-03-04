@@ -19,10 +19,15 @@ class GraphExecutionParams(BaseModel):
 class SessionWorkflowParams(BaseModel):
     """Input to SessionWorkflow (parent workflow).
 
-    Carries both the session run_id (for lifecycle activities) and the
-    nested graph execution params (for the child GraphTraversalWorkflow).
+    Carries the session execution context (for lifecycle activities)
+    and the nested graph execution params (for the child
+    GraphTraversalWorkflow).  The workflow owns the full lifecycle:
+    prepare → execute → complete/fail.
     """
     run_id: str
+    inputs: Dict[str, Any] = Field(default_factory=dict)
+    scope: str = "public"
+    logged_in_user: str = ""
     graph_execution_params: Dict[str, Any] = Field(default_factory=dict)
 
 
@@ -42,6 +47,14 @@ class EvaluateConditionParams(BaseModel):
     condition_blueprint: Dict[str, Any] = Field(default_factory=dict)
     step_context: Dict[str, Any] = Field(default_factory=dict)
     state: Dict[str, Any] = Field(default_factory=dict)
+
+
+class PrepareSessionParams(BaseModel):
+    """Input to the prepare_session activity."""
+    run_id: str
+    inputs: Dict[str, Any] = Field(default_factory=dict)
+    scope: str = "public"
+    logged_in_user: str = ""
 
 
 class CompleteSessionParams(BaseModel):

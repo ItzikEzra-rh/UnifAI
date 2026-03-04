@@ -6,7 +6,7 @@ execution layer (Temporal, LangGraph, or any future engine).
 """
 from typing import Any, Dict, Protocol, Set
 
-from engine.temporal.models import ConditionalEdgeDef, GraphDefinition
+from engine.domain.models import ConditionalEdgeDef, GraphDefinition
 from graph.state.graph_state import GraphState
 
 DEFAULT_RECURSION_LIMIT = 25
