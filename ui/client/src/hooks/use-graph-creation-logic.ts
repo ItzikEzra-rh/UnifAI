@@ -620,19 +620,17 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync allBlocks data to existing nodes when blocks finish loading
+  // Sync allBlocks data to existing nodes when blocks change
   useEffect(() => {
-    if (allBlocksData.length > 0) {
-      setNodes((prevNodes) =>
-        prevNodes.map((node) => ({
-          ...node,
-          data: {
-            ...node.data,
-            allBlocks: allBlocksData,
-          },
-        })),
-      );
-    }
+    setNodes((prevNodes) =>
+      prevNodes.map((node) => ({
+        ...node,
+        data: {
+          ...node.data,
+          allBlocks: allBlocksData,
+        },
+      })),
+    );
   }, [allBlocksData, setNodes]);
 
   // Trigger validation whenever yamlFlow changes.
@@ -669,8 +667,8 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
       };
 
       const targetNode = nodes.find((node) => {
-        const nodeWidth = 150;
-        const nodeHeight = 80;
+        const nodeWidth = node.width ?? 150;
+        const nodeHeight = node.height ?? 80;
         
         return (
           position.x >= node.position.x - nodeWidth / 2 &&
@@ -717,10 +715,8 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
         if (isConditionNode) {
           // For condition nodes, check if dropping on an existing node
           const targetNode = nodes.find((node) => {
-            // Calculate if drop position is within node bounds
-            // Assuming standard node dimensions (approximately 150x80)
-            const nodeWidth = 150;
-            const nodeHeight = 80;
+            const nodeWidth = node.width ?? 150;
+            const nodeHeight = node.height ?? 80;
             
             return (
               position.x >= node.position.x - nodeWidth / 2 &&

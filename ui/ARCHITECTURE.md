@@ -669,7 +669,7 @@ plan:
 | Type | Convention | Example |
 |------|-----------|---------|
 | Components | PascalCase.tsx | `AgentFlowGraph.tsx` |
-| Hooks | camelCase.ts with `use-` prefix | `use-graph-creation-logic.ts` |
+| Hooks | kebab-case.ts with `use-` prefix | `use-graph-creation-logic.ts` |
 | Contexts | PascalCase.tsx with `Context` suffix | `AuthContext.tsx` |
 | Types | camelCase.ts | `graph.ts`, `workspace.ts` |
 | Utils | camelCase.ts | `guideLoader.ts` |

@@ -98,6 +98,12 @@ function extractResolvedElements(
   const elements: ResolvedElement[] = [];
   const seen = new Set<string>();
 
+  const blockById = new Map<string, BuildingBlock>();
+  for (const b of allBlocks) {
+    blockById.set(b.id, b);
+    if (b.workspaceData?.rid) blockById.set(b.workspaceData.rid, b);
+  }
+
   const TYPE_MAP: Record<string, ResolvedElement["type"]> = {
     llm: "llm", llms: "llm",
     tool: "tool", tools: "tool",
@@ -110,9 +116,7 @@ function extractResolvedElements(
       const refId = obj.substring(5);
       if (!seen.has(refId)) {
         seen.add(refId);
-        const block = allBlocks.find(
-          (b) => b.id === refId || b.workspaceData?.rid === refId,
-        );
+        const block = blockById.get(refId);
         const matchedType = key ? TYPE_MAP[key.toLowerCase()] : undefined;
         const guessedType = block?.workspaceData?.category
           ? TYPE_MAP[block.workspaceData.category]
@@ -457,97 +461,99 @@ export function useGraphCreationCanvas({
     if (!graph || !paper) return;
 
     suppressPositionSyncRef.current = true;
-
-    const existingElementIds = new Set(
-      graph.getElements().map((el) => el.id as string),
-    );
-    const desiredNodeIds = new Set(nodes.map((n) => n.id));
-
-    for (const id of existingElementIds) {
-      if (!desiredNodeIds.has(id)) {
-        const cell = graph.getCell(id);
-        if (cell) cell.remove();
-      }
-    }
-
-    for (const n of nodes) {
-      const nodeType = n.data.workspaceData?.type || "agent_node";
-      const allBlocks: BuildingBlock[] = n.data.allBlocks || [];
-      const resolvedElements = extractResolvedElements(
-        n.data.workspaceData?.config,
-        allBlocks,
+    try {
+      const existingElementIds = new Set(
+        graph.getElements().map((el) => el.id as string),
       );
-      const conditionCount = n.data.referencedConditions?.length || 0;
-      const nodeHeight = computeCanvasNodeHeight(
-        resolvedElements.length,
-        conditionCount,
-      );
-      const existing = graph.getCell(n.id) as dia.Element | undefined;
+      const desiredNodeIds = new Set(nodes.map((n) => n.id));
 
-      if (existing) {
-        const pos = existing.position();
-        if (
-          Math.abs(pos.x - n.position.x) > 1 ||
-          Math.abs(pos.y - n.position.y) > 1
-        ) {
-          existing.position(n.position.x, n.position.y, { skipSync: true });
+      for (const id of existingElementIds) {
+        if (!desiredNodeIds.has(id)) {
+          const cell = graph.getCell(id);
+          if (cell) cell.remove();
         }
-        existing.attr("body/fill", nodeFillForType(nodeType));
-        existing.resize(NODE_WIDTH, nodeHeight);
+      }
 
-        if (n.data.isConnectionSource) {
-          existing.attr("body/stroke", normalizePrimaryHex(primaryHexRef.current));
-          existing.attr("body/strokeWidth", 3);
-          existing.attr("body/filter", "url(#progressGlow)");
-        } else if (n.data.isConnectionTarget) {
-          existing.attr(
-            "body/stroke",
-            `${normalizePrimaryHex(primaryHexRef.current)}66`,
-          );
-          existing.attr("body/strokeWidth", 2);
-          existing.attr("body/filter", STATUS_STYLES.IDLE.filter);
+      for (const n of nodes) {
+        const nodeType = n.data.workspaceData?.type || "agent_node";
+        const allBlocks: BuildingBlock[] = n.data.allBlocks || [];
+        const resolvedElements = extractResolvedElements(
+          n.data.workspaceData?.config,
+          allBlocks,
+        );
+        const conditionCount = n.data.referencedConditions?.length || 0;
+        const nodeHeight = computeCanvasNodeHeight(
+          resolvedElements.length,
+          conditionCount,
+        );
+        const existing = graph.getCell(n.id) as dia.Element | undefined;
+
+        if (existing) {
+          const pos = existing.position();
+          if (
+            Math.abs(pos.x - n.position.x) > 1 ||
+            Math.abs(pos.y - n.position.y) > 1
+          ) {
+            existing.position(n.position.x, n.position.y, { skipSync: true });
+          }
+          existing.attr("body/fill", nodeFillForType(nodeType));
+          existing.resize(NODE_WIDTH, nodeHeight);
+
+          if (n.data.isConnectionSource) {
+            existing.attr("body/stroke", normalizePrimaryHex(primaryHexRef.current));
+            existing.attr("body/strokeWidth", 3);
+            existing.attr("body/filter", "url(#progressGlow)");
+          } else if (n.data.isConnectionTarget) {
+            existing.attr(
+              "body/stroke",
+              `${normalizePrimaryHex(primaryHexRef.current)}66`,
+            );
+            existing.attr("body/strokeWidth", 2);
+            existing.attr("body/filter", STATUS_STYLES.IDLE.filter);
+          } else {
+            existing.attr("body/stroke", STATUS_STYLES.IDLE.stroke);
+            existing.attr("body/strokeWidth", STATUS_STYLES.IDLE.strokeWidth);
+            existing.attr("body/filter", STATUS_STYLES.IDLE.filter);
+          }
         } else {
-          existing.attr("body/stroke", STATUS_STYLES.IDLE.stroke);
-          existing.attr("body/strokeWidth", STATUS_STYLES.IDLE.strokeWidth);
-          existing.attr("body/filter", STATUS_STYLES.IDLE.filter);
-        }
-      } else {
-        const isSource = n.data.isConnectionSource;
-        const isTarget = n.data.isConnectionTarget;
-        const strokeColor = isSource
-          ? normalizePrimaryHex(primaryHexRef.current)
-          : isTarget
-            ? `${normalizePrimaryHex(primaryHexRef.current)}66`
-            : STATUS_STYLES.IDLE.stroke;
-        const strokeWidth = isSource
-          ? 3
-          : isTarget
-            ? 2
-            : STATUS_STYLES.IDLE.strokeWidth;
+          const isSource = n.data.isConnectionSource;
+          const isTarget = n.data.isConnectionTarget;
+          const strokeColor = isSource
+            ? normalizePrimaryHex(primaryHexRef.current)
+            : isTarget
+              ? `${normalizePrimaryHex(primaryHexRef.current)}66`
+              : STATUS_STYLES.IDLE.stroke;
+          const strokeWidth = isSource
+            ? 3
+            : isTarget
+              ? 2
+              : STATUS_STYLES.IDLE.strokeWidth;
 
-        new shapes.standard.Rectangle({
-          id: n.id,
-          position: { x: n.position.x, y: n.position.y },
-          size: { width: NODE_WIDTH, height: nodeHeight },
-          attrs: {
-            body: {
-              fill: nodeFillForType(nodeType),
-              stroke: strokeColor,
-              strokeWidth,
-              rx: 12,
-              ry: 12,
-              filter: isSource
-                ? "url(#progressGlow)"
-                : STATUS_STYLES.IDLE.filter,
+          new shapes.standard.Rectangle({
+            id: n.id,
+            position: { x: n.position.x, y: n.position.y },
+            size: { width: NODE_WIDTH, height: nodeHeight },
+            attrs: {
+              body: {
+                fill: nodeFillForType(nodeType),
+                stroke: strokeColor,
+                strokeWidth,
+                rx: 12,
+                ry: 12,
+                filter: isSource
+                  ? "url(#progressGlow)"
+                  : STATUS_STYLES.IDLE.filter,
+              },
+              label: { text: "" },
             },
-            label: { text: "" },
-          },
-        }).addTo(graph);
+          }).addTo(graph);
+        }
       }
-    }
 
-    suppressPositionSyncRef.current = false;
-    rebuildOverlays();
+      rebuildOverlays();
+    } finally {
+      suppressPositionSyncRef.current = false;
+    }
   }, [nodes, rebuildOverlays]);
 
   // ── Sync edges (with bidirectional pair rendering) ──
@@ -707,36 +713,39 @@ export function useGraphCreationCanvas({
     if (!graph || graph.getElements().length === 0) return;
 
     suppressPositionSyncRef.current = true;
-    DirectedGraph.layout(graph, LAYOUT_OPTS);
+    try {
+      DirectedGraph.layout(graph, LAYOUT_OPTS);
 
-    const currentNodes = nodesRef.current;
-    const typeById = new Map(
-      currentNodes.map((n) => [n.id, n.data.workspaceData?.type]),
-    );
-    let maxBottom = 0;
-    graph.getElements().forEach((el) => {
-      if (typeById.get(el.id as string) !== "final_answer_node") {
-        const b = el.getBBox();
-        maxBottom = Math.max(maxBottom, b.y + b.height);
-      }
-    });
-    graph.getElements().forEach((el) => {
-      if (typeById.get(el.id as string) === "final_answer_node") {
-        const pos = el.position();
-        el.position(pos.x, maxBottom + LAYOUT_OPTS.rankSep);
-      }
-    });
-
-    for (const el of graph.getElements()) {
-      const pos = el.position();
-      onNodePositionChangeRef.current?.(el.id as string, {
-        x: pos.x,
-        y: pos.y,
+      const currentNodes = nodesRef.current;
+      const typeById = new Map(
+        currentNodes.map((n) => [n.id, n.data.workspaceData?.type]),
+      );
+      let maxBottom = 0;
+      graph.getElements().forEach((el) => {
+        if (typeById.get(el.id as string) !== "final_answer_node") {
+          const b = el.getBBox();
+          maxBottom = Math.max(maxBottom, b.y + b.height);
+        }
       });
-    }
+      graph.getElements().forEach((el) => {
+        if (typeById.get(el.id as string) === "final_answer_node") {
+          const pos = el.position();
+          el.position(pos.x, maxBottom + LAYOUT_OPTS.rankSep);
+        }
+      });
 
-    suppressPositionSyncRef.current = false;
-    rebuildOverlays();
+      for (const el of graph.getElements()) {
+        const pos = el.position();
+        onNodePositionChangeRef.current?.(el.id as string, {
+          x: pos.x,
+          y: pos.y,
+        });
+      }
+
+      rebuildOverlays();
+    } finally {
+      suppressPositionSyncRef.current = false;
+    }
   }, [rebuildOverlays]);
 
   const clientToLocalPoint = useCallback(

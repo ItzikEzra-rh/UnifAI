@@ -309,6 +309,7 @@ function CreationControls({
               <Button
                 variant="ghost"
                 size="sm"
+                aria-label="Remove condition"
                 className="h-5 w-5 p-0 text-red-400 hover:text-red-300 pointer-events-auto"
                 onClick={(e) => {
                   e.stopPropagation();
