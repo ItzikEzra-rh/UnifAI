@@ -50,7 +50,7 @@ RUN chmod -R g+w .
 USER default
 RUN ls -lia
 
-RUN pip3 install --upgrade pip virtualenv
+RUN pip3 install --no-cache-dir --upgrade pip virtualenv "setuptools>=70.0.0"
 RUN python3 -m venv --prompt "virtualenv" venv
 ENV VIRTUAL_ENV=$HOME/app/venv
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
