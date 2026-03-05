@@ -1,20 +1,19 @@
-from catalog import element_registry
-from infrastructure.mongo import MongoSessionRepository
-from blueprints.loader.yaml_blueprint_loader import YAMLBlueprintLoader
-from session.workflow_session_factory import WorkflowSessionFactory
-from session.user_session_manager import UserSessionManager
-from session.lifecycle import SessionLifecycle
-from session.session_executor import SessionExecutor
-from infrastructure.channels import LocalChannelFactory
-from blueprints.service import BlueprintService
-from infrastructure.mongo import MongoBlueprintRepository
-from resources.service import ResourcesService
-from resources.registry import ResourcesRegistry
-from infrastructure.mongo import MongoResourceRepository
-from blueprints.resolver import BlueprintResolver
-from core.app_container import AppContainer
+from mas.catalog import element_registry
+from outbound.mongo import MongoSessionRepository
+from mas.blueprints.loader.yaml_blueprint_loader import YAMLBlueprintLoader
+from mas.session.building import WorkflowSessionFactory
+from mas.session.management import UserSessionManager
+from mas.session.execution import SessionLifecycle, ForegroundSessionRunner
+from outbound.channels import LocalChannelFactory
+from mas.blueprints.service import BlueprintService
+from outbound.mongo import MongoBlueprintRepository
+from mas.resources.service import ResourcesService
+from mas.resources.registry import ResourcesRegistry
+from outbound.mongo import MongoResourceRepository
+from mas.blueprints.resolver import BlueprintResolver
+from mas.core.app_container import AppContainer
 from typing import Iterator, Any, Dict, List
-from config.app_config import AppConfig
+from mas.config.app_config import AppConfig
 from rich.live import Live
 from rich.panel import Panel
 from rich.layout import Layout
@@ -84,7 +83,7 @@ def setup_components():
 
     manager = UserSessionManager(repository, session_factory)
     lifecycle = SessionLifecycle(repository=repository)
-    executor = SessionExecutor(lifecycle=lifecycle, channel_factory=LocalChannelFactory())
+    executor = ForegroundSessionRunner(lifecycle=lifecycle, channel_factory=LocalChannelFactory())
 
     return manager, executor
 
@@ -181,21 +180,20 @@ def save_resources(app):
 def run_test_new_version(app, blueprint_id):
     session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
     print(f"Created session with id: {session.run_context.run_id}")
-    print(app.session_service.execute(session_id=session.run_context.run_id,
-                                      inputs={"user_prompt": "what can you tell me about Redhat?"},
-                                      stream=False,
-                                      scope="public"))
+    print(app.session_service.run(session_id=session.run_context.run_id,
+                                  inputs={"user_prompt": "what can you tell me about Redhat?"},
+                                  scope="public"))
 
 
-from graph.graph_plan import GraphPlan
+from mas.graph.graph_plan import GraphPlan
 from dataclasses import dataclass, asdict
 import json
 
 
 def test_a2a_provider():
     """Test A2A provider by connecting to agent and sending a message."""
-    from elements.providers.a2a_client import A2AProvider
-    from elements.llms.common.chat.message import ChatMessage, Role
+    from mas.elements.providers.a2a_client import A2AProvider
+    from mas.elements.llms.common.chat.message import ChatMessage, Role
     from pydantic import HttpUrl
     
     print("=" * 80)
@@ -251,8 +249,8 @@ def test_a2a_provider():
 
 def test_a2a_streaming():
     """Test A2A provider streaming by connecting to agent and streaming a response."""
-    from elements.providers.a2a_client import A2AProvider
-    from elements.llms.common.chat.message import ChatMessage, Role
+    from mas.elements.providers.a2a_client import A2AProvider
+    from mas.elements.llms.common.chat.message import ChatMessage, Role
     from pydantic import HttpUrl
     
     print("\n\n")

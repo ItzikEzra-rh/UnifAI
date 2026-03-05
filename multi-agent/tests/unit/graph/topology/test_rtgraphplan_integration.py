@@ -7,13 +7,13 @@ FinalizerPathInfo, and that this information is properly injected into nodes.
 
 import pytest
 from unittest.mock import Mock, MagicMock, call
-from graph.rt_graph_plan import RTGraphPlan
-from graph.graph_plan import GraphPlan
-from graph.models import Step, StepContext
-from graph.topology.models import StepTopology, FinalizerPathInfo
-from core.enums import ResourceCategory
-from session.session_registry import SessionRegistry
-from blueprints.models.blueprint import StepMeta
+from mas.graph.rt_graph_plan import RTGraphPlan
+from mas.graph.graph_plan import GraphPlan
+from mas.graph.models import Step, StepContext
+from mas.graph.topology.models import StepTopology, FinalizerPathInfo
+from mas.core.enums import ResourceCategory
+from mas.session.domain.session_registry import SessionRegistry
+from mas.blueprints.models.blueprint import StepMeta
 
 
 class TestRTGraphPlanTopologyIntegration:

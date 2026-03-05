@@ -1,0 +1,92 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mas"
+version = "0.1.0"
+description = "MAS — Multi-Agent System orchestration engine"
+requires-python = ">=3.11"
+license = {text = "Proprietary"}
+
+dependencies = [
+    "pydantic",
+    "pydantic-core",
+    "pyyaml",
+    "langchain",
+    "langchain-core",
+    "langchain-openai",
+    "langchain-google-genai",
+    "openai",
+    "langgraph",
+    "gunicorn",
+    "flask-cors",
+    "pymongo",
+    "python-dotenv",
+    "httptools",
+    "mcp",
+    "paramiko",
+    "openshift-client",
+    "yarl",
+    "jsonschema",
+    "html-to-markdown",
+    "safehttpx",
+    "anyio",
+    "typing-inspection",
+    "a2a-sdk[all]",
+]
+
+[project.optional-dependencies]
+temporal = ["temporalio"]
+test = ["pytest>=6.0"]
+
+# ---------------------------------------------------------------------------
+# Package discovery
+#
+#   lib/       → Domain + Application (the hexagon)
+#                All domain code lives under lib/mas/ → `from mas.* import …`
+#   adapters/  → Inbound & outbound technology adapters
+#
+# Both directories are source roots.  After `pip install -e .` every
+# package under lib/ and adapters/ is directly importable.
+# ---------------------------------------------------------------------------
+[tool.setuptools.packages.find]
+where = ["lib", "adapters"]
+
+# ---------------------------------------------------------------------------
+# Pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+pythonpath = ["lib", "adapters", "."]
+importmode = "importlib"
+addopts = "-v --tb=short --strict-markers --strict-config --disable-warnings --color=yes"
+console_output_style = "progress"
+junit_family = "xunit2"
+minversion = "6.0"
+timeout = 300
+timeout_method = "thread"
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+markers = [
+    "unit: Unit tests (isolated component testing)",
+    "integration: Integration tests (multi-component testing)",
+    "e2e: End-to-end tests (complete system testing)",
+    "agent_system: Agent reasoning and execution system tests",
+    "llm_integration: LLM provider integration tests",
+    "tool_execution: Tool management and execution tests",
+    "graph_engine: Workflow graph execution tests",
+    "session_management: User session and state management tests",
+    "fast: Fast running tests (< 1s)",
+    "slow: Slow running tests (> 5s)",
+    "stable: Stable, reliable tests",
+    "flaky: Potentially unstable tests",
+    "smoke: Smoke tests for basic functionality",
+    "regression: Regression tests for bug fixes",
+    "performance: Performance and load tests",
+]
