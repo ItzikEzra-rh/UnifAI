@@ -195,6 +195,10 @@ export const StreamLogItem = memo(({ log, messageId, onToggleExpansion }: Stream
   }, [log.message]);
 
   const hasTools = log.tools && log.tools.length > 0;
+  const uniqueToolCount = useMemo(() => {
+    if (!hasTools) return 0;
+    return new Set(log.tools.map(t => t.name)).size;
+  }, [hasTools, log.tools]);
   // The expansion is now handled purely by the style attributes in JSX
 
   return (
@@ -219,7 +223,7 @@ export const StreamLogItem = memo(({ log, messageId, onToggleExpansion }: Stream
             <div className="flex items-center space-x-1">
               <Wrench className="h-3 w-3 text-blue-400" />
               <span className="text-xs text-blue-400">
-                {log.tools.length} tool{log.tools.length !== 1 ? 's' : ''}
+                {uniqueToolCount} tool{uniqueToolCount !== 1 ? 's' : ''} · {log.tools?.length} call{log.tools.length !== 1 ? 's' : ''}
               </span>
             </div>
           )}
