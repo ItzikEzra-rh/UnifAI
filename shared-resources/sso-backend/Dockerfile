@@ -14,7 +14,7 @@ WORKDIR $HOME/app
 # Ensure entrypoint is executable
 RUN chmod +x entrypoint.sh && chmod -R g+w .
 
-RUN pip3 install --upgrade pip virtualenv
+RUN pip3 install --no-cache-dir --upgrade pip virtualenv "setuptools>=70.0.0"
 RUN python3 -m venv venv
 
 # Activate venv and install requirements
