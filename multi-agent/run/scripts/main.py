@@ -11,7 +11,7 @@ from mas.resources.service import ResourcesService
 from mas.resources.registry import ResourcesRegistry
 from outbound.mongo import MongoResourceRepository
 from mas.blueprints.resolver import BlueprintResolver
-from mas.core.app_container import AppContainer
+from bootstrap.container import AppContainer
 from typing import Iterator, Any, Dict, List
 from mas.config.app_config import AppConfig
 from rich.live import Live

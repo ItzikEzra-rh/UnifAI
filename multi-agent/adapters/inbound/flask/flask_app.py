@@ -1,33 +1,28 @@
-from flask import Flask, jsonify
+from flask import Flask
 from mas.config.app_config import AppConfig
-from mas.core.app_container import AppContainer
 from .endpoints import register_all_endpoints
 from flask_cors import CORS
 from global_utils.flask.request_rules import RequestRules
 
 
-def create_app(config: AppConfig = None) -> Flask:
+def create_app(container, config: AppConfig = None) -> Flask:
     """
     Application factory.
 
-    1) Load config
-    2) Build our DI container (singleton)
-    3) Register Flask extensions
-    4) Register API‐Blueprints (route groups)
-    5) Register error handlers
+    Receives a fully-wired AppContainer from the entry point.
+    This adapter never creates the container itself — it only consumes it.
     """
     config = config or AppConfig.get_instance()
     app = Flask(__name__)
     app.version = config.get("version", "1.0.0")
     app.config["admin_allowed_users"] = config.admin_allowed_users
-    
+
     CORS(app, resources={r"/api/*": {"origins": "*",
                                      "methods": ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
                                      "allow_headers": ["Content-Type", "Authorization"],
                                      "supports_credentials": True}})
 
-    container = AppContainer(config)
-    app.container = container  # attach for routes to use
+    app.container = container
     register_all_endpoints(app)
     RequestRules(app)
 

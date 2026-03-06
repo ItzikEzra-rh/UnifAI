@@ -1,5 +1,9 @@
 """
-Temporal worker — inbound adapter entry point.
+Temporal worker — inbound adapter.
+
+Receives a fully-wired AppContainer from its entry point
+(__main__.py) and uses it to build activity instances.
+This adapter never creates the container itself.
 
 Run as a standalone process:
     python -m inbound.temporal
@@ -7,14 +11,12 @@ Run as a standalone process:
 
 Multiple workers can run concurrently for horizontal scaling.
 """
-import argparse
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 from temporalio.worker import Worker, UnsandboxedWorkflowRunner
 
 from mas.config.app_config import AppConfig
-from mas.core.app_container import AppContainer
 from mas.engine.distributed.node_executor import NodeExecutor
 from mas.session.execution.lifecycle import SessionLifecycle
 from outbound.temporal.client import get_temporal_client
@@ -23,9 +25,8 @@ from inbound.temporal.workflow import GraphTraversalWorkflow
 from inbound.temporal.session_workflow import SessionWorkflow
 
 
-async def run_worker(threads: int) -> None:
+async def run_worker(container, threads: int) -> None:
     cfg = AppConfig.get_instance()
-    container = AppContainer(cfg)
 
     node_executor = NodeExecutor(
         session_factory=container.session_factory,
@@ -62,15 +63,3 @@ async def run_worker(threads: int) -> None:
 
     print(f"Worker started | task_queue={cfg.temporal_task_queue} | threads={threads}")
     await worker.run()
-
-
-def main() -> None:
-    parser = argparse.ArgumentParser(description="Temporal graph engine worker")
-    parser.add_argument("--threads", type=int, default=10, help="Activity thread pool size")
-    args = parser.parse_args()
-
-    asyncio.run(run_worker(args.threads))
-
-
-if __name__ == "__main__":
-    main()

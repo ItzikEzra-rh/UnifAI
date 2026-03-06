@@ -1,3 +1,3 @@
-from outbound.channels import LocalSessionChannel, LocalChannelFactory
+from mas.core.channels import SessionChannel, ChannelFactory
 
-__all__ = ["LocalSessionChannel", "LocalChannelFactory"]
+__all__ = ["SessionChannel", "ChannelFactory"]
