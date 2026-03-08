@@ -1,43 +1,20 @@
-import { Node, Edge, MarkerType } from "reactflow";
 import dagre from "@dagrejs/dagre";
-import { BuildingBlock } from "@/types/graph";
+import {
+  BuildingBlock,
+  CanvasNode,
+  CanvasEdge,
+  YamlFlowState,
+  YamlFlowNode,
+  YamlFlowPlanStep,
+  YamlFlowCondition,
+} from "@/types/graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import { getBlueprintInfo } from "@/api/blueprints";
 import { NODE_WIDTH } from "@/components/agentic-ai/graphs/GraphDisplayHelpers";
 
-export interface YamlFlowNode {
-  rid: string;
-  name: string;
-  type?: string;
-  config?: any;
-}
-
-export interface YamlFlowPlanStep {
-  uid: string;
-  node: string;
-  after?: string | string[] | null;
-  branches?: any;
-  exit_condition?: string;
-}
-
-export interface YamlFlowCondition {
-  rid: string;
-  name: string;
-  type?: string;
-  config?: any;
-}
-
-export interface YamlFlowState {
-  name?: string;
-  description?: string;
-  nodes: YamlFlowNode[];
-  plan: YamlFlowPlanStep[];
-  conditions?: YamlFlowCondition[];
-}
-
 export interface ReconstructedGraph {
-  nodes: Node[];
-  edges: Edge[];
+  nodes: CanvasNode[];
+  edges: CanvasEdge[];
   yamlFlow: YamlFlowState;
   nextNodeId: number;
   name: string;
@@ -126,11 +103,10 @@ const SPECIAL_NODES: Record<string, SpecialNodeConfig> = {
 function createSpecialNode(
   config: SpecialNodeConfig,
   position: { x: number; y: number },
-): Node {
+): CanvasNode {
   const now = new Date().toISOString();
   return {
     id: config.id,
-    type: "custom",
     position,
     data: {
       label: config.label,
@@ -159,7 +135,7 @@ function createRegularNode(
   position: { x: number; y: number },
   nodeDef: YamlFlowNode | undefined,
   block: BuildingBlock | null,
-): Node {
+): CanvasNode {
   const label = block?.label || nodeDef?.name || step.node;
   const category = block?.workspaceData?.category || "nodes";
   const color = block?.color || getCategoryDisplay(category).color;
@@ -167,7 +143,6 @@ function createRegularNode(
 
   return {
     id: step.uid,
-    type: "custom",
     position,
     data: {
       label,
@@ -192,7 +167,7 @@ function createRegularNode(
 }
 
 function attachConditionToNode(
-  node: Node,
+  node: CanvasNode,
   exitConditionRid: string,
   conditionsData: BuildingBlock[],
   specConditions: YamlFlowCondition[],
@@ -333,8 +308,8 @@ function collectBranchPairs(plan: YamlFlowPlanStep[]): Set<string> {
   return pairs;
 }
 
-function buildEdges(plan: YamlFlowPlanStep[], conditionEdgeColor: string): Edge[] {
-  const edges: Edge[] = [];
+function buildEdges(plan: YamlFlowPlanStep[]): CanvasEdge[] {
+  const edges: CanvasEdge[] = [];
   const branchPairs = collectBranchPairs(plan);
 
   for (const step of plan) {
@@ -346,9 +321,6 @@ function buildEdges(plan: YamlFlowPlanStep[], conditionEdgeColor: string): Edge[
             id: `${afterUid}-${step.uid}`,
             source: afterUid,
             target: step.uid,
-            type: "custom",
-            style: { strokeWidth: 2 },
-            markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
           });
         }
       }
@@ -360,11 +332,7 @@ function buildEdges(plan: YamlFlowPlanStep[], conditionEdgeColor: string): Edge[
           id: `${step.uid}-${targetUid}-${branch}`,
           source: step.uid,
           target: targetUid as string,
-          type: "custom",
-          style: { strokeDasharray: "5,5", stroke: conditionEdgeColor },
-          markerEnd: { type: MarkerType.ArrowClosed, color: conditionEdgeColor },
-          data: { branch: String(branch), isConditional: true },
-          label: String(branch),
+          data: { label: String(branch), isConditional: true },
         });
       }
     }
@@ -381,7 +349,6 @@ export function reconstructBlueprintGraph(
   specDict: any,
   allBlocksData: BuildingBlock[],
   conditionsData: BuildingBlock[],
-  conditionEdgeColor: string,
 ): ReconstructedGraph {
   const name: string = specDict.name || "Untitled";
   const description: string = specDict.description || "";
@@ -420,12 +387,12 @@ export function reconstructBlueprintGraph(
 
   const positions = computeLayout(plan, layoutHints);
 
-  const reactFlowNodes: Node[] = [];
+  const canvasNodes: CanvasNode[] = [];
   let maxNodeId = plan.length + 1;
 
   for (const step of plan) {
     const position = positions.get(step.uid) || { x: 400, y: 200 };
-    let node: Node;
+    let node: CanvasNode;
 
     const specialConfig = SPECIAL_NODES[step.uid];
     if (specialConfig) {
@@ -447,14 +414,14 @@ export function reconstructBlueprintGraph(
       attachConditionToNode(node, step.exit_condition, conditionsData, specConditions);
     }
 
-    reactFlowNodes.push(node);
+    canvasNodes.push(node);
   }
 
-  const reactFlowEdges = buildEdges(plan, conditionEdgeColor);
+  const canvasEdges = buildEdges(plan);
 
   return {
-    nodes: reactFlowNodes,
-    edges: reactFlowEdges,
+    nodes: canvasNodes,
+    edges: canvasEdges,
     yamlFlow,
     nextNodeId: maxNodeId,
     name,
@@ -469,7 +436,6 @@ export async function loadBlueprintForEditing(
   blueprintId: string,
   allBlocksData: BuildingBlock[],
   conditionsData: BuildingBlock[],
-  conditionEdgeColor: string,
 ): Promise<ReconstructedGraph> {
   const blueprintInfo = await getBlueprintInfo(blueprintId);
   const specDict = blueprintInfo.spec_dict;
@@ -477,6 +443,5 @@ export async function loadBlueprintForEditing(
     specDict,
     allBlocksData,
     conditionsData,
-    conditionEdgeColor,
   );
 }

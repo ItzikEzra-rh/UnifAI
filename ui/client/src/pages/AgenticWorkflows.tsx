@@ -14,7 +14,7 @@ import { useToast } from "@/hooks/use-toast";
 // Agentic AI components
 import AgentFlowGraph from "@/components/agentic-ai/AgentFlowGraph";
 import NewGraph from "../workspace/NewGraph";
-import { SavedBlueprintInfo } from "@/hooks/use-graph-logic";
+import type { SavedBlueprintInfo } from "@/hooks/use-graph-creation-logic";
 import axios from "../http/axiosAgentConfig";
 
 import { FlowObject } from "@/components/agentic-ai/graphs/interfaces";
@@ -111,8 +111,7 @@ export default function AgenticWorkflows() {
         name: _savedBlueprint.name,
         description: _savedBlueprint.description,
         icon: null,
-        flow: { nodes: [], edges: [] },
-      } as FlowObject);
+      });
     } else {
       // Going back without saving (new build or edit) — clear selection so
       // WorkflowsPanel remounts cleanly and auto-selects a flow.
