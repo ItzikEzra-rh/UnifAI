@@ -167,31 +167,6 @@
     color: white !important;
   }
 
-  /* React Flow styles */
-.react-flow__handle {
-  width: 8px !important;
-  height: 8px !important;
-  background: hsl(var(--primary)) !important;
-  border: 2px solid #ffffff !important;
-}
-
-.react-flow__handle-connecting {
-  background: #ff6b6b !important;
-}
-
-/* Custom edge delete button visibility */
-.react-flow__edge:hover .edgebutton-foreignobject button {
-  opacity: 1 !important;
-}
-
-.edgebutton-foreignobject button {
-  opacity: 0;
-  transition: opacity 0.2s ease-in-out;
-}
-
-.edgebutton-foreignobject button:hover {
-  opacity: 1 !important;
-}
 
   /* Utility: hide scrollbars but keep scroll functionality */
   .no-scrollbar {

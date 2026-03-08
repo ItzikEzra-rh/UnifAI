@@ -11,8 +11,6 @@ interface NewGraphProps {
 }
 
 export default function NewGraph({ onBack, editBlueprintId }: NewGraphProps) {
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
   const {
     nodes,
     edges,

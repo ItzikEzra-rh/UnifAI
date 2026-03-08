@@ -5,6 +5,7 @@ import {
   BuildingBlock,
   CanvasNode,
   CanvasEdge,
+  YamlFlowState,
 } from "@/types/graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import { useAuth } from "@/contexts/AuthContext";
@@ -14,7 +15,6 @@ import axios from "../http/axiosAgentConfig";
 import * as yaml from "js-yaml";
 import { saveBlueprint, updateBlueprint } from "@/api/blueprints";
 import { loadBlueprintForEditing } from "@/hooks/use-load-blueprint";
-import type { YamlFlowState } from "@/hooks/use-load-blueprint";
 
 const defaultYamlState: YamlFlowState = {
   nodes: [
@@ -630,7 +630,6 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
       editBlueprintId,
       allBlocksData,
       conditionsData,
-      themeColors.primary,
     )
       .then((result) => {
         const nodesWithCallbacks = result.nodes.map((node) => ({
