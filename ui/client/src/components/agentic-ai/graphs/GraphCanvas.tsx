@@ -135,6 +135,7 @@ interface GraphCanvasProps {
   onAttachCondition?: (nodeId: string, condition: any) => void;
   onRemoveCondition?: (nodeId: string, conditionRid: string) => void;
   isGraphValid?: boolean;
+  isEditMode?: boolean;
 }
 
 const GraphCanvas: React.FC<GraphCanvasProps> = ({
@@ -153,6 +154,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
   onAttachCondition,
   onRemoveCondition,
   isGraphValid = false,
+  isEditMode = false,
 }) => {
   const [showYamlDebug, setShowYamlDebug] = useState(false);
   const { primaryHex } = useTheme();
@@ -214,6 +216,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
           onSaveGraph={onSaveGraph}
           onBack={onBack}
           isGraphValid={isGraphValid}
+          isEditMode={isEditMode}
         />
         <CardContent className="p-0 h-full relative">
           {/* YAML Debug Panel */}
@@ -255,6 +258,7 @@ const GraphCanvas: React.FC<GraphCanvasProps> = ({
                 nodeTypes={nodeTypes}
                 edgeTypes={edgeTypes}
                 fitView
+                fitViewOptions={{ padding: 0.15, maxZoom: 1.2 }}
                 defaultViewport={{ x: 0, y: 0, zoom: 0.33 }}
                 connectionLineType={ConnectionLineType.SmoothStep}
                 defaultEdgeOptions={{
