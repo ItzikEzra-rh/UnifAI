@@ -36,6 +36,7 @@ export default function AgenticWorkflows() {
   const [builtGraphName, setBuiltGraphName] = useState<string | null>(null);
   const [selectedGraphId, setSelectedGraphId] = useState<string | null>(null);
   const [showGraphBuilder, setShowGraphBuilder] = useState(false);
+  const [editingBlueprintId, setEditingBlueprintId] = useState<string | null>(null);
   const [isLoadingFlow, setIsLoadingFlow] = useState(false);
   const [isFlowValid, setIsFlowValid] = useState<boolean>(true);
   const [isValidatingFlow, setIsValidatingFlow] = useState<boolean>(false);
@@ -95,16 +96,28 @@ export default function AgenticWorkflows() {
     }
   };
 
-  const handleBuildGraph = () => {
+  const handleOpenGraphBuilder = (flow?: FlowObject) => {
+    setEditingBlueprintId(flow?.id ?? null);
     setShowGraphBuilder(true);
   };
 
   const handleBackToFlowConfig = useCallback((_savedBlueprint?: SavedBlueprintInfo) => {
     setShowGraphBuilder(false);
-    // Always reset so WorkflowsPanel follows the same mount path as
-    // initial load: fetch list → auto-select first → resolved fetch.
-    // If a blueprint was just saved it will appear first in the list.
-    setSelectedFlow(null);
+    setEditingBlueprintId(null);
+    
+    if (_savedBlueprint?.blueprintId) {
+      setSelectedFlow({
+        id: _savedBlueprint.blueprintId,
+        name: _savedBlueprint.name,
+        description: _savedBlueprint.description,
+        icon: null,
+        flow: { nodes: [], edges: [] },
+      } as FlowObject);
+    } else {
+      // Going back without saving (new build or edit) — clear selection so
+      // WorkflowsPanel remounts cleanly and auto-selects a flow.
+      setSelectedFlow(null);
+    }
   }, []);
 
   return (
@@ -119,7 +132,10 @@ export default function AgenticWorkflows() {
 
         <main className="flex-1 overflow-y-auto bg-background-dark">
           {showGraphBuilder ? (
-            <NewGraph onBack={handleBackToFlowConfig} />
+            <NewGraph
+              onBack={handleBackToFlowConfig}
+              editBlueprintId={editingBlueprintId}
+            />
           ) : (
             <div className="p-6">
               <motion.div
@@ -178,7 +194,7 @@ export default function AgenticWorkflows() {
                           <Button
                             className="bg-primary hover:bg-opacity-80 flex items-center gap-2"
                             size="sm"
-                            onClick={handleBuildGraph}
+                            onClick={() => handleOpenGraphBuilder()}
                           >
                             <Plus className="h-4 w-4" />
                             Build Workflow
@@ -200,6 +216,7 @@ export default function AgenticWorkflows() {
                   selectedFlow={selectedFlow}
                   setSelectedFlow={setSelectedFlow}
                   onValidationChange={handleValidationChange}
+                  onFlowEdit={handleOpenGraphBuilder}
                 />
               </motion.div>
             </div>

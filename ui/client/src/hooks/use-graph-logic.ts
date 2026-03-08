@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import {
   Node,
   Edge,
@@ -16,37 +16,9 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { deriveThemeColors } from "@/lib/colorUtils";
 import axios from "../http/axiosAgentConfig";
 import * as yaml from "js-yaml";
-import { saveBlueprint } from "@/api/blueprints";
-
-interface YamlFlowNode {
-  rid: string;
-  name: string;
-  type?: string;
-  config?: any;
-}
-
-interface YamlFlowPlanStep {
-  uid: string;
-  node: string;
-  after?: string | string[] | null;
-  branches?: any;
-  exit_condition?: string;
-}
-
-interface YamlFlowCondition {
-  rid: string;
-  name: string;
-  type?: string;
-  config?: any;
-}
-
-interface YamlFlowState {
-  name?: string;
-  description?: string;
-  nodes: YamlFlowNode[];
-  plan: YamlFlowPlanStep[];
-  conditions?: YamlFlowCondition[];
-}
+import { saveBlueprint, updateBlueprint } from "@/api/blueprints";
+import { loadBlueprintForEditing } from "@/hooks/use-load-blueprint";
+import type { YamlFlowState } from "@/hooks/use-load-blueprint";
 
 const defaulYmlState: YamlFlowState = {
   nodes: [
@@ -88,10 +60,12 @@ export interface SavedBlueprintInfo {
 interface UseGraphLogicOptions {
   /** Callback to execute after a successful save (e.g., navigate back to workflow list) */
   onSaveComplete?: (savedBlueprint?: SavedBlueprintInfo) => void;
+  /** When provided, load this blueprint for editing instead of starting with an empty canvas */
+  editBlueprintId?: string | null;
 }
 
 export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
-  const { onSaveComplete } = options;
+  const { onSaveComplete, editBlueprintId } = options;
   const { toast } = useToast();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -150,6 +124,12 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
   // Drag state to track what type of item is being dragged
   const [isDraggingCondition, setIsDraggingCondition] = useState(false);
+
+  // Edit mode state
+  const [isEditMode, setIsEditMode] = useState(!!editBlueprintId);
+  const [editBlueprintName, setEditBlueprintName] = useState("");
+  const [editBlueprintDescription, setEditBlueprintDescription] = useState("");
+  const blueprintLoadedRef = useRef(false);
 
   const { user } = useAuth();
   const USER_ID = user?.username || "default";
@@ -278,15 +258,48 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
           const updatedPlan = prevFlow.plan
             .filter((step) => step.uid !== nodeId)
             .map((step) => {
-              if (step.after === nodeId) {
-                const { after, ...stepWithoutAfter } = step;
-                return stepWithoutAfter;
+              let updated = step;
+
+              // Clean up `after` references to the deleted node
+              if (updated.after) {
+                if (Array.isArray(updated.after)) {
+                  const filtered = updated.after.filter((a) => a !== nodeId);
+                  if (filtered.length === 0) {
+                    const { after, ...rest } = updated;
+                    updated = rest as typeof step;
+                  } else if (filtered.length === 1) {
+                    updated = { ...updated, after: filtered[0] };
+                  } else {
+                    updated = { ...updated, after: filtered };
+                  }
+                } else if (updated.after === nodeId) {
+                  const { after, ...rest } = updated;
+                  updated = rest as typeof step;
+                }
               }
-              return step;
+
+              // Clean up `branches` that target the deleted node
+              if (updated.branches) {
+                const cleanedBranches = { ...updated.branches };
+                for (const key of Object.keys(cleanedBranches)) {
+                  if (cleanedBranches[key] === nodeId) {
+                    delete cleanedBranches[key];
+                  }
+                }
+                if (Object.keys(cleanedBranches).length === 0) {
+                  const { branches, exit_condition, ...rest } = updated;
+                  updated = rest as typeof step;
+                } else {
+                  updated = { ...updated, branches: cleanedBranches };
+                }
+              }
+
+              return updated;
             });
 
           return {
-            nodes: prevFlow.nodes,
+            ...prevFlow,
+            nodes: updatedNodes,
             conditions: prevFlow.conditions || [],
             plan: updatedPlan,
           };
@@ -370,7 +383,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
           });
 
           return {
-            nodes: prevFlow.nodes,
+            ...prevFlow,
             conditions: prevFlow.conditions || [],
             plan: updatedPlan,
           };
@@ -617,8 +630,54 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
 
   useEffect(() => {
     loadBuildingBlocks();
-    initializeDefaultNodes();
+    if (!editBlueprintId) {
+      initializeDefaultNodes();
+    }
   }, [loadBuildingBlocks]);
+
+  // Load existing blueprint for editing once building blocks are ready
+  useEffect(() => {
+    if (!editBlueprintId || isLoadingBlocks || blueprintLoadedRef.current) return;
+    blueprintLoadedRef.current = true;
+
+    loadBlueprintForEditing(
+      editBlueprintId,
+      allBlocksData,
+      conditionsData,
+      conditionEdgeColor,
+    )
+      .then((result) => {
+        const nodesWithCallbacks = result.nodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            onDelete: deleteNode,
+            allBlocks: allBlocksData,
+            onAttachCondition: attachConditionToNode,
+            onRemoveCondition: removeConditionFromNode,
+          },
+        }));
+        setNodes(nodesWithCallbacks);
+        setEdges(result.edges);
+        setYamlFlow(result.yamlFlow);
+        setNodeId(result.nextNodeId);
+        setIsEditMode(true);
+        setEditBlueprintName(result.name);
+        setEditBlueprintDescription(result.description);
+      })
+      .catch((err) => {
+        console.error("Failed to load blueprint for editing:", err);
+        setIsEditMode(false);
+        setEditBlueprintName("");
+        setEditBlueprintDescription("");
+        toast({
+          title: "Failed to load blueprint",
+          description: "Could not load the blueprint for editing. Starting with a blank canvas.",
+          variant: "destructive",
+        });
+        initializeDefaultNodes();
+      });
+  }, [editBlueprintId, isLoadingBlocks]);
 
   // Trigger validation whenever yamlFlow changes
   useEffect(() => {
@@ -730,7 +789,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
         });
 
         return {
-          nodes: prevFlow.nodes,
+          ...prevFlow,
           conditions: prevFlow.conditions || [],
           plan: updatedPlan,
         };
@@ -884,6 +943,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
             : [...prevFlow.nodes, newYamlNode];
 
           return {
+            ...prevFlow,
             nodes: updatedNodes,
             conditions: prevFlow.conditions || [],
             plan: [...prevFlow.plan, newPlanStep],
@@ -1027,7 +1087,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
       try {
         setIsSaving(true);
 
-        // Update yamlFlow with name and description
+         // Update yamlFlow with name and description
         const updatedYamlFlow = {
           ...yamlFlow,
           name: name,
@@ -1044,33 +1104,44 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
           sortKeys: false,
         });
 
-        const response = await saveBlueprint(yamlString, USER_ID);
-
-        if (response.status === "success") {
-          // Show success toast
-          toast({
-            title: "✅ Blueprint Saved Successfully",
-            description: `Blueprint "${name}" saved successfully`,
-            variant: "default",
-          });
-
-          // Close the save modal immediately & Stop the saving state
-          setSaveModalOpen(false);
-          setIsSaving(false);
-
-          // Call the onSaveComplete callback to navigate back (if provided)
-          // Pass the saved blueprint info so it can be selected in the workflow list
-          if (onSaveComplete) {
-            setTimeout(() => {
-              onSaveComplete({
-                blueprintId: response.blueprint_id,
-                name,
-                description,
-              });
-            }, 100);
-          }
+        let response;
+        let blueprintId;
+        
+        if (isEditMode && editBlueprintId) {
+          response = await updateBlueprint(editBlueprintId, yamlString);
+          blueprintId = editBlueprintId;
         } else {
-          throw new Error("Unknown error occurred while saving blueprint");
+          response = await saveBlueprint(yamlString, USER_ID);
+          blueprintId = response.blueprint_id;
+        }
+
+        if (response.status !== "success") {
+          throw new Error(
+            isEditMode
+              ? "Unknown error occurred while updating blueprint"
+              : "Unknown error occurred while saving blueprint"
+          );
+        }
+
+        toast({
+          title: isEditMode
+            ? "✅ Blueprint Updated Successfully"
+            : "✅ Blueprint Saved Successfully",
+          description: `Blueprint "${name}" ${isEditMode ? "updated" : "saved"} successfully`,
+          variant: "default",
+        });
+
+        setSaveModalOpen(false);
+        setIsSaving(false);
+
+        if (onSaveComplete) {
+          setTimeout(() => {
+            onSaveComplete({
+              blueprintId,
+              name,
+              description,
+            });
+          }, 100);
         }
       } catch (error) {
         console.error("Error saving graph:", error);
@@ -1082,7 +1153,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
         setIsSaving(false);
       }
     },
-    [yamlFlow, toast, onSaveComplete],
+    [yamlFlow, toast, onSaveComplete, isEditMode, editBlueprintId],
   );
 
   useEffect(() => {
@@ -1188,7 +1259,7 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
       }
 
       return {
-        nodes: prevFlow.nodes,
+        ...prevFlow,
         conditions: updatedConditions.length > 0 ? updatedConditions : [],
         plan: updatedPlan,
       };
@@ -1274,5 +1345,9 @@ export const useGraphLogic = (options: UseGraphLogicOptions = {}) => {
     saveModalOpen,
     setSaveModalOpen,
     isSaving,
+    // Edit mode state
+    isEditMode,
+    editBlueprintName,
+    editBlueprintDescription,
   };
 };
