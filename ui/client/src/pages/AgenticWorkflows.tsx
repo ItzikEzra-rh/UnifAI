@@ -111,8 +111,7 @@ export default function AgenticWorkflows() {
         name: _savedBlueprint.name,
         description: _savedBlueprint.description,
         icon: null,
-        flow: { nodes: [], edges: [] },
-      } as FlowObject);
+      });
     } else {
       // Going back without saving (new build or edit) — clear selection so
       // WorkflowsPanel remounts cleanly and auto-selects a flow.

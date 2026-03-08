@@ -114,6 +114,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
 
   // Edit mode state
   const [isEditMode, setIsEditMode] = useState(!!editBlueprintId);
+  const [isLoadingBlueprint, setIsLoadingBlueprint] = useState(!!editBlueprintId);
   const [editBlueprintName, setEditBlueprintName] = useState("");
   const [editBlueprintDescription, setEditBlueprintDescription] = useState("");
   const blueprintLoadedRef = useRef(false);
@@ -649,12 +650,14 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
         setIsEditMode(true);
         setEditBlueprintName(result.name);
         setEditBlueprintDescription(result.description);
+        setIsLoadingBlueprint(false);
       })
       .catch((err) => {
         console.error("Failed to load blueprint for editing:", err);
         setIsEditMode(false);
         setEditBlueprintName("");
         setEditBlueprintDescription("");
+        setIsLoadingBlueprint(false);
         toast({
           title: "Failed to load blueprint",
           description: "Could not load the blueprint for editing. Starting with a blank canvas.",
@@ -1295,6 +1298,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
     isSaving,
     // Edit mode state
     isEditMode,
+    isLoadingBlueprint,
     editBlueprintName,
     editBlueprintDescription,
   };

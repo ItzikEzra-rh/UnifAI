@@ -39,6 +39,7 @@ export default function NewGraph({ onBack, editBlueprintId }: NewGraphProps) {
     isValidating,
     isSaving,
     isEditMode,
+    isLoadingBlueprint,
     editBlueprintName,
     editBlueprintDescription,
   } = useGraphCreationLogic({ onSaveComplete: onBack, editBlueprintId });
@@ -123,6 +124,7 @@ export default function NewGraph({ onBack, editBlueprintId }: NewGraphProps) {
           onAttachCondition={attachConditionToNode}
           onDragEnd={onDragEnd}
           isEditMode={isEditMode}
+          isLoadingBlueprint={isLoadingBlueprint}
         />
       </div>
 
@@ -132,6 +134,7 @@ export default function NewGraph({ onBack, editBlueprintId }: NewGraphProps) {
           validationResult={validationResult}
           fixSuggestions={fixSuggestions}
           isValidating={isValidating}
+          isLoadingBlueprint={isLoadingBlueprint}
         />
       </div>
 

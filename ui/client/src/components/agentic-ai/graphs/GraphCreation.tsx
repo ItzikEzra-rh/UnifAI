@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import { dia, linkTools } from "@joint/core";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Link2, X, GitBranch, Trash2 } from "lucide-react";
+import { Plus, Link2, X, GitBranch, Trash2, Loader2 } from "lucide-react";
 import GraphHeader from "./GraphHeader";
 import * as yaml from "js-yaml";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -38,6 +38,7 @@ interface GraphCreationProps {
   onAttachCondition?: (nodeId: string, condition: BuildingBlock) => void;
   onDragEnd?: () => void;
   isEditMode?: boolean;
+  isLoadingBlueprint?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -353,7 +354,8 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
   onCancelConnection,
   onAttachCondition,
   onDragEnd,  
-  isEditMode
+  isEditMode,
+  isLoadingBlueprint = false,
 }) => {
   const [showYamlDebug, setShowYamlDebug] = useState(false);
   const [isDraggingCondition, setIsDraggingCondition] = useState(false);
@@ -676,8 +678,23 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
               </div>
             )}
 
+            {/* Loading state for blueprint editing */}
+            {isLoadingBlueprint && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+                <div className="text-center">
+                  <Loader2 className="mx-auto h-10 w-10 text-primary animate-spin mb-4" />
+                  <h3 className="text-sm font-medium text-gray-300">
+                    Loading workflow...
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Reconstructing nodes and connections
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Empty state */}
-            {nodes.length === 0 && (
+            {nodes.length === 0 && !isLoadingBlueprint && (
               <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                 <div className="text-center">
                   <Plus className="mx-auto h-12 w-12 text-gray-400 mb-4" />
