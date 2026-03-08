@@ -26,7 +26,7 @@ export function AgentNodeOverlay({
   validationResult,
   isValidating,
   interactive,
-  showEyeIcon = false,
+  previewMode = false,
   onValidationClick,
   onBadgeClick,
 }: {
@@ -38,8 +38,8 @@ export function AgentNodeOverlay({
   isValidating: boolean;
   interactive: boolean;
   /** When true, badges are non-interactive (clicks pass through) except for
-   *  an eye icon that triggers onBadgeClick. Used in the creation canvas. */
-  showEyeIcon?: boolean;
+   *  a preview button that triggers onBadgeClick. Used in the creation canvas. */
+  previewMode?: boolean;
   onValidationClick: (result: ElementValidationResult) => void;
   onBadgeClick: (elementId: string) => void;
 }) {
@@ -180,7 +180,7 @@ export function AgentNodeOverlay({
           backdropFilter: "blur(6px)", WebkitBackdropFilter: "blur(6px)",
           fontSize: Math.max(9 / sx, 11),
           paddingLeft: 4,
-          paddingRight: showEyeIcon ? 4 : 8,
+          paddingRight: previewMode ? 4 : 8,
           gap: 5,
         };
         const iconSpan = (
@@ -196,14 +196,14 @@ export function AgentNodeOverlay({
             className="truncate"
             style={{
               color: "rgba(255,255,255,0.88)", fontWeight: 500,
-              letterSpacing: "0.01em", maxWidth: badge.width - (showEyeIcon ? 56 : 40),
+              letterSpacing: "0.01em", maxWidth: badge.width - (previewMode ? 56 : 40),
             }}
           >
             {badge.element.name}
           </span>
         );
 
-        if (showEyeIcon) {
+        if (previewMode) {
           return (
             <div
               key={`${badge.nodeId}-${badge.element.id}-${i}`}

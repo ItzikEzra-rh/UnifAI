@@ -172,7 +172,7 @@ function CreationControls({
       e.stopPropagation();
       setIsDragOver(false);
 
-      const blockData = e.dataTransfer.getData("application/reactflow");
+      const blockData = e.dataTransfer.getData("application/unifai-block");
       if (blockData && onAttachCondition) {
         try {
           const condition = JSON.parse(blockData);
@@ -446,7 +446,7 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
     (event: React.DragEvent) => {
       event.preventDefault();
 
-      const blockData = event.dataTransfer.getData("application/reactflow");
+      const blockData = event.dataTransfer.getData("application/unifai-block");
       if (!blockData) return;
 
       let block: any;
@@ -645,7 +645,7 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
                           sx={paperTransform.sx}
                           isValidating={false}
                           interactive={false}
-                          showEyeIcon
+                          previewMode
                           onValidationClick={() => {}}
                           onBadgeClick={openElementDetails}
                         />

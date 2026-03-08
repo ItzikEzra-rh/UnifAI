@@ -678,7 +678,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
 
       setIsDraggingCondition(false);
 
-      const blockData = event.dataTransfer.getData("application/reactflow");
+      const blockData = event.dataTransfer.getData("application/unifai-block");
 
       if (blockData) {
         let block: any;
@@ -806,7 +806,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
       workspaceData: block.workspaceData,
     };
     event.dataTransfer.setData(
-      "application/reactflow",
+      "application/unifai-block",
       JSON.stringify(blockData),
     );
     
