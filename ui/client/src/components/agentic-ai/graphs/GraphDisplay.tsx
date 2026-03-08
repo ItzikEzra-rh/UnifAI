@@ -143,6 +143,18 @@ export default function GraphDisplay({
     animated,
   });
 
+  // Refs to hold latest validation data - allows accessing current values
+  // during async operations. Mirrors the fix from PR #46 (ReactFlowGraph
+  // timing issue): when graph loading completes, we can immediately read
+  // whatever validation results are available without stale closures.
+  const validationResultsRef = useRef(validationResults);
+  const isValidatingRef = useRef(isValidating);
+
+  useEffect(() => {
+    validationResultsRef.current = validationResults;
+    isValidatingRef.current = isValidating;
+  }, [validationResults, isValidating]);
+
   // ── Component-level state ──────────────────────────────────────────
   const [resourceDetailsOpen, setResourceDetailsOpen] = useState(false);
   const [resourceDetailsElement, setResourceDetailsElement] =
