@@ -5,6 +5,7 @@ tiktoken
 langchain>=0.3.25
 langchain-core>=1.2.11
 langchain-openai>=0.3.9
+langchain-text-splitters>=0.3.9
 numpy
 # sentence-transformers
 qdrant-client
