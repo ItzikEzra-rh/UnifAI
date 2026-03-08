@@ -6,6 +6,11 @@ on:
             - GENIE-1354-dependency_scanning
     pull_request:
     workflow_dispatch:
+      inputs:
+        branch:
+          description: 'Branch to scan'
+          required: true
+          default: 'main'
 
 jobs:
 
@@ -46,7 +51,9 @@ jobs:
 
       - name: Checkout code
         uses: actions/checkout@v4
-
+        with:
+          ref: ${{ inputs.branch }}
+          
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
