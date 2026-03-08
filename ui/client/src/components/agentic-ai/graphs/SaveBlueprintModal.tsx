@@ -37,11 +37,11 @@ const SaveBlueprintModal: React.FC<SaveBlueprintModalProps> = ({
   const [description, setDescription] = useState(currentDescription);
 
   useEffect(() => {
-    if (isEditMode) {
+    if (isOpen) {
       setName(currentName);
       setDescription(currentDescription);
     }
-  }, [isEditMode, currentName, currentDescription]);
+  }, [isOpen]);
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -74,7 +74,7 @@ const SaveBlueprintModal: React.FC<SaveBlueprintModalProps> = ({
             </Label>
             <Input
               id="blueprint-name"
-              placeholder={isEditMode && currentName ? currentName : "e.g., Slack, Docs & Jira Search"}
+              placeholder="e.g., Slack, Docs & Jira Search"
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="input-dark-theme bg-input border-border text-foreground"

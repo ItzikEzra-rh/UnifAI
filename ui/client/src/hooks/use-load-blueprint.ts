@@ -57,13 +57,13 @@ function findBlockByRid(rid: string, blocks: BuildingBlock[]): BuildingBlock | n
   );
 }
 
+// Layout sizing constants — will be revisited when the graph library is swapped (GENIE-1246)
 const NODE_BASE_HEIGHT = 64;
 const CONDITION_HEADER_HEIGHT = 20;
 const CONDITION_CARD_HEIGHT = 40;
 const REF_HEADER_HEIGHT = 24;
 const REF_ROW_HEIGHT = 28;
 const REF_COLS = 3;
-
 const RANK_SEP = 80;
 
 function countConfigRefs(config: any): number {
@@ -90,6 +90,144 @@ function estimateNodeHeight(
     h += REF_HEADER_HEIGHT + Math.ceil(refCount / REF_COLS) * REF_ROW_HEIGHT;
   }
   return h;
+}
+
+interface SpecialNodeConfig {
+  id: string;
+  label: string;
+  color: string;
+  style: string;
+  description: string;
+  rid: string;
+  type: string;
+}
+
+const SPECIAL_NODES: Record<string, SpecialNodeConfig> = {
+  user_input: {
+    id: "user_input",
+    label: "User Input",
+    color: "#4A90E2",
+    style: "bg-blue-800 text-white border",
+    description: "User question input node",
+    rid: "user_question",
+    type: "user_question_node",
+  },
+  finalize: {
+    id: "finalize",
+    label: "Final Answer",
+    color: "#50C878",
+    style: "bg-green-800 text-white border",
+    description: "Final answer output node",
+    rid: "final_answer",
+    type: "final_answer_node",
+  },
+};
+
+function createSpecialNode(
+  config: SpecialNodeConfig,
+  position: { x: number; y: number },
+): Node {
+  const now = new Date().toISOString();
+  return {
+    id: config.id,
+    type: "custom",
+    position,
+    data: {
+      label: config.label,
+      icon: getCategoryDisplay("nodes").icon,
+      color: config.color,
+      style: config.style,
+      description: config.description,
+      workspaceData: {
+        rid: config.rid,
+        name: config.rid,
+        category: "nodes",
+        type: config.type,
+        config: { name: config.label, type: config.type },
+        version: 1,
+        created: now,
+        updated: now,
+        nested_refs: [],
+      },
+      referencedConditions: [],
+    },
+  };
+}
+
+function createRegularNode(
+  step: YamlFlowPlanStep,
+  position: { x: number; y: number },
+  nodeDef: YamlFlowNode | undefined,
+  block: BuildingBlock | null,
+): Node {
+  const label = block?.label || nodeDef?.name || step.node;
+  const category = block?.workspaceData?.category || "nodes";
+  const color = block?.color || getCategoryDisplay(category).color;
+  const now = new Date().toISOString();
+
+  return {
+    id: step.uid,
+    type: "custom",
+    position,
+    data: {
+      label,
+      icon: getCategoryDisplay(category).icon,
+      color,
+      style: "bg-gray-800 text-white border",
+      description: block?.description || `${category} - ${label}`,
+      workspaceData: block?.workspaceData || {
+        rid: step.node,
+        name: nodeDef?.name || step.node,
+        category: "nodes",
+        type: nodeDef?.type || "unknown",
+        config: nodeDef?.config || {},
+        version: 1,
+        created: now,
+        updated: now,
+        nested_refs: [],
+      },
+      referencedConditions: [],
+    },
+  };
+}
+
+function attachConditionToNode(
+  node: Node,
+  exitConditionRid: string,
+  conditionsData: BuildingBlock[],
+  specConditions: YamlFlowCondition[],
+): void {
+  const normalizedRid = stripRef(exitConditionRid);
+  const condBlock = findBlockByRid(normalizedRid, conditionsData);
+  const condDef = specConditions.find(
+    (c) => stripRef(c.rid) === normalizedRid,
+  );
+
+  if (condBlock) {
+    node.data.referencedConditions = [condBlock];
+  } else if (condDef) {
+    const now = new Date().toISOString();
+    node.data.referencedConditions = [
+      {
+        id: stripRef(condDef.rid),
+        type: condDef.type || "unknown",
+        label: condDef.name,
+        color: getCategoryDisplay("conditions").color,
+        description: `conditions/${condDef.type} - ${condDef.name}`,
+        workspaceData: {
+          rid: stripRef(condDef.rid),
+          name: condDef.name,
+          category: "conditions",
+          type: condDef.type || "unknown",
+          config: condDef.config || {},
+          version: 1,
+          created: now,
+          updated: now,
+          nested_refs: [],
+        },
+      },
+    ];
+  }
 }
 
 interface StepLayoutHints {
@@ -183,6 +321,58 @@ function computeLayout(
   return positions;
 }
 
+function collectBranchPairs(plan: YamlFlowPlanStep[]): Set<string> {
+  const pairs = new Set<string>();
+  for (const step of plan) {
+    if (step.branches) {
+      for (const targetUid of Object.values(step.branches)) {
+        pairs.add(`${step.uid}->${targetUid}`);
+      }
+    }
+  }
+  return pairs;
+}
+
+function buildEdges(plan: YamlFlowPlanStep[], conditionEdgeColor: string): Edge[] {
+  const edges: Edge[] = [];
+  const branchPairs = collectBranchPairs(plan);
+
+  for (const step of plan) {
+    if (step.after) {
+      const afterList = Array.isArray(step.after) ? step.after : [step.after];
+      for (const afterUid of afterList) {
+        if (!branchPairs.has(`${afterUid}->${step.uid}`)) {
+          edges.push({
+            id: `${afterUid}-${step.uid}`,
+            source: afterUid,
+            target: step.uid,
+            type: "custom",
+            style: { strokeWidth: 2 },
+            markerEnd: { type: MarkerType.ArrowClosed, width: 20, height: 20 },
+          });
+        }
+      }
+    }
+
+    if (step.branches) {
+      for (const [branch, targetUid] of Object.entries(step.branches)) {
+        edges.push({
+          id: `${step.uid}-${targetUid}-${branch}`,
+          source: step.uid,
+          target: targetUid as string,
+          type: "custom",
+          style: { strokeDasharray: "5,5", stroke: conditionEdgeColor },
+          markerEnd: { type: MarkerType.ArrowClosed, color: conditionEdgeColor },
+          data: { branch: String(branch), isConditional: true },
+          label: String(branch),
+        });
+      }
+    }
+  }
+
+  return edges;
+}
+
 /**
  * Reconstruct a React Flow graph (nodes + edges) and yamlFlow state
  * from a blueprint's spec_dict.
@@ -237,63 +427,12 @@ export function reconstructBlueprintGraph(
     const position = positions.get(step.uid) || { x: 400, y: 200 };
     let node: Node;
 
-    if (step.uid === "user_input") {
-      node = {
-        id: "user_input",
-        type: "custom",
-        position,
-        data: {
-          label: "User Input",
-          icon: getCategoryDisplay("nodes").icon,
-          color: "#4A90E2",
-          style: "bg-blue-800 text-white border",
-          description: "User question input node",
-          workspaceData: {
-            rid: "user_question",
-            name: "user_question",
-            category: "nodes",
-            type: "user_question_node",
-            config: { name: "User Input", type: "user_question_node" },
-            version: 1,
-            created: new Date().toISOString(),
-            updated: new Date().toISOString(),
-            nested_refs: [],
-          },
-          referencedConditions: [],
-        },
-      };
-    } else if (step.uid === "finalize") {
-      node = {
-        id: "finalize",
-        type: "custom",
-        position,
-        data: {
-          label: "Final Answer",
-          icon: getCategoryDisplay("nodes").icon,
-          color: "#50C878",
-          style: "bg-green-800 text-white border",
-          description: "Final answer output node",
-          workspaceData: {
-            rid: "final_answer",
-            name: "final_answer",
-            category: "nodes",
-            type: "final_answer_node",
-            config: { name: "Final Answer", type: "final_answer_node" },
-            version: 1,
-            created: new Date().toISOString(),
-            updated: new Date().toISOString(),
-            nested_refs: [],
-          },
-          referencedConditions: [],
-        },
-      };
+    const specialConfig = SPECIAL_NODES[step.uid];
+    if (specialConfig) {
+      node = createSpecialNode(specialConfig, position);
     } else {
       const nodeDef = nodeDefByRef.get(step.node);
       const block = findBlockByRid(step.node, allBlocksData);
-
-      const label = block?.label || nodeDef?.name || step.node;
-      const category = block?.workspaceData?.category || "nodes";
-      const color = block?.color || getCategoryDisplay(category).color;
 
       const idMatch = step.uid.match(/-(\d+)$/);
       if (idMatch) {
@@ -301,130 +440,17 @@ export function reconstructBlueprintGraph(
         if (num >= maxNodeId) maxNodeId = num + 1;
       }
 
-      node = {
-        id: step.uid,
-        type: "custom",
-        position,
-        data: {
-          label,
-          icon: getCategoryDisplay(category).icon,
-          color,
-          style: "bg-gray-800 text-white border",
-          description: block?.description || `${category} - ${label}`,
-          workspaceData: block?.workspaceData || {
-            rid: step.node,
-            name: nodeDef?.name || step.node,
-            category: "nodes",
-            type: nodeDef?.type || "unknown",
-            config: nodeDef?.config || {},
-            version: 1,
-            created: new Date().toISOString(),
-            updated: new Date().toISOString(),
-            nested_refs: [],
-          },
-          referencedConditions: [],
-        },
-      };
+      node = createRegularNode(step, position, nodeDef, block);
     }
 
-    // Attach conditions from the plan step
     if (step.exit_condition) {
-      const normalizedRid = stripRef(step.exit_condition);
-      const condBlock = findBlockByRid(normalizedRid, conditionsData);
-      const condDef = specConditions.find(
-        (c) => stripRef(c.rid) === normalizedRid,
-      );
-
-      if (condBlock) {
-        node.data.referencedConditions = [condBlock];
-      } else if (condDef) {
-        node.data.referencedConditions = [
-          {
-            id: stripRef(condDef.rid),
-            type: condDef.type || "unknown",
-            label: condDef.name,
-            color: getCategoryDisplay("conditions").color,
-            description: `conditions/${condDef.type} - ${condDef.name}`,
-            workspaceData: {
-              rid: stripRef(condDef.rid),
-              name: condDef.name,
-              category: "conditions",
-              type: condDef.type || "unknown",
-              config: condDef.config || {},
-              version: 1,
-              created: new Date().toISOString(),
-              updated: new Date().toISOString(),
-              nested_refs: [],
-            },
-          },
-        ];
-      }
+      attachConditionToNode(node, step.exit_condition, conditionsData, specConditions);
     }
 
     reactFlowNodes.push(node);
   }
 
-  // Reconstruct edges
-  const reactFlowEdges: Edge[] = [];
-
-  // Track source→target pairs covered by branches to avoid duplicates
-  const branchPairs = new Set<string>();
-  for (const step of plan) {
-    if (step.branches) {
-      for (const targetUid of Object.values(step.branches)) {
-        branchPairs.add(`${step.uid}->${targetUid}`);
-      }
-    }
-  }
-
-  // Regular edges from "after" fields
-  for (const step of plan) {
-    if (step.after) {
-      const afterList = Array.isArray(step.after)
-        ? step.after
-        : [step.after];
-      for (const afterUid of afterList) {
-        if (!branchPairs.has(`${afterUid}->${step.uid}`)) {
-          reactFlowEdges.push({
-            id: `${afterUid}-${step.uid}`,
-            source: afterUid,
-            target: step.uid,
-            type: "custom",
-            style: { strokeWidth: 2 },
-            markerEnd: {
-              type: MarkerType.ArrowClosed,
-              width: 20,
-              height: 20,
-            },
-          });
-        }
-      }
-    }
-  }
-
-  // Conditional edges from "branches" fields
-  for (const step of plan) {
-    if (step.branches) {
-      for (const [branch, targetUid] of Object.entries(step.branches)) {
-        reactFlowEdges.push({
-          id: `${step.uid}-${targetUid}-${branch}`,
-          source: step.uid,
-          target: targetUid as string,
-          type: "custom",
-          style: { strokeDasharray: "5,5", stroke: conditionEdgeColor },
-          markerEnd: {
-            type: MarkerType.ArrowClosed,
-            color: conditionEdgeColor,
-          },
-          data: {
-            branch: String(branch),
-            isConditional: true,
-          },
-          label: String(branch),
-        });
-      }
-    }
-  }
+  const reactFlowEdges = buildEdges(plan, conditionEdgeColor);
 
   return {
     nodes: reactFlowNodes,
