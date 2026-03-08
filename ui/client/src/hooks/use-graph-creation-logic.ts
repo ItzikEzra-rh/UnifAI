@@ -102,10 +102,6 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
   const [fixSuggestions, setFixSuggestions] = useState<any[]>([]);
   const [isValidating, setIsValidating] = useState(false);
 
-  // Monotonically increasing counter that invalidates in-flight validation
-  // responses when the graph changes before a response arrives.
-  const validationVersionRef = useRef(0);
-
   // Save modal state
   const [saveModalOpen, setSaveModalOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -136,8 +132,6 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
       return;
     }
 
-    const myVersion = validationVersionRef.current;
-
     try {
       setIsValidating(true);
 
@@ -166,23 +160,18 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
         },
       );
 
-      if (validationVersionRef.current !== myVersion) return;
-
       const { validation_result, fix_suggestions } = response.data;
 
       setValidationResult(validation_result);
       setFixSuggestions(fix_suggestions || []);
       setIsGraphValid(validation_result?.is_valid || false);
     } catch (error) {
-      if (validationVersionRef.current !== myVersion) return;
       console.error("Validation failed:", error);
       setIsGraphValid(false);
       setValidationResult(null);
       setFixSuggestions([]);
     } finally {
-      if (validationVersionRef.current === myVersion) {
-        setIsValidating(false);
-      }
+      setIsValidating(false);
     }
   }, [yamlFlow, nodes.length]);
 
@@ -567,6 +556,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
     };
 
     setNodes([userInputNode, finalizeNode]);
+    // Start from 3 since we have 2 default nodes
     setNodeId(3);
   }, [stableDeleteNode, stableAttachCondition, stableRemoveCondition]);
 
@@ -634,11 +624,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
   }, [allBlocksData, setNodes]);
 
   // Trigger validation whenever yamlFlow changes.
-  // Incrementing the version ensures any in-flight response from a previous
-  // cycle is discarded (see guard inside validateGraph).
   useEffect(() => {
-    validationVersionRef.current += 1;
-
     if (yamlFlow.plan && yamlFlow.plan.length > 2) {
       const validationTimeout = setTimeout(() => {
         validateGraph();

@@ -48,7 +48,6 @@ UnifAI UI is a modern React-based web application focused on **Agentic AI workfl
 
 ### Graph & Visualization
 - **JointJS (@joint/core + @joint/layout-directed-graph)** - SVG graph rendering library used for **both** the creation canvas (`GraphCreation.tsx`, `useGraphCreationCanvas` hook) and the read-only display (`GraphDisplay.tsx`, `useGraphDisplay` hook). Chosen for its lightweight rendering pipeline, imperative control over layout and SVG injection, and auto-layout support.
-- **ReactFlow 11.11.4** - Retained as a dependency for blueprint-loading utilities that reconstruct `Node`/`Edge` structures; no longer used for the primary graph editor canvas.
 - **Recharts 2.15.2** - Chart library for dashboard visualizations
 
 > **Note – graph library strategy:** JointJS is the primary graph library, powering both creation and display canvases. The graph-builder state (`use-graph-creation-logic.ts`) uses library-agnostic `CanvasNode` / `CanvasEdge` types (defined in `types/graph.ts`) so the rendering layer can be swapped without touching business logic.

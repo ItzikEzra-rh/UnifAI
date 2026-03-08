@@ -610,7 +610,7 @@ export function useGraphCreationCanvas({
               fill: edgeColor,
             },
             targetMarker: {
-              type: "classic" as const,
+              type: "path" as const,
               size: 12,
               fill: edgeColor,
             },

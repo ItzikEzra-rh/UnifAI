@@ -1,8 +1,4 @@
 // Define types for node data
-import {
-  Node,
-  Edge,
-} from 'reactflow';
 
 export interface NodeData {
   label: string;
@@ -113,8 +109,8 @@ export interface FlowObject {
   description: string;
   icon: React.ReactNode;
   flow: {
-    nodes: Node<NodeData>[];
-    edges: Edge[];
+    nodes: any[];
+    edges: any[];
   };
 }
 

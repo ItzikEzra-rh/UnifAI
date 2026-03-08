@@ -386,7 +386,7 @@ export function useGraphDisplay({
                 strokeWidth: isCond ? 1.5 : 2,
                 opacity: isCond ? 1 : 0.9,
                 sourceMarker: mkMarker(c, isCond ? 3 : 4),
-                targetMarker: { type: "classic", size: isCond ? 10 : 12, fill: c },
+                targetMarker: { type: "path", size: isCond ? 10 : 12, fill: c },
               },
             },
           }).addTo(graph);

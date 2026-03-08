@@ -260,6 +260,8 @@ const BuildingBlocksSidebar: React.FC<BuildingBlocksSidebarProps> = ({
                 <p>• Click a node, then click another to connect</p>
                 <p>• Drag conditions onto nodes for branching</p>
                 <p>• Press Delete or ESC to remove / cancel</p>
+                <p>• Always start with User Input node</p>
+                <p>• End workflow with Final Answer node</p>
               </div>
             </div>
           )}
