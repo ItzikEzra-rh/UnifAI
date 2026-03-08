@@ -13,32 +13,26 @@ dependencies = [
     "pydantic",
     "pydantic-core",
     "pyyaml",
-    "langchain",
-    "langchain-core",
-    "langchain-openai",
-    "langchain-google-genai",
-    "openai",
-    "langgraph",
-    "gunicorn",
-    "flask-cors",
-    "pymongo",
     "python-dotenv",
-    "httptools",
-    "mcp",
-    "paramiko",
-    "openshift-client",
-    "yarl",
-    "jsonschema",
-    "html-to-markdown",
-    "safehttpx",
-    "anyio",
-    "typing-inspection",
-    "a2a-sdk[all]",
+    "typer",
 ]
 
 [project.optional-dependencies]
+flask = ["flask", "flask-cors", "gunicorn"]
+mongo = ["pymongo"]
 temporal = ["temporalio"]
+langgraph = ["langgraph", "langchain", "langchain-core"]
+llms = ["openai", "langchain-openai", "langchain-google-genai"]
+tools = ["paramiko", "openshift-client", "mcp", "httptools", "safehttpx", "html-to-markdown", "yarl", "anyio"]
+a2a = ["a2a-sdk[all]", "typing-inspection"]
+rag = ["jsonschema"]
+all = [
+    "mas[flask,mongo,temporal,langgraph,llms,tools,a2a,rag]",
+]
 test = ["pytest>=6.0"]
+
+[project.scripts]
+mas = "bootstrap.cli:app"
 
 # ---------------------------------------------------------------------------
 # Package discovery
