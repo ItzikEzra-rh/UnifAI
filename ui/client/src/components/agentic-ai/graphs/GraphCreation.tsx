@@ -37,6 +37,7 @@ interface GraphCreationProps {
   onCancelConnection?: () => void;
   onAttachCondition?: (nodeId: string, condition: BuildingBlock) => void;
   onDragEnd?: () => void;
+  isEditMode?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -351,7 +352,8 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
   pendingConnectionSource = null,
   onCancelConnection,
   onAttachCondition,
-  onDragEnd,
+  onDragEnd,  
+  isEditMode
 }) => {
   const [showYamlDebug, setShowYamlDebug] = useState(false);
   const [isDraggingCondition, setIsDraggingCondition] = useState(false);
@@ -554,6 +556,7 @@ const GraphCreation: React.FC<GraphCreationProps> = ({
           onSaveGraph={onSaveGraph}
           onBack={onBack}
           isGraphValid={isGraphValid}
+          isEditMode={isEditMode}
         />
         <CardContent className="p-0 h-full relative">
           {/* YAML debug panel */}

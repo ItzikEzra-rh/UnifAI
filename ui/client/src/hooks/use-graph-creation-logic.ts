@@ -1,11 +1,10 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import { useToast } from "@/hooks/use-toast";
 import {
   CurrentGraph,
   BuildingBlock,
   CanvasNode,
   CanvasEdge,
-  YamlFlowState,
 } from "@/types/graph";
 import { getCategoryDisplay } from "@/components/shared/helpers";
 import { useAuth } from "@/contexts/AuthContext";
@@ -13,7 +12,9 @@ import { useTheme } from "@/contexts/ThemeContext";
 import { deriveThemeColors } from "@/lib/colorUtils";
 import axios from "../http/axiosAgentConfig";
 import * as yaml from "js-yaml";
-import { saveBlueprint } from "@/api/blueprints";
+import { saveBlueprint, updateBlueprint } from "@/api/blueprints";
+import { loadBlueprintForEditing } from "@/hooks/use-load-blueprint";
+import type { YamlFlowState } from "@/hooks/use-load-blueprint";
 
 const defaultYamlState: YamlFlowState = {
   nodes: [
@@ -55,10 +56,12 @@ export interface SavedBlueprintInfo {
 interface UseGraphCreationLogicOptions {
   /** Callback to execute after a successful save (e.g., navigate back to workflow list) */
   onSaveComplete?: (savedBlueprint?: SavedBlueprintInfo) => void;
+  /** When provided, load this blueprint for editing instead of starting with an empty canvas */
+  editBlueprintId?: string | null;
 }
 
 export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}) => {
-  const { onSaveComplete } = options;
+  const { onSaveComplete, editBlueprintId } = options;
   const { toast } = useToast();
   const { primaryHex } = useTheme();
   const themeColors = useMemo(() => deriveThemeColors(primaryHex), [primaryHex]);
@@ -108,6 +111,12 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
 
   // Drag state to track what type of item is being dragged
   const [isDraggingCondition, setIsDraggingCondition] = useState(false);
+
+  // Edit mode state
+  const [isEditMode, setIsEditMode] = useState(!!editBlueprintId);
+  const [editBlueprintName, setEditBlueprintName] = useState("");
+  const [editBlueprintDescription, setEditBlueprintDescription] = useState("");
+  const blueprintLoadedRef = useRef(false);
 
   const { user } = useAuth();
   const USER_ID = user?.username || "default";
@@ -606,9 +615,55 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
   }, [loadBuildingBlocks]);
 
   useEffect(() => {
-    initializeDefaultNodes();
+    if (!editBlueprintId) {
+      initializeDefaultNodes();
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Load existing blueprint for editing once building blocks are ready
+  useEffect(() => {
+    if (!editBlueprintId || isLoadingBlocks || blueprintLoadedRef.current) return;
+    blueprintLoadedRef.current = true;
+
+    loadBlueprintForEditing(
+      editBlueprintId,
+      allBlocksData,
+      conditionsData,
+      themeColors.primary,
+    )
+      .then((result) => {
+        const nodesWithCallbacks = result.nodes.map((node) => ({
+          ...node,
+          data: {
+            ...node.data,
+            onDelete: stableDeleteNode,
+            allBlocks: allBlocksData,
+            onAttachCondition: stableAttachCondition,
+            onRemoveCondition: stableRemoveCondition,
+          },
+        }));
+        setNodes(nodesWithCallbacks);
+        setEdges(result.edges);
+        setYamlFlow(result.yamlFlow);
+        setNodeId(result.nextNodeId);
+        setIsEditMode(true);
+        setEditBlueprintName(result.name);
+        setEditBlueprintDescription(result.description);
+      })
+      .catch((err) => {
+        console.error("Failed to load blueprint for editing:", err);
+        setIsEditMode(false);
+        setEditBlueprintName("");
+        setEditBlueprintDescription("");
+        toast({
+          title: "Failed to load blueprint",
+          description: "Could not load the blueprint for editing. Starting with a blank canvas.",
+          variant: "destructive",
+        });
+        initializeDefaultNodes();
+      });
+  }, [editBlueprintId, isLoadingBlocks]);
 
   // Sync allBlocks data to existing nodes when blocks change
   useEffect(() => {
@@ -894,7 +949,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
       try {
         setIsSaving(true);
 
-        // Update yamlFlow with name and description
+         // Update yamlFlow with name and description
         const updatedYamlFlow = {
           ...yamlFlow,
           name: name,
@@ -911,33 +966,44 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
           sortKeys: false,
         });
 
-        const response = await saveBlueprint(yamlString, USER_ID);
-
-        if (response.status === "success") {
-          // Show success toast
-          toast({
-            title: "✅ Blueprint Saved Successfully",
-            description: `Blueprint "${name}" saved successfully`,
-            variant: "default",
-          });
-
-          // Close the save modal immediately & Stop the saving state
-          setSaveModalOpen(false);
-          setIsSaving(false);
-
-          // Call the onSaveComplete callback to navigate back (if provided)
-          // Pass the saved blueprint info so it can be selected in the workflow list
-          if (onSaveComplete) {
-            setTimeout(() => {
-              onSaveComplete({
-                blueprintId: response.blueprint_id,
-                name,
-                description,
-              });
-            }, 100);
-          }
+        let response;
+        let blueprintId;
+        
+        if (isEditMode && editBlueprintId) {
+          response = await updateBlueprint(editBlueprintId, yamlString);
+          blueprintId = editBlueprintId;
         } else {
-          throw new Error("Unknown error occurred while saving blueprint");
+          response = await saveBlueprint(yamlString, USER_ID);
+          blueprintId = response.blueprint_id;
+        }
+
+        if (response.status !== "success") {
+          throw new Error(
+            isEditMode
+              ? "Unknown error occurred while updating blueprint"
+              : "Unknown error occurred while saving blueprint"
+          );
+        }
+
+        toast({
+          title: isEditMode
+            ? "✅ Blueprint Updated Successfully"
+            : "✅ Blueprint Saved Successfully",
+          description: `Blueprint "${name}" ${isEditMode ? "updated" : "saved"} successfully`,
+          variant: "default",
+        });
+
+        setSaveModalOpen(false);
+        setIsSaving(false);
+
+        if (onSaveComplete) {
+          setTimeout(() => {
+            onSaveComplete({
+              blueprintId,
+              name,
+              description,
+            });
+          }, 100);
         }
       } catch (error) {
         console.error("Error saving graph:", error);
@@ -949,7 +1015,7 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
         setIsSaving(false);
       }
     },
-    [yamlFlow, toast, onSaveComplete, USER_ID],
+    [yamlFlow, toast, onSaveComplete, USER_ID, isEditMode, editBlueprintId],
   );
 
   useEffect(() => {
@@ -1228,5 +1294,9 @@ export const useGraphCreationLogic = (options: UseGraphCreationLogicOptions = {}
     saveModalOpen,
     setSaveModalOpen,
     isSaving,
+    // Edit mode state
+    isEditMode,
+    editBlueprintName,
+    editBlueprintDescription,
   };
 };

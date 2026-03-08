@@ -7,9 +7,12 @@ import SaveBlueprintModal from "@/components/agentic-ai/graphs/SaveBlueprintModa
 
 interface NewGraphProps {
   onBack?: (savedBlueprint?: SavedBlueprintInfo) => void;
+  editBlueprintId?: string | null;
 }
 
-export default function NewGraph({ onBack }: NewGraphProps) {
+export default function NewGraph({ onBack, editBlueprintId }: NewGraphProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   const {
     nodes,
     edges,
@@ -37,7 +40,10 @@ export default function NewGraph({ onBack }: NewGraphProps) {
     fixSuggestions,
     isValidating,
     isSaving,
-  } = useGraphCreationLogic({ onSaveComplete: onBack });
+    isEditMode,
+    editBlueprintName,
+    editBlueprintDescription,
+  } = useGraphCreationLogic({ onSaveComplete: onBack, editBlueprintId });
 
   const [saveModalOpen, setSaveModalOpen] = useState(false);
 
@@ -118,6 +124,7 @@ export default function NewGraph({ onBack }: NewGraphProps) {
           onCancelConnection={cancelConnectionMode}
           onAttachCondition={attachConditionToNode}
           onDragEnd={onDragEnd}
+          isEditMode={isEditMode}
         />
       </div>
 
@@ -136,6 +143,9 @@ export default function NewGraph({ onBack }: NewGraphProps) {
         onClose={() => setSaveModalOpen(false)}
         onSave={saveGraph}
         isLoading={isSaving}
+        isEditMode={isEditMode}
+        currentName={editBlueprintName}
+        currentDescription={editBlueprintDescription}
       />
     </div>
   );
