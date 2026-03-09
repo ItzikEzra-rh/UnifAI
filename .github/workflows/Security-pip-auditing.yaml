@@ -2,7 +2,7 @@ name: PIP Audit Dependency Security Scan
 
 permissions:
   contents: read
-  
+
 on: 
     push:
         branches:
@@ -23,7 +23,9 @@ jobs:
 
     #     - name: Checkout code
     #       uses: actions/checkout@v4
-
+    #       with:
+    #         ref: ${{ inputs.branch }}
+          
     #     - name: Set up Python
     #       uses: actions/setup-python@v5
     #       with:
@@ -50,6 +52,8 @@ jobs:
 
     scan_rag:
       runs-on: ubuntu-latest
+      permissions:
+        contents: read
       steps:
 
       - name: Checkout code
@@ -81,11 +85,15 @@ jobs:
 
     scan_multi-agent:
       runs-on: ubuntu-latest
+      permissions:
+        contents: read
       steps:
 
       - name: Checkout code
         uses: actions/checkout@v4
-
+        with:
+          ref: ${{ inputs.branch }}
+          
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -110,11 +118,15 @@ jobs:
 
     scan_sso:
       runs-on: ubuntu-latest
+      permissions:
+        contents: read
       steps:
 
       - name: Checkout code
         uses: actions/checkout@v4
-
+        with:
+          ref: ${{ inputs.branch }}
+          
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -159,7 +171,7 @@ jobs:
           uses: calebevans/gha-failure-analysis@v0.1.9
           with:
             llm-provider: gemini
-            llm-model: gemini-3-pro-preview
+            llm-model: gemini-3.1-pro-preview
             llm-api-key: ${{ secrets.GEMINI_API_KEY }}
             github-token: ${{ steps.generate_token.outputs.token }}
             post-pr-comment: false
