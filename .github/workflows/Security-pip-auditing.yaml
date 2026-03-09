@@ -1,5 +1,8 @@
 name: PIP Audit Dependency Security Scan
 
+permissions:
+  contents: read
+  
 on: 
     push:
         branches:
