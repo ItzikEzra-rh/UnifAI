@@ -67,6 +67,7 @@ jobs:
         run: | 
           ./venv/bin/pip install --upgrade pip "setuptools>=70.0.0"
           ./venv/bin/pip install -r rag/requirements.txt
+          ./venv/bin/pip install -e ./global_utils/ 
 
       - name: Scan dependencies (rag)
         uses: pypa/gh-action-pip-audit@v1.1.0
@@ -95,6 +96,7 @@ jobs:
         run: | 
           ./venv/bin/pip install --upgrade pip "setuptools>=70.0.0"
           ./venv/bin/pip install -r multi-agent/requirements.txt
+          ./venv/bin/pip install -e ./global_utils/ 
 
       - name: Scan dependencies (multi-agent)
         uses: pypa/gh-action-pip-audit@v1.1.0
