@@ -1,15 +1,22 @@
 """
 Redis-backed channel factory.
 
-Creates session-scoped writers (RedisSessionChannel) and readers
-(RedisSessionChannelReader) backed by Redis Streams. A single
-connection pool is shared across all channels.
+Creates session-scoped writers, readers, and a shared monitor,
+all backed by Redis Streams. A single connection pool is shared.
 """
+from typing import Optional
+
 from redis import ConnectionPool, Redis
 
-from mas.core.channels import ChannelFactory, SessionChannel, SessionChannelReader
+from mas.core.channels import (
+    ChannelFactory,
+    SessionChannel,
+    SessionChannelReader,
+    SessionStreamMonitor,
+)
 from .channel import RedisSessionChannel
 from .reader import RedisSessionChannelReader
+from .monitor import RedisStreamMonitor
 
 
 class RedisChannelFactory(ChannelFactory):
@@ -25,6 +32,7 @@ class RedisChannelFactory(ChannelFactory):
         self._stream_ttl = stream_ttl
         self._block_ms = block_ms
         self._batch_size = batch_size
+        self._monitor: Optional[RedisStreamMonitor] = None
 
     def create(self, session_id: str) -> SessionChannel:
         return RedisSessionChannel(
@@ -40,3 +48,8 @@ class RedisChannelFactory(ChannelFactory):
             block_ms=self._block_ms,
             batch_size=self._batch_size,
         )
+
+    def create_monitor(self) -> SessionStreamMonitor:
+        if self._monitor is None:
+            self._monitor = RedisStreamMonitor(Redis(connection_pool=self._pool))
+        return self._monitor

@@ -1,13 +1,14 @@
 """
 Channel protocols — abstractions for session communication.
 
-SessionChannel:       Write side — nodes emit events during execution.
-SessionChannelReader: Read side  — subscribe endpoint consumes events.
-ChannelFactory:       Creates writers and (optionally) readers.
-StreamEmitter:        Low-level emission abstraction (LangGraph, etc.).
+SessionChannel:        Write side — nodes emit events during execution.
+SessionChannelReader:  Read side  — subscribe endpoint consumes events.
+SessionStreamMonitor:  Query side — stream metadata and active sessions.
+ChannelFactory:        Creates writers, readers, and monitors.
+StreamEmitter:         Low-level emission abstraction (LangGraph, etc.).
 """
 from abc import ABC, abstractmethod
-from typing import Any, Iterator, Optional
+from typing import Any, Dict, Iterator, List, Optional
 
 
 class StreamEmitter(ABC):
@@ -68,12 +69,41 @@ class SessionChannelReader(ABC):
     def close(self) -> None: ...
 
 
+class SessionStreamMonitor(ABC):
+    """
+    Read-only query interface for stream metadata.
+
+    Backends that support distributed streaming (e.g. Redis) can
+    report which sessions are active and their stream status.
+    Local backends return None from the factory.
+    """
+
+    @abstractmethod
+    def get_status(self, session_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Return stream metadata for a session.
+
+        Returns None if the session has no stream data.
+        """
+        ...
+
+    @abstractmethod
+    def list_active(self) -> List[str]:
+        """Return session IDs of all currently active streams."""
+        ...
+
+    @abstractmethod
+    def is_available(self) -> bool:
+        """Check whether the monitoring backend is reachable."""
+        ...
+
+
 class ChannelFactory(ABC):
     """
     Abstract factory for session-scoped streaming channels.
 
-    Creates writers (always) and readers (when the backend supports
-    cross-process communication, e.g. Redis).
+    Creates writers (always), and optionally readers and monitors
+    when the backend supports cross-process communication.
     """
 
     @abstractmethod
@@ -87,6 +117,15 @@ class ChannelFactory(ABC):
 
         Returns None when the backend does not support cross-process
         reading (e.g. LocalChannelFactory).
+        """
+        return None
+
+    def create_monitor(self) -> Optional[SessionStreamMonitor]:
+        """
+        Return a stream monitor for querying metadata.
+
+        Returns None when the backend does not support monitoring
+        (e.g. LocalChannelFactory).
         """
         return None
 

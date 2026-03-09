@@ -24,7 +24,7 @@ def create_user_session(blueprint_id, user_id, metadata):
         return jsonify(session.get_run_id()), 200
     except BlueprintNotFoundError as e:
         return jsonify({
-            "error": str(e), 
+            "error": str(e),
             "error_type": "BLUEPRINT_NOT_FOUND",
             "blueprint_id": e.blueprint_id
         }), 404
@@ -79,7 +79,7 @@ def execute_user_session(session_id, inputs, stream_mode, stream, scope, logged_
         generate(),
         mimetype="application/x-ndjson"
     )
-    
+
     # except BlueprintNotFoundError as e:
     #     return jsonify({
     #         "error": str(e),
@@ -185,6 +185,37 @@ def delete_session(session_id):
         svc = current_app.container.session_service
         deleted = svc.delete(run_id=session_id)
         return jsonify({"success": deleted}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@sessions_bp.route("/session.stream.status", methods=["GET"])
+@from_query({
+    "session_id": fields.Str(data_key="sessionId", required=True),
+})
+def get_stream_status(session_id):
+    """Return metadata about a session's event stream."""
+    monitor = current_app.container.channel_factory.create_monitor()
+    if monitor is None or not monitor.is_available():
+        return jsonify({"error": "Stream monitoring not available — no distributed channel configured"}), 501
+    try:
+        status = monitor.get_status(session_id)
+        if status is None:
+            return jsonify({"error": f"Session {session_id} not found in stream"}), 404
+        return jsonify(status), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@sessions_bp.route("/session.stream.active", methods=["GET"])
+def list_active_streams():
+    """List all currently active (running) session streams."""
+    monitor = current_app.container.channel_factory.create_monitor()
+    if monitor is None or not monitor.is_available():
+        return jsonify({"error": "Stream monitoring not available — no distributed channel configured"}), 501
+    try:
+        active = monitor.list_active()
+        return jsonify({"active_sessions": active, "count": len(active)}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

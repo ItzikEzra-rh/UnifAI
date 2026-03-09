@@ -15,7 +15,7 @@ from typing import Any
 from redis import Redis
 
 from mas.core.channels import SessionChannel
-from .constants import STREAM_PREFIX, StreamField, ControlSignal
+from .constants import STREAM_PREFIX, ACTIVE_SESSIONS_KEY, StreamField, ControlSignal
 
 
 class RedisSessionChannel(SessionChannel):
@@ -26,6 +26,7 @@ class RedisSessionChannel(SessionChannel):
         self._stream_key = f"{STREAM_PREFIX}{session_id}"
         self._ttl = ttl
         self._closed = False
+        self._redis.sadd(ACTIVE_SESSIONS_KEY, session_id)
 
     @property
     def session_id(self) -> str:
@@ -48,6 +49,7 @@ class RedisSessionChannel(SessionChannel):
             self._stream_key,
             {StreamField.CONTROL: ControlSignal.CLOSE},
         )
+        self._redis.srem(ACTIVE_SESSIONS_KEY, self._session_id)
         self._touch_ttl()
         self._closed = True
 

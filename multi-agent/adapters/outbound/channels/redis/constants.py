@@ -1,6 +1,7 @@
 from enum import StrEnum
 
 STREAM_PREFIX = "mas:stream:"
+ACTIVE_SESSIONS_KEY = "mas:sessions:active"
 
 
 class StreamField(StrEnum):
