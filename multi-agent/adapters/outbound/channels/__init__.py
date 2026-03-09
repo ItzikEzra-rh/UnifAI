@@ -1,4 +1,10 @@
-from .local_channel import LocalSessionChannel
-from .local_channel_factory import LocalChannelFactory
+from .local import LocalSessionChannel, LocalChannelFactory
+from .redis import RedisSessionChannel, RedisSessionChannelReader, RedisChannelFactory
 
-__all__ = ["LocalSessionChannel", "LocalChannelFactory"]
+__all__ = [
+    "LocalSessionChannel",
+    "LocalChannelFactory",
+    "RedisSessionChannel",
+    "RedisSessionChannelReader",
+    "RedisChannelFactory",
+]

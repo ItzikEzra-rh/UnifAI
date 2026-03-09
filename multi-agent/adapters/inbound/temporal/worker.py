@@ -11,18 +11,17 @@ Run as a standalone process:
 
 Multiple workers can run concurrently for horizontal scaling.
 """
-import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 from temporalio.worker import Worker, UnsandboxedWorkflowRunner
 
 from mas.config.app_config import AppConfig
 from mas.engine.distributed.node_executor import NodeExecutor
+from mas.session.execution.background_executor import BackgroundSessionExecutor
 from mas.session.execution.lifecycle import SessionLifecycle
-from outbound.temporal.client import get_temporal_client
+from temporal.client import get_temporal_client
 from inbound.temporal.activities import GraphNodeActivities, SessionLifecycleActivities
-from inbound.temporal.workflow import GraphTraversalWorkflow
-from inbound.temporal.session_workflow import SessionWorkflow
+from inbound.temporal.workflows import GraphTraversalWorkflow, SessionWorkflow
 
 
 async def run_worker(container, threads: int) -> None:
@@ -38,9 +37,13 @@ async def run_worker(container, threads: int) -> None:
     )
 
     lifecycle = SessionLifecycle(repository=container.session_repo)
-    lifecycle_activities = SessionLifecycleActivities(
+    session_executor = BackgroundSessionExecutor(
         session_manager=container.session_manager,
         lifecycle=lifecycle,
+        channel_factory=container.channel_factory,
+    )
+    lifecycle_activities = SessionLifecycleActivities(
+        executor=session_executor,
     )
 
     client = await get_temporal_client()

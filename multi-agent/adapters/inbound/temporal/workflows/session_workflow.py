@@ -15,14 +15,14 @@ from temporalio import workflow
 from temporalio.common import RetryPolicy
 
 from mas.session.execution.background_orchestration import BackgroundSessionOrchestrator
-from outbound.temporal.models import (
+from temporal.models import (
     SessionWorkflowParams,
     GraphExecutionParams,
     PrepareSessionParams,
     CompleteSessionParams,
     FailSessionParams,
 )
-from inbound.temporal.workflow import GraphTraversalWorkflow
+from inbound.temporal.workflows.graph_traversal_workflow import GraphTraversalWorkflow
 
 _LIFECYCLE_TIMEOUT = timedelta(seconds=30)
 _LIFECYCLE_RETRY = RetryPolicy(maximum_attempts=3)

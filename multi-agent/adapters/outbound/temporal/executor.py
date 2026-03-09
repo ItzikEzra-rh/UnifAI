@@ -4,6 +4,9 @@ Temporal graph executor.
 Starts a GraphTraversalWorkflow on the shared Temporal task queue
 and blocks until the result is ready.  This is the graph-execution
 adapter — it knows nothing about session lifecycle.
+
+Uses string-based workflow invocation to avoid importing from the
+inbound adapter layer (hexagonal boundary compliance).
 """
 import asyncio
 import uuid
@@ -13,9 +16,10 @@ from mas.engine.domain.base_executor import BaseGraphExecutor
 from mas.engine.domain.models import GraphDefinition
 from mas.graph.state.graph_state import GraphState
 from mas.config.app_config import AppConfig
-from outbound.temporal.client import get_temporal_client
-from inbound.temporal.workflow import GraphTraversalWorkflow
-from outbound.temporal.models import GraphExecutionParams
+from temporal.client import get_temporal_client
+from temporal.models import GraphExecutionParams
+
+_WORKFLOW_NAME = "GraphTraversalWorkflow"
 
 
 class TemporalGraphExecutor(BaseGraphExecutor):
@@ -71,7 +75,7 @@ class TemporalGraphExecutor(BaseGraphExecutor):
             graph_definition=self._graph_def.model_dump(mode="json"),
         )
         return await client.execute_workflow(
-            GraphTraversalWorkflow.run,
+            _WORKFLOW_NAME,
             params,
             id=workflow_id,
             task_queue=cfg.temporal_task_queue,
@@ -80,4 +84,4 @@ class TemporalGraphExecutor(BaseGraphExecutor):
     async def _query_state(self) -> dict:
         client = await get_temporal_client()
         handle = client.get_workflow_handle(self._workflow_id)
-        return await handle.query(GraphTraversalWorkflow.get_state)
+        return await handle.query("get_state")

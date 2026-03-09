@@ -1,88 +1,92 @@
 """
-Channel protocols - abstractions for session communication.
+Channel protocols — abstractions for session communication.
 
-StreamEmitter: ABC for emitting data during graph execution
-SessionChannel: ABC for session-scoped channels (emit, close, future: input)
-ChannelFactory: ABC for creating session channels (infrastructure concern, not engine concern)
+SessionChannel:       Write side — nodes emit events during execution.
+SessionChannelReader: Read side  — subscribe endpoint consumes events.
+ChannelFactory:       Creates writers and (optionally) readers.
+StreamEmitter:        Low-level emission abstraction (LangGraph, etc.).
 """
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Iterator, Optional
 
 
 class StreamEmitter(ABC):
-    """
-    Abstract base class for emitting data during graph execution.
-    Implementations are infrastructure-specific (e.g., LangGraphEmitter, RedisEmitter).
-    """
-    
+    """Low-level emission abstraction for engine-specific streaming."""
+
     @abstractmethod
-    def emit(self, data: Any) -> None:
-        """Emit a chunk of data."""
-        ...
-    
+    def emit(self, data: Any) -> None: ...
+
     @abstractmethod
-    def is_active(self) -> bool:
-        """Check if emission is possible."""
-        ...
+    def is_active(self) -> bool: ...
 
 
 class SessionChannel(ABC):
     """
-    Abstract base class for session-scoped communication channels.
-    
-    Current: Output only (emit)
-    Future: Add request_input() for HITL
+    Write side of a session channel — used by nodes to emit events.
+
+    Future: add request_input() for HITL.
     """
-    
+
     @property
     @abstractmethod
-    def session_id(self) -> str:
-        """The session this channel belongs to."""
-        ...
-    
+    def session_id(self) -> str: ...
+
     @abstractmethod
-    def emit(self, data: Any) -> None:
-        """Emit data to the channel."""
-        ...
-    
+    def emit(self, data: Any) -> None: ...
+
     @abstractmethod
-    def is_active(self) -> bool:
-        """Check if channel is active."""
-        ...
-    
+    def is_active(self) -> bool: ...
+
     @abstractmethod
-    def close(self) -> None:
-        """Close the channel."""
-        ...
-    
+    def close(self) -> None: ...
+
     def supports_input(self) -> bool:
-        """
-        Check if this channel supports receiving input (HITL).
-        Default: False. Override in RedisSessionChannel.
-        """
         return False
+
+
+class SessionChannelReader(ABC):
+    """
+    Read side of a session channel — used by the subscribe endpoint
+    to consume events.
+
+    Implementations must be iterable.  Each iteration yields either:
+      - a dict  → an actual event (exactly as emitted by the node)
+      - None    → no new data (timeout); callers can use this for keepalives
+
+    The iterator stops (returns) when the channel is closed.
+    Data is never modified — what the node emits is what the reader yields.
+    """
+
+    @property
+    @abstractmethod
+    def session_id(self) -> str: ...
+
+    @abstractmethod
+    def __iter__(self) -> Iterator[Optional[dict]]: ...
+
+    @abstractmethod
+    def close(self) -> None: ...
 
 
 class ChannelFactory(ABC):
     """
-    Abstract factory for creating session-scoped streaming channels.
+    Abstract factory for session-scoped streaming channels.
 
-    This is an INFRASTRUCTURE concern, not an engine concern.
-    The same factory (e.g., Redis) can serve any graph engine
-    (LangGraph, Temporal, etc.). Injected into ForegroundSessionRunner
-    by the AppContainer based on deployment configuration.
+    Creates writers (always) and readers (when the backend supports
+    cross-process communication, e.g. Redis).
     """
 
     @abstractmethod
     def create(self, session_id: str) -> SessionChannel:
-        """
-        Create a new streaming channel for the given session.
-
-        Args:
-            session_id: Unique session identifier for this channel.
-
-        Returns:
-            A ready-to-use SessionChannel instance.
-        """
+        """Create a write channel for the given session."""
         ...
+
+    def create_reader(self, session_id: str) -> Optional[SessionChannelReader]:
+        """
+        Create a read channel for the given session.
+
+        Returns None when the backend does not support cross-process
+        reading (e.g. LocalChannelFactory).
+        """
+        return None
 

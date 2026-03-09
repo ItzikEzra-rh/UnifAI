@@ -1,5 +1,5 @@
 """
-Temporal workflow — inbound adapter (thin SDK wrapper).
+Temporal workflow for graph traversal — inbound adapter.
 
 Defines the @workflow.defn for Temporal registration.
 Delegates graph traversal logic to engine.distributed.traversal.GraphTraversal.
@@ -15,7 +15,7 @@ from temporalio.common import RetryPolicy
 from mas.engine.domain.models import GraphDefinition, ConditionalEdgeDef
 from mas.engine.distributed.traversal import GraphTraversal
 from mas.graph.state.graph_state import GraphState
-from outbound.temporal.models import (
+from temporal.models import (
     GraphExecutionParams,
     ExecuteNodeParams,
     EvaluateConditionParams,

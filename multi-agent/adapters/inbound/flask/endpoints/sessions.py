@@ -187,3 +187,34 @@ def delete_session(session_id):
         return jsonify({"success": deleted}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+@sessions_bp.route("/session.subscribe", methods=["GET"])
+@from_query({
+    "session_id": fields.Str(data_key="sessionId", required=True),
+})
+def subscribe_session(session_id):
+    """
+    Stream session events as NDJSON.
+    Late-joining clients receive the full event history (replay)
+    followed by live events.
+    """
+    factory = current_app.container.channel_factory
+    reader = factory.create_reader(session_id)
+
+    if reader is None:
+        return jsonify({"error": "Streaming subscribe not available — no distributed channel configured"}), 501
+
+    def generate():
+        try:
+            for event in reader:
+                if event is None:
+                    continue
+                yield json.dumps(event, default=str) + "\n"
+        finally:
+            reader.close()
+
+    return Response(
+        generate(),
+        mimetype="application/x-ndjson",
+    )

@@ -3,6 +3,9 @@ Temporal DTO models.
 
 Serializable parameter objects for workflows and activities.
 These are the transport-layer data contracts for Temporal SDK.
+
+Shared by both inbound (worker/activities/workflows) and outbound
+(executor/submitter) Temporal adapters.
 """
 from typing import Any, Dict
 from pydantic import BaseModel, Field

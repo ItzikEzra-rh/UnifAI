@@ -5,9 +5,8 @@ Rebuilds a single node (or condition) from its mini-blueprint,
 injects the real StepContext, runs it, and discards it.
 Like a Flask handler — any worker can execute any node.
 
-If a SessionChannel is provided, it is injected into the node
-before execution so that background workers can stream events
-to a distributed channel (Redis, Kafka, etc.).
+If a pre-built SessionChannel is provided, it is injected into
+streaming-capable nodes so background workers can emit events.
 """
 from typing import Any, Dict, Optional
 
@@ -27,6 +26,9 @@ class NodeExecutor:
     Created once at worker startup with a shared session factory.
     Each call builds a fresh node from the mini-blueprint, injects
     context, runs it, and returns the result.
+
+    Channel creation is NOT this class's concern — callers provide
+    a ready-to-use SessionChannel when streaming is needed.
     """
 
     def __init__(self, session_factory: WorkflowSessionFactory) -> None:

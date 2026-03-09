@@ -4,6 +4,9 @@ Temporal adapter for background session submission.
 Implements the session-level BackgroundSessionSubmitter port.
 Starts a durable SessionWorkflow that owns the full session lifecycle
 (prepare → execute → complete/fail) inside the Temporal cluster.
+
+Uses string-based workflow invocation to avoid importing from the
+inbound adapter layer (hexagonal boundary compliance).
 """
 import asyncio
 import uuid
@@ -12,10 +15,11 @@ from mas.graph.state.graph_state import GraphState
 from mas.session.execution.ports import BackgroundSessionSubmitter, SubmitSessionRequest
 from mas.session.domain.workflow_session import WorkflowSession
 from mas.config.app_config import AppConfig
-from outbound.temporal.client import get_temporal_client
+from temporal.client import get_temporal_client
+from temporal.models import SessionWorkflowParams, GraphExecutionParams
 from outbound.temporal.executor import TemporalGraphExecutor
-from inbound.temporal.session_workflow import SessionWorkflow
-from outbound.temporal.models import SessionWorkflowParams, GraphExecutionParams
+
+_WORKFLOW_NAME = "SessionWorkflow"
 
 
 class TemporalSessionSubmitter(BackgroundSessionSubmitter):
@@ -23,13 +27,13 @@ class TemporalSessionSubmitter(BackgroundSessionSubmitter):
     Submits sessions to Temporal for durable background execution.
 
     The SessionWorkflow handles the entire lifecycle:
-      ① prepare_session activity  → seed inputs, mark RUNNING
-      ② GraphTraversalWorkflow    → graph execution (child workflow)
-      ③ complete_session activity → mark COMPLETED
-      On error: fail_session      → mark FAILED
+      prepare_session activity  → seed inputs, mark RUNNING
+      GraphTraversalWorkflow    → graph execution (child workflow)
+      complete_session activity → mark COMPLETED
+      On error: fail_session    → mark FAILED
 
     Requires the session's executable_graph to be a TemporalGraphExecutor
-    (both live in the same infrastructure/temporal adapter boundary).
+    (both live in the same outbound/temporal adapter boundary).
     """
 
     def submit(self, session: WorkflowSession, request: SubmitSessionRequest) -> str:
@@ -73,7 +77,7 @@ class TemporalSessionSubmitter(BackgroundSessionSubmitter):
             graph_execution_params=graph_params.model_dump(mode="json"),
         )
         await client.start_workflow(
-            SessionWorkflow.run,
+            _WORKFLOW_NAME,
             params,
             id=workflow_id,
             task_queue=cfg.temporal_task_queue,

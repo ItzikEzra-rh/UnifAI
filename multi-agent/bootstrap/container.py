@@ -168,6 +168,14 @@ class AppContainer(metaclass=SingletonMeta):
 
     @staticmethod
     def _create_channel_factory(cfg: AppConfig):
+        if cfg.redis_url:
+            from outbound.channels import RedisChannelFactory
+            return RedisChannelFactory(
+                redis_url=cfg.redis_url,
+                stream_ttl=cfg.redis_stream_ttl,
+                block_ms=cfg.redis_stream_block_ms,
+                batch_size=cfg.redis_stream_batch_size,
+            )
         from outbound.channels import LocalChannelFactory
         return LocalChannelFactory()
 

@@ -26,8 +26,9 @@ llms = ["openai", "langchain-openai", "langchain-google-genai"]
 tools = ["paramiko", "openshift-client", "mcp", "httptools", "safehttpx", "html-to-markdown", "yarl", "anyio"]
 a2a = ["a2a-sdk[all]", "typing-inspection"]
 rag = ["jsonschema"]
+redis = ["redis"]
 all = [
-    "mas[flask,mongo,temporal,langgraph,llms,tools,a2a,rag]",
+    "mas[flask,mongo,temporal,langgraph,llms,tools,a2a,rag,redis]",
 ]
 test = ["pytest>=6.0"]
 
@@ -47,7 +48,7 @@ mas = "bootstrap.cli:app"
 # ---------------------------------------------------------------------------
 [tool.setuptools.packages.find]
 where = ["lib", "adapters", "."]
-include = ["mas*", "inbound*", "outbound*", "bootstrap*"]
+include = ["mas*", "inbound*", "outbound*", "temporal*", "bootstrap*"]
 
 # ---------------------------------------------------------------------------
 # Pytest

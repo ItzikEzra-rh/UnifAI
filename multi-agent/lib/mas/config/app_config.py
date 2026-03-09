@@ -18,3 +18,8 @@ class AppConfig(SharedConfig):
     temporal_host: str = "localhost:7233"
     temporal_namespace: str = "default"
     temporal_task_queue: str = "graph-engine"
+    # Redis (optional — enables distributed streaming)
+    redis_url: str = ""
+    redis_stream_ttl: int = 3600
+    redis_stream_block_ms: int = 5000
+    redis_stream_batch_size: int = 50
