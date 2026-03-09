@@ -78,6 +78,7 @@ export default function WorkflowsPanel({
     validateBlueprint: validateSelectedBlueprint,
     clearValidation,
   } = useBlueprintValidation({
+    activeBlueprintId: selectedFlow?.id ?? null,
     onValidationChange,
     showToastOnFailure: true,
   });
