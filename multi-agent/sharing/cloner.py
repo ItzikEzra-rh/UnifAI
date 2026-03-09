@@ -95,7 +95,8 @@ class ShareCloner:
             )
 
             # Clone blueprint with proper ref handling and new step UIDs
-            new_draft = self._clone_blueprint_draft(draft, rid_mapping, sender_user_id)
+            is_self_clone = sender_user_id == recipient_user_id
+            new_draft = self._clone_blueprint_draft(draft, rid_mapping, sender_user_id, is_self_clone)
 
             # Save blueprint through service
             new_blueprint_id = self.blueprints.save_draft(
@@ -279,7 +280,7 @@ class ShareCloner:
         return f"{base_name} ({uuid4().hex[:8]})"
 
     def _clone_blueprint_draft(self, draft: BlueprintDraft, rid_mapping: Dict[str, str],
-                               sender_user_id: str) -> BlueprintDraft:
+                               sender_user_id: str, is_self_clone: bool = False) -> BlueprintDraft:
         """Clone a BlueprintDraft with proper ref replacement and new step UIDs."""
 
         # Clone resource categories using ResourceCategory enum
@@ -291,10 +292,16 @@ class ShareCloner:
             for category in ResourceCategory
         }
 
+        # Use "(copy)" for self-clone, "(from user)" for cross-user sharing
+        if is_self_clone:
+            new_name = f"{draft.name} (copy)"
+        else:
+            new_name = f"{draft.name} (from {sender_user_id})"
+
         # Create new BlueprintDraft with cloned data
         return BlueprintDraft(
             plan=self._clone_plan(draft.plan, rid_mapping),
-            name=f"{draft.name} (from {sender_user_id})",
+            name=new_name,
             description=draft.description,
             **resource_fields
         )

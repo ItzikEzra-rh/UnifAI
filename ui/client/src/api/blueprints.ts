@@ -141,6 +141,25 @@ export async function updateBlueprint(
 }
 
 // ────────────────────────────────────────────────────────────────────────────────
+// Blueprint Cloning
+// ────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Clone a blueprint and all its dependencies for the current user.
+ * Creates a new blueprint with "(copy)" suffix.
+ */
+export async function cloneBlueprint(
+  blueprintId: string,
+  userId: string
+): Promise<SaveBlueprintResponse> {
+  const { data } = await axios.post<SaveBlueprintResponse>('/blueprints/blueprint.clone', {
+    blueprintId,
+    userId,
+  });
+  return data;
+}
+
+// ────────────────────────────────────────────────────────────────────────────────
 // Blueprint Metadata & Sharing
 // ────────────────────────────────────────────────────────────────────────────────
 

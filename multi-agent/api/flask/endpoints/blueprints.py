@@ -307,6 +307,41 @@ def set_metadata(blueprint_id, metadata):
         logger.exception(f"Unexpected error updating metadata for blueprint {blueprint_id}")
         return jsonify({"error": str(e)}), 500
 
+@blueprints_bp.route("/blueprint.clone", methods=["POST"])
+@from_body({
+    "blueprint_id": fields.Str(data_key="blueprintId", required=True),
+    "user_id": fields.Str(data_key="userId", required=True),
+})
+def clone_blueprint(blueprint_id, user_id):
+    """
+    Clone a blueprint and all its dependencies for the same user.
+    Creates a new blueprint with "(copy)" suffix.
+    """
+    try:
+        cloner = current_app.container.share_cloner
+
+        new_blueprint_id, rid_mapping, name_conflicts = cloner.clone_blueprint(
+            blueprint_id=blueprint_id,
+            sender_user_id=user_id,
+            recipient_user_id=user_id,
+        )
+
+        return jsonify({
+            "status": "success",
+            "blueprint_id": new_blueprint_id,
+            "resources_cloned": len(rid_mapping),
+            "name_conflicts": name_conflicts,
+        }), 201
+
+    except BlueprintNotFoundError as e:
+        return jsonify({"status": "error", "error": str(e)}), 404
+    except ValueError as e:
+        return jsonify({"status": "error", "error": str(e)}), 400
+    except Exception as e:
+        logger.exception(f"Unexpected error cloning blueprint {blueprint_id}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
 @blueprints_bp.route("/blueprint.validate", methods=["POST"])
 @from_body({
     "blueprint_id": fields.Str(data_key="blueprintId", required=True),
