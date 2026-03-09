@@ -1,0 +1,36 @@
+name: Security Container Vulerability Scanning
+
+on:
+  push:
+    branches:
+      - GENIE-1379-container_vulerability
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: The branch to scan
+        required: true
+        default: GENIE-1379-container_vulerability
+
+jobs:
+  build_rag:
+    name: Build
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+
+      - name: Build an image from Dockerfile
+        run: docker build -t rag-image:${{ github.sha }} -f rag/Dockerfile .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.33.1
+        with:
+          image-ref: 'rag-image:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
