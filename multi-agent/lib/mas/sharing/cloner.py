@@ -306,9 +306,15 @@ class ShareCloner:
             for category in ResourceCategory
         }
 
+        is_self_clone = ctx.sender_user_id == ctx.recipient_user_id
+        if is_self_clone:
+            new_name = f"{draft.name} (copy)"
+        else:
+            new_name = f"{draft.name} (from {ctx.sender_user_id})"
+
         return BlueprintDraft(
             plan=self._clone_plan(draft.plan, rid_mapping),
-            name=f"{draft.name} (from {ctx.sender_user_id})",
+            name=new_name,
             description=draft.description,
             **resource_fields
         )
