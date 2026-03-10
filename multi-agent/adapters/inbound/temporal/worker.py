@@ -17,7 +17,7 @@ from temporalio.worker import Worker, UnsandboxedWorkflowRunner
 
 from mas.config.app_config import AppConfig
 from mas.engine.distributed.node_executor import NodeExecutor
-from mas.session.execution.background_executor import BackgroundSessionExecutor
+from mas.session.execution.lifecycle_handler import BackgroundLifecycleHandler
 from mas.session.execution.lifecycle import SessionLifecycle
 from temporal.client import get_temporal_client
 from inbound.temporal.activities import GraphNodeActivities, SessionLifecycleActivities
@@ -37,13 +37,13 @@ async def run_worker(container, threads: int) -> None:
     )
 
     lifecycle = SessionLifecycle(repository=container.session_repo)
-    session_executor = BackgroundSessionExecutor(
+    lifecycle_handler = BackgroundLifecycleHandler(
         session_manager=container.session_manager,
         lifecycle=lifecycle,
         channel_factory=container.channel_factory,
     )
     lifecycle_activities = SessionLifecycleActivities(
-        executor=session_executor,
+        handler=lifecycle_handler,
     )
 
     client = await get_temporal_client()

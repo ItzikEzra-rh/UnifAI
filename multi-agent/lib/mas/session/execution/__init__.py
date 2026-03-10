@@ -1,15 +1,15 @@
 from .foreground_runner import ForegroundSessionRunner
 from .lifecycle import SessionLifecycle
-from .background_executor import BackgroundSessionExecutor
+from .lifecycle_handler import BackgroundLifecycleHandler
 from .ports import BackgroundSessionSubmitter, SubmitSessionRequest
-from .background_orchestration import BackgroundSessionOrchestrator, BackgroundSessionOps
+from .background_runner import BackgroundSessionRunner, BackgroundSessionOps
 
 __all__ = [
     "ForegroundSessionRunner",
     "SessionLifecycle",
-    "BackgroundSessionExecutor",
+    "BackgroundLifecycleHandler",
     "BackgroundSessionSubmitter",
     "SubmitSessionRequest",
-    "BackgroundSessionOrchestrator",
+    "BackgroundSessionRunner",
     "BackgroundSessionOps",
 ]

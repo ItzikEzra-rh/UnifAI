@@ -1,8 +1,9 @@
 """
-Reusable lifecycle operations for background session execution.
+Reusable lifecycle handler for background session execution.
 
-Encapsulates the business logic that every background engine needs:
-get session → call lifecycle transition → close channel.
+Bridges the gap between run_id strings (what workers have) and
+WorkflowSession objects (what SessionLifecycle needs):
+fetch session → call lifecycle transition → close channel.
 
 Adapters (Temporal activities, Celery tasks, etc.) delegate to this
 class so they remain thin one-liner wrappers with zero business logic.
@@ -14,7 +15,7 @@ from mas.session.execution.lifecycle import SessionLifecycle
 from mas.session.management.user_session_manager import UserSessionManager
 
 
-class BackgroundSessionExecutor:
+class BackgroundLifecycleHandler:
 
     def __init__(
         self,

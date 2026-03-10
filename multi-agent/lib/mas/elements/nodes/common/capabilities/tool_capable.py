@@ -217,9 +217,9 @@ class ToolCapableMixin(Generic[T]):
         history = initial_history.copy()
         assistant: Optional[ChatMessage] = None
 
-        # Stream cycle start
-        if self.is_streaming():
-            self._stream({"type": "tool_cycle_start"})
+        # tool_cycle_start streaming disabled
+        # if self.is_streaming():
+        #     self._stream({"type": "tool_cycle_start"})
 
         for _ in range(max_rounds):
             # Ask the LLM (streams internally if enabled)
@@ -265,13 +265,14 @@ class ToolCapableMixin(Generic[T]):
                 # Create post-execution hook for tool result  
 
             async def post_execution_hook(response, context):
-                if self.is_streaming():
-                    self._stream({
-                        "type": "tool_result",
-                        "tool": response.tool_name,
-                        "call_id": response.tool_call_id,
-                        "output": response.result if response.success else f"Error: {response.error}"
-                    })
+                pass
+                # if self.is_streaming():
+                #     self._stream({
+                #         "type": "tool_result",
+                #         "tool": response.tool_name,
+                #         "call_id": response.tool_call_id,
+                #         "output": response.result if response.success else f"Error: {response.error}"
+                #     })
 
             # Add hooks to the executor
             self._executor.add_pre_execution_hook(pre_execution_hook)

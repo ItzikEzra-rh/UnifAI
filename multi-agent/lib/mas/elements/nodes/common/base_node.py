@@ -52,11 +52,10 @@ class BaseNode(StreamingCapableMixin, SupportsStateContext, ABC):
         self.run(wrapped_state)
         result = wrapped_state.backing_state
 
-        # Stream completion
-        streamable_state = result.get_streamable_state()
+        # Stream completion with only streamable fields
         self._stream({
             "type": "complete",
-            "state": result
+            "state": result.get_streamable_state(),
         })
 
         return result

@@ -1,5 +1,5 @@
 """
-Canonical lifecycle orchestration for background session execution.
+Canonical lifecycle runner for background session execution.
 
 Defines the application-level ordering rule that ALL background engines
 must follow:
@@ -10,7 +10,7 @@ must follow:
 The ordering lives HERE, in the application layer — not inside any
 infrastructure adapter.  Each adapter (Temporal, Celery, RQ, …)
 implements BackgroundSessionOps to supply the engine-specific mechanics,
-but the sequence is always driven by BackgroundSessionOrchestrator.
+but the sequence is always driven by BackgroundSessionRunner.
 """
 from typing import Any, Dict, Protocol, runtime_checkable
 
@@ -21,7 +21,7 @@ class BackgroundSessionOps(Protocol):
     Engine-specific mechanics for background session execution.
 
     Each background engine implements these four async operations.
-    The orchestrator calls them in the canonical order.
+    The runner calls them in the canonical order.
 
     Temporal implements them as workflow activities / child workflows.
     Celery implements them as direct service calls inside a task.
@@ -44,13 +44,15 @@ class BackgroundSessionOps(Protocol):
         ...
 
 
-class BackgroundSessionOrchestrator:
+class BackgroundSessionRunner:
     """
-    Drives the canonical background session lifecycle.
+    Runs the full background session lifecycle.
 
     This is the single source of truth for the ordering rule.
     Infrastructure adapters supply BackgroundSessionOps; this class
     ensures they are called in the correct sequence.
+
+    Mirrors ForegroundSessionRunner for the background path.
     """
 
     async def run(self, ops: BackgroundSessionOps) -> dict:

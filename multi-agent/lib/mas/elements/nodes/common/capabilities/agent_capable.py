@@ -195,13 +195,14 @@ class AgentCapableMixin(Generic[T]):
 
         # Standard post-execution hook  
         async def standard_post_hook(response, context):
-            if self.is_streaming():
-                self._stream({
-                    "type": "tool_result",
-                    "tool": response.tool_name,
-                    "call_id": response.tool_call_id,
-                    "output": response.result if response.success else f"Error: {response.error}"
-                })
+            pass
+            # if self.is_streaming():
+            #     self._stream({
+            #         "type": "tool_result",
+            #         "tool": response.tool_name,
+            #         "call_id": response.tool_call_id,
+            #         "output": response.result if response.success else f"Error: {response.error}"
+            #     })
 
         # Add standard hooks
         self._tool_executor_manager.add_pre_execution_hook(standard_pre_hook)

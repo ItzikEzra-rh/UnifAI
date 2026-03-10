@@ -234,16 +234,17 @@ class AgentIterator:
 
     def _emit_step_event(self, step: AgentStep) -> None:
         """Emit step event via stream callback."""
-        try:
-            event = {
-                "type": f"agent_{step.type.value}",
-                "data": self._serialize_step_data(step.data),
-                "timestamp": step.timestamp,
-                "metadata": step.metadata or {}
-            }
-            self.stream(event)
-        except Exception as e:
-            pass
+        # try:
+        #     event = {
+        #         "type": f"agent_{step.type.value}",
+        #         "data": self._serialize_step_data(step.data),
+        #         "timestamp": step.timestamp,
+        #         "metadata": step.metadata or {}
+        #     }
+        #     self.stream(event)
+        # except Exception as e:
+        #     pass
+        pass
 
     def _serialize_step_data(self, data: Any) -> Dict[str, Any]:
         """Serialize step data for streaming."""

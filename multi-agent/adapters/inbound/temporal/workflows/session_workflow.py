@@ -3,10 +3,10 @@ Temporal session workflow — inbound adapter (parent workflow).
 
 Implements BackgroundSessionOps with Temporal-specific mechanics
 (activities, child workflows) and delegates the canonical lifecycle
-ordering to BackgroundSessionOrchestrator.
+ordering to BackgroundSessionRunner.
 
 The ordering rule (prepare → execute → complete/fail) lives in
-session/execution/background_orchestration.py — NOT here.  This file
+session/execution/background_runner.py — NOT here.  This file
 only supplies the HOW for each step.
 """
 from datetime import timedelta
@@ -14,7 +14,7 @@ from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
-from mas.session.execution.background_orchestration import BackgroundSessionOrchestrator
+from mas.session.execution.background_runner import BackgroundSessionRunner
 from temporal.models import (
     SessionWorkflowParams,
     GraphExecutionParams,
@@ -43,8 +43,8 @@ class SessionWorkflow:
     @workflow.run
     async def run(self, params: SessionWorkflowParams) -> dict:
         self._params = params
-        orchestrator = BackgroundSessionOrchestrator()
-        return await orchestrator.run(self)
+        runner = BackgroundSessionRunner()
+        return await runner.run(self)
 
     # ── BackgroundSessionOps implementation ──────────────────────────
 
