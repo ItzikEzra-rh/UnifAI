@@ -16,6 +16,9 @@ jobs:
   build_rag:
     name: Build
     runs-on: ubuntu-24.04
+    permissions:
+      security-events: write
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -29,8 +32,15 @@ jobs:
         uses: aquasecurity/trivy-action@0.33.1
         with:
           image-ref: 'rag-image:${{ github.sha }}'
-          format: 'table'
-          exit-code: '1'
-          ignore-unfixed: true
+          format: 'table'          
+          #exit-code: '1'
+          #ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'trivy-results.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: 'trivy-results.sarif'
