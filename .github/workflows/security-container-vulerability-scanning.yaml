@@ -13,7 +13,8 @@ on:
         default: GENIE-1379-container_vulerability
 
 jobs:
-  build_rag:
+
+  smoke_test:
     name: Build
     runs-on: ubuntu-24.04
     permissions:
@@ -25,6 +26,50 @@ jobs:
         with:
           ref: ${{ inputs.branch }}
 
+      - name: Build an image from Dockerfile
+        run: docker build -t faulty-image:${{ github.sha }} -f Dockerfile-faulty .
+
+      - name: Diagnostic - check if image exists in docker
+        run: docker images | grep faulty-image
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.35.0
+        with:
+          image-ref: 'faulty-image:${{ github.sha }}'
+          image-type: 'image'
+          scan-type: 'image'
+          #format: 'table'          
+          exit-code: '1'
+          #ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: 'faulty-image-results.sarif'
+        env:
+          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2 # Faster/more reliable mirror
+
+      - name: Check SARIF file existence
+        run: ls -l faulty-image-results.sarif
+  
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: 'faulty-image-results.sarif'
+
+      
+
+  build_rag:
+    name: Build
+    runs-on: ubuntu-24.04
+    permissions:
+      security-events: write
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch }}
+          
       - name: Build an image from Dockerfile
         run: docker build -t rag-image:${{ github.sha }} -f rag/Dockerfile .
 
@@ -38,7 +83,7 @@ jobs:
           image-type: 'image'
           scan-type: 'image'
           #format: 'table'          
-          exit-code: '0'
+          exit-code: '1'
           #ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
