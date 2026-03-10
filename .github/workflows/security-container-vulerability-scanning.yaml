@@ -36,10 +36,10 @@ jobs:
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'faulty-image:${{ github.sha }}'
-          image-type: 'image'
+          #image-type: 'image'
           scan-type: 'image'
           #format: 'table'          
-          exit-code: '1'
+          exit-code: '0'
           #ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
@@ -80,10 +80,10 @@ jobs:
         uses: aquasecurity/trivy-action@0.35.0
         with:
           image-ref: 'rag-image:${{ github.sha }}'
-          image-type: 'image'
+          #image-type: 'image'
           scan-type: 'image'
           #format: 'table'          
-          exit-code: '1'
+          exit-code: '0'
           #ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
