@@ -32,7 +32,7 @@ jobs:
         run: docker images | grep rag-image
 
       - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@v0.29.0
+        uses: aquasecurity/trivy-action@0.34.0
         with:
           image-ref: 'rag-image:${{ github.sha }}'
           image-type: 'image'
@@ -46,6 +46,9 @@ jobs:
           output: 'trivy-results.sarif'
         env:
           TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2 # Faster/more reliable mirror
+
+      - name: Check SARIF file existence
+        run: ls -l trivy-results.sarif
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
