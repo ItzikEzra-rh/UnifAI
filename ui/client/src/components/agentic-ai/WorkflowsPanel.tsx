@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import { Trash2, Users, Pencil, Copy } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -63,6 +63,7 @@ export default function WorkflowsPanel({
   const [flowToDelete, setFlowToDelete] = useState<FlowObject | null>(null);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [isCloning, setIsCloning] = useState<string | null>(null);
+  const cloningInFlight = useRef<Set<string>>(new Set());
   const [selectedBlueprintData, setSelectedBlueprintData] = useState<{
     specDict: any;
     sharingEnabled: boolean;
@@ -217,6 +218,8 @@ export default function WorkflowsPanel({
 
   const handleCloneClick = async (flow: FlowObject, event: React.MouseEvent) => {
     event.stopPropagation();
+    if (cloningInFlight.current.has(flow.id)) return;
+    cloningInFlight.current.add(flow.id);
     setIsCloning(flow.id);
     try {
       const userId = user?.username || "default";
@@ -225,6 +228,7 @@ export default function WorkflowsPanel({
     } catch (error) {
       console.error("Error cloning blueprint:", error);
     } finally {
+      cloningInFlight.current.delete(flow.id);
       setIsCloning(null);
     }
   };

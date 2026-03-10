@@ -96,7 +96,9 @@ class ShareCloner:
 
             # Clone blueprint with proper ref handling and new step UIDs
             is_self_clone = sender_user_id == recipient_user_id
-            new_draft = self._clone_blueprint_draft(draft, rid_mapping, sender_user_id, is_self_clone)
+            new_draft = self._clone_blueprint_draft(
+                draft, rid_mapping, sender_user_id, is_self_clone, recipient_user_id
+            )
 
             # Save blueprint through service
             new_blueprint_id = self.blueprints.save_draft(
@@ -279,8 +281,22 @@ class ShareCloner:
         # Fallback to UUID if too many conflicts
         return f"{base_name} ({uuid4().hex[:8]})"
 
+    def _resolve_blueprint_name_conflict(self, user_id: str, preferred_name: str) -> str:
+        """Resolve blueprint name conflicts by adding copy suffix."""
+        base_name = preferred_name
+        current_name = f"{base_name} (copy)"
+
+        for counter in range(2, 101):
+            existing = self.blueprints._repo.find_by_name(user_id, current_name)
+            if not existing:
+                return current_name
+            current_name = f"{base_name} (copy {counter})"
+
+        return f"{base_name} ({uuid4().hex[:8]})"
+
     def _clone_blueprint_draft(self, draft: BlueprintDraft, rid_mapping: Dict[str, str],
-                               sender_user_id: str, is_self_clone: bool = False) -> BlueprintDraft:
+                               sender_user_id: str, is_self_clone: bool = False,
+                               recipient_user_id: str = None) -> BlueprintDraft:
         """Clone a BlueprintDraft with proper ref replacement and new step UIDs."""
 
         # Clone resource categories using ResourceCategory enum
@@ -294,7 +310,9 @@ class ShareCloner:
 
         # Use "(copy)" for self-clone, "(from user)" for cross-user sharing
         if is_self_clone:
-            new_name = f"{draft.name} (copy)"
+            new_name = self._resolve_blueprint_name_conflict(
+                recipient_user_id, draft.name
+            )
         else:
             new_name = f"{draft.name} (from {sender_user_id})"
 
