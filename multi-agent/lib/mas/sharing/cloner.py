@@ -293,6 +293,19 @@ class ShareCloner:
         # Fallback to UUID if too many conflicts
         return f"{base_name} ({uuid4().hex[:8]})"
 
+    def _resolve_blueprint_name_conflict(self, user_id: str, preferred_name: str) -> str:
+        """Resolve blueprint name conflicts by adding copy suffix."""
+        base_name = preferred_name
+        current_name = f"{base_name} (copy)"
+
+        for counter in range(2, 101):
+            existing = self.blueprints._repo.find_by_name(user_id, current_name)
+            if not existing:
+                return current_name
+            current_name = f"{base_name} (copy {counter})"
+
+        return f"{base_name} ({uuid4().hex[:8]})"
+
     def _clone_blueprint_draft(self, draft: BlueprintDraft, rid_mapping: Dict[str, str],
                                ctx: CloneContext) -> BlueprintDraft:
         """Clone a BlueprintDraft with proper ref replacement and new step UIDs."""
@@ -308,7 +321,9 @@ class ShareCloner:
 
         is_self_clone = ctx.sender_user_id == ctx.recipient_user_id
         if is_self_clone:
-            new_name = f"{draft.name} (copy)"
+            new_name = self._resolve_blueprint_name_conflict(
+                ctx.recipient_user_id, draft.name
+            )
         else:
             new_name = f"{draft.name} (from {ctx.sender_user_id})"
 

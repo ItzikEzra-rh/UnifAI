@@ -49,7 +49,7 @@ class MongoBlueprintRepository(BlueprintRepository):
         )
 
         return res.modified_count == 1
-    
+
     def set_metadata(self, *, blueprint_id: str, metadata: Dict[str, Any]) -> bool:
         """Set the metadata dictionary for a blueprint document."""
         if not isinstance(metadata, dict):
@@ -81,6 +81,10 @@ class MongoBlueprintRepository(BlueprintRepository):
 
     def exists(self, blueprint_id: str) -> bool:
         return self._col.count_documents({"blueprint_id": blueprint_id}, limit=1) == 1
+
+    def find_by_name(self, user_id: str, name: str) -> BlueprintDocument | None:
+        raw = self._col.find_one({"user_id": user_id, "spec_dict.name": name})
+        return BlueprintDocument(**raw) if raw else None
 
     # --------- listing & counting with optional user filter -------
     def _user_q(self, user_id: str | None) -> Dict[str, Any]:

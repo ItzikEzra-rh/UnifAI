@@ -17,7 +17,7 @@ class BlueprintRepository(ABC):
         """
         Replace an existing draft.  Return True if a document was modified.
         """
-        
+
     @abstractmethod
     def set_metadata(self, *, blueprint_id: str, metadata: Dict[str, Any]) -> bool:
         """
@@ -41,6 +41,11 @@ class BlueprintRepository(ABC):
     @abstractmethod
     def load_many(self, blueprint_ids: List[str]) -> List[BlueprintDocument]:
         """Load multiple blueprint documents by their IDs in a single operation."""
+
+    # ────────────────────────────── Lookups ─────────────────────────────
+    @abstractmethod
+    def find_by_name(self, user_id: str, name: str) -> Optional["BlueprintDocument"]:
+        """Find a blueprint document by user and name, or return None."""
 
     # ────────────────────────────── Listings / Stats ────────────────────
     @abstractmethod
