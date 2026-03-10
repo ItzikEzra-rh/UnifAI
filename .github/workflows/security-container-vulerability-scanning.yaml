@@ -36,6 +36,7 @@ jobs:
         with:
           image-ref: 'rag-image:${{ github.sha }}'
           image-type: 'image'
+          scan-type: 'image'
           #format: 'table'          
           exit-code: '0'
           #ignore-unfixed: true
