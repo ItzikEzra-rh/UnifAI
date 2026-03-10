@@ -50,6 +50,10 @@ jobs:
 
       - name: Check SARIF file existence
         run: ls -l faulty-image-results.sarif
+
+      - name: Verify SARIF isn't empty
+        run: |
+          grep -c "ruleId" faulty-image-results.sarif || echo "No vulnerabilities found in file!"
   
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
