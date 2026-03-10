@@ -3,6 +3,9 @@ Foreground (in-process) session execution with lifecycle orchestration.
 
 Handles both blocking run() and streaming stream() paths.
 The caller's thread stays engaged until execution completes.
+
+WorkflowSession holds its SessionRecord by reference, so lifecycle
+mutations to session.record are immediately visible on the session.
 """
 from typing import Any, Dict, Iterator, Optional
 
@@ -37,14 +40,15 @@ class ForegroundSessionRunner:
         scope: str = "public",
         logged_in_user: str = "",
     ) -> GraphState:
-        self._lifecycle.prepare(session, inputs, scope, logged_in_user)
+        self._lifecycle.prepare(session.record, inputs, scope, logged_in_user)
+
         try:
             final_state = session.executable_graph.run(session.graph_state)
         except Exception as e:
-            self._lifecycle.fail(session, e)
+            self._lifecycle.fail(session.record, e)
             raise
 
-        self._lifecycle.complete(session, final_state)
+        self._lifecycle.complete(session.record, final_state)
         return final_state
 
     def stream(
@@ -55,7 +59,8 @@ class ForegroundSessionRunner:
         logged_in_user: str = "",
         **stream_kwargs: Any,
     ) -> Iterator[Any]:
-        self._lifecycle.prepare(session, inputs, scope, logged_in_user)
+        self._lifecycle.prepare(session.record, inputs, scope, logged_in_user)
+
         channel = self._channel_factory.create(session.get_run_id())
         self._inject_streaming(session, channel)
 
@@ -75,15 +80,15 @@ class ForegroundSessionRunner:
                     raise e
 
             self._cleanup_streaming(session, channel)
-            self._lifecycle.complete(session, session.graph_state)
+            self._lifecycle.complete(session.record, session.graph_state)
 
         except GeneratorExit:
             self._cleanup_streaming(session, channel)
-            self._lifecycle.complete(session, session.graph_state)
+            self._lifecycle.complete(session.record, session.graph_state)
             raise
         except Exception as e:
             self._cleanup_streaming(session, channel)
-            self._lifecycle.fail(session, e)
+            self._lifecycle.fail(session.record, e)
             raise
 
     @staticmethod

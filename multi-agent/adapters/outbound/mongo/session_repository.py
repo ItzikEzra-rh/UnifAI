@@ -5,9 +5,12 @@ from datetime import datetime, timezone, timedelta
 import logging
 
 from mas.session.repository.repository import SessionRepository
-from mas.session.domain.workflow_session import WorkflowSession
+from mas.session.domain.session_record import SessionRecord
+from mas.core.run_context import RunContext
+from mas.graph.state.graph_state import GraphState
+from mas.session.domain.status import SessionStatus
+from mas.session.domain.models import SessionMeta, TimeSeriesPoint, SystemAnalyticsData
 from mas.core.dto import GroupedCount
-from mas.session.domain.models import TimeSeriesPoint, SystemAnalyticsData
 from global_utils.utils.time_utils import format_utc_iso
 
 logger = logging.getLogger(__name__)
@@ -74,30 +77,36 @@ class MongoSessionRepository(SessionRepository):
 
     # ---------- Core CRUD Operations ----------
 
-    def save(self, session: WorkflowSession) -> None:
-        ctx = session.run_context
-
+    def save(self, record: SessionRecord) -> None:
         doc = {
-            self._USER_FIELD: ctx.user_id,
-            self._RUN_ID_FIELD: ctx.run_id,
-            "run_context": ctx.to_dict(),
-            "metadata": session.metadata.to_dict(),
-            self._BLUEPRINT_FIELD: session.blueprint_id,
-            "graph_state": session.graph_state.model_dump(mode="json"),
-            self._STATUS_FIELD: session.get_status(),
+            self._USER_FIELD: record.user_id,
+            self._RUN_ID_FIELD: record.run_id,
+            "run_context": record.run_context.to_dict(),
+            "metadata": record.metadata.to_dict(),
+            self._BLUEPRINT_FIELD: record.blueprint_id,
+            "graph_state": record.graph_state.model_dump(mode="json"),
+            self._STATUS_FIELD: record.status.name,
         }
 
         self._col.replace_one(
-            {self._USER_FIELD: ctx.user_id, self._RUN_ID_FIELD: ctx.run_id},
+            {self._USER_FIELD: record.user_id, self._RUN_ID_FIELD: record.run_id},
             doc,
-            upsert=True
+            upsert=True,
         )
 
-    def fetch(self, run_id: str) -> Mapping[str, Any]:
+    def fetch(self, run_id: str) -> SessionRecord:
         doc = self._col.find_one({self._RUN_ID_FIELD: run_id}, {"_id": 0})
         if not doc:
             raise KeyError(f"No session for {run_id}")
-        return doc
+        return SessionRecord(
+            run_id=doc[self._RUN_ID_FIELD],
+            user_id=doc[self._USER_FIELD],
+            blueprint_id=doc[self._BLUEPRINT_FIELD],
+            run_context=RunContext.from_dict(doc["run_context"]),
+            metadata=SessionMeta.from_dict(doc.get("metadata", {})),
+            graph_state=GraphState(**doc["graph_state"]),
+            status=SessionStatus[doc.get(self._STATUS_FIELD, SessionStatus.PENDING.name)],
+        )
 
     def list_runs(self, user_id: str) -> List[str]:
         cursor = self._col.find(

@@ -18,10 +18,10 @@ sessions_bp = Blueprint("sessions", __name__)
 def create_user_session(blueprint_id, user_id, metadata):
     try:
         session_svc = current_app.container.session_service
-        session = session_svc.create(user_id=user_id,
-                                     blueprint_id=blueprint_id,
-                                     metadata=metadata)
-        return jsonify(session.get_run_id()), 200
+        run_id = session_svc.create(user_id=user_id,
+                                    blueprint_id=blueprint_id,
+                                    metadata=metadata)
+        return jsonify(run_id), 200
     except BlueprintNotFoundError as e:
         return jsonify({
             "error": str(e),

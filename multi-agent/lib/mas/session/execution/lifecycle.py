@@ -1,14 +1,15 @@
 """
 Session lifecycle state-machine transitions.
 
-Portable across execution contexts: can be called from the API process
-(synchronous run/stream) or from a Temporal activity (async completion).
+Operates on SessionRecord (the persistable layer) so that both foreground
+runners and background workers can share the same logic without requiring
+a full WorkflowSession.
 """
 from typing import Any, Dict
 
 from mas.graph.state.graph_state import GraphState
 from mas.session.repository.repository import SessionRepository
-from mas.session.domain.workflow_session import WorkflowSession
+from mas.session.domain.session_record import SessionRecord
 from mas.session.domain.status import SessionStatus
 from mas.session.management.utils import derive_title
 from mas.core.context import set_current_context
@@ -16,9 +17,9 @@ from mas.core.context import set_current_context
 
 class SessionLifecycle:
     """
-    Owns the prepare / complete / fail transitions of a WorkflowSession.
+    Owns the prepare / complete / fail transitions of a SessionRecord.
 
-    Stateless — all state lives in the WorkflowSession and the repository.
+    Stateless — all state lives in the SessionRecord and the repository.
     """
 
     def __init__(self, repository: SessionRepository) -> None:
@@ -26,7 +27,7 @@ class SessionLifecycle:
 
     def prepare(
         self,
-        session: WorkflowSession,
+        record: SessionRecord,
         inputs: Dict[str, Any],
         scope: str,
         logged_in_user: str,
@@ -34,45 +35,45 @@ class SessionLifecycle:
         """
         Pre-execution: seed inputs, bind context, mark RUNNING, persist.
         """
-        if session.metadata.title is None:
+        if record.metadata.title is None:
             if title := derive_title(inputs):
-                session.metadata.title = title
+                record.metadata.title = title
 
-        ctx = session.run_context.change_scope(scope)
+        ctx = record.run_context.change_scope(scope)
         ctx = ctx.set_logged_in_user(logged_in_user)
         set_current_context(ctx)
-        session.run_context = ctx
+        record.run_context = ctx
 
-        session.graph_state.update(inputs)
-        session.update_status(SessionStatus.RUNNING)
-        self._repo.save(session)
+        record.graph_state.update(inputs)
+        record.status = SessionStatus.RUNNING
+        self._repo.save(record)
 
     def complete(
         self,
-        session: WorkflowSession,
+        record: SessionRecord,
         final_state: Any,
     ) -> None:
         """
         Post-execution: attach final state, mark COMPLETED, persist.
         """
         if isinstance(final_state, dict):
-            session.graph_state = GraphState(**final_state)
+            record.graph_state = GraphState(**final_state)
         else:
-            session.graph_state = final_state
+            record.graph_state = final_state
 
-        session.run_context = session.run_context.mark_finished()
-        set_current_context(session.run_context)
-        session.update_status(SessionStatus.COMPLETED)
-        self._repo.save(session)
+        record.run_context = record.run_context.mark_finished()
+        set_current_context(record.run_context)
+        record.status = SessionStatus.COMPLETED
+        self._repo.save(record)
 
     def fail(
         self,
-        session: WorkflowSession,
+        record: SessionRecord,
         error: Exception,
     ) -> None:
         """
         On error: mark FAILED, persist.
         """
-        session.run_context = session.run_context.mark_finished()
-        session.update_status(SessionStatus.FAILED)
-        self._repo.save(session)
+        record.run_context = record.run_context.mark_finished()
+        record.status = SessionStatus.FAILED
+        self._repo.save(record)

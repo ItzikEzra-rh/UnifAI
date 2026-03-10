@@ -3,6 +3,7 @@ from typing import List, Mapping, Any, Dict, Optional
 from mas.session.repository.repository import SessionRepository
 from mas.session.building.workflow_session_factory import WorkflowSessionFactory
 from mas.session.domain.workflow_session import WorkflowSession
+from mas.session.domain.session_record import SessionRecord
 from mas.core.run_context import RunContext
 from mas.core.dto import GroupedCount
 from mas.graph.state.graph_state import GraphState
@@ -14,15 +15,15 @@ from mas.session.domain.exceptions import BlueprintNotFoundError
 
 class UserSessionManager:
     """
-    High‐level CRUD for user sessions.
-    SRP: only creates, loads, and lists run_ids.
+    High-level CRUD for user sessions.
+    SRP: only creates, loads, and lists sessions.
     """
 
     def __init__(
             self,
             repository: SessionRepository,
             session_factory: WorkflowSessionFactory,
-            blueprint_service: BlueprintService
+            blueprint_service: BlueprintService,
     ):
         self._repo = repository
         self._factory = session_factory
@@ -42,70 +43,60 @@ class UserSessionManager:
         except KeyError:
             return {}
 
+    # ---- Create (lightweight — no graph compilation) ----
+
     def create_session(
             self,
             user_id: str,
             blueprint_id: str,
-            metadata: SessionMeta = None
-    ) -> WorkflowSession:
-        """Instantiate a fresh session and persist it. Returns run_id."""
-        
-        # Check if blueprint exists before proceeding
+            metadata: SessionMeta = None,
+    ) -> str:
+        """Create a session record and return its run_id."""
         if not self.blueprint_exists(blueprint_id):
             raise BlueprintNotFoundError(blueprint_id)
-        
-        session = self._factory.create(
-            blueprint_spec=self._bp_service.load_resolved(blueprint_id),
-            blueprint_id=blueprint_id,
+
+        session_meta = metadata or SessionMeta()
+        ctx = RunContext(
             user_id=user_id,
-            metadata=metadata
+            engine_name=self._factory.engine_name,
+            metadata=session_meta.to_dict(),
         )
 
-        self._repo.save(session)
-        return session
+        record = SessionRecord(
+            run_id=ctx.run_id,
+            user_id=user_id,
+            blueprint_id=blueprint_id,
+            run_context=ctx,
+            metadata=session_meta,
+            graph_state=GraphState(),
+            status=SessionStatus.PENDING,
+        )
+        self._repo.save(record)
+        return record.run_id
 
-    def get_doc(self, run_id: str) -> Mapping[str, Any]:
+    # ---- Read ----
+
+    def get_record(self, run_id: str) -> SessionRecord:
+        """Lightweight fetch — returns typed SessionRecord, no graph build."""
         return self._repo.fetch(run_id)
 
     def get_session(self, run_id: str) -> WorkflowSession:
-        """Retrieve a previously created session."""
-        doc = self.get_doc(run_id)
-        blueprint_id = doc.get("blueprint_id")
+        """Full build — compiles runtime plan + executable graph from the record."""
+        record = self.get_record(run_id)
 
-        # Check if blueprint exists before proceeding
-        if not self.blueprint_exists(blueprint_id):
-            raise BlueprintNotFoundError(blueprint_id, session_id=run_id)
+        if not self.blueprint_exists(record.blueprint_id):
+            raise BlueprintNotFoundError(record.blueprint_id, session_id=run_id)
 
-        # Rehydrate RunContext
-        ctx = RunContext.from_dict(doc["run_context"])
-
-        # Re-create fresh session via factory
-        session = self._factory.create(
-            user_id=ctx.user_id,
-            blueprint_spec=self._bp_service.load_resolved(blueprint_id),
-            blueprint_id=blueprint_id,
-            metadata=SessionMeta.from_dict(doc.get("metadata", {}))
-        )
-
-        # Override run_context (so we keep the same run_id, timestamps)
-        session.run_context = ctx
-
-        # Override session status
-        status_str = doc.get("status", SessionStatus.PENDING.name)
-        session.status = SessionStatus[status_str]
-
-        # Restore GraphState in one shot
-        session.graph_state = GraphState(**doc["graph_state"])
-
-        return session
+        blueprint_spec = self._bp_service.load_resolved(record.blueprint_id)
+        return self._factory.build_session(record, blueprint_spec)
 
     def list_sessions_ids(self, user_id: str) -> List[str]:
         """All run_ids belonging to this user."""
         return self._repo.list_runs(user_id)
 
     def list_docs(self, user_id: str) -> List[Mapping[str, Any]]:
-        session_ids = self.list_sessions_ids(user_id)
-        return [self.get_doc(session_id) for session_id in session_ids]
+        """Raw documents for bulk listing (chat history, etc.)."""
+        return self._repo.list_docs(user_id)
 
     def delete_session(self, run_id: str) -> bool:
         """Delete a session by run_id. Returns True if deleted, False if not found."""

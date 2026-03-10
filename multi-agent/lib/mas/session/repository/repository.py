@@ -1,24 +1,24 @@
 from abc import ABC, abstractmethod
 from typing import List, Mapping, Any, Dict, Optional
 from datetime import datetime
-from mas.session.domain.workflow_session import WorkflowSession
+from mas.session.domain.session_record import SessionRecord
 from mas.core.dto import GroupedCount
 from mas.session.domain.models import TimeSeriesPoint, SystemAnalyticsData
 
 
 class SessionRepository(ABC):
     """
-    Abstract persistence API for WorkflowSession snapshots.
+    Abstract persistence API for session records.
     """
 
     @abstractmethod
-    def save(self, session: WorkflowSession) -> None:
-        """Persist the given session (create or update)."""
+    def save(self, record: SessionRecord) -> None:
+        """Persist a session record (create or update)."""
         ...
 
     @abstractmethod
-    def fetch(self, run_id: str) -> Mapping[str, Any]:
-        """Fetch session raw doc"""
+    def fetch(self, run_id: str) -> SessionRecord:
+        """Load a session record by run_id."""
         ...
 
     @abstractmethod

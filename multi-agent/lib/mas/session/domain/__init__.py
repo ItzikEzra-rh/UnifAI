@@ -3,6 +3,7 @@ from .status import SessionStatus
 from .dto import ChatHistoryItem
 from .exceptions import BlueprintNotFoundError, SessionBlueprintError
 from .session_registry import SessionRegistry
+from .session_record import SessionRecord
 
 __all__ = [
     "SessionMeta",
@@ -14,4 +15,5 @@ __all__ = [
     "BlueprintNotFoundError",
     "SessionBlueprintError",
     "SessionRegistry",
+    "SessionRecord",
 ]

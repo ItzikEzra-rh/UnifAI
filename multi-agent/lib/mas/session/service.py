@@ -4,6 +4,7 @@ from mas.session.management.user_session_manager import UserSessionManager
 from mas.session.execution.foreground_runner import ForegroundSessionRunner
 from mas.session.execution.ports import BackgroundSessionSubmitter, SubmitSessionRequest
 from mas.session.domain.workflow_session import WorkflowSession
+from mas.session.domain.session_record import SessionRecord
 from mas.session.domain.dto import ChatHistoryItem
 from mas.session.domain.models import SessionMeta, TimeSeriesPoint, SystemAnalyticsData
 from mas.session.domain.exceptions import BlueprintNotFoundError
@@ -24,14 +25,15 @@ class SessionService:
         self._foreground = foreground_runner
         self._submitter = background_submitter
 
-    def create(self, user_id: str, blueprint_id: str, metadata: Dict[str, Any] | SessionMeta | None = None) -> WorkflowSession:
+    def create(self, user_id: str, blueprint_id: str, metadata: Dict[str, Any] | SessionMeta | None = None) -> str:
         """
-        Create a new session and return its object (with run_id).
+        Create a new session record and return its run_id.
+        Lightweight — no graph compilation or blueprint resolution.
         """
         return self._manager.create_session(
             user_id=user_id,
             blueprint_id=blueprint_id,
-            metadata=SessionMeta.model_validate(metadata or {})
+            metadata=SessionMeta.model_validate(metadata or {}),
         )
 
     def run(self, session_id: str, inputs: Dict[str, Any], scope: str = "public", logged_in_user="") -> Any:
@@ -43,7 +45,7 @@ class SessionService:
             session=session,
             inputs=inputs or {},
             scope=scope,
-            logged_in_user=logged_in_user
+            logged_in_user=logged_in_user,
         )
 
     def stream(self, session_id: str, inputs: Dict[str, Any], stream_mode: list = None,
@@ -90,23 +92,29 @@ class SessionService:
 
     def get(self, run_id: str) -> WorkflowSession:
         """
-        Fetch a session object by its run_id.
+        Fetch a fully hydrated session by its run_id.
         """
         return self._manager.get_session(run_id)
+
+    def get_record(self, run_id: str) -> SessionRecord:
+        """
+        Fetch a lightweight session record (no graph build).
+        """
+        return self._manager.get_record(run_id)
 
     def get_status(self, run_id: str) -> str:
         """
         Get the status of a session by its run_id.
         """
-        session_doc = self._manager.get_doc(run_id)
-        return session_doc.get("status", None)
+        record = self._manager.get_record(run_id)
+        return record.status.name
 
     def get_state(self, run_id: str) -> Dict[str, Any]:
         """
-        Get the state of a session by its run_id.
+        Get the graph state of a session by its run_id.
         """
-        session_doc = self._manager.get_doc(run_id)
-        return session_doc.get("graph_state", None)
+        record = self._manager.get_record(run_id)
+        return record.graph_state.model_dump(mode="json")
 
     def get_user_sessions_chat_history(self, user_id: str) -> list:
         """
