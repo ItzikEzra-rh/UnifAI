@@ -15,7 +15,7 @@ on:
 jobs:
   vulnerability-scan:
     name: Build & Scan Components
-    runs-on: ubuntu-latest
+    runs-on: linux
     permissions:
       security-events: write
       contents: read
