@@ -43,13 +43,16 @@ jobs:
           ref: ${{ inputs.branch }}
         
       - name: Build image for ${{ matrix.component }}
-        run: podman build -t ${{ matrix.component }}:${{ github.sha }} -f ${{ matrix.dockerfile }} ${{ matrix.context }}
+        run: |
+          podman build -t ${{ matrix.component }}:${{ github.sha }} -f ${{ matrix.dockerfile }} ${{ matrix.context }}
+          podman save ${{ matrix.component }}:${{ github.sha }} -o ${{ matrix.component }}.tar
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.35.0
         with:
-          image-ref: 'localhost/${{ matrix.component }}:${{ github.sha }}'
-          scan-type: 'image'
+          #image-ref: 'localhost/${{ matrix.component }}:${{ github.sha }}'
+          #scan-type: 'image.tar'
+          input: ${{ matrix.component }}.tar
           exit-code: '0'  # TODO: switch to exit-code: '1' once baseline is established
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
