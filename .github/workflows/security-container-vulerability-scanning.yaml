@@ -1,10 +1,10 @@
-name: Security Container Vulerability Scanning
+name: Security Container Vulnerability Scanning
 
 on:
   push:
     branches:
       - GENIE-1379-container_vulerability
-  pull_request:
+  #pull_request:
   workflow_dispatch:
     inputs:
       branch:
@@ -13,210 +13,56 @@ on:
         default: GENIE-1379-container_vulerability
 
 jobs:
-
-  # smoke_test:
-  #   name: Smoke Test
-  #   runs-on: ubuntu-24.04
-  #   permissions:
-  #     security-events: write
-  #     contents: read
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v4
-  #       with:
-  #         ref: ${{ inputs.branch }}
-
-  #     - name: Build an image from Dockerfile
-  #       run: docker build -t faulty-image:${{ github.sha }} -f Dockerfile-faulty .
-
-  #     - name: Diagnostic - check if image exists in docker
-  #       run: docker images | grep faulty-image
-
-  #     - name: Run Trivy vulnerability scanner
-  #       uses: aquasecurity/trivy-action@0.35.0
-  #       with:
-  #         image-ref: 'faulty-image:${{ github.sha }}'
-  #         #image-type: 'image'
-  #         scan-type: 'image'
-  #         #format: 'table'          
-  #         exit-code: '0'
-  #         #ignore-unfixed: true
-  #         vuln-type: 'os,library'
-  #         severity: 'CRITICAL,HIGH'
-  #         format: 'sarif'
-  #         output: 'faulty-image-results.sarif'
-  #       env:
-  #         TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2 # Faster/more reliable mirror
-
-  #     - name: Check SARIF file existence
-  #       run: ls -l faulty-image-results.sarif
-
-  #     - name: Verify SARIF isn't empty
-  #       run: |
-  #         grep -c "ruleId" faulty-image-results.sarif || echo "No vulnerabilities found in file!"
-  
-  #     - name: Upload Trivy scan results to GitHub Security tab
-  #       uses: github/codeql-action/upload-sarif@v4
-  #       with:
-  #         sarif_file: 'faulty-image-results.sarif'
-
-      
-
-  build_rag:
-    name: Build RAG Image
-    runs-on: ubuntu-24.04
+  vulnerability-scan:
+    name: Build & Scan Components
+    runs-on: ubuntu-latest
     permissions:
       security-events: write
       contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # BE folder isn't pushed yet to main
+          # - component: backend
+          #   dockerfile: backend/Dockerfile
+          #   context: .
+          - component: multiagentbackend
+            dockerfile: multi-agent/Dockerfile
+            context: .
+          - component: ssobackend
+            dockerfile: shared-resources/sso-backend/Dockerfile
+            context: .
+          - component: ui
+            dockerfile: ui/deployment/Dockerfile
+            context: ui
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.branch }}
-          
-      - name: Build an image from Dockerfile
-        run: docker build -t rag-image:${{ github.sha }} -f rag/Dockerfile .
-
-      # - name: Diagnostic - check if image exists in docker
-      #   run: docker images | grep rag-image
+        
+      - name: Build image for ${{ matrix.component }}
+        run: docker build -t ${{ matrix.component }}:${{ github.sha }} -f ${{ matrix.dockerfile }} ${{ matrix.context }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.35.0
         with:
-          image-ref: 'rag-image:${{ github.sha }}'
-          scan-type: 'image'    
+          image-ref: '${{ matrix.component }}:${{ github.sha }}'
+          scan-type: 'image'
           exit-code: '0'
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
           format: 'sarif'
-          output: 'rag-results.sarif'
-        env:
-          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2 # Faster/more reliable mirror
-
-      # - name: Check SARIF file existence
-      #   run: ls -l rag-results.sarif
+          output: '${{ matrix.component }}-results.sarif'
+        # env:
+        #   TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v4
         with:
-          sarif_file: 'rag-results.sarif'
-
-  build_multi-agent:
-    name: Build Multi-Agent Image
-    runs-on: ubuntu-24.04
-    permissions:
-      security-events: write
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.branch }}
-          
-      - name: Build an image from Dockerfile
-        run: docker build -t multi-agent-image:${{ github.sha }} -f multi-agent/Dockerfile .
-
-      # - name: Diagnostic - check if image exists in docker
-      #   run: docker images | grep multi-agent-image
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          image-ref: 'multi-agent-image:${{ github.sha }}'
-          scan-type: 'image'          
-          exit-code: '0'
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-          format: 'sarif'
-          output: 'multi-agent-results.sarif'
-        env:
-          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2 # Faster/more reliable mirror
-
-      # - name: Check SARIF file existence
-      #   run: ls -l multi-agent-results.sarif
-
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: 'multi-agent-results.sarif'
-
-  build_sso:
-    name: Build SSO Image
-    runs-on: ubuntu-24.04
-    permissions:
-      security-events: write
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.branch }}
-          
-      - name: Build an image from Dockerfile
-        run: docker build -t sso-image:${{ github.sha }} -f shared-resources/sso-backend/Dockerfile .
-
-      # - name: Diagnostic - check if image exists in docker
-      #   run: docker images | grep sso-image
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          image-ref: 'sso-image:${{ github.sha }}'
-          scan-type: 'image'          
-          exit-code: '0'
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-          format: 'sarif'
-          output: 'sso-results.sarif'
-        env:
-          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2 # Faster/more reliable mirror
-
-      # - name: Check SARIF file existence
-      #   run: ls -l sso-results.sarif
-
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: 'sso-results.sarif'
-
-  build_ui:
-    name: Build UI Image
-    runs-on: ubuntu-24.04
-    permissions:
-      security-events: write
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.branch }}
-          
-      - name: Build an image from Dockerfile
-        run: docker build -t ui-image:${{ github.sha }} -f ui/deployment/Dockerfile .
-
-      # - name: Diagnostic - check if image exists in docker
-      #   run: docker images | grep ui-image
-
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.35.0
-        with:
-          image-ref: 'ui-image:${{ github.sha }}'
-          scan-type: 'image'          
-          exit-code: '0'
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-          format: 'sarif'
-          output: 'ui-results.sarif'
-        env:
-          TRIVY_DB_REPOSITORY: public.ecr.aws/aquasecurity/trivy-db:2 # Faster/more reliable mirror
-
-      # - name: Check SARIF file existence
-      #   run: ls -l ui-results.sarif
-
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: 'ui-results.sarif'
+          sarif_file: '${{ matrix.component }}-results.sarif'
+          category: ${{ matrix.component }}
 
   analyze:
     needs: [build_rag, build_multi-agent, build_sso, build_ui]
