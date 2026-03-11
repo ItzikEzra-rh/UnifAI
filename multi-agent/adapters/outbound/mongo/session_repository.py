@@ -104,7 +104,7 @@ class MongoSessionRepository(SessionRepository):
             blueprint_id=doc[self._BLUEPRINT_FIELD],
             run_context=RunContext.from_dict(doc["run_context"]),
             metadata=SessionMeta.from_dict(doc.get("metadata", {})),
-            graph_state=GraphState(**doc["graph_state"]),
+            graph_state=GraphState.deserialize(doc["graph_state"]),
             status=SessionStatus[doc.get(self._STATUS_FIELD, SessionStatus.PENDING.name)],
         )
 

@@ -55,7 +55,7 @@ async def run_worker(container, threads: int) -> None:
         activities=[
             graph_activities.execute_node,
             graph_activities.evaluate_condition,
-            lifecycle_activities.prepare_session,
+            lifecycle_activities.begin_session,
             lifecycle_activities.complete_session,
             lifecycle_activities.fail_session,
         ],

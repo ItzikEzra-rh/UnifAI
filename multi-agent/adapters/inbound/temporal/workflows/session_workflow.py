@@ -5,9 +5,12 @@ Implements BackgroundSessionOps with Temporal-specific mechanics
 (activities, child workflows) and delegates the canonical lifecycle
 ordering to BackgroundSessionRunner.
 
-The ordering rule (prepare → execute → complete/fail) lives in
+The ordering rule (begin → execute → complete/fail) lives in
 session/execution/background_runner.py — NOT here.  This file
 only supplies the HOW for each step.
+
+Inputs are already staged into the SessionRecord before this workflow
+starts.  begin() only transitions QUEUED → RUNNING.
 """
 from datetime import timedelta
 
@@ -18,7 +21,7 @@ from mas.session.execution.background_runner import BackgroundSessionRunner
 from temporal.models import (
     SessionWorkflowParams,
     GraphExecutionParams,
-    PrepareSessionParams,
+    BeginSessionParams,
     CompleteSessionParams,
     FailSessionParams,
 )
@@ -37,7 +40,7 @@ class SessionWorkflow:
 
     Implements BackgroundSessionOps (structural typing via Protocol).
     Each method maps to a Temporal activity or child workflow.
-    The orchestrator drives the canonical ordering.
+    The runner drives the canonical ordering.
     """
 
     @workflow.run
@@ -48,13 +51,12 @@ class SessionWorkflow:
 
     # ── BackgroundSessionOps implementation ──────────────────────────
 
-    async def prepare(self) -> dict:
-        """Seed inputs, mark RUNNING, persist. Returns seeded state."""
+    async def begin(self) -> dict:
+        """Mark RUNNING, bind context, persist. Returns staged state."""
         return await workflow.execute_activity(
-            "prepare_session",
-            PrepareSessionParams(
+            "begin_session",
+            BeginSessionParams(
                 run_id=self._params.run_id,
-                inputs=self._params.inputs,
                 scope=self._params.scope,
                 logged_in_user=self._params.logged_in_user,
             ),

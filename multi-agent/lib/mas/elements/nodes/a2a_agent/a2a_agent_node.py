@@ -187,13 +187,23 @@ class A2AAgentNode(
             )
             context_messages.extend(deepcopy(workspace_messages))
 
-        # 2. Add agent results context
+        # 2. Pop the user prompt from the end if it matches the task
+        #    (we re-add it at the very end to guarantee ordering)
+        if (
+            context_messages
+            and hasattr(context_messages[-1], "role")
+            and context_messages[-1].role == Role.USER
+            and context_messages[-1].content == task.content
+        ):
+            context_messages.pop()
+
+        # 3. Add agent results context
         if task.thread_id:
             agent_results_context = self._build_agent_results_context(task.thread_id)
             if agent_results_context:
                 context_messages.append(agent_results_context)
 
-        # 3. Add current task with retriever context if available
+        # 4. User prompt is always last (with retriever augmentation if available)
         user_msg = ChatMessage(role=Role.USER, content=task.content)
         if self.retriever:
             user_msg = self.augment_with_context(user_msg)

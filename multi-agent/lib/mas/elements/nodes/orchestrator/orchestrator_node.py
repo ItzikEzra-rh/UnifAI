@@ -629,12 +629,19 @@ class OrchestratorNode(
         if conversation_history:
             messages.extend(conversation_history)
 
-        # Original user request (if exists) - preserved for all cycles
+        # Pop the user prompt from the end if it matches the content
+        # (we re-add it at the very end to guarantee ordering)
+        if content and (
+            messages
+            and hasattr(messages[-1], "role")
+            and messages[-1].role == Role.USER
+            and messages[-1].content == content
+        ):
+            messages.pop()
+
+        # User prompt is always last
         if content:
-            messages.append(ChatMessage(
-                role=Role.USER,
-                content=content
-            ))
+            messages.append(ChatMessage(role=Role.USER, content=content))
 
         return messages
 

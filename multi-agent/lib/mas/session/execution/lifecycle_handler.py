@@ -9,10 +9,14 @@ Uses get_record() (cheap) instead of get_session() (expensive full build)
 because lifecycle transitions only need the persistable fields, not
 the runtime graph or node instances.
 
+Inputs are already staged into the SessionRecord by SessionInputProjector
+before the background worker starts.  This handler only manages the
+execution lifecycle: begin → complete | fail.
+
 Adapters (Temporal activities, Celery tasks, etc.) delegate to this
 class so they remain thin one-liner wrappers with zero business logic.
 """
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from mas.core.channels import ChannelFactory
 from mas.session.execution.lifecycle import SessionLifecycle
@@ -31,15 +35,15 @@ class BackgroundLifecycleHandler:
         self._lifecycle = lifecycle
         self._channel_factory = channel_factory
 
-    def prepare(
+    def begin(
         self,
         run_id: str,
-        inputs: Dict[str, Any],
         scope: str,
         logged_in_user: str,
     ) -> dict:
+        """Mark RUNNING, bind context, persist. Return the staged state dict."""
         record = self._manager.get_record(run_id)
-        self._lifecycle.prepare(record, inputs, scope, logged_in_user)
+        self._lifecycle.begin(record, scope, logged_in_user)
         return record.graph_state.serialize()
 
     def complete(self, run_id: str, final_state: dict) -> None:

@@ -4,10 +4,11 @@ Foreground (in-process) session execution with lifecycle orchestration.
 Handles both blocking run() and streaming stream() paths.
 The caller's thread stays engaged until execution completes.
 
-WorkflowSession holds its SessionRecord by reference, so lifecycle
-mutations to session.record are immediately visible on the session.
+Inputs are already staged into the SessionRecord by SessionInputProjector
+before this runner is called.  This class only manages the execution
+lifecycle: begin → execute → complete | fail.
 """
-from typing import Any, Dict, Iterator, Optional
+from typing import Any, Iterator, Optional
 
 from mas.core.channels import SessionChannel, ChannelFactory
 from mas.core.enums import ResourceCategory
@@ -20,7 +21,7 @@ class ForegroundSessionRunner:
     """
     Orchestrates synchronous graph execution with session lifecycle hooks.
 
-    Delegates lifecycle transitions (prepare / complete / fail) to
+    Delegates lifecycle transitions (begin / complete / fail) to
     SessionLifecycle.  Streaming channel management lives here because
     it is an execution concern, not a lifecycle concern.
     """
@@ -36,11 +37,10 @@ class ForegroundSessionRunner:
     def run(
         self,
         session: WorkflowSession,
-        inputs: Dict[str, Any],
         scope: str = "public",
         logged_in_user: str = "",
     ) -> GraphState:
-        self._lifecycle.prepare(session.record, inputs, scope, logged_in_user)
+        self._lifecycle.begin(session.record, scope, logged_in_user)
 
         try:
             final_state = session.executable_graph.run(session.graph_state)
@@ -54,12 +54,11 @@ class ForegroundSessionRunner:
     def stream(
         self,
         session: WorkflowSession,
-        inputs: Dict[str, Any],
         scope: str = "public",
         logged_in_user: str = "",
         **stream_kwargs: Any,
     ) -> Iterator[Any]:
-        self._lifecycle.prepare(session.record, inputs, scope, logged_in_user)
+        self._lifecycle.begin(session.record, scope, logged_in_user)
 
         channel = self._channel_factory.create(session.get_run_id())
         self._inject_streaming(session, channel)

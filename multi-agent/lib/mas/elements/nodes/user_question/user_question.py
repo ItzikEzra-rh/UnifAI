@@ -47,11 +47,35 @@ class UserQuestionNode(WorkloadCapableMixin, IEMCapableMixin, BaseNode):
         # Create thread, workspace, and initiate workflow
         self._initiate_workflow(user_query, state)
 
-        # Promote to public conversation
-        user_message = ChatMessage(role=Role.USER, content=user_query)
-        self.promote_to_messages(user_message)
+        # Promote to public conversation (idempotent — skip if already staged)
+        if not self._is_already_staged(state, user_query):
+            user_message = ChatMessage(role=Role.USER, content=user_query)
+            self.promote_to_messages(user_message)
 
         return state
+
+    @staticmethod
+    def _is_already_staged(state: StateView, user_query: str) -> bool:
+        """Check whether this turn's prompt was already staged into messages.
+
+        Looks at the last message only — the projector always appends at
+        the end, and a user can legitimately repeat the same prompt in
+        a later turn (so scanning the entire history would be wrong).
+
+        Handles both ChatMessage objects and plain dicts (defensive against
+        deserialization edge cases).
+        """
+        msgs = state.get(Channel.MESSAGES, [])
+        if not msgs:
+            return False
+        last = msgs[-1]
+        if isinstance(last, dict):
+            return last.get("role") in (Role.USER, Role.USER.value) and last.get("content") == user_query
+        return (
+            hasattr(last, "role")
+            and last.role == Role.USER
+            and last.content == user_query
+        )
 
     def _initiate_workflow(self, user_query: str, state: StateView) -> None:
         """

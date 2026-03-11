@@ -7,7 +7,7 @@ from temporalio import activity
 
 from mas.session.execution.lifecycle_handler import BackgroundLifecycleHandler
 from temporal.models import (
-    PrepareSessionParams,
+    BeginSessionParams,
     CompleteSessionParams,
     FailSessionParams,
 )
@@ -19,10 +19,10 @@ class SessionLifecycleActivities:
     def __init__(self, handler: BackgroundLifecycleHandler) -> None:
         self._handler = handler
 
-    @activity.defn(name="prepare_session")
-    def prepare_session(self, params: PrepareSessionParams) -> dict:
-        return self._handler.prepare(
-            params.run_id, params.inputs, params.scope, params.logged_in_user,
+    @activity.defn(name="begin_session")
+    def begin_session(self, params: BeginSessionParams) -> dict:
+        return self._handler.begin(
+            params.run_id, params.scope, params.logged_in_user,
         )
 
     @activity.defn(name="complete_session")

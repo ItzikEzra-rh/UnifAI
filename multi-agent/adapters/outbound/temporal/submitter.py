@@ -2,8 +2,11 @@
 Temporal adapter for background session submission.
 
 Implements the session-level BackgroundSessionSubmitter port.
-Starts a durable SessionWorkflow that owns the full session lifecycle
-(prepare → execute → complete/fail) inside the Temporal cluster.
+Starts a durable SessionWorkflow that owns the execution lifecycle
+(begin → execute → complete/fail) inside the Temporal cluster.
+
+Inputs are already staged into the SessionRecord by SessionInputProjector
+before this submitter is called.
 
 Uses string-based workflow invocation to avoid importing from the
 inbound adapter layer (hexagonal boundary compliance).
@@ -26,8 +29,8 @@ class TemporalSessionSubmitter(BackgroundSessionSubmitter):
     """
     Submits sessions to Temporal for durable background execution.
 
-    The SessionWorkflow handles the entire lifecycle:
-      prepare_session activity  → seed inputs, mark RUNNING
+    The SessionWorkflow handles the execution lifecycle:
+      begin_session activity    → mark RUNNING
       GraphTraversalWorkflow    → graph execution (child workflow)
       complete_session activity → mark COMPLETED
       On error: fail_session    → mark FAILED
@@ -71,7 +74,6 @@ class TemporalSessionSubmitter(BackgroundSessionSubmitter):
         )
         params = SessionWorkflowParams(
             run_id=session.get_run_id(),
-            inputs=request.inputs,
             scope=request.scope,
             logged_in_user=request.logged_in_user,
             graph_execution_params=graph_params.model_dump(mode="json"),

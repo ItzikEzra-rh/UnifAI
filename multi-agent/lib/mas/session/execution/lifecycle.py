@@ -4,6 +4,10 @@ Session lifecycle state-machine transitions.
 Operates on SessionRecord (the persistable layer) so that both foreground
 runners and background workers can share the same logic without requiring
 a full WorkflowSession.
+
+Input staging (projecting raw inputs onto GraphState) is NOT this class's
+job — that belongs to SessionInputProjector.  This class only manages
+execution state transitions: begin → complete | fail.
 """
 from typing import Any, Dict
 
@@ -11,13 +15,12 @@ from mas.graph.state.graph_state import GraphState
 from mas.session.repository.repository import SessionRepository
 from mas.session.domain.session_record import SessionRecord
 from mas.session.domain.status import SessionStatus
-from mas.session.management.utils import derive_title
 from mas.core.context import set_current_context
 
 
 class SessionLifecycle:
     """
-    Owns the prepare / complete / fail transitions of a SessionRecord.
+    Owns the begin / complete / fail transitions of a SessionRecord.
 
     Stateless — all state lives in the SessionRecord and the repository.
     """
@@ -25,26 +28,22 @@ class SessionLifecycle:
     def __init__(self, repository: SessionRepository) -> None:
         self._repo = repository
 
-    def prepare(
+    def begin(
         self,
         record: SessionRecord,
-        inputs: Dict[str, Any],
         scope: str,
         logged_in_user: str,
     ) -> None:
         """
-        Pre-execution: seed inputs, bind context, mark RUNNING, persist.
-        """
-        if record.metadata.title is None:
-            if title := derive_title(inputs):
-                record.metadata.title = title
+        Start execution: bind run context, mark RUNNING, persist.
 
+        Called AFTER inputs have already been staged by SessionInputProjector.
+        """
         ctx = record.run_context.change_scope(scope)
         ctx = ctx.set_logged_in_user(logged_in_user)
         set_current_context(ctx)
         record.run_context = ctx
 
-        record.graph_state.update(inputs)
         record.status = SessionStatus.RUNNING
         self._repo.save(record)
 

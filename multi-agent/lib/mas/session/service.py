@@ -2,6 +2,7 @@ from typing import Any, Dict, Iterator, List, Optional, Union
 from datetime import datetime
 from mas.session.management.user_session_manager import UserSessionManager
 from mas.session.execution.foreground_runner import ForegroundSessionRunner
+from mas.session.execution.input_projector import SessionInputProjector
 from mas.session.execution.ports import BackgroundSessionSubmitter, SubmitSessionRequest
 from mas.session.domain.workflow_session import WorkflowSession
 from mas.session.domain.session_record import SessionRecord
@@ -12,17 +13,23 @@ from mas.core.dto import GroupedCount
 
 class SessionService:
     """
-    A service to handle session lifecycle: creation, execution, streaming, and listing.
+    Application use-case boundary for session lifecycle.
+
+    Every entry point (run / stream / submit) follows the same two-phase pattern:
+      1. STAGE  — project inputs onto the record and persist (via projector)
+      2. EXECUTE — hydrate session and run the graph (foreground or background)
     """
 
     def __init__(
         self,
         manager: UserSessionManager,
         foreground_runner: ForegroundSessionRunner,
+        input_projector: SessionInputProjector,
         background_submitter: Optional[BackgroundSessionSubmitter] = None,
     ):
         self._manager = manager
         self._foreground = foreground_runner
+        self._projector = input_projector
         self._submitter = background_submitter
 
     def create(self, user_id: str, blueprint_id: str, metadata: Dict[str, Any] | SessionMeta | None = None) -> str:
@@ -36,14 +43,16 @@ class SessionService:
             metadata=SessionMeta.model_validate(metadata or {}),
         )
 
+    # ---- Two-phase execution entry points ----
+
     def run(self, session_id: str, inputs: Dict[str, Any], scope: str = "public", logged_in_user="") -> Any:
         """
         Execute the session to completion, returning the final result.
         """
+        self._stage(session_id, inputs)
         session = self._manager.get_session(session_id)
         return self._foreground.run(
             session=session,
-            inputs=inputs or {},
             scope=scope,
             logged_in_user=logged_in_user,
         )
@@ -53,10 +62,10 @@ class SessionService:
         """
         Execute the session in streaming mode, yielding chunks.
         """
+        self._stage(session_id, inputs)
         session = self._manager.get_session(session_id)
         return self._foreground.stream(
             session=session,
-            inputs=inputs or {},
             scope=scope,
             logged_in_user=logged_in_user,
             stream_mode=stream_mode,
@@ -66,23 +75,28 @@ class SessionService:
     def submit(self, session_id: str, inputs: Dict[str, Any],
                scope: str = "public", logged_in_user: str = "") -> str:
         """
-        Non-blocking submit: start a background workflow and return its
-        handle/ID immediately (HTTP 202 pattern).
-
-        Requires a BackgroundSessionSubmitter to be configured.
+        Non-blocking submit: stage inputs, then start a background workflow
+        and return its handle/ID immediately (HTTP 202 pattern).
         """
         if self._submitter is None:
             raise TypeError(
                 "No BackgroundSessionSubmitter configured — "
                 "submit() is not available for this engine."
             )
+        self._stage(session_id, inputs)
         session = self._manager.get_session(session_id)
         request = SubmitSessionRequest(
-            inputs=inputs or {},
             scope=scope,
             logged_in_user=logged_in_user,
         )
         return self._submitter.submit(session, request)
+
+    # ---- Private staging ----
+
+    def _stage(self, session_id: str, inputs: Dict[str, Any]) -> None:
+        """Project raw inputs onto the record and persist (QUEUED)."""
+        record = self._manager.get_record(session_id)
+        self._projector.apply(record, inputs or {})
 
     def list_for_user(self, user_id: str) -> list:
         """

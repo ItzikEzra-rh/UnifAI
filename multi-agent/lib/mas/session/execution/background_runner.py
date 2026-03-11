@@ -4,15 +4,19 @@ Canonical lifecycle runner for background session execution.
 Defines the application-level ordering rule that ALL background engines
 must follow:
 
-    prepare  →  execute_graph  →  complete
-                                   (or fail on error)
+    begin  →  execute_graph  →  complete
+                                 (or fail on error)
 
 The ordering lives HERE, in the application layer — not inside any
 infrastructure adapter.  Each adapter (Temporal, Celery, RQ, …)
 implements BackgroundSessionOps to supply the engine-specific mechanics,
 but the sequence is always driven by BackgroundSessionRunner.
+
+Inputs are already staged into the SessionRecord by SessionInputProjector
+before any background worker starts.  begin() only transitions the
+session from QUEUED → RUNNING.
 """
-from typing import Any, Dict, Protocol, runtime_checkable
+from typing import Protocol, runtime_checkable
 
 
 @runtime_checkable
@@ -27,8 +31,8 @@ class BackgroundSessionOps(Protocol):
     Celery implements them as direct service calls inside a task.
     """
 
-    async def prepare(self) -> dict:
-        """Seed inputs, mark RUNNING, persist. Return seeded state dict."""
+    async def begin(self) -> dict:
+        """Mark RUNNING, bind context, persist. Return staged state dict."""
         ...
 
     async def execute_graph(self, seeded_state: dict) -> dict:
@@ -67,7 +71,7 @@ class BackgroundSessionRunner:
             The final graph state dict.
         """
         try:
-            seeded_state = await ops.prepare()
+            seeded_state = await ops.begin()
             final_state = await ops.execute_graph(seeded_state)
             await ops.complete(final_state)
             return final_state

@@ -16,7 +16,7 @@ from mas.blueprints.service import BlueprintService
 from mas.blueprints.resolver import BlueprintResolver
 from mas.session.building import WorkflowSessionFactory
 from mas.session.management import UserSessionManager
-from mas.session.execution import SessionLifecycle, ForegroundSessionRunner
+from mas.session.execution import SessionLifecycle, ForegroundSessionRunner, SessionInputProjector
 from mas.session.service import SessionService
 from mas.resources.registry import ResourcesRegistry
 from mas.resources.service import ResourcesService
@@ -117,6 +117,7 @@ class AppContainer(metaclass=SingletonMeta):
         )
 
         self.session_lifecycle = SessionLifecycle(repository=self.session_repo)
+        self.input_projector = SessionInputProjector(repository=self.session_repo)
 
         self.channel_factory = self._create_channel_factory(cfg)
 
@@ -130,6 +131,7 @@ class AppContainer(metaclass=SingletonMeta):
         self.session_service = SessionService(
             manager=self.session_manager,
             foreground_runner=foreground_runner,
+            input_projector=self.input_projector,
             background_submitter=background_submitter,
         )
 

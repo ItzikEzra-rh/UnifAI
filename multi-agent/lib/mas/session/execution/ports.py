@@ -13,8 +13,11 @@ from mas.session.domain.workflow_session import WorkflowSession
 
 @dataclass(frozen=True)
 class SubmitSessionRequest:
-    """Immutable value object carrying everything a background worker needs."""
-    inputs: Dict[str, Any]
+    """Immutable value object carrying execution context for a background worker.
+
+    Inputs are already staged into the SessionRecord before submission,
+    so this only carries the execution context (scope, user).
+    """
     scope: str
     logged_in_user: str = ""
 

@@ -178,9 +178,9 @@ def save_resources(app):
 
 
 def run_test_new_version(app, blueprint_id):
-    session = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
-    print(f"Created session with id: {session.run_context.run_id}")
-    print(app.session_service.run(session_id=session.run_context.run_id,
+    run_id = app.session_service.create(user_id="alice", blueprint_id=blueprint_id)
+    print(f"Created session with id: {run_id}")
+    print(app.session_service.run(session_id=run_id,
                                   inputs={"user_prompt": "what can you tell me about Redhat?"},
                                   scope="public"))
 

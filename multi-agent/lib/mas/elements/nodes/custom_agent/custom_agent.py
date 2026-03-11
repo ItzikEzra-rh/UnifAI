@@ -199,19 +199,23 @@ class CustomAgentNode(
             workspace_messages = self.workspaces.get_recent_messages(task.thread_id, 20)
             context_messages.extend(deepcopy(workspace_messages))
 
-        # 2. System message is now handled by strategy during creation
-        # No longer adding system message to context here
+        # 2. Pop the user prompt from the end if it matches the task
+        #    (we re-add it at the very end to guarantee ordering)
+        if (
+            context_messages
+            and hasattr(context_messages[-1], "role")
+            and context_messages[-1].role == Role.USER
+            and context_messages[-1].content == task.content
+        ):
+            context_messages.pop()
 
         # 3. Add agent results context
         agent_results_context = self._build_agent_results_context(task.thread_id)
         if agent_results_context:
             context_messages.append(agent_results_context)
 
-        # 4. Add current task
-        # Note: Retriever is now exposed as a tool (RetrieverTool) so the agent
-        # can decide when to retrieve context rather than always augmenting
-        user_msg = ChatMessage(role=Role.USER, content=task.content)
-        context_messages.append(user_msg)
+        # 4. User prompt is always last
+        context_messages.append(ChatMessage(role=Role.USER, content=task.content))
 
         return context_messages
 

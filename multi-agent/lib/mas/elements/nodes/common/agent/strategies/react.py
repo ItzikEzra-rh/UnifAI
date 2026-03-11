@@ -264,13 +264,11 @@ class ReActStrategy(AgentStrategy):
         """Build base context with system message."""
         context = list(messages)
 
-        if self._step_count == 0:
-            system_content = self.system_message or self.system_prompt_template
-
-            if context and context[0].role == Role.SYSTEM:
-                context[0] = ChatMessage(role=Role.SYSTEM, content=system_content)
-            else:
-                context.insert(0, ChatMessage(role=Role.SYSTEM, content=system_content))
+        system_content = self.system_message or self.system_prompt_template
+        if context and context[0].role == Role.SYSTEM:
+            context[0] = ChatMessage(role=Role.SYSTEM, content=system_content)
+        else:
+            context.insert(0, ChatMessage(role=Role.SYSTEM, content=system_content))
 
         return context
 
