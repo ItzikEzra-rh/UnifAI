@@ -49,6 +49,7 @@ jobs:
           repository: 'redhat-community-ai-tools/UnifAI-secrets'
           ref: main
           token: ${{ secrets.GIT_ACTION_TOKEN }}
+          persist-credentials: false
           path: ui/genie-cred-data
           
 
