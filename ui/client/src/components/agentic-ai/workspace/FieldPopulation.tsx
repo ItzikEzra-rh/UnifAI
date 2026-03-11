@@ -390,22 +390,23 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
             setHasLoadedOnce(true);
           }
           
-          // Validate existing selections - remove any that no longer exist in new results
-          // (keeps original selection or empty if there wasn't one - matches main behavior)
-          setSelectedValues(prevSelected => {
-            if (prevSelected.length === 0) return prevSelected;
-            const validatedSelections = prevSelected.filter(val => newOptionValues.has(val));
-            
-            // If selections changed (some were removed), notify parent
-            if (validatedSelections.length !== prevSelected.length) {
-              // Use setTimeout to avoid state update during render
-              setTimeout(() => {
-                onPopulateResult(fieldName, getSelectedObjects(validatedSelections), populateHint.multi_select || false);
-              }, 0);
-            }
-            
-            return validatedSelections;
-          });
+          // For non-paginated fields, validate selections against results and
+          // remove any that no longer exist. For paginated fields, skip this
+          // because selected items may be in a later page we haven't fetched yet.
+          if (!supportsPagination) {
+            setSelectedValues(prevSelected => {
+              if (prevSelected.length === 0) return prevSelected;
+              const validatedSelections = prevSelected.filter(val => newOptionValues.has(val));
+              
+              if (validatedSelections.length !== prevSelected.length) {
+                setTimeout(() => {
+                  onPopulateResult(fieldName, getSelectedObjects(validatedSelections), populateHint.multi_select || false);
+                }, 0);
+              }
+              
+              return validatedSelections;
+            });
+          }
         } else {
           // Search: update with results (even if empty - will show "No results found")
           setPopulatedOptions(normalizedResults);
@@ -442,7 +443,9 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     }
   };
 
-  const remainingCount = pagination.total ? pagination.total - populatedOptions.length : null;
+  const remainingCount = pagination.total != null && pagination.total > populatedOptions.length
+    ? pagination.total - populatedOptions.length
+    : null;
 
   // Check if all options are selected (for showing Select All vs Clear All)
   const allOptionsSelected = populatedOptions.length > 0 && 
