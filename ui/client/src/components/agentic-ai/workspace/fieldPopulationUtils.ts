@@ -44,19 +44,22 @@ const extractDisplayName = (obj: any, displayField?: string): string => {
  * use the stringified object as the value (which will likely cause issues,
  * making it obvious the backend needs to configure the hint properly).
  */
-const extractId = (obj: any, valueField?: string): string => {
+export const extractId = (obj: any, valueField?: string): string => {
   if (!obj) return '';
   if (typeof obj === 'string') return obj;
   if (typeof obj !== 'object') return String(obj);
 
-  // Use valueField path from populateHint contract
   if (valueField) {
     const val = resolvePath(obj, valueField);
     if (val != null) return String(val);
   }
 
-  // No fallbacks - if valueField not specified, return stringified object
-  // This ensures backend must properly configure the populateHint
+  // Stable fallbacks: try common ID fields before falling back to JSON.
+  // JSON.stringify is key-order sensitive so saved objects may not match
+  // freshly fetched ones even when they represent the same item.
+  if (obj.id != null) return String(obj.id);
+  if (obj.value != null) return String(obj.value);
+  if (obj.name != null) return String(obj.name);
   return JSON.stringify(obj);
 };
 

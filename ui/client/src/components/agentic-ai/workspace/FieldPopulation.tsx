@@ -1,13 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Popover,
   PopoverContent,
@@ -23,7 +16,7 @@ import {
 } from "@/components/ui/command";
 import { Loader2, RefreshCw, ChevronDown, Check, CheckCheck, X } from 'lucide-react';
 import axios from "../../../http/axiosAgentConfig";
-import { OptionItem, normalizeOptions } from './fieldPopulationUtils';
+import { OptionItem, normalizeOptions, extractId } from './fieldPopulationUtils';
 
 // Type guard to check if hint is an ApiHint (has endpoint) vs ActionHint (has action_uid)
 const isApiHint = (hint: any): boolean => {
@@ -85,6 +78,26 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     total: null
   });
 
+  // Radix Dialog's react-remove-scroll blocks wheel events on portaled content
+  // (like our Popover) because it lives outside the dialog's DOM tree. This
+  // native listener calls stopPropagation before the document-level handler
+  // can call preventDefault, restoring normal scroll on the CommandList.
+  const wheelHandlerRef = useRef<((e: WheelEvent) => void) | null>(null);
+  const listScrollRef = useCallback((node: HTMLDivElement | null) => {
+    if (wheelHandlerRef.current && node) {
+      node.removeEventListener('wheel', wheelHandlerRef.current);
+    }
+    if (node) {
+      const handler = (e: WheelEvent) => {
+        if (node.scrollHeight > node.clientHeight) {
+          e.stopPropagation();
+        }
+      };
+      wheelHandlerRef.current = handler;
+      node.addEventListener('wheel', handler, { passive: true });
+    }
+  }, []);
+
   const isSelectAll = (value: string) => value === SELECT_ALL_VALUE;
 
   // Extract hint flags with defaults for backwards compatibility
@@ -109,14 +122,10 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     return null;
   }
 
-  // Helper to extract value (ID) from an item - handles both string and object formats
+  // Delegates to the same extractId used by normalizeOptions to ensure
+  // selected values always match the option values produced during population.
   const extractValue = (item: any): string => {
-    if (typeof item == 'string') return item;
-    if (typeof item == 'object' && item !== null) {
-      if (valueField && item[valueField] != null) return String(item[valueField]);
-      return String(item.id ?? item.value ?? item.name ?? item);
-    }
-    return String(item);
+    return extractId(item, valueField);
   };
 
   // Helper to get display label for a value
@@ -439,10 +448,11 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
   const allOptionsSelected = populatedOptions.length > 0 && 
     selectedValues.length === populatedOptions.length;
 
-  // For multi-select, filter out already selected options from dropdown
-  const availableOptions = !populateHint.multi_select
+  // For multi-select, filter out already selected options from dropdown; sort alphabetically
+  const availableOptions = (!populateHint.multi_select
     ? populatedOptions
-    : populatedOptions.filter(opt => !selectedValues.includes(opt.value));
+    : populatedOptions.filter(opt => !selectedValues.includes(opt.value))
+  ).sort((a, b) => a.label.localeCompare(b.label));
 
   // Hide UI when auto-triggering (keep logic running in background)
   if (hideUI) {
@@ -454,7 +464,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     return `Select ${populateHint.field_mapping || 'option'}...`;
   };
 
-  const renderSearchableDropdown = () => (
+  const renderDropdown = () => (
     <Popover open={isDropdownOpen} onOpenChange={setIsDropdownOpen}>
       <PopoverTrigger asChild>
         <Button variant="outline" role="combobox" aria-expanded={isDropdownOpen} className="w-full justify-between bg-background-dark">
@@ -467,7 +477,6 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         align="start"
         onOpenAutoFocus={(e) => e.preventDefault()}
         onInteractOutside={(e) => {
-          // Prevent closing when interacting with elements inside the popover
           const target = e.target as HTMLElement;
           if (target.closest('[data-radix-popper-content-wrapper]')) {
             e.preventDefault();
@@ -475,25 +484,26 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         }}
       >
         <Command shouldFilter={false} loop>
-          <div className="[&_input]:!text-white">
-            <CommandInput 
-            placeholder={`Search ${populateHint.field_mapping || 'options'}...`} 
-            value={searchTerm} 
-            onValueChange={setSearchTerm} 
-            />
-          </div>
+          {supportsSearch && (
+            <div className="[&_input]:!text-white">
+              <CommandInput 
+                placeholder={`Search ${populateHint.field_mapping || 'options'}...`} 
+                value={searchTerm} 
+                onValueChange={setSearchTerm} 
+              />
+            </div>
+          )}
           {isSearching && (
             <div className="flex items-center justify-center py-2">
               <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
               <span className="ml-2 text-sm text-gray-400">Searching...</span>
             </div>
           )}
-          <CommandList>
+          <CommandList ref={listScrollRef}>
             <CommandEmpty>
               {isLoading ? 'Loading...' : isSearching ? 'Searching...' : searchTerm ? 'No matching results found.' : 'No options found.'}
             </CommandEmpty>
             <CommandGroup>
-              {/* Select All / Clear All option for multi-select */}
               {populateHint.multi_select && populatedOptions.length > 0 && !searchTerm && (
                 <CommandItem
                   value={SELECT_ALL_VALUE}
@@ -534,23 +544,23 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
                 </CommandItem>
               ))}
 
-              {/* Load More option for pagination */}
               {supportsPagination && pagination.hasMore && (
                 <CommandItem 
-                value="__load_more__" 
-                onSelect={handleLoadMore} 
-                className="text-blue-400 font-medium justify-center cursor-pointer"
+                  value="__load_more__" 
+                  onSelect={handleLoadMore} 
+                  className="text-blue-400 font-medium justify-center cursor-pointer"
                 >
-                  {isLoadingMore ? <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Loading more...
-                  </>
-                   : 
-                   <>
-                   <ChevronDown className="mr-2 h-4 w-4" />
-                   Load more{remainingCount !== null ? ` (${remainingCount} remaining)` : '...'}
-                   </>
-                  }
+                  {isLoadingMore ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Loading more...
+                    </>
+                  ) : (
+                    <>
+                      <ChevronDown className="mr-2 h-4 w-4" />
+                      Load more{remainingCount !== null ? ` (${remainingCount} remaining)` : '...'}
+                    </>
+                  )}
                 </CommandItem>
               )}
             </CommandGroup>
@@ -558,81 +568,6 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         </Command>
       </PopoverContent>
     </Popover>
-  );
-
-  // Render standard dropdown (for backwards compatibility - no search)
-  const renderStandardDropdown = () => (
-    <Select
-      value=""
-      open={isDropdownOpen}
-      onOpenChange={setIsDropdownOpen}
-      onValueChange={(value) => {
-        if (value == "__load_more__") { 
-          handleLoadMore(); 
-          return; 
-        }
-        if (populateHint.multi_select) handleItemSelect(value);
-        else { handleSelectChange(value); setIsDropdownOpen(false); }
-      }}
-    >
-      <SelectTrigger className="bg-background-dark">
-        <SelectValue placeholder={getDropdownLabel()} />
-      </SelectTrigger>
-      <SelectContent
-        onCloseAutoFocus={(e) => { 
-          if (populateHint.multi_select) {
-            e.preventDefault(); 
-            }
-          }}
-        onPointerDownOutside={() => setIsDropdownOpen(false)}
-        onEscapeKeyDown={() => setIsDropdownOpen(false)}
-      >
-        {/* Select All / Clear All option for multi-select */}
-        {populateHint.multi_select && populatedOptions.length > 0 && (
-          <SelectItem 
-            value={SELECT_ALL_VALUE}
-            className="font-medium border-b border-gray-700"
-          >
-            {allOptionsSelected ? (
-              <span className="flex items-center gap-2 text-red-400">
-                <X className="h-3 w-3" />
-                Clear All
-              </span>
-            ) : (
-              <span className="flex items-center gap-2 text-green-400">
-                <CheckCheck className="h-3 w-3" />
-                Select All ({populatedOptions.length})
-              </span>
-            )}
-          </SelectItem>
-        )}
-
-        {availableOptions.map((option: OptionItem, index: number) => (
-          <SelectItem 
-          key={`${option.value}-${index}`} 
-          value={option.value}
-          >
-            {option.label}
-            </SelectItem>
-        ))}
-
-        {supportsPagination && pagination.hasMore && (
-          <SelectItem 
-          value="__load_more__" 
-          className="text-blue-400 font-medium cursor-pointer"
-          >
-            {isLoadingMore 
-              ? <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" />Loading...</span>
-              : <span className="flex items-center gap-2"><ChevronDown className="h-3 w-3" />Load more{remainingCount !== null ? ` (${remainingCount} remaining)` : '...'}</span>}
-          </SelectItem>
-        )}
-        {availableOptions.length === 0 && (
-          <SelectItem value="__no_options_disabled__" disabled>
-            {populatedOptions.length > 0 && populateHint.multi_select ? 'All options selected' : 'No options available'}
-          </SelectItem>
-        )}
-      </SelectContent>
-    </Select>
   );
 
   return (
@@ -677,8 +612,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
       {/* Selection Dropdown (show if we have ever loaded options - keeps visible during search) */}
       {(hasLoadedOnce || populatedOptions.length > 0) && (
         <div className="space-y-2">
-          {/* Use searchable dropdown if search is supported, otherwise use standard dropdown */}
-          {supportsSearch ? renderSearchableDropdown() : renderStandardDropdown()}
+          {renderDropdown()}
 
           {/* Show selected items (for multi-select or single select) */}
           {selectedValues.length > 0 && (
