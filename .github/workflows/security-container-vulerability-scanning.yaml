@@ -43,7 +43,7 @@ jobs:
           ref: ${{ inputs.branch }}
         
       - name: Build image for ${{ matrix.component }}
-        run: docker build -t ${{ matrix.component }}:${{ github.sha }} -f ${{ matrix.dockerfile }} ${{ matrix.context }}
+        run: podman build -t ${{ matrix.component }}:${{ github.sha }} -f ${{ matrix.dockerfile }} ${{ matrix.context }}
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.35.0
