@@ -19,19 +19,20 @@ export interface OptionItem {
  * display_field/label_field in the populateHint. If not specified, we use the
  * value field as the display (shows the ID/value as-is).
  */
-const extractDisplayName = (obj: any, displayField?: string): string => {
+export const extractDisplayName = (obj: any, displayField?: string): string => {
   if (!obj) return '';
   if (typeof obj === 'string') return obj;
   if (typeof obj !== 'object') return String(obj);
 
-  // Use displayField path from populateHint contract
   if (displayField) {
     const val = resolvePath(obj, displayField);
     if (val != null) return String(val);
   }
 
-  // No fallbacks - if displayField not specified, return stringified object
-  // This ensures backend must properly configure the populateHint
+  // Stable fallbacks for common display fields, matching extractId pattern.
+  if (obj.name != null) return String(obj.name);
+  if (obj.label != null) return String(obj.label);
+  if (obj.title != null) return String(obj.title);
   return JSON.stringify(obj);
 };
 

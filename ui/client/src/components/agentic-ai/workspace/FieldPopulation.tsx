@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/command";
 import { Loader2, RefreshCw, ChevronDown, Check, CheckCheck, X } from 'lucide-react';
 import axios from "../../../http/axiosAgentConfig";
-import { OptionItem, normalizeOptions, extractId } from './fieldPopulationUtils';
+import { OptionItem, normalizeOptions, extractId, extractDisplayName } from './fieldPopulationUtils';
 
 // Type guard to check if hint is an ApiHint (has endpoint) vs ActionHint (has action_uid)
 const isApiHint = (hint: any): boolean => {
@@ -130,10 +130,19 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
 
   // Helper to get display label for a value
   const getDisplayLabel = (value: string): string => {
-    // First check populated options
     const option = populatedOptions.find(opt => opt.value === value);
     if (option) return option.label;
-    
+
+    // Fallback: look up the original object in formData (covers items not yet
+    // loaded into populatedOptions, e.g. paginated items on later pages).
+    const currentValue = formData[fieldName];
+    if (Array.isArray(currentValue)) {
+      const item = currentValue.find((i: any) => extractValue(i) === value);
+      if (item && typeof item === 'object') {
+        return extractDisplayName(item, displayField);
+      }
+    }
+
     return value;
   };
 
