@@ -24,15 +24,14 @@ export const extractDisplayName = (obj: any, displayField?: string): string => {
   if (typeof obj === 'string') return obj;
   if (typeof obj !== 'object') return String(obj);
 
+  // Use displayField path from populateHint contract
   if (displayField) {
     const val = resolvePath(obj, displayField);
     if (val != null) return String(val);
   }
 
-  // Stable fallbacks for common display fields, matching extractId pattern.
-  if (obj.name != null) return String(obj.name);
-  if (obj.label != null) return String(obj.label);
-  if (obj.title != null) return String(obj.title);
+  // No fallbacks - if displayField not specified, return stringified object
+  // This ensures backend must properly configure the populateHint
   return JSON.stringify(obj);
 };
 
@@ -50,17 +49,14 @@ export const extractId = (obj: any, valueField?: string): string => {
   if (typeof obj === 'string') return obj;
   if (typeof obj !== 'object') return String(obj);
 
+  // Use valueField path from populateHint contract
   if (valueField) {
     const val = resolvePath(obj, valueField);
     if (val != null) return String(val);
   }
 
-  // Stable fallbacks: try common ID fields before falling back to JSON.
-  // JSON.stringify is key-order sensitive so saved objects may not match
-  // freshly fetched ones even when they represent the same item.
-  if (obj.id != null) return String(obj.id);
-  if (obj.value != null) return String(obj.value);
-  if (obj.name != null) return String(obj.name);
+  // No fallbacks - if valueField not specified, return stringified object
+  // This ensures backend must properly configure the populateHint
   return JSON.stringify(obj);
 };
 

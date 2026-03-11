@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/command";
 import { Loader2, RefreshCw, ChevronDown, Check, CheckCheck, X } from 'lucide-react';
 import axios from "../../../http/axiosAgentConfig";
-import { OptionItem, normalizeOptions, extractId, extractDisplayName } from './fieldPopulationUtils';
+import { OptionItem, normalizeOptions } from './fieldPopulationUtils';
 
 // Type guard to check if hint is an ApiHint (has endpoint) vs ActionHint (has action_uid)
 const isApiHint = (hint: any): boolean => {
@@ -122,10 +122,14 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     return null;
   }
 
-  // Delegates to the same extractId used by normalizeOptions to ensure
-  // selected values always match the option values produced during population.
+  // Extract value (ID) from an item - handles both string and object formats
   const extractValue = (item: any): string => {
-    return extractId(item, valueField);
+    if (typeof item == 'string') return item;
+    if (typeof item == 'object' && item !== null) {
+      if (valueField && item[valueField] != null) return String(item[valueField]);
+      return String(item.id ?? item.value ?? item.name ?? item);
+    }
+    return String(item);
   };
 
   // Helper to get display label for a value
@@ -139,7 +143,8 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     if (Array.isArray(currentValue)) {
       const item = currentValue.find((i: any) => extractValue(i) === value);
       if (item && typeof item === 'object') {
-        return extractDisplayName(item, displayField);
+        if (displayField && item[displayField] != null) return String(item[displayField]);
+        return String(item.name ?? item.label ?? item.title ?? value);
       }
     }
 
