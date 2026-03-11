@@ -429,7 +429,8 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
           // dependencies) we must prune stale selections.
           const samePaginationStream =
             supportsPagination &&
-            paginationKey === lastPaginationKeyRef.current;
+            (lastPaginationKeyRef.current === null ||
+             paginationKey === lastPaginationKeyRef.current);
 
           if (!samePaginationStream) {
             setSelectedValues(prevSelected => {
