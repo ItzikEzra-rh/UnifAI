@@ -50,7 +50,7 @@ jobs:
         with:
           image-ref: '${{ matrix.component }}:${{ github.sha }}'
           scan-type: 'image'
-          exit-code: '0'
+          exit-code: '0'  # TODO: switch to exit-code: '1' once baseline is established
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
           format: 'sarif'
@@ -65,7 +65,7 @@ jobs:
           category: ${{ matrix.component }}
 
   analyze:
-    needs: [build_rag, build_multi-agent, build_sso, build_ui]
+    needs: [vulnerability-scan]
     if: always() && contains(needs.*.result, 'failure')
     runs-on: ubuntu-latest
     permissions:
