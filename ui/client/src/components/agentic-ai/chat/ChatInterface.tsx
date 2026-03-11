@@ -495,10 +495,26 @@ export default function ChatInterface({
     
     // Start polling when session is live and messages are loaded
     if (isLiveRequest && messages.length > 0) {
-      const lastAiMessage = [...messages].reverse().find(m => m.sender === 'ai');
+      const lastMessage = messages[messages.length - 1];
       
-      if (lastAiMessage) {
-        const reconnectMessageId = lastAiMessage.id;
+      // If the last message is from the user, the AI response is still being generated
+      // We need to create a placeholder AI message to attach the stream to
+      // (This mirrors what handleSendMessage does when user sends a message)
+      // During a live stream, the last message is always USER because:
+      // - User Q is saved immediately when sent
+      // - AI response is saved only when stream completes (with finalAnswer)
+      // If last message is AI, stream has already completed - no reconnection needed
+      if (lastMessage.sender === 'user') {
+        const reconnectMessageId = `reconnect-${Date.now()}`;
+        const placeholderAiMessage: Message = {
+          id: reconnectMessageId,
+          content: "",
+          sender: "ai",
+        };
+        
+        // Add placeholder AI message
+        setMessages((prev) => [...prev, placeholderAiMessage]);
+        
         // Mark this as a reconnection stream (not user-initiated)
         isReconnectionStreamRef.current = true;
         setCurrentStreamingMessageId(reconnectMessageId);
