@@ -50,7 +50,7 @@ class RedisSessionChannel(SessionChannel):
             {StreamField.CONTROL: ControlSignal.CLOSE},
         )
         self._redis.srem(ACTIVE_SESSIONS_KEY, self._session_id)
-        self._touch_ttl()
+        self._redis.delete(self._stream_key)
         self._closed = True
 
     def supports_input(self) -> bool:
