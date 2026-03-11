@@ -77,26 +77,33 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     hasMore: false,
     total: null
   });
+  // Tracks the dependency values used for the last paginated fetch so we can
+  // detect when a new query stream starts and prune stale selections.
+  const lastPaginationKeyRef = useRef<string | null>(null);
 
   // Radix Dialog's react-remove-scroll blocks wheel events on portaled content
   // (like our Popover) because it lives outside the dialog's DOM tree. This
   // native listener calls stopPropagation before the document-level handler
   // can call preventDefault, restoring normal scroll on the CommandList.
-  const wheelHandlerRef = useRef<((e: WheelEvent) => void) | null>(null);
+  // We store the node in state so the useEffect properly cleans up the
+  // previous listener whenever the DOM node changes or unmounts.
+  const [listNode, setListNode] = useState<HTMLDivElement | null>(null);
   const listScrollRef = useCallback((node: HTMLDivElement | null) => {
-    if (wheelHandlerRef.current && node) {
-      node.removeEventListener('wheel', wheelHandlerRef.current);
-    }
-    if (node) {
-      const handler = (e: WheelEvent) => {
-        if (node.scrollHeight > node.clientHeight) {
-          e.stopPropagation();
-        }
-      };
-      wheelHandlerRef.current = handler;
-      node.addEventListener('wheel', handler, { passive: true });
-    }
+    setListNode(node);
   }, []);
+
+  useEffect(() => {
+    if (!listNode) return;
+    const handler = (e: WheelEvent) => {
+      if (listNode.scrollHeight > listNode.clientHeight) {
+        e.stopPropagation();
+      }
+    };
+    listNode.addEventListener('wheel', handler, { passive: true });
+    return () => {
+      listNode.removeEventListener('wheel', handler);
+    };
+  }, [listNode]);
 
   const isSelectAll = (value: string) => value === SELECT_ALL_VALUE;
 
@@ -361,6 +368,10 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         });
       }
 
+      // Snapshot the dependency-only portion of the request so we can detect
+      // when a new pagination stream starts (different dependency values).
+      const paginationKey = supportsPagination ? JSON.stringify(inputData) : null;
+
       // Add pagination params if supported
       if (supportsPagination) {
         inputData.limit = 30;
@@ -390,7 +401,14 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         return;
       }
       
-      const normalizedResults = normalizeOptions(rawResults, displayField, valueField);
+      // Normalize labels via displayField, then override each option's value
+      // with extractValue so it matches selectedValues (which are also built
+      // with extractValue). Without this, extractId's JSON.stringify fallback
+      // produces different strings than extractValue's id/value/name fallback.
+      const normalizedResults = normalizeOptions(rawResults, displayField, valueField).map(opt => ({
+        ...opt,
+        value: extractValue(opt.originalObject),
+      }));
       const newOptionValues = new Set(normalizedResults.map(opt => opt.value));
       
       if (populateHint.selection_type == 'manual' || populateHint.multi_select) {
@@ -404,10 +422,16 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
             setHasLoadedOnce(true);
           }
           
-          // For non-paginated fields, validate selections against results and
-          // remove any that no longer exist. For paginated fields, skip this
-          // because selected items may be in a later page we haven't fetched yet.
-          if (!supportsPagination) {
+          // Prune selections that no longer exist in the new result set.
+          // For paginated fields we only skip pruning when continuing the
+          // same pagination stream (same dependency values), because items
+          // may live on a later page. When the stream changes (different
+          // dependencies) we must prune stale selections.
+          const samePaginationStream =
+            supportsPagination &&
+            paginationKey === lastPaginationKeyRef.current;
+
+          if (!samePaginationStream) {
             setSelectedValues(prevSelected => {
               if (prevSelected.length === 0) return prevSelected;
               const validatedSelections = prevSelected.filter(val => newOptionValues.has(val));
@@ -421,9 +445,19 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
               return validatedSelections;
             });
           }
+
+          if (paginationKey != null) {
+            lastPaginationKeyRef.current = paginationKey;
+          }
         } else {
-          // Search: update with results (even if empty - will show "No results found")
-          setPopulatedOptions(normalizedResults);
+          // Search: merge new results into existing options so that items
+          // already visible via client-side filtering aren't discarded when
+          // the backend returns a narrower (e.g. prefix-only) result set.
+          setPopulatedOptions(prev => {
+            const existing = new Set(prev.map(opt => opt.value));
+            const additions = normalizedResults.filter(opt => !existing.has(opt.value));
+            return additions.length > 0 ? [...prev, ...additions] : prev;
+          });
         }
       }
 
@@ -465,11 +499,18 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
   const allOptionsSelected = populatedOptions.length > 0 && 
     selectedValues.length === populatedOptions.length;
 
-  // For multi-select, filter out already selected options from dropdown; sort alphabetically
+  // For multi-select, filter out already selected options from dropdown; sort alphabetically.
+  // Spread before sort to avoid mutating the populatedOptions state array.
   const availableOptions = (!populateHint.multi_select
-    ? populatedOptions
+    ? [...populatedOptions]
     : populatedOptions.filter(opt => !selectedValues.includes(opt.value))
   ).sort((a, b) => a.label.localeCompare(b.label));
+
+  // Client-side substring filter on labels (supplements backend search for
+  // searchable fields, and is the only filter for non-searchable ones).
+  const displayedOptions = searchTerm
+    ? availableOptions.filter(opt => opt.label.toLowerCase().includes(searchTerm.toLowerCase()))
+    : availableOptions;
 
   // Hide UI when auto-triggering (keep logic running in background)
   if (hideUI) {
@@ -501,15 +542,13 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         }}
       >
         <Command shouldFilter={false} loop>
-          {supportsSearch && (
-            <div className="[&_input]:!text-white">
-              <CommandInput 
-                placeholder={`Search ${populateHint.field_mapping || 'options'}...`} 
-                value={searchTerm} 
-                onValueChange={setSearchTerm} 
-              />
-            </div>
-          )}
+          <div className="[&_input]:!text-white">
+            <CommandInput 
+              placeholder={`Search ${populateHint.field_mapping || 'options'}...`} 
+              value={searchTerm} 
+              onValueChange={setSearchTerm} 
+            />
+          </div>
           {isSearching && (
             <div className="flex items-center justify-center py-2">
               <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
@@ -518,7 +557,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
           )}
           <CommandList ref={listScrollRef}>
             <CommandEmpty>
-              {isLoading ? 'Loading...' : isSearching ? 'Searching...' : searchTerm ? 'No matching results found.' : 'No options found.'}
+              {isLoading ? 'Loading...' : isSearching ? 'Searching...' : searchTerm ? `No results matching "${searchTerm}".` : 'No options found.'}
             </CommandEmpty>
             <CommandGroup>
               {populateHint.multi_select && populatedOptions.length > 0 && !searchTerm && (
@@ -541,7 +580,7 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
                 </CommandItem>
               )}
 
-              {availableOptions.map((option: OptionItem) => (
+              {displayedOptions.map((option: OptionItem) => (
                 <CommandItem
                   key={option.value}
                   value={option.value}
