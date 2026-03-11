@@ -35,7 +35,7 @@ jobs:
             context: .
           - component: ui
             dockerfile: ui/deployment/Dockerfile
-            context: ui
+            context: .
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
