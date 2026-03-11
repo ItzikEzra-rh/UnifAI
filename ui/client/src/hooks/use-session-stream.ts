@@ -1,7 +1,7 @@
 /**
  * Hook for managing Redis-backed session stream subscription.
  * 
- * Implements the streaming pattern from background-session-streaming.md:
+ * Implements the streaming pattern:
  * 1. POST /user.session.submit  ← fire & forget (returns 202 immediately)
  * 2. GET /session.stream.subscribe ← real-time events (NDJSON stream)
  * 
