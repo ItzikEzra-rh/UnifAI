@@ -46,7 +46,7 @@ jobs:
         if: ${{ matrix.component == 'ui' }}
         uses: actions/checkout@v4
         with:
-          repository: 'UnifAI-secrets'
+          repository: 'redhat-community-ai-tools/UnifAI-secrets'
           path: ui/genie-cred-data
           ref: main
 
