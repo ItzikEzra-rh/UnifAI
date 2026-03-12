@@ -176,6 +176,17 @@ class BlueprintService:
     ) -> BlueprintValidationResult:
         """
         Validate all elements in a saved blueprint.
+        
+        Args:
+            blueprint_id: Blueprint ID to validate
+            timeout_seconds: Timeout for network checks
+            
+        Returns:
+            BlueprintValidationResult with all element results
+            
+        Raises:
+            RuntimeError: If validation service not configured
+            KeyError: If blueprint not found
         """
         self._ensure_validation_service()
         spec = self.load_resolved(blueprint_id)
