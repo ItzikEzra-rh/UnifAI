@@ -414,6 +414,24 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
           if (normalizedResults.length > 0) {
             setHasLoadedOnce(true);
           }
+
+          // For non-paginated fields (e.g. MCP tools), prune selections that
+          // no longer exist in the new result set. Paginated fields (e.g. docs)
+          // skip this because selected items may live on a later page.
+          if (!supportsPagination) {
+            setSelectedValues(prevSelected => {
+              if (prevSelected.length === 0) return prevSelected;
+              const validatedSelections = prevSelected.filter(val => newOptionValues.has(val));
+
+              if (validatedSelections.length !== prevSelected.length) {
+                setTimeout(() => {
+                  onPopulateResult(fieldName, getSelectedObjects(validatedSelections), populateHint.multi_select || false);
+                }, 0);
+              }
+
+              return validatedSelections;
+            });
+          }
         } else {
           // Search: merge new results into existing options so that items
           // already visible via client-side filtering aren't discarded when
