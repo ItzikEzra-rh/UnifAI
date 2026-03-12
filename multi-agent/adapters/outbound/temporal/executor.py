@@ -7,6 +7,9 @@ adapter — it knows nothing about session lifecycle.
 
 Uses string-based workflow invocation to avoid importing from the
 inbound adapter layer (hexagonal boundary compliance).
+
+pydantic_data_converter handles GraphState serialization/deserialization
+automatically — no manual .serialize()/.deserialize() calls needed.
 """
 import asyncio
 import uuid
@@ -38,13 +41,8 @@ class TemporalGraphExecutor(BaseGraphExecutor):
     def graph_definition(self) -> GraphDefinition:
         return self._graph_def
 
-    def run(self, initial_state: Any, *, session_id: str = "") -> dict:
-        state = (
-            initial_state
-            if isinstance(initial_state, GraphState)
-            else GraphState.deserialize(initial_state)
-        )
-        return asyncio.run(self._execute(state, session_id=session_id))
+    def run(self, initial_state: GraphState, *, session_id: str = "") -> GraphState:
+        return asyncio.run(self._execute(initial_state, session_id=session_id))
 
     def get_state(self) -> Any:
         if not self._workflow_id:
@@ -55,7 +53,7 @@ class TemporalGraphExecutor(BaseGraphExecutor):
     #  Internal helpers
     # ------------------------------------------------------------------ #
 
-    async def _execute(self, state: GraphState, *, session_id: str = "") -> dict:
+    async def _execute(self, state: GraphState, *, session_id: str = "") -> GraphState:
         """Start GraphTraversalWorkflow and block until it completes."""
         cfg = AppConfig.get_instance()
         client = await get_temporal_client()

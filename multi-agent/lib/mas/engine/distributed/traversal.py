@@ -81,7 +81,7 @@ class GraphTraversal:
                 raise GraphRecursionError(self._recursion_limit)
 
             if on_superstep:
-                on_superstep(step, active, state.serialize())
+                on_superstep(step, active, state)
 
             # ── EXECUTE ───────────────────────────────────
             results = await self._execute_superstep(active, state, execute_node)

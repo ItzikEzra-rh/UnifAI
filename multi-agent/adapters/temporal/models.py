@@ -10,10 +10,11 @@ natively handles model_dump/model_validate for all Pydantic fields.
 Shared by both inbound (worker/activities/workflows) and outbound
 (executor/submitter) Temporal adapters.
 """
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from pydantic import BaseModel, Field
 
 from mas.engine.domain.models import GraphDefinition
+from mas.graph.models.step_context import StepContext
 from mas.graph.state.graph_state import GraphState
 
 
@@ -49,7 +50,7 @@ class ExecuteNodeParams(BaseModel):
     """Input to the execute_graph_node activity."""
     node_uid: str
     node_blueprint: Dict[str, Any] = Field(default_factory=dict)
-    step_context: Dict[str, Any] = Field(default_factory=dict)
+    step_context: Optional[StepContext] = None
     state: GraphState = Field(default_factory=GraphState)
     session_id: str = ""
 
@@ -58,7 +59,7 @@ class EvaluateConditionParams(BaseModel):
     """Input to the evaluate_condition activity."""
     condition_rid: str
     condition_blueprint: Dict[str, Any] = Field(default_factory=dict)
-    step_context: Dict[str, Any] = Field(default_factory=dict)
+    step_context: Optional[StepContext] = None
     state: GraphState = Field(default_factory=GraphState)
 
 

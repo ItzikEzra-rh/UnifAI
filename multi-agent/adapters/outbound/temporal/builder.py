@@ -2,7 +2,7 @@
 Temporal graph builder.
 
 Extracts topology, mini-blueprints, and step contexts from RTGraphPlan
-using NodeDeploymentSerializer.  The plan PROVIDES everything — no
+using NodeDeploymentExtractor.  The plan PROVIDES everything — no
 blueprint_id, no external lookups.
 """
 from typing import Any, Callable, Dict, List, Optional, Type
@@ -10,7 +10,7 @@ from typing import Any, Callable, Dict, List, Optional, Type
 from mas.engine.domain.base_builder import BaseGraphBuilder
 from mas.engine.domain.base_executor import BaseGraphExecutor
 from mas.engine.domain.models import GraphDefinition, NodeDef, ConditionalEdgeDef
-from mas.engine.distributed.serialization import NodeDeploymentSerializer
+from mas.engine.distributed.deployment_extractor import NodeDeploymentExtractor
 from mas.graph.rt_graph_plan import RTGraphPlan
 from mas.graph.state.graph_state import GraphState
 from outbound.temporal.executor import TemporalGraphExecutor
@@ -22,7 +22,7 @@ class TemporalGraphBuilder(BaseGraphBuilder):
 
     Each NodeDef carries:
       - node_blueprint — mini BlueprintSpec to rebuild this node remotely
-      - step_context — serialized StepContext from the full graph
+      - step_context — StepContext from the full graph
     """
 
     def __init__(self, state_cls: Type[GraphState]) -> None:
@@ -68,14 +68,14 @@ class TemporalGraphBuilder(BaseGraphBuilder):
         return TemporalGraphExecutor(graph_def)
 
     def compile_from_plan(self, plan: RTGraphPlan) -> BaseGraphExecutor:
-        serializer = NodeDeploymentSerializer(plan.session_registry)
+        extractor = NodeDeploymentExtractor(plan.session_registry)
 
         for step in plan.steps:
             self._nodes[step.uid] = NodeDef(
                 uid=step.uid,
                 rid=step.rid,
-                node_blueprint=serializer.serialize_node_blueprint(step),
-                step_context=serializer.serialize_step_context(step),
+                node_blueprint=extractor.serialize_node_blueprint(step),
+                step_context=extractor.get_step_context(step),
             )
 
         for step in plan.steps:
@@ -85,8 +85,8 @@ class TemporalGraphBuilder(BaseGraphBuilder):
             if step.exit_condition and step.branches:
                 self._conditional_edges[step.uid] = ConditionalEdgeDef(
                     condition_rid=step.condition.rid,
-                    condition_blueprint=serializer.serialize_condition_blueprint(step.condition.rid),
-                    step_context=serializer.serialize_step_context(step),
+                    condition_blueprint=extractor.serialize_condition_blueprint(step.condition.rid),
+                    step_context=extractor.get_step_context(step),
                     branches=step.branches,
                 )
 

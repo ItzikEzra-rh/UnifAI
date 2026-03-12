@@ -1,18 +1,19 @@
 """
-Node deployment serializer for distributed execution.
+Node deployment extractor for distributed execution.
 
-Extracts mini-blueprints and serialized StepContext from RTGraphPlan
-so that a remote worker can rebuild and execute a single node without
-the full blueprint or live graph.
+Extracts mini-blueprints and StepContext from RTGraphPlan so that a
+remote worker can rebuild and execute a single node without the full
+blueprint or live graph.
 """
 from typing import Any, Dict, Optional, Set, Tuple
 
 from mas.core.enums import ResourceCategory
+from mas.graph.models.step_context import StepContext
 from mas.session.domain.session_registry import SessionRegistry
 from mas.graph.models.workflow import RTStep
 
 
-class NodeDeploymentSerializer:
+class NodeDeploymentExtractor:
     """
     Responsible for preparing deployment payloads (mini-blueprints,
     step contexts) from runtime plan data.
@@ -86,17 +87,14 @@ class NodeDeploymentSerializer:
         )
         return mini_bp.model_dump(mode="json")
 
-    def serialize_step_context(self, step: RTStep) -> Dict[str, Any]:
+    def get_step_context(self, step: RTStep) -> Optional[StepContext]:
         """
-        Return the serialized StepContext for this node.
+        Return the StepContext for this node, or None if absent.
 
         Built from the FULL graph topology (adjacent nodes, finalizer
         distances, etc.) at compile time.
         """
-        ctx = step.func._ctx
-        if ctx is None:
-            return {}
-        return ctx.serialize()
+        return step.func._ctx
 
     def _find_resource_spec(self, rid: str) -> Optional[Tuple[ResourceCategory, Any]]:
         """Look up a rid across all resource categories."""

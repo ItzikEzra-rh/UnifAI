@@ -5,6 +5,7 @@ Pure one-liner delegates to the domain-level BackgroundLifecycleHandler.
 """
 from temporalio import activity
 
+from mas.graph.state.graph_state import GraphState
 from mas.session.execution.lifecycle_handler import BackgroundLifecycleHandler
 from temporal.models import (
     BeginSessionParams,
@@ -20,7 +21,7 @@ class SessionLifecycleActivities:
         self._handler = handler
 
     @activity.defn(name="begin_session")
-    def begin_session(self, params: BeginSessionParams) -> dict:
+    def begin_session(self, params: BeginSessionParams) -> GraphState:
         return self._handler.begin(
             params.run_id, params.scope, params.logged_in_user,
         )

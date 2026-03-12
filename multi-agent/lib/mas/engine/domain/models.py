@@ -11,19 +11,21 @@ boundaries (e.g., distributed workers, durable workflows).
 from typing import Any, Dict, List, Optional, Set
 from pydantic import BaseModel, ConfigDict, Field
 
+from mas.graph.models.step_context import StepContext
+
 
 class NodeDef(BaseModel):
     """
     Identity and deployment info for a single graph node.
 
-    Carries the serialized mini-blueprint and step context so that
-    a remote worker can rebuild this specific node without loading
-    the full blueprint from a database.
+    Carries the mini-blueprint and step context so that a remote
+    worker can rebuild this specific node without loading the full
+    blueprint from a database.
     """
     uid: str
     rid: str
     node_blueprint: Dict[str, Any] = Field(default_factory=dict)
-    step_context: Dict[str, Any] = Field(default_factory=dict)
+    step_context: Optional[StepContext] = None
 
     model_config = ConfigDict(frozen=True)
 
@@ -32,7 +34,7 @@ class ConditionalEdgeDef(BaseModel):
     """A conditional routing rule attached to a node."""
     condition_rid: str
     condition_blueprint: Dict[str, Any] = Field(default_factory=dict)
-    step_context: Dict[str, Any] = Field(default_factory=dict)
+    step_context: Optional[StepContext] = None
     branches: Dict[str, str] = Field(
         default_factory=dict,
     )

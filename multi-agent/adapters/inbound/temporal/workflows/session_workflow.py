@@ -11,6 +11,9 @@ only supplies the HOW for each step.
 
 Inputs are already staged into the SessionRecord before this workflow
 starts.  begin() only transitions QUEUED → RUNNING.
+
+pydantic_data_converter handles GraphState serialization/deserialization
+automatically — no manual .serialize()/.deserialize() calls needed.
 """
 from datetime import timedelta
 
@@ -45,15 +48,15 @@ class SessionWorkflow:
     """
 
     @workflow.run
-    async def run(self, params: SessionWorkflowParams) -> dict:
+    async def run(self, params: SessionWorkflowParams) -> GraphState:
         self._params = params
         runner = BackgroundSessionRunner()
         return await runner.run(self)
 
     # ── BackgroundSessionOps implementation ──────────────────────────
 
-    async def begin(self) -> dict:
-        """Mark RUNNING, bind context, persist. Returns staged state."""
+    async def begin(self) -> GraphState:
+        """Mark RUNNING, bind context, persist. Returns staged GraphState."""
         return await workflow.execute_activity(
             "begin_session",
             BeginSessionParams(
@@ -63,12 +66,13 @@ class SessionWorkflow:
             ),
             start_to_close_timeout=_LIFECYCLE_TIMEOUT,
             retry_policy=_LIFECYCLE_RETRY,
+            result_type=GraphState,
         )
 
-    async def execute_graph(self, seeded_state: dict) -> dict:
+    async def execute_graph(self, seeded_state: GraphState) -> GraphState:
         """Run graph traversal as a child workflow."""
         graph_params = GraphExecutionParams(
-            state=GraphState.deserialize(seeded_state),
+            state=seeded_state,
             graph_definition=self._params.graph_execution_params.graph_definition,
             session_id=self._params.run_id,
         )
@@ -77,15 +81,16 @@ class SessionWorkflow:
             graph_params,
             id=f"{workflow.info().workflow_id}-graph",
             execution_timeout=_GRAPH_WORKFLOW_TIMEOUT,
+            result_type=GraphState,
         )
 
-    async def complete(self, final_state: dict) -> None:
+    async def complete(self, final_state: GraphState) -> None:
         """Attach final state, mark COMPLETED, persist."""
         await workflow.execute_activity(
             "complete_session",
             CompleteSessionParams(
                 run_id=self._params.run_id,
-                final_state=GraphState.deserialize(final_state),
+                final_state=final_state,
             ),
             start_to_close_timeout=_LIFECYCLE_TIMEOUT,
             retry_policy=_LIFECYCLE_RETRY,

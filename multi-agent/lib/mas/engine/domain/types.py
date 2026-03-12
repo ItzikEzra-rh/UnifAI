@@ -4,7 +4,7 @@ Callback protocols and constants for the graph traversal engine.
 These define the contracts between the traversal algorithm and the
 execution layer (Temporal, LangGraph, or any future engine).
 """
-from typing import Any, Dict, Protocol, Set
+from typing import Any, Protocol, Set
 
 from mas.engine.domain.models import ConditionalEdgeDef, GraphDefinition
 from mas.graph.state.graph_state import GraphState
@@ -40,5 +40,5 @@ class OnSuperstepFn(Protocol):
         self,
         step: int,
         active_nodes: Set[str],
-        serialized_state: Dict[str, Any],
+        state: GraphState,
     ) -> None: ...

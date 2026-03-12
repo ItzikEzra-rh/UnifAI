@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Dict
 from pydantic import BaseModel, Field, ConfigDict
 
 from mas.blueprints.models.blueprint import StepMeta
@@ -16,12 +16,3 @@ class StepContext(BaseModel):
     topology: StepTopology = Field(default_factory=StepTopology)
 
     model_config = ConfigDict(frozen=True)
-
-    def serialize(self) -> Dict[str, Any]:
-        """Convert to a JSON-safe dict for cross-process transport."""
-        return self.model_dump(mode="json")
-
-    @classmethod
-    def deserialize(cls, data: Dict[str, Any]) -> "StepContext":
-        """Reconstruct a StepContext from a serialized dict."""
-        return cls.model_validate(data)

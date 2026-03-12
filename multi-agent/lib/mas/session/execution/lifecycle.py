@@ -9,8 +9,6 @@ Input staging (projecting raw inputs onto GraphState) is NOT this class's
 job — that belongs to SessionInputProjector.  This class only manages
 execution state transitions: begin → complete | fail.
 """
-from typing import Any, Dict
-
 from mas.graph.state.graph_state import GraphState
 from mas.session.repository.repository import SessionRepository
 from mas.session.domain.session_record import SessionRecord
@@ -50,17 +48,12 @@ class SessionLifecycle:
     def complete(
         self,
         record: SessionRecord,
-        final_state: Any,
+        final_state: GraphState,
     ) -> None:
         """
         Post-execution: attach final state, mark COMPLETED, persist.
         """
-        if isinstance(final_state, GraphState):
-            record.graph_state = final_state
-        elif isinstance(final_state, dict):
-            record.graph_state = GraphState(**final_state)
-        # else: keep existing record.graph_state unchanged
-
+        record.graph_state = final_state
         record.run_context = record.run_context.mark_finished()
         set_current_context(record.run_context)
         record.status = SessionStatus.COMPLETED

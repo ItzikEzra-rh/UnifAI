@@ -3,6 +3,9 @@ Temporal activity wrapper for graph node and condition execution.
 
 Composes a channel from the factory (adapter wiring) and delegates
 the actual execution to the domain-level NodeExecutor.
+
+pydantic_data_converter handles GraphState serialization/deserialization
+automatically — no manual .serialize()/.deserialize() calls needed.
 """
 from typing import Optional
 
@@ -10,6 +13,7 @@ from temporalio import activity
 
 from mas.core.channels import ChannelFactory
 from mas.engine.distributed.node_executor import NodeExecutor
+from mas.graph.state.graph_state import GraphState
 from temporal.models import ExecuteNodeParams, EvaluateConditionParams
 
 
@@ -28,19 +32,18 @@ class GraphNodeActivities:
         self._channel_factory = channel_factory
 
     @activity.defn(name="execute_graph_node")
-    def execute_node(self, params: ExecuteNodeParams) -> dict:
+    def execute_node(self, params: ExecuteNodeParams) -> GraphState:
         channel = None
         if self._channel_factory and params.session_id:
             channel = self._channel_factory.create(params.session_id)
 
-        result = self._executor.execute_node(
+        return self._executor.execute_node(
             node_uid=params.node_uid,
             node_blueprint=params.node_blueprint,
             step_context=params.step_context,
             state=params.state,
             channel=channel,
         )
-        return result.serialize()
 
     @activity.defn(name="evaluate_condition")
     def evaluate_condition(self, params: EvaluateConditionParams) -> str:

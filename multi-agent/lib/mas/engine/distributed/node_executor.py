@@ -13,7 +13,7 @@ from typing import Any, Dict, Optional
 from mas.blueprints.models.blueprint import BlueprintSpec
 from mas.core.channels import SessionChannel
 from mas.core.enums import ResourceCategory
-from mas.graph.models import StepContext
+from mas.graph.models.step_context import StepContext
 from mas.graph.state.graph_state import GraphState
 from mas.session.building.workflow_session_factory import WorkflowSessionFactory
 
@@ -37,7 +37,7 @@ class NodeExecutor:
         self,
         node_uid: str,
         node_blueprint: Dict[str, Any],
-        step_context: Dict[str, Any],
+        step_context: Optional[StepContext],
         state: GraphState,
         channel: Optional[SessionChannel] = None,
     ) -> GraphState:
@@ -52,7 +52,7 @@ class NodeExecutor:
         step = rt_plan.get_step(node_uid)
 
         if step_context:
-            step.func.set_context(StepContext.deserialize(step_context))
+            step.func.set_context(step_context)
 
         if channel and hasattr(step.func, "set_streaming_channel"):
             step.func.set_streaming_channel(channel)
@@ -63,7 +63,7 @@ class NodeExecutor:
         self,
         condition_rid: str,
         condition_blueprint: Dict[str, Any],
-        step_context: Dict[str, Any],
+        step_context: Optional[StepContext],
         state: GraphState,
     ) -> str:
         """
@@ -74,8 +74,6 @@ class NodeExecutor:
         condition = registry.get_instance(ResourceCategory.CONDITION, condition_rid)
 
         if step_context and hasattr(condition, 'set_context'):
-            condition.set_context(StepContext.deserialize(step_context))
+            condition.set_context(step_context)
 
         return condition(state)
-
-

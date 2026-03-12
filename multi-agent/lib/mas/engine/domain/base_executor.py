@@ -13,7 +13,7 @@ class BaseGraphExecutor(ABC):
     """
 
     @abstractmethod
-    def run(self, initial_state: Any, *, session_id: str = "") -> Any:
+    def run(self, initial_state: GraphState, *, session_id: str = "") -> GraphState:
         """
         Drive the graph from its entry to its exit and return the final state.
 

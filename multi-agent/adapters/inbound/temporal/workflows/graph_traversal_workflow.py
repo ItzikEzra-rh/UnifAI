@@ -5,9 +5,12 @@ Defines the @workflow.defn for Temporal registration.
 Delegates graph traversal logic to engine.distributed.traversal.GraphTraversal.
 Activity calls remain explicit here (Temporal requires direct await on
 workflow.execute_activity for deterministic replay).
+
+pydantic_data_converter handles GraphState serialization/deserialization
+automatically — no manual .serialize()/.deserialize() calls needed.
 """
 from datetime import timedelta
-from typing import Any, List
+from typing import Any, Dict, List
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
@@ -42,7 +45,7 @@ class GraphTraversalWorkflow:
         self._session_id: str = ""
 
     @workflow.run
-    async def run(self, params: GraphExecutionParams) -> dict:
+    async def run(self, params: GraphExecutionParams) -> GraphState:
         graph = params.graph_definition
         state = params.state
         self._session_id = params.session_id
@@ -58,7 +61,7 @@ class GraphTraversalWorkflow:
 
         self._state = final_state.serialize()
         self._current_nodes = []
-        return self._state
+        return final_state
 
     @workflow.query
     def get_state(self) -> dict:
@@ -68,9 +71,9 @@ class GraphTraversalWorkflow:
     def get_current_nodes(self) -> List[str]:
         return self._current_nodes
 
-    def _on_superstep(self, step, active_nodes, serialized_state):
+    def _on_superstep(self, step, active_nodes, state):
         self._current_nodes = sorted(active_nodes)
-        self._state = serialized_state
+        self._state = state.serialize()
 
     async def _execute_node(
         self,
@@ -86,14 +89,14 @@ class GraphTraversalWorkflow:
             state=state,
             session_id=self._session_id,
         )
-        result_dict = await workflow.execute_activity(
+        return await workflow.execute_activity(
             "execute_graph_node",
             params,
             start_to_close_timeout=_NODE_TIMEOUT,
             heartbeat_timeout=_NODE_HEARTBEAT,
             retry_policy=_NODE_RETRY,
+            result_type=GraphState,
         )
-        return GraphState.deserialize(result_dict)
 
     async def _evaluate_condition(
         self,

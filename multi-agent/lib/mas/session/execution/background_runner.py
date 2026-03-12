@@ -18,6 +18,8 @@ session from QUEUED → RUNNING.
 """
 from typing import Protocol, runtime_checkable
 
+from mas.graph.state.graph_state import GraphState
+
 
 @runtime_checkable
 class BackgroundSessionOps(Protocol):
@@ -31,15 +33,15 @@ class BackgroundSessionOps(Protocol):
     Celery implements them as direct service calls inside a task.
     """
 
-    async def begin(self) -> dict:
-        """Mark RUNNING, bind context, persist. Return staged state dict."""
+    async def begin(self) -> GraphState:
+        """Mark RUNNING, bind context, persist. Return staged GraphState."""
         ...
 
-    async def execute_graph(self, seeded_state: dict) -> dict:
-        """Run the graph and return the final state dict."""
+    async def execute_graph(self, seeded_state: GraphState) -> GraphState:
+        """Run the graph and return the final GraphState."""
         ...
 
-    async def complete(self, final_state: dict) -> None:
+    async def complete(self, final_state: GraphState) -> None:
         """Attach final state, mark COMPLETED, persist."""
         ...
 
@@ -59,7 +61,7 @@ class BackgroundSessionRunner:
     Mirrors ForegroundSessionRunner for the background path.
     """
 
-    async def run(self, ops: BackgroundSessionOps) -> dict:
+    async def run(self, ops: BackgroundSessionOps) -> GraphState:
         """
         Execute the full background session lifecycle.
 
@@ -68,7 +70,7 @@ class BackgroundSessionRunner:
                  Celery service calls, etc.)
 
         Returns:
-            The final graph state dict.
+            The final GraphState.
         """
         try:
             seeded_state = await ops.begin()
