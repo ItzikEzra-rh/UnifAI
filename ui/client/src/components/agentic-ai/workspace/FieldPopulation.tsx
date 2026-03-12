@@ -77,9 +77,6 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
     hasMore: false,
     total: null
   });
-  // Tracks the dependency values used for the last paginated fetch so we can
-  // detect when a new query stream starts and prune stale selections.
-  const lastPaginationKeyRef = useRef<string | null>(null);
 
   // Radix Dialog's react-remove-scroll blocks wheel events on portaled content
   // (like our Popover) because it lives outside the dialog's DOM tree. This
@@ -368,10 +365,6 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
         });
       }
 
-      // Snapshot the dependency-only portion of the request so we can detect
-      // when a new pagination stream starts (different dependency values).
-      const paginationKey = supportsPagination ? JSON.stringify(inputData) : null;
-
       // Add pagination params if supported
       if (supportsPagination) {
         inputData.limit = 30;
@@ -420,35 +413,6 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
           setPopulatedOptions(normalizedResults);
           if (normalizedResults.length > 0) {
             setHasLoadedOnce(true);
-          }
-          
-          // Prune selections that no longer exist in the new result set.
-          // For paginated fields we only skip pruning when continuing the
-          // same pagination stream (same dependency values), because items
-          // may live on a later page. When the stream changes (different
-          // dependencies) we must prune stale selections.
-          const samePaginationStream =
-            supportsPagination &&
-            (lastPaginationKeyRef.current === null ||
-             paginationKey === lastPaginationKeyRef.current);
-
-          if (!samePaginationStream) {
-            setSelectedValues(prevSelected => {
-              if (prevSelected.length === 0) return prevSelected;
-              const validatedSelections = prevSelected.filter(val => newOptionValues.has(val));
-              
-              if (validatedSelections.length !== prevSelected.length) {
-                setTimeout(() => {
-                  onPopulateResult(fieldName, getSelectedObjects(validatedSelections), populateHint.multi_select || false);
-                }, 0);
-              }
-              
-              return validatedSelections;
-            });
-          }
-
-          if (paginationKey != null) {
-            lastPaginationKeyRef.current = paginationKey;
           }
         } else {
           // Search: merge new results into existing options so that items
@@ -500,12 +464,8 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
   const allOptionsSelected = populatedOptions.length > 0 && 
     selectedValues.length === populatedOptions.length;
 
-  // For multi-select, filter out already selected options from dropdown; sort alphabetically.
-  // Spread before sort to avoid mutating the populatedOptions state array.
-  const availableOptions = (!populateHint.multi_select
-    ? [...populatedOptions]
-    : populatedOptions.filter(opt => !selectedValues.includes(opt.value))
-  ).sort((a, b) => a.label.localeCompare(b.label));
+  // Sort alphabetically. Spread before sort to avoid mutating the state array.
+  const availableOptions = [...populatedOptions].sort((a, b) => a.label.localeCompare(b.label));
 
   // Client-side substring filter on labels (supplements backend search for
   // searchable fields, and is the only filter for non-searchable ones).
@@ -581,25 +541,29 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
                 </CommandItem>
               )}
 
-              {displayedOptions.map((option: OptionItem) => (
-                <CommandItem
-                  key={option.value}
-                  value={option.value}
-                  onSelect={() => {
-                    handleItemSelect(option.value);
-                    if (!populateHint.multi_select) {
-                      setIsDropdownOpen(false);
-                    }
-                  }}
-                >
-                  <Check 
-                    className={`mr-2 h-4 w-4 ${
-                      selectedValues.includes(option.value) ? "opacity-100" : "opacity-0"
-                    }`} 
-                  />
-                  {option.label}
-                </CommandItem>
-              ))}
+              {displayedOptions.map((option: OptionItem) => {
+                const isSelected = selectedValues.includes(option.value);
+                return (
+                  <CommandItem
+                    key={option.value}
+                    value={option.value}
+                    disabled={populateHint.multi_select && isSelected}
+                    onSelect={() => {
+                      if (populateHint.multi_select && isSelected) return;
+                      handleItemSelect(option.value);
+                      if (!populateHint.multi_select) {
+                        setIsDropdownOpen(false);
+                      }
+                    }}
+                    className={populateHint.multi_select && isSelected ? "opacity-50 cursor-default" : ""}
+                  >
+                    <Check 
+                      className={`mr-2 h-4 w-4 ${isSelected ? "opacity-100" : "opacity-0"}`} 
+                    />
+                    {option.label}
+                  </CommandItem>
+                );
+              })}
 
               {supportsPagination && pagination.hasMore && (
                 <CommandItem 
