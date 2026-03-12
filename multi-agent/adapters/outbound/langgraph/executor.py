@@ -20,10 +20,11 @@ class LangGraphExecutor(BaseGraphExecutor):
         self._recursion_limit = recursion_limit
 
     def run(self, initial_state: GraphState, *, session_id: str = "") -> GraphState:
-        return self._compiled.invoke(
+        result = self._compiled.invoke(
             initial_state,
             config={"recursion_limit": self._recursion_limit},
         )
+        return GraphState.model_validate(result) if isinstance(result, dict) else result
 
     def get_state(self) -> Any:
         return self._compiled.get_state(None)
