@@ -4,19 +4,25 @@ Temporal DTO models.
 Serializable parameter objects for workflows and activities.
 These are the transport-layer data contracts for Temporal SDK.
 
+With pydantic_data_converter configured on the client, Temporal
+natively handles model_dump/model_validate for all Pydantic fields.
+
 Shared by both inbound (worker/activities/workflows) and outbound
 (executor/submitter) Temporal adapters.
 """
 from typing import Any, Dict
 from pydantic import BaseModel, Field
 
+from mas.engine.domain.models import GraphDefinition
+from mas.graph.state.graph_state import GraphState
+
 
 # ── Workflow params ──────────────────────────────────────────────────
 
 class GraphExecutionParams(BaseModel):
     """Input to GraphTraversalWorkflow."""
-    state: Dict[str, Any] = Field(default_factory=dict)
-    graph_definition: Dict[str, Any] = Field(default_factory=dict)
+    state: GraphState = Field(default_factory=GraphState)
+    graph_definition: GraphDefinition = Field(default_factory=GraphDefinition)
     session_id: str = ""
 
 
@@ -34,7 +40,7 @@ class SessionWorkflowParams(BaseModel):
     run_id: str
     scope: str = "public"
     logged_in_user: str = ""
-    graph_execution_params: Dict[str, Any] = Field(default_factory=dict)
+    graph_execution_params: GraphExecutionParams = Field(default_factory=GraphExecutionParams)
 
 
 # ── Activity params ──────────────────────────────────────────────────
@@ -44,7 +50,7 @@ class ExecuteNodeParams(BaseModel):
     node_uid: str
     node_blueprint: Dict[str, Any] = Field(default_factory=dict)
     step_context: Dict[str, Any] = Field(default_factory=dict)
-    state: Dict[str, Any] = Field(default_factory=dict)
+    state: GraphState = Field(default_factory=GraphState)
     session_id: str = ""
 
 
@@ -53,7 +59,7 @@ class EvaluateConditionParams(BaseModel):
     condition_rid: str
     condition_blueprint: Dict[str, Any] = Field(default_factory=dict)
     step_context: Dict[str, Any] = Field(default_factory=dict)
-    state: Dict[str, Any] = Field(default_factory=dict)
+    state: GraphState = Field(default_factory=GraphState)
 
 
 class BeginSessionParams(BaseModel):
@@ -69,7 +75,7 @@ class BeginSessionParams(BaseModel):
 class CompleteSessionParams(BaseModel):
     """Input to the complete_session activity."""
     run_id: str
-    final_state: Dict[str, Any] = Field(default_factory=dict)
+    final_state: GraphState = Field(default_factory=GraphState)
 
 
 class FailSessionParams(BaseModel):

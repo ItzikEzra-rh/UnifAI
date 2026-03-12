@@ -38,9 +38,9 @@ class NodeExecutor:
         node_uid: str,
         node_blueprint: Dict[str, Any],
         step_context: Dict[str, Any],
-        state: Dict[str, Any],
+        state: GraphState,
         channel: Optional[SessionChannel] = None,
-    ) -> dict:
+    ) -> GraphState:
         """
         Build ONE node from its mini-blueprint, inject context, run it.
 
@@ -57,16 +57,14 @@ class NodeExecutor:
         if channel and hasattr(step.func, "set_streaming_channel"):
             step.func.set_streaming_channel(channel)
 
-        graph_state = GraphState.deserialize(state)
-        result = step.func(graph_state, config={})
-        return result.serialize()
+        return step.func(state, config={})
 
     def evaluate_condition(
         self,
         condition_rid: str,
         condition_blueprint: Dict[str, Any],
         step_context: Dict[str, Any],
-        state: Dict[str, Any],
+        state: GraphState,
     ) -> str:
         """
         Build a condition from its mini-blueprint, inject context, run it.
@@ -78,7 +76,6 @@ class NodeExecutor:
         if step_context and hasattr(condition, 'set_context'):
             condition.set_context(StepContext.deserialize(step_context))
 
-        graph_state = GraphState.deserialize(state)
-        return condition(graph_state)
+        return condition(state)
 
 

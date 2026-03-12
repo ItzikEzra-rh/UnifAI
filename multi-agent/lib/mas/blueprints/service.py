@@ -47,6 +47,8 @@ class BlueprintService:
         return self._repo.load(blueprint_id)
 
     def update_draft(self, *, blueprint_id: str, draft_dict: dict) -> bool:
+        if not self._repo.exists(blueprint_id):
+            raise BlueprintNotFoundError(blueprint_id)
         draft = BlueprintDraft(**draft_dict)
         rid_refs = list(RefWalker.external_rids(draft))
         return self._repo.update(

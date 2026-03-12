@@ -17,6 +17,7 @@ from datetime import timedelta
 from temporalio import workflow
 from temporalio.common import RetryPolicy
 
+from mas.graph.state.graph_state import GraphState
 from mas.session.execution.background_runner import BackgroundSessionRunner
 from temporal.models import (
     SessionWorkflowParams,
@@ -67,8 +68,8 @@ class SessionWorkflow:
     async def execute_graph(self, seeded_state: dict) -> dict:
         """Run graph traversal as a child workflow."""
         graph_params = GraphExecutionParams(
-            state=seeded_state,
-            graph_definition=self._params.graph_execution_params["graph_definition"],
+            state=GraphState.deserialize(seeded_state),
+            graph_definition=self._params.graph_execution_params.graph_definition,
             session_id=self._params.run_id,
         )
         return await workflow.execute_child_workflow(
@@ -84,7 +85,7 @@ class SessionWorkflow:
             "complete_session",
             CompleteSessionParams(
                 run_id=self._params.run_id,
-                final_state=final_state,
+                final_state=GraphState.deserialize(final_state),
             ),
             start_to_close_timeout=_LIFECYCLE_TIMEOUT,
             retry_policy=_LIFECYCLE_RETRY,

@@ -33,13 +33,14 @@ class GraphNodeActivities:
         if self._channel_factory and params.session_id:
             channel = self._channel_factory.create(params.session_id)
 
-        return self._executor.execute_node(
+        result = self._executor.execute_node(
             node_uid=params.node_uid,
             node_blueprint=params.node_blueprint,
             step_context=params.step_context,
             state=params.state,
             channel=channel,
         )
+        return result.serialize()
 
     @activity.defn(name="evaluate_condition")
     def evaluate_condition(self, params: EvaluateConditionParams) -> str:

@@ -4,10 +4,15 @@ Temporal client factory.
 Provides an async function to connect to the Temporal server
 using configuration from AppConfig.
 
+Uses pydantic_data_converter so Temporal natively serializes/deserializes
+Pydantic models — no manual model_dump / model_validate needed in
+workflow and activity params.
+
 Shared by both inbound (worker) and outbound (executor/submitter)
 Temporal adapters.
 """
 from temporalio.client import Client
+from temporalio.contrib.pydantic import pydantic_data_converter
 
 from mas.config.app_config import AppConfig
 
@@ -17,4 +22,5 @@ async def get_temporal_client() -> Client:
     return await Client.connect(
         cfg.temporal_host,
         namespace=cfg.temporal_namespace,
+        data_converter=pydantic_data_converter,
     )

@@ -7,7 +7,7 @@ Activity calls remain explicit here (Temporal requires direct await on
 workflow.execute_activity for deterministic replay).
 """
 from datetime import timedelta
-from typing import Any, Dict, List
+from typing import Any, List
 
 from temporalio import workflow
 from temporalio.common import RetryPolicy
@@ -43,8 +43,8 @@ class GraphTraversalWorkflow:
 
     @workflow.run
     async def run(self, params: GraphExecutionParams) -> dict:
-        graph = GraphDefinition.model_validate(params.graph_definition)
-        state = GraphState.deserialize(params.state)
+        graph = params.graph_definition
+        state = params.state
         self._session_id = params.session_id
 
         traversal = GraphTraversal(graph, GraphState)
@@ -83,7 +83,7 @@ class GraphTraversalWorkflow:
             node_uid=uid,
             node_blueprint=node_def.node_blueprint,
             step_context=node_def.step_context,
-            state=state.serialize(),
+            state=state,
             session_id=self._session_id,
         )
         result_dict = await workflow.execute_activity(
@@ -104,7 +104,7 @@ class GraphTraversalWorkflow:
             condition_rid=cond.condition_rid,
             condition_blueprint=cond.condition_blueprint,
             step_context=cond.step_context,
-            state=state.serialize(),
+            state=state,
         )
         return await workflow.execute_activity(
             "evaluate_condition",

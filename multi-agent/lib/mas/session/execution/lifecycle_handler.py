@@ -16,7 +16,7 @@ execution lifecycle: begin → complete | fail.
 Adapters (Temporal activities, Celery tasks, etc.) delegate to this
 class so they remain thin one-liner wrappers with zero business logic.
 """
-from typing import Optional
+from typing import Any, Optional
 
 from mas.core.channels import ChannelFactory
 from mas.session.execution.lifecycle import SessionLifecycle
@@ -46,7 +46,7 @@ class BackgroundLifecycleHandler:
         self._lifecycle.begin(record, scope, logged_in_user)
         return record.graph_state.serialize()
 
-    def complete(self, run_id: str, final_state: dict) -> None:
+    def complete(self, run_id: str, final_state: Any) -> None:
         record = self._manager.get_record(run_id)
         self._lifecycle.complete(record, final_state)
         self._close_channel(run_id)
