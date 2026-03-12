@@ -482,8 +482,11 @@ export const FieldPopulation: React.FC<FieldPopulationProps> = ({
   const allOptionsSelected = populatedOptions.length > 0 && 
     selectedValues.length === populatedOptions.length;
 
-  // Sort alphabetically. Spread before sort to avoid mutating the state array.
-  const availableOptions = [...populatedOptions].sort((a, b) => a.label.localeCompare(b.label));
+  // Sort alphabetically for non-paginated fields. Paginated fields keep the
+  // backend's order (e.g. upload time) so "load more" appends naturally.
+  const availableOptions = supportsPagination
+    ? populatedOptions
+    : [...populatedOptions].sort((a, b) => a.label.localeCompare(b.label));
 
   // Client-side substring filter on labels (supplements backend search for
   // searchable fields, and is the only filter for non-searchable ones).
