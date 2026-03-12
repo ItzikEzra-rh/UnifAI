@@ -1,9 +1,9 @@
-from enum import Enum, auto
+from enum import Enum
 
 
-class SessionStatus(Enum):
-    PENDING = auto()
-    QUEUED = auto()
-    RUNNING = auto()
-    COMPLETED = auto()
-    FAILED = auto()
+class SessionStatus(str, Enum):
+    PENDING = "PENDING"
+    QUEUED = "QUEUED"
+    RUNNING = "RUNNING"
+    COMPLETED = "COMPLETED"
+    FAILED = "FAILED"

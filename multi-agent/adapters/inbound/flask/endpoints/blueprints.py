@@ -97,6 +97,23 @@ def available_doc_list(user_id):
         return jsonify({"error": str(e)}), 500
 
 
+@blueprints_bp.route("/available.blueprints.summary.get", methods=["GET"])
+@from_query({
+    "user_id": fields.Str(data_key="userId", required=True)
+})
+def available_blueprint_summaries(user_id):
+    """
+    Return lightweight blueprint summaries (id, name, description,
+    timestamps, metadata) without the full spec.
+    """
+    try:
+        svc = current_app.container.blueprint_service
+        summaries = svc.list_summaries(user_id=user_id)
+        return jsonify([s.model_dump(mode="json") for s in summaries]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @blueprints_bp.route("/available.blueprints.resolved.get", methods=["GET"])
 @from_query({
     "user_id": fields.Str(data_key="userId", required=True),
@@ -171,6 +188,39 @@ def save_blueprint(blueprint_raw=None, user_id="alice", metadata=None):
         return jsonify({"status": "error", "error": str(e)}), 500
     except Exception as e:
         logger.exception(f"Unexpected error saving blueprint for user {user_id}")
+        return jsonify({"status": "error", "error": str(e)}), 500
+
+
+@blueprints_bp.route("/blueprint.update", methods=["PUT"])
+@from_body({
+    "blueprint_id": fields.Str(data_key="blueprintId", required=True),
+    "blueprint_raw": fields.Str(data_key="blueprintRaw", required=True),
+})
+def update_blueprint(blueprint_id=None, blueprint_raw=None):
+    """Update an existing blueprint in-place, keeping the same ID."""
+    try:
+        parsed = _extract_blueprint_data(
+            json_field_value=blueprint_raw,
+            field_name="blueprint_raw"
+        )
+
+        svc = current_app.container.blueprint_service
+        success = svc.update_draft(blueprint_id=blueprint_id, draft_dict=parsed)
+
+        if not success:
+            return jsonify({"status": "error", "error": "Failed to update blueprint"}), 500
+
+        return jsonify({
+            "status": "success",
+            "blueprint_id": blueprint_id,
+        }), 200
+
+    except BlueprintNotFoundError as e:
+        return jsonify({"status": "error", "error": str(e)}), 404
+    except BadRequest as e:
+        return jsonify({"status": "error", "error": str(e)}), 400
+    except Exception as e:
+        logger.exception(f"Unexpected error updating blueprint {blueprint_id}")
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
@@ -287,7 +337,7 @@ def validate_blueprint(blueprint_id, timeout_seconds):
             blueprint_id=blueprint_id,
             timeout_seconds=timeout_seconds,
         )
-        return jsonify(result.to_dict()), 200
+        return jsonify(result.model_dump()), 200
     except BlueprintNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     except KeyError as e:
@@ -327,7 +377,7 @@ def validate_draft(draft=None, timeout_seconds=10.0):
             draft_dict=parsed,
             timeout_seconds=timeout_seconds,
         )
-        return jsonify(result.to_dict()), 200
+        return jsonify(result.model_dump()), 200
         
     except BadRequest as e:
         return jsonify({"error": str(e)}), 400

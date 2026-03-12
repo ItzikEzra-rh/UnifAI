@@ -59,7 +59,7 @@ class UserSessionManager:
         ctx = RunContext(
             user_id=user_id,
             engine_name=self._factory.engine_name,
-            metadata=session_meta.to_dict(),
+            metadata=session_meta.model_dump(),
         )
 
         record = SessionRecord(

@@ -21,6 +21,10 @@ class GetToolsNamesInput(BaseActionInput):
         default=McpTransportType.STREAMABLE_HTTP,
         description="Transport protocol for MCP server communication"
     )
+    additional_headers: Dict[str, Any] = Field(
+        default_factory=dict,
+        description="Additional HTTP headers to include in MCP server requests"
+    )
 
 
 class GetToolsNamesOutput(BaseActionOutput):
@@ -75,6 +79,7 @@ class GetToolsNamesAction(BaseAction):
                 mcp_url=input_data.mcp_url,
                 bearer_token=input_data.bearer_token,
                 transport_type=input_data.transport_type,
+                additional_headers=input_data.additional_headers,
             )
             
             # Create provider using factory - fetches tools during initialization

@@ -12,6 +12,7 @@ into the layers that need them.
 """
 from mas.catalog.element_registry import ElementRegistry
 from mas.catalog.service import CatalogService
+from mas.catalog.card_service import ElementCardService
 from mas.blueprints.service import BlueprintService
 from mas.blueprints.resolver import BlueprintResolver
 from mas.session.building import WorkflowSessionFactory
@@ -68,6 +69,10 @@ class AppContainer(metaclass=SingletonMeta):
             element_registry=self.element_registry
         )
 
+        self.card_service = ElementCardService(
+            element_registry=self.element_registry
+        )
+
         self.blueprint_repo = MongoBlueprintRepository(
             db_name=cfg.mongo_db,
             coll_name=cfg.blueprint_coll
@@ -87,6 +92,7 @@ class AppContainer(metaclass=SingletonMeta):
             resource_registry=resource_registry,
             element_registry=self.element_registry,
             validation_service=self.validation_service,
+            card_service=self.card_service,
         )
 
         self.blueprint_resolver = BlueprintResolver(
@@ -98,6 +104,7 @@ class AppContainer(metaclass=SingletonMeta):
             self.blueprint_repo,
             resolver=self.blueprint_resolver,
             validation_service=self.validation_service,
+            card_service=self.card_service,
         )
 
         self.session_factory = WorkflowSessionFactory(

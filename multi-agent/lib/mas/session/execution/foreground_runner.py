@@ -1,20 +1,27 @@
 """
 Foreground (in-process) session execution with lifecycle orchestration.
 
-Handles both blocking run() and streaming stream() paths.
-The caller's thread stays engaged until execution completes.
+Single ``run()`` entry point with an optional ``stream`` flag:
+  - stream=False → blocking execution, returns final GraphState.
+  - stream=True  → graph runs on a background thread; events flow
+                    through the channel layer and are yielded to the caller.
 
-Inputs are already staged into the SessionRecord by SessionInputProjector
-before this runner is called.  This class only manages the execution
-lifecycle: begin → execute → complete | fail.
+Streaming is an orthogonal concern handled entirely by the channel:
+nodes emit events via SessionChannel, the caller reads them via
+SessionChannelReader.  The executor only ever calls ``run()`` — there
+is no ``stream()`` on the executor.
 """
-from typing import Any, Iterator, Optional
+import logging
+import threading
+from typing import Any, Iterator, Optional, Union
 
-from mas.core.channels import SessionChannel, ChannelFactory
+from mas.core.channels import ChannelFactory
 from mas.core.enums import ResourceCategory
 from mas.graph.state.graph_state import GraphState
 from mas.session.execution.lifecycle import SessionLifecycle
 from mas.session.domain.workflow_session import WorkflowSession
+
+logger = logging.getLogger(__name__)
 
 
 class ForegroundSessionRunner:
@@ -22,8 +29,8 @@ class ForegroundSessionRunner:
     Orchestrates synchronous graph execution with session lifecycle hooks.
 
     Delegates lifecycle transitions (begin / complete / fail) to
-    SessionLifecycle.  Streaming channel management lives here because
-    it is an execution concern, not a lifecycle concern.
+    SessionLifecycle.  When streaming, a channel writer+reader pair
+    decouples execution from event delivery.
     """
 
     def __init__(
@@ -39,11 +46,41 @@ class ForegroundSessionRunner:
         session: WorkflowSession,
         scope: str = "public",
         logged_in_user: str = "",
+        stream: bool = False,
+    ) -> Union[GraphState, Iterator[Any]]:
+        """
+        Execute the session graph.
+
+        Args:
+            session: Fully hydrated workflow session.
+            scope: Execution scope.
+            logged_in_user: Authenticated user performing the action.
+            stream: If True, returns an event iterator instead of the
+                    final state.  The lifecycle is completed internally
+                    once execution finishes.
+
+        Returns:
+            ``GraphState`` when *stream* is False;
+            ``Iterator[Any]`` of channel events when *stream* is True.
+        """
+        if stream:
+            return self._run_streaming(session, scope, logged_in_user)
+        return self._run_blocking(session, scope, logged_in_user)
+
+    # ── Blocking path ────────────────────────────────────────────
+
+    def _run_blocking(
+        self,
+        session: WorkflowSession,
+        scope: str,
+        logged_in_user: str,
     ) -> GraphState:
         self._lifecycle.begin(session.record, scope, logged_in_user)
 
         try:
-            final_state = session.executable_graph.run(session.graph_state)
+            final_state = session.executable_graph.run(
+                session.graph_state, session_id=session.get_run_id(),
+            )
         except Exception as e:
             self._lifecycle.fail(session.record, e)
             raise
@@ -51,52 +88,55 @@ class ForegroundSessionRunner:
         self._lifecycle.complete(session.record, final_state)
         return final_state
 
-    def stream(
+    # ── Streaming path ───────────────────────────────────────────
+
+    def _run_streaming(
         self,
         session: WorkflowSession,
-        scope: str = "public",
-        logged_in_user: str = "",
-        **stream_kwargs: Any,
+        scope: str,
+        logged_in_user: str,
     ) -> Iterator[Any]:
         self._lifecycle.begin(session.record, scope, logged_in_user)
 
         channel = self._channel_factory.create(session.get_run_id())
-        self._inject_streaming(session, channel)
+        reader = self._channel_factory.create_reader(session.get_run_id())
+        self._inject_channel(session, channel)
+
+        result: dict = {"state": None, "error": None}
+
+        def _execute() -> None:
+            try:
+                result["state"] = session.executable_graph.run(
+                    session.graph_state, session_id=session.get_run_id(),
+                )
+            except Exception as e:
+                result["error"] = e
+            finally:
+                channel.close()
+
+        thread = threading.Thread(target=_execute, name=f"graph-exec-{session.get_run_id()[:8]}")
+        thread.start()
 
         try:
-            for chunk in session.executable_graph.stream(
-                session.graph_state,
-                **stream_kwargs,
-            ):
-                yield chunk
-                try:
-                    session.graph_state = (
-                        chunk[1].get("state")
-                        if isinstance(chunk, (list, tuple)) and isinstance(chunk[1], dict)
-                        else None
-                    )
-                except Exception as e:
-                    raise e
+            for event in reader:
+                yield event if event is not None else {"type": "heartbeat"}
+        finally:
+            channel.close()
+            thread.join(timeout=60)
+            self._inject_channel(session, None)
 
-            self._cleanup_streaming(session, channel)
-            self._lifecycle.complete(session.record, session.graph_state)
+            try:
+                if result["error"]:
+                    self._lifecycle.fail(session.record, result["error"])
+                elif result["state"] is not None:
+                    self._lifecycle.complete(session.record, result["state"])
+            except Exception:
+                logger.exception("Failed to complete session lifecycle")
 
-        except GeneratorExit:
-            self._cleanup_streaming(session, channel)
-            self._lifecycle.complete(session.record, session.graph_state)
-            raise
-        except Exception as e:
-            self._cleanup_streaming(session, channel)
-            self._lifecycle.fail(session.record, e)
-            raise
+    # ── Helpers ──────────────────────────────────────────────────
 
     @staticmethod
-    def _inject_streaming(session: WorkflowSession, channel: Optional[SessionChannel]) -> None:
+    def _inject_channel(session: WorkflowSession, channel) -> None:
         for node in session.session_registry.all_of(ResourceCategory.NODE).values():
             if hasattr(node, "set_streaming_channel"):
                 node.set_streaming_channel(channel)
-
-    @staticmethod
-    def _cleanup_streaming(session: WorkflowSession, channel: SessionChannel) -> None:
-        ForegroundSessionRunner._inject_streaming(session, None)
-        channel.close()

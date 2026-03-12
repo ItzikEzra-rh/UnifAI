@@ -6,6 +6,7 @@ from mas.elements.providers.mcp_server_client.config import McpProviderConfig
 from mas.elements.providers.mcp_server_client.mcp_provider_factory import McpProviderFactory
 from mas.elements.providers.mcp_server_client.identifiers import Identifier, META
 from mas.elements.providers.mcp_server_client.validator import McpProviderValidator
+from mas.elements.providers.mcp_server_client.card_builder import McpProviderCardBuilder
 
 
 class McpProviderElementSpec(BaseElementSpec):
@@ -24,3 +25,4 @@ class McpProviderElementSpec(BaseElementSpec):
     factory_cls = McpProviderFactory
     tags = META.tags
     validator_cls = McpProviderValidator
+    card_builder_cls = McpProviderCardBuilder

@@ -13,6 +13,8 @@ from typing import (
 )
 from pydantic import BaseModel
 from mas.core.enums import ResourceCategory
+from mas.elements.common.card.interface import CardBuilder
+from mas.elements.common.card.default import DefaultCardBuilder
 from mas.elements.common.base_factory import BaseFactory
 from mas.elements.common.validator import ElementValidator
 from mas.graph.state.graph_state import Channel
@@ -42,6 +44,9 @@ class BaseElementSpec(ABC):
     
     # ── optional validator ------------------------------------------------
     validator_cls: ClassVar[Optional[Type[ElementValidator]]] = None
+    # ── card building ────────────────────────────────────────────────────
+    capability_names: ClassVar[List[str]] = []
+    card_builder_cls: ClassVar[Type[CardBuilder]] = DefaultCardBuilder
 
     # ─────────────────────────────────────────────────────────────────────
     # compile‑time validation

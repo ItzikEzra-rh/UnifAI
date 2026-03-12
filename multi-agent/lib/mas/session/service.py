@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterator, List, Optional, Union
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 from mas.session.management.user_session_manager import UserSessionManager
 from mas.session.execution.foreground_runner import ForegroundSessionRunner
@@ -45,9 +45,23 @@ class SessionService:
 
     # ---- Two-phase execution entry points ----
 
-    def run(self, session_id: str, inputs: Dict[str, Any], scope: str = "public", logged_in_user="") -> Any:
+    def run(
+        self,
+        session_id: str,
+        inputs: Dict[str, Any],
+        scope: str = "public",
+        logged_in_user: str = "",
+        stream: bool = False,
+    ) -> Any:
         """
-        Execute the session to completion, returning the final result.
+        Execute the session graph.
+
+        When *stream* is False, blocks until completion and returns the
+        final ``GraphState``.
+
+        When *stream* is True, returns an ``Iterator`` of channel events.
+        The execution runs on a background thread; lifecycle transitions
+        are handled internally by the runner.
         """
         self._stage(session_id, inputs)
         session = self._manager.get_session(session_id)
@@ -55,21 +69,7 @@ class SessionService:
             session=session,
             scope=scope,
             logged_in_user=logged_in_user,
-        )
-
-    def stream(self, session_id: str, inputs: Dict[str, Any], stream_mode: list = None,
-               scope: str = "public", logged_in_user="", **stream_kwargs) -> Iterator[Any]:
-        """
-        Execute the session in streaming mode, yielding chunks.
-        """
-        self._stage(session_id, inputs)
-        session = self._manager.get_session(session_id)
-        return self._foreground.stream(
-            session=session,
-            scope=scope,
-            logged_in_user=logged_in_user,
-            stream_mode=stream_mode,
-            **stream_kwargs,
+            stream=stream,
         )
 
     def submit(self, session_id: str, inputs: Dict[str, Any],
@@ -149,7 +149,7 @@ class SessionService:
                     public_usage_scope = bp_metadata.get("usageScope") == "public"
 
             chat_item = ChatHistoryItem.from_doc(doc, blueprint_exists=blueprint_exists, public_usage_scope=public_usage_scope, blueprint_metadata=bp_metadata)
-            chat_items.append(chat_item)
+            chat_items.append(chat_item.model_dump())
 
         return chat_items
 

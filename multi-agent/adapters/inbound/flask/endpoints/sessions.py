@@ -4,7 +4,6 @@ from webargs import fields
 import json
 from pydantic.json import pydantic_encoder
 from mas.session.domain.exceptions import BlueprintNotFoundError
-from inbound.flask.streaming import HeartbeatStream
 
 sessions_bp = Blueprint("sessions", __name__)
 
@@ -45,7 +44,7 @@ def execute_user_session(session_id, inputs, stream_mode, stream, scope, logged_
     """
     Execute (or stream) an existing session.
     - If `stream` is False (default), returns the full result as JSON.
-    - If `stream` is True, returns an NDJSON stream of chunks.
+    - If `stream` is True, returns an NDJSON stream of channel events.
     """
     svc = current_app.container.session_service
 
@@ -54,26 +53,19 @@ def execute_user_session(session_id, inputs, stream_mode, stream, scope, logged_
             session_id=session_id,
             inputs=inputs,
             scope=scope,
-            logged_in_user=logged_in_user
+            logged_in_user=logged_in_user,
         )
         return json.dumps(result, default=pydantic_encoder), 200
 
     def generate():
-        source = svc.stream(
+        for chunk in svc.run(
             session_id=session_id,
             inputs=inputs,
-            stream_mode=stream_mode,
             scope=scope,
-            logged_in_user=logged_in_user
-        )
-        heartbeat_stream = HeartbeatStream(source)
-
-        try:
-            for chunk in heartbeat_stream:
-                yield json.dumps(chunk, default=pydantic_encoder) + "\n"
-        except GeneratorExit:
-            heartbeat_stream.close()
-            raise
+            logged_in_user=logged_in_user,
+            stream=True,
+        ):
+            yield json.dumps(chunk, default=pydantic_encoder) + "\n"
 
     return Response(
         generate(),

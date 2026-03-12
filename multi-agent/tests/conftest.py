@@ -537,7 +537,7 @@ def create_step_context(uid: str, adjacent_nodes: list = None):
 @pytest.fixture
 def element_card():
     """Create a basic ElementCard for testing."""
-    from mas.core.models import ElementCard
+    from mas.elements.common.card import ElementCard
     from mas.core.enums import ResourceCategory
     
     return ElementCard(
@@ -546,12 +546,9 @@ def element_card():
         type_key="test_type",
         name="Test Element",
         description="A test element for testing",
-        capabilities=set(),
-        reads=set(),
-        writes=set(),
-        instance=None,
-        config={},
-        skills={}
+        capabilities=[],
+        skills=[],
+        configuration={},
     )
 
 

@@ -1,11 +1,8 @@
-from dataclasses import dataclass, asdict
 from typing import Any, Dict, Mapping, Optional
-from pydantic import BaseModel, field_validator
-from mas.session.domain.models import SessionMeta
+from pydantic import BaseModel
 
 
-@dataclass(slots=True)
-class ChatHistoryItem:
+class ChatHistoryItem(BaseModel):
     session_id: str
     metadata: Dict[str, Any]
     started_at: str
@@ -26,7 +23,3 @@ class ChatHistoryItem:
             blueprint_id=doc.get("blueprint_id", ""),
             blueprint_exists=blueprint_exists
         )
-
-    # optional helper
-    def asdict(self) -> Dict[str, Any]:
-        return asdict(self)

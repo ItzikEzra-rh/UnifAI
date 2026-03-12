@@ -22,19 +22,6 @@ def merge_string_dicts(existing: Dict[str, str], new_item: Any) -> Dict[str, str
     return existing
 
 
-def merge_dynamic_fields(
-        existing: Dict[str, Any], new_values: Any
-) -> Dict[str, Any]:
-    """
-    Simply updates `existing` with `new_values` if it's a dict.
-    """
-    if not isinstance(existing, dict):
-        existing = {}
-    if isinstance(new_values, dict):
-        existing.update(new_values)
-    return existing
-
-
 def _to_chat(msg: Any):
     """Single-pass conversion to ChatMessage (or None)."""
     if isinstance(msg, ChatMessage):

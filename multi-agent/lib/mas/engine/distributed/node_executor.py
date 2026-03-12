@@ -10,12 +10,11 @@ streaming-capable nodes so background workers can emit events.
 """
 from typing import Any, Dict, Optional
 
-from mas.blueprints.models.blueprint import BlueprintSpec, StepMeta
+from mas.blueprints.models.blueprint import BlueprintSpec
 from mas.core.channels import SessionChannel
 from mas.core.enums import ResourceCategory
-from mas.graph.models import StepContext, AdjacentNodes
+from mas.graph.models import StepContext
 from mas.graph.state.graph_state import GraphState
-from mas.graph.topology.models import StepTopology
 from mas.session.building.workflow_session_factory import WorkflowSessionFactory
 
 
@@ -39,9 +38,9 @@ class NodeExecutor:
         node_uid: str,
         node_blueprint: Dict[str, Any],
         step_context: Dict[str, Any],
-        state: Dict[str, Any],
+        state: GraphState,
         channel: Optional[SessionChannel] = None,
-    ) -> dict:
+    ) -> GraphState:
         """
         Build ONE node from its mini-blueprint, inject context, run it.
 
@@ -53,22 +52,19 @@ class NodeExecutor:
         step = rt_plan.get_step(node_uid)
 
         if step_context:
-            real_ctx = _deserialize_step_context(step_context)
-            step.func.set_context(real_ctx)
+            step.func.set_context(StepContext.deserialize(step_context))
 
         if channel and hasattr(step.func, "set_streaming_channel"):
             step.func.set_streaming_channel(channel)
 
-        graph_state = GraphState.deserialize(state)
-        result = step.func(graph_state, config={})
-        return result.serialize()
+        return step.func(state, config={})
 
     def evaluate_condition(
         self,
         condition_rid: str,
         condition_blueprint: Dict[str, Any],
         step_context: Dict[str, Any],
-        state: Dict[str, Any],
+        state: GraphState,
     ) -> str:
         """
         Build a condition from its mini-blueprint, inject context, run it.
@@ -78,39 +74,8 @@ class NodeExecutor:
         condition = registry.get_instance(ResourceCategory.CONDITION, condition_rid)
 
         if step_context and hasattr(condition, 'set_context'):
-            real_ctx = _deserialize_step_context(step_context)
-            condition.set_context(real_ctx)
+            condition.set_context(StepContext.deserialize(step_context))
 
-        graph_state = GraphState.deserialize(state)
-        return condition(graph_state)
+        return condition(state)
 
 
-def _deserialize_step_context(data: dict) -> StepContext:
-    """Reconstruct a StepContext from a serialized dict."""
-    from mas.core.models import ElementCard
-
-    adjacent_data = data.get("adjacent_nodes", {})
-    nodes_dict = {}
-    for uid, card_dict in adjacent_data.get("nodes", {}).items():
-        nodes_dict[uid] = ElementCard(
-            uid=card_dict.get("uid", uid),
-            category=ResourceCategory(card_dict.get("category", "nodes")),
-            type_key=card_dict.get("type_key", ""),
-            name=card_dict.get("name", ""),
-            description=card_dict.get("description", ""),
-            capabilities=set(card_dict.get("capabilities", [])),
-            reads=set(card_dict.get("reads", [])),
-            writes=set(card_dict.get("writes", [])),
-            instance=None,
-            config=card_dict.get("config"),
-            skills=card_dict.get("skills", {}),
-            metadata=card_dict.get("metadata"),
-        )
-
-    return StepContext(
-        uid=data.get("uid", ""),
-        metadata=StepMeta.model_validate(data.get("metadata", {})),
-        adjacent_nodes=AdjacentNodes(nodes=nodes_dict),
-        branches=data.get("branches", {}),
-        topology=StepTopology.model_validate(data.get("topology", {})),
-    )

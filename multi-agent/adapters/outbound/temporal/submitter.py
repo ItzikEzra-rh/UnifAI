@@ -58,25 +58,24 @@ class TemporalSessionSubmitter(BackgroundSessionSubmitter):
         cfg = AppConfig.get_instance()
         client = await get_temporal_client()
 
-        graph_def = executor.graph_definition
-        state_dict = (
-            session.graph_state.serialize()
+        state = (
+            session.graph_state
             if isinstance(session.graph_state, GraphState)
-            else dict(session.graph_state)
+            else GraphState.deserialize(session.graph_state)
         )
 
         workflow_id = f"session-{uuid.uuid4().hex[:12]}"
 
         graph_params = GraphExecutionParams(
-            state=state_dict,
-            graph_definition=graph_def.model_dump(mode="json"),
+            state=state,
+            graph_definition=executor.graph_definition,
             session_id=session.get_run_id(),
         )
         params = SessionWorkflowParams(
             run_id=session.get_run_id(),
             scope=request.scope,
             logged_in_user=request.logged_in_user,
-            graph_execution_params=graph_params.model_dump(mode="json"),
+            graph_execution_params=graph_params,
         )
         await client.start_workflow(
             _WORKFLOW_NAME,

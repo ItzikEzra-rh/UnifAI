@@ -240,7 +240,7 @@ def create_step_context_local(uid: str, adjacent_nodes: List[str] = None):
     """
     from mas.graph.models import StepContext
     from mas.graph.models import AdjacentNodes
-    from mas.core.models import ElementCard
+    from mas.elements.common.card import ElementCard
     from mas.core.enums import ResourceCategory
     from mas.blueprints.models.blueprint import StepMeta
     
@@ -256,12 +256,9 @@ def create_step_context_local(uid: str, adjacent_nodes: List[str] = None):
             type_key="test_node",
             name=node_uid,
             description=f"Test node {node_uid}",
-            capabilities=set(),
-            reads=set(),
-            writes=set(),
-            instance=None,
-            config={},
-            skills={}
+            capabilities=[],
+            skills=[],
+            configuration={},
         )
         adjacent_nodes_dict[node_uid] = card
     

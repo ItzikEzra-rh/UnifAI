@@ -10,7 +10,7 @@ Used by:
   - SessionLifecycle: mutate status/state and persist
   - BackgroundLifecycleHandler: avoid expensive full-session hydration
 """
-from dataclasses import dataclass
+from pydantic import BaseModel, ConfigDict, Field
 
 from mas.core.run_context import RunContext
 from mas.graph.state.graph_state import GraphState
@@ -18,12 +18,13 @@ from mas.session.domain.models import SessionMeta
 from mas.session.domain.status import SessionStatus
 
 
-@dataclass
-class SessionRecord:
+class SessionRecord(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+
     run_id: str
     user_id: str
     blueprint_id: str
     run_context: RunContext
-    metadata: SessionMeta
-    graph_state: GraphState
-    status: SessionStatus
+    metadata: SessionMeta = Field(default_factory=SessionMeta)
+    graph_state: GraphState = Field(default_factory=GraphState)
+    status: SessionStatus = SessionStatus.PENDING

@@ -291,7 +291,6 @@ GraphState
 │  target_branch      last write wins           LastValueChannel   │
 │  nodes_output       merge dicts               BinOpChannel       │
 │  messages           append                    BinOpChannel       │
-│  dynamic_fields     update dict               BinOpChannel       │
 │  inter_packets      append                    BinOpChannel       │
 │  task_threads       merge                     BinOpChannel       │
 │  threads            merge                     BinOpChannel       │

@@ -149,7 +149,7 @@ def validate_resource(resource_id, timeout_seconds):
             rid=resource_id,
             timeout_seconds=timeout_seconds,
         )
-        return jsonify(result.to_dict()), 200
+        return jsonify(result.model_dump()), 200
     except KeyError as e:
         return jsonify({"error": f"Resource not found: {e}"}), 404
     except RuntimeError as e:
@@ -199,7 +199,60 @@ def validate_resources(resource_ids, timeout_seconds, max_workers):
             timeout_seconds=timeout_seconds,
             max_workers=max_workers,
         )
-        return jsonify([r.to_dict() for r in results]), 200
+        return jsonify([r.model_dump() for r in results]), 200
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@resources_bp.route("/resource.card", methods=["GET"])
+@from_query({
+    "resource_id": fields.Str(data_key="resourceId", required=True),
+})
+def get_resource_card(resource_id):
+    """
+    Get the element card for a saved resource.
+
+    Returns the ElementCard which describes the resource's identity,
+    skills, capabilities, and configuration summary.
+    """
+    svc = current_app.container.resources_service
+    try:
+        card = svc.get_card(rid=resource_id)
+        return jsonify(card.model_dump(mode="json")), 200
+    except KeyError as e:
+        return jsonify({"error": f"Resource not found: {e}"}), 404
+    except RuntimeError as e:
+        return jsonify({"error": str(e)}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@resources_bp.route("/resources.cards", methods=["POST"])
+@from_body({
+    "resource_ids": fields.List(fields.Str(), data_key="resourceIds", required=True),
+})
+def get_resource_cards(resource_ids):
+    """
+    Get element cards for multiple resources.
+
+    Returns a dictionary mapping resource IDs to their ElementCards.
+    Also includes cards for any transitive dependencies.
+    """
+    svc = current_app.container.resources_service
+
+    if not resource_ids:
+        return jsonify({}), 200
+
+    try:
+        cards = svc.get_cards(rids=resource_ids)
+        return jsonify({
+            rid: card.model_dump(mode="json")
+            for rid, card in cards.items()
+        }), 200
+    except KeyError as e:
+        return jsonify({"error": f"Resource not found: {e}"}), 404
     except RuntimeError as e:
         return jsonify({"error": str(e)}), 500
     except Exception as e:
@@ -230,7 +283,7 @@ def validate_config(category, type, config, name=None, timeout_seconds=10.0):
             name=name,
             timeout_seconds=timeout_seconds,
         )
-        return jsonify(result.to_dict()), 200
+        return jsonify(result.model_dump()), 200
     except ValueError as e:
         return jsonify({"error": f"Schema validation failed: {e}"}), 400
     except RuntimeError as e:

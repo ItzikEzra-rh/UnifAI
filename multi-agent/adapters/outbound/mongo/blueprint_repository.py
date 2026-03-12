@@ -2,7 +2,7 @@ import pymongo
 from uuid import uuid4
 from datetime import datetime
 from typing import List, Dict, Any
-from mas.blueprints.models.blueprint import BlueprintDraft, BlueprintDocument
+from mas.blueprints.models.blueprint import BlueprintDraft, BlueprintDocument, BlueprintSummary
 from mas.blueprints.repository.repository import BlueprintRepository
 from mas.core.enums import ResourceCategory
 from global_utils.utils.util import get_mongo_url
@@ -113,6 +113,44 @@ class MongoBlueprintRepository(BlueprintRepository):
             .limit(limit)
         )
         return [BlueprintDocument(**raw) for raw in cursor]
+
+    def list_summaries(
+            self,
+            *,
+            user_id: str | None = None,
+            skip: int = 0,
+            limit: int = 100,
+            sort_desc: bool = True,
+    ) -> List[BlueprintSummary]:
+        projection = {
+            "_id": 0,
+            "blueprint_id": 1,
+            "user_id": 1,
+            "created_at": 1,
+            "updated_at": 1,
+            "metadata": 1,
+            "spec_dict.name": 1,
+            "spec_dict.description": 1,
+        }
+        cursor = (
+            self._col.find(self._user_q(user_id), projection)
+            .sort("updated_at", pymongo.DESCENDING if sort_desc else pymongo.ASCENDING)
+            .skip(skip)
+            .limit(limit)
+        )
+        summaries = []
+        for doc in cursor:
+            spec = doc.get("spec_dict", {})
+            summaries.append(BlueprintSummary(
+                blueprint_id=doc["blueprint_id"],
+                user_id=doc["user_id"],
+                name=spec.get("name", "Untitled blueprint"),
+                description=spec.get("description", ""),
+                created_at=doc["created_at"],
+                updated_at=doc["updated_at"],
+                metadata=doc.get("metadata", {}),
+            ))
+        return summaries
 
     def list_direct_usage(self, rid: str) -> List[str]:
         cur = self._col.find({"rid_refs": rid}, {"blueprint_id": 1})

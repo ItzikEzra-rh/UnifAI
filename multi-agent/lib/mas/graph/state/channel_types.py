@@ -96,7 +96,6 @@ class BinOpChannel(BaseStateChannel):
         task_threads   → merge_task_threads
         threads        → merge_threads
         workspaces     → merge_workspaces
-        dynamic_fields → merge_dynamic_fields
 
     extract_write uses type-aware inference so operators always receive
     the right shape of data:

@@ -67,7 +67,7 @@ class LangChainConverter:
             return ChatMessage(
                 role=Role.ASSISTANT,
                 content=m.content or " " if tool_calls else m.content,
-                tool_calls=[ToolCall(**tc.to_dict()) for tc in tool_calls] if tool_calls else None,
+                tool_calls=[ToolCall(**tc.model_dump()) for tc in tool_calls] if tool_calls else None,
                 additional_kwargs=getattr(m, 'additional_kwargs', None)
             )
 
