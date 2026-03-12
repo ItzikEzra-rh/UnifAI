@@ -6,7 +6,7 @@ Clean Pydantic models for managing adjacent nodes in a SOLID way.
 
 from typing import Dict, List, Set, Optional
 from pydantic import BaseModel, Field
-from mas.core.models import ElementCard
+from mas.elements.common.card import ElementCard
 
 
 class AdjacentNodes(BaseModel):
@@ -70,7 +70,7 @@ class AdjacentNodes(BaseModel):
         """Filter nodes by capability."""
         filtered = {
             uid: card for uid, card in self.nodes.items()
-            if capability in card.capabilities
+            if any(cap.name == capability for cap in card.capabilities)
         }
         return AdjacentNodes(nodes=filtered)
     
@@ -84,11 +84,17 @@ class AdjacentNodes(BaseModel):
     
     def has_capability(self, capability: str) -> bool:
         """Check if any adjacent node has the given capability."""
-        return any(capability in card.capabilities for card in self.nodes.values())
+        return any(
+            any(cap.name == capability for cap in card.capabilities)
+            for card in self.nodes.values()
+        )
     
     def get_by_capability(self, capability: str) -> List[ElementCard]:
         """Get all nodes with the given capability."""
-        return [card for card in self.nodes.values() if capability in card.capabilities]
+        return [
+            card for card in self.nodes.values()
+            if any(cap.name == capability for cap in card.capabilities)
+        ]
     
     def to_dict(self) -> Dict[str, ElementCard]:
         """Convert to plain dict for backward compatibility."""

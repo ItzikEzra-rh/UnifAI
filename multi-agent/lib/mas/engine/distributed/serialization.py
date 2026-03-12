@@ -96,14 +96,7 @@ class NodeDeploymentSerializer:
         ctx = step.func._ctx
         if ctx is None:
             return {}
-
-        return {
-            "uid": ctx.uid,
-            "metadata": ctx.metadata.model_dump(mode="json") if hasattr(ctx.metadata, 'model_dump') else {},
-            "adjacent_nodes": _serialize_adjacent_nodes(ctx.adjacent_nodes),
-            "branches": dict(ctx.branches),
-            "topology": ctx.topology.model_dump(mode="json") if hasattr(ctx.topology, 'model_dump') else {},
-        }
+        return ctx.serialize()
 
     def _find_resource_spec(self, rid: str) -> Optional[Tuple[ResourceCategory, Any]]:
         """Look up a rid across all resource categories."""
@@ -128,31 +121,3 @@ def _collect_refs(obj: Any) -> Set[str]:
     elif isinstance(obj, str) and obj.startswith("$ref:"):
         refs.add(obj[5:])
     return refs
-
-
-def _serialize_adjacent_nodes(adjacent_nodes) -> Dict[str, Any]:
-    """
-    Serialize AdjacentNodes, EXCLUDING live instance references.
-
-    ElementCard has `instance: Any` which holds the live node object.
-    This can't be serialized. We extract only the serializable fields.
-    """
-    from dataclasses import fields as dc_fields
-
-    serialized_nodes = {}
-    for uid, card in adjacent_nodes.nodes.items():
-        card_dict = {}
-        for f in dc_fields(card):
-            if f.name == "instance":
-                continue
-            value = getattr(card, f.name)
-            if isinstance(value, set):
-                card_dict[f.name] = list(value)
-            elif hasattr(value, 'model_dump'):
-                card_dict[f.name] = value.model_dump(mode="json")
-            elif hasattr(value, 'value'):
-                card_dict[f.name] = value.value
-            else:
-                card_dict[f.name] = value
-        serialized_nodes[uid] = card_dict
-    return {"nodes": serialized_nodes}

@@ -97,6 +97,23 @@ def available_doc_list(user_id):
         return jsonify({"error": str(e)}), 500
 
 
+@blueprints_bp.route("/available.blueprints.summary.get", methods=["GET"])
+@from_query({
+    "user_id": fields.Str(data_key="userId", required=True)
+})
+def available_blueprint_summaries(user_id):
+    """
+    Return lightweight blueprint summaries (id, name, description,
+    timestamps, metadata) without the full spec.
+    """
+    try:
+        svc = current_app.container.blueprint_service
+        summaries = svc.list_summaries(user_id=user_id)
+        return jsonify([s.model_dump(mode="json") for s in summaries]), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @blueprints_bp.route("/available.blueprints.resolved.get", methods=["GET"])
 @from_query({
     "user_id": fields.Str(data_key="userId", required=True),
@@ -287,7 +304,7 @@ def validate_blueprint(blueprint_id, timeout_seconds):
             blueprint_id=blueprint_id,
             timeout_seconds=timeout_seconds,
         )
-        return jsonify(result.to_dict()), 200
+        return jsonify(result.model_dump()), 200
     except BlueprintNotFoundError as e:
         return jsonify({"error": str(e)}), 404
     except KeyError as e:
@@ -327,7 +344,7 @@ def validate_draft(draft=None, timeout_seconds=10.0):
             draft_dict=parsed,
             timeout_seconds=timeout_seconds,
         )
-        return jsonify(result.to_dict()), 200
+        return jsonify(result.model_dump()), 200
         
     except BadRequest as e:
         return jsonify({"error": str(e)}), 400

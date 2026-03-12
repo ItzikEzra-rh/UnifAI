@@ -3,6 +3,7 @@ from mas.core.enums import ResourceCategory
 from ..config import McpProxyToolConfig
 from ..mcp_proxy_factory import McpProxyToolFactory
 from ..identifiers import Identifier, META
+from mas.elements.tools.common.card_builder import ToolCardBuilder
 
 
 class McpProxyToolElementSpec(BaseElementSpec):
@@ -15,3 +16,4 @@ class McpProxyToolElementSpec(BaseElementSpec):
     config_schema = McpProxyToolConfig
     factory_cls = McpProxyToolFactory
     tags = META.tags
+    card_builder_cls = ToolCardBuilder

@@ -55,10 +55,11 @@ class SessionLifecycle:
         """
         Post-execution: attach final state, mark COMPLETED, persist.
         """
-        if isinstance(final_state, dict):
-            record.graph_state = GraphState(**final_state)
-        else:
+        if isinstance(final_state, GraphState):
             record.graph_state = final_state
+        elif isinstance(final_state, dict):
+            record.graph_state = GraphState(**final_state)
+        # else: keep existing record.graph_state unchanged
 
         record.run_context = record.run_context.mark_finished()
         set_current_context(record.run_context)

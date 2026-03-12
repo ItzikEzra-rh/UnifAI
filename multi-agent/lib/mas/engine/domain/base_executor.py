@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Iterator
+from typing import Any
 from mas.graph.state.graph_state import GraphState
 
 
@@ -7,21 +7,20 @@ class BaseGraphExecutor(ABC):
     """
     Abstract base class for graph executors.
 
-    Every engine implementation (LangGraph, Temporal, etc.)
-    must subclass this and implement all three methods.
+    Streaming is NOT this class's concern — it is handled orthogonally
+    by the channel layer (SessionChannel / SessionChannelReader).
+    Executors only know how to run a graph to completion.
     """
 
     @abstractmethod
-    def run(self, initial_state: Any) -> Any:
+    def run(self, initial_state: Any, *, session_id: str = "") -> Any:
         """
         Drive the graph from its entry to its exit and return the final state.
-        """
-        ...
 
-    @abstractmethod
-    def stream(self, initial_state: Any, *args, **kwargs) -> Iterator[Any]:
-        """
-        Stream the graph's output chunk by chunk.
+        Args:
+            initial_state: The starting graph state.
+            session_id: Optional session identifier used by distributed
+                        executors to enable channel-based streaming on workers.
         """
         ...
 

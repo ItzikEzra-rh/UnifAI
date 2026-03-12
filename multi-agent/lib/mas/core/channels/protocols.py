@@ -5,20 +5,9 @@ SessionChannel:        Write side — nodes emit events during execution.
 SessionChannelReader:  Read side  — subscribe endpoint consumes events.
 SessionStreamMonitor:  Query side — stream metadata and active sessions.
 ChannelFactory:        Creates writers, readers, and monitors.
-StreamEmitter:         Low-level emission abstraction (LangGraph, etc.).
 """
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterator, List, Optional
-
-
-class StreamEmitter(ABC):
-    """Low-level emission abstraction for engine-specific streaming."""
-
-    @abstractmethod
-    def emit(self, data: Any) -> None: ...
-
-    @abstractmethod
-    def is_active(self) -> bool: ...
 
 
 class SessionChannel(ABC):

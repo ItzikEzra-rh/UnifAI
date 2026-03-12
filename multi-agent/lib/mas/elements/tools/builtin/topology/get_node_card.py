@@ -2,7 +2,7 @@
 Tool for getting detailed node information.
 """
 
-from typing import Dict, Any, Callable
+from typing import Dict, Any, Callable, List
 from pydantic import BaseModel, Field
 from mas.elements.tools.common.base_tool import BaseTool
 from mas.elements.nodes.common.agent.constants import ToolNames
@@ -21,12 +21,6 @@ class GetNodeCardTool(BaseTool):
     args_schema = GetNodeCardArgs
     
     def __init__(self, get_adjacent_nodes: Callable[[], Dict[str, Any]]):
-        """
-        Initialize with adjacency accessor.
-        
-        Args:
-            get_adjacent_nodes: Function to get adjacent nodes dict
-        """
         self._get_adjacent_nodes = get_adjacent_nodes
     
     def run(self, **kwargs) -> Dict[str, Any]:
@@ -42,44 +36,25 @@ class GetNodeCardTool(BaseTool):
         
         card = adjacent_nodes.get_card(args.uid)
         
-        # Extract detailed information
         node_details = {
             "found": True,
             "uid": args.uid,
             "name": card.name,
             "type": card.type_key,
             "description": card.description,
-            "capabilities": list(card.capabilities) if card.capabilities else [],
-            "reads_channels": list(card.reads) if card.reads else [],
-            "writes_channels": list(card.writes) if card.writes else [],
-            "skills": self._extract_skills(card.skills)
+            "capabilities": [cap.name for cap in card.capabilities] if card.capabilities else [],
+            "skills": self._extract_skills(card.skills),
+            "configuration": card.configuration if card.configuration else {},
         }
         
         return node_details
     
-    def _extract_skills(self, skills: Dict[str, Any]) -> Dict[str, Any]:
+    def _extract_skills(self, skills: List) -> List[Dict[str, str]]:
         """Extract skills in a structured format."""
-        extracted = {}
-        
-        for skill_type, skill_data in skills.items():
-            if isinstance(skill_data, list):
-                # Extract tool/retriever names and descriptions
-                extracted[skill_type] = [
-                    {
-                        "name": item.get("name", "Unknown"),
-                        "description": item.get("description", "No description")
-                    }
-                    for item in skill_data
-                    if isinstance(item, dict) and "name" in item
-                ]
-            elif isinstance(skill_data, dict) and "name" in skill_data:
-                # Single skill item
-                extracted[skill_type] = {
-                    "name": skill_data["name"],
-                    "description": skill_data.get("description", "No description")
-                }
-            else:
-                # Other skill data
-                extracted[skill_type] = skill_data
-        
+        extracted = []
+        for skill in skills:
+            extracted.append({
+                "name": skill.name,
+                "description": skill.description or ""
+            })
         return extracted

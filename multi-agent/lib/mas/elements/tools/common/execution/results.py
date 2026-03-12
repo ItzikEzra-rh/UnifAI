@@ -86,13 +86,4 @@ class ExecutionMetrics:
         self.average_execution_time = self.total_time / self.total_executions
         self.error_rate = (self.total_errors / self.total_executions) * 100 if self.total_executions > 0 else 0.0
     
-    def to_dict(self) -> Dict[str, Any]:
-        """Convert metrics to dictionary."""
-        return {
-            "total_executions": self.total_executions,
-            "total_errors": self.total_errors,
-            "total_time": self.total_time,
-            "average_execution_time": self.average_execution_time,
-            "error_rate": self.error_rate
-        }
 

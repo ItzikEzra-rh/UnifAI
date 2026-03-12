@@ -1,6 +1,15 @@
+"""
+Runtime-enabled GraphPlan wrapper.
+
+Composes a logical GraphPlan with runtime elements and element cards.
+"""
+
 from typing import List, Dict, Optional, Iterator, Any
 from mas.session.domain.session_registry import SessionRegistry
-from mas.core.element_card_builder import ElementCardBuilder
+from mas.session.collector import SessionConfigCollector
+from mas.catalog.element_registry import ElementRegistry
+from mas.catalog.card_service import ElementCardService
+from mas.elements.common.card import ElementCard
 from mas.core.enums import ResourceCategory
 from .graph_plan import GraphPlan
 from .models import Step, RTStep
@@ -15,11 +24,20 @@ class RTGraphPlan:
     but with RTStep objects containing bound callables.
     """
 
-    def __init__(self, logical_plan: GraphPlan, session_registry: SessionRegistry):
+    def __init__(
+            self,
+            logical_plan: GraphPlan,
+            session_registry: SessionRegistry,
+            element_registry: ElementRegistry
+    ):
         self._logical_plan = logical_plan
         self._session = session_registry
-        self._card_builder = ElementCardBuilder(session_registry)
+        self._card_service = ElementCardService(element_registry)
+        self._session_collector = SessionConfigCollector()
+        self._cards: Dict[str, ElementCard] = {}
         self._rt_steps: Dict[str, RTStep] = {}
+
+        self._build_all_cards()
         self._build_runtime_steps()
 
     @property
@@ -72,6 +90,19 @@ class RTGraphPlan:
     #  Private Implementation
     # ------------------------------------------------------------------ #
 
+    def _build_all_cards(self) -> None:
+        """Build all element cards from session registry using SessionConfigCollector."""
+        configs = self._session_collector.collect(self._session)
+        self._cards = self._card_service.build_all_cards(configs)
+
+    def _get_card(self, rid: str, step_uid: str, metadata: Any) -> ElementCard:
+        """Get card for a node, adding step-specific metadata."""
+        base_card = self._cards.get(rid)
+        if base_card is None:
+            return None
+
+        return base_card.model_copy(update={"uid": step_uid, "metadata": metadata})
+
     def _build_runtime_steps(self) -> None:
         """Build all runtime steps from logical steps."""
         for logical_step in self._logical_plan.steps:
@@ -80,48 +111,30 @@ class RTGraphPlan:
 
     def _create_runtime_step(self, step: Step) -> RTStep:
         """Create a runtime step from a logical step."""
-        # ------------------------------------------------------------------ #
-        # 1. Build rich StepContext (adjacent nodes + branching logic + topology)
-        # ------------------------------------------------------------------ #
         from .models import AdjacentNodes
         from .topology.finalizer_analyzer import FinalizerAnalyzer
-        
+
         adjacent_nodes_dict = {}
-        
-        # Find direct connections: steps that have this step in their 'after' list
+
         for other_step in self._logical_plan.steps:
             if step.uid in other_step.after:
-                # This other_step executes directly after current step
-                card = self._card_builder.build_card(
-                    ResourceCategory.NODE, 
-                    other_step.rid,
-                    uid=other_step.uid, 
-                    metadata=other_step.meta
-                )
-                adjacent_nodes_dict[other_step.uid] = card
-        
-        # Add conditional connections (branches from this step)
+                card = self._get_card(other_step.rid, other_step.uid, other_step.meta)
+                if card:
+                    adjacent_nodes_dict[other_step.uid] = card
+
         branches: Dict[str, str] = step.branches or {}
         for outcome, next_uid in branches.items():
             tgt = self._logical_plan.get_step(next_uid)
             if tgt is not None:
-                card = self._card_builder.build_card(
-                    ResourceCategory.NODE,
-                    tgt.rid,
-                    uid=tgt.uid,
-                    metadata=tgt.meta
-                )
-                adjacent_nodes_dict[next_uid] = card
+                card = self._get_card(tgt.rid, tgt.uid, tgt.meta)
+                if card:
+                    adjacent_nodes_dict[next_uid] = card
 
-        # Create clean Pydantic model
         adjacent_nodes = AdjacentNodes.from_dict(adjacent_nodes_dict)
-        
-        # ------------------------------------------------------------------ #
-        # 2. Analyze topology (paths to finalizers with cycle prevention)
-        # ------------------------------------------------------------------ #
-        analyzer = FinalizerAnalyzer(output_channel="output")  # Channel.OUTPUT maps to "output"
+
+        analyzer = FinalizerAnalyzer(output_channel="output")
         adjacent_node_uids = list(adjacent_nodes_dict.keys())
-        
+
         topology = analyzer.analyze_node_topology(
             plan=self._logical_plan,
             from_node_uid=step.uid,
@@ -135,10 +148,6 @@ class RTGraphPlan:
             branches=branches,
             topology=topology,
         )
-
-        # ------------------------------------------------------------------ #
-        # 3. Bind node & condition callables + inject context
-        # ------------------------------------------------------------------ #
 
         node_func = self._session.get_instance(ResourceCategory.NODE, step.rid)
         if hasattr(node_func, "set_context"):

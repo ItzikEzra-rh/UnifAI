@@ -10,6 +10,7 @@ the payload field is never polluted.
 TTL is configurable; set to 0 to persist streams forever.
 """
 import json
+import threading
 from typing import Any
 
 from redis import Redis
@@ -26,6 +27,7 @@ class RedisSessionChannel(SessionChannel):
         self._stream_key = f"{STREAM_PREFIX}{session_id}"
         self._ttl = ttl
         self._closed = False
+        self._close_lock = threading.Lock()
         self._redis.sadd(ACTIVE_SESSIONS_KEY, session_id)
 
     @property
@@ -45,13 +47,16 @@ class RedisSessionChannel(SessionChannel):
         return not self._closed
 
     def close(self) -> None:
+        with self._close_lock:
+            if self._closed:
+                return
+            self._closed = True
         self._redis.xadd(
             self._stream_key,
             {StreamField.CONTROL: ControlSignal.CLOSE},
         )
         self._redis.srem(ACTIVE_SESSIONS_KEY, self._session_id)
         self._redis.delete(self._stream_key)
-        self._closed = True
 
     def supports_input(self) -> bool:
         return True

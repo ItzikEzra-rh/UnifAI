@@ -5,8 +5,8 @@ Base packet for transport layer and specific packet implementations.
 Clean separation between transport concerns and payload.
 """
 
-from pydantic import BaseModel, Field
-from typing import Any, Optional, Dict
+from pydantic import BaseModel, Discriminator, Field, Tag
+from typing import Annotated, Any, Dict, Literal, Optional, Union
 from datetime import datetime, timedelta
 import uuid
 from .models import ElementAddress, PacketType
@@ -21,7 +21,7 @@ class BaseIEMPacket(BaseModel):
     """
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     protocol: str = "iem/2.0"
-    type: str  # Defined by subclasses (task, system, debug)
+    type: str
     ts: datetime = Field(default_factory=datetime.utcnow)
     ttl: Optional[timedelta] = None
     src: ElementAddress
@@ -53,24 +53,12 @@ class TaskPacket(BaseIEMPacket):
     Transport layer handles routing, acknowledgment, lifecycle.
     Task payload handles agentic business logic and coordination.
     """
-    type: PacketType = PacketType.TASK
-    payload: Dict[str, Any]  # Task as dictionary
+    type: Literal[PacketType.TASK] = PacketType.TASK
+    payload: Dict[str, Any]
     
     @classmethod
     def create(cls, src: ElementAddress, dst: ElementAddress, 
                task: 'Task', **kwargs) -> 'TaskPacket':
-        """
-        Create task packet with task payload.
-        
-        Args:
-            src: Source element address
-            dst: Destination element address  
-            task: Task to carry as payload
-            **kwargs: Additional packet parameters
-            
-        Returns:
-            TaskPacket instance
-        """
         return cls(
             src=src,
             dst=dst,
@@ -79,28 +67,24 @@ class TaskPacket(BaseIEMPacket):
         )
     
     def extract_task(self) -> 'Task':
-        """
-        Extract task from payload.
-        
-        Returns:
-            Task instance from payload
-            
-        Raises:
-            ValueError: If payload is not a valid task
-        """
         from mas.elements.nodes.common.workload import Task
         return Task.model_validate(self.payload)
 
 
-# Additional packet types for future use
 class SystemPacket(BaseIEMPacket):
     """System packet for system-level communication."""
-    type: PacketType = PacketType.SYSTEM
+    type: Literal[PacketType.SYSTEM] = PacketType.SYSTEM
     system_event: str
     data: Dict[str, Any] = Field(default_factory=dict)
 
 
 class DebugPacket(BaseIEMPacket):
     """Debug packet for development and debugging."""
-    type: PacketType = PacketType.DEBUG
+    type: Literal[PacketType.DEBUG] = PacketType.DEBUG
     debug_info: Dict[str, Any] = Field(default_factory=dict)
+
+
+IEMPacket = Annotated[
+    Union[TaskPacket, SystemPacket, DebugPacket],
+    Discriminator("type"),
+]

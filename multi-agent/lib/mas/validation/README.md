@@ -85,7 +85,7 @@ multi-agent/
 ├── validation/
 │   ├── __init__.py              # Public exports
 │   ├── service.py               # ElementValidationService
-│   ├── models.py                # Service-level models (ConfigMeta, BlueprintValidationResult)
+│   ├── models.py                # Service-level models (BlueprintValidationResult)
 │   └── README.md                # This file
 │
 ├── resources/
@@ -196,23 +196,23 @@ The core orchestrator that:
 class ElementValidationService:
     def __init__(self, element_registry: ElementRegistry): ...
     
-    def validate(self, config_meta: ConfigMeta, context: ValidationContext) 
+    def validate(self, config_meta: ElementConfigMeta, context: ValidationContext) 
         -> ElementValidationResult
     
-    def validate_ordered(self, configs: List[ConfigMeta], context: ValidationContext) 
+    def validate_ordered(self, configs: List[ElementConfigMeta], context: ValidationContext) 
         -> Dict[str, ElementValidationResult]
 ```
 
-### 3. ConfigMeta (validation/models.py)
+### 3. ElementConfigMeta (core/element_meta.py)
 
 Metadata about a config to be validated:
 
 ```python
 @dataclass
-class ConfigMeta:
+class ElementConfigMeta:
     rid: str                           # Resource ID
     category: ResourceCategory         # llm, tool, provider, etc.
-    element_type: str                  # openai, mcp_provider, etc.
+    type_key: str                      # openai, mcp_provider, etc.
     config: BaseModel                  # The Pydantic config model
     name: Optional[str] = None         # Human-readable name
     dependency_rids: List[str] = []    # RIDs of dependencies
@@ -248,7 +248,7 @@ Collects all configs from a resolved `BlueprintSpec` for validation:
 
 ```python
 class BlueprintConfigCollector:
-    def collect(self, spec: BlueprintSpec) -> List[ConfigMeta]
+    def collect(self, spec: BlueprintSpec) -> List[ElementConfigMeta]
 ```
 
 Uses `RefWalker.all_rids()` to capture both external and inline references.
@@ -281,17 +281,18 @@ Uses `RefWalker.all_rids()` to capture both external and inline references.
    │  resolve_with_deps() │   ["dep1", "dep2", "abc123"]
    └──────────┬───────────┘                 
               │                             
-              │ 2. Build ConfigMeta for each RID
+              │ 2. Build ElementConfigMeta for each RID
               │    (fetch from ResourcesRegistry)
               ▼                             
    ┌──────────────────────────────────────────────────────────┐
-   │  ordered_configs = [                                     │
-   │    ConfigMeta(rid="dep1", category=PROVIDER, type="mcp", │
-   │               config=McpConfig(...), name="My MCP"),     │
-   │    ConfigMeta(rid="dep2", category=LLM, type="openai",   │
-   │               config=OpenAIConfig(...), name="GPT-4"),   │
-   │    ConfigMeta(rid="abc123", category=NODE,               │
-   │               type="custom_agent", config=..., name=...) │
+   │  ordered_configs = [                                              │
+   │    ElementConfigMeta(rid="dep1", category=PROVIDER,               │
+   │               type_key="mcp", config=McpConfig(...), name="MCP"), │
+   │    ElementConfigMeta(rid="dep2", category=LLM,                    │
+   │               type_key="openai", config=OpenAIConfig(...),        │
+   │               name="GPT-4"),                                      │
+   │    ElementConfigMeta(rid="abc123", category=NODE,                 │
+   │               type_key="custom_agent", config=..., name=...)      │
    │  ]                                                       │
    └──────────────────────┬───────────────────────────────────┘
                           │                             
@@ -343,7 +344,7 @@ Uses `RefWalker.all_rids()` to capture both external and inline references.
    │    │    result = ElementValidationResult(            │   │
    │    │      is_valid=report.is_valid,                  │   │
    │    │      element_rid=config_meta.rid,               │   │
-   │    │      element_type=config_meta.element_type,     │   │
+   │    │      element_type=config_meta.type_key,          │   │
    │    │      name=config_meta.name,                     │   │
    │    │      messages=report.messages,                  │   │
    │    │      dependency_results=report.checked_deps,    │   │
@@ -396,7 +397,7 @@ Uses `RefWalker.all_rids()` to capture both external and inline references.
    │  .collect(spec)      │   to find inline dependencies
    └──────────┬───────────┘                 
               │                             
-              │ Returns List[ConfigMeta]
+              │ Returns List[ElementConfigMeta]
               ▼                             
    ┌──────────────────────┐                 
    │ElementValidationService│                
@@ -595,7 +596,7 @@ class YourElementSpec(BaseElementSpec):
 
   ✗ DON'T:
     • Don't try to set element_rid, element_type, or name
-      (the service adds these from ConfigMeta)
+      (the service adds these from ElementConfigMeta)
     • Don't make the validate() method async
       (use AsyncBridge internally instead)
     • Don't access databases or services directly
@@ -783,7 +784,7 @@ Content-Type: application/json
     • ElementValidationResult  - Final result for API
     • ValidationContext        - Settings + dependency results
     • ElementValidationService - Orchestrator
-    • ConfigMeta               - Metadata for validation
+    • ElementConfigMeta        - Metadata for validation
 
   Validation order:
     Dependencies are validated BEFORE dependents (topological sort)

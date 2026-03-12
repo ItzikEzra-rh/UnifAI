@@ -10,8 +10,7 @@ class ThresholdCondition(BaseCondition):
     compares against threshold with the given operator.
     """
     
-    # Declare what channels this condition reads
-    READS = {"dynamic_fields"}  # Since it uses state.get() which can access any key
+    READS = {"nodes_output"}
 
     OPERATORS = {
         ">": operator.gt,

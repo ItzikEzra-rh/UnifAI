@@ -67,10 +67,3 @@ class SessionMeta(BaseModel):
     title: str | None = None
     tags: Dict[str, str] = Field(default_factory=dict)
     source: Optional[str] = None
-
-    def to_dict(self) -> Dict[str, Any]:
-        return self.model_dump()
-
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "SessionMeta":
-        return cls(**data)

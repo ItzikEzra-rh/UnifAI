@@ -1,25 +1,27 @@
-from dataclasses import dataclass, field
-from typing import Dict
+from typing import Any, Dict
+from pydantic import BaseModel, Field, ConfigDict
 
 from mas.blueprints.models.blueprint import StepMeta
 from .adjacency import AdjacentNodes
 from ..topology.models import StepTopology
 
 
-# @dataclass(frozen=True, slots=True) slots once we migrate to Python ≥3.10
-@dataclass(frozen=True)
-class StepContext:
+class StepContext(BaseModel):
     """Immutable context object injected into nodes / conditions at runtime."""
 
-    # Identity & author metadata
     uid: str
-    metadata: StepMeta = field(default_factory=StepMeta)
+    metadata: StepMeta = Field(default_factory=StepMeta)
+    adjacent_nodes: AdjacentNodes = Field(default_factory=AdjacentNodes.empty)
+    branches: Dict[str, str] = Field(default_factory=dict)
+    topology: StepTopology = Field(default_factory=StepTopology)
 
-    # All adjacent nodes (both direct and conditional) - clean Pydantic model
-    adjacent_nodes: AdjacentNodes = field(default_factory=AdjacentNodes.empty)
-    
-    # Branching logic (outcome → uid)
-    branches: Dict[str, str] = field(default_factory=dict)
-    
-    # Topology information about adjacent nodes and their paths to important destinations
-    topology: StepTopology = field(default_factory=StepTopology)
+    model_config = ConfigDict(frozen=True)
+
+    def serialize(self) -> Dict[str, Any]:
+        """Convert to a JSON-safe dict for cross-process transport."""
+        return self.model_dump(mode="json")
+
+    @classmethod
+    def deserialize(cls, data: Dict[str, Any]) -> "StepContext":
+        """Reconstruct a StepContext from a serialized dict."""
+        return cls.model_validate(data)

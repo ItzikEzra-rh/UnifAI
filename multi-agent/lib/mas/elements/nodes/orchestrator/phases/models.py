@@ -34,14 +34,7 @@ class PhaseIterationLimits(BaseModel):
         return getattr(self, phase_name, 10)
     
     def to_dict(self) -> Dict[str, int]:
-        """Convert to dictionary format for easier access."""
-        return {
-            "planning": self.planning,
-            "allocation": self.allocation,
-            "execution": self.execution,
-            "monitoring": self.monitoring,
-            "synthesis": self.synthesis
-        }
+        return self.model_dump()
 
 
 class PhaseIterationState(BaseModel):

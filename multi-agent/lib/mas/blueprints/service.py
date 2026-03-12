@@ -1,30 +1,34 @@
 from typing import Any, Dict, List, Optional
 
-from mas.blueprints.models.blueprint import BlueprintSpec, BlueprintDraft, BlueprintDocument
+from mas.blueprints.models.blueprint import BlueprintSpec, BlueprintDraft, BlueprintDocument, BlueprintSummary
 from mas.blueprints.repository.repository import BlueprintRepository
 from mas.blueprints.resolver import BlueprintResolver
-from mas.blueprints.validation.collector import BlueprintConfigCollector
+from mas.blueprints.collector import BlueprintConfigCollector
 from mas.blueprints.exceptions import (
     BlueprintNotFoundError,
     BlueprintSaveError,
     BlueprintMetadataError,
 )
 from mas.core.ref import RefWalker
+from mas.elements.common.card import ElementCard
 from mas.elements.common.validator import ValidationContext
+from mas.catalog.card_service import ElementCardService
 from mas.validation.models import BlueprintValidationResult
 from mas.validation.service import ElementValidationService
 
 
 class BlueprintService:
     def __init__(
-        self, 
-        repo: BlueprintRepository, 
+        self,
+        repo: BlueprintRepository,
         resolver: BlueprintResolver,
         validation_service: ElementValidationService = None,
+        card_service: ElementCardService = None,
     ):
         self._repo = repo
         self._resolver = resolver
         self._validation_service = validation_service
+        self._card_service = card_service
         self._config_collector = BlueprintConfigCollector()
 
     # ────────── Write ──────────
@@ -42,7 +46,7 @@ class BlueprintService:
         """Get blueprint document with metadata for sharing operations."""
         return self._repo.load(blueprint_id)
 
-    def update_draft(self, *, blueprint_id: str, draft_dict: dict) -> bool:  # NEW
+    def update_draft(self, *, blueprint_id: str, draft_dict: dict) -> bool:
         draft = BlueprintDraft(**draft_dict)
         rid_refs = list(RefWalker.external_rids(draft))
         return self._repo.update(
@@ -62,7 +66,7 @@ class BlueprintService:
         return self._resolver.resolve(draft_bp)
 
     def to_dict(self, blueprint_id: str) -> Dict[str, Any]:
-        """Draft → JSON-serialisable dict (no meta)."""
+        """Draft -> JSON-serialisable dict (no meta)."""
         return self.load_draft(blueprint_id).model_dump(mode="json")
 
     def exists(self, blueprint_id: str) -> bool:
@@ -78,6 +82,12 @@ class BlueprintService:
     # ────────── Bulk listing / counting (optionally per user) ──────────
     def list_ids(self, *, user_id: str | None = None, **pg) -> List[str]:
         return self._repo.list_ids(user_id=user_id, **pg)
+
+    def list_summaries(
+            self, *, user_id: str | None = None, **pg
+    ) -> List[BlueprintSummary]:
+        """Return lightweight blueprint summaries (no full spec)."""
+        return self._repo.list_summaries(user_id=user_id, **pg)
 
     def list_draft_dicts(
             self, *, user_id: str | None = None, **pg
@@ -143,24 +153,19 @@ class BlueprintService:
         """
         return BlueprintDraft.model_json_schema()
 
-# ────────── Blueprint Metadata ──────────
+    # ────────── Blueprint Metadata ──────────
     def set_metadata(self, blueprint_id: str, metadata: Dict[str, Any]) -> bool:
         """
         Set the metadata dictionary for a blueprint.
-        
-        :param blueprint_id: The blueprint ID
-        :param metadata: Dictionary of metadata to set
-        :return: True if the document was modified
-        :raises BlueprintNotFoundError: If blueprint doesn't exist
-        :raises BlueprintMetadataError: If update fails
         """
         if not self.exists(blueprint_id):
             raise BlueprintNotFoundError(blueprint_id)
-        
+
         try:
             return self._repo.set_metadata(blueprint_id=blueprint_id, metadata=metadata)
         except Exception as e:
             raise BlueprintMetadataError(blueprint_id, f"Failed to update metadata: {str(e)}")
+
     # ────────── Validation ──────────
     def validate_blueprint(
         self,
@@ -169,17 +174,6 @@ class BlueprintService:
     ) -> BlueprintValidationResult:
         """
         Validate all elements in a saved blueprint.
-        
-        Args:
-            blueprint_id: Blueprint ID to validate
-            timeout_seconds: Timeout for network checks
-            
-        Returns:
-            BlueprintValidationResult with all element results
-            
-        Raises:
-            RuntimeError: If validation service not configured
-            KeyError: If blueprint not found
         """
         self._ensure_validation_service()
         spec = self.load_resolved(blueprint_id)
@@ -192,30 +186,47 @@ class BlueprintService:
     ) -> BlueprintValidationResult:
         """
         Validate a blueprint draft before saving.
-        
+
         This validates a blueprint YAML/JSON without requiring it to be saved first.
         Useful for UI validation before creating a blueprint.
-        
-        Args:
-            draft_dict: The blueprint draft as a dictionary
-            timeout_seconds: Timeout for network checks
-            
-        Returns:
-            BlueprintValidationResult with all element results
-            
-        Raises:
-            RuntimeError: If validation service not configured
-            ValueError: If draft schema validation fails
         """
         self._ensure_validation_service()
         spec = self.resolve_draft_dict(draft_dict)
         return self._validate_spec(spec, "draft", timeout_seconds)
 
-    # ────────── Validation Helpers ──────────
+    # ────────── Card Building ──────────
+    def get_blueprint_cards(
+        self,
+        blueprint_id: str,
+    ) -> Dict[str, ElementCard]:
+        """
+        Get element cards for all elements in a saved blueprint.
+        """
+        self._ensure_card_service()
+        spec = self.load_resolved(blueprint_id)
+        return self._build_cards_from_spec(spec)
+
+    def get_draft_cards(
+        self,
+        draft_dict: dict,
+    ) -> Dict[str, ElementCard]:
+        """
+        Get element cards for a blueprint draft.
+        """
+        self._ensure_card_service()
+        spec = self.resolve_draft_dict(draft_dict)
+        return self._build_cards_from_spec(spec)
+
+    # ────────── Helpers ──────────
     def _ensure_validation_service(self) -> None:
         """Raise if validation service not configured."""
         if self._validation_service is None:
             raise RuntimeError("ValidationService not configured")
+
+    def _ensure_card_service(self) -> None:
+        """Raise if card service not configured."""
+        if self._card_service is None:
+            raise RuntimeError("CardService not configured")
 
     def _validate_spec(
         self,
@@ -232,3 +243,11 @@ class BlueprintService:
             is_valid=all(r.is_valid for r in results.values()),
             element_results=results,
         )
+
+    def _build_cards_from_spec(
+        self,
+        spec: BlueprintSpec,
+    ) -> Dict[str, ElementCard]:
+        """Collect configs from spec and build cards."""
+        configs = self._config_collector.collect(spec)
+        return self._card_service.build_all_cards(configs)

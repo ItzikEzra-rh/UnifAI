@@ -42,7 +42,7 @@ class WorkflowSessionFactory:
         """
         logical_plan = PlanBuilder(self._elements).build(blueprint_spec)
         session_registry = self._session_builder.build(blueprint_spec)
-        return RTGraphPlan(logical_plan, session_registry)
+        return RTGraphPlan(logical_plan, session_registry, self._elements)
 
     def build_session_registry(self, blueprint_spec: BlueprintSpec) -> SessionRegistry:
         """

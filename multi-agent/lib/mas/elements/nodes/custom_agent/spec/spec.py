@@ -5,6 +5,7 @@ from mas.elements.nodes.custom_agent.custom_agent import CustomAgentNode
 from mas.elements.nodes.custom_agent.custom_agent_node_factory import CustomAgentNodeFactory
 from mas.elements.nodes.custom_agent.identifiers import Identifier, META
 from mas.elements.nodes.custom_agent.validator import CustomAgentNodeValidator
+from mas.elements.nodes.custom_agent.card_builder import CustomAgentCardBuilder
 
 
 class CustomAgentNodeElementSpec(BaseElementSpec):
@@ -20,3 +21,4 @@ class CustomAgentNodeElementSpec(BaseElementSpec):
     writes = CustomAgentNode.total_writes()
     tags = META.tags
     validator_cls = CustomAgentNodeValidator
+    card_builder_cls = CustomAgentCardBuilder

@@ -4,6 +4,7 @@ from ..config import SshExecToolConfig
 from ..ssh_exec_factory import SshExecToolFactory
 from ..identifiers import Identifier, META
 from ..validator import SshExecToolValidator
+from mas.elements.tools.common.card_builder import ToolCardBuilder
 
 
 class SshExecToolElementSpec(BaseElementSpec):
@@ -17,3 +18,4 @@ class SshExecToolElementSpec(BaseElementSpec):
     factory_cls = SshExecToolFactory
     tags = META.tags
     validator_cls = SshExecToolValidator
+    card_builder_cls = ToolCardBuilder

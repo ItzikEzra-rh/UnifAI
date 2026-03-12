@@ -38,13 +38,9 @@ class TemporalGraphExecutor(BaseGraphExecutor):
     def graph_definition(self) -> GraphDefinition:
         return self._graph_def
 
-    def run(self, initial_state: Any) -> dict:
+    def run(self, initial_state: Any, *, session_id: str = "") -> dict:
         state_dict = self._to_state_dict(initial_state)
-        return asyncio.run(self._execute(state_dict))
-
-    def stream(self, initial_state: Any, *args, **kwargs):
-        final = self.run(initial_state)
-        yield final
+        return asyncio.run(self._execute(state_dict, session_id=session_id))
 
     def get_state(self) -> Any:
         if not self._workflow_id:
@@ -62,7 +58,7 @@ class TemporalGraphExecutor(BaseGraphExecutor):
             else dict(initial_state)
         )
 
-    async def _execute(self, state_dict: dict) -> dict:
+    async def _execute(self, state_dict: dict, *, session_id: str = "") -> dict:
         """Start GraphTraversalWorkflow and block until it completes."""
         cfg = AppConfig.get_instance()
         client = await get_temporal_client()
@@ -73,6 +69,7 @@ class TemporalGraphExecutor(BaseGraphExecutor):
         params = GraphExecutionParams(
             state=state_dict,
             graph_definition=self._graph_def.model_dump(mode="json"),
+            session_id=session_id,
         )
         return await client.execute_workflow(
             _WORKFLOW_NAME,
