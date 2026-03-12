@@ -1,16 +1,17 @@
 name: Security Container Vulnerability Scanning
 
 on:
-  push:
-    branches:
-      - GENIE-1379-container_vulerability
+  #currently we'll run this only upon request and not automatically.
+  # push:
+  #   branches:
+  #     - GENIE-1379-container_vulerability
   #pull_request:
   workflow_dispatch:
     inputs:
       branch:
         description: The branch to scan
         required: true
-        default: GENIE-1379-container_vulerability
+        default: main
 
 jobs:
   vulnerability-scan:
