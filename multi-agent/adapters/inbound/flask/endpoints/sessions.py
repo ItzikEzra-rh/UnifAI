@@ -3,6 +3,7 @@ from global_utils.helpers.apiargs import from_body, from_query
 from webargs import fields
 import json
 from pydantic.json import pydantic_encoder
+from mas.core.channels import with_heartbeats
 from mas.session.domain.exceptions import BlueprintNotFoundError
 
 sessions_bp = Blueprint("sessions", __name__)
@@ -58,13 +59,14 @@ def execute_user_session(session_id, inputs, stream_mode, stream, scope, logged_
         return json.dumps(result, default=pydantic_encoder), 200
 
     def generate():
-        for chunk in svc.run(
+        stream_iter = svc.run(
             session_id=session_id,
             inputs=inputs,
             scope=scope,
             logged_in_user=logged_in_user,
             stream=True,
-        ):
+        )
+        for chunk in with_heartbeats(stream_iter):
             yield json.dumps(chunk, default=pydantic_encoder) + "\n"
 
     return Response(
@@ -230,9 +232,7 @@ def subscribe_session(session_id):
 
     def generate():
         try:
-            for event in reader:
-                if event is None:
-                    continue
+            for event in with_heartbeats(reader):
                 yield json.dumps(event, default=str) + "\n"
         finally:
             reader.close()

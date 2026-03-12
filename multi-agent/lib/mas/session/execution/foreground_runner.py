@@ -118,8 +118,7 @@ class ForegroundSessionRunner:
         thread.start()
 
         try:
-            for event in reader:
-                yield event if event is not None else {"type": "heartbeat"}
+            yield from reader
         finally:
             channel.close()
             thread.join(timeout=60)
