@@ -29,7 +29,7 @@ from mas.sharing.service import ShareService
 from mas.statistics.service import StatisticsService
 from mas.validation.service import ElementValidationService
 from mas.templates.service import TemplateService
-from mas.config.app_config import AppConfig
+from config.app_config import AppConfig
 
 from outbound.mongo import (
     MongoBlueprintRepository,

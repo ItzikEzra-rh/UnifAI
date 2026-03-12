@@ -13,7 +13,7 @@ from outbound.mongo import MongoResourceRepository
 from mas.blueprints.resolver import BlueprintResolver
 from bootstrap.container import AppContainer
 from typing import Iterator, Any, Dict, List
-from mas.config.app_config import AppConfig
+from config.app_config import AppConfig
 from rich.live import Live
 from rich.panel import Panel
 from rich.layout import Layout

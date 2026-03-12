@@ -2,20 +2,22 @@
 Temporal worker — inbound adapter.
 
 Receives a fully-wired AppContainer from its entry point
-(__main__.py) and uses it to build activity instances.
+(bootstrap/cli.py) and uses it to build activity instances.
 This adapter never creates the container itself.
 
-Run as a standalone process:
-    python -m inbound.temporal
-    python -m inbound.temporal --threads 20
-
 Multiple workers can run concurrently for horizontal scaling.
+
+Usage via CLI::
+
+    mas temporal-worker --threads 20
+    mas temporal-worker --threads 20 --workflow-pollers 10
 """
 from concurrent.futures import ThreadPoolExecutor
+from typing import Optional
 
 from temporalio.worker import Worker, UnsandboxedWorkflowRunner
 
-from mas.config.app_config import AppConfig
+from config.app_config import AppConfig
 from mas.engine.distributed.node_executor import NodeExecutor
 from mas.session.execution.lifecycle_handler import BackgroundLifecycleHandler
 from mas.session.execution.lifecycle import SessionLifecycle
@@ -24,7 +26,14 @@ from inbound.temporal.activities import GraphNodeActivities, SessionLifecycleAct
 from inbound.temporal.workflows import GraphTraversalWorkflow, SessionWorkflow
 
 
-async def run_worker(container, threads: int) -> None:
+async def run_worker(
+    container,
+    *,
+    threads: int = 10,
+    max_workflow_tasks: Optional[int] = None,
+    workflow_pollers: int = 5,
+    activity_pollers: int = 5,
+) -> None:
     cfg = AppConfig.get_instance()
 
     node_executor = NodeExecutor(
@@ -61,8 +70,15 @@ async def run_worker(container, threads: int) -> None:
         ],
         activity_executor=ThreadPoolExecutor(max_workers=threads),
         max_concurrent_activities=threads,
+        max_concurrent_workflow_tasks=max_workflow_tasks,
+        max_concurrent_workflow_task_polls=workflow_pollers,
+        max_concurrent_activity_task_polls=activity_pollers,
         workflow_runner=UnsandboxedWorkflowRunner(),
     )
 
-    print(f"Worker started | task_queue={cfg.temporal_task_queue} | threads={threads}")
+    print(
+        f"Worker started | task_queue={cfg.temporal_task_queue} "
+        f"| threads={threads} | workflow_pollers={workflow_pollers} "
+        f"| activity_pollers={activity_pollers}"
+    )
     await worker.run()

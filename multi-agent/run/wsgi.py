@@ -1,5 +1,5 @@
 """WSGI callable for gunicorn: ``gunicorn run.wsgi:application``."""
-from mas.config.app_config import AppConfig
+from config.app_config import AppConfig
 from bootstrap.container import AppContainer
 from inbound.flask.flask_app import create_app
 

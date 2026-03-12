@@ -15,7 +15,7 @@ from typing import Any
 from mas.engine.domain.base_executor import BaseGraphExecutor
 from mas.engine.domain.models import GraphDefinition
 from mas.graph.state.graph_state import GraphState
-from mas.config.app_config import AppConfig
+from config.app_config import AppConfig
 from temporal.client import get_temporal_client
 from temporal.models import GraphExecutionParams
 

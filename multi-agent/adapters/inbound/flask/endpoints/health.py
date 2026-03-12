@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, current_app
-from mas.config.app_config import AppConfig
+from config.app_config import AppConfig
 
 health_bp = Blueprint("health", __name__)
 

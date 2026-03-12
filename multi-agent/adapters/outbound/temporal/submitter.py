@@ -17,7 +17,7 @@ import uuid
 from mas.graph.state.graph_state import GraphState
 from mas.session.execution.ports import BackgroundSessionSubmitter, SubmitSessionRequest
 from mas.session.domain.workflow_session import WorkflowSession
-from mas.config.app_config import AppConfig
+from config.app_config import AppConfig
 from temporal.client import get_temporal_client
 from temporal.models import SessionWorkflowParams, GraphExecutionParams
 from outbound.temporal.executor import TemporalGraphExecutor

@@ -1,5 +1,5 @@
 from flask import Flask
-from mas.config.app_config import AppConfig
+from config.app_config import AppConfig
 from .endpoints import register_all_endpoints
 from flask_cors import CORS
 from global_utils.flask.request_rules import RequestRules

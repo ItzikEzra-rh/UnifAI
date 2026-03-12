@@ -14,7 +14,7 @@ Temporal adapters.
 from temporalio.client import Client
 from temporalio.contrib.pydantic import pydantic_data_converter
 
-from mas.config.app_config import AppConfig
+from config.app_config import AppConfig
 
 
 async def get_temporal_client() -> Client:
