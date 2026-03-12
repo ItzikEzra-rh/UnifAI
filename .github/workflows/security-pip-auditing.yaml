@@ -4,9 +4,10 @@ permissions:
   contents: read
 
 on: 
-    push:
-        branches:
-            - GENIE-1354-dependency_scanning
+    #currently we'll run this only upon request and not automatically.
+    # push:
+    #     branches:
+    #         - GENIE-1354-dependency_scanning
     pull_request:
     workflow_dispatch:
       inputs:
