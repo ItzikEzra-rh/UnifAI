@@ -42,11 +42,6 @@ class BlueprintRepository(ABC):
     def load_many(self, blueprint_ids: List[str]) -> List[BlueprintDocument]:
         """Load multiple blueprint documents by their IDs in a single operation."""
 
-    # ────────────────────────────── Lookups ─────────────────────────────
-    @abstractmethod
-    def find_by_name(self, user_id: str, name: str) -> Optional["BlueprintDocument"]:
-        """Find a blueprint document by user and name, or return None."""
-
     # ────────────────────────────── Listings / Stats ────────────────────
     @abstractmethod
     def list_ids(
