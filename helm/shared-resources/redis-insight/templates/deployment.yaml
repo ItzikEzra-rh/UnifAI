@@ -39,7 +39,7 @@ spec:
       #     terminationMessagePolicy: File
       containers:
         - name:  {{ include "redis-insight.fullname" . }} #Container name (DNS_LABEL, unique)
-          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}"  #:{{ .Values.image.tag }}" - need to think over the latest tag
           imagePullPolicy: {{ .Values.image.pullPolicy }} #Always pull image
           volumeMounts:
           - name: redis-insight #Pod volumes to mount into the container's filesystem. Cannot be updated.
