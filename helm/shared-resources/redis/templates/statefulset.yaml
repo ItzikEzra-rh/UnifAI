@@ -24,11 +24,10 @@ spec:
           ports:
             - containerPort: {{ .Values.service.port }}
               name: {{ .Values.service.name }}
+          {{- with .Values.resources }}
           resources:
-            limits:
-            {{- toYaml .Values.resources.limits | nindent 12 }}
-            requests:
-              {{- toYaml .Values.resources.requests | nindent 12 }}
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
           env:
             {{- range $key, $value := .Values.env }}
             - name: "{{ $key }}"
