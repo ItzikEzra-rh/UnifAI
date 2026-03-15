@@ -1,9 +1,9 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: redis-insight-pvc
+  name: {{ include "redis-insight.fullname" . }}-pvc
   labels:
-    app: redis-insight
+    app: {{ .Chart.Name }}
     paas.redhat.com/appcode: TAG-001
   annotations:
   {{- with .Values.annotations }}
@@ -15,8 +15,8 @@ spec:
     {{- toYaml .accessModes | nindent 4 }}
   resources:
     requests:
-      storage: {{ .requestedSize }}
-  {{- if .className }}
-  storageClassName: {{ .className }}
+      storage: {{ .size }}
+  {{- if .storageClassName }}
+  storageClassName: {{ .storageClassName }}
   {{- end }}
   {{- end }}

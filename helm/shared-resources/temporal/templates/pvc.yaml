@@ -15,8 +15,8 @@ spec:
     {{- toYaml .accessModes | nindent 4 }}
   resources:
     requests:
-      storage: {{ .requestedSize }}
-  {{- if .className }}
-  storageClassName: {{ .className }}
+      storage: {{ .size }}
+  {{- if .storageClassName }}
+  storageClassName: {{ .storageClassName }}
   {{- end }}
   {{- end }}
