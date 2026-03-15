@@ -9,7 +9,7 @@ spec:
   host: 
   to:
     kind: Service
-    name: {{ include "temporal.fullname" . }}-svc
+    name: {{ include "temporal.fullname" . }}-external
     weight: 100
   port:
     targetPort: {{ .Values.service.port_ui }}
