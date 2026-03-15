@@ -61,7 +61,7 @@ redis:
 redis-insight:
   image:
     registry: redis
-    repository: redisinsight:latest
+    repository: redisinsight
     tag: latest
     pullPolicy: IfNotPresent
   service:
