@@ -1,12 +1,12 @@
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
-  name: temporal-np
-  app: temporal
+  name: {{ include "temporal.fullname" . }}-np
+  app: {{ .Chart.Name }}
 spec:
   podSelector:
     matchLabels:
-      app: temporal
+      app: {{ .Chart.Name }}
   ingress:
     - {}
   egress:

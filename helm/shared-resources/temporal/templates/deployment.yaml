@@ -4,23 +4,23 @@ kind: Deployment
 metadata:
   name: temporal #deployment name
   labels:
-    app: temporal #deployment label
+    app: {{ .Chart.Name }} #deployment label
 spec:
   replicas: 1 #a single replica pod
   strategy:
     type: Recreate
   selector:
     matchLabels:
-      app: temporal #which pods is the deployment managing, as defined by the pod template
+      app: {{ .Chart.Name }} #which pods is the deployment managing, as defined by the pod template
   template: #pod template
     metadata:
       labels:
-        app: temporal #label for pod/s
+        app: {{ .Chart.Name }} #label for pod/s
     spec:
       volumes:
         - name: temporal
           persistentVolumeClaim:
-            claimName: temporal-pvc
+            claimName: {{ include "temporal.fullname" . }}-pvc
       # initContainers:
       #   - name: init
       #     image: busybox
@@ -37,8 +37,8 @@ spec:
       #     terminationMessagePolicy: File
       containers:
         - name:  temporal #Container name (DNS_LABEL, unique)
-          image: temporalio/temporal #repo/image
-          imagePullPolicy: IfNotPresent #Always pull image
+          image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
           tty: true
           stdin: true
           command: ["/bin/sh", "-c", "temporal server start-dev --ip 0.0.0.0"]
@@ -46,7 +46,7 @@ spec:
           - name: temporal #Pod volumes to mount into the container's filesystem. Cannot be updated.
             mountPath: /tmp/temporal
           ports:
-          - containerPort: 7233 #exposed container port and protocol
+          - containerPort: {{ .Values.service.port }}
             protocol: TCP
-          - containerPort: 8233 #exposed container port and protocol
+          - containerPort: {{ .Values.service.port_ui }}
             protocol: TCP

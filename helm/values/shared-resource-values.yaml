@@ -43,6 +43,13 @@ redis:
     repository: rhel9/redis-7
     tag: '9.7'
     pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 4
+      memory: 16Gi
+    requests:
+      cpu: 4
+      memory: 12Gi
   service:
     type: ClusterIP
     port: 6379
@@ -70,6 +77,13 @@ temporal:
     registry: temporalio
     repository: temporal
     pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 4
+      memory: 8Gi
+    requests:
+      cpu: 2
+      memory: 4Gi
   service:
     type: ClusterIP
     port: 7233
