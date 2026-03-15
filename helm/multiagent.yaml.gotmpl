@@ -30,13 +30,7 @@ releases:
     #timeout: 300
     values:
       - ./values/global-config.yaml
-    #  - {{- toYaml .Values.multiagent_server | nindent 8 }}
-    #hooks:
-    #  - events: ["presync"]
-    #    showlogs: true
-    #    command: bash
-    #    args:
-    #    - "./scripts/multiagent-presync.sh"
+
 
   - name: multiagent-config
     chart: ./multiagent/multiagent-config
