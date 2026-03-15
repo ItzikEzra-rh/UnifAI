@@ -5,7 +5,7 @@ Clean, generic packet handling with middleware support.
 """
 
 from typing import Callable, Optional, Any, List
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, timezone
 import uuid
 from mas.graph.state.state_view import StateView
 from mas.graph.state.graph_state import Channel
@@ -134,7 +134,7 @@ class DefaultInterMessenger(InterMessenger):
         packets = list(self._state.get(Channel.INTER_PACKETS, []))
         initial_count = len(packets)
 
-        now = datetime.utcnow()
+        now = datetime.now(timezone.utc)
         max_age = max_age or self._max_packet_age
 
         filtered = []

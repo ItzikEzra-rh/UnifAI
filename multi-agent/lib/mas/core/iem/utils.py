@@ -5,7 +5,7 @@ Utilities for graph scheduling, packet inspection, and other IEM-related helpers
 """
 
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from mas.graph.state.graph_state import GraphState
 
 
@@ -262,7 +262,7 @@ def cleanup_expired_packets(state: GraphState, max_age: Optional[timedelta] = No
         return 0
         
     max_age = max_age or timedelta(hours=1)
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     
     original_packets = list(state.inter_packets)
     filtered_packets = []

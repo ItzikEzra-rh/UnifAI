@@ -5,7 +5,7 @@ Follows the pattern established by MongoBlueprintRepository.
 """
 import pymongo
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from mas.templates.repository.repository import TemplateRepository
@@ -59,7 +59,7 @@ class MongoTemplateRepository(TemplateRepository):
             raise KeyError(f"Template not found: {template.template_id}")
         
         doc = self._template_to_doc(template, template.template_id)
-        doc["updated_at"] = datetime.utcnow()
+        doc["updated_at"] = datetime.now(timezone.utc)
         
         res = self._col.update_one(
             {"template_id": template.template_id},

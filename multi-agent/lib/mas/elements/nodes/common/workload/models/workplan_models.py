@@ -7,7 +7,7 @@ Pure data models with no business logic or service dependencies.
 
 from pydantic import BaseModel, Field
 from typing import Dict, List, Optional, Set, Any
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import uuid
 
@@ -80,7 +80,7 @@ class LocalExecution(BaseModel):
         description="Complete execution result: what was done, how it was done, and what was achieved. Natural narrative format."
     )
     executed_at: str = Field(
-        default_factory=lambda: datetime.utcnow().isoformat(),
+        default_factory=lambda: datetime.now(timezone.utc).isoformat(),
         description="When execution completed"
     )
 
@@ -99,7 +99,7 @@ class DelegationExchange(BaseModel):
     # Request side (what orchestrator asked)
     query: str = Field(..., description="What was specifically asked/delegated")
     delegated_to: str = Field(..., description="UID of agent this was delegated to")
-    delegated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat(), description="When delegation was sent")
+    delegated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat(), description="When delegation was sent")
     
     # Response side (what agent answered)
     response_content: Optional[str] = Field(None, description="Agent's response text")
@@ -248,8 +248,8 @@ class WorkItem(BaseModel):
     max_retries: int = Field(default=3, description="Maximum retry attempts before marking as failed")
     
     # Timestamps
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     
     def is_ready_for_execution(self, completed_item_ids: Set[str]) -> bool:
         """Check if this item is ready for execution based on dependencies."""
@@ -311,7 +311,7 @@ class WorkItem(BaseModel):
     
     def mark_updated(self) -> None:
         """Update the updated_at timestamp."""
-        self.updated_at = datetime.utcnow().isoformat()
+        self.updated_at = datetime.now(timezone.utc).isoformat()
 
 
 class WorkItemStatusCounts(BaseModel):
@@ -371,8 +371,8 @@ class WorkPlan(BaseModel):
     items: Dict[str, WorkItem] = Field(default_factory=dict, description="Work items by ID")
     
     # Timestamps
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
-    updated_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     
     @property
     def total_items(self) -> int:
@@ -492,5 +492,5 @@ class WorkPlan(BaseModel):
     
     def mark_updated(self) -> None:
         """Update the updated_at timestamp."""
-        self.updated_at = datetime.utcnow().isoformat()
+        self.updated_at = datetime.now(timezone.utc).isoformat()
 

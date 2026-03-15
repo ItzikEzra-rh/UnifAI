@@ -7,7 +7,7 @@ Enables agent collaboration through centralized context management.
 
 from pydantic import BaseModel, Field
 from typing import Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 from .models import AgentResult, ArtifactRef
 from .context import WorkspaceContext
 from mas.elements.llms.common.chat.message import ChatMessage
@@ -28,8 +28,8 @@ class Workspace(BaseModel):
     context: WorkspaceContext = Field(default_factory=WorkspaceContext)
     
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    last_updated: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     
     # ========== CLASS METHODS ==========
     
@@ -311,7 +311,7 @@ class Workspace(BaseModel):
     
     def _update_timestamp(self) -> None:
         """Update the last updated timestamp."""
-        self.last_updated = datetime.utcnow()
+        self.last_updated = datetime.now(timezone.utc)
 
 
 # Rebuild models to resolve forward references

@@ -3,7 +3,7 @@ Models for tool execution requests and responses.
 """
 from dataclasses import dataclass
 from typing import Any, Dict, Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -50,7 +50,7 @@ class ToolExecutionResponse:
     
     def __post_init__(self):
         if self.timestamp is None:
-            self.timestamp = datetime.utcnow()
+            self.timestamp = datetime.now(timezone.utc)
         if self.metadata is None:
             self.metadata = {}
     

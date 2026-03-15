@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from mas.resources.models import Resource, ResourceQuery
 from mas.resources.repository.base import ResourceRepository
 from mas.blueprints.repository.repository import BlueprintRepository
@@ -33,7 +33,7 @@ class ResourcesRegistry:
             raise ValueError(f"{doc.category}:{doc.type}:{doc.name} exists for user")
         
         doc.version += 1
-        doc.updated = datetime.utcnow()
+        doc.updated = datetime.now(timezone.utc)
         self._repo.update(doc)
         return doc
 

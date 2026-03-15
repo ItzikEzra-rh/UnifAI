@@ -6,7 +6,7 @@ Dependency Inversion: Depends on abstractions (repository interface, element reg
 """
 from typing import List, Dict, Any, Optional, Tuple
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 
 from mas.blueprints.models.blueprint import BlueprintDraft
 from mas.catalog.element_registry import ElementRegistry
@@ -98,8 +98,8 @@ class TemplateService:
             draft=BlueprintDraft(**draft),
             placeholders=PlaceholderMeta(**placeholders),
             metadata=TemplateMetadata(**(metadata or {})),
-            created_at=datetime.utcnow(),
-            updated_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc),
         )
 
         return self._repo.save(template)
@@ -123,7 +123,7 @@ class TemplateService:
         Raises TemplateNotFoundError if not found.
         """
         try:
-            template.updated_at = datetime.utcnow()
+            template.updated_at = datetime.now(timezone.utc)
             return self._repo.update(template)
         except KeyError:
             raise TemplateNotFoundError(template.template_id)

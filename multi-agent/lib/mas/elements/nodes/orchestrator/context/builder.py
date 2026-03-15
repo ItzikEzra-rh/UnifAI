@@ -8,7 +8,7 @@ Follows SOLID principles:
 """
 
 from typing import Optional, Callable, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .models import (
     OrchestratorContext,
@@ -118,7 +118,7 @@ class OrchestratorContextBuilder:
         transition = PhaseTransition(
             from_phase=from_phase,
             to_phase=to_phase,
-            timestamp=datetime.utcnow().isoformat(),
+            timestamp=datetime.now(timezone.utc).isoformat(),
             reason=reason,
             actions_taken=[]
         )

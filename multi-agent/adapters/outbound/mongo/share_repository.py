@@ -1,5 +1,5 @@
 import pymongo
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 from mas.sharing.repository.base import ShareRepository
 from mas.sharing.models import ShareInvite, ShareStatus, ShareCleanupConfig, ShareCleanupResult
@@ -35,11 +35,11 @@ class MongoShareRepository(ShareRepository):
         update_doc = {"status": status.value}
         
         if status == ShareStatus.ACCEPTED:
-            update_doc["accepted_at"] = datetime.utcnow()
+            update_doc["accepted_at"] = datetime.now(timezone.utc)
             if result_mapping:
                 update_doc["result_mapping"] = result_mapping
         elif status == ShareStatus.DECLINED:
-            update_doc["declined_at"] = datetime.utcnow()
+            update_doc["declined_at"] = datetime.now(timezone.utc)
             
         result = self._col.update_one(
             {"share_id": share_id},
@@ -91,15 +91,15 @@ class MongoShareRepository(ShareRepository):
         cleanup_rules = []
         
         if config.pending_days > 0:
-            cutoff = datetime.utcnow() - timedelta(days=config.pending_days)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=config.pending_days)
             cleanup_rules.append(({"status": ShareStatus.PENDING.value, "created_at": {"$lt": cutoff}}, "pending"))
         
         if config.declined_days > 0:
-            cutoff = datetime.utcnow() - timedelta(days=config.declined_days)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=config.declined_days)
             cleanup_rules.append(({"status": ShareStatus.DECLINED.value, "created_at": {"$lt": cutoff}}, "declined"))
         
         if config.canceled_days > 0:
-            cutoff = datetime.utcnow() - timedelta(days=config.canceled_days)
+            cutoff = datetime.now(timezone.utc) - timedelta(days=config.canceled_days)
             cleanup_rules.append(({"status": ShareStatus.CANCELED.value, "created_at": {"$lt": cutoff}}, "canceled"))
         
         # Process each rule
@@ -126,7 +126,7 @@ class MongoShareRepository(ShareRepository):
         result = ShareCleanupResult(dry_run=dry_run)
         
         # Find expired invites
-        query = {"expires_at": {"$lt": datetime.utcnow()}}
+        query = {"expires_at": {"$lt": datetime.now(timezone.utc)}}
         
         if dry_run:
             result.expired_count = self._col.count_documents(query)
