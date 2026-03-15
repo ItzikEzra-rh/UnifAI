@@ -2,8 +2,8 @@ kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
   name: {{ include "temporal.fullname" . }}-route
-  app: {{ .Chart.Name }}
   labels:
+    app: {{ .Chart.Name }}
     paas.redhat.com/appcode: TAG-001
 spec:
   host: 
