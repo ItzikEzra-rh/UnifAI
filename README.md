@@ -1,10 +1,8 @@
 # UnifAI
 
-**Open-source platform for building and running multi-agent AI workflows over your enterprise knowledge.**
+**A platform for building and running multi-agent AI workflows over your enterprise knowledge.**
 
 UnifAI lets you connect internal data sources — Slack, Jira, documents — into a unified vector store, then query them through composable, visual multi-agent pipelines. Define agent graphs as YAML blueprints or build them with a drag-and-drop UI, execute locally or at scale, and stream results in real time.
-
-[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
 
 ---
 
@@ -12,10 +10,10 @@ UnifAI lets you connect internal data sources — Slack, Jira, documents — int
 
 Most teams have knowledge scattered across Slack threads, Jira tickets, PDFs, and internal wikis. Finding answers means manually digging through multiple systems. UnifAI fixes this:
 
-1. **Ingest** — Pull content from Slack, documents (PDF, Markdown), and more into a vector database
-2. **Compose** — Build multi-agent workflows that reason across sources, route conditionally, and combine results
-3. **Execute** — Run workflows locally or distributed, with real-time streaming
-4. **Interact** — Use the web UI to build blueprints visually, trigger executions, and inspect every node's input/output
+1. **Compose** — Build multi-agent workflows that reason across sources, route conditionally, and combine results
+2. **Execute** — Run workflows locally or distributed, with real-time streaming
+3. **Interact** — Use the web UI to build blueprints visually, trigger executions, and inspect every node's input/output
+4. **Ingest** — Pull content from Slack, documents (PDF, Markdown), and more into a vector database for agents to search
 
 ---
 
@@ -158,6 +156,16 @@ Pre-built workflow templates with **placeholders** let users instantiate complex
 
 ---
 
+## Web UI
+
+A React-based interface with two primary views:
+
+**Blueprint Builder** — Visual drag-and-drop editor for composing agent graphs. Select nodes from the element catalog, wire them together, configure LLMs and tools, then execute — all without writing YAML. During execution, inspect each node's input/output in real time.
+
+**RAG Dashboard** — Monitor data source health: document counts, chunking/embedding status, last ingestion timestamps. Upload documents and register Slack channels.
+
+---
+
 ## RAG Pipeline
 
 The RAG module feeds the multi-agent system with indexed enterprise knowledge:
@@ -167,16 +175,6 @@ The RAG module feeds the multi-agent system with indexed enterprise knowledge:
 - **Storage** — Vector embeddings in Qdrant, metadata in MongoDB
 - **Search** — Semantic similarity search exposed to agents via retriever elements
 - **Flexibility** — Document conversion and embedding services can run locally or as remote microservices, toggled via feature flags
-
----
-
-## Web UI
-
-A React-based interface with two primary views:
-
-**RAG Dashboard** — Monitor data source health: document counts, chunking/embedding status, last ingestion timestamps. Upload documents and register Slack channels.
-
-**Blueprint Builder** — Visual drag-and-drop editor for composing agent graphs. Select nodes from the element catalog, wire them together, configure LLMs and tools, then execute — all without writing YAML. During execution, inspect each node's input/output in real time.
 
 ---
 
@@ -289,9 +287,3 @@ unifai/
 ## Contributing
 
 Contributions are welcome! The system is designed to be modular — new agent nodes, tools, LLM providers, retrievers, and data source adapters can be added without modifying the core engine.
-
----
-
-## License
-
-UnifAI is licensed under the [Apache License 2.0](LICENSE).
