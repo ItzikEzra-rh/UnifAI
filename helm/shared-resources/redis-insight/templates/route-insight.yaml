@@ -7,7 +7,7 @@ metadata:
 spec:
   to:
     kind: Service
-    name: {{ include "redis-insight.fullname" . }}-svc
+    name: {{ include "redis-insight.fullname" . }}
     weight: 100
   port:
     targetPort: {{ .Values.service.port }}

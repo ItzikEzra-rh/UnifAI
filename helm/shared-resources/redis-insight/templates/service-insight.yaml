@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "redis-insight.fullname" . }}-svc
+  name: {{ include "redis-insight.fullname" . }}
   labels:
     app: {{ .Chart.Name }}
 spec:
