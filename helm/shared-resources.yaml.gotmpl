@@ -40,7 +40,7 @@ releases:
     chart: ./shared-resources/redis-insight
     wait: true
     values:
-     - {{- toYaml .Values.redis | nindent 8 }}
+     - {{- toYaml .Values.redis-insight | nindent 8 }}
 
   - name: unifai-temporal
     chart: ./shared-resources/temporal
