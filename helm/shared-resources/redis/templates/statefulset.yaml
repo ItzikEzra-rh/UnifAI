@@ -1,41 +1,39 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: redis
+  name: {{ include "redis.fullname" . }}
 spec:
   selector:
     matchLabels:
-      app: redis  
-  serviceName: redis
+      app: {{ .Chart.Name }}
+  serviceName: {{ include "redis.fullname" . }}-svc
   replicas: 1
   template:
     metadata:
       labels:
-        app: redis 
+        app: {{ .Chart.Name }}
     spec:
       volumes:
         - name: redis-volume
           persistentVolumeClaim:
-            claimName: redis-pvc
+            claimName: {{ include "redis.fullname" . }}-pvc
       containers:
         - name: redis
-          image: registry.redhat.io/rhel9/redis-7:9.7
+          image: {{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}
           #args: ["--requirepass", "admin", "--appendonly", "yes", "--save", "900", "1", "--save", "30", "2"]
           ports:
-            - containerPort: 6379
-              name: redis
+            - containerPort: {{ .Values.service.port }}
+              name: {{ .Values.service.name }}
           resources:
             limits:
-              cpu: .50
-              memory: 1500Mi
+            {{- toYaml .Values.resources.limits | nindent 12 }}
             requests:
-              cpu: .25
-              memory: 1024Mi
+              {{- toYaml .Values.resources.requests | nindent 12 }}
           env:
-            - name: REDIS_PASSWORD
-              value: "Mc10vin!!"
-            - name: ALLOW_EMPTY_PASSWORD
-              value: "no"
+            {{- range $key, $value := .Values.env }}
+            - name: "{{ $key }}"
+              value: "{{ $value }}"
+            {{- end }}
           volumeMounts:
             - name: redis-volume
               mountPath: /data
