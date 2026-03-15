@@ -81,11 +81,11 @@ ingress:
 
 resources:
   limits:
-    cpu: .50
-    memory: 1500Mi
+    cpu: 4
+    memory: 16Gi
   requests:
-    cpu: .25
-    memory: 1024Mi
+    cpu: 4
+    memory: 12Gi
 
 env:
   - name: REDIS_PASSWORD
