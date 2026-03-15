@@ -8,7 +8,7 @@ cycle triggers, intent classification, health metrics, and history tracking.
 from enum import Enum
 from typing import Optional, List, Dict, Any, Set
 from pydantic import BaseModel, Field
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class CycleTriggerReason(Enum):
@@ -42,7 +42,7 @@ class TriggerEvent(BaseModel):
     """
     reason: CycleTriggerReason = Field(..., description="Why this trigger occurred")
     changed_items: List[str] = Field(default_factory=list, description="Work items affected by this trigger")
-    timestamp: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     
     def to_summary(self) -> str:
         """Format this trigger event as a string."""
@@ -78,7 +78,7 @@ class OrchestratorCycle(BaseModel):
     """
     thread_id: str = Field(..., description="Thread being orchestrated")
     triggers: List[TriggerEvent] = Field(default_factory=list, description="All trigger events")
-    created_at: str = Field(default_factory=lambda: datetime.utcnow().isoformat())
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
     
     def add_trigger(
         self, 

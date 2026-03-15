@@ -229,7 +229,7 @@ class ErrorMessages:
     @staticmethod
     def get_parse_error_guidance(parse_error) -> str:
         """Get clean, actionable guidance for parse errors."""
-        from ..parsers.base import ParseError, ParseErrorType
+        from .parsers.base import ParseError, ParseErrorType
         
         if not isinstance(parse_error, ParseError):
             return f"Parsing failed: {parse_error}. Please check your output format."

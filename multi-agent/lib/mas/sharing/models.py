@@ -27,7 +27,7 @@ class ShareInvite(BaseModel):
     item_name: str
     message: Optional[str] = None
     status: ShareStatus = ShareStatus.PENDING
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     accepted_at: Optional[datetime] = None
     declined_at: Optional[datetime] = None
     
@@ -42,14 +42,14 @@ class ShareInvite(BaseModel):
     @property
     def is_expired(self) -> bool:
         """Check if the invitation has expired."""
-        return datetime.utcnow() > self.expires_at
+        return datetime.now(UTC) > self.expires_at
     
     def __init__(self, **data):
         # Set expires_at based on ttl_days if not provided
         if 'expires_at' not in data and 'ttl_days' in data:
-            data['expires_at'] = datetime.utcnow() + timedelta(days=data['ttl_days'])
+            data['expires_at'] = datetime.now(UTC) + timedelta(days=data['ttl_days'])
         elif 'expires_at' not in data:
-            data['expires_at'] = datetime.utcnow() + timedelta(days=data.get('ttl_days', 10))
+            data['expires_at'] = datetime.now(UTC) + timedelta(days=data.get('ttl_days', 10))
         super().__init__(**data)
 
 

@@ -8,7 +8,7 @@ Enhanced with fork functionality for task chaining and processing lineage.
 
 from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any, List, Union
-from datetime import datetime
+from datetime import datetime, timezone
 from .models import AgentResult
 import uuid
 
@@ -41,7 +41,7 @@ class Task(BaseModel):
     # Processing Metadata
     created_by: Optional[str] = None  # Agent that created this task
     processed_by: Optional[str] = None  # Agent that processed this task
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     processed_at: Optional[datetime] = None
 
     # Results (only when responding)
@@ -97,7 +97,7 @@ class Task(BaseModel):
             thread_id=original_task.thread_id,
             created_by=processed_by,  # Agent responding is creating this response task
             processed_by=processed_by,
-            processed_at=datetime.utcnow()
+            processed_at=datetime.now(timezone.utc)
         )
 
     @classmethod
@@ -119,7 +119,7 @@ class Task(BaseModel):
             thread_id=original_task.thread_id,
             created_by=processed_by,  # Agent responding is creating this error response task
             processed_by=processed_by,
-            processed_at=datetime.utcnow()
+            processed_at=datetime.now(timezone.utc)
         )
 
     # ========== INSTANCE METHODS (New Fork Functionality) ==========
@@ -140,7 +140,7 @@ class Task(BaseModel):
             parent_task_id=self.task_id,  # This task becomes the parent
             thread_id=self.thread_id,  # Same workflow thread
             created_by=processed_by,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
 
     def fork_subtask(self, content: str, created_by: str,
@@ -158,13 +158,13 @@ class Task(BaseModel):
             parent_task_id=self.task_id,
             thread_id=self.thread_id,
             created_by=created_by,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
 
     def mark_processed(self, processed_by: str) -> 'Task':
         """Mark this task as processed by an agent."""
         self.processed_by = processed_by
-        self.processed_at = datetime.utcnow()
+        self.processed_at = datetime.now(timezone.utc)
         return self
 
     # ========== HELPER METHODS ==========

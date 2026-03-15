@@ -1,5 +1,5 @@
 from __future__ import annotations
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 import uuid
 
@@ -12,7 +12,7 @@ class RunContext(BaseModel):
     run_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     engine_name: Optional[str] = None
 
-    started_at: datetime = Field(default_factory=datetime.utcnow)
+    started_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     finished_at: Optional[datetime] = None
 
     metadata: Dict[str, Any] = Field(default_factory=dict)
@@ -29,7 +29,7 @@ class RunContext(BaseModel):
         return self.model_copy(update={"logged_in_user": logged_in_user})
 
     def mark_finished(self) -> RunContext:
-        return self.model_copy(update={"finished_at": datetime.utcnow()})
+        return self.model_copy(update={"finished_at": datetime.now(timezone.utc)})
 
     def with_metadata(self, **entries) -> RunContext:
         new_md = {**self.metadata, **entries}

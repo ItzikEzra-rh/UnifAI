@@ -15,12 +15,13 @@ from temporalio.client import Client
 from temporalio.contrib.pydantic import pydantic_data_converter
 
 from config.app_config import AppConfig
+from global_utils.utils.util import get_temporal_url
 
 
 async def get_temporal_client() -> Client:
     cfg = AppConfig.get_instance()
     return await Client.connect(
-        cfg.temporal_host,
+        get_temporal_url(),
         namespace=cfg.temporal_namespace,
         data_converter=pydantic_data_converter,
     )

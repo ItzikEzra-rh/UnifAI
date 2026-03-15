@@ -10,7 +10,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any, List, Optional
 from collections import defaultdict
 import threading
-from datetime import datetime
+from datetime import datetime, timezone
 from .workspace import Workspace
 from .models import (
     AgentResult,
@@ -1110,7 +1110,7 @@ class WorkspaceService(IWorkspaceService):
         target_exchange.response_content = response_content
         target_exchange.response_data = data_to_store
         target_exchange.responded_by = from_uid
-        target_exchange.responded_at = datetime.utcnow().isoformat()
+        target_exchange.responded_at = datetime.now(timezone.utc).isoformat()
         # processed stays False - LLM needs to interpret
         
         target_item.mark_updated()

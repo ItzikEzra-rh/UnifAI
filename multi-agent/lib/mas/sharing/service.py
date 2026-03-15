@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 
 from .models import ShareInvite, ShareResult, ShareStatus, ShareItemKind, ShareCleanupConfig, ShareCleanupResult
 from .repository.base import ShareRepository
@@ -191,14 +191,14 @@ class ShareService:
 
     def get_cleanup_stats(self, *, days_back: int = 30) -> Dict[str, int]:
         """Get statistics for cleanup planning."""
-        cutoff = datetime.utcnow() - timedelta(days=days_back)
+        cutoff = datetime.now(UTC) - timedelta(days=days_back)
         
         stats = {
             "total_old": self._repo.count_by_status_and_age(older_than=cutoff),
             "pending_old": self._repo.count_by_status_and_age(older_than=cutoff, status=ShareStatus.PENDING),
             "declined_old": self._repo.count_by_status_and_age(older_than=cutoff, status=ShareStatus.DECLINED),
             "canceled_old": self._repo.count_by_status_and_age(older_than=cutoff, status=ShareStatus.CANCELED),
-            "expired": self._repo.count_by_status_and_age(older_than=datetime.utcnow()),  # All expired
+            "expired": self._repo.count_by_status_and_age(older_than=datetime.now(UTC)),  # All expired
         }
         
         return stats

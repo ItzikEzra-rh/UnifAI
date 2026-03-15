@@ -1,6 +1,6 @@
 import pymongo
 from uuid import uuid4
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Dict, Any
 from mas.blueprints.models.blueprint import BlueprintDraft, BlueprintDocument, BlueprintSummary
 from mas.blueprints.repository.repository import BlueprintRepository
@@ -23,8 +23,8 @@ class MongoBlueprintRepository(BlueprintRepository):
         doc = {
             "blueprint_id": new_id,
             "user_id": user_id,
-            "created_at": getattr(spec, "created_at", datetime.utcnow()),
-            "updated_at": datetime.utcnow(),
+            "created_at": getattr(spec, "created_at", datetime.now(timezone.utc)),
+            "updated_at": datetime.now(timezone.utc),
             "spec_dict": spec.model_dump(mode="json"),
             "rid_refs": rid_refs,
             "metadata": metadata
@@ -44,7 +44,7 @@ class MongoBlueprintRepository(BlueprintRepository):
             {"$set": {
                 "spec_dict": spec.model_dump(mode="json"),
                 "rid_refs": rid_refs,
-                "updated_at": datetime.utcnow(),
+                "updated_at": datetime.now(timezone.utc),
             }}
         )
 
@@ -56,7 +56,7 @@ class MongoBlueprintRepository(BlueprintRepository):
             raise ValueError(f"metadata must be a dictionary, got: {type(metadata)}")
         res = self._col.update_one(
             {"blueprint_id": blueprint_id},
-            {"$set": {"metadata": metadata, "updated_at": datetime.utcnow()}}
+            {"$set": {"metadata": metadata, "updated_at": datetime.now(timezone.utc)}}
         )
         return res.modified_count == 1
 

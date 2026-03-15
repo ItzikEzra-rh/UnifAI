@@ -7,7 +7,7 @@ Provides hierarchical organization and participant tracking.
 
 from pydantic import BaseModel, Field
 from typing import Optional, List
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 import uuid
 
@@ -45,7 +45,7 @@ class Thread(BaseModel):
     participants: List[str] = Field(default_factory=list)
     
     # Metadata
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     completed_at: Optional[datetime] = None
     
     # ========== CLASS METHODS ==========
@@ -157,13 +157,13 @@ class Thread(BaseModel):
     def complete(self) -> 'Thread':
         """Mark thread as completed."""
         self.status = ThreadStatus.COMPLETED
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(timezone.utc)
         return self
     
     def fail(self) -> 'Thread':
         """Mark thread as failed."""
         self.status = ThreadStatus.FAILED
-        self.completed_at = datetime.utcnow()
+        self.completed_at = datetime.now(timezone.utc)
         return self
     
     def pause(self) -> 'Thread':

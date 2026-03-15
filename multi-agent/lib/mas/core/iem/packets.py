@@ -7,7 +7,7 @@ Clean separation between transport concerns and payload.
 
 from pydantic import BaseModel, Discriminator, Field, Tag
 from typing import Annotated, Any, Dict, Literal, Optional, Union
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import uuid
 from .models import ElementAddress, PacketType
 
@@ -22,7 +22,7 @@ class BaseIEMPacket(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     protocol: str = "iem/2.0"
     type: str
-    ts: datetime = Field(default_factory=datetime.utcnow)
+    ts: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     ttl: Optional[timedelta] = None
     src: ElementAddress
     dst: ElementAddress
@@ -32,7 +32,7 @@ class BaseIEMPacket(BaseModel):
     @property
     def is_expired(self) -> bool:
         """Check if packet has expired based on TTL."""
-        return self.ttl is not None and (datetime.utcnow() - self.ts) > self.ttl
+        return self.ttl is not None and (datetime.now(timezone.utc) - self.ts) > self.ttl
     
     def acknowledge(self, uid: str) -> None:
         """Mark packet as acknowledged by given uid."""
