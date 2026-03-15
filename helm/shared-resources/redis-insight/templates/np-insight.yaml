@@ -1,12 +1,12 @@
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
-  name: redis-insight-np
-  app: redis-insight
+  name: {{ include "redis-insight.fullname" . }}-np
+  app: {{ .Chart.Name }}
 spec:
   podSelector:
     matchLabels:
-      app: redis-insight
+      app: {{ .Chart.Name }}
   ingress:
     - {}
   egress:
