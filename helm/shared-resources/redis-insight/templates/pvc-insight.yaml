@@ -6,12 +6,17 @@ metadata:
     app: redis-insight
     paas.redhat.com/appcode: TAG-001
   annotations:
-    kubernetes.io/reclaimPolicy: Delete
-    "helm.sh/resource-policy": keep
+  {{- with .Values.annotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
 spec:
+  {{- with .Values.storage }}
   accessModes:
-    - ReadWriteOnce
+    {{- toYaml .accessModes | nindent 4 }}
   resources:
     requests:
-      storage: 2Gi
-  storageClassName: aws-ebs
+      storage: {{ .requestedSize }}
+  {{- if .className }}
+  storageClassName: {{ .className }}
+  {{- end }}
+  {{- end }}

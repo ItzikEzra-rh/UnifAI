@@ -1,14 +1,14 @@
 kind: Route
 apiVersion: route.openshift.io/v1
 metadata:
-  name: redis-insight-route
+  name: {{ include "redis-insight.fullname" . }}-route
   labels:
     paas.redhat.com/appcode: TAG-001
 spec:
   to:
     kind: Service
-    name: redis-insight-svc
+    name: {{ include "redis-insight.fullname" . }}-svc
     weight: 100
   port:
-    targetPort: http
+    targetPort: {{ .Values.service.port }}
   wildcardPolicy: None

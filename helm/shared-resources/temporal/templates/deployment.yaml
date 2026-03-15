@@ -41,6 +41,8 @@ spec:
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           tty: true
           stdin: true
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
           command: ["/bin/sh", "-c", "temporal server start-dev --ip 0.0.0.0"]
           volumeMounts:
           - name: temporal #Pod volumes to mount into the container's filesystem. Cannot be updated.
