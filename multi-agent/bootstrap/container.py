@@ -40,6 +40,7 @@ from outbound.mongo import (
 )
 
 from global_utils.utils.singleton import SingletonMeta
+from global_utils.utils.util import get_redis_url
 
 
 class AppContainer(metaclass=SingletonMeta):
@@ -177,10 +178,11 @@ class AppContainer(metaclass=SingletonMeta):
 
     @staticmethod
     def _create_channel_factory(cfg: AppConfig):
-        if cfg.redis_url:
+        redis_url = get_redis_url()
+        if redis_url:
             from outbound.channels import RedisChannelFactory
             return RedisChannelFactory(
-                redis_url=cfg.redis_url,
+                redis_url=redis_url,
                 stream_ttl=cfg.redis_stream_ttl,
                 block_ms=cfg.redis_stream_block_ms,
                 batch_size=cfg.redis_stream_batch_size,
