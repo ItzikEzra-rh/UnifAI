@@ -39,5 +39,5 @@ multiagent_temporal_worker:
   env:
     BACKEND_ENV: "production" #options - production development
     ROLE: "temporal-worker" # options are flask celery debug
-    WORKER_THREADS: "10"
+    WORKER_THREADS: "100"
     VERSION: ""
