@@ -12,7 +12,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Send, Trash2, Loader2, Sparkles, Info, Copy, RotateCcw, ThumbsUp, ThumbsDown, Check, Columns3, MessageSquare, Network, Maximize2, Minimize2 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import remarkBreaks from "remark-breaks";
 import axios from "../../../http/axiosAgentConfig";
 import { MarkdownComponents, preprocessText } from "./helpers/TextComponents";
 import { SessionPayload } from "../ExecutionTab";
@@ -901,7 +900,7 @@ export default function ChatInterface({
               <div className="text-sm text-gray-100">
                 <ReactMarkdown
                   components={MarkdownComponents}
-                  remarkPlugins={[remarkGfm, remarkBreaks]}
+                  remarkPlugins={[remarkGfm]}
                 >
                   {preprocessText(message.finalAnswer)}
                 </ReactMarkdown>
@@ -917,7 +916,7 @@ export default function ChatInterface({
       <div className="text-sm">
         <ReactMarkdown
           components={MarkdownComponents}
-          remarkPlugins={[remarkGfm, remarkBreaks]}
+          remarkPlugins={[remarkGfm]}
         >
           {preprocessText(message.content)}
         </ReactMarkdown>

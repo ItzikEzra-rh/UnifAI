@@ -30,21 +30,26 @@ export const MarkdownComponents = {
     <li className="text-gray-200 leading-normal pl-1" {...props}>{children}</li>
   ),
   
-  // Code blocks - Simplified approach
-  code: ({ inline, className, children, ...props }: any) => {
-    // Block code (triple backticks)
-    if (!inline) {
+  // Block code: react-markdown v10 wraps fenced blocks in <pre><code class="language-*">.
+  // Override <pre> to pass children through so our code component controls all styling.
+  pre: ({ children }: any) => <>{children}</>,
+
+  // Code: detect fenced blocks via the language-* className that react-markdown v10
+  // attaches to <code> inside <pre>. Everything else is inline.
+  code: ({ className, children, ...props }: any) => {
+    const isBlock = /^language-/.test(className || '');
+
+    if (isBlock) {
       return (
         <pre className="bg-gray-900 text-cyan-300 p-3 rounded-lg overflow-x-auto mb-3 mt-2">
           <code className="font-mono text-sm">{children}</code>
         </pre>
       );
     }
-    
-    // Inline code (single backticks) - Always render inline
+
     return (
-      <code 
-        className="bg-gray-800 text-cyan-300 px-1.5 py-0.5 mx-0.5 rounded text-sm font-mono" 
+      <code
+        className="bg-gray-800 text-cyan-300 px-1.5 py-0.5 mx-0.5 rounded text-sm font-mono"
         {...props}
       >
         {children}
@@ -97,8 +102,29 @@ export const MarkdownComponents = {
   ),
 };
 
-// Minimal preprocessing - let react-markdown handle most formatting
+// Preprocess LLM text for standard markdown rendering.
+// Literal \\n sequences from the LLM are converted to real newlines.
+// Consecutive newlines (paragraph breaks) and list/heading boundaries
+// are preserved; isolated single newlines become spaces so standard
+// markdown paragraph rules apply without needing remarkBreaks.
 export const preprocessText = (text: string): string => {
-  // Only convert literal \n to actual newlines
-  return text.replace(/\\n/g, '\n').trim();
+  let result = text.replace(/\\n/g, '\n').trim();
+
+  // Protect double-newlines (paragraph breaks) with a placeholder
+  const PARA_PLACEHOLDER = '\u0000PARA\u0000';
+  result = result.replace(/\n{2,}/g, PARA_PLACEHOLDER);
+
+  // Preserve newlines before markdown block-level syntax (lists, headings,
+  // blockquotes, horizontal rules, code fences) so they start on new lines.
+  const BLOCK_PLACEHOLDER = '\u0000BLOCK\u0000';
+  result = result.replace(/\n(?=\s*[-*+] |\s*\d+\. |#{1,6} |> |---|```)/g, BLOCK_PLACEHOLDER);
+
+  // Collapse remaining single newlines into spaces
+  result = result.replace(/\n/g, ' ');
+
+  // Restore paragraph and block boundaries
+  result = result.replace(new RegExp(PARA_PLACEHOLDER, 'g'), '\n\n');
+  result = result.replace(new RegExp(BLOCK_PLACEHOLDER, 'g'), '\n');
+
+  return result;
 };
