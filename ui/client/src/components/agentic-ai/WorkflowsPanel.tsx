@@ -87,12 +87,12 @@ export default function WorkflowsPanel({
   });
 
   const filteredFlows = useMemo(() => {
-    if (!searchQuery.trim()) return graphFlows;
-    const query = searchQuery.toLowerCase();
+    const normalizedSearch = searchQuery.trim().toLowerCase();
+    if (!normalizedSearch) return graphFlows;
     return graphFlows.filter(
       (flow) =>
-        flow.name.toLowerCase().includes(query) ||
-        flow.description.toLowerCase().includes(query),
+        flow.name.toLowerCase().includes(normalizedSearch) ||
+        flow.description.toLowerCase().includes(normalizedSearch),
     );
   }, [graphFlows, searchQuery]);
 
@@ -307,6 +307,8 @@ export default function WorkflowsPanel({
               />
               {searchQuery && (
                 <button
+                  type="button"
+                  aria-label="Clear search"
                   onClick={() => setSearchQuery("")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
                 >
@@ -319,8 +321,8 @@ export default function WorkflowsPanel({
             {filteredFlows.length === 0 ? (
               <div className="flex items-center justify-center py-8">
                 <div className="text-gray-400 text-sm text-center px-4">
-                  {searchQuery
-                    ? `No workflows match "${searchQuery}"`
+                  {searchQuery.trim()
+                    ? `No workflows match "${searchQuery.trim()}"`
                     : "No flows available"}
                 </div>
               </div>
