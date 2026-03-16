@@ -49,9 +49,9 @@ spec:
           {{- end }}
           envFrom:
             - configMapRef:
-                name: multiagent-be-configmap
-            - configMapRef:
-                name: multiagent-be-security
+                name: multiagent-temporal-worker-configmap
+            # - configMapRef:
+            #     name: multiagent-be-security
             - configMapRef:
                 name: {{ .Values.globalConfigMapName }}
           ports:
