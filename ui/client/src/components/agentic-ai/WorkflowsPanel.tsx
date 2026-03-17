@@ -306,14 +306,16 @@ export default function WorkflowsPanel({
                 className="h-8 pl-8 pr-8 text-xs bg-background-dark border-gray-700 focus:border-primary"
               />
               {searchQuery && (
-                <button
-                  type="button"
-                  aria-label="Clear search"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
+                <SimpleTooltip content={<p>Clear search</p>}>
+                  <button
+                    type="button"
+                    aria-label="Clear search"
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </SimpleTooltip>
               )}
             </div>
           </div>
