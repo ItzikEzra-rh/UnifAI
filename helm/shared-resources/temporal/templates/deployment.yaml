@@ -37,3 +37,11 @@ spec:
             protocol: TCP
           - containerPort: {{ .Values.service.port_ui }}
             protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.service.port_ui }}
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: {{ .Values.service.port_ui }}
