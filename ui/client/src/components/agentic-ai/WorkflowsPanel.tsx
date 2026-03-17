@@ -87,7 +87,7 @@ export default function WorkflowsPanel({
   });
 
   const filteredFlows = useMemo(() => {
-    const normalizedSearch = searchQuery.trim().toLowerCase();
+    const normalizedSearch = (searchQuery ?? "").trim().toLowerCase();
     if (!normalizedSearch) return graphFlows;
     return graphFlows.filter(
       (flow) =>
