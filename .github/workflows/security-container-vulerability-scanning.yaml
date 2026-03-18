@@ -1,11 +1,11 @@
 name: Security Container Vulnerability Scanning
 
 on:
-  #currently we'll run this only upon request and not automatically.
-  # push:
+  # pull_request:
+  #   types: 
+  #     - opened
   #   branches:
-  #     - GENIE-1379-container_vulerability
-  #pull_request:
+  #     - main
   workflow_dispatch:
     inputs:
       branch:

@@ -1,5 +1,0 @@
-# This version is several years old and contains many CRITICAL vulnerabilities
-FROM python:3.9-slim-buster 
-
-# Or even older/more bloated if that's not enough:
-# FROM node:10
