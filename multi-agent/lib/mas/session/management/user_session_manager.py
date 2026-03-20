@@ -1,10 +1,11 @@
+import uuid
 from datetime import datetime
 from typing import List, Mapping, Any, Dict, Optional
 from mas.session.repository.repository import SessionRepository
 from mas.session.building.workflow_session_factory import WorkflowSessionFactory
 from mas.session.domain.workflow_session import WorkflowSession
 from mas.session.domain.session_record import SessionRecord
-from mas.core.run_context import RunContext
+from mas.core.execution_context import ExecutionContext
 from mas.core.dto import GroupedCount
 from mas.graph.state.graph_state import GraphState
 from mas.session.domain.status import SessionStatus
@@ -56,14 +57,14 @@ class UserSessionManager:
             raise BlueprintNotFoundError(blueprint_id)
 
         session_meta = metadata or SessionMeta()
-        ctx = RunContext(
+        run_id = str(uuid.uuid4())
+        ctx = ExecutionContext(
             user_id=user_id,
             engine_name=self._factory.engine_name,
-            metadata=session_meta.model_dump(),
         )
 
         record = SessionRecord(
-            run_id=ctx.run_id,
+            run_id=run_id,
             user_id=user_id,
             blueprint_id=blueprint_id,
             run_context=ctx,

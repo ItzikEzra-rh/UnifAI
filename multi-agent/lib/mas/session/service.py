@@ -50,7 +50,6 @@ class SessionService:
         session_id: str,
         inputs: Dict[str, Any],
         scope: str = "public",
-        logged_in_user: str = "",
         stream: bool = False,
     ) -> Any:
         """
@@ -68,12 +67,11 @@ class SessionService:
         return self._foreground.run(
             session=session,
             scope=scope,
-            logged_in_user=logged_in_user,
             stream=stream,
         )
 
     def submit(self, session_id: str, inputs: Dict[str, Any],
-               scope: str = "public", logged_in_user: str = "") -> str:
+               scope: str = "public") -> str:
         """
         Non-blocking submit: stage inputs, then start a background workflow
         and return its handle/ID immediately (HTTP 202 pattern).
@@ -85,10 +83,8 @@ class SessionService:
             )
         self._stage(session_id, inputs)
         session = self._manager.get_session(session_id)
-        request = SubmitSessionRequest(
-            scope=scope,
-            logged_in_user=logged_in_user,
-        )
+        execution_ctx = session.run_context.with_scope(scope)
+        request = SubmitSessionRequest(execution_context=execution_ctx)
         return self._submitter.submit(session, request)
 
     # ---- Private staging ----

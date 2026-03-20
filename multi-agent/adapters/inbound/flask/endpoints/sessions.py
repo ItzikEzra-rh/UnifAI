@@ -54,7 +54,6 @@ def execute_user_session(session_id, inputs, stream_mode, stream, scope, logged_
             session_id=session_id,
             inputs=inputs,
             scope=scope,
-            logged_in_user=logged_in_user,
         )
         return json.dumps(result, default=pydantic_encoder), 200
 
@@ -63,7 +62,6 @@ def execute_user_session(session_id, inputs, stream_mode, stream, scope, logged_
             session_id=session_id,
             inputs=inputs,
             scope=scope,
-            logged_in_user=logged_in_user,
             stream=True,
         )
         for chunk in with_heartbeats(stream_iter):
@@ -106,7 +104,6 @@ def submit_user_session(session_id, inputs, scope, logged_in_user):
             session_id=session_id,
             inputs=inputs,
             scope=scope,
-            logged_in_user=logged_in_user,
         )
         return jsonify({"sessionId": session_id, "workflowId": workflow_id}), 202
     except TypeError as e:
