@@ -13,7 +13,8 @@ class RagProviderConfig(ProviderBaseConfig):
     type: Literal[Identifier.TYPE] = Identifier.TYPE
 
     base_url: HttpUrl = Field(
-        default="http://unifai-rag-server:13456",
+        default="http://10.46.253.0:13456",
+        # default="http://unifai-rag-server:13456",
         description="Base URL of the RAG service",
         json_schema_extra=ActionHint(
             action_uid="rag.validate_connection",
