@@ -127,6 +127,19 @@ def get_session_state(session_id):
         return jsonify({"error": str(e)}), 500
 
 
+@sessions_bp.route("/session.chat.get", methods=["GET"])
+@from_query({
+    "session_id": fields.Str(data_key="sessionId", required=True),
+})
+def get_session_chat(session_id):
+    try:
+        svc = current_app.container.session_service
+        chat = svc.get_chat(run_id=session_id)
+        return jsonify(chat.model_dump(mode="json")), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
 @sessions_bp.route("/session.status.get", methods=["GET"])
 @from_query({
     "session_id": fields.Str(data_key="sessionId", required=True),
@@ -140,14 +153,14 @@ def get_session_status(session_id):
         return jsonify({"error": str(e)}), 500
 
 
-@sessions_bp.route("/session.user.chat.get", methods=["GET"])
+@sessions_bp.route("/session.user.list", methods=["GET"])
 @from_query({
     "user_id": fields.Str(data_key="userId", required=True),
 })
-def get_session_user_chat(user_id):
+def list_user_sessions(user_id):
     try:
         svc = current_app.container.session_service
-        return jsonify(svc.get_user_sessions_chat_history(user_id)), 200
+        return jsonify(svc.list_user_sessions(user_id)), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

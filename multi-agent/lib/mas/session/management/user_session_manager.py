@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from typing import List, Mapping, Any, Dict, Optional
+from typing import Any, Dict, List, Mapping, Optional
 from mas.session.repository.repository import SessionRepository
 from mas.session.building.workflow_session_factory import WorkflowSessionFactory
 from mas.session.domain.workflow_session import WorkflowSession
@@ -10,7 +10,7 @@ from mas.core.dto import GroupedCount
 from mas.graph.state.graph_state import GraphState
 from mas.session.domain.status import SessionStatus
 from mas.blueprints.service import BlueprintService
-from mas.session.domain.models import SessionMeta, TimeSeriesPoint, SystemAnalyticsData
+from mas.session.domain.models import SessionChat, SessionMeta, TimeSeriesPoint, SystemAnalyticsData
 from mas.session.domain.exceptions import BlueprintNotFoundError
 
 
@@ -80,6 +80,10 @@ class UserSessionManager:
     def get_record(self, run_id: str) -> SessionRecord:
         """Lightweight fetch — returns typed SessionRecord, no graph build."""
         return self._repo.fetch(run_id)
+
+    def get_chat(self, run_id: str) -> SessionChat:
+        """Projected fetch — only messages and output from graph state."""
+        return self._repo.fetch_chat(run_id)
 
     def get_session(self, run_id: str) -> WorkflowSession:
         """Full build — compiles runtime plan + executable graph from the record."""
