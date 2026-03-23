@@ -41,7 +41,7 @@ export const MarkdownComponents = {
 
     if (isBlock) {
       return (
-        <pre className="bg-gray-900 text-cyan-300 p-3 rounded-lg overflow-x-auto mb-3 mt-2">
+        <pre className="bg-gray-900 text-cyan-300 p-3 rounded-lg overflow-x-auto mb-3 mt-2 whitespace-pre">
           <code className="font-mono text-sm">{children}</code>
         </pre>
       );
@@ -111,9 +111,10 @@ export const MarkdownComponents = {
 export const preprocessText = (text: string): string => {
   let result = text.replace(/\\n/g, '\n').trim();
 
-  // Split around fenced code blocks (``` ... ```) so their content
-  // is never mangled by the prose-oriented newline collapsing below.
-  const CODE_FENCE_RE = /(```[\s\S]*?```)/g;
+  // Split around fenced code blocks so their content is never mangled
+  // by the prose-oriented newline collapsing below. The second alternative
+  // handles unclosed fences (common when LLMs omit the trailing ```).
+  const CODE_FENCE_RE = /(```[\s\S]*?```|```[\s\S]*$)/g;
   const parts = result.split(CODE_FENCE_RE);
 
   const processed = parts.map((part) => {
