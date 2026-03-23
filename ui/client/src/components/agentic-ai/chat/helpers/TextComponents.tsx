@@ -102,37 +102,9 @@ export const MarkdownComponents = {
   ),
 };
 
-// Preprocess LLM text for standard markdown rendering.
-// Literal \\n sequences from the LLM are converted to real newlines.
-// Fenced code blocks are preserved verbatim. Outside code blocks,
-// consecutive newlines (paragraph breaks) and list/heading boundaries
-// are preserved; isolated single newlines become spaces so standard
-// markdown paragraph rules apply without needing remarkBreaks.
+// Convert literal \n sequences from the LLM into real newlines so that
+// standard CommonMark rendering (via react-markdown without remark-breaks)
+// handles paragraphs, code fences, lists, and headings natively.
 export const preprocessText = (text: string): string => {
-  let result = text.replace(/\\n/g, '\n').trim();
-
-  // Split around fenced code blocks so their content is never mangled
-  // by the prose-oriented newline collapsing below. The second alternative
-  // handles unclosed fences (common when LLMs omit the trailing ```).
-  const CODE_FENCE_RE = /(```[\s\S]*?```|```[\s\S]*$)/g;
-  const parts = result.split(CODE_FENCE_RE);
-
-  const processed = parts.map((part) => {
-    if (part.startsWith('```')) return part;
-
-    const PARA_PLACEHOLDER = '\u0000PARA\u0000';
-    let s = part.replace(/\n{2,}/g, PARA_PLACEHOLDER);
-
-    const BLOCK_PLACEHOLDER = '\u0000BLOCK\u0000';
-    s = s.replace(/\n(?=\s*[-*+] |\s*\d+\. |#{1,6} |> |---|```)/g, BLOCK_PLACEHOLDER);
-
-    s = s.replace(/\n/g, ' ');
-
-    s = s.replace(new RegExp(PARA_PLACEHOLDER, 'g'), '\n\n');
-    s = s.replace(new RegExp(BLOCK_PLACEHOLDER, 'g'), '\n');
-
-    return s;
-  });
-
-  return processed.join('');
+  return text.replace(/\\n/g, '\n').trim();
 };
