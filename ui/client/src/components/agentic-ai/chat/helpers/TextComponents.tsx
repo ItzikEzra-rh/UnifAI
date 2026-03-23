@@ -104,27 +104,34 @@ export const MarkdownComponents = {
 
 // Preprocess LLM text for standard markdown rendering.
 // Literal \\n sequences from the LLM are converted to real newlines.
-// Consecutive newlines (paragraph breaks) and list/heading boundaries
+// Fenced code blocks are preserved verbatim. Outside code blocks,
+// consecutive newlines (paragraph breaks) and list/heading boundaries
 // are preserved; isolated single newlines become spaces so standard
 // markdown paragraph rules apply without needing remarkBreaks.
 export const preprocessText = (text: string): string => {
   let result = text.replace(/\\n/g, '\n').trim();
 
-  // Protect double-newlines (paragraph breaks) with a placeholder
-  const PARA_PLACEHOLDER = '\u0000PARA\u0000';
-  result = result.replace(/\n{2,}/g, PARA_PLACEHOLDER);
+  // Split around fenced code blocks (``` ... ```) so their content
+  // is never mangled by the prose-oriented newline collapsing below.
+  const CODE_FENCE_RE = /(```[\s\S]*?```)/g;
+  const parts = result.split(CODE_FENCE_RE);
 
-  // Preserve newlines before markdown block-level syntax (lists, headings,
-  // blockquotes, horizontal rules, code fences) so they start on new lines.
-  const BLOCK_PLACEHOLDER = '\u0000BLOCK\u0000';
-  result = result.replace(/\n(?=\s*[-*+] |\s*\d+\. |#{1,6} |> |---|```)/g, BLOCK_PLACEHOLDER);
+  const processed = parts.map((part) => {
+    if (part.startsWith('```')) return part;
 
-  // Collapse remaining single newlines into spaces
-  result = result.replace(/\n/g, ' ');
+    const PARA_PLACEHOLDER = '\u0000PARA\u0000';
+    let s = part.replace(/\n{2,}/g, PARA_PLACEHOLDER);
 
-  // Restore paragraph and block boundaries
-  result = result.replace(new RegExp(PARA_PLACEHOLDER, 'g'), '\n\n');
-  result = result.replace(new RegExp(BLOCK_PLACEHOLDER, 'g'), '\n');
+    const BLOCK_PLACEHOLDER = '\u0000BLOCK\u0000';
+    s = s.replace(/\n(?=\s*[-*+] |\s*\d+\. |#{1,6} |> |---|```)/g, BLOCK_PLACEHOLDER);
 
-  return result;
+    s = s.replace(/\n/g, ' ');
+
+    s = s.replace(new RegExp(PARA_PLACEHOLDER, 'g'), '\n\n');
+    s = s.replace(new RegExp(BLOCK_PLACEHOLDER, 'g'), '\n');
+
+    return s;
+  });
+
+  return processed.join('');
 };
