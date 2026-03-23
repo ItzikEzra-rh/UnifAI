@@ -25,7 +25,7 @@ multiagent_temporal_worker:
   replicaCount: 2
   resources: 
     limits:
-      cpu: '42'
+      cpu: '4'
       memory: '16Gi'
     requests:
       cpu: '2'
