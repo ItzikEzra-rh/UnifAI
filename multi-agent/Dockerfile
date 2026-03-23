@@ -38,6 +38,7 @@ ENV CURL_CA_BUNDLE=/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
 
 ADD  --chown=default:root --chmod=777 ./multi-agent $HOME/app
 ADD  --chown=default:root --chmod=777 ./global_utils $HOME/global_utils
+ADD  --chown=default:root --chmod=777 ./scripts $HOME/scripts
 
 WORKDIR $HOME
 COPY ./multi-agent/entrypoint.sh ./app/entrypoint.sh
