@@ -7,7 +7,7 @@ import {
   FaRobot, FaFile, FaChevronLeft, FaChevronRight,
   FaInfoCircle, FaBook, FaComment, FaPuzzlePiece
 } from "react-icons/fa";
-import { FaJira, FaSlack, FaBars } from "react-icons/fa";
+import { FaSlack, FaBars } from "react-icons/fa";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import SimpleTooltip from "@/components/shared/SimpleTooltip";

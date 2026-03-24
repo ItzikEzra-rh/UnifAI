@@ -2,7 +2,7 @@
 
 ## Overview
 
-Lightweight Flask service (port 8003, proxied via `/api4` from the UI) for cross-cutting platform concerns. Currently handles **admin configuration**; designed to grow with new domains.
+Lightweight Flask service (port 8005, proxied via `/api4` from the UI) for cross-cutting platform concerns. Currently handles **admin configuration**; designed to grow with new domains.
 
 This is a separate service from:
 - **RAG / Data Pipeline Hub** (port 13457, `/api1`) — document ingestion, Slack pipelines, embeddings

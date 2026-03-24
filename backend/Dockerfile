@@ -19,6 +19,12 @@ RUN /bin/bash -c "source venv/bin/activate && \
     pip install -r requirements.txt && \
     pip install -e ../global_utils/"
 
-EXPOSE 8003
+ENV ROLE=flask \
+    PORT=8005 \
+    GUNICORN_WORKERS=2 \
+    GUNICORN_THREADS=1 \
+    GUNICORN_TIMEOUT=120
 
-CMD ["venv/bin/gunicorn", "-w", "2", "-b", "0.0.0.0:8003", "run.wsgi:application"]
+EXPOSE 8005
+
+ENTRYPOINT ["./entrypoint.sh"]

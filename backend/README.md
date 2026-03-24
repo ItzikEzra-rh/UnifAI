@@ -1,6 +1,6 @@
 # Backend (Platform Service)
 
-Lightweight Flask service for cross-cutting platform concerns. Runs on port **8003**, proxied via `/api4` from the UI.
+Lightweight Flask service for cross-cutting platform concerns. Runs on port **8005**, proxied via `/api4` from the UI.
 
 For architecture details, patterns, and conventions see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
@@ -30,12 +30,12 @@ pip install -e ../global_utils/
 python run/dev.py
 ```
 
-Starts Flask dev server with auto-reload on `0.0.0.0:8003`.
+Starts Flask dev server with auto-reload on `0.0.0.0:8005`.
 
 ### Production
 
 ```bash
-gunicorn -w 2 -b 0.0.0.0:8003 run.wsgi:application
+gunicorn -w 2 -b 0.0.0.0:8005 run.wsgi:application
 ```
 
 ### Docker
@@ -43,7 +43,7 @@ gunicorn -w 2 -b 0.0.0.0:8003 run.wsgi:application
 ```bash
 # From repo root
 docker build -f backend/Dockerfile -t unifai-backend .
-docker run -p 8003:8003 unifai-backend
+docker run -p 8005:8005 unifai-backend
 ```
 
 ## Configuration
@@ -55,7 +55,7 @@ Environment-driven via `AppConfig` (inherits from `global_utils.config.SharedCon
 | `MONGO_DB` | `config` | MongoDB database name |
 | `ADMIN_CONFIG_COLL` | `admin_config` | Collection for stored config values |
 | `HOSTNAME_LOCAL` | `0.0.0.0` | Bind address |
-| `PORT` | `8003` | Server port |
+| `PORT` | `8005` | Server port |
 | `RAG_URL` | `http://localhost:13457` | RAG service URL (for action dispatch) |
 
 ## API Endpoints
