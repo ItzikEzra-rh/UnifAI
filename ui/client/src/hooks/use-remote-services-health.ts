@@ -3,7 +3,7 @@ import { checkServicesHealth, ServiceHealth } from '@/api/health';
 
 /**
  * Polling interval for health checks in milliseconds.
- * Checks every 10 seconds as requested.
+ * Checks every 60 seconds as requested.
  */
 const HEALTH_CHECK_INTERVAL_MS = 60_000;
 
