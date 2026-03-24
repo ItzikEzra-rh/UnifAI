@@ -1,9 +1,6 @@
 import { useState, useEffect } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -14,7 +11,7 @@ import {
   type SectionValue,
   type FieldValue,
 } from "@/api/adminConfig";
-import StringListField from "./StringListField";
+import AdminConfigFieldRenderer from "./AdminConfigFieldRenderer";
 
 /**
  * Renders a single admin_config section as a card with editable fields,
@@ -32,11 +29,11 @@ export default function AdminConfigSection({
   const [values, setValues] = useState<Record<string, unknown>>(() =>
     buildInitialValues(section.fields),
   );
-  const [isDirty, setIsDirty] = useState(false);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   useEffect(() => {
     setValues(buildInitialValues(section.fields));
-    setIsDirty(false);
+    setHasUnsavedChanges(false);
   }, [section]);
 
   const mutation = useMutation({
@@ -53,7 +50,7 @@ export default function AdminConfigSection({
         title: "Saved",
         description: `${section.title} updated successfully.`,
       });
-      setIsDirty(false);
+      setHasUnsavedChanges(false);
     },
     onError: (err: Error) => {
       toast({
@@ -66,14 +63,14 @@ export default function AdminConfigSection({
 
   const handleFieldChange = (fieldKey: string, newValue: unknown) => {
     setValues((prev) => ({ ...prev, [fieldKey]: newValue }));
-    setIsDirty(true);
+    setHasUnsavedChanges(true);
   };
 
   const handleSave = () => mutation.mutate(values);
 
   const handleReset = () => {
     setValues(buildInitialValues(section.fields));
-    setIsDirty(false);
+    setHasUnsavedChanges(false);
   };
 
   return (
@@ -103,7 +100,7 @@ export default function AdminConfigSection({
 
         <div className="mt-6 space-y-6">
           {section.fields.map((field) => (
-            <FieldRenderer
+            <AdminConfigFieldRenderer
               key={field.key}
               field={field}
               value={values[field.key]}
@@ -115,7 +112,7 @@ export default function AdminConfigSection({
         <div className="flex items-center gap-3 mt-8 pt-4 border-t border-gray-800">
           <Button
             onClick={handleSave}
-            disabled={!isDirty || mutation.isPending}
+            disabled={!hasUnsavedChanges || mutation.isPending}
             className="bg-primary"
           >
             <FaSave className="mr-2 w-3.5 h-3.5" />
@@ -124,12 +121,12 @@ export default function AdminConfigSection({
           <Button
             variant="outline"
             onClick={handleReset}
-            disabled={!isDirty || mutation.isPending}
+            disabled={!hasUnsavedChanges || mutation.isPending}
           >
             <FaUndo className="mr-2 w-3.5 h-3.5" />
             Reset
           </Button>
-          {isDirty && (
+          {hasUnsavedChanges && (
             <span className="text-xs text-amber-400 ml-2">
               Unsaved changes
             </span>
@@ -137,66 +134,6 @@ export default function AdminConfigSection({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-
-function FieldRenderer({
-  field,
-  value,
-  onChange,
-}: {
-  field: FieldValue;
-  value: unknown;
-  onChange: (value: unknown) => void;
-}) {
-  return (
-    <div>
-      <Label className="text-base font-medium">{field.label}</Label>
-      {field.description && (
-        <p className="text-xs text-gray-400 mt-1 mb-2">{field.description}</p>
-      )}
-
-      {field.field_type === "string_list" && (
-        <StringListField
-          value={Array.isArray(value) ? (value as string[]) : []}
-          onChange={(v) => onChange(v)}
-          placeholder={field.placeholder}
-        />
-      )}
-
-      {field.field_type === "string" && (
-        <Input
-          value={typeof value === "string" ? value : ""}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={field.placeholder}
-          className="bg-background-dark max-w-md"
-        />
-      )}
-
-      {field.field_type === "number" && (
-        <Input
-          type="number"
-          value={typeof value === "number" ? value : 0}
-          onChange={(e) => onChange(Number(e.target.value))}
-          placeholder={field.placeholder}
-          className="bg-background-dark w-32"
-        />
-      )}
-
-      {field.field_type === "boolean" && (
-        <div className="flex items-center gap-3 mt-1">
-          <Switch
-            checked={Boolean(value)}
-            onCheckedChange={(checked) => onChange(checked)}
-          />
-          <span className="text-sm text-gray-400">
-            {value ? "Enabled" : "Disabled"}
-          </span>
-        </div>
-      )}
-    </div>
   );
 }
 
