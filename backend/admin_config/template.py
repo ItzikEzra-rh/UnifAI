@@ -48,69 +48,68 @@ ADMIN_CONFIG_TEMPLATE = AdminConfigTemplate(
                 ),
             ],
         ),
-        # ── Data Source Rules ────────────────────────────────────────────
-        CategoryDefinition( 
-            
-            key="restricted_channels_rules",
-            title="Restricted Slack channels Rules",
-            description="Rules that control which data sources are ingested.",
-            sections=[
-                SectionDefinition(
-                    key="slack_channel_restrictions",
-                    title="Slack Channel Restrictions",
-                    description=(
-                        "Define prefixes, suffixes, and keywords that cause "
-                        "Slack channels to be excluded from ingestion."
-                    ),
-                    on_update_action="clean_restricted_slack_channels",
-                    on_update_target="rag",
-                    on_update_endpoint="/api/slack/clean-restricted-channels",
-                    fields=[
-                        FieldDefinition(
-                            key="restricted_prefixes",
-                            label="Restricted Prefixes",
-                            field_type="string_list",
-                            description="Channels whose name starts with any of these are excluded.",
-                            default=[
-                                "erg-",
-                                "event-",
-                                "events-",
-                                "hr-",
-                                "people-",
-                                "confidential-",
-                            ],
-                            placeholder="e.g. hr-",
-                        ),
-                        FieldDefinition(
-                            key="restricted_suffixes",
-                            label="Restricted Suffixes",
-                            field_type="string_list",
-                            description="Channels whose name ends with any of these are excluded.",
-                            default=[
-                                "-erg",
-                                "-event",
-                                "-events",
-                                "-hr",
-                                "-confidential",
-                            ],
-                            placeholder="e.g. -hr",
-                        ),
-                        FieldDefinition(
-                            key="restricted_keywords",
-                            label="Restricted Keywords",
-                            field_type="string_list",
-                            description="Channels whose name contains any of these are excluded.",
-                            default=[
-                                "human-resources",
-                                "employee-relations",
-                                "performance-review",
-                            ],
-                            placeholder="e.g. performance-review",
-                        ),
-                    ],
-                ),
-            ],
-        ),
+        # ── Data Source Rules (disabled until backend is fully deployed) ──
+        # CategoryDefinition(
+        #     key="restricted_channels_rules",
+        #     title="Restricted Slack channels Rules",
+        #     description="Rules that control which data sources are ingested.",
+        #     sections=[
+        #         SectionDefinition(
+        #             key="slack_channel_restrictions",
+        #             title="Slack Channel Restrictions",
+        #             description=(
+        #                 "Define prefixes, suffixes, and keywords that cause "
+        #                 "Slack channels to be excluded from ingestion."
+        #             ),
+        #             on_update_action="clean_restricted_slack_channels",
+        #             on_update_target="rag",
+        #             on_update_endpoint="/api/slack/clean-restricted-channels",
+        #             fields=[
+        #                 FieldDefinition(
+        #                     key="restricted_prefixes",
+        #                     label="Restricted Prefixes",
+        #                     field_type="string_list",
+        #                     description="Channels whose name starts with any of these are excluded.",
+        #                     default=[
+        #                         "erg-",
+        #                         "event-",
+        #                         "events-",
+        #                         "hr-",
+        #                         "people-",
+        #                         "confidential-",
+        #                     ],
+        #                     placeholder="e.g. hr-",
+        #                 ),
+        #                 FieldDefinition(
+        #                     key="restricted_suffixes",
+        #                     label="Restricted Suffixes",
+        #                     field_type="string_list",
+        #                     description="Channels whose name ends with any of these are excluded.",
+        #                     default=[
+        #                         "-erg",
+        #                         "-event",
+        #                         "-events",
+        #                         "-hr",
+        #                         "-confidential",
+        #                     ],
+        #                     placeholder="e.g. -hr",
+        #                 ),
+        #                 FieldDefinition(
+        #                     key="restricted_keywords",
+        #                     label="Restricted Keywords",
+        #                     field_type="string_list",
+        #                     description="Channels whose name contains any of these are excluded.",
+        #                     default=[
+        #                         "human-resources",
+        #                         "employee-relations",
+        #                         "performance-review",
+        #                     ],
+        #                     placeholder="e.g. performance-review",
+        #                 ),
+        #             ],
+        #         ),
+        #     ],
+        # ),
  
     ],
 )
