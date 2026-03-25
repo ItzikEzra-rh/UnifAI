@@ -29,7 +29,7 @@ securityContext: {}
 
 service:
   type: ClusterIP
-  port: 8003
+  port: 8005
 
 ingress:
   enabled: false
@@ -53,13 +53,13 @@ resources:
 livenessProbe:
   httpGet:
     path: /api/health
-    port: 8003
+    port: 8005
   periodSeconds: 60
 
 readinessProbe:
   httpGet:
     path: /api/health
-    port: 8003
+    port: 8005
   periodSeconds: 60
 
 autoscaling:

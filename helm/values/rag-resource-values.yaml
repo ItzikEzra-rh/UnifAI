@@ -16,7 +16,7 @@ unifai_rag_server:
   env:
     ROLE: "flask"
     SHARED_STORAGE: "/app/shared"
-    BACKEND_URL: "http://unifai-backend:8003"
+    BACKEND_URL: "http://unifai-backend:8005"
     VERSION: ""
     DOCLING_SERVICE_URL: "https://docling-service-tag-ai--runtime-int.apps.stc-ai-e1-pp.imap.p1.openshiftapps.com"
     DOCLING_PDF_BACKEND: "dlparse_v4"
@@ -43,7 +43,7 @@ unifai_rag_celery:
   env:
     ROLE: "celery"
     SHARED_STORAGE: "/app/shared"
-    BACKEND_URL: "http://unifai-backend:8003"
+    BACKEND_URL: "http://unifai-backend:8005"
     CELERY_QUEUES: "slack_queue,document_queue,slack_events_queue"
     CELERY_WORKER: 8
     CELERY_POOL: "prefork"
