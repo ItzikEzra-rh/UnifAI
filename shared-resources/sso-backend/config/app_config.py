@@ -17,3 +17,9 @@ class AppConfig(SharedConfig):
     frontend_url: str = "http://localhost:5000"    # session_cookie_secure=True
     backend_env: str = "development"
 
+    # LDAP Configuration (optional - disabled if ldap_url is empty)
+    ldap_url: str = ""  # e.g. "ldaps://ldap.corp.redhat.com"
+    ldap_base_dn: str = "ou=users,dc=redhat,dc=com"
+    ldap_group_base_dn: str = ""  # derived from base_dn if empty
+    ldap_skip_tls_verify: bool = False
+
