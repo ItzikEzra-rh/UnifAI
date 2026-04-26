@@ -7,6 +7,8 @@ from werkzeug.exceptions import BadRequest
 from typing import Optional
 from mas.blueprints.exceptions import (
     BlueprintNotFoundError,
+    BlueprintAccessDeniedError,
+    BlueprintCloneError,
     BlueprintSaveError,
     BlueprintMetadataError,
 )
@@ -352,8 +354,11 @@ def clone_blueprint(blueprint_id, user_id):
 
     except BlueprintNotFoundError as e:
         return jsonify({"status": "error", "error": str(e)}), 404
-    except ValueError as e:
-        return jsonify({"status": "error", "error": str(e)}), 400
+    except BlueprintAccessDeniedError as e:
+        return jsonify({"status": "error", "error": str(e)}), 403
+    except BlueprintCloneError as e:
+        logger.exception(f"Clone failed for blueprint {blueprint_id}")
+        return jsonify({"status": "error", "error": str(e)}), 500
     except Exception as e:
         logger.exception(f"Unexpected error cloning blueprint {blueprint_id}")
         return jsonify({"status": "error", "error": str(e)}), 500

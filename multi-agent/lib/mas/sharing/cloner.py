@@ -8,6 +8,7 @@ from pydantic import BaseModel
 from mas.resources.models import Resource
 from mas.resources.registry import ResourcesRegistry
 from mas.blueprints.models.blueprint import BlueprintDraft, BlueprintResource, StepDef
+from mas.blueprints.exceptions import BlueprintAccessDeniedError, BlueprintCloneError
 from mas.blueprints.service import BlueprintService
 from mas.catalog.element_registry import ElementRegistry
 from mas.core.ref import RefWalker, RefRemapper
@@ -84,7 +85,7 @@ class ShareCloner:
         result = self._clone_resource_set(closure_data, ctx)
 
         if not result.success:
-            raise ValueError(f"Resource cloning failed: {result.errors}")
+            raise BlueprintCloneError(f"Resource cloning failed: {result.errors}")
 
         logger.info(f"Resource graph clone completed: {result.resources_cloned} resources cloned")
         return result.rid_mapping, result.name_conflicts
@@ -97,7 +98,7 @@ class ShareCloner:
             # Load and validate blueprint
             bp_doc = self.blueprints.get_blueprint_draft_doc(blueprint_id)
             if bp_doc.user_id != ctx.sender_user_id:
-                raise ValueError(f"Blueprint {blueprint_id} not owned by sender")
+                raise BlueprintAccessDeniedError(blueprint_id, ctx.sender_user_id)
 
             draft = BlueprintDraft(**bp_doc.spec_dict)
 
@@ -142,7 +143,7 @@ class ShareCloner:
         clone_result = self._clone_resource_set(closure_data, ctx)
 
         if not clone_result.success:
-            raise ValueError(f"Failed to clone resources: {clone_result.errors}")
+            raise BlueprintCloneError(f"Failed to clone resources: {clone_result.errors}")
 
         logger.debug(f"RID mapping created: {clone_result.rid_mapping}")
         return clone_result.rid_mapping, clone_result.name_conflicts, clone_result.resources_cloned
