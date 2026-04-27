@@ -202,6 +202,18 @@ class McpServerClient:
         """
         return await self.tools.call_tool(tool_name, arguments)
 
+    async def list_resources(self):
+        """List all resources available on the MCP server."""
+        session = self.transport._session
+        result = await session.list_resources()
+        return result.resources
+
+    async def read_resource(self, uri):
+        """Read a specific resource by URI."""
+        session = self.transport._session
+        result = await session.read_resource(uri)
+        return result.contents
+
     async def __aenter__(self):
         """
         Enter the client context manager.

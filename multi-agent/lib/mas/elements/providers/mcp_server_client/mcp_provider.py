@@ -1,13 +1,38 @@
 import logging
 import asyncio
+import re
 from typing import Dict, List, Optional
-from pydantic import HttpUrl
+from pydantic import BaseModel, HttpUrl
 from mcp.types import Tool
 from global_utils.utils.async_bridge import get_async_bridge
 from mas.elements.tools.mcp_proxy.mcp_proxy_tool import McpProxyTool
 from mas.elements.providers.mcp_server_client.mcp_server_client import McpServerClient
 from .provider_tool_registry import ProviderToolRegistry
 from .transport.enums import McpTransportType
+from mas.elements.tools.common.base_tool import BaseTool
+
+logger = logging.getLogger(__name__)
+
+
+class _NoArgs(BaseModel):
+    """Empty schema for tools that take no arguments."""
+    pass
+
+
+class McpSkillTool(BaseTool):
+    """A tool that returns cached MCP skill content (fetched once at init)."""
+
+    def __init__(self, skill_name: str, description: str, content: str):
+        self.name = f"skill__{skill_name}"
+        self.description = description
+        self.args_schema = _NoArgs
+        self._content = content
+
+    def run(self, *args, **kwargs):
+        return self._content
+
+    async def arun(self, *args, **kwargs):
+        return self._content
 
 
 class McpProvider:
@@ -88,6 +113,35 @@ class McpProvider:
             if not self.tool_names:
                 self.tool_names = [tool.name for tool in available_tools]
 
+            # Discover skill resources (non-fatal if server doesn't support resources)
+            skill_tools = []
+            try:
+                resources = await mcp_client.list_resources()
+            except Exception as e:
+                logger.warning(f"Skill resource discovery skipped: {e}")
+                resources = []
+            for resource in resources:
+                try:
+                    uri = str(resource.uri)
+                    if uri.startswith("skill://") and uri.endswith("/SKILL.md"):
+                        contents = await mcp_client.read_resource(resource.uri)
+                        text = "".join(
+                            part.text for part in contents if hasattr(part, "text")
+                        )
+                        skill_name = uri.split("://")[1].split("/")[0]
+                        safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", skill_name)[:64]
+                        skill_tools.append(McpSkillTool(
+                            safe_name,
+                            resource.description or f"Skill: {skill_name}",
+                            text,
+                        ))
+                        logger.info(f"Discovered skill resource: {skill_name}")
+                except Exception as e:
+                    logger.warning(f"Skipping skill resource {resource.uri}: {e}")
+
+            if skill_tools:
+                logger.info(f"Discovered {len(skill_tools)} skill(s) from MCP server")
+
         self._tools = []
         for tool_name in self.tool_names:
             # Get cached tool info
@@ -102,7 +156,8 @@ class McpProvider:
                 self._tools.append(tool)
             else:
                 logging.warning(f"Tool '{tool_name}' not found in available tools")
-        
+
+        self._tools.extend(skill_tools)
         self._initialized = True
 
     def get_cached_tool_info(self, tool_name: str) -> Optional[Tool]:
