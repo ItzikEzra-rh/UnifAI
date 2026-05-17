@@ -326,23 +326,22 @@ def set_metadata(blueprint_id, metadata):
         logger.exception(f"Unexpected error updating metadata for blueprint {blueprint_id}")
         return jsonify({"error": str(e)}), 500
 
-@blueprints_bp.route("/blueprint.clone", methods=["POST"])
+@blueprints_bp.route("/blueprint.duplicate", methods=["POST"])
 @from_body({
     "blueprint_id": fields.Str(data_key="blueprintId", required=True),
     "user_id": fields.Str(data_key="userId", required=True),
 })
-def clone_blueprint(blueprint_id, user_id):
+def duplicate_blueprint(blueprint_id, user_id):
     """
-    Clone a blueprint and all its dependencies for the same user.
+    Duplicate a blueprint and all its dependencies for the same user.
     Creates a new blueprint with "(copy)" suffix.
     """
     try:
-        cloner = current_app.container.share_cloner
+        svc = current_app.container.share_service
 
-        new_blueprint_id, rid_mapping, name_conflicts = cloner.clone_blueprint(
+        new_blueprint_id, rid_mapping, name_conflicts = svc.duplicate_blueprint(
             blueprint_id=blueprint_id,
-            sender_user_id=user_id,
-            recipient_user_id=user_id,
+            user_id=user_id,
         )
 
         return jsonify({
@@ -357,10 +356,10 @@ def clone_blueprint(blueprint_id, user_id):
     except BlueprintAccessDeniedError as e:
         return jsonify({"status": "error", "error": str(e)}), 403
     except BlueprintCloneError as e:
-        logger.exception(f"Clone failed for blueprint {blueprint_id}")
+        logger.exception(f"Duplicate failed for blueprint {blueprint_id}")
         return jsonify({"status": "error", "error": str(e)}), 500
     except Exception as e:
-        logger.exception(f"Unexpected error cloning blueprint {blueprint_id}")
+        logger.exception(f"Unexpected error duplicating blueprint {blueprint_id}")
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
